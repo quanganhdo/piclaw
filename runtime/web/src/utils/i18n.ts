@@ -51,6 +51,7 @@ type MessageKey =
   | 'compose.closeSearch'
   | 'compose.shareLocation'
   | 'compose.attachFile'
+  | 'compose.uploadingAttachments'
   | 'compose.queueControls'
   | 'compose.moveUp'
   | 'compose.moveUpQueue'
@@ -696,6 +697,7 @@ const EN: Record<MessageKey, string> = {
   'compose.closeSearch': 'Close search',
   'compose.shareLocation': 'Share location',
   'compose.attachFile': 'Attach file',
+  'compose.uploadingAttachments': 'Uploading {count} attachment(s)…',
   'compose.queueControls': 'Queued follow-up controls',
   'compose.moveUp': 'Move up',
   'compose.moveUpQueue': 'Move up in queue',
@@ -1334,6 +1336,7 @@ const ZH_CN: Partial<Record<MessageKey, string>> = {
   'compose.closeSearch': '关闭搜索',
   'compose.shareLocation': '分享位置',
   'compose.attachFile': '附加文件',
+  'compose.uploadingAttachments': '正在上传 {count} 个附件…',
   'compose.queueControls': '排队后续消息控制',
   'compose.moveUp': '上移',
   'compose.moveUpQueue': '在队列中上移',
@@ -1972,6 +1975,7 @@ const JA: Partial<Record<MessageKey, string>> = {
   'compose.closeSearch': '検索を閉じる',
   'compose.shareLocation': '位置を共有',
   'compose.attachFile': 'ファイルを添付',
+  'compose.uploadingAttachments': '{count} 件の添付ファイルをアップロード中…',
   'compose.queueControls': 'キュー済みフォローアップの操作',
   'compose.moveUp': '上に移動',
   'compose.moveUpQueue': 'キュー内で上に移動',
