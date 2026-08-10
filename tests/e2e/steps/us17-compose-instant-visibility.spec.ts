@@ -72,6 +72,33 @@ test.describe('US-17: Instant Submission Visibility', () => {
     expect(elapsed).toBeLessThan(3000);
   });
 
+  test('attachment submission shows upload acknowledgement before the message is posted', async ({ authedPage: page }) => {
+    await page.waitForSelector(sel.timeline);
+
+    await page.route('**/media/upload', async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await route.continue();
+    });
+
+    const testMsg = `e2e-upload-ack-${Date.now()}`;
+    const compose = page.locator(sel.composeInput);
+    const fileInput = page.locator(sel.composeBox).locator('input[type="file"]').last();
+    await fileInput.setInputFiles({
+      name: 'delayed-upload.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from('delayed upload fixture'),
+    });
+    await compose.fill(testMsg);
+    await page.keyboard.press('Enter');
+
+    await expect(page.getByTestId('compose-upload-status')).toContainText('Uploading 1 attachment', { timeout: 750 });
+    await expect(page.locator(sel.postContent, { hasText: testMsg })).toHaveCount(0);
+
+    await expect(page.locator(sel.postContent, { hasText: testMsg })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId('compose-upload-status')).toHaveCount(0);
+    await page.unroute('**/media/upload');
+  });
+
   test('multiple rapid submissions appear in order', async ({ authedPage: page }) => {
     await page.waitForSelector(sel.timeline);
 
