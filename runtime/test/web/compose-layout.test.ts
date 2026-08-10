@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { shouldShowComposeAgentAffordance } from "../../web/src/ui/compose-layout.js";
 
+const chatCss = readFileSync(path.join(import.meta.dir, "../../web/static/classic/css/chat.css"), "utf8");
 const responsiveCss = readFileSync(path.join(import.meta.dir, "../../web/static/classic/css/responsive.css"), "utf8");
 
 test("shows compose agent affordance when the footer is wide enough", () => {
@@ -28,6 +29,12 @@ test("hides compose agent affordance when there are no visible agents", () => {
     visibleAgentCount: 0,
     hasContextIndicator: true,
   })).toBe(false);
+});
+
+test("base compose layout reserves text space beneath the floating session switcher", () => {
+  const textareaRule = chatCss.match(/\.compose-session-trigger-top \+ \.compose-input-main textarea\s*\{[^}]+\}/)?.[0] ?? "";
+
+  expect(textareaRule).toContain("padding-right: max(calc(var(--spacing-xs) + 28px), min(44vw, 156px));");
 });
 
 test("mobile compose layout keeps the session switcher floated above the textarea", () => {
