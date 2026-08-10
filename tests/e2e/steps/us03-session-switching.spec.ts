@@ -69,10 +69,8 @@ test.describe('US-03: Session Switching', () => {
   });
 });
 
-test.describe('US-03: Mobile Compose Session Switcher', () => {
-  test('session pill stays pinned above the input at the compose top-right', async ({ authedPage: page }, testInfo) => {
-    test.skip(!['ipad', 'iphone', 'android-chrome'].includes(testInfo.project.name), 'mobile-only compose layout coverage');
-
+test.describe('US-03: Compose Session Switcher Layout', () => {
+  test('session pill stays pinned above the input without obscuring text', async ({ authedPage: page }) => {
     const composeBox = page.locator(sel.composeBox).first();
     const wrapper = page.locator('.compose-input-wrapper').first();
     const textarea = page.locator(sel.composeInput).first();
@@ -116,8 +114,8 @@ test.describe('US-03: Mobile Compose Session Switcher', () => {
     expect(layout).not.toBeNull();
     if (!layout) return;
 
-    // Pinned to the compose input's top-right corner on mobile, not pushed into
-    // normal flow above the editor.
+    // Pinned to the compose input's top-right corner at every viewport width,
+    // not pushed into normal flow above the editor.
     expect(layout.triggerPosition).toBe('absolute');
     expect(layout.triggerZIndex).toBeGreaterThan(0);
     expect(layout.trigger.right).toBeLessThanOrEqual(layout.wrapper.right - 2);
