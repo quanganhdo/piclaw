@@ -1166,6 +1166,7 @@ export function ComposeBox({
     const [footerWidth, setFooterWidth] = useState(0);
     const [submitError, setSubmitError] = useState(null);
     const [submitNotice, setSubmitNotice] = useState(null);
+    const [pendingMediaUploadCount, setPendingMediaUploadCount] = useState(0);
     const [speechSupport, setSpeechSupport] = useState(() => getSpeechInputSupport());
     const [speechUiState, setSpeechUiState] = useState({ kind: 'idle', title: '', detail: '' });
     const [statusNoticeNowMs, setStatusNoticeNowMs] = useState(() => Date.now());
@@ -2294,7 +2295,12 @@ export function ComposeBox({
             onClearMessageRefs?.();
         }
 
-        // Fire-and-forget: send in background, never block the compose box
+        // Fire-and-forget: send in background, never block the compose box.
+        // Keep an explicit upload acknowledgement visible after the draft clears.
+        const mediaUploadCount = capturedMediaFiles.length;
+        if (mediaUploadCount > 0) {
+            setPendingMediaUploadCount((count) => count + mediaUploadCount);
+        }
         (async () => {
             try {
                 const intercepted = await onSubmitIntercept?.({
@@ -2357,6 +2363,10 @@ export function ComposeBox({
                 setSubmitError(message);
                 onSubmitError?.(message);
                 console.error('Failed to post:', error);
+            } finally {
+                if (mediaUploadCount > 0) {
+                    setPendingMediaUploadCount((count) => Math.max(0, count - mediaUploadCount));
+                }
             }
         })();
     };
@@ -3118,6 +3128,19 @@ export function ComposeBox({
                                     ? html`<span class=${buildComposeStatusDotClass({ pulsing: true })} aria-hidden="true"></span>`
                                     : null}
                         <span class="compose-inline-status-title">${extensionWorkingDisplay.title}</span>
+                    </div>
+                </div>
+            `}
+            ${pendingMediaUploadCount > 0 && html`
+                <div
+                    class="compose-inline-status compose-upload-status"
+                    data-testid="compose-upload-status"
+                    role="status"
+                    aria-live="polite"
+                >
+                    <div class="compose-inline-status-row">
+                        <div class="compose-inline-status-spinner" aria-hidden="true"></div>
+                        <span class="compose-inline-status-title">${t('compose.uploadingAttachments', { count: pendingMediaUploadCount })}</span>
                     </div>
                 </div>
             `}
