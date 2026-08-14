@@ -27,6 +27,7 @@ import type { AgentPool } from "./agent-pool.js";
 import { getDueTasks, getTaskById, logTaskRun, updateTaskAfterRun } from "./db.js";
 import { AgentQueue } from "./queue.js";
 import { detectChannel, formatOutbound } from "./router.js";
+import { checkPendingShutdown } from "./runtime/shutdown-registry.js";
 import type { ScheduledTask } from "./types.js";
 import { createTrackedBashOperations } from "./tools/tracked-bash.js";
 import { createLogger } from "./utils/logger.js";
@@ -387,6 +388,13 @@ export async function runScheduledTask(task: ScheduledTask, deps: SchedulerDeps)
     currentDate: task.next_run,
   });
   updateTaskAfterRun(task.id, nextRun, error ? `Error: ${effectiveError || error}` : ((effectiveResult || result)?.slice(0, 200) || "Completed"));
+
+  // Scheduled agent turns do not pass through the web-channel finalizer. Once
+  // their result and task metadata are durable, execute any shutdown requested
+  // by this task's chat. Ownership prevents unrelated task lanes from doing so.
+  if (task.task_kind !== "internal" && task.task_kind !== "shell" && !task.command) {
+    checkPendingShutdown(task.chat_jid);
+  }
 }
 
 /** Guard to prevent starting the loop more than once. */

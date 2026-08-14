@@ -26,6 +26,10 @@ import {
   setProgressWatchdogTimeoutForTests,
 } from "../../src/runtime/progress-watchdog.js";
 import {
+  clearPendingShutdownForTests,
+  markPendingShutdown,
+} from "../../src/runtime/shutdown-registry.js";
+import {
   getSessionStorageConfig,
   getToolUseMessageBudget,
   setSessionStorageConfig,
@@ -82,6 +86,9 @@ function createTestLogsDir(): string {
 }
 
 afterEach(() => {
+  clearPendingShutdownForTests();
+  delete (globalThis as { __PICLAW_PENDING_SHUTDOWN_FAIL_SAFE_SCHEDULER__?: unknown })
+    .__PICLAW_PENDING_SHUTDOWN_FAIL_SAFE_SCHEDULER__;
   resetProgressWatchdogForTests();
   resetAgentAbortProvenanceForTests();
   setSshConnectionResolverForTests(null);
@@ -4018,6 +4025,66 @@ test("runAgentPrompt treats terminal UI tool completion without final prose as i
   } finally {
     restoreEnv();
   }
+});
+
+test("runAgentPrompt ignores a pending shutdown owned by another chat", async () => {
+  const ownerChatJid = "web:deployment";
+  const unrelatedChatJid = "web:daily-brief";
+  (globalThis as {
+    __PICLAW_PENDING_SHUTDOWN_FAIL_SAFE_SCHEDULER__?: (callback: () => void, delayMs: number) => void;
+  }).__PICLAW_PENDING_SHUTDOWN_FAIL_SAFE_SCHEDULER__ = () => {};
+  markPendingShutdown("load deployment", ownerChatJid, () => true);
+
+  class StubSession {
+    private listeners: Array<(event: any) => void> = [];
+    private activeTools = ["read"];
+    sessionManager = { getLeafId: () => "leaf-unrelated-shutdown" };
+    isStreaming = false;
+    isCompacting = false;
+    isRetrying = false;
+    abortCalls = 0;
+    getActiveToolNames() { return [...this.activeTools]; }
+    setActiveToolsByName(names: string[]) { this.activeTools = [...names]; }
+    subscribe(listener: (event: any) => void) {
+      this.listeners.push(listener);
+      return () => { this.listeners = this.listeners.filter((entry) => entry !== listener); };
+    }
+    async prompt() {
+      for (const listener of this.listeners) {
+        listener({
+          type: "message_end",
+          message: {
+            role: "assistant",
+            stopReason: "toolUse",
+            content: [{ type: "toolCall", id: "tool-read", name: "read", arguments: { path: "brief.md" } }],
+          },
+        });
+        listener({ type: "tool_execution_start", toolCallId: "tool-read", toolName: "read", args: { path: "brief.md" } });
+        listener({ type: "tool_execution_end", toolCallId: "tool-read", toolName: "read", isError: false });
+        listener({ type: "message_end", message: createAssistantMessage("Brief completed.") });
+      }
+    }
+    async abort() { this.abortCalls += 1; }
+  }
+
+  const session = new StubSession();
+  const result = await runAgentPrompt("send brief", unrelatedChatJid, { timeoutMs: 0 }, {
+    getOrCreateRuntime: async () => createRuntime(session) as any,
+    turnCoordinator: new AgentTurnCoordinator({
+      takeAttachments: () => [],
+      touchSession: () => {},
+      recordMessageUsage: () => {},
+    }),
+    clearAttachments: () => {},
+    takeAttachments: () => [],
+    logsDir: createTestLogsDir(),
+    setActiveForkBaseLeaf: () => {},
+    clearActiveForkBaseLeaf: () => {},
+  });
+
+  expect(result.status).toBe("success");
+  expect(result.result).toBe("Brief completed.");
+  expect(session.abortCalls).toBe(0);
 });
 
 test("runAgentPrompt does not let a terminal side-effect tool mask an earlier tool failure", async () => {

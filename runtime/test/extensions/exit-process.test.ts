@@ -232,6 +232,8 @@ describe("exit_process extension", () => {
     expect(pendingAtPost).toBe(false);
     expect(result.terminate).toBe(true);
     expect(isPendingShutdown()).toBe(true);
+    expect(isPendingShutdown("web:exit-phase-2")).toBe(true);
+    expect(isPendingShutdown("web:unrelated")).toBe(false);
 
     expect(listRestartHandoffs()).toEqual([{
       version: 1,
