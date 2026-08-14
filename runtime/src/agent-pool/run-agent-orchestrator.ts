@@ -722,7 +722,7 @@ async function runPromptAttempt(
           // any further tool calls execute. The LLM's text reply has already
           // been streamed and captured by onTurnComplete, so the agent's
           // response will be persisted to the DB by finalizeSuccessfulRun.
-          if (isPendingShutdown()) {
+          if (isPendingShutdown(chatJid)) {
             recordAgentAbortCause(chatJid, "service_shutdown", "run_agent.pending_shutdown_abort");
             void session.abort().catch((err) => {
               options.onWarn?.("Failed to abort session after exit_process (deferred to message_end)", {
