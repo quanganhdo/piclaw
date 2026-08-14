@@ -23,10 +23,63 @@ const log = createLogger("runtime.shutdown-registry");
 type ShutdownFn = (signal: string) => Promise<void>;
 type PreShutdownHook = () => void | Promise<void>;
 
+interface PendingShutdown {
+  reason: string;
+  ownerChatJid: string;
+  canFailSafeShutdown: () => boolean;
+}
+
+const FAIL_SAFE_DELAY_MS = 30_000;
+const FAIL_SAFE_RETRY_MS = 5_000;
+
 let registeredShutdown: ShutdownFn | null = null;
-let pendingShutdownReason: string | null = null;
+let pendingShutdown: PendingShutdown | null = null;
+let pendingShutdownTimer: ReturnType<typeof setTimeout> | null = null;
 const preShutdownHooks = new Set<PreShutdownHook>();
 let preShutdownHooksRan = false;
+
+function clearPendingShutdownTimer(): void {
+  if (!pendingShutdownTimer) return;
+  clearTimeout(pendingShutdownTimer);
+  pendingShutdownTimer = null;
+}
+
+function runPendingShutdownFailSafe(): void {
+  pendingShutdownTimer = null;
+  const pending = pendingShutdown;
+  if (!pending) return;
+  if (!pending.canFailSafeShutdown()) {
+    log.info("Pending shutdown fail-safe deferred while another session is active", {
+      operation: "fail_safe.defer",
+      ownerChatJid: pending.ownerChatJid,
+      retryMs: FAIL_SAFE_RETRY_MS,
+    });
+    schedulePendingShutdownFailSafe(FAIL_SAFE_RETRY_MS);
+    return;
+  }
+
+  pendingShutdown = null;
+  log.warn("Pending shutdown fail-safe executing", {
+    operation: "fail_safe.execute",
+    reason: pending.reason,
+    ownerChatJid: pending.ownerChatJid,
+  });
+  requestGracefulShutdown(pending.reason);
+}
+
+function schedulePendingShutdownFailSafe(delayMs: number): void {
+  clearPendingShutdownTimer();
+  const testScheduler = (globalThis as {
+    __PICLAW_PENDING_SHUTDOWN_FAIL_SAFE_SCHEDULER__?: (callback: () => void, delayMs: number) => void;
+  }).__PICLAW_PENDING_SHUTDOWN_FAIL_SAFE_SCHEDULER__;
+  if (typeof testScheduler === "function") {
+    testScheduler(runPendingShutdownFailSafe, delayMs);
+    return;
+  }
+
+  pendingShutdownTimer = setTimeout(runPendingShutdownFailSafe, delayMs);
+  if (typeof pendingShutdownTimer.unref === "function") pendingShutdownTimer.unref();
+}
 
 /**
  * Register the graceful shutdown handler.
@@ -93,18 +146,33 @@ export function requestGracefulShutdown(reason: string, delayMs = 800): void {
  * Mark that a graceful shutdown should happen after the current turn
  * completes and is persisted. Called by the exit_process tool.
  */
-export function markPendingShutdown(reason: string): void {
-  pendingShutdownReason = reason;
-  log.info("Pending shutdown marked", { operation: "mark_pending", reason });
+export function markPendingShutdown(
+  reason: string,
+  ownerChatJid: string,
+  canFailSafeShutdown: () => boolean,
+): void {
+  pendingShutdown = { reason, ownerChatJid, canFailSafeShutdown };
+  schedulePendingShutdownFailSafe(FAIL_SAFE_DELAY_MS);
+  log.info("Pending shutdown marked", {
+    operation: "mark_pending",
+    reason,
+    ownerChatJid,
+    failSafeDelayMs: FAIL_SAFE_DELAY_MS,
+  });
 }
 
 /**
- * Query whether a pending shutdown has been requested.
- * Used by the run-agent orchestrator to abort the session after
- * exit_process executes, preventing further tool calls.
+ * Query whether a pending shutdown has been requested. When a chat JID is
+ * supplied, only the requesting chat can observe the pending shutdown.
  */
-export function isPendingShutdown(): boolean {
-  return pendingShutdownReason !== null;
+export function isPendingShutdown(chatJid?: string): boolean {
+  if (!pendingShutdown) return false;
+  return chatJid === undefined || pendingShutdown.ownerChatJid === chatJid;
+}
+
+export function clearPendingShutdownForTests(): void {
+  pendingShutdown = null;
+  clearPendingShutdownTimer();
 }
 
 /**
@@ -117,10 +185,23 @@ export function isPendingShutdown(): boolean {
  * Without it the client may miss the agent's final reply even though it is
  * already persisted in the DB.
  */
-export function checkPendingShutdown(): void {
-  if (!pendingShutdownReason) return;
-  const reason = pendingShutdownReason;
-  pendingShutdownReason = null;
-  log.info("Pending shutdown: delaying 1.5s for SSE flush", { operation: "check_pending.delay", reason });
+export function checkPendingShutdown(chatJid?: string): void {
+  if (!pendingShutdown) return;
+  if (chatJid !== undefined && pendingShutdown.ownerChatJid !== chatJid) return;
+  if (!pendingShutdown.canFailSafeShutdown()) {
+    log.info("Pending shutdown finalization deferred while another session is active", {
+      operation: "check_pending.defer",
+      ownerChatJid: pendingShutdown.ownerChatJid,
+    });
+    return;
+  }
+  const { reason, ownerChatJid } = pendingShutdown;
+  pendingShutdown = null;
+  clearPendingShutdownTimer();
+  log.info("Pending shutdown: delaying 1.5s for SSE flush", {
+    operation: "check_pending.delay",
+    reason,
+    ownerChatJid,
+  });
   setTimeout(() => requestGracefulShutdown(reason), 1500);
 }
