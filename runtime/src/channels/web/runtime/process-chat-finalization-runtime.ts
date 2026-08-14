@@ -84,7 +84,7 @@ export async function finalizeSuccessfulProcessChatRun(options: ProcessChatFinal
   }
 
   await materializeDeferredFollowups({ channel: channel as WebChannelLike, chatJid, agentId: options.agentId });
-  checkPendingShutdown();
+  checkPendingShutdown(chatJid);
 }
 
 export interface PersistIntermediateTurnOptions {

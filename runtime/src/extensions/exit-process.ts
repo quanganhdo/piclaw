@@ -208,7 +208,7 @@ export const exitProcess: ExtensionFactory = (pi: ExtensionAPI) => {
 
       // Mark the shutdown only after the agent-owned notice is stored. The
       // actual exit happens after finalization has flushed timeline events.
-      markPendingShutdown(reason);
+      markPendingShutdown(reason, chatJid, () => getActiveSessionCount(chatJid) === 0);
 
       return {
         content: [{ type: "text", text: `Restart notice posted. Graceful shutdown scheduled. ${killed} subprocess${killed === 1 ? "" : "es"} killed. ${RESTART_HINT} Reason: ${reason}` }],
