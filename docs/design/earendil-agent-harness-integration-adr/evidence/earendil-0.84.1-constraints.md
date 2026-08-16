@@ -8,13 +8,13 @@ This file records what Piclaw must account for when using the installed version'
 
 `AgentHarness` prompt, queue, abort, compaction, navigation, resume, lane, watcher and manual-drive methods throw `HarnessNotImplemented`. Restore rejects sessions containing records.
 
-Piclaw response: use this version for baseline/fixture assessment only. Track Harness v3 implementation slices; select a coherent working v3 source/version before production execution.
+Piclaw response: use this version for baseline/fixture assessment only. Draft PR #8076 has superseded the earlier type-only branch and implements substantial v3 session/storage work, but still has no concrete public harness runtime. Select one coherent tagged release before production execution.
 
 ### C-002 — Coding-agent harness helper is private
 
 `dist/server/create-harness` is absent from the package export map.
 
-Piclaw response: use public agent-core composition at this version. If a later selected version exports a helper, adopt it and delete local composition.
+Piclaw response: use public lower-level agent-core composition for fixture evidence at this version. Never depend on the private helper or make its shape an adoption requirement.
 
 ### C-003 — Contextual tool types require closure binding
 
@@ -52,7 +52,10 @@ Piclaw response: run public session conformance, execution environment and real 
 - runtime enforcement that public `runId` is the durable operation ID;
 - abort ordering around queue state and late tool/model results;
 - hook durability/replay timing;
-- manual-drive action/effect timing.
+- manual-drive action/effect timing;
+- process-local `EffectGate` coverage and abort/admission ordering;
+- unknown outcomes after effect admission but before settlement;
+- transaction/migration/precise-rewrite behaviour across selected backends.
 
 Piclaw response: let the selected version's direct contract tests determine behaviour. Do not hide differences behind compatibility interfaces.
 

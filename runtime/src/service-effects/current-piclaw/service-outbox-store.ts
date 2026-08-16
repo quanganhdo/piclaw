@@ -148,8 +148,17 @@ export function createCurrentPiclawServiceOutboxStore(
   }
 }
 
+export type ServiceOutboxEnqueueStatement =
+  | "outbox_insert"
+  | "outbox_decision_insert";
+
+export interface ServiceOutboxEnqueueInsertObserver {
+  afterStatement(statement: ServiceOutboxEnqueueStatement): void;
+}
+
 export function createServiceOutboxEnqueueInserter(
   database: Database,
+  observer?: ServiceOutboxEnqueueInsertObserver,
 ): ServiceOutboxInserterConstructionResult {
   try {
     verifyDatabase(database);
@@ -166,7 +175,7 @@ export function createServiceOutboxEnqueueInserter(
           ) as EnqueueOutboxRequest | null;
           if (!request) return Result.err(errorOf("invalid_request"));
           try {
-            return insertEnqueue(database, request);
+            return insertEnqueue(database, request, observer);
           } catch (error) {
             return Result.err(classifyDatabaseError(error));
           }
@@ -1052,6 +1061,7 @@ export class CurrentPiclawServiceOutboxStore implements ServiceOutboxStore {
 function insertEnqueue(
   database: Database,
   request: EnqueueOutboxRequest,
+  observer?: ServiceOutboxEnqueueInsertObserver,
 ): ResultValue<OutboxEnqueueDecision, OutboxStoreError> {
   const key = `enqueue:${request.kind}:${request.effect.idempotencyKey}`;
   const knownRow = database
@@ -1080,7 +1090,7 @@ function insertEnqueue(
       .get(request.outboxId)
   )
     return Result.err(errorOf("idempotency_conflict"));
-  database
+  const inserted = database
     .query(
       `INSERT INTO ${OUTBOX}(outbox_id,kind,state,idempotency_key,request_hash,operation_id,source_seq,provenance_ref,redaction_class,payload_ref,destination_ref,available_at,enqueued_at,state_changed_at,repeatability,attempt,worker_id,claimed_at,lease_token,lease_expires_at,certainty,retry_at,receipt_ref,last_error_tag,result_at,reconciliation_ref,reconciled_at,cancellation_reason_tag) VALUES (?,?, 'pending',?,?,?,?,?,?,?,?,?,?,?,?,0,NULL,NULL,NULL,NULL,'not_applied',NULL,NULL,NULL,NULL,NULL,NULL,NULL)`,
     )
@@ -1100,15 +1110,23 @@ function insertEnqueue(
       request.enqueuedAt,
       request.repeatability,
     );
-  database
+  if (!changedExactlyOne(inserted.changes)) throw new CorruptStateFault();
+  observer?.afterStatement("outbox_insert");
+  const decided = database
     .query(
       `INSERT INTO ${DECISIONS}(decision_key,method,request_hash,outcome,outbox_id,attempt,lease_token_hash,result_json) VALUES (?, 'enqueue', ?, 'applied', ?, 0, NULL, NULL)`,
     )
     .run(key, request.effect.requestHash, request.outboxId);
+  if (!changedExactlyOne(decided.changes)) throw new CorruptStateFault();
+  observer?.afterStatement("outbox_decision_insert");
   const record = readRecordFrom(database, request.outboxId);
   return record
     ? Result.ok(freeze({ decision: "applied" as const, record }))
     : Result.err(errorOf("corrupt_state"));
+}
+
+function changedExactlyOne(changes: number): boolean {
+  return Number.isSafeInteger(changes) && changes === 1;
 }
 
 function verifyDatabase(database: Database): void {

@@ -1,6 +1,6 @@
 # Bug and regression corpus
 
-The populated corpus is in [`evidence/regression-corpus.md`](evidence/regression-corpus.md). It currently maps 25 baseline and post-release incidents to 14 invariants and named contract scenarios. The archive remains evidence; its patches are not the target architecture.
+The populated corpus is in [`evidence/regression-corpus.md`](evidence/regression-corpus.md). It currently maps 26 baseline, post-release and upstream-concurrency incidents to 15 invariants and named contract scenarios. The archives and upstream PRs remain evidence; their patches are not the target architecture.
 
 Bugs form part of the behavioural specification. Each known incident must map to a target invariant and a regression scenario.
 

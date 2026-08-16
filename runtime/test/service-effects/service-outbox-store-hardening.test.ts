@@ -166,6 +166,46 @@ describe("EF-S05 transaction composition and construction", () => {
     db.close();
   });
 
+  test("caller-owned inserter observes both DML statements and observer faults rollback", () => {
+    const database = new Database(":memory:", { strict: true });
+    installServiceOutboxSchema(database);
+    const statements: string[] = [];
+    const observed = createServiceOutboxEnqueueInserter(database, {
+      afterStatement(statement) {
+        statements.push(statement);
+      },
+    });
+    expect(observed.ok).toBeTrue();
+    if (!observed.ok) return;
+    database.exec("BEGIN IMMEDIATE");
+    expect(observed.value.insert(enqueue("observed")).ok).toBeTrue();
+    database.exec("COMMIT");
+    expect(statements).toEqual(["outbox_insert", "outbox_decision_insert"]);
+
+    for (const fault of ["outbox_insert", "outbox_decision_insert"] as const) {
+      const faulted = createServiceOutboxEnqueueInserter(database, {
+        afterStatement(statement) {
+          if (statement === fault) throw new Error("checkpoint");
+        },
+      });
+      expect(faulted.ok).toBeTrue();
+      if (!faulted.ok) continue;
+      database.exec("BEGIN IMMEDIATE");
+      typed(faulted.value.insert(enqueue(`fault-${fault}`)), "storage_unavailable");
+      database.exec("ROLLBACK");
+      expect(
+        (
+          database
+            .prepare(
+              "SELECT count(*) n FROM service_effect_s05_outbox WHERE outbox_id=?",
+            )
+            .get(`fault-${fault}`) as { n: number }
+        ).n,
+      ).toBe(0);
+    }
+    database.close();
+  });
+
   test("held-lock inserter is bounded and committed lost response replays fresh", () => {
     const dir = mkdtempSync(join(tmpdir(), "piclaw-s05-inserter-"));
     const path = join(dir, "store.sqlite");

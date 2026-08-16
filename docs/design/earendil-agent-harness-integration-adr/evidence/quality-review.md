@@ -1,6 +1,6 @@
 # Assessment quality review
 
-Review baseline: Piclaw `v2.13.2` plus ADR documentation through the review commit.
+Review baseline: Piclaw `v2.13.2` behavioural evidence; ADR refresh based on Piclaw `d921fd4b5244074e9a76dc46244633e8ff5981a8` and pinned Earendil evidence observed on 2026-08-14.
 
 Result: **decision-ready with explicit post-approval implementation gates**.
 
@@ -8,7 +8,7 @@ Result: **decision-ready with explicit post-approval implementation gates**.
 
 - Production/runtime changes: **0**.
 - Changed paths from `v2.13.2`: ADR Markdown files only.
-- Local/remote branch: `main` synchronized before final review.
+- Refresh worktree base: `d921fd4b5244074e9a76dc46244633e8ff5981a8`; documentation-only branch reviewed independently from production installation.
 - Post-release campaign: preserved at `archive/post-v2.13.2-fixes-20260810` and in a verified complete Git bundle.
 - Markdown links: checked as local paths across the ADR bundle.
 - Whitespace: `git diff --check` passes.
@@ -18,19 +18,19 @@ Result: **decision-ready with explicit post-approval implementation gates**.
 | Measure | Result |
 |---|---:|
 | Current capabilities | 59 |
-| Regressions/incidents | 25 |
-| Invariants | 14 |
+| Regressions/incidents | 26 |
+| Invariants | 15 |
 | Piclaw surfaces classified for effector reuse | 36 |
 | Future Piclaw-owned interfaces specified | 9 (`EF-S01`–`EF-S08`, `EF-H01`) |
 | Direct Earendil boundary specifications | 5 (`EB-01`–`EB-05`) |
 | Documentation work packages | 11 (`WP-0A`–`WP-3C`) |
 | Direct Earendil contract families detailed | 11: harness, operation result/error, action/snapshot, storage/session, model/credential, tool, environment, resource, compaction/retry, events/hooks, telemetry |
-| Harness contract cases | 20 |
+| Harness contract cases | 25 |
 | Piclaw boundary contract cases | 20 |
 | Earendil assumptions | 10 |
 | Migration phases | 9 (`M0`–`M8`) |
 | Capabilities with owner/mechanism/test traceability | 59/59 |
-| Regressions with mechanism/test traceability | 25/25 |
+| Regressions with mechanism/test traceability | 26/26 |
 
 ## Quality-bar review
 
@@ -42,20 +42,21 @@ Result: **decision-ready with explicit post-approval implementation gates**.
 | Every durable responsibility has a target owner | capability and traceability matrices | Pass |
 | Future effectors are implementable over current internals | `future-effector-specifications.md` gives complete illustrative types, adapter source maps, fakes, fault cases, effort and dependencies | Pass as documentation; no code authorised |
 | No reuse of current Piclaw orchestration | effector classification rejects agent pool, process-chat/recovery/compaction orchestration | Pass as design constraint; implementation boundary test is an M1 gate |
-| Earendil structure adopted early | released 0.84.1 contracts audited; authoritative Harness v3 design and draft type slice pinned and adopted as target | Pass |
+| Earendil structure adopted early | released 0.84.1 contracts, authoritative `main` design and draft PR #8076 storage/primitives pinned separately | Pass |
 | Parallel execution abstractions removed | `direct-type-audit.md` separates Earendil-owned from Piclaw service-owned types | Pass |
-| Real installed harness viability checked | installed 0.84.1 JavaScript is stubbed; Harness v3 runtime/backend implementation remains an explicit gate | Pass |
+| Real installed harness viability checked | installed 0.84.1 JavaScript is stubbed; PR #8076 has v3 storage/primitives but no concrete public harness runtime | Pass |
 | Selected-version test implementation specified | fixture layout, manual driver, direct Earendil `Models`/tools, fault plan and assumptions | Pass |
 | One semantic suite can target fixture and real harness | direct Earendil factory input and version-migration report | Pass as specification; implementation is an M1/M4 gate |
-| Replay and fault boundaries specified | target state model and selected-version fixture contract | Pass |
+| Replay and fault boundaries specified | target state model and selected-version fixture cover intent, `EffectGate` admission, unknown effect-start outcome and settlement | Pass |
 | Exact-owner cancellation specified | operation/run identity and cancellation protocol | Pass |
 | Atomic terminal settlement specified | nine-step transaction/protocol | Pass |
-| Restart reconciliation specified | Piclaw service log correlated to Harness v3 snapshot/current registers/`lane.lastResult` | Pass |
+| Restart reconciliation specified | Piclaw service log correlated to bounded Harness v3 current-state reads/`lane.lastResult`; no v2/private recovery-query dependency | Pass |
 | Scheduler delivery ownership specified | scheduler model and PC-012/013 | Pass |
 | Mobile installed-browser acceptance specified | PC-015 and M5–M7 installed gates | Pass |
 | Alternatives compared | five alternatives with selected direct-adoption/selected-version-fixture architecture | Pass |
 | Migration and rollback reversible | M0–M8, per-chat backend cutover and no destructive downgrade | Pass |
-| Unsupported claims labelled | ten assumptions updated for Harness v3 design/type-slice/runtime status and resolution gates | Pass |
+| Storage/concurrency gates specified | upstream backend conformance plus total open-operation migration and precise-rewrite/writer races | Pass |
+| Unsupported claims labelled | ten assumptions updated for authoritative design, draft implementation and tagged-release resolution gates | Pass |
 
 ## Baseline test evidence
 
@@ -79,8 +80,9 @@ An independent review should challenge:
 - whether M5 (service authority before execution cutover) is the safest order;
 - whether per-chat rollback can preserve context without uncertain tool replay;
 - whether the semantic suite covers add-on/extension resource migration sufficiently;
-- whether the selected Harness v3 implementation faithfully delivers bounded restore, `lane.lastResult`, external finalisation and total schema migration;
-- whether Piclaw should wait for a released coherent v3 backend or approve a pinned source commit.
+- whether the selected Harness v3 implementation faithfully delivers bounded restore, `lane.lastResult`, process-local task ownership, `EffectGate` admission, external finalisation and total schema migration;
+- whether precise rewrite and backend writer leases are sufficient for PR-#7751-style concurrency;
+- whether Piclaw should wait for one coherent tagged release as this refresh recommends.
 
 ## Post-approval gates
 
@@ -88,9 +90,9 @@ The future-effector specification is documentation only. Its TypeScript blocks a
 
 - implement the selected-version fixture and semantic suite in M1;
 - prototype/benchmark the Piclaw operation schema in M2;
-- track draft PR #7976 and subsequent Harness v3 storage/runtime slices;
-- select a coherent usable Harness v3 source/version and update Piclaw to its direct types;
-- run the HC suite plus selected backend conformance against the real harness in M4;
+- track draft PR #8076 as moving development evidence without selecting it;
+- select one coherent tagged Harness v3 package/backend set and update Piclaw to its direct types;
+- run HC-001–HC-025 plus selected backend conformance, migration and rewrite-race suites against the real harness in M4;
 - measure shadow/soak and resource budgets;
 - complete installed-service/mobile/restart/rollback gates before cutover.
 

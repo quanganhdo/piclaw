@@ -14,11 +14,13 @@ The assessment must test and refine these candidate invariants:
 6. The first accepted cancellation wins and remains scoped to its operation across late events and restart.
 7. Tool-call state is monotonic and duplicate results are idempotent.
 8. Recovery attempts, elapsed budget and tool use remain bounded.
-9. Containment keeps tools disabled until accepted terminal settlement.
-10. Restart reconciliation preserves truthful FIFO carry, disposal and successor claims.
-11. Scheduler and `runAgent()` output have one delivery owner.
-12. UI status and SSE events identify the exact operation and event generation.
-13. A harness transcript or in-memory queue is not proof of durable Piclaw acceptance or terminal consumption.
+9. A process-local `EffectGate` orders abort against effect admission but never proves that an admitted external effect did or did not complete; unknown outcomes follow selected replay/reconciliation policy.
+10. At most one live operation task owns a lane locally, and durable `op.state` remains authoritative after that task is lost.
+11. Containment keeps tools disabled until accepted terminal settlement.
+12. Restart reconciliation preserves truthful FIFO carry, disposal and successor claims.
+13. Scheduler and `runAgent()` output have one delivery owner.
+14. UI status and SSE events identify the exact operation and event generation.
+15. A harness transcript or in-memory queue is not proof of durable Piclaw acceptance or terminal consumption.
 
 ## Target ownership boundary
 
@@ -39,7 +41,9 @@ The ADR must assign each responsibility to one owner. The table below is a hypot
 | Tool execution lifecycle | Earendil harness | To verify |
 | Execution-time compaction | Earendil harness | To verify |
 | Harness-native execution recovery | Earendil harness | To verify |
-| Execution checkpoint or restart token | Earendil harness, if exposed | Unknown API |
+| Execution checkpoint/current operation state | Earendil harness | Harness v3 `op.state`; selected runtime still required |
+| Process-local lane task and effect admission | Earendil harness | Candidate PR #8076 `ActiveOperation`/`EffectGate`; never durable authority |
+| Storage transactions, migrations and session rewrite | Earendil session backend/repository | Piclaw selects and validates one conformant tagged backend |
 | Projection from Earendil events/snapshots to Piclaw status | Piclaw projection service | Direct Earendil inputs; web DTO output |
 
 No final design may share ownership of accepted-input queues, operation completion, cancellation authority, scheduler delivery or terminal persistence.
@@ -86,6 +90,8 @@ Each command must define:
 - compensation or reconciliation rule;
 - redaction policy.
 
+For Harness v3 effects, tests distinguish durable intent, process-local admission and durable settlement. `EffectGate.assertOpen()` is adjacent to invocation but is not a persisted effect-start record. A crash after admission remains an unknown outcome.
+
 ## Replay and fault-boundary standard
 
 The design must support:
@@ -120,4 +126,9 @@ Replay equality excludes timestamps and generated IDs after normalisation. It in
 - terminal persistence failure before and after the effect;
 - successor claim and restart reconciliation;
 - stale generation event;
-- mobile Compose Abort with exact authority.
+- mobile Compose Abort with exact authority;
+- abort-first and admission-first at every `EffectGate` integration;
+- process loss after effect admission but before settlement;
+- live lane task versus restored orphaned `effect_pending` state;
+- open-operation migration and backend conformance;
+- precise rewrite concurrent with readers/writers and restart.

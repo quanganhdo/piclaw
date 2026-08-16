@@ -8,6 +8,7 @@ import {
 } from "../../src/service-effects/contracts/common.js";
 import { SERVICE_WORK_STORE_CONTRACT_CASE_NAMES } from "../../src/service-effects/testing/contract-suites/service-work-store-contract.js";
 import { SERVICE_OUTBOX_STORE_CONTRACT_CASE_NAMES } from "../../src/service-effects/testing/contract-suites/service-outbox-store-contract.js";
+import { TERMINAL_SETTLEMENT_CONTRACT_CASE_NAMES } from "../../src/service-effects/testing/contract-suites/terminal-settlement-store-contract.js";
 import {
   runParameterisedContractSuite,
   type ContractSubjectFactory,
@@ -604,6 +605,36 @@ describe("typed effector case catalogue", () => {
     expect(
       ids.every((id) => /^EF-S01-(?:C(?:10|[1-9])|R01|S\d{2})$/.test(id)),
     ).toBeTrue();
+  });
+
+  test("EF-S02 suite maps exact C1-C9 and R01 with labelled supplements", () => {
+    const ids = TERMINAL_SETTLEMENT_CONTRACT_CASE_NAMES.map(
+      (name) => name.split(" ", 1)[0],
+    );
+    const catalogue = EFFECTOR_CASE_CATALOGUE.find(
+      (entry) => entry.contractId === "EF-S02",
+    );
+    expect(catalogue).toBeDefined();
+    expect(ids.filter((id) => /^EF-S02-C\d+$/.test(id))).toEqual(
+      catalogue?.requiredCases.map((entry) => entry.caseId),
+    );
+    expect(ids.filter((id) => id === "EF-S02-R01")).toEqual(["EF-S02-R01"]);
+    expect(TERMINAL_SETTLEMENT_CONTRACT_CASE_NAMES).toContain(
+      `${catalogue?.crashOracle.oracleId} ${catalogue?.crashOracle.description}`,
+    );
+    expect(
+      ids.every((id) => /^EF-S02-(?:C[1-9]|R01|S\d{2})$/.test(id)),
+    ).toBeTrue();
+    expect(ids.filter((id) => /^EF-S02-S\d{2}$/.test(id)).sort()).toEqual(
+      Array.from({ length: 13 }, (_, index) =>
+        `EF-S02-S${String(index + 1).padStart(2, "0")}`,
+      ),
+    );
+    for (const required of catalogue?.requiredCases ?? []) {
+      expect(TERMINAL_SETTLEMENT_CONTRACT_CASE_NAMES).toContain(
+        `${required.caseId} ${required.description}`,
+      );
+    }
   });
 
   test("EF-S05 suite maps exact C1-C8 and R01 with labelled supplements", () => {

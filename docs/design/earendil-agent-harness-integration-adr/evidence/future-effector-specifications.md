@@ -549,40 +549,51 @@ interface TerminalSettlementStore {
 
 interface CommitTerminalRequest {
   effect: EffectIdentity & { operationId: string };
+  expectedChatJid: string;
   expectedVersion: number;
-  expectedHarnessOperationId: string | null;
+  expectedHarness: HarnessCorrelation | null;
   disposition: PiclawDisposition;
   errorCode: string | null;
-  timeline: TerminalTimelineWrite | null;
+  terminalAuthorityRef: string | null;
+  timeline: TerminalTimelineWrite;
   sourceDispositions: readonly SourceDisposition[];
-  outboxIntents: readonly OutboxIntent[];
+  outboxIntents: readonly EnqueueOutboxRequest[];
   committedAt: string;
 }
 
-interface TerminalTimelineWrite {
-  mode: "insert" | "replace_placeholder" | "none";
-  placeholderRowId: number | null;
-  chatJid: string;
-  contentRef: string | null;
-  threadId: number | null;
-  mediaIds: readonly number[];
-  contentBlocksRef: string | null;
-}
+type TerminalTimelineWrite =
+  | {
+      mode: "insert";
+      placeholderRowId: null;
+      chatJid: string;
+      contentRef: string;
+      threadId: number | null;
+      mediaIds: readonly number[];
+      contentBlocksRef: string | null;
+    }
+  | {
+      mode: "replace_placeholder";
+      placeholderRowId: number;
+      chatJid: string;
+      contentRef: string;
+      threadId: number | null;
+      mediaIds: readonly number[];
+      contentBlocksRef: string | null;
+    }
+  | {
+      mode: "none";
+      placeholderRowId: null;
+      chatJid: string;
+      contentRef: null;
+      threadId: null;
+      mediaIds: readonly [];
+      contentBlocksRef: null;
+    };
 
 interface SourceDisposition {
   sourceSeq: number;
   state: "consumed" | "disposed";
   reason: string;
-}
-
-interface OutboxIntent {
-  outboxId: string;
-  kind: OutboxKind;
-  idempotencyKey: string;
-  requestHash: string;
-  payloadRef: string;
-  destinationRef: string | null;
-  availableAt: string;
 }
 
 interface TerminalCommit {
@@ -596,6 +607,8 @@ interface TerminalCommit {
 }
 
 type TerminalSettlementErrorTag =
+  | "invalid_request"
+  | "not_found"
   | "idempotency_conflict"
   | "version_mismatch"
   | "owner_conflict"
@@ -621,19 +634,29 @@ One SQLite transaction:
 2. inserts one immutable disposition;
 3. inserts or replaces the designated terminal timeline row and binds media;
 4. consumes or disposes claimed sources with reasons;
-5. advances the per-chat frontier through consecutive disposed sources only;
+5. advances the per-chat frontier through consecutive closed (`consumed` or `disposed`) sources only, stopping at pending or claimed work; a missing row below `next_source_seq` is corruption;
 6. releases service ownership;
 7. inserts delivery, notification, wake and maintenance outbox rows;
-8. records the terminal projection and commits.
+8. records immutable terminal-commit visibility and commits; no projection is emitted by EF-S02.
 
-A duplicate equal request returns the original `TerminalCommit`. Another disposition, harness owner or timeline payload returns `terminal_conflict`. Broadcast and notification are never part of this transaction.
+A duplicate equal request returns the original `TerminalCommit`. Another disposition, chat, complete harness owner, terminal authority, timeline payload, source disposition or outbox set returns `already_terminal_conflict` with the original closed commit. Terminalisation increments the Piclaw operation version exactly once. Broadcast and notification are never part of this transaction.
+
+The operation fence compares the exact expected chat, active owner, version and complete nullable harness correlation: session, lane, Earendil run (`harnessOperationId`), state and watch generation. `terminalAuthorityRef` is required only for `skipped` and `superseded`; it is null for other dispositions and is retained only in the protected terminal decision ledger.
+
+Disposition authority is closed: `completed` requires `settling` with no cancellation and no error; `cancelled` requires an accepted cancellation and `cancelling` or `settling`; `failed` requires `executing`, `suspended`, `cancelling` or `settling`, a bounded error code and no accepted cancellation; `skipped` requires `claimed` or `starting_harness`, no started harness run and no cancellation; `superseded` requires `claimed`, `starting_harness` or `suspended` and no cancellation.
+
+Every operation-source membership must be open and settled exactly once in the request; a pre-closed membership or a targeted queued follow-up without its queue row is corruption. Matching queued-input rows move to the same `consumed` or `disposed` state. Each outbox intent is a complete `EnqueueOutboxRequest`; its operation and source authority must match the settlement. EF-S02 must itself insert both the S05 outbox row and enqueue decision inside the outer transaction; a pre-existing row, even byte-equal, is an `idempotency_conflict` rather than evidence that this transaction inserted it.
+
+`committedAt` is at or after every accepted source and accepted cancellation time used by the disposition. Every outbox `enqueuedAt` equals `committedAt`, and `availableAt` is not earlier. Non-null timeline `threadId` identifies an existing root in the same chat. Content and content-block references are resolved and verified for exact reference, digest, byte length, media type and redaction class before persistence, and their bytes are defensively snapshotted. Equal durable replay and altered closed-operation candidates are decided before payload resolution.
+
+`invalid_request` denotes a malformed public request or lookup, while `not_found` denotes a valid settlement candidate for an absent operation. Valid read lookups return `null` when no terminal decision exists and do not emit effect traces. Persisted decision reads strictly decode the terminal operation, timeline row, complete ordered outbox link count and S05 enqueue rows; malformed scalars, ordinals or edges return `corrupt_state` without exposing stored values.
 
 ### Adapter over current Piclaw internals
 
-Extract transaction-compatible statement functions from:
+Implement a private latent transaction-compatible statement layer, preserving the supported SQL semantics from:
 
 - `runtime/src/db/messages.ts` for message insert/replace, terminal flags, thread association and FTS rows;
-- `runtime/src/db/media.ts` for message/media binding;
+- `runtime/src/db/media.ts` for message/media binding and media-text FTS maintenance;
 - `runtime/src/channels/web/messaging/agent-message-store.ts` for existing terminal-message behaviour;
 - `runtime/src/channels/web/messaging/message-write-flows.ts` for replacement and thread behaviour;
 - `runtime/src/router.ts:formatOutbound` for presentation before the request is built.
@@ -648,7 +671,7 @@ Required cases:
 
 - rollback after every statement leaves no partial terminal state;
 - commit followed by lost acknowledgement returns the original result on retry;
-- completion and cancellation candidates race to one disposition;
+- accepted cancellation authority authorises cancellation, and separately valid terminal candidates race to one disposition;
 - stale Piclaw version and stale Earendil operation ID are no-ops;
 - missing or duplicate media cannot create two terminal rows;
 - placeholder replacement and new-row paths preserve one terminal message;
@@ -1291,13 +1314,13 @@ Prompts, tool arguments/results, media bytes and secret values are prohibited at
 
 ### EB-05 — harness, session, storage and events
 
-Do not implement these against `0.84.1` or draft PR #7976 merely to create activity. The first coherent selected source must provide:
+Do not implement these against `0.84.1` or draft PR #8076 merely to create activity. PR #8076 is storage/primitives evidence, not a selected runtime. The first coherent tagged release must provide:
 
 | Surface | Selection requirement | Piclaw preparation |
 |---|---|---|
-| `AgentHarness` / `AgentLane` | Implemented prompt, queue, abort, resume, compact, navigation and close | HC semantic cases and exact service correlation expectations |
-| `Storage` / `SessionRepo` | Memory conformance plus one durable backend and migrations | Backend fault, backup, corruption and Bun acceptance cases |
-| Restore | Total open-operation state and `lane.lastResult` | PC reconciliation table and every effect-sandwich crash case |
+| `AgentHarness` / `AgentLane` | Exported concrete `AgentHarnessConstructor` plus implemented prompt, queue, abort, resume, compact, navigation and close | HC semantic cases and exact service correlation expectations |
+| `Storage` / `SessionRepo` | Memory conformance plus one durable backend, total migrations and precise-rewrite fencing | Backend fault, rewrite race, backup, corruption and Bun acceptance cases |
+| Restore | Total open-operation state, process-local task loss and `lane.lastResult` | PC reconciliation table and every intent/admission/settlement crash case |
 | Tools/context | Generic contextual tools and persisted `safe`/`never` semantics | EB-02 and EF-H01 specifications |
 | Hooks/events | Typed hooks/events and snapshot-first buffered watch | EB-03 and EF-S08 projection cases |
 | Manual drive | One selected action/effect at a time | HC manual/automatic equivalence cases |

@@ -54,7 +54,7 @@ Replace Piclaw's patched `setActiveToolsByName` logic with direct methods:
 
 - `AgentHarness.getTools()` / `setTools()` for definitions;
 - `AgentLane.getActiveTools()` / `setActiveTools()` for active names;
-- persisted `active_tools_change` entries as the recovered state.
+- total `lane.config` registers as the recovered state.
 
 `activate_tools` and `reset_active_tools` remain model-visible Piclaw tools only if product UX requires them. Their execute functions call direct harness methods through a per-run binding captured in tool context. Recovery/containment uses the same direct methods under Piclaw's exact operation fence; no method replacement or saved setter restoration is allowed.
 
@@ -97,18 +97,18 @@ Current Pi extensions combine tools, commands, prompts and many AgentSession hoo
 
 Harness v3 specifies a typed `HookMap`; each migrated hook still needs a selected implementation commit and semantic case. Piclaw adopts that version's direct types and updates on churn. Unsupported hooks do not justify a parallel extension runtime inside the harness path.
 
-## Coding-agent harness composition
+## Harness composition
 
-The installed private `createCodingAgentHarness` implementation shows the intended composition:
+The installed private coding-agent factory is evidence of `0.84.1` composition only. Piclaw must not import it or preserve its shape. The target composition uses public lower-level contracts:
 
-- `ExecutionEnv` is captured as tool context;
-- public read/bash/edit/write tools are converted to ordinary harness tools;
-- bash `prepare` adds session/model/thinking environment values;
+- `ExecutionEnv` is captured in the selected generic tool context;
+- public read/bash/edit/write tools remain direct harness tools;
+- bash preparation adds the selected session/model/thinking environment values;
 - active tool names are explicit;
-- system prompt is a callback derived from current tools and active names;
-- final construction calls `AgentHarness.create()`.
+- the system prompt derives from current tools and active names;
+- construction is supplied through the selected public `AgentHarnessConstructor` implementation.
 
-At `0.84.1`, Piclaw can reproduce this composition for fixture work using public agent-core exports. The target is Harness v3 generic contextual tools/options; adopt their selected public implementation and delete the v2 binding/composition when available.
+At `0.84.1`, Piclaw may reproduce the public agent-core part for fixture evidence. Draft PR #8076 declares the generic constructor/options but does not supply a concrete public runtime. Production waits for one coherent tagged implementation and deletes all v2 binding code.
 
 ## Verification
 
@@ -118,7 +118,7 @@ For each migrated tool/resource:
 - explicit replay value;
 - exact tool result/update/error semantics;
 - abort and late-result test;
-- safe/never recovery test;
+- safe/never recovery test, including crash after `EffectGate` admission before settlement;
 - redaction test for details, telemetry and public projection;
 - resource/hook compatibility test where applicable;
 - no import from legacy AgentSession orchestration in the new path.

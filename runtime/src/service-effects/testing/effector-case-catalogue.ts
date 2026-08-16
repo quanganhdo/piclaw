@@ -106,8 +106,8 @@ export const EFFECTOR_CASE_CATALOGUE: readonly EffectorCaseCatalogueEntry[] = Ob
     requiredCases: numberedCases("EF-S02", [
       "rollback after every statement leaves no partial terminal state",
       "commit followed by lost acknowledgement returns original result",
-      "completion and cancellation race to one disposition",
-      "stale Piclaw version and stale harness operation ID are no-ops",
+      "accepted cancellation authority authorises cancellation and rejects completion",
+      "stale Piclaw version chat owner and complete harness correlation are no-ops",
       "missing or duplicate media cannot create two terminal rows",
       "placeholder replacement preserves one terminal message",
       "new-row settlement preserves one terminal message",
@@ -119,7 +119,7 @@ export const EFFECTOR_CASE_CATALOGUE: readonly EffectorCaseCatalogueEntry[] = Ob
       "duplicate_result", "delayed_or_late_result", "stale_owner_or_version",
       "cancellation_race", "malformed_state",
     ],
-    crashOracle: crashOracle("EF-S02", "A committed terminal transaction survives process death before acknowledgement with one disposition, timeline row, and outbox set."),
+    crashOracle: crashOracle("EF-S02", "pre-effect no-op C1 rollback evidence held-lock retry and lost-ack restore converge"),
     sharedCaseLinks: ["shared:idempotency", "shared:atomicity", "shared:redaction"],
   },
   {

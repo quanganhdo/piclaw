@@ -24,6 +24,7 @@ The archive is root-cause and regression evidence. Its implementation is not the
 | INV-12 | UI status and SSE events carry exact Piclaw operation, correlated Earendil operation and watch/connection-generation identity. |
 | INV-13 | Harness transcript/queue state is execution evidence, not proof of Piclaw acceptance or terminal consumption. |
 | INV-14 | Protected tool arguments, results, scheduling intent and secrets do not leak through timelines, UI events or logs. |
+| INV-15 | Process-local admission does not erase external-effect uncertainty: abort prevents only work that has not passed the selected `EffectGate`, and crash recovery never treats admitted work as definitely absent. |
 
 ## Corpus
 
@@ -68,7 +69,7 @@ The archive is root-cause and regression evidence. Its implementation is not the
 - **Evidence:** `compaction.test.ts`: late timed-out compaction and late cancellation cleanup cases.
 - **Baseline status:** baseline has generation-focused tests and quarantine-until-settlement logic.
 - **Violates:** INV-02, INV-03, INV-08.
-- **Target prevention:** use the Harness v3 compaction operation ID, Piclaw correlation and conditional current-state sequence on every settlement; reject stale results without mutating the new owner.
+- **Target prevention:** use the Harness v3 compaction operation ID, Piclaw correlation and lane-serialised state mutation on every settlement; an absent externally-finalised operation stops the live task without writing.
 - **Contract scenario:** `late_compaction_result_is_ignored_after_replacement`.
 
 ### REG-005 — Session replacement leaves stale tool-policy owner
@@ -79,7 +80,7 @@ The archive is root-cause and regression evidence. Its implementation is not the
 - **Evidence:** `run-tool-ceiling.test.ts`, `session-manager.test.ts`, `run-agent-orchestrator.test.ts` empty-set restoration tests.
 - **Baseline status:** targeted owner-transfer and restoration guards exist.
 - **Violates:** INV-03, INV-09.
-- **Target prevention:** Earendil persists `active_tools_change`; Piclaw uses direct `AgentLane.setActiveTools()` owner-fenced by its operation correlation and never restores state from another run/session.
+- **Target prevention:** Harness v3 persists total `lane.config`; Piclaw uses direct `AgentLane.setActiveTools()` owner-fenced by its operation correlation and never restores state from another run/session.
 - **Contract scenario:** `tool_policy_owner_survives_session_replacement`.
 
 ### REG-006 — Protected recovery dead-ends or claims success without tools
@@ -222,7 +223,7 @@ The archive is root-cause and regression evidence. Its implementation is not the
 - **Evidence:** issue [#935](https://github.com/rcarmo/piclaw/issues/935); archive PR #948; earlier tool-budget tests.
 - **Baseline status:** stable has budgets but not the accepted durable quarantine campaign design.
 - **Violates:** INV-07, INV-08, INV-09.
-- **Target prevention:** mark effectors `safe` or `never` replay; persist tool start/result; quarantine unresolved `never` calls and hold tools until terminal settlement.
+- **Target prevention:** mark tools `safe` or `never`; persist `effect_pending` arguments/state before admission and result settlement after it; quarantine unresolved `never` calls and hold tools until terminal settlement.
 - **Contract scenario:** `repeated_successful_mutation_is_blocked_and_contained`.
 
 ### REG-019 — Protected recovery evidence leaks to timeline/events
@@ -301,6 +302,17 @@ The archive is root-cause and regression evidence. Its implementation is not the
 - **Violates:** INV-08.
 - **Target prevention:** Harness v3 generation context stores effective stream options/retry policy in total state; later attempts derive from the actual captured request.
 - **Contract scenario:** `length_repair_reduces_effective_output_cap`.
+
+### REG-026 — Concurrent session rewrites corrupt or replace active ownership
+
+- **Trigger:** manual/automatic compaction, navigation, prompt or a completion listener starts while another current-session rewrite is active.
+- **Incorrect behaviour:** rewrites overlap, a stale abort controller/state owner is cleared, or a prompt continues against a replaced session generation.
+- **Cause:** the current coding-agent runtime uses shared mutable session/rewrite state without one owner across every entry and completion callback.
+- **Evidence:** Earendil PR [#7751](https://github.com/earendil-works/pi/pull/7751) at `f3e5cc82a44c0970d3e6935417b6fb4079dc3d2a`; issue-7738 regression tests cover manual/automatic compaction, navigation, prompts and listener re-entry.
+- **Baseline status:** upstream PR remains open; Piclaw migration has no selected v3 backend/rewrite proof.
+- **Violates:** INV-02, INV-03, INV-10, INV-15.
+- **Target prevention:** ordinary Harness v3 mutations use the per-lane mutation line and backend writer lease; administrative precise rewrite uses coherent snapshot-copy-and-atomic-swap with a new store generation. Stale session objects cannot write the replacement.
+- **Contract scenario:** `concurrent_session_rewrite_has_one_owner_and_generation`.
 
 ## Open issue requirements
 

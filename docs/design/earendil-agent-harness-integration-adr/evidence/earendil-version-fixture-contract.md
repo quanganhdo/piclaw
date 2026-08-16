@@ -1,6 +1,6 @@
 # Selected-version Earendil fixture and semantic contract suite
 
-Status: required while Harness v3 runtime/storage slices remain incomplete. Released `0.84.1` is a stub baseline; authoritative `harness.md` plus draft PR #7976 define the target design/type surface.
+Status: required while Harness v3 runtime composition remains incomplete. Released `0.84.1` is a stub baseline; authoritative `main` `harness.md` plus draft PR #8076 at `fd389abc4677b4e0fa5dc9b2bbd2e63418f079b4` provide the target design and current development evidence. PR #8076 includes substantial session/storage work but no concrete public harness constructor.
 
 The fixture implements the selected Earendil version's public declarations and durable semantics. Released `0.84.1` fixture evidence may follow its v2 session/record model; the target fixture follows Harness v3 entries/registers/usage and manual effects as implementation slices land. It does not imitate Piclaw's current agent loop or promise compatibility with another Earendil version.
 
@@ -34,31 +34,31 @@ The future implementation should place fixture code under tests or a non-shippin
 
 ## API shape
 
-The fixture implements the exported public `AgentHarness` surface. Because the concrete class has private members and a private constructor, a separate implementation cannot be nominally assigned to `AgentHarness`. The test type is therefore derived mechanically with `Pick`/`Omit`; no methods or results are restated:
+The fixture implements the exported public `AgentHarness` interface and is supplied through Earendil's exported `AgentHarnessConstructor` contract. It does not copy or rename lane methods or results:
 
 ```typescript
-import {
-  AgentHarness,
-  type AgentHarnessOptions,
-  type SuspendedOperation,
+import type {
+  AgentHarnessConstructor,
+  AgentHarnessOptions,
 } from "@earendil-works/pi-agent-core";
 
-type AgentHarnessPublic = Pick<AgentHarness, keyof AgentHarness>;
-type RealCreateResult = Awaited<ReturnType<typeof AgentHarness.create>>;
-type HarnessCreateResult = Omit<RealCreateResult, "harness"> & {
-  harness: AgentHarnessPublic;
+type CreateHarnessUnderTest = AgentHarnessConstructor["create"];
+
+const fixtureConstructor: AgentHarnessConstructor = {
+  create: createFixtureHarness,
 };
 
-type CreateHarnessUnderTest = (
-  options: AgentHarnessOptions,
-) => Promise<HarnessCreateResult>;
-
-const realCreate: CreateHarnessUnderTest = (options) => AgentHarness.create(options);
+async function runSelected<TContext extends object | undefined>(
+  constructor: AgentHarnessConstructor,
+  options: AgentHarnessOptions<TContext>,
+) {
+  return constructor.create(options);
+}
 ```
 
-The real `AgentHarness.create` result is assignable to this factory result. The fixture implements exactly the selected version's mapped public surface and uses `AgentLane`, result unions, snapshots, actions, hooks and watchers without renaming them. A compile-time key/signature audit fails when Earendil changes that surface, and Piclaw updates rather than preserving the old shape. Test-only fault/release controls are held by the fixture factory outside the returned harness object.
+The fixture implements exactly the selected public surface and uses `AgentLane`, result unions, snapshots, actions, hooks and watchers without renaming them. A compile-time key/signature audit fails when Earendil changes that surface. Piclaw then updates to the new surface and deletes the old shape. Test-only fault/release controls remain outside the returned harness object.
 
-A separate test support manifest may report which installed methods still throw `HarnessNotImplemented`. It is metadata for selecting/migrating Earendil versions, not an alternative harness interface. Required boundary cases cannot be marked passed by the fixture when the installed implementation is unsupported.
+At the pinned PR #8076 head, `AgentHarnessConstructor` is an interface and no concrete public runtime value implements it. A separate support manifest may report unsupported released or draft capabilities. Required boundary cases cannot be marked passed by the fixture when the real implementation is unavailable.
 
 ## Fixture internals
 
@@ -74,12 +74,15 @@ The fixture supplies unavailable runtime slices through the selected public inte
 
 1. atomically accept input plus `op.meta`/initial `op.state` and lane registers;
 2. commit provider/tool intent before dispatch;
-3. execute deterministic model/tool effects;
-4. atomically settle output, usage and next total state;
-5. consume queue IDs through `pending.entry` placement transactions;
-6. commit cancellation control before signal pull;
-7. terminate by deleting operation registers, clearing lane state and writing `lane.lastResult`;
-8. expose selected-version manual actions/effects and snapshot-first buffered watches.
+3. apply a process-local `EffectGate` immediately before deterministic hook/provider/tool/timer admission;
+4. execute deterministic model/tool effects;
+5. atomically settle output, usage and next total state;
+6. consume queue IDs through `pending.entry` placement transactions;
+7. commit cancellation control before signal pull;
+8. terminate by deleting operation registers, clearing lane state and writing `lane.lastResult`;
+9. expose selected-version manual actions/effects and snapshot-first buffered watches.
+
+The fixture must model the live operation task as process-local. Crash/restore discards that task and its gate, then activates from durable `op.state`. It must not add a durable `effect_started` marker that the selected harness does not have.
 
 Released `0.84.1` record/reducer code remains historical fixture evidence only. No new target case should require `operation_started`, `step_attempt`, `tool_started`, `operation_finished` or a recovery reducer. Piclaw service acceptance, terminal settlement and delivery run in a separate reference implementation around the fixture.
 
@@ -125,7 +128,7 @@ interface FaultPlan {
 }
 ```
 
-Named fault points include every Harness v3 storage transaction/effect boundary, Piclaw acceptance/claim/settlement write, timeline commit, queue delivery, manual action and outbox delivery.
+Named fault points include every Harness v3 storage transaction/effect boundary, including before intent, after intent, after `EffectGate` admission, after the external acknowledgement and before settlement. They also include Piclaw acceptance/claim/settlement writes, timeline commit, queue delivery, manual actions, migrations, precise rewrite and outbox delivery.
 
 A simulated crash discards in-memory actors, reopens Piclaw service state and the Earendil `SessionRepo`, then continues through the same public contracts.
 
@@ -148,8 +151,8 @@ The runner is test-framework neutral. Bun tests register each case for:
 
 - `fixture`;
 - released `0.84.1` only for supported baseline methods/negative capability evidence;
-- the pinned Harness v3 draft type/runtime source as slices become usable;
-- a later selected released or approved source build.
+- pinned PR #8076 only for implemented session/storage and low-level primitive evidence;
+- one later coherent tagged source build with a concrete public constructor.
 
 The report contains:
 
@@ -184,6 +187,11 @@ The report contains:
 | HC-018 | Hooks/events | Typed hook ordering, durable settlement barriers and snapshot-buffer event ordering match the selected harness |
 | HC-019 | Usage | Every settled attempt has one `UsageRow`; totals equal ledger sum and do not duplicate |
 | HC-020 | Deferred provider | One poll per resume, exact handle lineage, cancel and restart retain the specified outcome |
+| HC-021 | Effect admission | Every selected gate site proves abort-first starts nothing and admission-first receives the owned signal |
+| HC-022 | Effect-start crash | Crash after admission but before settlement is treated as unknown and follows provider/tool replay policy |
+| HC-023 | Live task ownership | One process-local task per lane; restored orphan activation cannot duplicate a live continuation |
+| HC-024 | Storage migration | An open operation migrates totally and resumes after a crash at every migration boundary |
+| HC-025 | Backend/rewrite parity | Memory, JSONL and SQLite conformance plus writer-lease/precise-rewrite races produce specified outcomes |
 
 ## Piclaw boundary cases
 
@@ -214,7 +222,7 @@ These wrap the same harness factory with the Piclaw service reference model and 
 
 ## Golden replay fixtures
 
-Each regression corpus scenario gets a stable fixture ID equal to its `Contract scenario` name. The initial required set contains the 25 scenarios in [`regression-corpus.md`](regression-corpus.md).
+Each regression corpus scenario gets a stable fixture ID equal to its `Contract scenario` name. The initial required set contains the 26 scenarios in [`regression-corpus.md`](regression-corpus.md).
 
 Fixture review rules:
 
@@ -232,15 +240,15 @@ Fixture review rules:
 | ID | Fixture assumption | Evidence | Confidence | Failure response |
 |---|---|---|---|---|
 | EA-001 | `AgentHarness` public method names and result tags may change | Direct-adoption policy | Expected churn | Update Piclaw and contract cases to the selected version; retain semantic product assertions |
-| EA-002 | Harness v3 entries/registers/usage are the target durable protocol | Authoritative `harness.md`; draft PR #7976 type slice | High as design, incomplete runtime | Update fixture to merged selected-version types/storage; no v2 reducer dependency |
-| EA-003 | Public `runId` is the durable Harness v3 operation ID | `harness.md` and PR #7976 result types | High as design, incomplete runtime | Correlate directly once selected implementation passes HC-012/013 |
-| EA-004 | Steer/follow-up are operation-owned; nextRun is lane-owned | `harness.md` inbox/lane-state design | High as design, incomplete runtime | Validate pending-entry/placement semantics on selected implementation |
-| EA-005 | Manual drive exposes one selected action/effect at a time | `harness.md` effects/manual scheduler; PR #7976 generic `ActionInfo` | High as design, incomplete runtime | Update fixture to merged effects API and prove HC-017 |
-| EA-006 | Typed snapshot-first buffered watching removes event registration gaps | `harness.md`; PR #7976 typed event/watch contracts | High as design, incomplete runtime | Piclaw still assigns web receipt sequence and validates selected runtime |
-| EA-007 | Abort commits cancellation before pulling the harness signal | `harness.md` §4.6 and PR #7976 result/control types | High as design, incomplete runtime | Piclaw's cancellation fence remains outside harness; prove HC-009 |
-| EA-008 | Real harness supports deterministic `Models` and generic contextual tools | Harness v3 generic options/tools and manual effects | High as design, type slice drafted | Contract suite supplies direct selected-version implementations |
-| EA-009 | Harness v3 backend conformance remains public | `harness.md` build Slice 2; not implemented | Medium | Pin selected source/version and run its unchanged suite |
-| EA-010 | Hook/event payloads follow typed Harness v3 maps/unions | `harness.md`; PR #7976 type tests | High as design, incomplete runtime | Adopt selected direct types and update Piclaw on change |
+| EA-002 | Harness v3 entries/registers/usage are the target durable protocol | Authoritative `main` specification; PR #8076 types/session/storage | High as design; runtime incomplete | Update fixture to the selected tagged types/storage; no v2 reducer dependency |
+| EA-003 | Public `runId` is the durable Harness v3 operation ID | `main` and PR #8076 result types | High as design; runtime incomplete | Correlate directly once selected implementation passes HC-012/013 |
+| EA-004 | Steer/follow-up are operation-owned; nextRun is lane-owned | Harness v3 inbox/lane-state design | High as design; runtime incomplete | Validate pending-entry/placement semantics on selected implementation |
+| EA-005 | Manual drive exposes one selected barrier/action at a time | PR #8076 candidate specification and generic `ActionInfo` | High as draft design; runtime incomplete | Update fixture to the tagged action catalogue and prove HC-017 |
+| EA-006 | Typed snapshot-first buffered watching removes event registration gaps | Harness v3 design and PR #8076 types | High as design; runtime incomplete | Piclaw still assigns web receipt sequence and validates selected runtime |
+| EA-007 | Abort commits cancellation before pulling the harness signal | PR #8076 candidate control/`EffectGate` design | High as draft design; runtime incomplete | Piclaw's cancellation fence remains outside harness; prove HC-009/021/022 |
+| EA-008 | Real harness supports deterministic `Models` and generic contextual tools | PR #8076 generic options/tools and low-level execution helpers | Type/helper evidence only | Contract suite supplies direct selected-version implementations |
+| EA-009 | Harness v3 backend conformance remains public | PR #8076 Memory/JSONL/SQLite conformance code | Implemented in draft; unselected | Run the unchanged suite plus HC-024/025 on the tagged release |
+| EA-010 | Hook/event payloads follow typed Harness v3 maps/unions | PR #8076 types | High as type evidence; runtime incomplete | Adopt selected direct types and update Piclaw on change |
 
 ## Acceptance of the fixture design
 
@@ -250,6 +258,6 @@ Implementation may start only when:
 - no fixture module imports Piclaw agent-pool/recovery/compaction/process-chat orchestration;
 - the selected Harness v3 backend conformance suite passes unchanged;
 - every contract case names required capabilities and unsupported real-harness gaps;
-- at least one complete golden replay demonstrates crash/restart at every Piclaw settlement boundary and every relevant Harness v3 effect sandwich;
-- within one coherent selected Harness v3 source, replacing the fixture factory with the real constructor changes only the factory supplied to semantic cases; on version upgrades, fixture code and Earendil-specific assertions may change while Piclaw service invariants remain explicit;
+- at least one complete golden replay demonstrates crash/restart at every Piclaw settlement boundary and every relevant Harness v3 intent/admission/settlement boundary;
+- within one coherent tagged Harness v3 release, replacing the fixture `AgentHarnessConstructor` with the real exported constructor changes only the constructor supplied to semantic cases; on version upgrades, fixture code and Earendil-specific assertions may change while Piclaw service invariants remain explicit;
 - version-migration reports record contract changes and Piclaw updates for each selected Earendil upgrade; source compatibility with earlier versions is not required.

@@ -16,9 +16,7 @@ export function installServiceWorkSchema(database: Database): void {
     throw new Error("EF-S01 requires SQLite foreign-key enforcement.");
   }
 
-  database
-    .transaction(() =>
-      database.exec(`
+  const install = () => database.exec(`
     CREATE TABLE IF NOT EXISTS ${SCHEMA_PREFIX}chats (
       chat_jid TEXT PRIMARY KEY,
       next_source_seq INTEGER NOT NULL DEFAULT 1 CHECK(next_source_seq >= 1),
@@ -137,7 +135,7 @@ export function installServiceWorkSchema(database: Database): void {
       ON ${SCHEMA_PREFIX}sources(chat_jid, state, source_seq);
     CREATE INDEX IF NOT EXISTS ${SCHEMA_PREFIX}open_operations
       ON ${SCHEMA_PREFIX}operations(chat_jid, phase, operation_id);
-  `),
-    )
-    .immediate();
+  `);
+  if (database.inTransaction) install();
+  else database.transaction(install).immediate();
 }

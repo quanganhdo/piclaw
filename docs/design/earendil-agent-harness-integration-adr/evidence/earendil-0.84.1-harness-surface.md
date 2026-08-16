@@ -8,7 +8,7 @@ Confidence: source inspection of published declarations and JavaScript in the in
 
 `@earendil-works/pi-agent-core` exports the harness from its package root. It also exports the session contracts and a backend-neutral conformance suite at `@earendil-works/pi-agent-core/session/testing`.
 
-The installed coding-agent files contain `dist/server/create-harness`, which demonstrates composition of `ExecutionEnv`, public agent-core tools and system-prompt construction over `AgentHarnessOptions`. The coding-agent package export map does **not** expose this path, so Piclaw must not import it directly. At this version, compose from public agent-core exports; if a later selected version exports the helper, adopt its public types and delete local composition.
+The installed coding-agent files contain `dist/server/create-harness`, which demonstrates composition of `ExecutionEnv`, public agent-core tools and system-prompt construction over `AgentHarnessOptions`. The coding-agent package export map does **not** expose this path, so Piclaw must not import it directly. At this version, compose from public lower-level agent-core exports for fixture evidence only. The private helper's availability or shape is not an adoption requirement.
 
 The package metadata declares Node `>=22.19.0`. Piclaw runs under Bun. Any adoption needs a Bun compatibility test even when the TypeScript surface compiles.
 
@@ -206,4 +206,4 @@ Do not build production against released `0.84.1`:
 - its contextual-tool widening workaround;
 - installed `AgentHarness` methods that throw.
 
-Harness v3 specifies replacements for all except runtime completeness; use its selected merged types and implementation slices.
+Harness v3 specifies replacements for all except runtime completeness. Draft PR #8076 at `fd389abc4677b4e0fa5dc9b2bbd2e63418f079b4` now contains v3 types, session/storage implementations and low-level execution helpers, but no concrete public harness runtime. Use only a coherent tagged release after its direct contracts and backends pass the documented gates.

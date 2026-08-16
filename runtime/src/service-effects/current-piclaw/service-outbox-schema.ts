@@ -20,9 +20,7 @@ export function installServiceOutboxSchema(database: Database): void {
 
   const hash = (column: string) => constraint(HASH, column);
   const instant = (column: string) => constraint(INSTANT, column);
-  database
-    .transaction(() =>
-      database.exec(`
+  const install = () => database.exec(`
     CREATE TABLE IF NOT EXISTS ${PREFIX}outbox (
       outbox_id TEXT PRIMARY KEY CHECK(length(outbox_id) BETWEEN 1 AND 512),
       kind TEXT NOT NULL CHECK(kind IN ('wake_chat','timeline_broadcast','channel_delivery','notification','scheduler_run_log','maintenance')),
@@ -130,7 +128,7 @@ export function installServiceOutboxSchema(database: Database): void {
     CREATE INDEX IF NOT EXISTS ${PREFIX}operation_lookup ON ${PREFIX}outbox(operation_id,outbox_id);
     CREATE INDEX IF NOT EXISTS ${PREFIX}decision_outbox ON ${PREFIX}decisions(outbox_id);
     CREATE INDEX IF NOT EXISTS ${PREFIX}lease_outbox ON ${PREFIX}leases(outbox_id,attempt);
-  `),
-    )
-    .immediate();
+  `);
+  if (database.inTransaction) install();
+  else database.transaction(install).immediate();
 }
