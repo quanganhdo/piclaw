@@ -28,7 +28,9 @@ test("handleMedia forces SVG downloads to attachment disposition", () => {
     );
 
     const res = handleMedia(new StubChannel() as any, mediaId, false);
-    expect(res.headers.get("Content-Disposition")).toBe("attachment");
+    expect(res.headers.get("Content-Disposition")).toBe(`attachment; filename="vector.svg"; filename*=UTF-8''vector.svg`);
+    expect(res.headers.get("Cache-Control")).toBe("no-cache");
+    expect(res.headers.get("Content-Length")).toBe("11");
   } finally {
     restoreEnv();
   }

@@ -10,9 +10,23 @@ import {
   resetMcpStartupStateForTests,
 } from "../../src/secure/mcp-keychain.js";
 
-const touched = new Set<string>();
+const touched = new Map<string, string | undefined>();
+
+function isolateEnv(name: string): void {
+  if (!touched.has(name)) touched.set(name, process.env[name]);
+  delete process.env[name];
+}
+
+function setTestEnv(name: string, value: string): void {
+  if (!touched.has(name)) touched.set(name, process.env[name]);
+  process.env[name] = value;
+}
+
 afterEach(() => {
-  for (const name of touched) delete process.env[name];
+  for (const [name, value] of touched) {
+    if (value === undefined) delete process.env[name];
+    else process.env[name] = value;
+  }
   touched.clear();
   resetMcpStartupStateForTests();
 });
@@ -43,7 +57,7 @@ describe("MCP keychain credential hydration", () => {
         },
       },
     });
-    touched.add("PICLAW_MCP_MEMENTO_TOKEN");
+    isolateEnv("PICLAW_MCP_MEMENTO_TOKEN");
     const entries = await hydrateMcpKeychainCredentials(root, resolveEntry);
     expect(process.cwd()).toBe(originalCwd);
     expect(getPreparedMcpConfig().mcpServers.memento).toMatchObject({
@@ -63,7 +77,7 @@ describe("MCP keychain credential hydration", () => {
   });
 
   test("quarantines malformed optional servers while hydrating valid servers", async () => {
-    touched.add("PICLAW_MCP_VALID_TOKEN");
+    isolateEnv("PICLAW_MCP_VALID_TOKEN");
     const entries = await hydrateMcpKeychainCredentials(
       workspace({
         mcpServers: {
@@ -102,7 +116,7 @@ describe("MCP keychain credential hydration", () => {
   });
 
   test("quarantines duplicate keychain environment targets without overwriting the first server", async () => {
-    touched.add("PICLAW_MCP_SHARED_TOKEN");
+    isolateEnv("PICLAW_MCP_SHARED_TOKEN");
     const entries = await hydrateMcpKeychainCredentials(
       workspace({
         mcpServers: {
@@ -122,7 +136,7 @@ describe("MCP keychain credential hydration", () => {
   });
 
   test("quarantines missing keychain entries without clearing valid credentials", async () => {
-    touched.add("PICLAW_MCP_VALID_TOKEN");
+    isolateEnv("PICLAW_MCP_VALID_TOKEN");
     const entries = await hydrateMcpKeychainCredentials(
       workspace({
         mcpServers: {
@@ -171,9 +185,8 @@ describe("MCP keychain credential hydration", () => {
   });
 
   test("validates supported adapter environment references after keychain hydration", async () => {
-    process.env.PICLAW_MCP_EXISTING = "existing";
-    touched.add("PICLAW_MCP_EXISTING");
-    touched.add("PICLAW_MCP_TOKEN");
+    setTestEnv("PICLAW_MCP_EXISTING", "existing");
+    isolateEnv("PICLAW_MCP_TOKEN");
     const entries = await hydrateMcpKeychainCredentials(
       workspace({
         mcpServers: {
@@ -201,7 +214,7 @@ describe("MCP keychain credential hydration", () => {
   });
 
   test("quarantines unresolved stdio, header, URL, and token references", async () => {
-    touched.add("PICLAW_MCP_TOKEN");
+    isolateEnv("PICLAW_MCP_TOKEN");
     const entries = await hydrateMcpKeychainCredentials(
       workspace({
         mcpServers: {
@@ -223,8 +236,7 @@ describe("MCP keychain credential hydration", () => {
   });
 
   test("does not overwrite an existing environment variable", async () => {
-    process.env.PICLAW_MCP_TOKEN = "existing";
-    touched.add("PICLAW_MCP_TOKEN");
+    setTestEnv("PICLAW_MCP_TOKEN", "existing");
     const entries = await hydrateMcpKeychainCredentials(
       workspace({
         mcpServers: {

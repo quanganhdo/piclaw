@@ -169,6 +169,38 @@ describe("web SSE provider retry events", () => {
       title: "Rate limited (HTTP 429) on azure-openai/gpt-5-4 — retry budget exhausted",
     });
   });
+
+  it("renders OAuth refresh 5xx retries as bounded server errors without HTML response bodies", () => {
+    const { handler, statuses } = makeHandler();
+    const raw = [
+      "OAuth refresh failed for github-copilot: 502 Bad Gateway: ",
+      "<!DOCTYPE html><html><head><title>Unicorn! &middot; GitHub</title>",
+      "<style>body { color: red; }</style></head><body>",
+      `<img src="data:image/png;base64,${"A".repeat(2048)}">`,
+      "</body></html>",
+    ].join("");
+
+    handler({
+      type: "auto_retry_start",
+      attempt: 1,
+      maxAttempts: 3,
+      delayMs: 2_000,
+      errorMessage: raw,
+    } as any);
+
+    expect(statuses[0]).toMatchObject({
+      type: "intent",
+      title: "GitHub Copilot server error — retrying (attempt 1/3, 2s delay)",
+      classifier: "network",
+      failure_category: "network",
+    });
+    const rendered = JSON.stringify(statuses[0]);
+    expect(rendered).toContain("502 Bad Gateway");
+    expect(rendered).not.toContain("<!DOCTYPE");
+    expect(rendered).not.toContain("<style>");
+    expect(rendered).not.toContain("base64");
+    expect(rendered).not.toContain("Unicorn!");
+  });
 });
 
 describe("web SSE summarization retry events", () => {

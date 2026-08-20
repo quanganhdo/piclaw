@@ -11,6 +11,7 @@ import {
   parseProviderError,
   sanitizeProviderErrorDetail,
 } from "../../../src/channels/web/handlers/provider-error-format.js";
+import { classifyOpaqueAgentFailure } from "../../../src/agent-pool/automatic-recovery.js";
 import { isOrphanFunctionCallOutputError } from "../../../src/utils/provider-payload-errors.js";
 
 // We test through the module's internal functions by importing the file
@@ -46,6 +47,16 @@ describe("provider error classification", () => {
 
   test("detects OAuth token expiry", () => {
     expect(authPatterns.test("OAuth token expired for github-copilot")).toBe(true);
+  });
+
+  test("keeps OAuth refresh 5xx responses in the transient server/network category", () => {
+    const errorText = "OAuth refresh token failed for github-copilot: 502 Bad Gateway";
+
+    expect(classifyOpaqueAgentFailure(errorText)).toBe("network");
+    expect(formatProviderError(errorText)).toMatchObject({
+      category: "server",
+      title: "GitHub Copilot server error",
+    });
   });
 
   test("detects invalid API key", () => {

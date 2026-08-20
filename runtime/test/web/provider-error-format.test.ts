@@ -1,6 +1,10 @@
 import { expect, test } from "bun:test";
 
-import { formatProviderError, parseProviderError } from "../../src/channels/web/handlers/provider-error-format.js";
+import {
+  formatProviderError,
+  parseProviderError,
+  sanitizeProviderErrorDetail,
+} from "../../src/channels/web/handlers/provider-error-format.js";
 
 test("formatProviderError recognizes output-length stop diagnostics", () => {
   const message = "Provider stopped because it hit the maximum output length before finalization (finish reason: length). The partial answer was preserved.";
@@ -71,4 +75,39 @@ test("formatProviderError parses API error status prefixes for Azure rate limits
     category: "rate_limit",
   });
   expect(formatted?.detail).toContain("status: 429");
+});
+
+test("provider HTML error pages retain HTTP context without exposing markup or embedded data", () => {
+  const raw = [
+    "OAuth refresh failed for github-copilot: 502 Bad Gateway: ",
+    "<!-- edge proxy response --><!DOCTYPE html><html><head><title>Unicorn! &middot; GitHub</title>",
+    "<style>body { color: red; }</style></head><body>",
+    `<img src="data:image/png;base64,${"A".repeat(2048)}">`,
+    "</body></html>",
+  ].join("");
+
+  const sanitized = sanitizeProviderErrorDetail(raw);
+  expect(sanitized).toBe("OAuth refresh failed for github-copilot: 502 Bad Gateway");
+  expect(sanitized).not.toContain("<!DOCTYPE");
+  expect(sanitized).not.toContain("<style>");
+  expect(sanitized).not.toContain("base64");
+
+  const formatted = formatProviderError(raw);
+  expect(formatted).toMatchObject({
+    category: "server",
+    title: "GitHub Copilot server error",
+  });
+  expect(formatted?.detail).toContain("502 Bad Gateway");
+  expect(formatted?.detail).not.toContain("Unicorn!");
+  expect(formatted?.detail).not.toContain("base64");
+});
+
+test("provider error details omit standalone data URIs and remain bounded", () => {
+  const withData = `Provider response contained data:image/png;base64,${"A".repeat(2048)}.`;
+  expect(sanitizeProviderErrorDetail(withData)).toBe("Provider response contained [embedded data omitted].");
+
+  const oversized = `Provider response: ${"x".repeat(2_000)}`;
+  const sanitized = sanitizeProviderErrorDetail(oversized);
+  expect(sanitized.length).toBe(900);
+  expect(sanitized.endsWith("…")).toBe(true);
 });

@@ -13,17 +13,21 @@ Piclaw follows Earendil's type system and semantics. It does not require Earendi
 - Do not maintain two Earendil type dialects in production or add shims solely to keep an older selected version compiling.
 - Keep only Piclaw service-plane types that represent responsibilities Earendil does not own.
 
-## Current baseline and target
+## Current runtime, historical baseline and Harness target
 
-The installed `0.84.1` version is useful as implementation evidence because it contains the exported v2 session model, action vocabulary, tools, environment, models and telemetry types. It is not a production execution target because most `AgentHarness` operations are unimplemented.
+Piclaw's existing coding-agent loop selects the coherent `0.84.2` package family. This is a current-loop dependency selection: it uses the already integrated public model, tool, environment and coding-agent APIs without selecting `AgentHarness` as Piclaw's execution plane.
+
+Released `0.84.1` remains historical baseline evidence for the exported v2 session model, action vocabulary and unsupported Harness scaffold. Tagged `0.84.2` retains that scaffold: all audited Harness operations remain unimplemented, so it is rejected as a Harness-v3 implementation even though the current loop uses its non-Harness APIs.
 
 The target execution design is the authoritative Harness v3 [`packages/agent/docs/harness.md`](https://github.com/earendil-works/pi/blob/5f7195c51eac43cdf329f813a7ef020d7bd74527/packages/agent/docs/harness.md), assessed in [`earendil-harness-v3-assessment.md`](earendil-harness-v3-assessment.md). Draft PR #8076 at `fd389abc4677b4e0fa5dc9b2bbd2e63418f079b4` implements substantial v3 types, session/storage and low-level execution primitives, but has no concrete public harness runtime and is not released.
 
-Piclaw may retain a test fixture against `0.84.1` declarations for baseline comparisons, but new design work should follow the selected Harness v3 contracts. Production remains on the published `0.84.1` package set until one coherent tagged release passes the documented gates. Then update the fixture/contracts to that exact shape. No source compatibility with `0.84.1` or draft PR #8076 is required.
+Piclaw retains `0.84.1` fixture data for historical comparisons while the executable compatibility probes and current backend conformance run against installed `0.84.2`. New Harness design work follows the selected Harness v3 contracts. No source compatibility with `0.84.1` or draft PR #8076 is required.
 
 ## Upgrade workflow
 
-For each Earendil candidate:
+A current-loop package update may proceed when existing direct imports and behaviour suites pass; it does not satisfy or bypass the Harness migration gates below.
+
+For each Harness candidate:
 
 1. require one coherent tagged release and update all exact Earendil package pins together;
 2. compile Piclaw's direct imports and `satisfies` checks;

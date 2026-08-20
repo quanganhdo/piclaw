@@ -114,21 +114,64 @@ function isDefinitiveModelRejection(parsed: ParsedProviderError): boolean {
 }
 const OUTPUT_LIMIT_PATTERN = /finish[_ -]?reason\s*:?\s*length|stop\s*reason\s*:?\s*length|\bstopReason\s*:?\s*length|max(?:imum)? output (?:tokens?|length)|output token limit|hit (?:the )?(?:maximum )?output/i;
 const NETWORK_ERROR_PATTERN = /\bENOTFOUND\b|\bECONNREFUSED\b|\bETIMEDOUT\b|\bECONNRESET\b|getaddrinfo|dns.*failed|network.*error|connection.*(?:error|refused|reset|lost|ended|closed)|websocket.*(?:closed|ended|1006)|fetch failed|socket hang up|socket connection was closed unexpectedly/i;
+const HTML_RESPONSE_START_PATTERN = /<\s*(?:!doctype\s+html\b|!--|\?xml\b|html\b|head\b|body\b|title\b|meta\b|link\b|style\b|script\b|div\b|span\b|p\b|pre\b|h[1-6]\b|a\b|img\b|svg\b|main\b|section\b|header\b|footer\b|nav\b|form\b|table\b|center\b|br\b|hr\b)/i;
+const PROVIDER_ERROR_INPUT_MAX_CHARS = 65_536;
+const PROVIDER_ERROR_DETAIL_MAX_CHARS = 900;
 
-export function sanitizeProviderErrorDetail(errorText: string | null | undefined): string {
-  return String(errorText || "")
+function omitHtmlResponseBody(value: string): string {
+  const htmlStart = value.search(HTML_RESPONSE_START_PATTERN);
+  if (htmlStart < 0) return value;
+
+  const prefix = value.slice(0, htmlStart).replace(/[\s:;–—-]+$/g, "").trim();
+  return prefix || "Provider returned an HTML error page.";
+}
+
+function omitEmbeddedDataUris(value: string): string {
+  const marker = /data:[a-z0-9.+-]+\/[a-z0-9.+-]+(?:;[^,\s]{1,100})*;base64\s*,/ig;
+  let output = "";
+  let cursor = 0;
+  for (let match = marker.exec(value); match; match = marker.exec(value)) {
+    output += value.slice(cursor, match.index);
+    let payloadEnd = marker.lastIndex;
+    while (payloadEnd < value.length && /[a-z0-9+/=\s]/i.test(value[payloadEnd])) payloadEnd += 1;
+    output += "[embedded data omitted]";
+    cursor = payloadEnd;
+    marker.lastIndex = payloadEnd;
+  }
+  return output + value.slice(cursor);
+}
+
+function truncateProviderErrorDetail(value: string, maxChars: number): string {
+  if (value.length <= maxChars) return value;
+  return `${value.slice(0, maxChars - 1).trimEnd()}…`;
+}
+
+function normalizeProviderErrorDetail(errorText: string | null | undefined, maxChars: number): string {
+  const bounded = String(errorText || "").slice(0, PROVIDER_ERROR_INPUT_MAX_CHARS);
+  const withoutHtml = omitHtmlResponseBody(bounded);
+  const withoutEmbeddedData = omitEmbeddedDataUris(withoutHtml);
+  const normalized = withoutEmbeddedData
+    .replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "")
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, " ")
     .replace(/\s*For more information,?\s+pass\s+verbose:\s*true\s+in\s+the\s+second\s+argument\s+to\s+fetch\(\)\.?/gi, "")
     .replace(/\s+/g, " ")
     .trim();
+  return truncateProviderErrorDetail(normalized, maxChars);
+}
+
+export function sanitizeProviderErrorDetail(errorText: string | null | undefined): string {
+  return normalizeProviderErrorDetail(errorText, PROVIDER_ERROR_DETAIL_MAX_CHARS);
 }
 
 function inferCategory(text: string): ProviderErrorCategory {
   if (isOrphanFunctionCallOutputError(text)) return "session_corruption";
   if (/\b429\b|rate[ -]?limit|too many requests|retry-after/i.test(text)) return "rate_limit";
+  // A refresh request that reaches a 5xx response is a transient provider
+  // failure, not evidence that the user's OAuth credentials expired.
+  if (/\b5\d\d\b|server[_ -]?error|internal[_ -]?error|bad gateway|service unavailable|gateway timeout|overloaded/i.test(text)) return "server";
   if (/authentication failed|credentials may have expired|no api key(?: found| for provider)?|token refresh failed\s*:\s*401|re-authenticate|unauthorized|\b401\b|\b403\b|invalid.*api.*key|api.*key.*invalid|token.*expired|oauth.*expired|refresh.*token/i.test(text)) return "auth";
   if (OUTPUT_LIMIT_PATTERN.test(text) && !/context(?: window| length)|maximum context length|context_length/i.test(text)) return "output_limit";
   if (/quota|usage.*limit|out of.*usage|billing|insufficient.*funds|exceeded.*limit|credit/i.test(text)) return "quota";
-  if (/\b5\d\d\b|server[_ -]?error|internal[_ -]?error|bad gateway|service unavailable|gateway timeout|overloaded/i.test(text)) return "server";
   if (NETWORK_ERROR_PATTERN.test(text)) return "network";
   if (/no model selected|select a model|use \/model|use \/login|model not found|deployment.*not found/i.test(text)) return "model_config";
   if (MODEL_AVAILABILITY_PATTERN.test(text)) return "model_availability";
@@ -242,16 +285,17 @@ function inferProviderFromRawText(text: string): string | null {
 }
 
 export function parseProviderError(errorText: string | null | undefined): ParsedProviderError | null {
-  const raw = sanitizeProviderErrorDetail(errorText);
+  const raw = normalizeProviderErrorDetail(errorText, PROVIDER_ERROR_INPUT_MAX_CHARS);
   if (!raw) return null;
 
   const prefixMatch = raw.match(/^([A-Za-z][A-Za-z0-9 ._-]{1,40})\s+(?:api\s+)?error(?:\s*\(([45]\d\d)\))?\s*:/i);
   const parsed = extractJsonObject(raw);
   const isModelAvailabilityOnly = MODEL_AVAILABILITY_PATTERN.test(raw);
   const isNetworkOnly = NETWORK_ERROR_PATTERN.test(raw);
+  const isHttpFailureOnly = /\b[45]\d\d\b|bad gateway|service unavailable|gateway timeout/i.test(raw);
   const isOutputLimitOnly = OUTPUT_LIMIT_PATTERN.test(raw) && !/context(?: window| length)|maximum context length|context_length/i.test(raw);
   const isSessionCorruptionOnly = isOrphanFunctionCallOutputError(raw);
-  if (!parsed && !prefixMatch && !isModelAvailabilityOnly && !isNetworkOnly && !isOutputLimitOnly && !isSessionCorruptionOnly) return null;
+  if (!parsed && !prefixMatch && !isModelAvailabilityOnly && !isNetworkOnly && !isHttpFailureOnly && !isOutputLimitOnly && !isSessionCorruptionOnly) return null;
 
   const nested = asRecord(parsed?.error) || asRecord(parsed?.errors) || null;
   const message = readString(nested?.message, parsed?.message, nested?.error, parsed?.error_description, parsed?.detail)

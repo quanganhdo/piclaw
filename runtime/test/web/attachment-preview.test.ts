@@ -9,6 +9,10 @@ import { inferDelimitedPreviewDelimiter, parseDelimitedPreview } from "../../web
 const overlaysCss = readFileSync(path.join(import.meta.dir, "../../web/static/classic/css/overlays.css"), "utf8");
 
 describe("attachment preview kind", () => {
+  test("classifies PDF content types with parameters as PDF previews", () => {
+    expect(getAttachmentPreviewKind("application/pdf; charset=binary", "report.bin")).toBe("pdf");
+  });
+
   test("classifies ZIP files as archive previews", () => {
     expect(getAttachmentPreviewKind("application/zip", "bundle.zip")).toBe("archive");
     expect(getAttachmentPreviewKind("application/x-zip-compressed", "bundle.zip")).toBe("archive");

@@ -758,8 +758,9 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
 
     if (event.type === "message_end") {
       const message = event.message as { role?: string; stopReason?: string; errorMessage?: string };
-      if (message?.role === "assistant" && message.stopReason === "error" && classifyOpaqueAgentFailure(message.errorMessage) === "rate_limit") {
-        pendingRateLimit = { message: message.errorMessage || "429" };
+      const safeErrorMessage = sanitizeProviderErrorDetail(message?.errorMessage);
+      if (message?.role === "assistant" && message.stopReason === "error" && classifyOpaqueAgentFailure(safeErrorMessage) === "rate_limit") {
+        pendingRateLimit = { message: safeErrorMessage || "429" };
         scheduleRateLimitIntent();
       }
     }
@@ -770,7 +771,7 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
     if (event.type === "auto_retry_start") {
       const e = event as { attempt?: number; maxAttempts?: number; delayMs?: number; errorMessage?: string };
       const delaySec = e.delayMs ? Math.round(e.delayMs / 1000) : "?";
-      const errorMessage = e.errorMessage || "";
+      const errorMessage = sanitizeProviderErrorDetail(e.errorMessage) || "";
       const failureCategory = classifyOpaqueAgentFailure(errorMessage);
       const isRateLimit = failureCategory === "rate_limit";
       if (isRateLimit) {
@@ -804,7 +805,7 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
     if (event.type === "auto_retry_end") {
       const e = event as { success?: boolean; attempt?: number; finalError?: string };
       if (!e.success) {
-        const finalError = e.finalError || "Request failed after retries";
+        const finalError = sanitizeProviderErrorDetail(e.finalError) || "Request failed after retries";
         const providerError = formatProviderError(finalError);
         const failureCategory = classifyOpaqueAgentFailure(finalError);
         const title = failureCategory === "rate_limit"

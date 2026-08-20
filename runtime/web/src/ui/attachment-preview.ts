@@ -42,6 +42,10 @@ function normalize(value: unknown): string {
   return typeof value === "string" ? value.trim().toLowerCase() : "";
 }
 
+function normalizeContentType(value: unknown): string {
+  return normalize(value).split(";", 1)[0]?.trim() || "";
+}
+
 function isEmlFilename(filename: unknown): boolean {
   const name = normalize(filename);
   return !!name && name.endsWith(".eml");
@@ -101,7 +105,7 @@ export type AttachmentPreviewKind = "image" | "video" | "pdf" | "office" | "eml"
 export function getAttachmentPreviewKind(contentType: unknown, filename?: unknown): AttachmentPreviewKind {
   const addonPreview = resolveAddonAttachmentPreview(contentType, filename);
   if (addonPreview?.id) return addonPreview.id;
-  const normalized = normalize(contentType);
+  const normalized = normalizeContentType(contentType);
   if (isPdfFilename(filename) || normalized === "application/pdf") return "pdf";
   // Office preview is only available when the office-viewer addon registers via
   // registerAttachmentPreview. Without the addon, office files show download-only.
@@ -118,7 +122,7 @@ export function getAttachmentPreviewKind(contentType: unknown, filename?: unknow
 }
 
 export function isMarkdownAttachmentPreview(contentType: unknown): boolean {
-  const normalized = normalize(contentType);
+  const normalized = normalizeContentType(contentType);
   return MARKDOWN_PREVIEW_TYPES.has(normalized);
 }
 

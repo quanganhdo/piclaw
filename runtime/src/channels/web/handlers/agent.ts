@@ -69,7 +69,7 @@ import type { AgentFailureCategory } from "../../../agent-pool/contracts.js";
 import { classifyOpaqueAgentFailure } from "../../../agent-pool/automatic-recovery.js";
 import { cancelScheduledIdleAutoCompaction } from "../../../agent-pool/compaction.js";
 import { DEFAULT_BASE_RETRY_MS, getRetryAtIso } from "../../../queue/retry-policy.js";
-import { formatProviderError } from "./provider-error-format.js";
+import { formatProviderError, sanitizeProviderErrorDetail } from "./provider-error-format.js";
 import { endTrackedPhase } from "../../../runtime/progress-watchdog.js";
 
 const log = createLogger("web.handlers.agent");
@@ -220,8 +220,9 @@ function buildErrorOutcomeMarker(
   } = {},
 ): Record<string, unknown> {
   const category = options.failureCategory ?? "unknown";
-  const detail = errorText.slice(0, 500);
-  const providerError = formatProviderError(errorText);
+  const displayErrorText = sanitizeProviderErrorDetail(errorText) || "Agent error";
+  const detail = displayErrorText.slice(0, 500);
+  const providerError = formatProviderError(displayErrorText);
   const common = {
     detail,
     draftRecovered: options.draftRecovered,
@@ -260,7 +261,14 @@ function buildErrorOutcomeMarker(
     });
   }
   if (category === "network") {
-    return buildTurnOutcomeMarker({ ...common, kind: "network", label: "network", title: describeNetworkError(errorText), severity: options.severity ?? "error" });
+    return buildTurnOutcomeMarker({
+      ...common,
+      kind: "network",
+      label: providerError?.label ?? "network",
+      title: providerError?.title ?? describeNetworkError(displayErrorText),
+      detail: providerError?.detail ?? detail,
+      severity: options.severity ?? providerError?.severity ?? "error",
+    });
   }
   if (category === "aborted") {
     return buildTurnOutcomeMarker({
@@ -1755,10 +1763,11 @@ export async function processChat(
     }
 
     const errorText = output.error || "Agent error";
-    const providerError = formatProviderError(errorText);
+    const displayErrorText = sanitizeProviderErrorDetail(errorText) || "Agent error";
+    const providerError = formatProviderError(displayErrorText);
     const rateLimited = output.failureCategory === "rate_limit";
     const networkFailed = output.failureCategory === "network";
-    const networkDetail = networkFailed ? describeNetworkError(errorText) : null;
+    const networkDetail = networkFailed ? describeNetworkError(displayErrorText) : null;
     const markerOptions = {
       failureCategory: output.failureCategory,
       toolBudgetExceeded: output.toolBudgetExceeded,
@@ -1979,8 +1988,8 @@ export async function processChat(
       state: output.failureCategory === "auth_config" ? "blocked_auth" : "failed",
       classifier: output.recovery?.lastClassifier ?? output.failureCategory ?? "unknown",
       failure_category: output.failureCategory ?? "unknown",
-      title: providerError?.title || (rateLimited ? "AI provider rate limit" : networkFailed ? networkDetail! : errorText),
-      detail: providerError?.detail || (rateLimited ? errorText : networkFailed ? errorText : undefined),
+      title: providerError?.title || (rateLimited ? "AI provider rate limit" : networkFailed ? networkDetail! : displayErrorText),
+      detail: providerError?.detail || (rateLimited || networkFailed ? displayErrorText : undefined),
       turn_id: turnId,
     });
     return;

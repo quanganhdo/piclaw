@@ -1,11 +1,5 @@
 # PiClaw — self-hosted AI workspace
 
-<!-- BEGIN TEMPORARY HOUSEKEEPING BANNER -->
-> [!IMPORTANT]
->
-> **Temporary submission pause:** Bug reports and pull-request submissions are disabled while we complete repository housekeeping and planning. Follow the draft [Earendil-aligned agent harness integration ADR](docs/design/earendil-agent-harness-integration-adr/README.md) for the current work and reopening criteria.
-<!-- END TEMPORARY HOUSEKEEPING BANNER -->
-
 ![PiClaw](docs/icon-256.png)
 
 Languages: **English** · [简体中文](README.zh-CN.md) · [日本語](README.ja.md)

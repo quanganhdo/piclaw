@@ -39,6 +39,10 @@ exit 0
 
     expect(safeRun.exitCode).toBe(0);
     expect(readFileSync(argsFile, "utf8").trim().split("\n")).toEqual([
+      "run",
+      "../runtime/scripts/local-test-priority.ts",
+      "--",
+      "bun",
       "test",
       "test/channels/web/web-channel.test.ts",
     ]);

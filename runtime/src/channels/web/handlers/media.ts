@@ -9,6 +9,7 @@
  * Consumers: web/http/dispatch-media.ts routes media paths here.
  */
 
+import { buildContentDisposition } from "../http/content-disposition.js";
 import { MediaService } from "../media/media-service.js";
 
 const mediaService = new MediaService();
@@ -68,10 +69,14 @@ export function handleMedia(channel: MediaResponseContext, id: number, thumbnail
   const contentType = result.contentType || "application/octet-stream";
   const headers: Record<string, string> = {
     "Content-Type": contentType,
+    "Cache-Control": "no-cache",
+    ...(result.body.size > 0 ? { "Content-Length": String(result.body.size) } : {}),
   };
-  // Force download for non-image types to prevent stored XSS via HTML/SVG uploads
+  // Force download for non-image types to prevent stored XSS via HTML/SVG uploads.
+  // Include a concrete filename because iOS Safari can ignore the HTML download
+  // attribute for PDFs and will otherwise open the response fullscreen.
   if (!INLINE_SAFE_TYPES.has(contentType)) {
-    headers["Content-Disposition"] = "attachment";
+    headers["Content-Disposition"] = buildContentDisposition("attachment", result.filename || `attachment-${id}`);
   }
   return new Response(result.body, { headers });
 }

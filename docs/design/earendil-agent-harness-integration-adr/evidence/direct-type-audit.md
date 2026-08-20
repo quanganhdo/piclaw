@@ -1,6 +1,6 @@
 # Direct Earendil type audit
 
-This audit checks that the ADR uses Earendil's execution type system directly and defines Piclaw types only for Piclaw service responsibilities. The original compile probe covered installed `0.84.1`; Harness v3 design and draft PR #8076 at `fd389abc4677b4e0fa5dc9b2bbd2e63418f079b4` supersede several v2 type families as noted below.
+This audit checks that the ADR uses Earendil's execution type system directly and defines Piclaw types only for Piclaw service responsibilities. The original compile probe covered then-installed `0.84.1`; current compatibility probes cover installed `0.84.2`. Harness v3 design and draft PR #8076 at `fd389abc4677b4e0fa5dc9b2bbd2e63418f079b4` supersede several v2 type families as noted below.
 
 ## Earendil-owned type families
 
@@ -11,7 +11,7 @@ This audit checks that the ADR uses Earendil's execution type system directly an
 | Harness errors | v3 `LaneBusy`, `MissingIdentities`, `InvalidNavigation`, `NoActiveRun`, `NoActiveOperation`, `NothingToResume`, `Closed`, related tags, `HarnessFault`, `HarnessClosed` | Match direct tags/classes; no second error taxonomy |
 | Actions/snapshots | Harness v3 `ActionInfo`, `LaneSnapshot`, `SessionSnapshot`, `SuspendedOperation`, `LaneLastResult` | Fixture/manual drive and reconciliation use selected exact shapes |
 | Session/storage | `Storage`, `Transaction`, `Entry`, `Register`, `UsageRow`, `SessionReader`, `SessionMutator`, `SessionRepo`, `Session`, `SessionTree`, metadata/errors | Harness v3 target; backend passes selected conformance, migration and rewrite-race suites |
-| Released v2 recovery reducer | Installed `reduceLaneState`, `validateRecordLog`, `RecordLogCorruption` | Historical evidence only; Harness v3 uses total current registers and bounded restore, with no reducer/history |
+| Released v2 recovery reducer | `reduceLaneState`, `validateRecordLog`, `RecordLogCorruption` from the historical baseline | Historical evidence only; Harness v3 uses total current registers and bounded restore, with no reducer/history |
 | Models/auth | `Models`, `Model`, `CredentialStore`, `ModelsError`; concrete `ModelRuntime implements Models` | Pass directly in `AgentHarnessOptions` |
 | Tools | Harness v3 `AgentTool.replay`, generic `AgentHarnessTool<TContext>`, `AgentToolResult`, update callback/mode | Use directly; explicit `safe`/`never`; no v2 widening binder in target |
 | Environment | `ExecutionEnv`, `FileSystem`, `Shell`, `FileError`, `ExecutionError`, `NodeExecutionEnv` | Implement/delegate exact no-throw `Result` contract |

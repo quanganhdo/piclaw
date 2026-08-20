@@ -208,14 +208,14 @@ export class MediaService {
     };
   }
 
-  getMedia(id: number, thumbnail: boolean): { status: number; body: Blob; contentType?: string } {
+  getMedia(id: number, thumbnail: boolean): { status: number; body: Blob; contentType?: string; filename?: string } {
     const media = getMediaById(id);
     if (!media) return { status: 404, body: new Blob([JSON.stringify({ error: "Media not found" })]) };
 
     const blob = thumbnail && media.thumbnail ? media.thumbnail : media.data;
     const buffer = blob.buffer.slice(blob.byteOffset, blob.byteOffset + blob.byteLength) as ArrayBuffer;
     const body = new Blob([buffer], { type: media.content_type });
-    return { status: 200, body, contentType: media.content_type };
+    return { status: 200, body, contentType: media.content_type, filename: media.filename };
   }
 
   getInfo(id: number): { status: number; body: unknown } {

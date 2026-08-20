@@ -173,6 +173,9 @@ export function classifyOpaqueAgentFailure(errorText: string | null | undefined)
   if (!value) return "unknown";
   if (/stale-progress watchdog/i.test(value)) return "stalled_work";
   if (isOrphanFunctionCallOutputError(value)) return "session_corruption";
+  // A 5xx response reached the provider and failed transiently; even during
+  // OAuth refresh, it is not evidence that credentials have expired.
+  if (/\b5\d\d\b|bad gateway|service unavailable|gateway timeout|overloaded|server error/i.test(value)) return "network";
   if (isProviderAuthConfigFailure(value)) return "auth_config";
   if (isContextPressureFailure(value)) return "context_pressure";
   if (isLengthStopFailure(value)) return "output_limit";

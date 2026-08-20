@@ -1034,7 +1034,7 @@ describe("media download headers", () => {
     }
 
     const res = handleMedia(new StubChannel() as any, mediaId, false);
-    expect(res.headers.get("Content-Disposition")).toBe("attachment");
+    expect(res.headers.get("Content-Disposition")).toBe(`attachment; filename="report.txt"; filename*=UTF-8''report.txt`);
 
     restoreEnv();
   });
@@ -1063,7 +1063,7 @@ describe("media download headers", () => {
     }
 
     const res = handleMedia(new StubChannel() as any, mediaId, false);
-    expect(res.headers.get("Content-Disposition")).toBe("attachment");
+    expect(res.headers.get("Content-Disposition")).toBe(`attachment; filename="vector.svg"; filename*=UTF-8''vector.svg`);
 
     restoreEnv();
   });

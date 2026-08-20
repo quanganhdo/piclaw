@@ -8,6 +8,7 @@
  *   - /pdf-viewer/source?... -> inline PDF stream for attachment previews
  */
 
+import { buildContentDisposition } from "./content-disposition.js";
 import { registerExtensionRoute } from "./extension-routes.js";
 import { MediaService } from "../media/media-service.js";
 
@@ -172,22 +173,55 @@ function handlePdfMediaSource(req: Request): Response {
     return new Response("Unsupported Media Type", { status: 415 });
   }
 
+  const size = result.body.size;
   const headers: Record<string, string> = {
     "Content-Type": "application/pdf",
-    "Content-Disposition": "inline",
+    "Content-Disposition": buildContentDisposition("inline", result.filename || `attachment-${mediaId}.pdf`),
     "Cache-Control": "no-cache",
+    "Accept-Ranges": "bytes",
     "X-Frame-Options": "SAMEORIGIN",
     "Content-Security-Policy": VIEWER_CSP,
+    ...(size > 0 ? { "Content-Length": String(size) } : {}),
   };
 
   if (req.method === "HEAD") {
     return new Response(null, { status: 200, headers });
   }
 
+  const rangeHeader = req.headers.get("range");
+  if (rangeHeader && size > 0) {
+    const match = rangeHeader.match(/^bytes=(\d*)-(\d*)$/);
+    if (match && (match[1] || match[2])) {
+      const suffixLength = !match[1] && match[2] ? Number(match[2]) : null;
+      const start = suffixLength !== null ? Math.max(0, size - suffixLength) : Number(match[1]);
+      const requestedEnd = suffixLength !== null || !match[2] ? size - 1 : Number(match[2]);
+      const end = Math.min(requestedEnd, size - 1);
+      if (!Number.isInteger(start) || !Number.isInteger(end) || start >= size || start > end || suffixLength === 0) {
+        return new Response("Range Not Satisfiable", {
+          status: 416,
+          headers: {
+            ...headers,
+            "Content-Range": `bytes */${size}`,
+            "Content-Length": "0",
+          },
+        });
+      }
+      const chunk = result.body.slice(start, end + 1, "application/pdf");
+      return new Response(chunk, {
+        status: 206,
+        headers: {
+          ...headers,
+          "Content-Range": `bytes ${start}-${end}/${size}`,
+          "Content-Length": String(end - start + 1),
+        },
+      });
+    }
+  }
+
   return new Response(result.body, { status: 200, headers });
 }
 
-function handlePdfViewerRoute(req: Request, pathname: string): Response | null {
+export function handlePdfViewerRoute(req: Request, pathname: string): Response | null {
   if (req.method !== "GET" && req.method !== "HEAD") {
     return new Response("Method Not Allowed", { status: 405 });
   }

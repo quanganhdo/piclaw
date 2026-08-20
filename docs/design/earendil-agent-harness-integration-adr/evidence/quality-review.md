@@ -42,9 +42,9 @@ Result: **decision-ready with explicit post-approval implementation gates**.
 | Every durable responsibility has a target owner | capability and traceability matrices | Pass |
 | Future effectors are implementable over current internals | `future-effector-specifications.md` gives complete illustrative types, adapter source maps, fakes, fault cases, effort and dependencies | Pass as documentation; no code authorised |
 | No reuse of current Piclaw orchestration | effector classification rejects agent pool, process-chat/recovery/compaction orchestration | Pass as design constraint; implementation boundary test is an M1 gate |
-| Earendil structure adopted early | released 0.84.1 contracts, authoritative `main` design and draft PR #8076 storage/primitives pinned separately | Pass |
+| Earendil structure adopted early | historical 0.84.1 contracts, current 0.84.2 compatibility evidence, authoritative `main` design and draft PR #8076 storage/primitives pinned separately | Pass |
 | Parallel execution abstractions removed | `direct-type-audit.md` separates Earendil-owned from Piclaw service-owned types | Pass |
-| Real installed harness viability checked | installed 0.84.1 JavaScript is stubbed; PR #8076 has v3 storage/primitives but no concrete public harness runtime | Pass |
+| Real installed harness viability checked | current 0.84.2 Harness operations remain unsupported; PR #8076 has v3 storage/primitives but no concrete public harness runtime | Pass |
 | Selected-version test implementation specified | fixture layout, manual driver, direct Earendil `Models`/tools, fault plan and assumptions | Pass |
 | One semantic suite can target fixture and real harness | direct Earendil factory input and version-migration report | Pass as specification; implementation is an M1/M4 gate |
 | Replay and fault boundaries specified | target state model and selected-version fixture cover intent, `EffectGate` admission, unknown effect-start outcome and settlement | Pass |
@@ -58,15 +58,15 @@ Result: **decision-ready with explicit post-approval implementation gates**.
 | Storage/concurrency gates specified | upstream backend conformance plus total open-operation migration and precise-rewrite/writer races | Pass |
 | Unsupported claims labelled | ten assumptions updated for authoritative design, draft implementation and tagged-release resolution gates | Pass |
 
-## Baseline test evidence
+## Original baseline test evidence
 
-Documentation-only review reran representative stable tests with inherited MCP/browser compatibility variables removed:
+The original documentation-only review reran representative stable tests with inherited MCP/browser compatibility variables removed:
 
 - focused recovery/compaction/tool/queue/restart/scheduler slice: **100 pass, 0 fail**, 313 assertions across 9 files;
 - web-channel and main run-orchestrator slice: **162 pass, 3 pre-existing skips, 0 fail**, 838 assertions across 2 files;
 - MCP keychain isolation probe: **8 pass, 0 fail** with `PICLAW_MCP_MEMENTO_TOKEN` unset; **7 pass, 1 fail** with the host-injected token.
 
-The pre-push guard was attempted on documentation-only commits. It reaches the baseline suite and fails on the inherited MCP token assumption. The guard bypass and its reason are recorded in E-010. No runtime source differs from `v2.13.2`.
+The original pre-push guard was attempted on documentation-only commits. It reached the baseline suite and failed on the inherited MCP token assumption. The guard bypass and its reason are recorded in E-010. At that review point, no runtime source differed from `v2.13.2`; later dependency-selection evidence is recorded separately.
 
 ## Independent-review limitation
 

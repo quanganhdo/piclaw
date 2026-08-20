@@ -86,6 +86,7 @@ const expectedTools = [
 	"m365_calendar_svg",
 	"m365_spo_move",
 	"m365_spo_move_many",
+	"m365_todo",
 ];
 
 function extractToolNames(source: string): string[] {

@@ -275,6 +275,7 @@ const groupDefinitions: GroupDefinition[] = [
         "http-dispatch-shell.test.ts",
         "html-viewer-route-security.test.ts",
         "lazy-viewer-routes.test.ts",
+        "pdf-viewer-route.test.ts",
         "system-metrics.test.ts",
         "web-channel-constructor-wiring-factory.test.ts",
         "http-dispatch-workspace.test.ts",
@@ -386,6 +387,12 @@ const groupDefinitions: GroupDefinition[] = [
     match: (relativePath) => relativePath.startsWith("session-recordings/"),
   },
   {
+    id: "service-effects",
+    label: "latent service-effect contracts and compatibility",
+    notes: "Latent stores, effect boundaries, execution contexts, tool preparation, and Earendil harness compatibility evidence.",
+    match: (relativePath) => relativePath.startsWith("service-effects/"),
+  },
+  {
     id: "web-ui-interaction-and-state",
     label: "web ui interaction and state",
     notes: "Compose, queue state, session switching, tabs, app resume, routing, and interaction-heavy UI flows.",
@@ -458,6 +465,7 @@ const groupDefinitions: GroupDefinition[] = [
         basenameIsOneOf(relativePath, [
           "adaptive-card-input-lock.test.ts",
           "adaptive-card-renderer.test.ts",
+          "agent-thinking-panel-display.test.ts",
           "adaptive-card-submission.test.ts",
           "attachment-preview.test.ts",
           "body-portal.test.ts",

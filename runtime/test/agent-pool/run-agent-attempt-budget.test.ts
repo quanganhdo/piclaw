@@ -32,7 +32,7 @@ describe("prompt attempt tool budget", () => {
       block: true,
       reason: "Automatic recovery is in its finalization window. Return a terminal assistant reply without calling more tools.",
     });
-    // Earendil 0.84.1 lets blocked pre-tool hooks terminate a batch. Budget
+    // Earendil 0.84.2 lets blocked pre-tool hooks terminate a batch. Budget
     // blocks must omit that hint so the model still produces a terminal reply.
     expect(blocked.terminate).toBeUndefined();
     expect(controller.applyFinalizationReserve()).toBe(false);
