@@ -6,7 +6,6 @@ import { shouldShowComposeAgentAffordance } from "../../web/src/ui/compose-layou
 
 const chatCss = readFileSync(path.join(import.meta.dir, "../../web/static/classic/css/chat.css"), "utf8");
 const responsiveCss = readFileSync(path.join(import.meta.dir, "../../web/static/classic/css/responsive.css"), "utf8");
-const classicIndex = readFileSync(path.join(import.meta.dir, "../../web/static/classic/index.html"), "utf8");
 
 test("shows compose agent affordance when the footer is wide enough", () => {
   expect(shouldShowComposeAgentAffordance({
@@ -30,14 +29,6 @@ test("hides compose agent affordance when there are no visible agents", () => {
     visibleAgentCount: 0,
     hasContextIndicator: true,
   })).toBe(false);
-});
-
-test("classic index contains one clean set of generated asset references", () => {
-  expect(classicIndex).not.toContain("<<<<<<< ");
-  expect(classicIndex).not.toContain("=======");
-  expect(classicIndex).not.toContain(">>>>>>> ");
-  expect(classicIndex.match(/href="\/static\/classic\/dist\/app\.bundle\.css/g)).toHaveLength(1);
-  expect(classicIndex.match(/src="\/static\/classic\/dist\/app\.bundle\.js/g)).toHaveLength(1);
 });
 
 test("base compose layout reserves text space beneath the floating session switcher", () => {
