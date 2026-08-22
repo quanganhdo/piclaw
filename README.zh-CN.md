@@ -78,7 +78,7 @@ PiClaw 是单用户、移动端友好的，并通过 SSE 流式推送更新。
 | 编辑器 | CodeMirror 6、搜索/替换、dirty 状态跟踪、语法高亮、延迟加载的本地 bundle |
 | 终端 | 内置 xterm.js Web 终端，可作为 dock 或 tab；支持可分离弹窗；Ghostty 作为可选插件单独提供 |
 | 查看器 | 内置 CSV/TSV、PDF、图片、视频、代码预览和 VNC pane；可选插件提供 Draw.io、Office 查看器后端和看板 |
-| 自动化 | 内置 `image_process`、`cdp_browser` 和 `mcp`；配置 Azure OpenAI/Foundry 后可用 `/image` 与 `/flux`；Windows 桌面自动化由可选插件提供 |
+| 自动化 | 内置 `image_process`、`cdp_browser` 和 `mcp`；配置 Azure OpenAI/Foundry 后可用 `/image` 与 `/flux`；Microsoft 365 和 Windows 桌面自动化由可选插件提供 |
 
 完整功能导览见 [docs/web-ui.md](docs/web-ui.md)。
 
@@ -97,7 +97,6 @@ PiClaw 是单用户、移动端友好的，并通过 SSE 流式推送更新。
 | `PICLAW_WEB_TOTP_SECRET` | _（空）_ | Base32 TOTP secret；启用登录门禁（也可用 `/totp` 初始化） |
 | `PICLAW_WEB_PASSKEY_MODE` | `totp-fallback` | `totp-fallback`、`passkey-only` 或 `totp-only` |
 | `PICLAW_ASSISTANT_NAME` | `PiClaw` | UI 中显示的名称 |
-| `PICLAW_ENABLE_M365_EXPERIMENTAL` | `0` | 启用实验性 Microsoft 365 扩展 bundle |
 | `PICLAW_KEYCHAIN_KEY` | _（空）_ | 加密 secret 存储的主密钥 |
 | `PICLAW_TRUST_PROXY` | `0` | 位于反向代理或隧道后方时启用 |
 
@@ -138,7 +137,7 @@ bun run build:desktop
 | 运行时内部 | [架构](docs/architecture.md)、[插件运行时 API](docs/addon-runtime-api.md)、[流水线智能压缩](docs/pipelined-compaction.md)、[运行时流程](docs/runtime-flows.md)、[运行时流式会话](docs/runtime-stream-sessions.md)、[存储模型](docs/storage.md)、[可观测性](docs/observability.md) |
 | UI 扩展模型 | [Web pane 扩展](docs/web-pane-extensions.md)、[扩展 UI 契约](docs/extension-ui-contract.md)、[Vendored widget 库](docs/vendored-widget-libraries.md) |
 | Agent 能力 | [工具和技能](docs/tools-and-skills.md)、[可视化 artifact 生成器](docs/visual-artifact-generator.md)、[通过 pi-mcp-adapter 使用 MCP](docs/mcp.md)、[钥匙串](docs/keychain.md) |
-| 其他参考 | [Dream 记忆系统](docs/dream-memory.md)、[思考状态持久化](docs/thinking-persistence.md)、[Web 通知交付策略](docs/web-notification-delivery-policy.md)、[iOS PWA 参考](docs/PWA.md)、[WhatsApp](docs/whatsapp.md)、[Remote Peer 插件](https://rcarmo.github.io/piclaw-addons/addons/remote-peer/)、[实验性 M365 扩展](docs/m365-experimental-extension.md)、[开发](docs/development.md) |
+| 其他参考 | [Dream 记忆系统](docs/dream-memory.md)、[思考状态持久化](docs/thinking-persistence.md)、[Web 通知交付策略](docs/web-notification-delivery-policy.md)、[iOS PWA 参考](docs/PWA.md)、[WhatsApp](docs/whatsapp.md)、[Remote Peer 插件](https://rcarmo.github.io/piclaw-addons/addons/remote-peer/)、[Microsoft 365 插件](https://rcarmo.github.io/piclaw-addons/addons/m365/)、[开发](docs/development.md) |
 | 平台研究 | [Azure Functions 可行性研究](docs/azure/azure-functions-feasibility-study-2026-04-17.md) |
 
 ## 贡献

@@ -51,15 +51,6 @@
   },
   "current": {
     "production": {
-      "referencedNames": 173,
-      "directReaderNames": 7,
-      "directReaderOccurrences": 14,
-      "helperReaderNames": 10,
-      "helperReaderOccurrences": 10,
-      "semanticReaderNames": 17,
-      "semanticReaderOccurrences": 24
-    },
-    "runtimeSrc": {
       "referencedNames": 171,
       "directReaderNames": 7,
       "directReaderOccurrences": 14,
@@ -68,8 +59,17 @@
       "semanticReaderNames": 17,
       "semanticReaderOccurrences": 24
     },
+    "runtimeSrc": {
+      "referencedNames": 170,
+      "directReaderNames": 7,
+      "directReaderOccurrences": 14,
+      "helperReaderNames": 10,
+      "helperReaderOccurrences": 10,
+      "semanticReaderNames": 17,
+      "semanticReaderOccurrences": 24
+    },
     "extensions": {
-      "referencedNames": 4,
+      "referencedNames": 1,
       "directReaderNames": 0,
       "directReaderOccurrences": 0,
       "helperReaderNames": 0,
@@ -87,7 +87,7 @@
       "semanticReaderOccurrences": 67
     },
     "docsDeploy": {
-      "referencedNames": 123,
+      "referencedNames": 121,
       "directReaderNames": 16,
       "directReaderOccurrences": 32,
       "helperReaderNames": 0,
@@ -1792,55 +1792,6 @@
       }
     },
     {
-      "name": "PICLAW_ENABLE_M365_EXPERIMENTAL",
-      "scopes": {
-        "docsDeploy": {
-          "referenced": true,
-          "directReaders": 0,
-          "helperReaders": 0,
-          "semanticReaders": 0,
-          "files": [
-            "docs/configuration.md",
-            "docs/m365-experimental-extension.md"
-          ],
-          "readerFiles": []
-        },
-        "production": {
-          "referenced": true,
-          "directReaders": 0,
-          "helperReaders": 0,
-          "semanticReaders": 0,
-          "files": [
-            "runtime/extensions/experimental/m365/README.md",
-            "runtime/src/agent-pool/session.ts",
-            "runtime/src/service-effects/tool-preparation/manifest.ts"
-          ],
-          "readerFiles": []
-        },
-        "extensions": {
-          "referenced": true,
-          "directReaders": 0,
-          "helperReaders": 0,
-          "semanticReaders": 0,
-          "files": [
-            "runtime/extensions/experimental/m365/README.md"
-          ],
-          "readerFiles": []
-        },
-        "runtimeSrc": {
-          "referenced": true,
-          "directReaders": 0,
-          "helperReaders": 0,
-          "semanticReaders": 0,
-          "files": [
-            "runtime/src/agent-pool/session.ts",
-            "runtime/src/service-effects/tool-preparation/manifest.ts"
-          ],
-          "readerFiles": []
-        }
-      }
-    },
-    {
       "name": "PICLAW_EXPORT_AUTH_KEY",
       "scopes": {
         "docsDeploy": {
@@ -2413,44 +2364,6 @@
           "readerFiles": [
             "runtime/src/utils/log-level.ts"
           ]
-        }
-      }
-    },
-    {
-      "name": "PICLAW_M365_YOLO",
-      "scopes": {
-        "docsDeploy": {
-          "referenced": true,
-          "directReaders": 0,
-          "helperReaders": 0,
-          "semanticReaders": 0,
-          "files": [
-            "docs/configuration.md",
-            "docs/m365-experimental-extension.md"
-          ],
-          "readerFiles": []
-        },
-        "production": {
-          "referenced": true,
-          "directReaders": 0,
-          "helperReaders": 0,
-          "semanticReaders": 0,
-          "files": [
-            "runtime/extensions/experimental/m365/README.md",
-            "runtime/extensions/experimental/m365/shared.ts"
-          ],
-          "readerFiles": []
-        },
-        "extensions": {
-          "referenced": true,
-          "directReaders": 0,
-          "helperReaders": 0,
-          "semanticReaders": 0,
-          "files": [
-            "runtime/extensions/experimental/m365/README.md",
-            "runtime/extensions/experimental/m365/shared.ts"
-          ],
-          "readerFiles": []
         }
       }
     },
@@ -7363,28 +7276,6 @@
             "skel/scripts/lib/agent-memory-sidecar.ts"
           ]
         },
-        "production": {
-          "referenced": true,
-          "directReaders": 0,
-          "helperReaders": 0,
-          "semanticReaders": 0,
-          "files": [
-            "runtime/extensions/experimental/m365/shared.ts",
-            "runtime/src/core/config-paths.ts",
-            "runtime/src/db/connection.ts"
-          ],
-          "readerFiles": []
-        },
-        "extensions": {
-          "referenced": true,
-          "directReaders": 0,
-          "helperReaders": 0,
-          "semanticReaders": 0,
-          "files": [
-            "runtime/extensions/experimental/m365/shared.ts"
-          ],
-          "readerFiles": []
-        },
         "tooling": {
           "referenced": true,
           "directReaders": 3,
@@ -7400,6 +7291,17 @@
             "runtime/scripts/benchmark-cold-session.ts",
             "scripts/audit-queue-session-threading-replay.ts"
           ]
+        },
+        "production": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "runtime/src/core/config-paths.ts",
+            "runtime/src/db/connection.ts"
+          ],
+          "readerFiles": []
         },
         "runtimeSrc": {
           "referenced": true,

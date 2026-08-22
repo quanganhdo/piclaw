@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { dirname, resolve } from "node:path";
+import { rmSync, writeFileSync } from "node:fs";
+import { basename, dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import ts from "typescript";
 
 // @ts-expect-error -- 0.84.2 has no public v3 constructor contract.
 import type { AgentHarnessConstructor } from "@earendil-works/pi-agent-core";
@@ -25,6 +25,7 @@ import {
   normalizeEarendilHarnessCompatibilityManifest,
 } from "../../src/service-effects/earendil-harness-v3-compatibility/manifest.js";
 import type { PiclawToolContext } from "../../src/service-effects/contracts/execution-context-resolver.js";
+import { collectModuleSpecifiers } from "./fixtures/typescript-syntax-oracle.js";
 import {
   EARENDIL_HARNESS_DIRECT_OPERATIONS,
   readInstalledEarendilAgentCoreVersion,
@@ -46,45 +47,48 @@ const compatibilityTestPath = fileURLToPath(import.meta.url);
 const runtimeRoot = resolve(dirname(compatibilityTestPath), "../..");
 const directAssignmentsPath = resolve(runtimeRoot, "src/service-effects/earendil-harness-v3-compatibility/direct-assignments.ts");
 const tsconfigPath = resolve(runtimeRoot, "tsconfig.json");
+const tscPath = resolve(runtimeRoot, "../node_modules/typescript/bin/tsc");
 
-function compilerOptions(): ts.CompilerOptions {
-  const config = ts.readConfigFile(tsconfigPath, ts.sys.readFile);
-  if (config.error) throw new Error(ts.flattenDiagnosticMessageText(config.error.messageText, "\n"));
-  const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, runtimeRoot, {
-    noEmit: true,
-    rootDir: runtimeRoot,
-  }, tsconfigPath);
-  if (parsed.errors.length > 0) {
-    throw new Error(parsed.errors.map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n")).join("\n"));
-  }
-  return parsed.options;
+interface CompilerDiagnostic {
+  readonly code: number;
+  readonly message: string;
 }
 
-function compileCompatibilitySource(source: string): readonly ts.Diagnostic[] {
-  const options = compilerOptions();
-  const host = ts.createCompilerHost(options, true);
-  const readSourceFile = host.getSourceFile.bind(host);
-  host.getSourceFile = (fileName, languageVersion, onError, shouldCreateNewSourceFile) => {
-    if (resolve(fileName) === compatibilityTestPath) {
-      return ts.createSourceFile(fileName, source, languageVersion, true, ts.ScriptKind.TS);
+function compileCompatibilitySource(source: string): readonly CompilerDiagnostic[] {
+  const directory = dirname(compatibilityTestPath);
+  const suffix = `${process.pid}-${crypto.randomUUID()}`;
+  const probePath = resolve(directory, `.earendil-compatibility-${suffix}.ts`);
+  const configPath = resolve(directory, `.earendil-compatibility-${suffix}.json`);
+  const localPath = (path: string): string => relative(directory, path).replaceAll("\\", "/");
+  try {
+    writeFileSync(probePath, source);
+    writeFileSync(configPath, `${JSON.stringify({
+      extends: localPath(tsconfigPath),
+      compilerOptions: { noEmit: true, rootDir: localPath(runtimeRoot) },
+      files: [basename(probePath), localPath(directAssignmentsPath)],
+    })}\n`);
+    const process = Bun.spawnSync([tscPath, "--project", configPath, "--pretty", "false"], {
+      cwd: runtimeRoot,
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const output = `${process.stdout.toString()}\n${process.stderr.toString()}`;
+    const diagnostics = [...output.matchAll(/error TS(\d+): ([^\r\n]+)/g)].map((match) => Object.freeze({
+      code: Number(match[1]),
+      message: match[2],
+    }));
+    if (process.exitCode !== 0 && diagnostics.length === 0) {
+      throw new Error(`TypeScript compatibility probe exited ${process.exitCode}: ${output.trim()}`);
     }
-    return readSourceFile(fileName, languageVersion, onError, shouldCreateNewSourceFile);
-  };
-  const program = ts.createProgram({ rootNames: [compatibilityTestPath, directAssignmentsPath], options, host });
-  return ts.getPreEmitDiagnostics(program);
+    return Object.freeze(diagnostics);
+  } finally {
+    rmSync(probePath, { force: true });
+    rmSync(configPath, { force: true });
+  }
 }
 
 function earendilModuleSpecifiers(source: string): readonly string[] {
-  const result: string[] = [];
-  const sourceFile = ts.createSourceFile("compile-probe.ts", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-  const visit = (node: ts.Node): void => {
-    if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text.startsWith("@earendil-works/")) {
-      result.push(node.moduleSpecifier.text);
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(sourceFile);
-  return result;
+  return collectModuleSpecifiers("compile-probe.ts", source).filter((specifier) => specifier.startsWith("@earendil-works/"));
 }
 
 function expectDeepFrozen(value: unknown): void {
@@ -212,7 +216,7 @@ describe("latent Earendil Harness v3 compatibility evidence", () => {
     for (const [index, diagnostic] of diagnostics.entries()) {
       const [code, marker] = expected[index];
       expect(diagnostic.code).toBe(code);
-      expect(ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n")).toContain(marker);
+      expect(diagnostic.message).toContain(marker);
     }
 
     const specifiers = earendilModuleSpecifiers(`${source}\n${directAssignments}`);
@@ -222,7 +226,7 @@ describe("latent Earendil Harness v3 compatibility evidence", () => {
       "@earendil-works/pi-coding-agent",
     ]);
     expect(specifiers.every((specifier) => !specifier.includes("/dist/") && !specifier.includes("/src/"))).toBe(true);
-  });
+  }, 30_000);
 
   test("resolves the package-root public package.json export to the selected 0.84.2 current runtime", async () => {
     expect(await readInstalledEarendilAgentCoreVersion()).toBe("0.84.2");

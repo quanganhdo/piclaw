@@ -58,6 +58,7 @@ function expectDeterministicVendorOutput(outFile: string, metaFile: string) {
   expect(meta.size_bytes).toBe(bundle.byteLength);
   expect(meta.sha256).toBe(createHash("sha256").update(bundle).digest("hex"));
   expect(bundle.toString("utf8")).toContain("globalThis.beautifulMermaid");
+  expect(bundle.toString("utf8")).not.toMatch(/[ \t]+$/m);
 }
 
 test("generic vendored dependency build script writes mermaid bundle + metadata deterministically", () => {

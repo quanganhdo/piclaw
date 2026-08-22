@@ -1,7 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
-import ts from "typescript";
+import * as syntax from "@babel/types";
 
+import {
+  calledName,
+  collectModuleSpecifiers,
+  parseTypeScriptSource,
+  walkSyntax,
+} from "./fixtures/typescript-syntax-oracle.js";
 import {
   readRepositorySourceTree,
   resolveRepositoryModule,
@@ -37,41 +43,20 @@ const PROHIBITED_CALL_NAMES = new Set([
   "writeFile",
 ]);
 
-function parse(path: string, source: string): ts.SourceFile {
-  return ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-}
-
 function moduleSpecifiers(path: string, source: string): readonly string[] {
-  const specifiers: string[] = [];
-  const visit = (node: ts.Node): void => {
-    if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
-      specifiers.push(node.moduleSpecifier.text);
-    }
-    if (ts.isCallExpression(node) && node.arguments.length === 1) {
-      const argument = node.arguments[0];
-      const dynamicImport = node.expression.kind === ts.SyntaxKind.ImportKeyword;
-      const commonJsRequire = ts.isIdentifier(node.expression) && node.expression.text === "require";
-      const importMetaResolve = ts.isPropertyAccessExpression(node.expression) &&
-        node.expression.name.text === "resolve" && ts.isMetaProperty(node.expression.expression);
-      if ((dynamicImport || commonJsRequire || importMetaResolve) && ts.isStringLiteral(argument)) specifiers.push(argument.text);
-    }
-    if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)) {
-      const expression = node.moduleReference.expression;
-      if (expression && ts.isStringLiteral(expression)) specifiers.push(expression.text);
-    }
-    if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument) && ts.isStringLiteral(node.argument.literal)) {
-      specifiers.push(node.argument.literal.text);
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(parse(path, source));
-  return specifiers;
+  return collectModuleSpecifiers(path, source);
 }
 
-function calledName(expression: ts.Expression): string | null {
-  if (ts.isIdentifier(expression)) return expression.text;
-  if (ts.isPropertyAccessExpression(expression)) return expression.name.text;
-  return null;
+function isTypeOnlyStatement(statement: syntax.Statement): boolean {
+  if (syntax.isImportDeclaration(statement)) return statement.importKind === "type";
+  if (syntax.isTSTypeAliasDeclaration(statement) || syntax.isTSInterfaceDeclaration(statement) || syntax.isTSDeclareFunction(statement)) return true;
+  if (!syntax.isExportNamedDeclaration(statement)) return false;
+  if (statement.exportKind === "type") return true;
+  return !!statement.declaration && (
+    syntax.isTSTypeAliasDeclaration(statement.declaration)
+    || syntax.isTSInterfaceDeclaration(statement.declaration)
+    || syntax.isTSDeclareFunction(statement.declaration)
+  );
 }
 
 describe("latent Earendil Harness v3 non-interference boundary", () => {
@@ -100,19 +85,16 @@ describe("latent Earendil Harness v3 non-interference boundary", () => {
   test("uses type-only public roots and emits no assignment runtime", () => {
     const assignmentsPath = EXPECTED_LATENT_FILES[0];
     const assignments = tree.files[assignmentsPath];
-    const ast = parse(assignmentsPath, assignments);
-    const imports = ast.statements.filter(ts.isImportDeclaration);
-    expect(imports.every((declaration) => declaration.importClause?.isTypeOnly === true)).toBe(true);
+    const ast = parseTypeScriptSource(assignmentsPath, assignments);
+    const imports = ast.statements.filter(syntax.isImportDeclaration);
+    expect(imports.every((declaration) => declaration.importKind === "type")).toBe(true);
     expect(moduleSpecifiers(assignmentsPath, assignments).filter((specifier) => specifier.startsWith("@earendil-works/")))
       .toEqual([
         "@earendil-works/pi-ai",
         "@earendil-works/pi-agent-core",
         "@earendil-works/pi-coding-agent",
       ]);
-    const emitted = ts.transpileModule(assignments, {
-      compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
-    }).outputText.trim();
-    expect(emitted).toBe("export {};");
+    expect(ast.statements.every(isTypeOnlyStatement)).toBe(true);
   });
 
   test("contains no runtime package import, activation primitive, shim declaration, or import-time I/O", () => {
@@ -127,7 +109,7 @@ describe("latent Earendil Harness v3 non-interference boundary", () => {
     const findings: string[] = [];
     for (const path of latentFiles) {
       const source = tree.files[path];
-      const ast = parse(path, source);
+      const ast = parseTypeScriptSource(path, source);
       for (const specifier of moduleSpecifiers(path, source)) {
         if (specifier.startsWith("@earendil-works/") && !APPROVED_PUBLIC_EARENDIL_SPECIFIERS.has(specifier)) {
           findings.push(`${path}: non-public or unapproved import ${specifier}`);
@@ -136,19 +118,17 @@ describe("latent Earendil Harness v3 non-interference boundary", () => {
           findings.push(`${path}: private or version-qualified runtime import ${specifier}`);
         }
       }
-      const visit = (node: ts.Node): void => {
-        if (ts.isClassDeclaration(node)) findings.push(`${path}: class declaration`);
-        if ((ts.isInterfaceDeclaration(node) || ts.isTypeAliasDeclaration(node)) && prohibitedDeclarations.has(node.name.text)) {
-          findings.push(`${path}: compatibility shim ${node.name.text}`);
+      walkSyntax(ast.program, (node) => {
+        if (syntax.isClassDeclaration(node)) findings.push(`${path}: class declaration`);
+        if ((syntax.isTSInterfaceDeclaration(node) || syntax.isTSTypeAliasDeclaration(node)) && prohibitedDeclarations.has(node.id.name)) {
+          findings.push(`${path}: compatibility shim ${node.id.name}`);
         }
-        if (ts.isCallExpression(node)) {
-          const name = calledName(node.expression);
+        if (syntax.isCallExpression(node)) {
+          const name = calledName(node.callee);
           if (name && PROHIBITED_CALL_NAMES.has(name)) findings.push(`${path}: prohibited call ${name}`);
         }
-        if (ts.isAwaitExpression(node)) findings.push(`${path}: import-time-capable await expression`);
-        ts.forEachChild(node, visit);
-      };
-      visit(ast);
+        if (syntax.isAwaitExpression(node)) findings.push(`${path}: import-time-capable await expression`);
+      });
       expect(source).not.toMatch(/\b(?:process|Bun|Deno)\.env\b/);
     }
     expect(findings).toEqual([]);

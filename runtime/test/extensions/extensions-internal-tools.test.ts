@@ -125,10 +125,10 @@ describe("internal-tools extension", () => {
     const fake = createFakeExtensionApi({
       allTools: [
         {
-          name: "m365_teams_messages",
-          description: "Read messages from a Microsoft Teams chat.",
-          promptSnippet: "Read Teams chat messages and inspect recent conversation history",
-          parameters: { type: "object", properties: { chat_id: { type: "string" } } },
+          name: "crm_messages",
+          description: "Read messages from a customer conversation.",
+          promptSnippet: "Read customer messages and inspect recent conversation history",
+          parameters: { type: "object", properties: { conversation_id: { type: "string" } } },
         },
         {
           name: "search_workspace",
@@ -140,8 +140,8 @@ describe("internal-tools extension", () => {
     internalTools(fake.api);
 
     const tool = fake.tools.get("list_tools");
-    const result = await tool.execute("t7", { intent: "inspect recent Teams messages", include_parameters: true });
-    expect(result.details.recommendations[0].name).toBe("m365_teams_messages");
+    const result = await tool.execute("t7", { intent: "inspect recent customer messages", include_parameters: true });
+    expect(result.details.recommendations[0].name).toBe("crm_messages");
     expect(result.details.recommendations[0].matched_sources).toContain("promptSnippet");
     expect(result.details.recommendations[0].parameters).toBeDefined();
   });

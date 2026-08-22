@@ -15,45 +15,6 @@ function rows(toolNames: readonly string[], shared: SharedPreparation): ToolPrep
   }));
 }
 
-const M365_PARAMETER_FIELDS: Readonly<Record<string, readonly string[]>> = Object.freeze({
-  m365_teams_chats: ["top"],
-  m365_teams_messages: ["chatId", "top"],
-  m365_teams_send: ["chatId", "message", "attachmentUrl", "attachmentName", "dryRun", "confirm"],
-  m365_teams_send_rich_text: ["chatId", "markdown", "dryRun", "confirm"],
-  m365_teams_send_markdown_card: ["chatId", "markdown", "fileName", "message", "dryRun", "confirm"],
-  m365_teams_upload_file_card: ["chatId", "localPath", "fileName", "message", "folderPath", "scope", "dryRun", "confirm"],
-  m365_teams_send_link_card: ["chatId", "url", "attachmentName", "message", "scope", "dryRun", "confirm"],
-  m365_teams_send_file_card: ["chatId", "localPath", "fileName", "message", "folderPath", "scope", "dryRun", "confirm"],
-  m365_graph_query: ["path", "method", "body", "version"],
-  m365_profile: ["action"],
-  m365_mail: ["action", "query", "folder", "top", "filter", "messageId", "to", "cc", "subject", "body", "importance", "replyAll", "attachments", "flagValue", "dryRun", "dry_run", "confirm"],
-  m365_people: ["query", "top"],
-  m365_onedrive: ["action", "folderPath", "itemPath", "itemId", "query", "top", "dryRun", "confirm"],
-  m365_spo_search: ["siteUrl", "query", "top"],
-  m365_spo_browse: ["siteUrl", "folderPath"],
-  m365_spo_download: ["siteUrl", "filePath", "outFile"],
-  m365_document_link_metadata: ["url"],
-  m365_onedrive_share_local_file: ["localPath", "folderPath", "fileName", "scope", "dryRun", "confirm"],
-  m365_spo_upload: ["localPath", "driveId", "folderId", "folderUrl", "fileName", "dryRun", "confirm"],
-  m365_spo_sync: ["localDir", "driveId", "folderId", "folderUrl", "direction", "pattern", "dryRun", "confirm"],
-  m365_calendar: ["action", "date", "days", "eventId", "subject", "startDateTime", "endDateTime", "location", "body", "attendees", "isOnlineMeeting", "isAllDay", "recurrence", "response", "comment", "meetingDuration", "dryRun", "confirm"],
-  m365_calendar_svg: ["date", "startHour", "endHour", "showFree", "outPath"],
-  m365_spo_move: ["siteUrl", "filePath", "driveId", "itemId", "newName", "newParentPath", "dryRun", "confirm"],
-  m365_spo_move_many: ["items", "newParentPath", "dryRun", "continueOnError", "confirm"],
-  m365_todo: ["action", "sources", "includeCompleted", "status", "top", "search", "dueBefore", "dueAfter", "listIds"],
-});
-
-function m365Rows(toolNames: readonly string[], shared: Omit<SharedPreparation, "protectedFields">): ToolPreparationSpec[] {
-  return toolNames.flatMap((toolName) => rows([toolName], {
-    ...shared,
-    protectedFields: [
-      ...(M365_PARAMETER_FIELDS[toolName] ?? []).map((field) => `params.${field}`),
-      "result.content",
-      "result.details",
-    ],
-  }));
-}
-
 const source = {
   core: "@earendil-works/pi-coding-agent core tools; runtime/src/agent-pool/tool-factory.ts; runtime/src/extensions/ssh-core.ts",
   effectiveSearch: "@earendil-works/pi-coding-agent read-only tool definitions; effective Piclaw execution surface advertised by runtime/src/extensions/ssh.ts; no branch-local direct constructor",
@@ -64,7 +25,6 @@ const source = {
   scheduling: "runtime/src/extensions/scheduled-tasks.ts",
   workspace: "runtime/src/extensions/workspace-search.ts",
   contextPrune: "runtime/src/extensions/context-prune.ts; runtime/src/extensions/context-prune/query-tool.ts",
-  m365: "runtime/extensions/experimental/m365/index.ts (PICLAW_ENABLE_M365_EXPERIMENTAL gate)",
 } as const;
 
 /**
@@ -422,58 +382,6 @@ export const TOOL_PREPARATION_MANIFEST: readonly ToolPreparationSpec[] = Object.
     serviceEffector: null,
     abortExpectation: "may_finish_late",
     protectedFields: ["params.tool", "params.args", "params.server", "params.search", "params.describe", "params.instructions", "params.connect", "params.redirectUrl", "result.content", "result.details"],
-  }),
-  ...m365Rows([
-    "m365_teams_chats",
-    "m365_teams_messages",
-    "m365_profile",
-    "m365_people",
-    "m365_spo_search",
-    "m365_spo_browse",
-    "m365_document_link_metadata",
-  ], {
-    currentSource: source.m365,
-    effectClass: "query",
-    replay: "safe",
-    contextFields: ["localEnv"],
-    serviceEffector: null,
-    abortExpectation: "may_finish_late",
-  }),
-  ...m365Rows([
-    "m365_teams_send",
-    "m365_teams_send_rich_text",
-    "m365_teams_send_markdown_card",
-    "m365_teams_upload_file_card",
-    "m365_teams_send_link_card",
-    "m365_teams_send_file_card",
-    "m365_onedrive_share_local_file",
-    "m365_spo_upload",
-    "m365_spo_sync",
-    "m365_spo_move",
-    "m365_spo_move_many",
-  ], {
-    currentSource: source.m365,
-    effectClass: "mutation",
-    replay: "never",
-    contextFields: ["localEnv"],
-    serviceEffector: null,
-    abortExpectation: "may_finish_late",
-  }),
-  ...m365Rows([
-    "m365_graph_query",
-    "m365_mail",
-    "m365_onedrive",
-    "m365_calendar",
-    "m365_todo",
-    "m365_spo_download",
-    "m365_calendar_svg",
-  ], {
-    currentSource: source.m365,
-    effectClass: "mixed",
-    replay: "never",
-    contextFields: ["localEnv"],
-    serviceEffector: null,
-    abortExpectation: "may_finish_late",
   }),
 ]);
 

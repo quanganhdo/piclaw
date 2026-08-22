@@ -3,7 +3,7 @@
 | Evidence ID | Source | Baseline relevance | State |
 |---|---|---|---|
 | E-001 | `v2.13.2` / `0afd3ae645c423bed82deef80c343bcaa6f31d4d` | Stable Piclaw assessment baseline | Verified tag and commit; ADR scaffold is the only child commit on `main` |
-| E-002 | `package.json`, `bun.lock`, `Makefile:193` | Earendil dependency history and current-loop selection | Historical baseline `0.84.1`; current coherent Earendil family `0.84.2`, with direct `openai@6.40.0` for Azure extension imports |
+| E-002 | `package.json`, `bun.lock`, `Makefile:193` | Earendil dependency history and current-loop selection | Historical baseline `0.84.1`; current coherent Earendil family `0.84.2`, with direct `openai@7.4.0` for Azure extension imports |
 | E-003 | `docs/architecture.md` | Published component and current turn-flow description | Cross-checked against baseline source while building the 59-capability matrix; some prose is historical and the matrix records source-level ownership |
 | E-004 | `docs/archive/turn-mechanism-audit.md` | Earlier full-stack turn audit | Reviewed as historical behaviour/risk evidence; superseded details are not treated as baseline authority |
 | E-005 | `docs/design/agent-turn-state-machine-assessment.md` | Current-loop hazards and prior reducer proposal | Reviewed as evidence; recommendation not adopted |

@@ -31,17 +31,12 @@ function isWinTool(name: string): boolean {
   return name.startsWith("win_");
 }
 
-function isM365Tool(name: string): boolean {
-  return name.startsWith("m365_");
-}
-
 registerToolStatusHintProvider({
   id: "generic_tool_fallback",
   buildHints: ({ toolName }) => {
     if (!toolName) return null;
     if (TOOLS_WITH_SPECIFIC_PROVIDERS.has(toolName)) return null;
     if (isWinTool(toolName)) return null;
-    if (isM365Tool(toolName)) return null;
     const iconSvg = SPECIFIC_ICONS[toolName] || GENERIC_TOOL_STATUS_ICON_SVG;
     return {
       key: "tool",

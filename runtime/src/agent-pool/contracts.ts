@@ -161,8 +161,10 @@ export interface RunAgentOptions {
    * message and cursor finalization.
    */
   deferToolEnabledContinuation?: boolean;
-  /** This run is the typed, one-shot ordinary continuation after protected recovery. */
+  /** This run is a typed ordinary continuation after protected recovery. */
   protectedRecoveryContinuation?: boolean;
+  /** One-based depth of the bounded protected-recovery handoff chain. */
+  protectedRecoveryContinuationDepth?: number;
 }
 
 export interface RetrySettingsProvider {

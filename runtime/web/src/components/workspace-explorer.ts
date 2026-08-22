@@ -15,8 +15,8 @@ import {
     reindexWorkspace,
     renameWorkspaceFile,
     setWorkspaceVisibility,
-    uploadWorkspaceFile,
 } from '../api.js';
+import { uploadFileBatch, uploadWorkspaceFile } from '../ui/upload-transfers.js';
 import { formatFileSize } from '../utils/format.js';
 import { paneRegistry } from '../panes/index.js';
 import { focusAndSelectBestEffort } from './input-focus-safety.js';
@@ -691,6 +691,7 @@ export function WorkspaceExplorer({
     const [dragGhost,    setDragGhost]     = useState(null);
     const [dropTarget,   setDropTarget]    = useState(null);
     const [uploading,    setUploading]     = useState(false);
+    const uploadingRef = useRef(false);
     const [uploadProgress, setUploadProgress] = useState(null);
     const [folderChart,  setFolderChart]   = useState(null);
     const [workspaceIndexStatus, setWorkspaceIndexStatus] = useState(null);
@@ -2110,34 +2111,44 @@ export function WorkspaceExplorer({
     }, [updateDropTarget, clearDragExpandTimer]);
 
     const uploadFilesToTarget = useCallback(async (files, targetPath = '.') => {
+        if (uploadingRef.current) return;
         const list = Array.from(files || []);
         if (list.length === 0) return;
+        uploadingRef.current = true;
         const target = targetPath && targetPath !== '' ? targetPath : '.';
         const targetLabel = target !== '.' ? target : 'workspace root';
         clearUploadProgressTimer();
         setUploading(true);
         setUploadProgress({ current: 0, total: list.length, name: '', percent: 0, done: false, error: null });
         try {
-            let lastResult = null;
-            for (let i = 0; i < list.length; i++) {
-                const file = list[i];
-                const name = file?.name || `file ${i + 1}`;
-                setUploadProgress((prev) => ({ ...prev, current: i + 1, name, percent: 0 }));
-                const onProgress = (p) => setUploadProgress((prev) => ({ ...prev, percent: p.percent }));
-                try {
-                    lastResult = await uploadWorkspaceFile(file, target, { onProgress });
-                } catch (err) {
-                    const status = err?.status;
-                    const code = err?.code;
-                    if (status === 409 || code === 'file_exists') {
-                        const confirmOverwrite = window.confirm(`"${name}" already exists in ${targetLabel}. Overwrite?`);
-                        if (!confirmOverwrite) continue;
-                        lastResult = await uploadWorkspaceFile(file, target, { overwrite: true, onProgress });
-                    } else {
+            const uploaded = await uploadFileBatch(
+                list,
+                async (file, onProgress, index) => {
+                    const name = file?.name || `file ${index + 1}`;
+                    try {
+                        return await uploadWorkspaceFile(file, target, { onProgress });
+                    } catch (err) {
+                        const status = err?.status;
+                        const code = err?.code;
+                        if (status === 409 || code === 'file_exists') {
+                            const confirmOverwrite = window.confirm(`"${name}" already exists in ${targetLabel}. Overwrite?`);
+                            if (!confirmOverwrite) return null;
+                            return await uploadWorkspaceFile(file, target, { overwrite: true, onProgress });
+                        }
                         throw err;
                     }
-                }
-            }
+                },
+                {
+                    onProgress: (progress) => setUploadProgress((prev) => ({
+                        ...prev,
+                        current: progress.current,
+                        total: progress.total,
+                        name: progress.name,
+                        percent: progress.percent,
+                    })),
+                },
+            );
+            const lastResult = uploaded.map(({ result }) => result).filter(Boolean).at(-1) || null;
             if (lastResult?.path) {
                 pendingProgrammaticFileClickRef.current = lastResult.path;
                 setSelectedPath(lastResult.path);
@@ -2160,6 +2171,7 @@ export function WorkspaceExplorer({
                 setUploadProgress(null);
             }, 4000);
         } finally {
+            uploadingRef.current = false;
             setUploading(false);
         }
     }, [clearUploadProgressTimer]);
@@ -2547,7 +2559,12 @@ export function WorkspaceExplorer({
             `}
             <div class="workspace-tree" onClick=${handleBackgroundClick}>
                 ${uploadProgress && html`
-                    <div class="workspace-upload-strip">
+                    <div
+                        class="workspace-upload-strip"
+                        role=${uploadProgress.error ? 'alert' : 'status'}
+                        aria-live=${uploadProgress.error ? 'assertive' : 'polite'}
+                        data-testid="workspace-upload-status"
+                    >
                         <div class="workspace-upload-strip-text">
                             ${uploadProgress.error
                                 ? html`<span class="workspace-upload-strip-error">${uploadProgress.error}</span>`
@@ -2560,7 +2577,14 @@ export function WorkspaceExplorer({
                             }
                         </div>
                         ${!uploadProgress.done && !uploadProgress.error && html`
-                            <div class="workspace-upload-strip-bar">
+                            <div
+                                class="workspace-upload-strip-bar"
+                                role="progressbar"
+                                aria-label="Workspace upload progress"
+                                aria-valuemin="0"
+                                aria-valuemax="100"
+                                aria-valuenow=${uploadProgress.percent || 0}
+                            >
                                 <div class="workspace-upload-strip-fill" style=${`width:${uploadProgress.percent || 0}%`}></div>
                             </div>
                         `}

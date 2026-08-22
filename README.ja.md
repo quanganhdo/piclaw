@@ -78,7 +78,7 @@ PiClaw はシングルユーザー向けでモバイルフレンドリー、更�
 | エディター | CodeMirror 6、検索/置換、dirty 状態追跡、シンタックスハイライト、遅延読み込みのローカル bundle |
 | ターミナル | dock または tab として使える組み込み xterm.js Web ターミナル、切り離し可能なポップアウト、Ghostty は任意アドオンとして別途提供 |
 | ビューアー | 組み込みの CSV/TSV、PDF、画像、動画、コードプレビュー、VNC pane。任意のアドオンは Draw.io、Office ビューアーバックエンド、kanban を提供 |
-| 自動化 | 組み込みの `image_process`、`cdp_browser`、`mcp`。Azure OpenAI/Foundry 設定時の `/image` と `/flux`。Windows デスクトップ自動化は任意のアドオンが提供 |
+| 自動化 | 組み込みの `image_process`、`cdp_browser`、`mcp`。Azure OpenAI/Foundry 設定時の `/image` と `/flux`。Microsoft 365 と Windows デスクトップ自動化は任意のアドオンが提供 |
 
 完全な機能ツアーは [docs/web-ui.md](docs/web-ui.md) を参照してください。
 
@@ -97,7 +97,6 @@ PiClaw はシングルユーザー向けでモバイルフレンドリー、更�
 | `PICLAW_WEB_TOTP_SECRET` | _（空）_ | Base32 TOTP secret。ログインゲートを有効化（または `/totp` で初期化） |
 | `PICLAW_WEB_PASSKEY_MODE` | `totp-fallback` | `totp-fallback`、`passkey-only`、`totp-only` |
 | `PICLAW_ASSISTANT_NAME` | `PiClaw` | UI に表示される名前 |
-| `PICLAW_ENABLE_M365_EXPERIMENTAL` | `0` | 実験的な Microsoft 365 拡張 bundle を有効化 |
 | `PICLAW_KEYCHAIN_KEY` | _（空）_ | 暗号化 secret 保存用の master key |
 | `PICLAW_TRUST_PROXY` | `0` | リバースプロキシまたはトンネルの背後にある場合に有効化 |
 
@@ -138,7 +137,7 @@ bun run build:desktop
 | ランタイム内部 | [アーキテクチャ](docs/architecture.md)、[アドオンランタイム API](docs/addon-runtime-api.md)、[パイプライン化スマート圧縮](docs/pipelined-compaction.md)、[ランタイムフロー](docs/runtime-flows.md)、[ランタイムストリームセッション](docs/runtime-stream-sessions.md)、[ストレージモデル](docs/storage.md)、[可観測性](docs/observability.md) |
 | UI 拡張モデル | [Web pane extensions](docs/web-pane-extensions.md)、[Extension UI contract](docs/extension-ui-contract.md)、[Vendored widget libraries](docs/vendored-widget-libraries.md) |
 | Agent 機能 | [ツールとスキル](docs/tools-and-skills.md)、[Visual artifact generator](docs/visual-artifact-generator.md)、[pi-mcp-adapter 経由の MCP](docs/mcp.md)、[キー管理](docs/keychain.md) |
-| その他のリファレンス | [Dream memory system](docs/dream-memory.md)、[Thinking persistence](docs/thinking-persistence.md)、[Web notification delivery policy](docs/web-notification-delivery-policy.md)、[iOS PWA reference](docs/PWA.md)、[WhatsApp](docs/whatsapp.md)、[Remote Peer アドオン](https://rcarmo.github.io/piclaw-addons/addons/remote-peer/)、[Experimental M365 extension](docs/m365-experimental-extension.md)、[開発](docs/development.md) |
+| その他のリファレンス | [Dream memory system](docs/dream-memory.md)、[Thinking persistence](docs/thinking-persistence.md)、[Web notification delivery policy](docs/web-notification-delivery-policy.md)、[iOS PWA reference](docs/PWA.md)、[WhatsApp](docs/whatsapp.md)、[Remote Peer アドオン](https://rcarmo.github.io/piclaw-addons/addons/remote-peer/)、[Microsoft 365 アドオン](https://rcarmo.github.io/piclaw-addons/addons/m365/)、[開発](docs/development.md) |
 | プラットフォーム調査 | [Azure Functions feasibility study](docs/azure/azure-functions-feasibility-study-2026-04-17.md) |
 
 ## コントリビューション

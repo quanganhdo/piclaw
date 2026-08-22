@@ -104,24 +104,3 @@ export function extractToolPortainerHost(toolName: unknown, args: unknown): stri
   if (!record) return null;
   return extractHostLabelFromUrl(readTrimmedString(record.base_url, record.baseUrl, record.url, record.endpoint));
 }
-
-export function extractToolM365Host(toolName: unknown, args: unknown): string | null {
-  const normalizedToolName = typeof toolName === 'string' ? toolName.trim() : '';
-  if (!normalizedToolName.startsWith('m365_')) return null;
-  const record = args && typeof args === 'object' ? args as Record<string, unknown> : null;
-  const explicitHost = extractHostLabelFromUrl(readTrimmedString(
-    record?.siteUrl,
-    record?.site_url,
-    record?.webUrl,
-    record?.web_url,
-    record?.shareUrl,
-    record?.share_url,
-    record?.base_url,
-    record?.baseUrl,
-    record?.url,
-    record?.endpoint,
-  ));
-  if (explicitHost) return explicitHost;
-  if (normalizedToolName.startsWith('m365_teams_')) return 'teams.microsoft.com';
-  return 'graph.microsoft.com';
-}

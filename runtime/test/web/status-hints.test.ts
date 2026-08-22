@@ -11,10 +11,10 @@ test('normalizeStatusHints keeps SVG-based extension hints renderable by the sta
       title: 'SSH target',
     },
     {
-      key: 'm365',
+      key: 'addon-service',
       icon_svg: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8"></rect></svg>',
-      label: 'graph.microsoft.com',
-      title: 'Microsoft 365 target',
+      label: 'api.example.com',
+      title: 'Add-on service target',
     },
   ]);
 
@@ -26,10 +26,10 @@ test('normalizeStatusHints keeps SVG-based extension hints renderable by the sta
       title: 'SSH target',
     },
     {
-      key: 'm365',
+      key: 'addon-service',
       iconSvg: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8"></rect></svg>',
-      label: 'graph.microsoft.com',
-      title: 'Microsoft 365 target',
+      label: 'api.example.com',
+      title: 'Add-on service target',
     },
   ]);
 });

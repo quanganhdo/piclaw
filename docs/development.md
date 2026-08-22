@@ -29,7 +29,7 @@ Run build/package commands from the **repo root**:
 ```bash
 make build-piclaw    # full build: vendor bundle + web assets + TypeScript
 make vendor          # rebuild vendored assets
-make lint            # ESLint
+make lint            # Oxlint
 make test            # full test suite
 make ci-fast         # canonical fast CI guardrails + web build
 make local-install   # pack and install piclaw globally (no restart)

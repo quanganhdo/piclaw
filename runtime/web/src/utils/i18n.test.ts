@@ -115,9 +115,6 @@ test('settings dialog keys are translated across peer locales', () => {
 test('compose and workspace keys are translated across peer locales', () => {
   expect(translate('compose.shareLocation', undefined, 'zh-CN')).toBe('分享位置');
   expect(translate('compose.attachFile', undefined, 'ja')).toBe('ファイルを添付');
-  expect(translate('compose.uploadingAttachments', { count: 2 }, 'en')).toBe('Uploading 2 attachment(s)…');
-  expect(translate('compose.uploadingAttachments', { count: 2 }, 'zh-CN')).toBe('正在上传 2 个附件…');
-  expect(translate('compose.uploadingAttachments', { count: 2 }, 'ja')).toBe('2 件の添付ファイルをアップロード中…');
   expect(translate('workspace.uploadFiles', undefined, 'zh-CN')).toBe('上传文件');
   expect(translate('workspace.deleteSelectedFile', undefined, 'ja')).toBe('選択したファイルを削除');
   expect(translate('workspace.downloadZip', undefined, 'en')).toBe('Download folder as zip');

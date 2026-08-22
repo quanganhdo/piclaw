@@ -1104,32 +1104,6 @@
       ]
     },
     {
-      "name": "PICLAW_ENABLE_M365_EXPERIMENTAL",
-      "owner": "agent-runtime",
-      "type": "boolean",
-      "default": false,
-      "bounds": "truthy enables experimental extension",
-      "allowedValues": [],
-      "secret": false,
-      "persistence": [
-        "env"
-      ],
-      "precedence": [
-        "process.env",
-        "default"
-      ],
-      "status": "supported",
-      "compatibilityAliasFor": null,
-      "deprecation": null,
-      "removalVersion": null,
-      "bootstrapAllowed": false,
-      "source": "optional extension startup gate",
-      "migrationDisposition": "retain-experimental-extension-gate",
-      "supportedPersistence": [
-        "env"
-      ]
-    },
-    {
       "name": "PICLAW_EXTERNAL_PROGRESS_WATCHDOG",
       "owner": "core",
       "type": "boolean",
@@ -1347,32 +1321,6 @@
         "env",
         "dotenv",
         "json-config"
-      ]
-    },
-    {
-      "name": "PICLAW_M365_YOLO",
-      "owner": "tools",
-      "type": "boolean",
-      "default": false,
-      "bounds": "1|true|yes|on",
-      "allowedValues": [],
-      "secret": false,
-      "persistence": [
-        "env"
-      ],
-      "precedence": [
-        "process.env",
-        "default"
-      ],
-      "status": "supported",
-      "compatibilityAliasFor": null,
-      "deprecation": null,
-      "removalVersion": null,
-      "bootstrapAllowed": false,
-      "source": "experimental M365 consent override",
-      "migrationDisposition": "retain-experimental-emergency-override",
-      "supportedPersistence": [
-        "env"
       ]
     },
     {

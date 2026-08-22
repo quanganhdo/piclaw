@@ -18,7 +18,7 @@ const LOG = "[postinstall]";
 const CM_SINGLETONS = ["@codemirror/commands", "@codemirror/state", "@codemirror/view", "@codemirror/language"];
 const nodeModules = resolve(ROOT, "node_modules");
 
-import { readdirSync, rmSync, existsSync } from "node:fs";
+import { chmodSync, readdirSync, rmSync, existsSync, statSync } from "node:fs";
 
 function removeNestedCmDuplicates(pkg: string): number {
   // Find every nested node_modules/@codemirror/state (etc.) that is NOT the
@@ -65,6 +65,32 @@ for (const pkg of CM_SINGLETONS) {
 }
 if (cmDupsRemoved > 0) {
   console.log(`${LOG} Removed ${cmDupsRemoved} nested CodeMirror duplicate(s) to enforce singleton instances`);
+}
+
+// TypeScript 7 delegates to a platform-native compiler. Bun 1.4 can extract
+// that binary without executable bits, which makes every tsc invocation fail
+// with EACCES. Normalise only the installed platform package on POSIX hosts.
+function ensureTypeScriptCompilerExecutable(): number {
+  if (process.platform === "win32") return 0;
+  const scope = resolve(nodeModules, "@typescript");
+  let repaired = 0;
+  try {
+    for (const entry of readdirSync(scope, { withFileTypes: true })) {
+      if (!entry.isDirectory() || !entry.name.startsWith("typescript-")) continue;
+      const compiler = resolve(scope, entry.name, "lib", "tsc");
+      if (!existsSync(compiler)) continue;
+      const mode = statSync(compiler).mode & 0o777;
+      if ((mode & 0o111) !== 0) continue;
+      chmodSync(compiler, mode | 0o755);
+      repaired++;
+    }
+  } catch { /* TypeScript is a development dependency and may be absent. */ }
+  return repaired;
+}
+
+const repairedTypeScriptCompilers = ensureTypeScriptCompilerExecutable();
+if (repairedTypeScriptCompilers > 0) {
+  console.log(`${LOG} Restored executable mode on ${repairedTypeScriptCompilers} TypeScript compiler binary`);
 }
 
 console.log(`${LOG} Done`);

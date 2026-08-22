@@ -1423,6 +1423,33 @@ body {
   flex-direction: column;
 }
 
+.chat__upload-status {
+  padding: 8px 14px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.chat__upload-status-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.chat__upload-status-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat__upload-status-percent {
+  margin-left: auto;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
 .chat__compose {
   background: var(--bg);
   border-top: 1px solid var(--border);
@@ -1782,30 +1809,6 @@ body {
 .chat__send-btn--sending {
   opacity: 0.6;
   cursor: wait;
-}
-
-.chat__send-status {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 5px 12px;
-  border-top: 1px solid var(--border);
-  color: var(--text-secondary);
-  background: var(--bg-elevated, var(--overlay-white-05));
-  font-size: 12px;
-}
-
-.chat__send-status-spinner {
-  width: 12px;
-  height: 12px;
-  border: 2px solid currentColor;
-  border-right-color: transparent;
-  border-radius: 50%;
-  animation: chat-send-spin 0.8s linear infinite;
-}
-
-@keyframes chat-send-spin {
-  to { transform: rotate(360deg); }
 }
 
 .chat__send-error {
@@ -3030,6 +3033,36 @@ body {
   align-items: center;
   gap: 4px;
   margin: 6px 0 2px;
+}
+
+.workspace__upload-status,
+.workspace__upload-error {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border, var(--overlay-white-12));
+  border-radius: 7px;
+  background: var(--bg-elevated, var(--overlay-white-05));
+  font-size: 11px;
+}
+
+.workspace__upload-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  color: var(--text-secondary, #71767b);
+}
+
+.workspace__upload-status-row > :first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace__upload-error {
+  border-color: color-mix(in srgb, var(--error, #f38ba8) 60%, var(--border));
+  color: var(--error, #f38ba8);
 }
 
 .workspace__folder-desc {

@@ -15,6 +15,11 @@ import {
   type WorkspaceMutationPayload,
 } from "./workspaceUtils";
 import { useDialog } from "../../hooks/useDialog";
+import {
+  uploadFileBatch,
+  uploadWorkspaceFile,
+  type UploadBatchProgress,
+} from "../../../../../../src/ui/upload-transfers";
 
 import { createLogger } from "../../utils/logger";
 const log = createLogger("WorkspacePanel");
@@ -234,6 +239,8 @@ export function FolderPreview({ node, onMutate }: FolderPreviewProps) {
   const [showAll, setShowAll] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "chart">("list");
   const [actionBusy, setActionBusy] = useState<"create" | "upload" | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<UploadBatchProgress | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const { showPrompt, showAlert } = useDialog();
 
@@ -336,35 +343,39 @@ export function FolderPreview({ node, onMutate }: FolderPreviewProps) {
   const handleUploadFiles = useCallback(async (files: FileList | null) => {
     if (!files?.length || actionBusy) return;
 
+    const selectedFiles = Array.from(files);
     setActionBusy("upload");
+    setUploadError(null);
     try {
-      let lastUploadedNode: TreeNode | null = null;
-      for (const file of Array.from(files)) {
-        const formData = new FormData();
-        formData.append("file", file);
-        const response = await fetch(`/workspace/upload?path=${encodeURIComponent(node.path)}`, {
-          method: "POST",
-          credentials: "same-origin",
-          body: formData,
-        });
-        const data = await readJsonSafely<{ error?: string; path?: string; name?: string; size?: number }>(response);
-        if (!response.ok) {
-          throw new Error(getErrorMessage(data, `Failed to upload ${file.name}`));
-        }
-        lastUploadedNode = makeTreeNodeFromMutation("file", data ?? {});
-      }
-
-      if (lastUploadedNode) {
-        onMutate({ nextNode: lastUploadedNode });
+      const uploaded = await uploadFileBatch(
+        selectedFiles,
+        async (file, onProgress) => {
+          try {
+            return await uploadWorkspaceFile(file, node.path, { onProgress });
+          } catch (error: any) {
+            if (error?.status !== 409 && error?.code !== "file_exists") throw error;
+            const overwrite = window.confirm(`"${file.name}" already exists in ${node.path || "workspace root"}. Overwrite?`);
+            if (!overwrite) return null;
+            return await uploadWorkspaceFile(file, node.path, { overwrite: true, onProgress });
+          }
+        },
+        { onProgress: setUploadProgress },
+      );
+      const lastResult = uploaded.map(({ result }) => result).filter(Boolean).at(-1);
+      if (lastResult) {
+        onMutate({ nextNode: makeTreeNodeFromMutation("file", lastResult) });
       }
     } catch (error) {
       log.error("Failed to upload file:", error);
+      const description = toUserFacingMessage(error, "Failed to upload file");
+      setUploadError(description);
       await showAlert({
         title: "Failed to upload file",
-        description: toUserFacingMessage(error, "Failed to upload file"),
+        description,
       });
     } finally {
       if (uploadInputRef.current) uploadInputRef.current.value = "";
+      setUploadProgress(null);
       setActionBusy(null);
     }
   }, [actionBusy, node.path, onMutate, showAlert]);
@@ -396,9 +407,32 @@ export function FolderPreview({ node, onMutate }: FolderPreviewProps) {
           hidden
           multiple
           type="file"
+          disabled={actionBusy !== null}
           onChange={(event) => void handleUploadFiles(event.currentTarget.files)}
         />
       </div>
+
+      {uploadProgress && (
+        <div className="workspace__upload-status" role="status" aria-live="polite" data-testid="workspace-upload-status">
+          <div className="workspace__upload-status-row">
+            <span>{`Uploading ${uploadProgress.current}/${uploadProgress.total}: ${uploadProgress.name}`}</span>
+            <span>{uploadProgress.percent}%</span>
+          </div>
+          <div
+            className="upload-progress-bar"
+            role="progressbar"
+            aria-label="Workspace upload progress"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={uploadProgress.percent}
+          >
+            <div className="upload-progress-fill" style={{ width: `${uploadProgress.percent}%` }} />
+          </div>
+        </div>
+      )}
+      {uploadError && (
+        <div className="workspace__upload-error" role="alert" aria-live="assertive">{uploadError}</div>
+      )}
 
       <div className="workspace__preview-path">{node.path}</div>
       <div className="workspace__folder-desc">

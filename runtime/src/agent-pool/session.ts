@@ -109,9 +109,7 @@ const OPTIONAL_EXTENSIONS: OptionalBundledExtension[] = [
   // win-ui removed: now shipped as @rcarmo/piclaw-addon-win-ui
   // office-viewer-tool removed: now shipped as @rcarmo/piclaw-addon-office-viewer
   // office-tools-tool removed: now shipped as @rcarmo/piclaw-addon-office-tools
-  { path: resolve(EXTENSIONS_DIR, "experimental", "m365", "index.ts"), envGate: "PICLAW_ENABLE_M365_EXPERIMENTAL" },
 ];
-
 
 function getWorkspaceAddonNodeModulesFingerprint(workspaceDir: string): string {
   const addonNodeModulesDir = join(workspaceDir, ".pi", "extensions", "node_modules");

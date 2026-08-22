@@ -12,7 +12,7 @@
 #   portable-mac/windows – Build platform-native portable artifacts on matching runners.
 #   portable-experimental-shell – Build the Electrobun shell artifact with an -experimental suffix.
 #   local-install  – Pack and install globally (no restart).
-#   lint/test      – Run ESLint and bun test suite.
+#   lint/test      – Run Oxlint and bun test suite.
 #   ci-fast        – Run the canonical fast CI guardrails + web build.
 #   install-git-hooks – Install local Git hooks that run fast CI before main pushes.
 #   publish-smoke  – Smoke-test a published piclaw image via env-provided args.

@@ -1,6 +1,8 @@
 # Install from the GitHub repository
 
 > Experimental: this Bun repo-install path works, but it is not yet the main recommended production install route.
+>
+> This repository requires Bun 1.4.0 or newer. Its version 2 lockfiles are not readable by Bun 1.3; rollback to a pre-1.4 runtime requires reverting the lockfile migration as well.
 
 PiClaw can be installed directly from the repository with Bun:
 

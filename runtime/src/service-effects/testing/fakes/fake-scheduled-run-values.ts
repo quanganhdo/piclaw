@@ -369,7 +369,7 @@ export function decodeScheduledRunRecord(candidate: unknown): ScheduledRunRecord
     || (settledAt !== null && !canonicalInstant(settledAt)) || (reason !== null && !text.code(reason))) return null;
 
   const sourcePresent = sourceSeq !== null;
-  let shape = false;
+  let shape: boolean;
   if (retained) shape = (state === "completed" || state === "abandoned") && workerId === null && leaseExpiresAt === null && !sourcePresent
     && durationMs === null && resultRef === null && errorCode === null && reason === null && disposition !== "pending" && settledAt !== null
     && outboxIds.length === 0 && (state === "completed" ? status !== null : status === null);

@@ -166,15 +166,15 @@ pi.registerTool({
 
 ```ts
 pi.registerTool({
-  name: "m365_teams_messages",
-  description: "Read messages from a Teams chat thread.",
-  promptSnippet: "Read Teams chat messages and inspect recent conversation history",
+  name: "crm_messages",
+  description: "Read messages from a customer conversation.",
+  promptSnippet: "Read customer messages and inspect recent conversation history",
   jdoc: {
-    aliases: ["teams chat read"],
-    domains: ["m365", "teams"],
+    aliases: ["customer chat read"],
+    domains: ["crm", "support"],
     verbs: ["read", "inspect"],
-    nouns: ["teams", "chat", "thread", "messages"],
-    examples: ["inspect recent Teams messages"],
+    nouns: ["customer", "chat", "thread", "messages"],
+    examples: ["inspect recent customer messages"],
   },
 });
 ```

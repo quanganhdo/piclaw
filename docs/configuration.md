@@ -446,23 +446,6 @@ Manual `/compact` attaches a Markdown report. For provider-native success, that 
 
 Deprecated env names (still supported): `ASSISTANT_NAME`, `ASSISTANT_AVATAR`, `AGENT_TIMEOUT`, `AGENT_TIMEOUT_BACKGROUND`.
 
-## Experimental M365 extension
-
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `PICLAW_ENABLE_M365_EXPERIMENTAL` | `0` | Enable the packaged Microsoft 365 experimental extension |
-| `M365_EDGE_PATH` | _(auto-discover)_ | Override browser path (Edge → Chrome → Chromium fallback order otherwise) |
-| `M365_USE_TEMP_EDGE_PROFILE` | `false` | Use a temporary browser profile instead of the normal logged-in browser profile |
-| `PICLAW_M365_YOLO` | `0` | Skip the explicit consent interstitial before auth navigation |
-| `M365_TENANT_ID` | `common` / auto-discovered | Force a tenant id instead of starting from the multi-tenant default and inferring it from token claims |
-| `M365_CHATSVC_REGION` | _(auto-discover)_ | Force the Teams chatsvc region instead of inferring it from Teams token claims |
-
-Notes:
-
-- Graph-backed consumer-account support works when an Outlook Live session is visible in the browser.
-- Teams chat tools still require a work/school M365 account.
-- For operational details, platform notes, and account-scope guidance, see [m365-experimental-extension.md](m365-experimental-extension.md).
-
 ## SSH-backed remote core tools
 
 Piclaw can redirect the core file/shell tools (`read`, `write`, `edit`, `bash`) to a remote host over SSH.

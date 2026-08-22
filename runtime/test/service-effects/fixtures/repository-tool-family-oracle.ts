@@ -1,7 +1,16 @@
 import { createHash } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { posix, relative, resolve } from "node:path";
-import ts from "typescript";
+import * as ts from "@babel/types";
+
+import {
+  forEachSyntaxChild,
+  literalString,
+  parseTypeScriptSource,
+  propertyKeyName,
+  syntaxText,
+  type ParsedTypeScriptSource,
+} from "./typescript-syntax-oracle.js";
 
 const runtimeRoot = resolve(import.meta.dir, "../../..");
 const BUILTIN_ROOT = "src/extensions/index.ts";
@@ -166,18 +175,21 @@ export function resolveRepositoryModule(fromFile: string, specifier: string, fil
 
 export function extractSdkToolFamilies(source: string): readonly string[] {
   const ast = sourceFile("@earendil-works/pi-coding-agent/core/tools/index.js", source);
-  for (const statement of ast.statements) {
-    if (!ts.isVariableStatement(statement)) continue;
-    for (const declaration of statement.declarationList.declarations) {
-      if (!ts.isIdentifier(declaration.name) || declaration.name.text !== "allToolNames" || !declaration.initializer) continue;
-      const initializer = declaration.initializer;
-      if (!ts.isNewExpression(initializer) || calleeName(initializer.expression) !== "Set") continue;
-      const values = initializer.arguments?.[0];
-      if (!values || !ts.isArrayLiteralExpression(values) || !values.elements.every(ts.isStringLiteralLike)) continue;
-      return Object.freeze(values.elements.map((entry) => entry.text).sort());
+  let names: string[] | null = null;
+  const visit = (node: ts.Node): void => {
+    if (!names && ts.isVariableDeclarator(node) && ts.isIdentifier(node.id) && node.id.name === "allToolNames"
+      && node.init && ts.isNewExpression(node.init) && calleeName(node.init.callee) === "Set") {
+      const values = expressionArgument(node.init.arguments[0]);
+      if (values && ts.isArrayExpression(values)) {
+        const entries = values.elements.map((entry) => entry && literalString(entry)).filter((entry): entry is string => entry !== null);
+        if (entries.length === values.elements.length) names = entries;
+      }
     }
-  }
-  throw new Error("SDK allToolNames literal was not found");
+    if (!names) forEachSyntaxChild(node, visit);
+  };
+  visit(ast.program);
+  if (!names) throw new Error("SDK allToolNames literal was not found");
+  return Object.freeze(names.sort());
 }
 
 function staticRegistrationContract(name: string, file: string, source: string, files: Readonly<Record<string, string>>): StaticToolContract | null {
@@ -186,49 +198,52 @@ function staticRegistrationContract(name: string, file: string, source: string, 
   const variables = variableInitializers(ast);
   let contract: StaticToolContract | null = null;
   const visit = (node: ts.Node): void => {
-    if (contract || !ts.isCallExpression(node) || !isRegisterToolCall(node.expression) || !node.arguments[0]) {
-      if (!contract) ts.forEachChild(node, visit);
+    const argument = ts.isCallExpression(node) ? expressionArgument(node.arguments[0]) : null;
+    if (contract || !ts.isCallExpression(node) || !isRegisterToolCall(node.callee) || !argument) {
+      if (!contract) forEachSyntaxChild(node, visit);
       return;
     }
-    const resolved = resolveRegistration(node.arguments[0], constants, variables, ast, file, files);
+    const resolved = resolveRegistration(argument, constants, variables, ast, file, files);
     if (resolved.name !== name) return;
-    const argument = node.arguments[0];
-    const object = ts.isObjectLiteralExpression(argument) ? argument : null;
+    const object = ts.isObjectExpression(argument) ? argument : null;
     const description = object && objectProperty(object, "description");
     const prompt = object && objectProperty(object, "promptSnippet");
     const parameters = object && objectProperty(object, "parameters");
     contract = freezeContract(
       name,
-      description ? normalizeContractText(description.initializer.getText(ast)) : `factory:${normalizeContractText(argument.getText(ast))}`,
-      prompt ? normalizeContractText(prompt.initializer.getText(ast)) : "",
-      parameters ? fingerprint(parameters.initializer.getText(ast)) : fingerprint(`factory:${argument.getText(ast)}`),
+      description ? normalizeContractText(syntaxText(ast, description.value)) : `factory:${normalizeContractText(syntaxText(ast, argument))}`,
+      prompt ? normalizeContractText(syntaxText(ast, prompt.value)) : "",
+      parameters ? fingerprint(syntaxText(ast, parameters.value)) : fingerprint(`factory:${syntaxText(ast, argument)}`),
     );
   };
-  visit(ast);
+  visit(ast.program);
   return contract;
 }
 
 function staticSdkContract(name: string, source: string): StaticToolContract {
   const ast = sourceFile(`${name}.js`, source);
   const definition = `create${name[0]!.toUpperCase()}${name.slice(1)}ToolDefinition`;
-  let object: ts.ObjectLiteralExpression | null = null;
-  for (const statement of ast.statements) {
-    if (!ts.isFunctionDeclaration(statement) || statement.name?.text !== definition || !statement.body) continue;
-    const visit = (node: ts.Node): void => {
-      if (!object && ts.isReturnStatement(node) && node.expression && ts.isObjectLiteralExpression(node.expression)) object = node.expression;
-      if (!object) ts.forEachChild(node, visit);
-    };
-    visit(statement.body);
-  }
+  let object: ts.ObjectExpression | null = null;
+  const visit = (node: ts.Node): void => {
+    if (!object && ts.isFunctionDeclaration(node) && node.id?.name === definition && node.body) {
+      forEachSyntaxChild(node.body, (child) => {
+        if (!object && ts.isReturnStatement(child) && child.argument && ts.isObjectExpression(child.argument)) object = child.argument;
+        if (!object) visit(child);
+      });
+      return;
+    }
+    if (!object) forEachSyntaxChild(node, visit);
+  };
+  visit(ast.program);
   if (!object) return freezeContract(name, `unresolved:${definition}`, "", fingerprint(`unresolved:${definition}`));
   const description = objectProperty(object, "description");
   const prompt = objectProperty(object, "promptSnippet");
   const parameters = objectProperty(object, "parameters");
   return freezeContract(
     name,
-    description ? normalizeContractText(description.initializer.getText(ast)) : "",
-    prompt ? normalizeContractText(prompt.initializer.getText(ast)) : "",
-    parameters ? fingerprint(parameters.initializer.getText(ast)) : fingerprint(`unresolved-schema:${definition}`),
+    description ? normalizeContractText(syntaxText(ast, description.value)) : "",
+    prompt ? normalizeContractText(syntaxText(ast, prompt.value)) : "",
+    parameters ? fingerprint(syntaxText(ast, parameters.value)) : fingerprint(`unresolved-schema:${definition}`),
   );
 }
 
@@ -244,20 +259,20 @@ function parseBuiltinFactoryRoots(source: string, file: string, files: Readonly<
   const imports = importBindings(ast);
   const roots = new Set<string>();
   const visit = (node: ts.Node): void => {
-    if (ts.isFunctionDeclaration(node) && node.name?.text === "createBuiltinExtensionFactories") {
+    if (ts.isFunctionDeclaration(node) && node.id?.name === "createBuiltinExtensionFactories") {
       const returned = findReturnedArray(node.body);
-      for (const expression of returned?.elements ?? []) {
-        const identifier = ts.isCallExpression(expression) ? expression.expression : expression;
-        if (!ts.isIdentifier(identifier)) continue;
-        const binding = imports.get(identifier.text);
+      for (const element of returned?.elements ?? []) {
+        const expression = element && (ts.isCallExpression(element) ? element.callee : element);
+        if (!expression || !ts.isIdentifier(expression)) continue;
+        const binding = imports.get(expression.name);
         if (!binding) continue;
         const resolved = resolveSourceFile(file, binding.specifier, files);
         if (resolved) roots.add(resolved);
       }
     }
-    ts.forEachChild(node, visit);
+    forEachSyntaxChild(node, visit);
   };
-  visit(ast);
+  visit(ast.program);
   return [...roots].sort();
 }
 
@@ -267,15 +282,15 @@ function parseOptionalExtensionRoots(source: string, config: ProductionCompositi
   const platform = config.platform;
   const enabledEnv = config.enabledEnv;
   const visit = (node: ts.Node): void => {
-    if (!ts.isVariableDeclaration(node) || !ts.isIdentifier(node.name) || node.name.text !== "OPTIONAL_EXTENSIONS") {
-      ts.forEachChild(node, visit);
+    if (!ts.isVariableDeclarator(node) || !ts.isIdentifier(node.id) || node.id.name !== "OPTIONAL_EXTENSIONS") {
+      forEachSyntaxChild(node, visit);
       return;
     }
-    if (!node.initializer || !ts.isArrayLiteralExpression(node.initializer)) return;
-    for (const element of node.initializer.elements) {
-      if (!ts.isObjectLiteralExpression(element)) continue;
+    if (!node.init || !ts.isArrayExpression(node.init)) return;
+    for (const element of node.init.elements) {
+      if (!element || !ts.isObjectExpression(element)) continue;
       const pathProperty = objectProperty(element, "path");
-      const path = pathProperty && optionalPath(pathProperty.initializer);
+      const path = pathProperty && ts.isExpression(pathProperty.value) ? optionalPath(pathProperty.value) : null;
       if (!path) continue;
       const envGate = stringProperty(element, "envGate");
       const platforms = stringArrayProperty(element, "platforms");
@@ -284,13 +299,13 @@ function parseOptionalExtensionRoots(source: string, config: ProductionCompositi
       roots.push(path);
     }
   };
-  visit(ast);
+  visit(ast.program);
   return [...new Set(roots)].sort();
 }
 
 function optionalPath(expression: ts.Expression): string | null {
   if (!ts.isCallExpression(expression) || expression.arguments.length < 2) return null;
-  const parts = expression.arguments.slice(1).map((argument) => ts.isStringLiteralLike(argument) ? argument.text : null);
+  const parts = expression.arguments.slice(1).map((argument) => literalString(argument));
   if (parts.some((part) => part === null)) return null;
   return posix.join("extensions", ...(parts as string[]));
 }
@@ -342,19 +357,20 @@ function extractFirstTypeObjectSchema(file: string, source: string): { fields: s
   const variables = variableInitializers(ast);
   let schema: ts.Expression | null = null;
   const visit = (node: ts.Node): void => {
-    if (!schema && ts.isPropertyAssignment(node) && propertyName(node.name) === "parameters") {
-      schema = ts.isIdentifier(node.initializer) ? variables.get(node.initializer.text) ?? null : node.initializer;
+    if (!schema && ts.isObjectProperty(node) && propertyKeyName(node.key) === "parameters" && ts.isExpression(node.value)) {
+      schema = ts.isIdentifier(node.value) ? variables.get(node.value.name) ?? null : node.value;
     }
-    if (!schema) ts.forEachChild(node, visit);
+    if (!schema) forEachSyntaxChild(node, visit);
   };
-  visit(ast);
-  if (!schema || !ts.isCallExpression(schema) || !ts.isPropertyAccessExpression(schema.expression)
-    || schema.expression.expression.getText(ast) !== "Type" || schema.expression.name.text !== "Object") return null;
-  const object = schema.arguments[0];
-  if (!object || !ts.isObjectLiteralExpression(object)) return null;
-  const fields = object.properties.map((property) => propertyName(property.name)).filter((name): name is string => name !== null);
+  visit(ast.program);
+  if (!schema || !ts.isCallExpression(schema) || !ts.isMemberExpression(schema.callee) || schema.callee.computed
+    || syntaxText(ast, schema.callee.object) !== "Type" || propertyKeyName(schema.callee.property) !== "Object") return null;
+  const object = expressionArgument(schema.arguments[0]);
+  if (!object || !ts.isObjectExpression(object)) return null;
+  const fields = object.properties.map((property) => ts.isObjectProperty(property) ? propertyKeyName(property.key) : null)
+    .filter((name): name is string => name !== null);
   if (fields.length !== object.properties.length) return null;
-  return { fields, source: schema.getText(ast) };
+  return { fields, source: syntaxText(ast, schema) };
 }
 
 export function extractLiteralRegistrationParameterFields(
@@ -368,48 +384,52 @@ export function extractLiteralRegistrationParameterFields(
   const fieldsByTool: Record<string, readonly string[]> = Object.create(null);
   const unresolvedSchemas: Array<Readonly<{ file: string; registration: string }>> = [];
   const parameterKeys = (expression: ts.Expression, seen = new Set<string>()): string[] | null => {
-    if (ts.isCallExpression(expression) && expression.arguments[0]) return parameterKeys(expression.arguments[0], seen);
-    if (ts.isObjectLiteralExpression(expression)) {
+    if (ts.isCallExpression(expression)) {
+      const argument = expressionArgument(expression.arguments[0]);
+      if (argument) return parameterKeys(argument, seen);
+    }
+    if (ts.isObjectExpression(expression)) {
       const jsonSchemaProperties = objectProperty(expression, "properties");
-      const fieldObject = jsonSchemaProperties && ts.isObjectLiteralExpression(jsonSchemaProperties.initializer)
-        ? jsonSchemaProperties.initializer : expression;
+      const fieldObject = jsonSchemaProperties && ts.isObjectExpression(jsonSchemaProperties.value)
+        ? jsonSchemaProperties.value : expression;
       const names: string[] = [];
       for (const property of fieldObject.properties) {
-        if (!ts.isPropertyAssignment(property)) return null;
-        const name = propertyName(property.name);
+        if (!ts.isObjectProperty(property)) return null;
+        const name = propertyKeyName(property.key);
         if (!name) return null;
         names.push(name);
       }
       return names;
     }
-    if (ts.isIdentifier(expression) && !seen.has(expression.text)) {
-      seen.add(expression.text);
-      const initializer = variables.get(expression.text);
+    if (ts.isIdentifier(expression) && !seen.has(expression.name)) {
+      seen.add(expression.name);
+      const initializer = variables.get(expression.name);
       return initializer ? parameterKeys(initializer, seen) : null;
     }
     return null;
   };
   const visit = (node: ts.Node): void => {
-    if (ts.isCallExpression(node) && isRegisterToolCall(node.expression) && node.arguments[0] && ts.isObjectLiteralExpression(node.arguments[0])) {
-      const nameProperty = objectProperty(node.arguments[0], "name");
-      const parametersProperty = objectProperty(node.arguments[0], "parameters");
-      if (nameProperty && parametersProperty) {
-        const toolName = ts.isStringLiteralLike(nameProperty.initializer)
-          ? nameProperty.initializer.text
-          : ts.isIdentifier(nameProperty.initializer)
-            ? constants.get(nameProperty.initializer.text) ?? resolveImportedString(nameProperty.initializer.text, file, ast, files) ?? undefined
-            : undefined;
-        const fields = parameterKeys(parametersProperty.initializer);
+    const argument = ts.isCallExpression(node) ? expressionArgument(node.arguments[0]) : null;
+    if (ts.isCallExpression(node) && isRegisterToolCall(node.callee) && argument && ts.isObjectExpression(argument)) {
+      const nameProperty = objectProperty(argument, "name");
+      const parametersProperty = objectProperty(argument, "parameters");
+      if (nameProperty && parametersProperty && ts.isExpression(nameProperty.value) && ts.isExpression(parametersProperty.value)) {
+        const toolName = literalString(nameProperty.value)
+          ?? (ts.isIdentifier(nameProperty.value)
+            ? constants.get(nameProperty.value.name) ?? resolveImportedString(nameProperty.value.name, file, ast, files)
+            : null)
+          ?? undefined;
+        const fields = parameterKeys(parametersProperty.value);
         if (toolName && fields) fieldsByTool[toolName] = Object.freeze(fields);
         else unresolvedSchemas.push(Object.freeze({
           file,
-          registration: `${toolName ?? compact(nameProperty.initializer.getText(ast))}#${compact(parametersProperty.initializer.getText(ast))}`,
+          registration: `${toolName ?? compact(syntaxText(ast, nameProperty.value))}#${compact(syntaxText(ast, parametersProperty.value))}`,
         }));
       }
     }
-    ts.forEachChild(node, visit);
+    forEachSyntaxChild(node, visit);
   };
-  visit(ast);
+  visit(ast.program);
   return Object.freeze({
     fieldsByTool: Object.freeze(fieldsByTool),
     unresolvedSchemas: Object.freeze(unresolvedSchemas),
@@ -421,20 +441,21 @@ function parseRegistrations(
   source: string,
   files: Readonly<Record<string, string>> = {},
 ): Array<{ name: string | null; fingerprint: string }> {
+  if (file.endsWith(".json")) return [];
   const ast = sourceFile(file, source);
   const constants = stringConstants(ast);
   const variables = variableInitializers(ast);
   const registrations: Array<{ name: string | null; fingerprint: string }> = [];
   const visit = (node: ts.Node): void => {
-    if (ts.isCallExpression(node) && isRegisterToolCall(node.expression)) {
-      const argument = node.arguments[0];
+    if (ts.isCallExpression(node) && isRegisterToolCall(node.callee)) {
+      const argument = expressionArgument(node.arguments[0]);
       registrations.push(argument
         ? resolveRegistration(argument, constants, variables, ast, file, files)
         : { name: null, fingerprint: "missing-argument" });
     }
-    ts.forEachChild(node, visit);
+    forEachSyntaxChild(node, visit);
   };
-  visit(ast);
+  visit(ast.program);
   return registrations;
 }
 
@@ -442,46 +463,47 @@ function resolveRegistration(
   argument: ts.Expression,
   constants: ReadonlyMap<string, string>,
   variables: ReadonlyMap<string, ts.Expression>,
-  ast: ts.SourceFile,
+  ast: ParsedTypeScriptSource,
   file: string,
   files: Readonly<Record<string, string>>,
 ): { name: string | null; fingerprint: string } {
-  if (ts.isObjectLiteralExpression(argument)) {
+  if (ts.isObjectExpression(argument)) {
     const property = objectProperty(argument, "name");
-    if (property) {
-      if (ts.isStringLiteralLike(property.initializer)) return { name: property.initializer.text, fingerprint: "literal" };
-      if (ts.isIdentifier(property.initializer)) {
-        const name = constants.get(property.initializer.text) ?? resolveImportedString(property.initializer.text, file, ast, files);
+    if (property && ts.isExpression(property.value)) {
+      const literal = literalString(property.value);
+      if (literal !== null) return { name: literal, fingerprint: "literal" };
+      if (ts.isIdentifier(property.value)) {
+        const name = constants.get(property.value.name) ?? resolveImportedString(property.value.name, file, ast, files);
         if (name) return { name, fingerprint: "source-constant" };
       }
-      return { name: null, fingerprint: `name:${compact(property.initializer.getText(ast))}` };
+      return { name: null, fingerprint: `name:${compact(syntaxText(ast, property.value))}` };
     }
-    const spreads = argument.properties.filter(ts.isSpreadAssignment);
-    if (spreads.length === 1 && ts.isIdentifier(spreads[0].expression)) {
-      const identifier = spreads[0].expression.text;
+    const spreads = argument.properties.filter(ts.isSpreadElement);
+    if (spreads.length === 1 && ts.isIdentifier(spreads[0].argument)) {
+      const identifier = spreads[0].argument.name;
       const initializer = variables.get(identifier);
       if (initializer && ts.isCallExpression(initializer)) {
-        const factory = calleeName(initializer.expression);
+        const factory = calleeName(initializer.callee);
         const name = factory && resolveFactoryToolName(factory, file, ast, files);
         if (name) return { name, fingerprint: `source-factory:${factory}` };
       }
       const inferred = /([A-Za-z][A-Za-z0-9]*)Tool$/.exec(identifier)?.[1];
       if (inferred) return { name: camelToSnake(inferred), fingerprint: `spread:${identifier}` };
     }
-    return { name: null, fingerprint: `spread:${spreads.map((spread) => compact(spread.expression.getText(ast))).join("+") || "none"}` };
+    return { name: null, fingerprint: `spread:${spreads.map((spread) => compact(syntaxText(ast, spread.argument))).join("+") || "none"}` };
   }
   if (ts.isCallExpression(argument)) {
-    const factory = calleeName(argument.expression);
+    const factory = calleeName(argument.callee);
     const name = factory && resolveFactoryToolName(factory, file, ast, files);
     return name ? { name, fingerprint: `source-factory:${factory}` } : { name: null, fingerprint: `factory:${factory ?? "unknown"}` };
   }
-  return { name: null, fingerprint: `expression:${compact(argument.getText(ast))}` };
+  return { name: null, fingerprint: `expression:${compact(syntaxText(ast, argument))}` };
 }
 
 function resolveImportedString(
   localName: string,
   file: string,
-  ast: ts.SourceFile,
+  ast: ParsedTypeScriptSource,
   files: Readonly<Record<string, string>>,
 ): string | null {
   const binding = importBindings(ast).get(localName);
@@ -505,20 +527,20 @@ function resolveExportedString(
   const local = stringConstants(ast).get(exportedName);
   if (local) return local;
   for (const statement of ast.statements) {
-    if (!ts.isExportDeclaration(statement)) continue;
-    const clause = statement.exportClause;
-    const specifier = statement.moduleSpecifier && ts.isStringLiteralLike(statement.moduleSpecifier)
-      ? statement.moduleSpecifier.text : null;
-    if (clause && ts.isNamedExports(clause)) {
-      const element = clause.elements.find((candidate) => candidate.name.text === exportedName);
-      if (!element) continue;
-      const original = element.propertyName?.text ?? element.name.text;
+    if (ts.isExportNamedDeclaration(statement)) {
+      const specifier = statement.source?.value ?? null;
+      const element = statement.specifiers.find((candidate) =>
+        ts.isExportSpecifier(candidate) && propertyKeyName(candidate.exported) === exportedName
+      );
+      if (!element || !ts.isExportSpecifier(element)) continue;
+      const original = propertyKeyName(element.local);
+      if (!original) continue;
       if (!specifier) return stringConstants(ast).get(original) ?? null;
       const target = resolveSourceFile(file, specifier, files);
       return target ? resolveExportedString(target, original, files, seen) : null;
     }
-    if (!clause && specifier) {
-      const target = resolveSourceFile(file, specifier, files);
+    if (ts.isExportAllDeclaration(statement)) {
+      const target = resolveSourceFile(file, statement.source.value, files);
       const value = target ? resolveExportedString(target, exportedName, files, seen) : null;
       if (value) return value;
     }
@@ -529,7 +551,7 @@ function resolveExportedString(
 function resolveFactoryToolName(
   localName: string,
   file: string,
-  ast: ts.SourceFile,
+  ast: ParsedTypeScriptSource,
   files: Readonly<Record<string, string>>,
 ): string | null {
   const local = findFactoryToolName(ast, localName);
@@ -557,20 +579,20 @@ function resolveExportedFactoryToolName(
   const local = findFactoryToolName(ast, exportedName);
   if (local) return local;
   for (const statement of ast.statements) {
-    if (!ts.isExportDeclaration(statement)) continue;
-    const clause = statement.exportClause;
-    const specifier = statement.moduleSpecifier && ts.isStringLiteralLike(statement.moduleSpecifier)
-      ? statement.moduleSpecifier.text : null;
-    if (clause && ts.isNamedExports(clause)) {
-      const element = clause.elements.find((candidate) => candidate.name.text === exportedName);
-      if (!element) continue;
-      const original = element.propertyName?.text ?? element.name.text;
+    if (ts.isExportNamedDeclaration(statement)) {
+      const specifier = statement.source?.value ?? null;
+      const element = statement.specifiers.find((candidate) =>
+        ts.isExportSpecifier(candidate) && propertyKeyName(candidate.exported) === exportedName
+      );
+      if (!element || !ts.isExportSpecifier(element)) continue;
+      const original = propertyKeyName(element.local);
+      if (!original) continue;
       if (!specifier) return findFactoryToolName(ast, original);
       const target = resolveSourceFile(file, specifier, files);
       return target ? resolveExportedFactoryToolName(target, original, files, seen) : null;
     }
-    if (!clause && specifier) {
-      const target = resolveSourceFile(file, specifier, files);
+    if (ts.isExportAllDeclaration(statement)) {
+      const target = resolveSourceFile(file, statement.source.value, files);
       const value = target ? resolveExportedFactoryToolName(target, exportedName, files, seen) : null;
       if (value) return value;
     }
@@ -578,27 +600,28 @@ function resolveExportedFactoryToolName(
   return null;
 }
 
-function findFactoryToolName(ast: ts.SourceFile, symbol: string): string | null {
-  let body: ts.ConciseBody | undefined;
+function findFactoryToolName(ast: ParsedTypeScriptSource, symbol: string): string | null {
+  let body: ts.Expression | ts.BlockStatement | undefined;
   for (const statement of ast.statements) {
-    if (ts.isFunctionDeclaration(statement) && statement.name?.text === symbol) body = statement.body;
-    if (!ts.isVariableStatement(statement)) continue;
-    for (const declaration of statement.declarationList.declarations) {
-      if (ts.isIdentifier(declaration.name) && declaration.name.text === symbol && declaration.initializer &&
-        (ts.isArrowFunction(declaration.initializer) || ts.isFunctionExpression(declaration.initializer))) body = declaration.initializer.body;
+    const declaration = ts.isExportNamedDeclaration(statement) && statement.declaration ? statement.declaration : statement;
+    if (ts.isFunctionDeclaration(declaration) && declaration.id?.name === symbol && declaration.body) body = declaration.body;
+    if (!ts.isVariableDeclaration(declaration)) continue;
+    for (const variable of declaration.declarations) {
+      if (ts.isIdentifier(variable.id) && variable.id.name === symbol && variable.init &&
+        (ts.isArrowFunctionExpression(variable.init) || ts.isFunctionExpression(variable.init))) body = variable.init.body;
     }
   }
   if (!body) return null;
   let found: string | null = null;
-  const inspectObject = (object: ts.ObjectLiteralExpression): void => {
+  const inspectObject = (object: ts.ObjectExpression): void => {
     const property = objectProperty(object, "name");
-    if (property && ts.isStringLiteralLike(property.initializer)) found = property.initializer.text;
+    if (property) found = literalString(property.value);
   };
-  if (ts.isObjectLiteralExpression(body)) inspectObject(body);
+  if (ts.isObjectExpression(body)) inspectObject(body);
   else {
     const visit = (node: ts.Node): void => {
-      if (!found && ts.isReturnStatement(node) && node.expression && ts.isObjectLiteralExpression(node.expression)) inspectObject(node.expression);
-      if (!found) ts.forEachChild(node, visit);
+      if (!found && ts.isReturnStatement(node) && node.argument && ts.isObjectExpression(node.argument)) inspectObject(node.argument);
+      if (!found) forEachSyntaxChild(node, visit);
     };
     visit(body);
   }
@@ -619,16 +642,16 @@ function resolveCalledImportedRoots(file: string, source: string, files: Readonl
   const imports = importBindings(ast);
   const roots = new Set<string>();
   const visit = (node: ts.Node): void => {
-    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
-      const binding = imports.get(node.expression.text);
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.callee)) {
+      const binding = imports.get(node.callee.name);
       if (binding) {
         const resolved = resolveSourceFile(file, binding.specifier, files);
         if (resolved) roots.add(resolved);
       }
     }
-    ts.forEachChild(node, visit);
+    forEachSyntaxChild(node, visit);
   };
-  visit(ast);
+  visit(ast.program);
   return [...roots].sort();
 }
 
@@ -640,17 +663,22 @@ function resolveModuleGraphEdges(file: string, source: string, files: Readonly<R
     if (resolved && !roots.includes(resolved)) roots.push(resolved);
   };
   const visit = (node: ts.Node): void => {
-    if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteralLike(node.moduleSpecifier)) add(node.moduleSpecifier.text);
-    if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)
-      && node.moduleReference.expression && ts.isStringLiteralLike(node.moduleReference.expression)) add(node.moduleReference.expression.text);
-    if (ts.isCallExpression(node) && node.arguments.length === 1 && ts.isStringLiteralLike(node.arguments[0])) {
-      if (node.expression.kind === ts.SyntaxKind.ImportKeyword || ts.isIdentifier(node.expression) && node.expression.text === "require") {
-        add(node.arguments[0].text);
-      }
+    if ((ts.isExportNamedDeclaration(node) || ts.isExportAllDeclaration(node)) && node.source) add(node.source.value);
+    if (ts.isTSImportEqualsDeclaration(node) && ts.isTSExternalModuleReference(node.moduleReference)) {
+      const specifier = literalString(node.moduleReference.expression);
+      if (specifier) add(specifier);
     }
-    ts.forEachChild(node, visit);
+    if (ts.isImportExpression(node)) {
+      const specifier = literalString(node.source);
+      if (specifier) add(specifier);
+    }
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.callee) && node.callee.name === "require") {
+      const specifier = literalString(node.arguments[0]);
+      if (specifier) add(specifier);
+    }
+    forEachSyntaxChild(node, visit);
   };
-  visit(ast);
+  visit(ast.program);
   return roots.sort();
 }
 
@@ -658,15 +686,14 @@ function resolveForwardedDefaultRoot(file: string, source: string, files: Readon
   const ast = sourceFile(file, source);
   const imports = importBindings(ast);
   for (const statement of ast.statements) {
-    if (ts.isExportAssignment(statement) && ts.isIdentifier(statement.expression)) {
-      const binding = imports.get(statement.expression.text);
+    if (ts.isExportDefaultDeclaration(statement) && ts.isIdentifier(statement.declaration)) {
+      const binding = imports.get(statement.declaration.name);
       if (binding) return resolveSourceFile(file, binding.specifier, files);
     }
-    if (ts.isExportDeclaration(statement) && statement.moduleSpecifier && ts.isStringLiteralLike(statement.moduleSpecifier)) {
-      const clause = statement.exportClause;
-      if (clause && ts.isNamedExports(clause) && clause.elements.some((element) => element.name.text === "default")) {
-        return resolveSourceFile(file, statement.moduleSpecifier.text, files);
-      }
+    if (ts.isExportNamedDeclaration(statement) && statement.source && statement.specifiers.some((element) =>
+      ts.isExportSpecifier(element) && propertyKeyName(element.exported) === "default"
+    )) {
+      return resolveSourceFile(file, statement.source.value, files);
     }
   }
   return null;
@@ -776,104 +803,107 @@ function resolveCandidate(value: string, files: Readonly<Record<string, string>>
 function parseJsonConfig(source: string | undefined): Record<string, unknown> | null {
   if (source === undefined) return null;
   try {
-    const parsed = ts.parseConfigFileTextToJson("fixture.json", source).config;
+    const parsed: unknown = JSON.parse(source);
     return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : null;
   } catch { return null; }
 }
 
-function importBindings(ast: ts.SourceFile): Map<string, { specifier: string; imported: string }> {
+function importBindings(ast: ParsedTypeScriptSource): Map<string, { specifier: string; imported: string }> {
   const bindings = new Map<string, { specifier: string; imported: string }>();
   for (const statement of ast.statements) {
-    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteralLike(statement.moduleSpecifier)) continue;
-    const specifier = statement.moduleSpecifier.text;
-    const clause = statement.importClause;
-    if (clause?.name) bindings.set(clause.name.text, { specifier, imported: "default" });
-    if (clause?.namedBindings && ts.isNamedImports(clause.namedBindings)) {
-      for (const element of clause.namedBindings.elements) {
-        bindings.set(element.name.text, { specifier, imported: element.propertyName?.text ?? element.name.text });
+    if (!ts.isImportDeclaration(statement)) continue;
+    const specifier = statement.source.value;
+    for (const binding of statement.specifiers) {
+      if (ts.isImportDefaultSpecifier(binding)) bindings.set(binding.local.name, { specifier, imported: "default" });
+      if (ts.isImportSpecifier(binding)) {
+        const imported = propertyKeyName(binding.imported);
+        if (imported) bindings.set(binding.local.name, { specifier, imported });
       }
     }
   }
   return bindings;
 }
 
-function findReturnedArray(body: ts.Block | undefined): ts.ArrayLiteralExpression | null {
+function findReturnedArray(body: ts.BlockStatement | undefined): ts.ArrayExpression | null {
   if (!body) return null;
-  let found: ts.ArrayLiteralExpression | null = null;
+  let found: ts.ArrayExpression | null = null;
   const visit = (node: ts.Node): void => {
-    if (!found && ts.isReturnStatement(node) && node.expression && ts.isArrayLiteralExpression(node.expression)) found = node.expression;
-    if (!found) ts.forEachChild(node, visit);
+    if (!found && ts.isReturnStatement(node) && node.argument && ts.isArrayExpression(node.argument)) found = node.argument;
+    if (!found) forEachSyntaxChild(node, visit);
   };
   visit(body);
   return found;
 }
 
-function stringConstants(ast: ts.SourceFile): Map<string, string> {
+function stringConstants(ast: ParsedTypeScriptSource): Map<string, string> {
   const values = new Map<string, string>();
   const visit = (node: ts.Node): void => {
-    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && ts.isStringLiteralLike(node.initializer)) {
-      values.set(node.name.text, node.initializer.text);
+    if (ts.isVariableDeclarator(node) && ts.isIdentifier(node.id) && node.init) {
+      const value = literalString(node.init);
+      if (value !== null) values.set(node.id.name, value);
     }
-    ts.forEachChild(node, visit);
+    forEachSyntaxChild(node, visit);
   };
-  visit(ast);
+  visit(ast.program);
   return values;
 }
 
-function variableInitializers(ast: ts.SourceFile): Map<string, ts.Expression> {
+function variableInitializers(ast: ParsedTypeScriptSource): Map<string, ts.Expression> {
   const values = new Map<string, ts.Expression>();
   const visit = (node: ts.Node): void => {
-    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) values.set(node.name.text, node.initializer);
-    ts.forEachChild(node, visit);
+    if (ts.isVariableDeclarator(node) && ts.isIdentifier(node.id) && node.init && ts.isExpression(node.init)) {
+      values.set(node.id.name, node.init);
+    }
+    forEachSyntaxChild(node, visit);
   };
-  visit(ast);
+  visit(ast.program);
   return values;
 }
 
-function objectProperty(object: ts.ObjectLiteralExpression, name: string): ts.PropertyAssignment | null {
-  return object.properties.find((property): property is ts.PropertyAssignment =>
-    ts.isPropertyAssignment(property) && propertyName(property.name) === name
+function objectProperty(object: ts.ObjectExpression, name: string): ts.ObjectProperty | null {
+  return object.properties.find((property): property is ts.ObjectProperty =>
+    ts.isObjectProperty(property) && propertyKeyName(property.key) === name
   ) ?? null;
 }
 
-function stringProperty(object: ts.ObjectLiteralExpression, name: string): string | null {
+function stringProperty(object: ts.ObjectExpression, name: string): string | null {
   const property = objectProperty(object, name);
-  return property && ts.isStringLiteralLike(property.initializer) ? property.initializer.text : null;
+  return property ? literalString(property.value) : null;
 }
 
-function stringArrayProperty(object: ts.ObjectLiteralExpression, name: string): string[] {
+function stringArrayProperty(object: ts.ObjectExpression, name: string): string[] {
   const property = objectProperty(object, name);
-  if (!property || !ts.isArrayLiteralExpression(property.initializer)) return [];
-  return property.initializer.elements.filter(ts.isStringLiteralLike).map((entry) => entry.text);
+  if (!property || !ts.isArrayExpression(property.value)) return [];
+  return property.value.elements.map((entry) => entry && literalString(entry)).filter((entry): entry is string => entry !== null);
 }
 
-function propertyName(name: ts.PropertyName): string | null {
-  return ts.isIdentifier(name) || ts.isStringLiteralLike(name) ? name.text : null;
+function isRegisterToolCall(expression: ts.Expression | ts.V8IntrinsicIdentifier): boolean {
+  return ts.isMemberExpression(expression) && !expression.computed && propertyKeyName(expression.property) === "registerTool";
 }
 
-function isRegisterToolCall(expression: ts.Expression): boolean {
-  return ts.isPropertyAccessExpression(expression) && expression.name.text === "registerTool";
-}
-
-function calleeName(expression: ts.Expression): string | null {
-  if (ts.isIdentifier(expression)) return expression.text;
-  if (ts.isPropertyAccessExpression(expression)) return expression.name.text;
+function calleeName(expression: ts.Expression | ts.V8IntrinsicIdentifier): string | null {
+  if (ts.isIdentifier(expression)) return expression.name;
+  if (ts.isMemberExpression(expression) && !expression.computed) return propertyKeyName(expression.property);
   return null;
+}
+
+function expressionArgument(node: ts.Node | null | undefined): ts.Expression | null {
+  return node && ts.isExpression(node) ? node : null;
 }
 
 function containsCall(source: string, name: string): boolean {
   const ast = sourceFile(SESSION_ROOT, source);
   let found = false;
   const visit = (node: ts.Node): void => {
-    if (ts.isCallExpression(node) && calleeName(node.expression) === name) found = true;
-    if (!found) ts.forEachChild(node, visit);
+    if (ts.isCallExpression(node) && calleeName(node.callee) === name) found = true;
+    if (!found) forEachSyntaxChild(node, visit);
   };
-  visit(ast);
+  visit(ast.program);
   return found;
 }
 
-function sourceFile(file: string, source: string): ts.SourceFile {
-  return ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+function sourceFile(file: string, source: string): ParsedTypeScriptSource {
+  return parseTypeScriptSource(file, source);
 }
 
 function addSite(target: Map<string, Set<string>>, name: string, file: string): void {

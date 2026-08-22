@@ -204,6 +204,13 @@ function sha256ForFile(path: string): string {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
 
+/** Normalize text bundles before hashing so formatter checks stay stable across Bun releases. */
+function normalizeBuiltTextFile(path: string): void {
+  const content = readFileSync(path, "utf8");
+  const normalized = content.replace(/[ \t]+$/gm, "");
+  if (normalized !== content) writeFileSync(path, normalized, "utf8");
+}
+
 function buildMetadata(
   manifest: VendoredDependencyManifest,
   projectDir: string,
@@ -313,6 +320,8 @@ function buildFromSource(
     process.stderr.write(stderr);
     return proc.exitCode || 1;
   }
+
+  normalizeBuiltTextFile(outputFile);
 
   const outputs: VendoredOutputMetadata[] = [
     {

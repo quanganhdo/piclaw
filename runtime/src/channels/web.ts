@@ -136,7 +136,7 @@ export interface WebChannelOpts {
 }
 
 /** Web channel: HTTP/SSE server, API endpoints, and agent event bridge. */
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+// eslint-disable-next-line typescript/no-unsafe-declaration-merging, no-redeclare
 export class WebChannel implements WebChannelLike {
   private _terminalService: TerminalSessionService | null = null;
   private _vncService: VncSessionService | null = null;
@@ -199,7 +199,7 @@ export class WebChannel implements WebChannelLike {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging, no-redeclare, @typescript-eslint/no-empty-object-type
+// eslint-disable-next-line typescript/no-unsafe-declaration-merging, no-redeclare, typescript/no-empty-object-type
 export interface WebChannel extends WebChannelPrototypeMembers {}
 
 installWebChannelPrototype(WebChannel.prototype, {

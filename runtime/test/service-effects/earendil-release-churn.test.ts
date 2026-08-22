@@ -84,7 +84,7 @@ describe("Earendil release churn gate", () => {
     ]) {
       expect(rootDependencies[directName]).toBe("0.84.2");
     }
-    expect(rootDependencies.openai).toBe("6.40.0");
+    expect(rootDependencies.openai).toBe("7.5.0");
 
     const lock = await Bun.file(resolve(repositoryRoot, "bun.lock")).text();
     for (const evidence of historical.packages) {
@@ -103,7 +103,7 @@ describe("Earendil release churn gate", () => {
         expect(entry).toContain(`, "${evidence.integrity}"],`);
       }
     }
-    expect(lockPackageEntry(lock, "openai")?.startsWith('    "openai": ["openai@6.40.0",')).toBe(true);
+    expect(lockPackageEntry(lock, "openai")?.startsWith('    "openai": ["openai@7.5.0",')).toBe(true);
   });
 
   test("matches installed public package manifests, export maps, engines, and internal ranges", async () => {

@@ -29,10 +29,10 @@ function scriptEntrypoints(): string[] {
   ].map((file) => relative(PACKAGE_DIR, file).replace(/\\/g, "/"));
 }
 
-function runEslintProbe(file: string) {
+function runOxlintProbe(file: string) {
   const plan = createRepoDevCommandPlan("lint", RUNTIME_DIR);
   return Bun.spawnSync({
-    cmd: [plan.binaryPath, "--config", resolve(PACKAGE_DIR, "eslint.config.js"), file],
+    cmd: [plan.binaryPath, "--config", resolve(PACKAGE_DIR, ".oxlintrc.json"), "--deny-warnings", file],
     cwd: PACKAGE_DIR,
     stdout: "pipe",
     stderr: "pipe",
@@ -61,11 +61,11 @@ describe("repository script static-analysis coverage", () => {
     }
   });
 
-  test("repo lint plan includes root and runtime TypeScript script globs", () => {
+  test("repo lint plan includes root and runtime TypeScript script directories", () => {
     const plan = createRepoDevCommandPlan("lint", RUNTIME_DIR);
     expect(plan.args).toEqual(expect.arrayContaining([
-      "runtime/scripts/**/*.ts",
-      "scripts/**/*.ts",
+      "runtime/scripts",
+      "scripts",
     ]));
   });
 
@@ -73,8 +73,8 @@ describe("repository script static-analysis coverage", () => {
     ["root script", "scripts/audit-model-catalog-delta.ts"],
     ["runtime script", "runtime/scripts/controlled-test-runner.ts"],
     ["Actions workflow contract", "scripts/check-actions-workflows.ts"],
-  ] as const)("ESLint config does not ignore a representative %s", (_label, file) => {
-    const result = runEslintProbe(file);
+  ] as const)("Oxlint config does not ignore a representative %s", (_label, file) => {
+    const result = runOxlintProbe(file);
     const output = `${result.stdout.toString()}\n${result.stderr.toString()}`;
     expect(result.exitCode, output).toBe(0);
     expect(output).not.toContain("File ignored because no matching configuration was supplied");

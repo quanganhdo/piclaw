@@ -151,7 +151,10 @@ function normalizeProviderErrorDetail(errorText: string | null | undefined, maxC
   const withoutHtml = omitHtmlResponseBody(bounded);
   const withoutEmbeddedData = omitEmbeddedDataUris(withoutHtml);
   const normalized = withoutEmbeddedData
+    // Intentionally strip ANSI escapes and remaining ASCII control characters.
+    // eslint-disable-next-line no-control-regex
     .replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "")
+    // eslint-disable-next-line no-control-regex
     .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, " ")
     .replace(/\s*For more information,?\s+pass\s+verbose:\s*true\s+in\s+the\s+second\s+argument\s+to\s+fetch\(\)\.?/gi, "")
     .replace(/\s+/g, " ")

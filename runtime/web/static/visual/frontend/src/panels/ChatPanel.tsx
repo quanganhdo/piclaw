@@ -5,10 +5,14 @@ import { useRef, useEffect, useState } from "preact/hooks";
 import { useSignal, signal } from "@preact/signals";
 import { MessageList } from "../components/MessageList";
 import { safeGetItem, safeSetItem } from "../utils/storage";
-import { resolveMediaAttachments } from "../utils/attachments";
 
 import { createLogger } from "../utils/logger";
 import { agentDisplayName } from "../api/agent-identity";
+import {
+  uploadFileBatch,
+  uploadMedia,
+  type UploadBatchProgress,
+} from "../../../../../src/ui/upload-transfers";
 const log = createLogger("ChatPanel");
 
 // Module-level signal: persists draft text across ChatPanel mounts/unmounts
@@ -51,9 +55,9 @@ export function ChatPanel({ onOpenPalette }: ChatPanelProps = {}) {
   }, []);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isSending = useSignal(false);
-  const sendPhase = useSignal<"idle" | "uploading" | "sending">("idle");
   const sendError = useSignal<string | null>(null);
   const isAgentRunning = useSignal(false);
+  const [uploadProgress, setUploadProgress] = useState<UploadBatchProgress | null>(null);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const attachmentsRef = useRef<Attachment[]>([]);
   attachmentsRef.current = attachments;
@@ -158,6 +162,7 @@ export function ChatPanel({ onOpenPalette }: ChatPanelProps = {}) {
   // Listen for workspace file attach events from FileTree
   useEffect(() => {
     const handler = (e: Event) => {
+      if (isSending.value) return;
       const detail = (e as CustomEvent).detail;
       if (!detail?.path || !detail?.name) return;
       // Avoid duplicates
@@ -178,11 +183,15 @@ export function ChatPanel({ onOpenPalette }: ChatPanelProps = {}) {
 
   // Attachment handlers
   const handleClipClick = () => {
-    fileInputRef.current?.click();
+    if (!isSending.value) fileInputRef.current?.click();
   };
 
   const handleFileSelect = (e: Event) => {
     const input = e.target as HTMLInputElement;
+    if (isSending.value) {
+      input.value = "";
+      return;
+    }
     const files = input.files;
     if (!files?.length) return;
     for (const file of Array.from(files)) {
@@ -197,6 +206,7 @@ export function ChatPanel({ onOpenPalette }: ChatPanelProps = {}) {
   };
 
   const handlePaste = (e: ClipboardEvent) => {
+    if (isSending.value) return;
     const items = e.clipboardData?.items;
     if (!items?.length) return;
     const files: File[] = [];
@@ -246,6 +256,7 @@ export function ChatPanel({ onOpenPalette }: ChatPanelProps = {}) {
     e.stopPropagation();
     dragCounterRef.current = 0;
     setIsDragOver(false);
+    if (isSending.value) return;
     const files = e.dataTransfer?.files;
     if (!files?.length) return;
     for (const file of Array.from(files)) {
@@ -373,76 +384,82 @@ export function ChatPanel({ onOpenPalette }: ChatPanelProps = {}) {
     const el = textareaRef.current;
     if (!el || isSending.value) return;
     const content = el.value.trim();
-    if (!content && attachmentsRef.current.length === 0) return;
+    const capturedAttachments = [...attachmentsRef.current];
+    if (!content && capturedAttachments.length === 0) return;
 
     // Shift+Send = steer (inject mid-stream); default when busy = queue
     const mode = isAgentRunning.value ? (forceSteer ? "steer" : "queue") : undefined;
 
     isSending.value = true;
     sendError.value = null;
-
-    const pendingAttachments = [...attachmentsRef.current];
-    const requiresUpload = pendingAttachments.some((attachment) => !attachment.isFileRef && !attachment.id);
-    sendPhase.value = requiresUpload ? "uploading" : "sending";
+    let stage: "upload" | "send" = "upload";
 
     try {
-      const resolvedMedia = await resolveMediaAttachments(pendingAttachments, async (file) => {
-        const form = new FormData();
-        form.append("file", file);
-        const res = await fetch("/media/upload", {
-          method: "POST",
-          credentials: "same-origin",
-          body: form,
-        });
-        if (!res.ok) {
-          const body = await res.json().catch(() => null);
-          throw new Error(body?.error || `Upload failed for “${file.name}” (HTTP ${res.status}).`);
-        }
-        return res.json();
+      const mediaAttachments = capturedAttachments.filter((attachment) => !attachment.isFileRef);
+      const pendingFiles = mediaAttachments
+        .filter((attachment) => !attachment.id && attachment.file)
+        .map((attachment) => attachment.file as File);
+      const uploaded = await uploadFileBatch(
+        pendingFiles,
+        (file, onProgress) => uploadMedia(file, { onProgress }),
+        {
+          onProgress: setUploadProgress,
+        },
+      );
+      const uploadedByFile = new Map(uploaded.map((entry) => [entry.file, entry]));
+      const mediaRecords = mediaAttachments.map((attachment, index) => {
+        if (attachment.id) return { id: attachment.id, name: attachment.name };
+        const uploadedEntry = attachment.file ? uploadedByFile.get(attachment.file) : undefined;
+        if (!uploadedEntry) throw new Error(`Attachment ${attachment.name || index + 1} was not uploaded.`);
+        return { id: uploadedEntry.result.id, name: attachment.name || uploadedEntry.name };
       });
-      sendPhase.value = "sending";
-      const mediaIds = resolvedMedia.map((attachment) => attachment.id);
+      const mediaIds = mediaRecords.map(({ id }) => id);
 
-      // Append attachment references to content (like upstream)
+      // Keep IDs paired with their source names even when the message also has
+      // existing media IDs or workspace path references.
       let messageContent = content;
-      if (resolvedMedia.length > 0) {
-        const mediaBlock = resolvedMedia
-          .map((attachment) => `- attachment:${attachment.id} (${attachment.name})`)
+      if (mediaRecords.length > 0) {
+        const mediaBlock = mediaRecords
+          .map(({ id, name }, index) => `- attachment:${id} (${name || `attachment-${index + 1}`})`)
           .join("\n");
         messageContent = [content, `Attachments:\n${mediaBlock}`].filter(Boolean).join("\n\n");
       }
 
-      // Append workspace file references
-      const fileRefs = pendingAttachments.filter((a) => a.isFileRef && a.path);
+      const fileRefs = capturedAttachments.filter((attachment) => attachment.isFileRef && attachment.path);
       if (fileRefs.length > 0) {
-        const filesBlock = fileRefs.map((a) => `- ${a.path}`).join("\n");
+        const filesBlock = fileRefs.map((attachment) => `- ${attachment.path}`).join("\n");
         messageContent = [messageContent, `Files:\n${filesBlock}`].filter(Boolean).join("\n\n");
       }
 
+      stage = "send";
+      // Attachment transfer is complete. Message submission is represented by
+      // the compose action state rather than the transfer progress panel.
+      setUploadProgress(null);
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 15000);
-      const res = await fetch(getMessageUrl(), {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content: messageContent,
-          media_ids: mediaIds.length > 0 ? mediaIds : undefined,
-          ...(mode ? { mode } : {}),
-        }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
-
-      if (!res.ok) {
-        sendError.value = `Send failed (HTTP ${res.status}). Try again.`;
-        isSending.value = false;
-        return;
+      let res: Response;
+      try {
+        res = await fetch(getMessageUrl(), {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content: messageContent,
+            media_ids: mediaIds.length > 0 ? mediaIds : undefined,
+            ...(mode ? { mode } : {}),
+          }),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeout);
       }
 
+      if (!res.ok) throw new Error(`Send failed (HTTP ${res.status}). Try again.`);
 
-      // Only clear draft after confirmed success
-      draftText.value = "";
+      // Only clear the submitted draft after confirmed success. Text entered
+      // while the request was in flight remains as the next draft.
+      const draftChangedDuringSend = el.value.trim() !== content;
+      draftText.value = draftChangedDuringSend ? el.value : "";
       if (content) {
         const history = historyRef.current;
         if (history[history.length - 1] !== content) {
@@ -452,8 +469,10 @@ export function ChatPanel({ onOpenPalette }: ChatPanelProps = {}) {
         }
         historyIndexRef.current = -1;
       }
-      el.value = "";
-      el.style.height = "auto";
+      if (!draftChangedDuringSend) {
+        el.value = "";
+        el.style.height = "auto";
+      }
       sendError.value = null;
       setAttachments([]);
       const data = await res.json();
@@ -461,11 +480,15 @@ export function ChatPanel({ onOpenPalette }: ChatPanelProps = {}) {
         window.dispatchEvent(new CustomEvent("piclaw:new-message", { detail: data.user_message }));
       }
     } catch (err: any) {
-      sendError.value = err?.name === "AbortError"
-        ? "Send timed out. Try again."
-        : err?.message || "Failed to send. Check connection.";
+      if (err?.name === "AbortError") {
+        sendError.value = "Send timed out. Try again.";
+      } else if (stage === "upload") {
+        sendError.value = `Attachment upload failed: ${err?.message || "Check connection."}`;
+      } else {
+        sendError.value = err?.message || "Failed to send. Check connection.";
+      }
     } finally {
-      sendPhase.value = "idle";
+      setUploadProgress(null);
       isSending.value = false;
     }
   };
@@ -481,6 +504,28 @@ export function ChatPanel({ onOpenPalette }: ChatPanelProps = {}) {
 
           <QueueStack onEdit={handleQueueEdit} />
 
+          {uploadProgress && (
+            <div className="chat__upload-status" role="status" aria-live="polite" data-testid="compose-upload-status">
+              <div className="chat__upload-status-row">
+                <span className="codicon codicon-cloud-upload" aria-hidden="true" />
+                <span className="chat__upload-status-label">
+                  {`Uploading ${uploadProgress.current}/${uploadProgress.total}: ${uploadProgress.name}`}
+                </span>
+                <span className="chat__upload-status-percent">{uploadProgress.percent}%</span>
+              </div>
+              <div
+                className="upload-progress-bar"
+                role="progressbar"
+                aria-label="Attachment upload progress"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={uploadProgress.percent}
+              >
+                <div className="upload-progress-fill" style={{ width: `${uploadProgress.percent}%` }} />
+              </div>
+            </div>
+          )}
+
           <div className="chat__compose">
             <input
               ref={fileInputRef}
@@ -488,6 +533,7 @@ export function ChatPanel({ onOpenPalette }: ChatPanelProps = {}) {
               multiple
               style={{ display: "none" }}
               onChange={handleFileSelect}
+              disabled={isSending.value}
             />
             <div
               className={`chat__compose-container${isDragOver ? " chat__compose-container--dragover" : ""}`}
@@ -501,6 +547,7 @@ export function ChatPanel({ onOpenPalette }: ChatPanelProps = {}) {
                   type="button"
                   className="chat__toolbar-btn"
                   onClick={handleClipClick}
+                  disabled={isSending.value}
                   aria-label="Attach file"
                   title="Attach file"
                 >
@@ -539,6 +586,7 @@ export function ChatPanel({ onOpenPalette }: ChatPanelProps = {}) {
                         type="button"
                         className="chat__attachment-remove"
                         onClick={() => removeAttachment(i)}
+                        disabled={isSending.value}
                         aria-label={`Remove ${att.name}`}
                       >✕</button>
                     </span>
@@ -547,6 +595,7 @@ export function ChatPanel({ onOpenPalette }: ChatPanelProps = {}) {
                     type="button"
                     className="chat__attachment-clear"
                     onClick={() => setAttachments([])}
+                    disabled={isSending.value}
                     aria-label="Clear all attachments"
                   >Clear all</button>
                 </div>
@@ -613,7 +662,7 @@ export function ChatPanel({ onOpenPalette }: ChatPanelProps = {}) {
               <div className="chat__action-group">
                 <button
                   type="button"
-                  className={`chat__send-btn chat__send-btn--steer${isSending.value ? " chat__send-btn--sending" : ""}`}
+                  className="chat__send-btn chat__send-btn--steer"
                   onClick={() => sendMessage(true)}
                   disabled={isSending.value || (!hasText.value && attachments.length === 0)}
                   aria-label="Steer (inject mid-turn)"
@@ -625,7 +674,7 @@ export function ChatPanel({ onOpenPalette }: ChatPanelProps = {}) {
                 </button>
                 <button
                   type="button"
-                  className={`chat__send-btn chat__send-btn--queue${isSending.value ? " chat__send-btn--sending" : ""}`}
+                  className="chat__send-btn chat__send-btn--queue"
                   onClick={() => sendMessage()}
                   disabled={isSending.value || (!hasText.value && attachments.length === 0)}
                   aria-label="Queue message"
@@ -650,7 +699,7 @@ export function ChatPanel({ onOpenPalette }: ChatPanelProps = {}) {
             ) : (
               <button
                 type="button"
-                className={`chat__send-btn${isSending.value ? " chat__send-btn--sending" : ""}`}
+                className="chat__send-btn"
                 onClick={sendMessage}
                 disabled={isSending.value || (!hasText.value && attachments.length === 0)}
                 aria-label={isSending.value ? "Sending..." : "Send message"}
@@ -662,14 +711,8 @@ export function ChatPanel({ onOpenPalette }: ChatPanelProps = {}) {
               </button>
             )}
           </div>
-      {sendPhase.value !== "idle" && (
-        <div className="chat__send-status" role="status" aria-live="polite">
-          <span className="chat__send-status-spinner" aria-hidden="true" />
-          {sendPhase.value === "uploading" ? "Uploading attachments…" : "Sending message…"}
-        </div>
-      )}
       {sendError.value && (
-        <div className="chat__send-error">
+        <div className="chat__send-error" role="alert" aria-live="assertive">
           {sendError.value}
           <button type="button" className="chat__send-error-dismiss" onClick={() => (sendError.value = null)}>✕</button>
         </div>

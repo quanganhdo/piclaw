@@ -11,6 +11,8 @@ function fallbackFilename(value: string): string {
   if (!trimmed) return "download";
   const basename = trimmed.split(/[\\/]/).pop()?.trim() || "download";
   const safe = basename
+    // Intentionally sanitize ASCII control characters from HTTP filenames.
+    // eslint-disable-next-line no-control-regex
     .replace(/[\u0000-\u001f\u007f]/g, "_")
     .replace(/[\\/]/g, "_")
     .replace(/"/g, "_")

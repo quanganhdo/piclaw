@@ -1,11 +1,11 @@
 {
   "manifest_id": "preact-htm",
   "package_name": "preact",
-  "package_version": "10.29.7",
+  "package_version": "10.29.8",
   "package_license": "MIT",
   "package_repository": "preactjs/preact",
   "package_versions": {
-    "preact": "10.29.7",
+    "preact": "10.29.8",
     "htm": "3.1.1"
   },
   "package_licenses": {
@@ -22,13 +22,13 @@
     {
       "package_path": null,
       "output_file": "web/static/common/js/vendor/preact-htm.js",
-      "sha256": "13ba77b3b2da3423c91b389444b27faa2c72d292770c86ccff825e7aaa6fc2c1",
-      "size_bytes": 15878
+      "sha256": "ae123ffccf0daaa6e41cc6bdfe67d4b9c6e52ab60a62a8f32471f2d14ea725fb",
+      "size_bytes": 15844
     }
   ],
   "metadata_file": "web/static/common/js/vendor/preact-htm.meta.json",
-  "sha256": "13ba77b3b2da3423c91b389444b27faa2c72d292770c86ccff825e7aaa6fc2c1",
-  "size_bytes": 15878,
+  "sha256": "ae123ffccf0daaa6e41cc6bdfe67d4b9c6e52ab60a62a8f32471f2d14ea725fb",
+  "size_bytes": 15844,
   "build_command": [
     "bun",
     "build",

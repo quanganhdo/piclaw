@@ -20,8 +20,6 @@ export interface RepoDevCommandPlan {
 
 export function resolveRepoBinary(packageDir: string, binaryName: string): string {
   switch (binaryName) {
-    case "eslint":
-      return resolve(packageDir, "node_modules/eslint/bin/eslint.js");
     case "tsc":
       return resolve(packageDir, "node_modules/typescript/bin/tsc");
     default:
@@ -36,7 +34,7 @@ export function createRepoDevCommandPlan(commandName: string, projectDir = proce
   }
 
   const runtimeDir = resolve(packageDir, "runtime");
-  const eslintConfigPath = resolve(packageDir, "eslint.config.js");
+  const oxlintConfigPath = resolve(packageDir, ".oxlintrc.json");
 
   switch (commandName) {
     case "build":
@@ -95,16 +93,17 @@ export function createRepoDevCommandPlan(commandName: string, projectDir = proce
         packageDir,
         runtimeDir,
         cwd: packageDir,
-        binaryPath: resolveRepoBinary(packageDir, "eslint"),
+        binaryPath: resolveRepoBinary(packageDir, "oxlint"),
         args: [
           "--config",
-          eslintConfigPath,
-          "runtime/src/**/*.ts",
-          "runtime/test/**/*.ts",
-          "runtime/scripts/**/*.ts",
-          "scripts/**/*.ts",
+          oxlintConfigPath,
+          "--deny-warnings",
+          "runtime/src",
+          "runtime/test",
+          "runtime/scripts",
+          "scripts",
         ],
-        requiredBinaries: ["eslint"],
+        requiredBinaries: ["oxlint"],
       };
     default:
       throw new Error(`Unsupported repo dev command: ${commandName}`);

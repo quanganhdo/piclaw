@@ -107,8 +107,7 @@ Configuration details live in [configuration.md](configuration.md).
 - **`mcp` via `pi-mcp-adapter`** — token-efficient MCP access through
   shared `.mcp.json` plus optional Pi-specific `.pi/mcp.json` overrides
 - **Remote Peer add-on** — optional paired-instance messaging and mediated work through generic core add-on transport APIs
-- **Experimental `m365` extension** — opt-in Microsoft 365 browser-auth
-  automation for Teams, Graph, OneDrive, SharePoint, and calendar flows
+- **[Microsoft 365 add-on](https://rcarmo.github.io/piclaw-addons/addons/m365/)** — optional browser-auth automation for Teams, Graph, OneDrive, SharePoint, and calendar flows
 - **`win_*` tools** — Windows-only desktop automation via Win32 FFI
 
 ## Related docs
@@ -118,6 +117,7 @@ Configuration details live in [configuration.md](configuration.md).
 - [tools-and-skills.md](tools-and-skills.md) — internal tools, skills, and
   slash commands
 - [Remote Peer add-on](https://rcarmo.github.io/piclaw-addons/addons/remote-peer/) — pairing, signed messaging, policy, and mediated work
+- [Microsoft 365 add-on](https://rcarmo.github.io/piclaw-addons/addons/m365/) — Teams, Graph, Outlook, OneDrive, SharePoint, Calendar, and To Do tools
 - [runtime-flows.md](runtime-flows.md) — session lifecycle, reconnect behavior,
   recovery, and timeout handling
 - [web-pane-extensions.md](web-pane-extensions.md) — pane extension model

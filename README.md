@@ -78,7 +78,7 @@ PiClaw is single-user, mobile-friendly, and streams updates over SSE.
 | Editor | CodeMirror 6, search/replace, dirty-state tracking, syntax highlighting, lazy local bundle |
 | Terminal | Bundled xterm.js web terminal as dock or tab; detachable popouts; Ghostty is available separately as an optional add-on |
 | Viewers | Built-in CSV/TSV, PDF, image, video, code-preview, and VNC panes; optional add-ons supply Draw.io, the Office viewer backend, and kanban support |
-| Automation | Built-in `image_process`, `cdp_browser`, and `mcp`; experimental `m365`; `/image` and `/flux` when Azure OpenAI/Foundry is configured; Windows desktop automation through the optional `win-ui` add-on |
+| Automation | Built-in `image_process`, `cdp_browser`, and `mcp`; `/image` and `/flux` when Azure OpenAI/Foundry is configured; Microsoft 365 and Windows desktop automation through optional add-ons |
 
 For the full feature tour, see [docs/web-ui.md](docs/web-ui.md).
 
@@ -97,7 +97,6 @@ Common environment variables:
 | `PICLAW_WEB_TOTP_SECRET` | _(empty)_ | Base32 TOTP secret; enables login gate (or initialize with `/totp`) |
 | `PICLAW_WEB_PASSKEY_MODE` | `totp-fallback` | `totp-fallback`, `passkey-only`, or `totp-only` |
 | `PICLAW_ASSISTANT_NAME` | `PiClaw` | Display name in the UI |
-| `PICLAW_ENABLE_M365_EXPERIMENTAL` | `0` | Enable the experimental Microsoft 365 extension bundle |
 | `PICLAW_KEYCHAIN_KEY` | _(empty)_ | Master key for encrypted secret storage |
 | `PICLAW_TRUST_PROXY` | `0` | Enable when behind a reverse proxy or tunnel |
 
@@ -138,7 +137,7 @@ See [docs/development.md](docs/development.md).
 | Runtime internals | [Architecture](docs/architecture.md), [Add-on runtime API](docs/addon-runtime-api.md), [Pipelined smart compaction](docs/pipelined-compaction.md), [Runtime flows](docs/runtime-flows.md), [Runtime stream sessions](docs/runtime-stream-sessions.md), [Storage model](docs/storage.md), [Observability](docs/observability.md) |
 | UI extension model | [Web pane extensions](docs/web-pane-extensions.md), [Extension UI contract](docs/extension-ui-contract.md), [Vendored widget libraries](docs/vendored-widget-libraries.md) |
 | Agent capabilities | [Tools and skills](docs/tools-and-skills.md), [Visual artifact generator](docs/visual-artifact-generator.md), [MCP via pi-mcp-adapter](docs/mcp.md), [Keychain](docs/keychain.md) |
-| Other references | [Dream memory system](docs/dream-memory.md), [Thinking persistence](docs/thinking-persistence.md), [Web notification delivery policy](docs/web-notification-delivery-policy.md), [iOS PWA reference](docs/PWA.md), [WhatsApp](docs/whatsapp.md), [Remote Peer add-on](https://rcarmo.github.io/piclaw-addons/addons/remote-peer/), [Experimental M365 extension](docs/m365-experimental-extension.md), [Development](docs/development.md) |
+| Other references | [Dream memory system](docs/dream-memory.md), [Thinking persistence](docs/thinking-persistence.md), [Web notification delivery policy](docs/web-notification-delivery-policy.md), [iOS PWA reference](docs/PWA.md), [WhatsApp](docs/whatsapp.md), [Remote Peer add-on](https://rcarmo.github.io/piclaw-addons/addons/remote-peer/), [Microsoft 365 add-on](https://rcarmo.github.io/piclaw-addons/addons/m365/), [Development](docs/development.md) |
 | Platform study | [Azure Functions feasibility study](docs/azure/azure-functions-feasibility-study-2026-04-17.md) |
 
 ## Contributing

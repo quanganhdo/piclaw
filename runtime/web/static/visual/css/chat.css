@@ -321,6 +321,41 @@
     color: var(--text-secondary);
 }
 
+.compose-upload-status,
+.compose-submit-error {
+    margin: 2px var(--spacing-xs) 0 var(--spacing-xs);
+}
+
+.compose-submit-error {
+    border-color: color-mix(in srgb, var(--danger-color) 55%, var(--border-color));
+    color: var(--danger-color);
+}
+
+.compose-submit-error .compose-inline-status-detail {
+    color: inherit;
+}
+
+.upload-progress-bar {
+    height: 4px;
+    margin-top: 6px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent-color) 16%, var(--bg-secondary));
+}
+
+.upload-progress-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: var(--accent-color);
+    transition: width 0.15s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .upload-progress-fill {
+        transition: none;
+    }
+}
+
 .compose-command-notice {
     margin: 2px var(--spacing-xs) 0 var(--spacing-xs);
 }

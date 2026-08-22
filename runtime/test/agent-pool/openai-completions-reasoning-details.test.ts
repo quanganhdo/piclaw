@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test } from "bun:test";
 import { Type } from "typebox";
 import type { AssistantMessage, Model, Tool } from "@earendil-works/pi-ai";
 
@@ -7,32 +7,16 @@ const mockState = {
   payloads: [] as unknown[],
 };
 
-mock.module("openai", () => {
-  class FakeOpenAI {
-    chat = {
-      completions: {
-        create: (payload: unknown) => {
-          mockState.payloads.push(payload);
-          const chunks = mockState.chunkSets.shift() ?? [];
-          const stream = {
-            async *[Symbol.asyncIterator]() {
-              for (const chunk of chunks) yield chunk;
-            },
-          };
-          const result = Promise.resolve(stream) as Promise<typeof stream> & {
-            withResponse: () => Promise<{ data: typeof stream; response: { status: number; headers: Headers } }>;
-          };
-          result.withResponse = async () => ({
-            data: stream,
-            response: { status: 200, headers: new Headers() },
-          });
-          return result;
-        },
-      },
-    };
-  }
-  return { default: FakeOpenAI };
-});
+const fakeFetch: typeof globalThis.fetch = async (input, init) => {
+  const request = new Request(input, init);
+  mockState.payloads.push(await request.clone().json());
+  const chunks = mockState.chunkSets.shift() ?? [];
+  const body = `${chunks.map((chunk) => `data: ${JSON.stringify(chunk)}\n\n`).join("")}data: [DONE]\n\n`;
+  return new Response(body, {
+    status: 200,
+    headers: { "content-type": "text/event-stream" },
+  });
+};
 
 const reasoningDetail = { type: "reasoning.encrypted", id: "call_1", data: "encrypted-signature" };
 
@@ -80,7 +64,7 @@ function toolCallChunk(): unknown {
 
 async function runOpenAICompletionsStream(messages: AssistantMessage[] = []): Promise<AssistantMessage> {
   const { stream } = await import("@earendil-works/pi-ai/api/openai-completions");
-  return await stream(model(), { messages, tools: [readTool] }, { apiKey: "test" }).result();
+  return await stream(model(), { messages, tools: [readTool] }, { apiKey: "test", fetch: fakeFetch }).result();
 }
 
 function getAssistantPayload(payload: unknown): { reasoning_details?: unknown } | undefined {

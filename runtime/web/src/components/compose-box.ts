@@ -1,7 +1,8 @@
 import { html, useRef, useState, useEffect, useCallback, useMemo } from '../vendor/preact-htm.js';
 import { useTranslation } from '../utils/i18n.js';
 import { findPopupTypeaheadMatch, isPopupTypeaheadKey, resolvePopupTypeaheadMatch, updatePopupTypeaheadBuffer } from '../ui/popup-typeahead.js';
-import { getAgentModels, sendAgentMessage, uploadMedia } from '../api.js';
+import { getAgentModels, sendAgentMessage } from '../api.js';
+import { uploadFileBatch, uploadMedia } from '../ui/upload-transfers.js';
 import { getLocalStorageItem, setLocalStorageItem } from '../utils/storage.js';
 import { buildMentionValue, filterMentionAgents, parseMentionAutocompleteQuery } from '../ui/agent-mentions.js';
 import { shouldOpenSessionSwitcherFromBlankCompose, shouldRouteComposeValueToSessionSwitcher } from '../ui/compose-session-switcher.js';
@@ -1143,6 +1144,8 @@ export function ComposeBox({
     const [searchFilterAttachments, setSearchFilterAttachments] = useState(false);
     const [searchMatchMode, setSearchMatchMode] = useState('or');
     const [mediaFiles, setMediaFiles] = useState([]);
+    const [uploadProgress, setUploadProgress] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDragActive, setIsDragActive] = useState(false);
     const [slashMatches, setSlashMatches] = useState([]);
     const [slashIndex, setSlashIndex] = useState(0);
@@ -1166,7 +1169,6 @@ export function ComposeBox({
     const [footerWidth, setFooterWidth] = useState(0);
     const [submitError, setSubmitError] = useState(null);
     const [submitNotice, setSubmitNotice] = useState(null);
-    const [pendingMediaUploadCount, setPendingMediaUploadCount] = useState(0);
     const [speechSupport, setSpeechSupport] = useState(() => getSpeechInputSupport());
     const [speechUiState, setSpeechUiState] = useState({ kind: 'idle', title: '', detail: '' });
     const [statusNoticeNowMs, setStatusNoticeNowMs] = useState(() => Date.now());
@@ -1190,6 +1192,13 @@ export function ComposeBox({
     const speechPendingStopRef = useRef(false);
     const speechPushToTalkActiveRef = useRef(false);
     const suppressNextSpeechClickRef = useRef(false);
+    const submittingRef = useRef(false);
+    const fileRefsRef = useRef(fileRefs);
+    const folderRefsRef = useRef(folderRefs);
+    const messageRefsRef = useRef(messageRefs);
+    fileRefsRef.current = fileRefs;
+    folderRefsRef.current = folderRefs;
+    messageRefsRef.current = messageRefs;
     const dragCounterRef = useRef(0);
     const renameSessionInProgressRef = useRef(false);
     const historyMax = 200;
@@ -1320,7 +1329,15 @@ export function ComposeBox({
     const connectionStatusPresentation = useConnectionStatusPresentation(stateAccessFailed ? connectionStatus : 'connected');
     const connectionStatusLabel = connectionStatusPresentation.label;
     const connectionStatusTitle = connectionStatusPresentation.title;
-    const submitButtonState = resolveComposeSubmitButtonState(isAgentActive, canSend, statusNoticeIsCompaction);
+    const resolvedSubmitButtonState = resolveComposeSubmitButtonState(isAgentActive, canSend, statusNoticeIsCompaction);
+    const submitButtonState = isSubmitting
+        ? {
+            ...resolvedSubmitButtonState,
+            disabled: true,
+            title: uploadProgress ? 'Uploading attachments…' : 'Sending…',
+            ariaLabel: uploadProgress ? 'Uploading attachments' : 'Sending message',
+        }
+        : resolvedSubmitButtonState;
     const abortButtonState = resolveComposeAbortButtonState(isAgentActive, statusNoticeIsCompaction);
 
     const mentionAgents = (Array.isArray(activeChatAgents) ? activeChatAgents : [])
@@ -2220,6 +2237,9 @@ export function ComposeBox({
             return;
         }
 
+        const isAbortSubmission = /^\/abort\s*$/i.test(rawInput.trim());
+        if (submittingRef.current && !isAbortSubmission) return;
+
         const {
             includeMedia = true,
             includeFileRefs = true,
@@ -2242,6 +2262,12 @@ export function ComposeBox({
             (includeFolderRefs ? folderRefs.length === 0 : true) &&
             (includeMessageRefs ? messageRefs.length === 0 : true)
         ) return;
+
+        const trackSubmission = !isAbortSubmission;
+        if (trackSubmission) {
+            submittingRef.current = true;
+            setIsSubmitting(true);
+        }
 
         if (speechRecognitionRef.current) {
             stopSpeechRecognition();
@@ -2278,11 +2304,22 @@ export function ComposeBox({
         }
 
         const restoreDraft = () => {
-            if (includeMedia) setMediaFiles([...capturedMediaFiles]);
-            if (includeFileRefs) onSetFileRefs?.(capturedFileRefs);
-            if (includeFolderRefs) onSetFolderRefs?.(capturedFolderRefs);
-            if (includeMessageRefs) onSetMessageRefs?.(capturedMessageRefs);
-            setContent(baseContent);
+            const mergeUnique = (captured, current) => [...new Set([...(captured || []), ...(current || [])])];
+            if (includeMedia) {
+                setMediaFiles((current) => [
+                    ...capturedMediaFiles.filter((file) => !current.includes(file)),
+                    ...current,
+                ]);
+            }
+            if (includeFileRefs) onSetFileRefs?.(mergeUnique(capturedFileRefs, fileRefsRef.current));
+            if (includeFolderRefs) onSetFolderRefs?.(mergeUnique(capturedFolderRefs, folderRefsRef.current));
+            if (includeMessageRefs) onSetMessageRefs?.(mergeUnique(capturedMessageRefs, messageRefsRef.current));
+            setContent((current) => {
+                if (!baseContent) return current;
+                if (!current.trim()) return baseContent;
+                if (current.trim() === baseContent) return current;
+                return `${baseContent}\n\n${current}`;
+            });
             requestAnimationFrame(() => resizeTextarea());
         };
 
@@ -2295,12 +2332,7 @@ export function ComposeBox({
             onClearMessageRefs?.();
         }
 
-        // Fire-and-forget: send in background, never block the compose box.
-        // Keep an explicit upload acknowledgement visible after the draft clears.
-        const mediaUploadCount = capturedMediaFiles.length;
-        if (mediaUploadCount > 0) {
-            setPendingMediaUploadCount((count) => count + mediaUploadCount);
-        }
+        // Fire-and-forget: send in background, never block the compose box
         (async () => {
             try {
                 const intercepted = await onSubmitIntercept?.({
@@ -2316,12 +2348,17 @@ export function ComposeBox({
                     return;
                 }
 
-                // Upload media files first
-                const mediaIds = [];
-                for (const file of capturedMediaFiles) {
-                    const result = await uploadMedia(file);
-                    mediaIds.push(result.id);
-                }
+                // Upload media files first. Keep each result paired with its source
+                // file so mixed attachment/reference messages cannot drift by index.
+                const uploadedMedia = await uploadFileBatch(
+                    capturedMediaFiles,
+                    (file, onProgress) => uploadMedia(file, { onProgress }),
+                    {
+                        onProgress: setUploadProgress,
+                    },
+                );
+                const mediaRecords = uploadedMedia.map(({ name, result }) => ({ name, id: result.id }));
+                const mediaIds = mediaRecords.map(({ id }) => id);
 
                 const fileBlock = capturedFileRefs.length
                     ? `Files:\n${capturedFileRefs.map((path) => `- ${path}`).join('\n')}`
@@ -2332,14 +2369,16 @@ export function ComposeBox({
                 const messageRefBlock = capturedMessageRefs.length
                     ? `Referenced messages:\n${capturedMessageRefs.map((id) => `- message:${id}`).join('\n')}`
                     : '';
-                const mediaBlock = mediaIds.length
-                    ? `Attachments:\n${mediaIds.map((id, index) => {
-                        const file = capturedMediaFiles[index];
-                        const label = file?.name || `attachment-${index + 1}`;
+                const mediaBlock = mediaRecords.length
+                    ? `Attachments:\n${mediaRecords.map(({ id, name }, index) => {
+                        const label = name || `attachment-${index + 1}`;
                         return `- attachment:${id} (${label})`;
                     }).join('\n')}`
                     : '';
                 const message = [baseContent, fileBlock, folderBlock, messageRefBlock, mediaBlock].filter(Boolean).join('\n\n');
+                // The transfer status belongs only to attachment uploads. Message
+                // submission is a separate compose action with its own button state.
+                setUploadProgress(null);
                 const response = await sendAgentMessage('default', message, null, mediaIds, resolveSubmitMode(submitMode), currentChatJid);
                 onMessageResponse?.(response);
 
@@ -2364,8 +2403,10 @@ export function ComposeBox({
                 onSubmitError?.(message);
                 console.error('Failed to post:', error);
             } finally {
-                if (mediaUploadCount > 0) {
-                    setPendingMediaUploadCount((count) => Math.max(0, count - mediaUploadCount));
+                if (trackSubmission) {
+                    setUploadProgress(null);
+                    setIsSubmitting(false);
+                    submittingRef.current = false;
                 }
             }
         })();
@@ -3107,6 +3148,32 @@ export function ComposeBox({
                     ${speechUiState.detail && html`<div class="compose-inline-status-detail">${speechUiState.detail}</div>`}
                 </div>
             `}
+            ${uploadProgress && html`
+                <div class="compose-inline-status compose-upload-status" role="status" aria-live="polite" data-testid="compose-upload-status">
+                    <div class="compose-inline-status-row">
+                        <div class="compose-inline-status-spinner" aria-hidden="true"></div>
+                        <span class="compose-inline-status-title">
+                            ${`Uploading ${uploadProgress.current}/${uploadProgress.total}: ${uploadProgress.name}`}
+                        </span>
+                        <span class="compose-inline-status-elapsed">${uploadProgress.percent}%</span>
+                    </div>
+                    <div
+                        class="upload-progress-bar"
+                        role="progressbar"
+                        aria-label="Attachment upload progress"
+                        aria-valuemin="0"
+                        aria-valuemax="100"
+                        aria-valuenow=${uploadProgress.percent}
+                    >
+                        <div class="upload-progress-fill" style=${`width:${uploadProgress.percent}%`}></div>
+                    </div>
+                </div>
+            `}
+            ${submitError && html`
+                <div class="compose-inline-status compose-submit-error" role="alert" aria-live="assertive">
+                    <div class="compose-inline-status-detail">${submitError}</div>
+                </div>
+            `}
             ${showQueueStack && !searchMode && html`
                 <${QueuedFollowupStack}
                     items=${followupQueueItems}
@@ -3128,19 +3195,6 @@ export function ComposeBox({
                                     ? html`<span class=${buildComposeStatusDotClass({ pulsing: true })} aria-hidden="true"></span>`
                                     : null}
                         <span class="compose-inline-status-title">${extensionWorkingDisplay.title}</span>
-                    </div>
-                </div>
-            `}
-            ${pendingMediaUploadCount > 0 && html`
-                <div
-                    class="compose-inline-status compose-upload-status"
-                    data-testid="compose-upload-status"
-                    role="status"
-                    aria-live="polite"
-                >
-                    <div class="compose-inline-status-row">
-                        <div class="compose-inline-status-spinner" aria-hidden="true"></div>
-                        <span class="compose-inline-status-title">${t('compose.uploadingAttachments', { count: pendingMediaUploadCount })}</span>
                     </div>
                 </div>
             `}
@@ -3696,7 +3750,7 @@ export function ComposeBox({
                         `}
                         <label class="icon-btn" title=${t('compose.attachFile')}>
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                            <input type="file" multiple hidden onChange=${handleFileChange} />
+                            <input type="file" multiple hidden onChange=${handleFileChange} disabled=${isSubmitting} />
                         </label>
                     `}
                     ${!searchMode && html`

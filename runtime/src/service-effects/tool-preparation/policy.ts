@@ -150,12 +150,6 @@ const entries = Object.freeze([
     safeProof: "Read-only bounded service/session snapshot; grammar and action surface reject writes.",
     authorityRationale: "Service projection query; no service-operation authority is mutated.",
   }),
-  ...policy(["m365_teams_chats", "m365_teams_messages", "m365_profile", "m365_people", "m365_spo_search", "m365_spo_browse", "m365_document_link_metadata"], {
-    effectClass: "query", replay: "safe", contextFields: ["localEnv"], abortExpectation: "may_finish_late", ...DIRECT_QUERY,
-    safeProof: "The exact bundled M365 action surface is constrained to Graph reads for this family.",
-    authorityRationale: "External read; no Piclaw service-operation authority is mutated.",
-  }),
-
   ...policy(["write", "edit"], {
     effectClass: "mutation", replay: "never", contextFields: ["env"], serviceEffector: null,
     abortExpectation: "may_finish_late", safeProof: null, nullAuthorityKind: "local",
@@ -225,20 +219,6 @@ const entries = Object.freeze([
     authorityRationale: "MCP discovery/auth/remote calls are external and not service-operation authority.",
     idempotencyIdentity: null, certainty: "Remote mutation certainty may be unknown after disconnect; no replay.",
     activationPrerequisites: ["exact selected adapter contract", "tool-specific review before any direct safe policy"],
-  }),
-  ...policy(["m365_teams_send", "m365_teams_send_rich_text", "m365_teams_send_markdown_card", "m365_teams_upload_file_card", "m365_teams_send_link_card", "m365_teams_send_file_card", "m365_onedrive_share_local_file", "m365_spo_upload", "m365_spo_sync", "m365_spo_move", "m365_spo_move_many"], {
-    effectClass: "mutation", replay: "never", contextFields: ["localEnv"], serviceEffector: null,
-    abortExpectation: "may_finish_late", safeProof: null, nullAuthorityKind: "external",
-    authorityRationale: "Graph/SharePoint mutations and local files are external to service-operation authority.",
-    idempotencyIdentity: null, certainty: "External mutation certainty may be unknown after disconnect; no replay.",
-    activationPrerequisites: ["selected tagged Harness v3", "external certainty reporting", "protected schema coverage"],
-  }),
-  ...policy(["m365_graph_query", "m365_mail", "m365_onedrive", "m365_calendar", "m365_todo", "m365_spo_download", "m365_calendar_svg"], {
-    effectClass: "mixed", replay: "never", contextFields: ["localEnv"], serviceEffector: null,
-    abortExpectation: "may_finish_late", safeProof: null, nullAuthorityKind: "external",
-    authorityRationale: "Mixed Graph/local-file actions are external to service-operation authority.",
-    idempotencyIdentity: null, certainty: "Action-specific mutations may have unknown certainty; no replay.",
-    activationPrerequisites: ["action split or retained conservative mixed policy", "external certainty reporting", "protected schema coverage"],
   }),
   ...policy(["messages"], {
     effectClass: "mixed", replay: "never", contextFields: ["chatJid", "operationId"], serviceEffector: null,

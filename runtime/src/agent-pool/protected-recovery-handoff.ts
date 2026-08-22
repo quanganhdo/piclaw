@@ -15,11 +15,31 @@ export interface ProtectedRecoveryHandoffOptions {
   deferToolEnabledContinuation?: boolean;
 }
 
+export const MAX_PROTECTED_RECOVERY_HANDOFF_DEPTH = 2;
+export const PROTECTED_RECOVERY_HANDOFF_LIMIT_MESSAGE =
+  "Automatic recovery reached its bounded handoff limit. The session is preserved; send “continue” to resume the unfinished work.";
+
+/** A successful recovery compaction made one more ordinary turn useful. */
+export function isPostCompactionProtectedRecoveryHandoff(output: AgentOutput): boolean {
+  return Boolean(output.requiresToolEnabledContinuation)
+    && output.recovery?.strategyHistory.at(-1) === "compact_then_retry";
+}
+
+export function finishBoundedProtectedRecoveryHandoff(output: AgentOutput): AgentOutput {
+  const { requiresToolEnabledContinuation: _spent, ...terminal } = output;
+  return {
+    ...terminal,
+    status: "error",
+    result: PROTECTED_RECOVERY_HANDOFF_LIMIT_MESSAGE,
+    error: PROTECTED_RECOVERY_HANDOFF_LIMIT_MESSAGE,
+    nextAction: "Send “continue” to resume from the preserved session state.",
+  };
+}
+
 /**
- * Run one prompt and, when required, exactly one ordinary tool-enabled turn.
- * The generated continuation never chains, even if its own recovery is also
- * protected. Caller-supplied run options (including intentional tool ceilings)
- * remain in force; only recovery's temporary all-tools suppression is absent.
+ * Run one prompt and a bounded ordinary tool-enabled continuation. A generated
+ * continuation may hand off once more only after recovery successfully compacted
+ * the session; all other repeated handoffs stop with deterministic guidance.
  */
 export async function runWithProtectedRecoveryHandoff(
   prompt: string,
@@ -29,38 +49,42 @@ export async function runWithProtectedRecoveryHandoff(
 ): Promise<AgentOutput> {
   const bufferedTurns: TurnOutput[] = [];
   const originalOnTurnComplete = options.onTurnComplete;
-  const shouldBufferInitialTurns = Boolean(originalOnTurnComplete)
-    && !options.protectedRecoveryContinuation;
+  const initialDepth = options.protectedRecoveryContinuationDepth
+    ?? (options.protectedRecoveryContinuation ? 1 : 0);
+  const shouldBufferInitialTurns = Boolean(originalOnTurnComplete) && initialDepth === 0;
   const initialOptions = shouldBufferInitialTurns
     ? { ...options, onTurnComplete: (turn: TurnOutput) => bufferedTurns.push(turn) }
     : options;
-  const initial = await run(prompt, initialOptions);
-  onOutput?.(initial);
+  let output = await run(prompt, initialOptions);
+  onOutput?.(output);
 
-  if (
-    !initial.requiresToolEnabledContinuation
-    || options.protectedRecoveryContinuation
-  ) {
+  if (!output.requiresToolEnabledContinuation) {
     for (const turn of bufferedTurns) originalOnTurnComplete?.(turn);
-    return initial;
+    return output;
   }
 
   // Preserve committed pre-tool progress from the protected run, but suppress
   // any unauthoritative terminal prose produced by legacy/injected runners:
-  // only the ordinary continuation may close tool-dependent work. Generic
-  // runtime recovery now hands off before making a tools-disabled request.
+  // only an ordinary continuation may close tool-dependent work.
   for (const turn of bufferedTurns) {
     if (turn.followedByToolUse) originalOnTurnComplete?.(turn);
   }
-  if (options.deferToolEnabledContinuation) return initial;
-  const continuation = await run(TOOL_ENABLED_RECOVERY_CONTINUATION_PROMPT, {
-    ...options,
-    protectedRecoveryContinuation: true,
-  });
-  onOutput?.(continuation);
-  // The one-shot handoff has been spent. Preserve the continuation outcome,
-  // but never expose a flag that a caller could accidentally chain again.
-  if (!continuation.requiresToolEnabledContinuation) return continuation;
-  const { requiresToolEnabledContinuation: _spent, ...terminal } = continuation;
-  return terminal;
+  if (options.deferToolEnabledContinuation) return output;
+
+  let handoffDepth = initialDepth;
+  while (output.requiresToolEnabledContinuation) {
+    const canHandoff = handoffDepth === 0
+      || (handoffDepth < MAX_PROTECTED_RECOVERY_HANDOFF_DEPTH
+        && isPostCompactionProtectedRecoveryHandoff(output));
+    if (!canHandoff) return finishBoundedProtectedRecoveryHandoff(output);
+
+    handoffDepth += 1;
+    output = await run(TOOL_ENABLED_RECOVERY_CONTINUATION_PROMPT, {
+      ...options,
+      protectedRecoveryContinuation: true,
+      protectedRecoveryContinuationDepth: handoffDepth,
+    });
+    onOutput?.(output);
+  }
+  return output;
 }

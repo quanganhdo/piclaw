@@ -21,14 +21,15 @@ test("createRepoDevCommandPlan resolves repo-root binaries for build, lint, and 
   expect(typeof buildPlan.postRun).toBe("function");
 
   expect(lintPlan.cwd).toBe("/workspace/piclaw");
-  expect(lintPlan.binaryPath).toBe("/workspace/piclaw/node_modules/eslint/bin/eslint.js");
+  expect(lintPlan.binaryPath).toBe("/workspace/piclaw/node_modules/.bin/oxlint");
   expect(lintPlan.args).toEqual([
     "--config",
-    "/workspace/piclaw/eslint.config.js",
-    "runtime/src/**/*.ts",
-    "runtime/test/**/*.ts",
-    "runtime/scripts/**/*.ts",
-    "scripts/**/*.ts",
+    "/workspace/piclaw/.oxlintrc.json",
+    "--deny-warnings",
+    "runtime/src",
+    "runtime/test",
+    "runtime/scripts",
+    "scripts",
   ]);
 
   expect(typecheckPlan.cwd).toBe("/workspace/piclaw/runtime");
@@ -57,10 +58,10 @@ test("listMissingRepoBinaries reports missing tools from the repo-local bin dire
     packageDir: "/tmp/piclaw-missing-bins",
     runtimeDir: "/tmp/piclaw-missing-bins/runtime",
     cwd: "/tmp/piclaw-missing-bins/runtime",
-    binaryPath: "/tmp/piclaw-missing-bins/node_modules/.bin/eslint",
+    binaryPath: "/tmp/piclaw-missing-bins/node_modules/.bin/oxlint",
     args: [],
-    requiredBinaries: ["eslint", "tsc"],
+    requiredBinaries: ["oxlint", "tsc"],
   };
 
-  expect(listMissingRepoBinaries(plan)).toEqual(["eslint", "tsc"]);
+  expect(listMissingRepoBinaries(plan)).toEqual(["oxlint", "tsc"]);
 });

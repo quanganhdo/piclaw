@@ -17,12 +17,18 @@ import { parseControlCommand } from "../../../agent-control/index.js";
 import { isSlashCommandInvocation } from "../../../agent-pool/slash-command.js";
 import {
   RECOVERY_CONTINUATION_PROMPT,
+  TOOL_ENABLED_RECOVERY_CONTINUATION_PROMPT,
 } from "../../../agent-pool/context-pressure-retry.js";
 import {
   PROTECTED_RECOVERY_CONTROL_LABEL,
   buildProtectedRecoveryControlIntentBlock,
-  resolveProtectedRecoveryPrompt,
+  resolveProtectedRecoveryControlIntent,
 } from "../../../agent-pool/protected-recovery-control-intent.js";
+import {
+  MAX_PROTECTED_RECOVERY_HANDOFF_DEPTH,
+  PROTECTED_RECOVERY_HANDOFF_LIMIT_MESSAGE,
+  isPostCompactionProtectedRecoveryHandoff,
+} from "../../../agent-pool/protected-recovery-handoff.js";
 import { getExtensionKvStore } from "../../../extension-kv-registry.js";
 import {
   normalizeAgentMessagePayload,
@@ -1467,7 +1473,10 @@ export async function processChat(
   }
 
   const channelName = detectChannel(chatJid);
-  const protectedRecoveryPrompt = resolveProtectedRecoveryPrompt(currentMessage);
+  const protectedRecoveryIntent = resolveProtectedRecoveryControlIntent(currentMessage);
+  const protectedRecoveryPrompt = protectedRecoveryIntent
+    ? TOOL_ENABLED_RECOVERY_CONTINUATION_PROMPT
+    : null;
   const promptMessage = protectedRecoveryPrompt
     ? { ...currentMessage, content: protectedRecoveryPrompt }
     : currentMessage;
@@ -1641,7 +1650,8 @@ export async function processChat(
     skipPrePromptCompaction: true,
     scheduleIdleAutoCompaction: true,
     deferToolEnabledContinuation: true,
-    protectedRecoveryContinuation: Boolean(protectedRecoveryPrompt),
+    protectedRecoveryContinuation: Boolean(protectedRecoveryIntent),
+    protectedRecoveryContinuationDepth: protectedRecoveryIntent?.handoff_depth,
     onEvent: trackedStreamingHandler,
     onTurnDiscard: () => {
       clearCommittedDraft();
@@ -1827,12 +1837,25 @@ export async function processChat(
         });
       }
     };
-    const queueProtectedRecoveryContinuation = (): { required: boolean; rowId: number | null; failed: boolean; created: boolean } => {
+    const queueProtectedRecoveryContinuation = (): {
+      required: boolean;
+      rowId: number | null;
+      failed: boolean;
+      created: boolean;
+      terminalReason?: "limit" | "unprepared";
+    } => {
       if (!output.requiresToolEnabledContinuation) return { required: false, rowId: null, failed: false, created: false };
-      // The generated ordinary continuation is the one bounded handoff. If it
-      // also fails, persist that terminal result instead of creating a chain.
-      if (protectedRecoveryPrompt) {
-        return { required: false, rowId: null, failed: false, created: false };
+      const currentHandoffDepth = protectedRecoveryIntent?.handoff_depth ?? 0;
+      if (protectedRecoveryIntent) {
+        if (currentHandoffDepth >= MAX_PROTECTED_RECOVERY_HANDOFF_DEPTH) {
+          return { required: false, rowId: null, failed: false, created: false, terminalReason: "limit" };
+        }
+        // Repeated generic protected retries remain unsafe to chain. Only a
+        // completed compact_then_retry phase establishes useful new state for
+        // one final ordinary tool-enabled continuation.
+        if (!isPostCompactionProtectedRecoveryHandoff(output)) {
+          return { required: false, rowId: null, failed: false, created: false, terminalReason: "unprepared" };
+        }
       }
       const continuationThreadId = resolveContinuationThreadId();
       if (!continuationThreadId) {
@@ -1856,6 +1879,7 @@ export async function processChat(
           sourceMessageId,
           sourceRowId,
           threadId: continuationThreadId,
+          handoffDepth: currentHandoffDepth + 1,
         });
         const queuedRowId = channel.enqueueQueuedFollowupItem(
           chatJid,
@@ -1884,6 +1908,7 @@ export async function processChat(
           sourceMessageId,
           sourceRowId,
           threadId: continuationThreadId,
+          handoffDepth: controlIntent.handoff_depth,
           queuedRowId,
         });
         return { required: true, rowId: queuedRowId, failed: false, created: true };
@@ -1914,6 +1939,40 @@ export async function processChat(
       }));
       throw new Error("Protected recovery handoff persistence failed; retry the source turn.");
     }
+    if (protectedContinuation.terminalReason) {
+      // The runtime deliberately refuses an unbounded recovery chain. Unlike a
+      // normal marker-only blank final, this terminal state must remain readable
+      // even when the client cannot render structured outcome blocks.
+      clearCommittedDraft();
+      shouldRemoveStaleProtectedContinuation = true;
+      const detail = protectedContinuation.terminalReason === "limit"
+        ? PROTECTED_RECOVERY_HANDOFF_LIMIT_MESSAGE
+        : "Automatic recovery could not safely start another tool-enabled continuation. The session is preserved; send “continue” to resume the unfinished work.";
+      const marker = buildTurnOutcomeMarker({
+        kind: "recovery",
+        label: "recovery paused",
+        title: "Automatic recovery paused",
+        detail,
+        severity: "warning",
+        attemptsUsed: output.recovery?.attemptsUsed,
+        classifier: output.recovery?.lastClassifier ?? null,
+        failureCategory: output.failureCategory,
+        nextAction: "Send “continue” to resume from the preserved session state.",
+      });
+      const persisted = persistTerminalOutcome(`⚠️ Automatic recovery paused\n${detail}`, marker);
+      if (persisted) {
+        await finalizeSuccessfulRun();
+      } else {
+        rollbackChatRunWithError(chatJid, {
+          prevTs: prevCursor,
+          failedTs: lastMessage.timestamp,
+          messageId: lastMessage.id,
+          threadRootId: resolvedThreadRootId ?? null,
+          createdAt: new Date().toISOString(),
+        });
+      }
+      return;
+    }
     if (protectedContinuation.required) {
       // A protected attempt intentionally has no execution tools. Its streamed
       // draft is not a terminal answer and may falsely claim tools are missing.
@@ -1924,7 +1983,9 @@ export async function processChat(
         kind: "recovery",
         label: "recovery",
         title: PROTECTED_RECOVERY_CONTROL_LABEL,
-        detail: "Continuing in an ordinary turn with execution tools restored.",
+        detail: protectedRecoveryIntent
+          ? "Compaction completed; continuing once more with execution tools restored."
+          : "Continuing in an ordinary turn with execution tools restored.",
         severity: "info",
         attemptsUsed: output.recovery?.attemptsUsed,
         classifier: output.recovery?.lastClassifier ?? null,
