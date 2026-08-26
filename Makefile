@@ -43,8 +43,9 @@ BUN_BIN_REAL ?= $(shell readlink -f $(shell command -v bun 2>/dev/null) 2>/dev/n
 # the immutable release tree. Operators can still override BUN_ROOT explicitly.
 HOST_BUN_ROOT := $(if $(wildcard /usr/local/lib/bun/bin/bun),/usr/local/lib/bun,$(patsubst %/bin/bun,%,$(BUN_BIN_REAL)))
 BUN_ROOT ?= $(HOST_BUN_ROOT)
-GLOBAL_PKG := $(BUN_ROOT)/install/global/package.json
-GLOBAL_LOCK := $(BUN_ROOT)/install/global/bun.lock
+GLOBAL_DIR := $(BUN_ROOT)/install/global
+GLOBAL_PKG := $(GLOBAL_DIR)/package.json
+GLOBAL_LOCK := $(GLOBAL_DIR)/bun.lock
 PI_AGENT_VERSION ?= $(shell jq -r '.dependencies["@earendil-works/pi-coding-agent"] // "0.74.0"' package.json)
 WEB_BUILD_TEST_TIMEOUT_MS ?= 20000
 
@@ -190,15 +191,22 @@ local-install: pack ## Pack and install piclaw globally (no restart)
 	case "$(BUN_ROOT)" in /opt/piclaw/current/*|/opt/piclaw/releases/*) \
 		printf '%s\n' "[local-install] Refusing portable release Bun root: $(BUN_ROOT). Override BUN_ROOT only with a writable host-global Bun installation."; exit 1;; \
 	esac; \
-	printf '{"dependencies":{"@earendil-works/pi-coding-agent":"$(PI_AGENT_VERSION)","@earendil-works/pi-agent-core":"$(PI_AGENT_VERSION)","@earendil-works/pi-ai":"$(PI_AGENT_VERSION)","@earendil-works/pi-tui":"$(PI_AGENT_VERSION)","piclaw":"%s"}}\n' \
-		"$$TGZ" | sudo tee $(GLOBAL_PKG) >/dev/null; \
+	INSTALL_STAGE="$(PICLAW_TMPDIR)/piclaw-local-install"; \
+	INSTALL_TGZ="$(PICLAW_TMPDIR)/piclaw-local-install.tgz"; \
+	PATCH_STAGE="$(PICLAW_TMPDIR)/piclaw-local-install-patches"; \
+	GLOBAL_PACKAGE="$(PICLAW_TMPDIR)/piclaw-local-install-package.json"; \
+	bun run scripts/prepare-local-install.ts \
+		"$$TGZ" "$$INSTALL_STAGE" "$$INSTALL_TGZ" "$$PATCH_STAGE" "$$GLOBAL_PACKAGE" "$(PI_AGENT_VERSION)"; \
+	sudo mkdir -p "$(GLOBAL_DIR)"; \
+	sudo cp -R "$$PATCH_STAGE"/. "$(GLOBAL_DIR)"/; \
+	sudo cp "$$GLOBAL_PACKAGE" "$(GLOBAL_PKG)"; \
 	sudo rm -f $(GLOBAL_LOCK); \
 	sudo mkdir -p $(PICLAW_TMPDIR) $(BUN_CACHE_DIR); \
 	sudo BUN_INSTALL=$(BUN_ROOT) \
 		BUN_TMPDIR=$(PICLAW_TMPDIR) \
 		BUN_INSTALL_CACHE_DIR=$(BUN_CACHE_DIR) \
 		TMPDIR=$(PICLAW_TMPDIR) TMP=$(PICLAW_TMPDIR) TEMP=$(PICLAW_TMPDIR) \
-		$(BUN_ROOT)/bin/bun install -g "$$TGZ" \
+		$(BUN_ROOT)/bin/bun install -g "$$INSTALL_TGZ" \
 		--registry https://registry.npmjs.org; \
 	sudo chmod -R a+rX $(BUN_ROOT); \
 	PICLAW_CLI=$$(readlink -f $(BUN_ROOT)/bin/piclaw || true); \
@@ -207,7 +215,7 @@ local-install: pack ## Pack and install piclaw globally (no restart)
 		exit 1; \
 	fi; \
 	sudo chmod 755 "$$PICLAW_CLI"; \
-	rm -f "$$TGZ"; \
+	rm -rf "$$TGZ" "$$INSTALL_TGZ" "$$INSTALL_STAGE" "$$PATCH_STAGE" "$$GLOBAL_PACKAGE"; \
 	DEST_REAL=$(BUN_ROOT)/install/global/node_modules/piclaw; \
 	if [ -d "$$DEST_REAL/extensions" ] && [ -d "$$DEST_REAL/node_modules" ]; then \
 		sudo ln -sfn "$$DEST_REAL/node_modules" "$$DEST_REAL/extensions/node_modules" 2>/dev/null || true; \

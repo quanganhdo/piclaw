@@ -761,6 +761,61 @@ test("runAgentPrompt emits turn-aware observability log metadata for turn and to
   expect(contextEvents.every((event) => event.contextWindow === 1000 && typeof event.tokens === "number")).toBe(true);
 });
 
+test("runAgentPrompt sanitizes OpenRouter affordability errors before logs and forwarded events", async () => {
+  initDatabase();
+  const rawError = `402: {"message":"This request requires more credits, or fewer max_tokens. You requested up to 32768 tokens, but can only afford 10000. https://openrouter.ai/settings/credits"}${" upstream-body".repeat(2_000)}`;
+  class StubSession {
+    private listeners: Array<(event: any) => void> = [];
+    sessionManager = { getLeafId: () => "leaf-openrouter-budget" };
+    model = { provider: "openrouter", id: "test-model", contextWindow: 128_000 };
+    isStreaming = false;
+    isCompacting = false;
+    isRetrying = false;
+    subscribe(listener: (event: any) => void) {
+      this.listeners.push(listener);
+      return () => { this.listeners = this.listeners.filter((entry) => entry !== listener); };
+    }
+    async prompt() {
+      for (const listener of this.listeners) {
+        listener({
+          type: "message_end",
+          message: { role: "assistant", stopReason: "error", errorMessage: rawError, content: [] },
+        });
+      }
+    }
+    async abort() {}
+  }
+
+  const forwardedErrors: string[] = [];
+  const logs: Array<Record<string, unknown>> = [];
+  const result = await runAgentPrompt("test", "web:openrouter-budget-sanitized", {
+    timeoutMs: 0,
+    skipPrePromptCompaction: true,
+    onEvent: (event) => {
+      if (event.type === "message_end") {
+        const errorMessage = (event as any).message?.errorMessage;
+        if (typeof errorMessage === "string") forwardedErrors.push(errorMessage);
+      }
+    },
+  }, {
+    getOrCreateRuntime: async () => createRuntime(new StubSession()) as any,
+    turnCoordinator: new AgentTurnCoordinator({ takeAttachments: () => [], touchSession: () => {}, recordMessageUsage: () => {} }),
+    clearAttachments: () => {},
+    takeAttachments: () => [],
+    logsDir: createTestLogsDir(),
+    setActiveForkBaseLeaf: () => {},
+    clearActiveForkBaseLeaf: () => {},
+    onInfo: (_message, details) => logs.push(details),
+  });
+
+  const expected = "OpenRouter output budget rejected (HTTP 402): requested 32768 tokens; affordable 10000 tokens.";
+  expect(forwardedErrors).toEqual([expected]);
+  expect(logs.find((entry) => entry.operation === "model.response.end")?.errorMessage).toBe(expected);
+  expect(JSON.stringify({ forwardedErrors, logs })).not.toContain("openrouter.ai/settings");
+  expect(JSON.stringify({ forwardedErrors, logs })).not.toContain("upstream-body");
+  expect(result.error).toContain("requested 32768 tokens; affordable 10000 tokens");
+});
+
 test("runAgentPrompt aggregates deltas and returns pending attachments", async () => {
   const attachments = getAttachmentRegistry();
   attachments.clear("web:default");
@@ -2055,12 +2110,12 @@ test("runAgentPrompt hands off unresolved generic failures without a provider re
     expect(result).toMatchObject({
       status: "error",
       requiresToolEnabledContinuation: true,
-      recovery: { attemptsUsed: 1, lastClassifier: "tool_activity" },
+      recovery: { attemptsUsed: 0, lastClassifier: "tool_activity" },
+      protectedRecoveryHandoff: { reason: "unresolved_tool_execution" },
     });
-    expect(result.recovery?.diagnostics[0]?.hasUnresolvedToolExecution).toBe(true);
     expect(session.promptCalls).toBe(1);
     expect(session.compactCalls).toBe(0);
-    expect(events).toEqual(["recovery_start", "recovery_end"]);
+    expect(events).toEqual(["recovery_end"]);
   } finally {
     restoreEnv();
   }
@@ -2887,7 +2942,7 @@ test("runAgentPrompt writes recovery diagnostics into the agent log", async () =
   }
 });
 
-test("runAgentPrompt auto-compacts and retries when tool activity produced no text output", async () => {
+test("runAgentPrompt terminalizes an unmatched tool start before auto-compaction", async () => {
   const restoreEnv = setEnv({
     PICLAW_TURN_AUTO_RECOVERY_ENABLED: "1",
     PICLAW_TURN_AUTO_RECOVERY_MAX_ATTEMPTS: "2",
@@ -2946,15 +3001,91 @@ test("runAgentPrompt auto-compacts and retries when tool activity produced no te
     expect(result).toMatchObject({
       status: "error",
       requiresToolEnabledContinuation: true,
-      recovery: { attemptsUsed: 1, lastClassifier: "tool_activity" },
+      recovery: { attemptsUsed: 0, lastClassifier: "tool_activity" },
+      protectedRecoveryHandoff: { reason: "unresolved_tool_execution" },
     });
     expect(result.error).not.toContain("Tool-use budget exceeded");
     expect(session.promptCalls).toBe(1);
     expect(session.promptTexts).toEqual(["hello"]);
-    expect(session.compactCalls).toBe(1);
+    expect(session.compactCalls).toBe(0);
     expect(result).not.toMatchObject({
       toolBudgetExceeded: true,
     });
+  } finally {
+    restoreEnv();
+  }
+});
+
+test("runAgentPrompt gives a protected continuation one tool-enabled retry after recovery compaction", async () => {
+  const restoreEnv = setEnv({
+    PICLAW_TURN_AUTO_RECOVERY_ENABLED: "1",
+    PICLAW_TURN_AUTO_RECOVERY_MAX_ATTEMPTS: "2",
+    PICLAW_TURN_AUTO_RECOVERY_TOTAL_BUDGET_MS: "30000",
+  });
+
+  class StubSession {
+    private listeners: Array<(event: any) => void> = [];
+    sessionManager = { getLeafId: () => `leaf-${this.promptCalls}` };
+    isStreaming = false;
+    isCompacting = false;
+    isRetrying = false;
+    promptCalls = 0;
+    promptTexts: string[] = [];
+    compactCalls = 0;
+    subscribe(listener: (event: any) => void) {
+      this.listeners.push(listener);
+      return () => { this.listeners = this.listeners.filter((entry) => entry !== listener); };
+    }
+    async prompt(text: string) {
+      this.promptCalls += 1;
+      this.promptTexts.push(text);
+      if (this.promptCalls === 1) {
+        for (const listener of this.listeners) {
+          listener({ type: "tool_execution_start", toolCallId: "tool-1", toolName: "bash", args: { command: "make test" } });
+          listener({ type: "tool_execution_end", toolCallId: "tool-1", toolName: "bash", isError: false });
+          listener({ type: "message_end", message: { role: "assistant", stopReason: "error", errorMessage: "maximum context length exceeded", content: [] } });
+        }
+        return;
+      }
+      for (const listener of this.listeners) {
+        listener({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "Finished after protected compaction." } });
+        listener({ type: "message_end", message: createAssistantMessage("Finished after protected compaction.") });
+      }
+    }
+    async compact() { this.compactCalls += 1; }
+    async abort() {}
+  }
+
+  try {
+    const session = new StubSession();
+    const result = await runAgentPrompt("continue protected work", "web:protected-post-compaction", {
+      timeoutMs: 0,
+      protectedRecoveryContinuation: true,
+      protectedRecoveryContinuationDepth: 1,
+    }, {
+      getOrCreateRuntime: async () => createRuntime(session) as any,
+      turnCoordinator: new AgentTurnCoordinator({ takeAttachments: () => [], touchSession: () => {}, recordMessageUsage: () => {} }),
+      clearAttachments: () => {},
+      takeAttachments: () => [],
+      logsDir: createTestLogsDir(),
+      setActiveForkBaseLeaf: () => {},
+      clearActiveForkBaseLeaf: () => {},
+    });
+
+    expect(result).toMatchObject({
+      status: "success",
+      result: "Finished after protected compaction.",
+      recovery: {
+        attemptsUsed: 1,
+        recovered: true,
+        exhausted: false,
+        strategyHistory: ["compact_then_retry"],
+      },
+    });
+    expect(result.requiresToolEnabledContinuation).toBeUndefined();
+    expect(session.promptCalls).toBe(2);
+    expect(session.promptTexts[1]).toBe(RECOVERY_CONTINUATION_PROMPT);
+    expect(session.compactCalls).toBe(1);
   } finally {
     restoreEnv();
   }
@@ -3697,6 +3828,85 @@ test("runAgentPrompt does not return commentary-only output as a completed reply
   } finally {
     restoreEnv();
   }
+});
+
+test("runAgentPrompt commits interrupted visible draft before a later text stream", async () => {
+  initDatabase();
+  class StubSession {
+    private listeners: Array<(event: any) => void> = [];
+    sessionManager = { getLeafId: () => "leaf-interrupted-draft" };
+    isStreaming = false;
+    isCompacting = false;
+    isRetrying = false;
+    subscribe(listener: (event: any) => void) {
+      this.listeners.push(listener);
+      return () => {
+        this.listeners = this.listeners.filter((entry) => entry !== listener);
+      };
+    }
+    async prompt() {
+      const signature = JSON.stringify({ phase: "final_answer" });
+      for (const listener of this.listeners) {
+        listener({
+          type: "message_update",
+          assistantMessageEvent: {
+            type: "text_start",
+            contentIndex: 0,
+            partial: { content: [{ type: "text", textSignature: signature }] },
+          },
+        });
+        listener({
+          type: "message_update",
+          assistantMessageEvent: {
+            type: "text_delta",
+            delta: "Visible progress before steering.",
+            contentIndex: 0,
+            partial: { content: [{ type: "text", textSignature: signature }] },
+          },
+        });
+        listener({
+          type: "message_update",
+          assistantMessageEvent: {
+            type: "text_start",
+            contentIndex: 0,
+            partial: { content: [{ type: "text", textSignature: signature }] },
+          },
+        });
+        listener({
+          type: "message_end",
+          message: {
+            role: "assistant",
+            stopReason: "stop",
+            content: [{ type: "text", text: "Final after steering.", textSignature: signature }],
+          },
+        });
+      }
+    }
+    async abort() {}
+  }
+
+  const session = new StubSession();
+  const completed: Array<{ text: string; turnKind?: string; cause?: string }> = [];
+  const result = await runAgentPrompt("test", "web:default", {
+    timeoutMs: 0,
+    onTurnComplete: (turn) => completed.push({ text: turn.text, turnKind: turn.turnKind, cause: turn.cause }),
+  }, {
+    getOrCreateRuntime: async () => createRuntime(session) as any,
+    turnCoordinator: new AgentTurnCoordinator({ takeAttachments: () => [], touchSession: () => {}, recordMessageUsage: () => {} }),
+    clearAttachments: () => {},
+    takeAttachments: () => [],
+    logsDir: createTestLogsDir(),
+    setActiveForkBaseLeaf: () => {},
+    clearActiveForkBaseLeaf: () => {},
+  });
+
+  expect(result.status).toBe("success");
+  expect(result.result).toBe("Final after steering.");
+  expect(completed).toEqual([{
+    text: "Visible progress before steering.",
+    turnKind: "draft_snapshot",
+    cause: "interrupted_text_start",
+  }]);
 });
 
 test("runAgentPrompt uses a later final answer after a commentary-only provider error", async () => {

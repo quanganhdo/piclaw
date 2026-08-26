@@ -5,6 +5,7 @@ import { join } from "node:path";
 import type { AgentSessionRuntime } from "@earendil-works/pi-coding-agent";
 import { clearProviderUsageCache, peekProviderUsage } from "../../src/agent-pool/provider-usage.js";
 import { AgentRuntimeFacade } from "../../src/agent-pool/runtime-facade.js";
+import { buildSessionTreeSnapshot } from "../../src/agent-control/session-tree-snapshot.js";
 import { SESSIONS_DIR } from "../../src/core/config.js";
 import { sanitiseJid } from "../../src/agent-pool/session.js";
 import { initDatabase } from "../../src/db.js";
@@ -77,7 +78,7 @@ test("AgentRuntimeFacade reports available models and context usage", async () =
     modelRegistry: {
       refresh: () => { refreshCalls += 1; },
       getAvailable: () => [
-        { provider: "openai", id: "gpt-test", name: "GPT Test", contextWindow: 128000, reasoning: true },
+        { provider: "openai", id: "gpt-test", name: "GPT Test", contextWindow: 128000, reasoning: true, cost: { input: 2.5, output: 10, cacheRead: 0.25, cacheWrite: 0 } },
         { provider: "anthropic", id: "claude-test", name: "Claude Test", contextWindow: 200000, reasoning: true },
       ],
     },
@@ -97,6 +98,12 @@ test("AgentRuntimeFacade reports available models and context usage", async () =
       id: "gpt-test",
       name: "GPT Test",
       context_window: 128000,
+      pricing: {
+        input_per_million: 2.5,
+        output_per_million: 10,
+        cache_read_per_million: 0.25,
+        cache_write_per_million: null,
+      },
       reasoning: true,
       thinking_levels: ["off", "minimal", "low", "medium", "high"],
       thinking_level_labels: ["off", "minimal", "low", "medium", "high"],
@@ -107,6 +114,7 @@ test("AgentRuntimeFacade reports available models and context usage", async () =
       id: "claude-test",
       name: "Claude Test",
       context_window: 200000,
+      pricing: null,
       reasoning: true,
       thinking_levels: ["off", "minimal", "low", "medium", "high"],
       thinking_level_labels: ["off", "minimal", "low", "medium", "high"],
@@ -181,6 +189,67 @@ test("AgentRuntimeFacade publishes one refreshed usage payload per matching know
       current: "zai/glm-4",
       provider_usage: { provider: "zai", plan: "enterprise" },
     });
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test("AgentRuntimeFacade retries a superseded OpenRouter refresh after the instance credential rotates", async () => {
+  let releaseFirst!: () => void;
+  const firstGate = new Promise<void>((resolve) => { releaseFirst = resolve; });
+  let credential = "first-key";
+  let fetchCalls = 0;
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = (async (_url: string | URL | Request, init?: RequestInit) => {
+    fetchCalls += 1;
+    const authorization = (init?.headers as Record<string, string> | undefined)?.Authorization;
+    if (authorization === "Bearer first-key") {
+      await firstGate;
+      return new Response(JSON.stringify({ data: { usage: 1, limit: 10, limit_remaining: 9 } }));
+    }
+    return new Response(JSON.stringify({ data: { usage: 2, limit: 10, limit_remaining: 8 } }));
+  }) as typeof fetch;
+  const refreshes: Array<{ provider_usage?: { key_usage_usd?: number } }> = [];
+
+  try {
+    const model = { provider: "openrouter", id: "auto", reasoning: true };
+    const fixture = createFacade({
+      modelRegistry: {
+        getAll: () => [model],
+        getAvailable: () => [model],
+        registerProvider: () => {},
+      } as any,
+      modelRuntime: {
+        getProviders: () => [],
+        getRegisteredProviderIds: () => [],
+        getError: () => undefined,
+        getAuth: async () => ({ auth: { apiKey: credential } }),
+      } as any,
+      listKnownChats: () => [{ chat_jid: "web:openrouter", model: "openrouter/auto" }],
+      onProviderUsageRefresh: (event) => refreshes.push(event),
+    });
+    const session = {
+      model,
+      thinkingLevel: "high",
+      getContextUsage: () => null,
+      modelRegistry: { getAvailable: () => [model] },
+    };
+    fixture.pool.set("web:openrouter", { runtime: createRuntime(session), lastUsed: Date.now() });
+
+    await fixture.facade.getAvailableModels("web:openrouter");
+    for (let i = 0; i < 20 && fetchCalls < 1; i += 1) await Promise.resolve();
+    expect(fetchCalls).toBe(1);
+
+    credential = "second-key";
+    await fixture.facade.getAvailableModels("web:openrouter");
+    releaseFirst();
+    for (let i = 0; i < 20 && refreshes.length === 0; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+
+    expect(fetchCalls).toBe(2);
+    expect(refreshes).toHaveLength(1);
+    expect(refreshes[0]?.provider_usage?.key_usage_usd).toBe(2);
   } finally {
     globalThis.fetch = previousFetch;
   }
@@ -717,11 +786,8 @@ test("AgentRuntimeFacade normalizes session-tree user prompts for display while 
     },
   };
 
-  const fixture = createFacade();
-  fixture.pool.set("web:default", { runtime: createRuntime(session), lastUsed: Date.now() });
-
-  const tree = fixture.facade.getSessionTreeForChat("web:default");
-  expect(tree?.nodes).toHaveLength(1);
+  const tree = buildSessionTreeSnapshot(session.sessionManager as any);
+  expect(tree.nodes).toHaveLength(1);
   expect(tree?.nodes[0]).toMatchObject({
     id: "m1",
     role: "user",
@@ -754,11 +820,8 @@ test("AgentRuntimeFacade leaves legacy XML session-tree entries unnormalized", (
     },
   };
 
-  const fixture = createFacade();
-  fixture.pool.set("web:default", { runtime: createRuntime(session), lastUsed: Date.now() });
-
-  const tree = fixture.facade.getSessionTreeForChat("web:default");
-  expect((tree?.nodes[0] as any).detail).toContain('<messages channel="web">');
+  const tree = buildSessionTreeSnapshot(session.sessionManager as any);
+  expect((tree.nodes[0] as any).detail).toContain('<messages channel="web">');
   expect((tree?.nodes[0] as any).previewText).toBeUndefined();
   expect((tree?.nodes[0] as any).rawDetail).toBeUndefined();
 });

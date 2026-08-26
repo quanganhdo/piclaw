@@ -29,9 +29,11 @@ export async function runProcessChatPreflight(options: {
   streamingHandler(event: Record<string, unknown>): void;
   compactionState: { lastCompactionErrorMessage: string | null; lastCompactionSuppressed: boolean };
   enqueueResume(threadRootId: number | undefined): void;
+  skipPrePromptCompaction?: boolean;
 }): Promise<"continue" | "deferred"> {
   const { channel, chatJid } = options;
-  if (typeof channel.agentPool.getSessionForIntrospection !== "function") {
+  if (options.skipPrePromptCompaction
+    || typeof channel.agentPool.getSessionForIntrospection !== "function") {
     beginChatRun(chatJid, options.message.timestamp, { prevTs: options.prevCursor, messageId: options.message.id, startedAt: options.runStartedAt });
     return "continue";
   }

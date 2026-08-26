@@ -71,7 +71,13 @@ import "../../../extensions/generic-tool-status-hints.js";
 import { createUuid } from "../../../utils/ids.js";
 import { createLogger, debugSuppressedError } from "../../../utils/logger.js";
 import type { AttachmentInfo } from "../../../agent-pool/attachments.js";
-import type { AgentFailureCategory } from "../../../agent-pool/contracts.js";
+import type { AgentFailureCategory, TurnOutput } from "../../../agent-pool/contracts.js";
+import {
+  buildProtectedRecoveryHandoffMetadata,
+  formatProtectedRecoveryHandoff,
+  protectedRecoveryHandoffContentBlockFields,
+  type ProtectedRecoveryHandoffMetadata,
+} from "../../../agent-pool/protected-recovery-handoff-reason.js";
 import { classifyOpaqueAgentFailure } from "../../../agent-pool/automatic-recovery.js";
 import { cancelScheduledIdleAutoCompaction } from "../../../agent-pool/compaction.js";
 import { DEFAULT_BASE_RETRY_MS, getRetryAtIso } from "../../../queue/retry-policy.js";
@@ -188,6 +194,7 @@ function buildTurnOutcomeMarker(options: {
   nextAction?: string;
   abortCause?: string;
   abortOperation?: string;
+  protectedRecoveryHandoff?: ProtectedRecoveryHandoffMetadata;
 }): Record<string, unknown> {
   return {
     type: "turn_outcome_marker",
@@ -206,6 +213,9 @@ function buildTurnOutcomeMarker(options: {
     next_action: readTrimmedString(options.nextAction) || undefined,
     abort_cause: readTrimmedString(options.abortCause) || undefined,
     abort_operation: readTrimmedString(options.abortOperation) || undefined,
+    ...(options.protectedRecoveryHandoff
+      ? protectedRecoveryHandoffContentBlockFields(options.protectedRecoveryHandoff)
+      : {}),
   };
 }
 
@@ -223,12 +233,29 @@ function buildErrorOutcomeMarker(
     nextAction?: string;
     abortCause?: string;
     abortOperation?: string;
+    protectedRecoveryHandoff?: ProtectedRecoveryHandoffMetadata;
   } = {},
 ): Record<string, unknown> {
   const category = options.failureCategory ?? "unknown";
   const displayErrorText = sanitizeProviderErrorDetail(errorText) || "Agent error";
   const detail = displayErrorText.slice(0, 500);
   const providerError = formatProviderError(displayErrorText);
+  if (options.protectedRecoveryHandoff) {
+    const presentation = formatProtectedRecoveryHandoff(options.protectedRecoveryHandoff);
+    return buildTurnOutcomeMarker({
+      kind: "recovery",
+      label: presentation.label,
+      title: presentation.title,
+      detail: presentation.detail,
+      severity: options.severity ?? "warning",
+      draftRecovered: options.draftRecovered,
+      attemptsUsed: options.attemptsUsed,
+      classifier: options.classifier,
+      failureCategory: category,
+      nextAction: presentation.nextAction,
+      protectedRecoveryHandoff: options.protectedRecoveryHandoff,
+    });
+  }
   const common = {
     detail,
     draftRecovered: options.draftRecovered,
@@ -1477,6 +1504,20 @@ export async function processChat(
   const protectedRecoveryPrompt = protectedRecoveryIntent
     ? TOOL_ENABLED_RECOVERY_CONTINUATION_PROMPT
     : null;
+  const protectedRecoveryHandoffContext: ProtectedRecoveryHandoffMetadata | undefined =
+    protectedRecoveryIntent?.reason
+      && protectedRecoveryIntent.compaction
+      && typeof protectedRecoveryIntent.tools_required === "boolean"
+      && typeof protectedRecoveryIntent.retryable === "boolean"
+      && Number.isInteger(protectedRecoveryIntent.recovery_attempts)
+      ? {
+          reason: protectedRecoveryIntent.reason,
+          compaction: protectedRecoveryIntent.compaction,
+          toolsRequired: protectedRecoveryIntent.tools_required,
+          retryable: protectedRecoveryIntent.retryable,
+          recoveryAttempts: Number(protectedRecoveryIntent.recovery_attempts),
+        }
+      : undefined;
   const promptMessage = protectedRecoveryPrompt
     ? { ...currentMessage, content: protectedRecoveryPrompt }
     : currentMessage;
@@ -1501,6 +1542,7 @@ export async function processChat(
   const preflight = await runProcessChatPreflight({
     channel, chatJid, agentId, message: { id: lastMessage.id, timestamp: lastMessage.timestamp }, prevCursor, effectiveThreadRootId: effectiveThreadRootId ?? null, turnId, runStartedAt, browserObservability,
     streamingHandler: trackedStreamingHandler, compactionState: streamState,
+    skipPrePromptCompaction: protectedRecoveryHandoffContext?.reason === "unresolved_tool_execution",
     enqueueResume: (root) => enqueueProcessChatAfterCompaction(channel, chatJid, agentId, lastMessage.id, root, browserObservability),
   });
   if (preflight === "deferred") return;
@@ -1550,12 +1592,14 @@ export async function processChat(
     const markerType = readTrimmedString(marker?.type);
     const markerKind = readTrimmedString(marker?.kind);
     const markerClassifier = readTrimmedString(marker?.classifier);
+    const markerSeverity = readTrimmedString(marker?.severity);
     const inlineDiagnostic = markerKind === "tool_budget"
       || markerClassifier === "tool_history_pressure"
       || markerClassifier === "budget_exhausted";
     const showDiagnosticWithoutDraft = (markerType === "timeout_marker"
       && markerClassifier === "budget_exhausted")
-      || markerKind === "context";
+      || markerKind === "context"
+      || (markerKind === "recovery" && markerSeverity !== "info");
     const text = buildFailureVisibleText({
       draftText,
       title,
@@ -1582,6 +1626,7 @@ export async function processChat(
         toolStepsUsed?: number;
         toolStepsBudget?: number;
         nextAction?: string;
+        protectedRecoveryHandoff?: ProtectedRecoveryHandoffMetadata;
       };
     } = {},
   ) => {
@@ -1593,7 +1638,14 @@ export async function processChat(
     const draft = channel.getBuffer(turnId, "draft");
     const draftText = typeof draft?.text === "string" ? draft.text.trim() : "";
 
-    const markerBase = reason === "timeout"
+    const markerBase = options.markerOptions?.protectedRecoveryHandoff
+      ? buildErrorOutcomeMarker(detail || "Automatic recovery paused", {
+          draftRecovered: Boolean(draftText),
+          attemptsUsed: streamState.lastRecoveryMeta?.attemptsUsed,
+          classifier: streamState.lastRecoveryMeta?.lastClassifier ?? null,
+          ...options.markerOptions,
+        })
+      : reason === "timeout"
       ? {
           type: "timeout_marker",
           timed_out: true,
@@ -1627,7 +1679,10 @@ export async function processChat(
               ...options.markerOptions,
             });
 
-    return persistVisibleFailureOutcome(markerBase, reason === "timeout" ? detail : undefined, options);
+    const visibleDetail = reason === "timeout" && !options.markerOptions?.protectedRecoveryHandoff
+      ? detail
+      : undefined;
+    return persistVisibleFailureOutcome(markerBase, visibleDetail, options);
   };
 
   const finalizeSuccessfulRun = async () => finalizeSuccessfulProcessChatRun({
@@ -1652,11 +1707,12 @@ export async function processChat(
     deferToolEnabledContinuation: true,
     protectedRecoveryContinuation: Boolean(protectedRecoveryIntent),
     protectedRecoveryContinuationDepth: protectedRecoveryIntent?.handoff_depth,
+    protectedRecoveryHandoffContext,
     onEvent: trackedStreamingHandler,
     onTurnDiscard: () => {
       clearCommittedDraft();
     },
-    onTurnComplete: (turn: { text: string; attachments: unknown[]; usage?: unknown; followedByToolUse?: boolean }) => {
+    onTurnComplete: (turn: TurnOutput) => {
       // Turn boundary: the first turn (index 0) is the original prompt's
       // response — skip placeholder consumption so it doesn't steal a
       // placeholder that belongs to a queued follow-up.
@@ -1676,6 +1732,8 @@ export async function processChat(
           threadId: resolvedThreadRootId,
           skipPlaceholder: isFirstTurn,
           timingBlock: streamRuntime.buildAgentTimingBlock(turn.usage),
+          turnKind: turn.turnKind,
+          cause: turn.cause,
           followedByToolUse: turn.followedByToolUse,
           clearCommittedDraft,
         });
@@ -1758,7 +1816,7 @@ export async function processChat(
       throw new Error(output.error || "Agent run is already processing");
     }
 
-    if (output.failureCategory === "provider_unavailable") {
+    if (output.failureCategory === "provider_unavailable" && !output.protectedRecoveryHandoff) {
       // Extension/provider registration races can happen right after restart.
       // Keep the message pending and let the queue retry automatically.
       rollbackInflightRun(chatJid, prevCursor);
@@ -1784,6 +1842,7 @@ export async function processChat(
       toolStepsUsed: output.toolStepsUsed,
       toolStepsBudget: output.toolStepsBudget,
       nextAction: output.nextAction,
+      protectedRecoveryHandoff: output.protectedRecoveryHandoff,
       abortCause: output.abortCause,
       abortOperation: output.abortOperation,
     };
@@ -1845,6 +1904,9 @@ export async function processChat(
       terminalReason?: "limit" | "unprepared";
     } => {
       if (!output.requiresToolEnabledContinuation) return { required: false, rowId: null, failed: false, created: false };
+      if (output.protectedRecoveryHandoff?.reason === "unresolved_tool_execution") {
+        return { required: false, rowId: null, failed: false, created: false, terminalReason: "unprepared" };
+      }
       const currentHandoffDepth = protectedRecoveryIntent?.handoff_depth ?? 0;
       if (protectedRecoveryIntent) {
         if (currentHandoffDepth >= MAX_PROTECTED_RECOVERY_HANDOFF_DEPTH) {
@@ -1880,6 +1942,7 @@ export async function processChat(
           sourceRowId,
           threadId: continuationThreadId,
           handoffDepth: currentHandoffDepth + 1,
+          handoff: output.protectedRecoveryHandoff,
         });
         const queuedRowId = channel.enqueueQueuedFollowupItem(
           chatJid,
@@ -1945,21 +2008,38 @@ export async function processChat(
       // even when the client cannot render structured outcome blocks.
       clearCommittedDraft();
       shouldRemoveStaleProtectedContinuation = true;
-      const detail = protectedContinuation.terminalReason === "limit"
+      const terminalReason = output.protectedRecoveryHandoff?.reason
+        ?? (isPostCompactionProtectedRecoveryHandoff(output)
+          ? "post_compaction_tools_required"
+          : "continuation_generation_exhausted");
+      const terminalHandoff = buildProtectedRecoveryHandoffMetadata(terminalReason, {
+        recoveryAttempts: output.protectedRecoveryHandoff?.recoveryAttempts
+          ?? output.recovery?.attemptsUsed
+          ?? 0,
+        compaction: output.protectedRecoveryHandoff?.compaction,
+        toolsRequired: output.protectedRecoveryHandoff?.toolsRequired ?? true,
+        retryable: output.protectedRecoveryHandoff?.retryable ?? true,
+      });
+      const presentation = terminalHandoff ? formatProtectedRecoveryHandoff(terminalHandoff) : null;
+      const detail = presentation?.detail ?? (protectedContinuation.terminalReason === "limit"
         ? PROTECTED_RECOVERY_HANDOFF_LIMIT_MESSAGE
-        : "Automatic recovery could not safely start another tool-enabled continuation. The session is preserved; send “continue” to resume the unfinished work.";
+        : "Automatic recovery could not safely start another tool-enabled continuation. The session is preserved; send “continue” to resume the unfinished work.");
       const marker = buildTurnOutcomeMarker({
         kind: "recovery",
-        label: "recovery paused",
-        title: "Automatic recovery paused",
+        label: presentation?.label ?? "recovery paused",
+        title: presentation?.title ?? "Automatic recovery paused",
         detail,
         severity: "warning",
         attemptsUsed: output.recovery?.attemptsUsed,
         classifier: output.recovery?.lastClassifier ?? null,
         failureCategory: output.failureCategory,
-        nextAction: "Send “continue” to resume from the preserved session state.",
+        nextAction: presentation?.nextAction ?? "Send “continue” to resume from the preserved session state.",
+        protectedRecoveryHandoff: terminalHandoff,
       });
-      const persisted = persistTerminalOutcome(`⚠️ Automatic recovery paused\n${detail}`, marker);
+      const terminalText = presentation
+        ? `⚠️ ${presentation.title}\n${presentation.detail} ${presentation.nextAction}`
+        : `⚠️ Automatic recovery paused\n${detail}`;
+      const persisted = persistTerminalOutcome(terminalText, marker);
       if (persisted) {
         await finalizeSuccessfulRun();
       } else {
@@ -1979,16 +2059,20 @@ export async function processChat(
       // Replace that transient prose with a deterministic recovery marker while
       // the durable typed continuation resumes the work with tools restored.
       clearCommittedDraft();
+      const handoffPresentation = output.protectedRecoveryHandoff
+        ? formatProtectedRecoveryHandoff(output.protectedRecoveryHandoff)
+        : null;
       const marker = buildTurnOutcomeMarker({
         kind: "recovery",
         label: "recovery",
         title: PROTECTED_RECOVERY_CONTROL_LABEL,
-        detail: protectedRecoveryIntent
+        detail: handoffPresentation?.detail ?? (protectedRecoveryIntent
           ? "Compaction completed; continuing once more with execution tools restored."
-          : "Continuing in an ordinary turn with execution tools restored.",
+          : "Continuing in an ordinary turn with execution tools restored."),
         severity: "info",
         attemptsUsed: output.recovery?.attemptsUsed,
         classifier: output.recovery?.lastClassifier ?? null,
+        protectedRecoveryHandoff: output.protectedRecoveryHandoff,
       });
       const persisted = persistVisibleFailureOutcome(marker);
       if (persisted) {

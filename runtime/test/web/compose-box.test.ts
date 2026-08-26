@@ -6,11 +6,14 @@ import {
   SLASH_COMMANDS,
   formatModelPickerContextWindow,
   formatModelPickerDisplayLabel,
+  formatModelPickerPricing,
+  formatOpenRouterKeyUsageTitle,
   getComposeHistoryStorageKey,
   getModelPickerContextLimit,
   getModelPickerOptionSearchLabel,
   normalizeModelPickerOptions,
   resolveComposeCacheHitMeta,
+  resolveComposeRunUsageMeta,
   resolveComposeExtensionWorkingDisplay,
   resolveComposeModelPickerState,
   resolveComposeRoutedModelStatus,
@@ -54,6 +57,7 @@ test('normalizeModelPickerOptions prefers structured model metadata and sorts by
       id: 'claude-sonnet-4',
       name: 'Claude Sonnet 4',
       contextWindow: 200000,
+      pricing: null,
       reasoning: true,
     },
     {
@@ -62,6 +66,7 @@ test('normalizeModelPickerOptions prefers structured model metadata and sorts by
       id: 'gpt-4.1',
       name: 'GPT-4.1',
       contextWindow: 128000,
+      pricing: null,
       reasoning: false,
     },
   ]);
@@ -77,7 +82,8 @@ test('normalizeModelPickerOptions falls back to legacy string labels', () => {
       id: 'claude-sonnet-4',
       name: null,
       contextWindow: null,
-      reasoning: false,
+      pricing: null,
+      reasoning: null,
     },
     {
       label: 'openai/gpt-4.1',
@@ -85,62 +91,191 @@ test('normalizeModelPickerOptions falls back to legacy string labels', () => {
       id: 'gpt-4.1',
       name: null,
       contextWindow: null,
-      reasoning: false,
+      pricing: null,
+      reasoning: null,
     },
   ]);
 });
 
-test('resolveComposeCacheHitMeta formats latest prompt cache-hit telemetry', () => {
-  expect(resolveComposeCacheHitMeta({
+test('resolveComposeRunUsageMeta formats latest usage with cache and provider-cost provenance', () => {
+  expect(resolveComposeRunUsageMeta({
     cacheUsage: {
       latest: {
         inputTokens: 1000,
         outputTokens: 300,
+        reasoningTokens: 40,
         cacheReadTokens: 3000,
         cacheWriteTokens: 1000,
+        cacheReadReported: true,
         totalTokens: 5300,
         cacheHitRate: 60,
-        runs: 1,
-      },
-      totals: {
-        inputTokens: 2000,
-        outputTokens: 600,
-        cacheReadTokens: 6000,
-        cacheWriteTokens: 2000,
-        totalTokens: 10600,
-        cacheHitRate: 60,
-        runs: 2,
+        costTotal: 0.00123,
+        costProvenance: 'provider_reported',
+        provider: 'openrouter',
+        model: 'auto',
+        responseModel: 'anthropic/claude-sonnet-4-5',
       },
     },
-  })).toEqual({
-    label: 'CH60.0%',
-    title: 'Prompt cache hit: 60.0% latest run • in 1K, out 300, cache-r 3K, cache-w 1K • Session total: 60.0% across 2 runs',
+  }, 'openrouter/auto')).toMatchObject({
+    label: 'Last • 5K • CH60.0% • $0.0012',
     cacheHitRate: 60,
+    costTotal: 0.00123,
+    costProvenance: 'provider_reported',
+    requestedModel: 'openrouter/auto',
+    responseModel: 'anthropic/claude-sonnet-4-5',
+    isPreviousModel: false,
   });
+  expect(resolveComposeRunUsageMeta({
+    cacheUsage: { latest: {
+      inputTokens: 1000,
+      outputTokens: 300,
+      reasoningTokens: 40,
+      cacheReadTokens: 3000,
+      cacheWriteTokens: 1000,
+      totalTokens: 5300,
+    } },
+  })?.title).toContain('reason 40');
 });
 
-test('resolveComposeCacheHitMeta computes cache-hit telemetry when the API omits a rate', () => {
+test('resolveComposeRunUsageMeta preserves explicit 0.0% and unavailable cache states', () => {
+  const explicitZero = resolveComposeRunUsageMeta({
+    cacheUsage: { latest: {
+      inputTokens: 1000,
+      outputTokens: 100,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+      cacheReadReported: true,
+      totalTokens: 1100,
+      costTotal: 0,
+      costProvenance: 'provider_reported',
+    } },
+  });
+  expect(explicitZero?.label).toBe('Last • 1K • CH0.0% • $0.0000');
+  expect(explicitZero?.cacheHitRate).toBe(0);
+
+  const unavailable = resolveComposeRunUsageMeta({
+    cacheUsage: { latest: {
+      inputTokens: 1000,
+      outputTokens: 100,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+      cacheReadReported: false,
+      totalTokens: 1100,
+      costTotal: 0,
+      costProvenance: 'unavailable',
+    } },
+  });
+  expect(unavailable?.label).toBe('Last • 1K • CH—');
+  expect(unavailable?.cacheHitRate).toBeNull();
+  expect(unavailable?.title).toContain('Prompt cache telemetry unavailable');
+  expect(unavailable?.title).toContain('Cost unavailable');
+});
+
+test('resolveComposeRunUsageMeta labels usage from a previously selected model', () => {
+  const meta = resolveComposeRunUsageMeta({
+    cacheUsage: { latest: {
+      inputTokens: 100,
+      outputTokens: 10,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+      totalTokens: 110,
+      provider: 'openrouter',
+      model: 'auto',
+    } },
+  }, 'anthropic/claude-sonnet-4');
+  expect(meta?.label).toStartWith('Prev •');
+  expect(meta?.isPreviousModel).toBe(true);
+  expect(meta?.title).toContain('Previous run: openrouter/auto');
+
+  const routedProviderMeta = resolveComposeRunUsageMeta({
+    cacheUsage: { latest: {
+      inputTokens: 100,
+      outputTokens: 10,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+      totalTokens: 110,
+      provider: 'openrouter',
+      model: 'anthropic/claude-sonnet-4',
+    } },
+  }, 'anthropic/claude-sonnet-4');
+  expect(routedProviderMeta?.isPreviousModel).toBe(true);
+
+  const fullyQualifiedMeta = resolveComposeRunUsageMeta({
+    cacheUsage: { latest: {
+      inputTokens: 100,
+      outputTokens: 10,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+      totalTokens: 110,
+      provider: 'openrouter',
+      model: 'openrouter/auto',
+    } },
+  }, 'openrouter/auto');
+  expect(fullyQualifiedMeta?.requestedModel).toBe('openrouter/auto');
+  expect(fullyQualifiedMeta?.isPreviousModel).toBe(false);
+
+  const nestedModelMeta = resolveComposeRunUsageMeta({
+    cacheUsage: { latest: {
+      inputTokens: 100,
+      outputTokens: 10,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+      totalTokens: 110,
+      provider: 'openrouter',
+      model: 'anthropic/claude-sonnet-4',
+    } },
+  }, 'openrouter/anthropic/claude-sonnet-4');
+  expect(nestedModelMeta?.requestedModel).toBe('openrouter/anthropic/claude-sonnet-4');
+  expect(nestedModelMeta?.isPreviousModel).toBe(false);
+});
+
+test('resolveComposeCacheHitMeta keeps legacy positive-cache compatibility', () => {
   expect(resolveComposeCacheHitMeta({
-    cacheUsage: {
-      latest: {
-        inputTokens: 1000,
-        outputTokens: 100,
-        cacheReadTokens: 7000,
-        cacheWriteTokens: 2000,
-      },
-    },
-  })?.label).toBe('CH70.0%');
-});
-
-test('resolveComposeCacheHitMeta ignores missing or zero cache-read telemetry', () => {
+    cacheUsage: { latest: { inputTokens: 1000, cacheReadTokens: 7000, cacheWriteTokens: 2000 } },
+  })?.cacheHitRate).toBe(70);
   expect(resolveComposeCacheHitMeta(null)).toBeNull();
-  expect(resolveComposeCacheHitMeta({ cacheUsage: { latest: { inputTokens: 1000, cacheReadTokens: 0, cacheWriteTokens: 1000 } } })).toBeNull();
 });
 
-test('compose cache-hit label renders inline with model usage metadata', () => {
+test('compose latest-run usage renders inline with model metadata', () => {
   const source = readFileSync(join(import.meta.dir, '../../web/src/components/compose-box.ts'), 'utf8');
-  expect(source).toContain('cacheHitMeta?.label || null');
+  expect(source).toContain('runUsageMeta?.label || null');
   expect(source).not.toContain('compose-cache-hit-chip');
+});
+
+test('formatOpenRouterKeyUsageTitle includes spend, limit, and remaining values', () => {
+  expect(formatOpenRouterKeyUsageTitle({
+    provider: 'openrouter',
+    availability: 'available',
+    key_usage_usd: 1.25,
+    key_limit_usd: 10,
+    key_limit_remaining_usd: 8.75,
+    key_limit_configured: true,
+    key_limit_unlimited: false,
+  })).toBe('Key spend: $1.25 • Key limit: $10.00 • Key remaining: $8.75');
+  expect(formatOpenRouterKeyUsageTitle({
+    provider: 'openrouter',
+    availability: 'available',
+    key_usage_usd: 0,
+    key_limit_usd: null,
+    key_limit_remaining_usd: null,
+    key_limit_configured: false,
+    key_limit_unlimited: true,
+  })).toBe('Key spend: $0.0000 • Key limit: not configured (unlimited) • Key remaining: unavailable');
+});
+
+test('formatModelPickerPricing labels catalogue rates as per-million pricing', () => {
+  expect(formatModelPickerPricing({
+    input_per_million: 2.5,
+    output_per_million: 10,
+    cache_read_per_million: 0.25,
+    cache_write_per_million: 2.5,
+  })).toBe('in $2.5 / out $10 / cache-r $0.25 / cache-w $2.5 per 1M');
+  expect(formatModelPickerPricing({
+    input_per_million: 2.5,
+    output_per_million: 10,
+    cache_read_per_million: null,
+    cache_write_per_million: null,
+  })).toBe('in $2.5 / out $10 per 1M');
 });
 
 test('slash autocomplete includes all canonical control commands', () => {
@@ -455,6 +590,12 @@ test('resolveComposeRoutedModelStatus hides matching or stale routed model state
     current: 'anthropic/claude-opus-4-5',
     latest_requested_model: 'openrouter/auto',
     latest_response_model: 'anthropic/claude-sonnet-4-5',
+  })).toBeNull();
+
+  expect(resolveComposeRoutedModelStatus('anthropic/claude-sonnet-4', {
+    current: 'anthropic/claude-sonnet-4',
+    latest_requested_model: 'openrouter/anthropic/claude-sonnet-4',
+    latest_response_model: 'anthropic/claude-sonnet-4',
   })).toBeNull();
 });
 

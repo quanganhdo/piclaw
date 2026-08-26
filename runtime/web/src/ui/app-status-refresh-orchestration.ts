@@ -24,16 +24,38 @@ function stringOrNull(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
-function normalizeTokenUsageRecord(payload: unknown): Record<string, unknown> | null {
+function booleanOrNull(value: unknown): boolean | null {
+  return typeof value === 'boolean' ? value : null;
+}
+
+function normalizeCostCoverage(payload: unknown): Record<string, number | null> | null {
   if (!payload || typeof payload !== 'object') return null;
   const data = payload as Record<string, unknown>;
   return {
+    providerReportedRuns: finiteOrNull(data.providerReportedRuns),
+    catalogueEstimateRuns: finiteOrNull(data.catalogueEstimateRuns),
+    unavailableRuns: finiteOrNull(data.unavailableRuns),
+    legacyRuns: finiteOrNull(data.legacyRuns),
+  };
+}
+
+function normalizeTokenUsageRecord(payload: unknown): Record<string, unknown> | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const data = payload as Record<string, unknown>;
+  const costCoverage = normalizeCostCoverage(data.costCoverage);
+  return {
     inputTokens: finiteOrNull(data.inputTokens),
     outputTokens: finiteOrNull(data.outputTokens),
+    reasoningTokens: finiteOrNull(data.reasoningTokens),
     cacheReadTokens: finiteOrNull(data.cacheReadTokens),
     cacheWriteTokens: finiteOrNull(data.cacheWriteTokens),
+    cacheReadReported: booleanOrNull(data.cacheReadReported),
+    cacheWriteReported: booleanOrNull(data.cacheWriteReported),
     totalTokens: finiteOrNull(data.totalTokens),
     costTotal: finiteOrNull(data.costTotal),
+    providerCostTotal: finiteOrNull(data.providerCostTotal),
+    catalogueCostTotal: finiteOrNull(data.catalogueCostTotal),
+    costProvenance: stringOrNull(data.costProvenance),
     runs: finiteOrNull(data.runs),
     cacheHitRate: finiteOrNull(data.cacheHitRate),
     model: stringOrNull(data.model),
@@ -42,6 +64,7 @@ function normalizeTokenUsageRecord(payload: unknown): Record<string, unknown> | 
     api: stringOrNull(data.api),
     turns: finiteOrNull(data.turns),
     runAt: stringOrNull(data.runAt),
+    ...(costCoverage ? { costCoverage } : {}),
   };
 }
 

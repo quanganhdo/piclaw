@@ -9,6 +9,7 @@ import { describe, test, expect } from "bun:test";
 import "../helpers.js";
 
 import {
+  getLatestTokenUsage,
   getLatestTokenUsageModel,
   getTokenUsageByModel,
   getTokenUsageByProvider,
@@ -53,6 +54,48 @@ describe("token-usage", () => {
     expect(row.response_model).toBeNull();
     expect(row.provider).toBe("openai");
     expect(row.turns).toBe(3);
+  });
+
+  test("storeTokenUsage preserves cache and cost provenance fields", () => {
+    initDatabase();
+    const chatJid = "test:token-provenance";
+
+    storeTokenUsage({
+      chat_jid: chatJid,
+      run_at: "2026-08-25T12:00:00.000Z",
+      input_tokens: 100,
+      output_tokens: 20,
+      cache_read_tokens: 0,
+      cache_write_tokens: 5,
+      cache_read_reported: true,
+      cache_write_reported: false,
+      total_tokens: 125,
+      cost_input: 0.001,
+      cost_output: 0.002,
+      cost_cache_read: 0,
+      cost_cache_write: 0.0001,
+      cost_total: 0.00123,
+      provider_cost_total: 0.00123,
+      catalogue_cost_total: 0.0031,
+      cost_provenance: "provider_reported",
+      model: "auto",
+      provider: "openrouter",
+    });
+
+    const latest = getLatestTokenUsage(chatJid);
+    expect(latest).toMatchObject({
+      cache_read_reported: 1,
+      cache_write_reported: 0,
+      provider_cost_total: 0.00123,
+      catalogue_cost_total: 0.0031,
+      cost_total: 0.00123,
+      cost_provenance: "provider_reported",
+    });
+    const totals = getTokenUsageTotals(chatJid);
+    expect(totals.provider_reported_cost_runs).toBe(1);
+    expect(totals.catalogue_estimate_cost_runs).toBe(0);
+    expect(totals.unavailable_cost_runs).toBe(0);
+    expect(totals.legacy_cost_runs).toBe(0);
   });
 
   test("storeTokenUsage handles null optional fields", () => {
@@ -267,6 +310,10 @@ describe("token-usage", () => {
       total_tokens: 0,
       cost_total: 0,
       runs: 1,
+      provider_reported_cost_runs: 0,
+      catalogue_estimate_cost_runs: 0,
+      unavailable_cost_runs: 0,
+      legacy_cost_runs: 1,
     }]);
 
     const model = getTokenUsageByModel(chatJid, 10);
@@ -280,6 +327,10 @@ describe("token-usage", () => {
       total_tokens: 0,
       cost_total: 0,
       runs: 1,
+      provider_reported_cost_runs: 0,
+      catalogue_estimate_cost_runs: 0,
+      unavailable_cost_runs: 0,
+      legacy_cost_runs: 1,
     }]);
   });
 });

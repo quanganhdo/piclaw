@@ -33,15 +33,103 @@ describe("process chat finalization runtime", () => {
     });
   });
 
-  test("intermediate persistence preserves skip-placeholder and draft-clear ordering", () => {
+  test("intermediate persistence stores a typed tool-use marker and preserves draft-clear ordering", () => {
     const calls: string[] = [];
+    let storedOptions: any = null;
     const channel: any = {
       consumeQueuedFollowupPlaceholder: () => { calls.push("consume"); return null; },
-      storeMessage: (_chat: string, _text: string, _bot: boolean, _media: number[], options: any) => { calls.push(`store:${options.threadId}`); return { id: 42, chat_jid: "web:test" }; },
+      storeMessage: (_chat: string, _text: string, _bot: boolean, _media: number[], options: any) => {
+        calls.push(`store:${options.threadId}`);
+        storedOptions = options;
+        return { id: 42, chat_jid: "web:test" };
+      },
       broadcastEvent() {},
     };
-    const result = persistIntermediateProcessChatTurn({ channel, emitter: emitter([]) as any, chatJid: "web:test", text: "partial", attachments: [], channelName: "web", threadId: 7, skipPlaceholder: true, timingBlock: { type: "agent_timing" }, followedByToolUse: true, clearCommittedDraft: () => calls.push("clear-draft") });
+    const result = persistIntermediateProcessChatTurn({
+      channel,
+      emitter: emitter([]) as any,
+      chatJid: "web:test",
+      text: "partial",
+      attachments: [],
+      channelName: "web",
+      threadId: 7,
+      skipPlaceholder: true,
+      timingBlock: { type: "agent_timing", turn_id: "turn-1", source_message_id: "msg-1" },
+      turnKind: "intermediate",
+      cause: "tool_use",
+      followedByToolUse: true,
+      clearCommittedDraft: () => calls.push("clear-draft"),
+    });
     expect(result).toBe(42);
     expect(calls).toEqual(["store:7", "clear-draft"]);
+    expect(storedOptions.contentBlocks).toContainEqual({
+      type: "agent_turn_marker",
+      kind: "intermediate",
+      cause: "tool_use",
+      followed_by_tool_use: true,
+      turn_id: "turn-1",
+      source_message_id: "msg-1",
+    });
+  });
+
+  test("contradictory completed-boundary metadata is not persisted as authoritative", () => {
+    let storedOptions: any = null;
+    const channel: any = {
+      consumeQueuedFollowupPlaceholder: () => null,
+      storeMessage: (_chat: string, _text: string, _bot: boolean, _media: number[], options: any) => {
+        storedOptions = options;
+        return { id: 44, chat_jid: "web:test" };
+      },
+      broadcastEvent() {},
+    };
+    expect(persistIntermediateProcessChatTurn({
+      channel,
+      emitter: emitter([]) as any,
+      chatJid: "web:test",
+      text: "contradictory",
+      attachments: [],
+      channelName: "web",
+      threadId: 7,
+      skipPlaceholder: true,
+      timingBlock: { type: "agent_timing" },
+      turnKind: "intermediate",
+      cause: "completed_boundary",
+      followedByToolUse: true,
+      clearCommittedDraft: () => {},
+    })).toBe(44);
+    expect(storedOptions.contentBlocks).not.toContainEqual(expect.objectContaining({ type: "agent_turn_marker" }));
+  });
+
+  test("interrupted draft persistence stores a draft snapshot marker without clearing the draft", () => {
+    let storedOptions: any = null;
+    const channel: any = {
+      consumeQueuedFollowupPlaceholder: () => null,
+      storeMessage: (_chat: string, _text: string, _bot: boolean, _media: number[], options: any) => {
+        storedOptions = options;
+        return { id: 43, chat_jid: "web:test" };
+      },
+      broadcastEvent() {},
+    };
+    const result = persistIntermediateProcessChatTurn({
+      channel,
+      emitter: emitter([]) as any,
+      chatJid: "web:test",
+      text: "visible draft",
+      attachments: [],
+      channelName: "web",
+      threadId: 7,
+      skipPlaceholder: true,
+      timingBlock: { type: "agent_timing", turn_id: "turn-2" },
+      turnKind: "draft_snapshot",
+      cause: "interrupted_text_start",
+      clearCommittedDraft: () => { throw new Error("draft should not clear"); },
+    });
+    expect(result).toBe(43);
+    expect(storedOptions.contentBlocks).toContainEqual({
+      type: "agent_turn_marker",
+      kind: "draft_snapshot",
+      cause: "interrupted_text_start",
+      turn_id: "turn-2",
+    });
   });
 });

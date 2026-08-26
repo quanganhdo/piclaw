@@ -699,6 +699,84 @@ test("initDatabase migrates legacy chat branch uniqueness so pruned handles can 
   }
 });
 
+test("token usage migration adds provenance columns without rewriting legacy rows", () => {
+  const ws = createTempWorkspace("piclaw-token-usage-migration-");
+  try {
+    const databasePath = resolve(ws.store, "messages.db");
+    const legacyDb = new Database(databasePath);
+    legacyDb.exec(`
+      CREATE TABLE token_usage (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        chat_jid TEXT NOT NULL,
+        run_at TEXT NOT NULL,
+        input_tokens INTEGER DEFAULT 0,
+        output_tokens INTEGER DEFAULT 0,
+        cache_read_tokens INTEGER DEFAULT 0,
+        cache_write_tokens INTEGER DEFAULT 0,
+        total_tokens INTEGER DEFAULT 0,
+        cost_input REAL DEFAULT 0,
+        cost_output REAL DEFAULT 0,
+        cost_cache_read REAL DEFAULT 0,
+        cost_cache_write REAL DEFAULT 0,
+        cost_total REAL DEFAULT 0,
+        model TEXT,
+        provider TEXT,
+        api TEXT,
+        turns INTEGER DEFAULT 0
+      );
+      INSERT INTO token_usage (
+        chat_jid, run_at, input_tokens, output_tokens, cache_read_tokens,
+        cache_write_tokens, total_tokens, cost_total, model, provider
+      ) VALUES (
+        'web:legacy-usage', '2026-01-01T00:00:00.000Z', 100, 20, 0,
+        0, 120, 0.01, 'legacy-model', 'legacy-provider'
+      );
+    `);
+    legacyDb.close();
+
+    const script = `
+      const db = await import("./src/db.js");
+      db.initDatabase();
+      const columns = db.getDb().prepare("PRAGMA table_info(token_usage)").all().map((row) => row.name);
+      const latest = db.getLatestTokenUsage("web:legacy-usage");
+      console.log(JSON.stringify({ columns, latest }));
+    `;
+    const result = spawnSync(process.execPath, ["-e", script], {
+      cwd: resolve(import.meta.dir, "..", ".."),
+      env: {
+        ...process.env,
+        PICLAW_WORKSPACE: ws.workspace,
+        PICLAW_STORE: ws.store,
+        PICLAW_DATA: ws.data,
+        PICLAW_DB_IN_MEMORY: "0",
+      },
+      encoding: "utf8",
+    });
+
+    expect(result.status).toBe(0);
+    const output = JSON.parse(result.stdout.trim().split("\n").filter(Boolean).pop() || "{}");
+    expect(output.columns).toEqual(expect.arrayContaining([
+      "cache_read_reported",
+      "cache_write_reported",
+      "provider_cost_total",
+      "catalogue_cost_total",
+      "cost_provenance",
+    ]));
+    expect(output.latest).toMatchObject({
+      input_tokens: 100,
+      total_tokens: 120,
+      cost_total: 0.01,
+      cache_read_reported: null,
+      cache_write_reported: null,
+      provider_cost_total: null,
+      catalogue_cost_total: null,
+      cost_provenance: null,
+    });
+  } finally {
+    ws.cleanup();
+  }
+});
+
 test("timeline returns oldest-first and hasOlderMessages works", () => {
   const chatJid = `test:${Date.now()}-timeline`;
   db.storeChatMetadata(chatJid, new Date().toISOString(), "Test");

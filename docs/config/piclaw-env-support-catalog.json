@@ -1548,6 +1548,32 @@
       "migrationDisposition": "migrated-to-domain-config"
     },
     {
+      "name": "PICLAW_OPENROUTER_DEFAULT_MAX_TOKENS",
+      "owner": "tools",
+      "type": "integer",
+      "default": 32768,
+      "bounds": "1024..1048576 output tokens",
+      "allowedValues": [],
+      "secret": false,
+      "persistence": [
+        "env",
+        "dotenv",
+        "json-config"
+      ],
+      "precedence": [
+        "compat-env",
+        "persisted",
+        "default"
+      ],
+      "status": "compatibility",
+      "compatibilityAliasFor": "domains.tools.openRouterDefaultMaxTokens",
+      "deprecation": "migrated to typed domains.tools.openRouterDefaultMaxTokens config; compatibility environment alias remains until 3.0.0",
+      "removalVersion": "3.0.0",
+      "bootstrapAllowed": false,
+      "source": "runtime/src/core/config-tools.ts domains.tools.openRouterDefaultMaxTokens (#1044)",
+      "migrationDisposition": "migrated-to-domain-config"
+    },
+    {
       "name": "PICLAW_PACKAGE_ROOT",
       "owner": "tools",
       "type": "path",

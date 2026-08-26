@@ -17,6 +17,7 @@ import { stripInternalTags } from "../router.js";
 import { createUuid } from "../utils/ids.js";
 import { extractFtsFallbackTerms, isFtsOperatorQuery, prepareFtsQuery } from "../utils/fts-query.js";
 import { getSearchMatchMode } from "../core/config.js";
+import { sanitizeModelPostedContentBlocks } from "../channels/web/messaging/content-block-safety.js";
 
 const MessagesSchema = Type.Object({
   action: Type.Optional(
@@ -1275,7 +1276,7 @@ function executePost(
   }
 
   const mediaIds = Array.from(new Set((params.media_ids ?? []).filter((id) => Number.isInteger(id) && id > 0)));
-  const contentBlocks = Array.isArray(params.content_blocks) ? params.content_blocks : undefined;
+  const contentBlocks = sanitizeModelPostedContentBlocks(params.content_blocks);
 
   if (postFn) {
     const rowId = postFn(chatJid, content, isBot, mediaIds, contentBlocks);

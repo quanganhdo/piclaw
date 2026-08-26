@@ -109,8 +109,8 @@ const mockAddonsPayload = {
   sources: ['fixture-catalog'],
   failed_sources: [],
   addons: [
-    { slug: 'cheapskate', name: 'Cheapskate', description: 'Model cost controls and routing hints.', installed: true, enabled: true, version: '0.1.0', bundled: false },
-    { slug: 'observability', name: 'Observability', description: 'Local metrics and tracing panels.', installed: true, enabled: true, version: '0.2.0', bundled: false },
+    { slug: 'goal', name: 'Goal', description: 'Persisted thread goals and bounded autonomous continuation.', tags: ['automation', 'core'], installed: true, enabled: true, version: '0.1.46', bundled: false },
+    { slug: 'observability', name: 'Observability', description: 'Local metrics and tracing panels.', tags: ['metrics'], installed: true, enabled: true, version: '0.2.0', bundled: false },
     { slug: 'portainer', name: 'Portainer', description: 'Container management add-on.', installed: false, enabled: false, version: '0.3.0', bundled: false },
     { slug: 'proxmox', name: 'Proxmox', description: 'Proxmox inventory and workflow add-on.', installed: true, enabled: false, version: '0.4.0', bundled: false },
   ],

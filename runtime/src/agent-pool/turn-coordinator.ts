@@ -11,6 +11,7 @@ import type { Usage } from "@earendil-works/pi-ai";
 
 import type { AttachmentInfo } from "./attachments.js";
 import { recordAgentAbortCause } from "./abort-provenance.js";
+import type { AgentTurnCause, AgentTurnKind } from "./contracts.js";
 
 interface AgentContentBlock {
   type?: unknown;
@@ -25,6 +26,8 @@ export interface AgentTurnOutput {
   text: string;
   attachments: AttachmentInfo[];
   usage?: Usage;
+  turnKind?: AgentTurnKind;
+  cause?: AgentTurnCause;
   /** The completed assistant message committed immediately before tool dispatch. */
   followedByToolUse?: boolean;
 }
@@ -182,7 +185,11 @@ export class AgentTurnCoordinator {
       messageComplete = false;
     };
 
-    const flushTurn = (options: { followedByToolUse?: boolean } = {}) => {
+    const flushTurn = (options: {
+      turnKind: AgentTurnKind;
+      cause: AgentTurnCause;
+      followedByToolUse?: boolean;
+    }) => {
       const text = currentTurnText.trim();
       if (!text && !onTurnComplete) {
         resetCurrentTurn();
@@ -193,6 +200,8 @@ export class AgentTurnCoordinator {
           text,
           attachments: this.options.takeAttachments(chatJid),
           ...(currentTurnUsage ? { usage: currentTurnUsage } : {}),
+          turnKind: options.turnKind,
+          cause: options.cause,
           ...(options.followedByToolUse ? { followedByToolUse: true } : {}),
         });
         turnCount += 1;
@@ -225,15 +234,25 @@ export class AgentTurnCoordinator {
 
           if (messageComplete) {
             if (onTurnComplete) {
-              flushTurn();
+              flushTurn({ turnKind: "intermediate", cause: "completed_boundary" });
             } else {
               resetCurrentTurn();
             }
           } else if (messageHasDelta || currentTurnText || currentTurnPhase !== null) {
             // A new text stream started before the previous assistant message
-            // emitted message_end. Discard the incomplete accumulation rather
-            // than flushing it as a completed turn.
-            resetCurrentTurn();
+            // emitted message_end. If the interrupted stream was visible
+            // final-answer/unphased text, snapshot it as a completed turn so
+            // steering or provider-side response boundaries do not erase model
+            // output that already appeared in Draft. Signed commentary stays
+            // transient and is discarded as before.
+            if (currentTurnText.trim() && currentTurnPhase !== "commentary" && onTurnComplete) {
+              flushTurn({ turnKind: "draft_snapshot", cause: "interrupted_text_start" });
+            } else {
+              if (currentTurnText.trim() && currentTurnPhase === "commentary") {
+                onTurnDiscard?.({ reason: "commentary_only" });
+              }
+              resetCurrentTurn();
+            }
           }
           currentTurnPhase = resolveTextPhaseFromPartial(messageEvent.partial, messageEvent.contentIndex);
 
@@ -335,7 +354,7 @@ export class AgentTurnCoordinator {
           }
           if (message.stopReason === "toolUse" && hadToolCallContent) {
             if (onTurnComplete) {
-              flushTurn({ followedByToolUse: true });
+              flushTurn({ turnKind: "intermediate", cause: "tool_use", followedByToolUse: true });
             } else {
               resetCurrentTurn();
             }

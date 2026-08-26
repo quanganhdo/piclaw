@@ -177,11 +177,21 @@ export function AddonsSection({ setStatus, filter = '' }) {
                 ${filtered.map(a => {
                     const hasSkills = (a.skills || []).length > 0;
                     const isExtension = a.type === 'extension';
+                    const isCore = (a.tags || []).some(tag => String(tag).toLowerCase() === 'core');
                     const typeLabel = hasSkills && isExtension ? tr('settings.addons.typeExtSkill') : hasSkills ? tr('settings.addons.typeSkill') : tr('settings.addons.typeExt');
                     const typeCls = hasSkills && !isExtension ? 'settings-tag-skill' : '';
                     const homepage = typeof a.homepage === 'string' && a.homepage.trim() ? a.homepage.trim() : '';
                     return html`
-                    <div class=${`settings-addon-card${a.installed ? ' installed' : ''}`}>
+                    <div class=${`settings-addon-card${a.installed ? ' installed' : ''}${isCore ? ' core' : ''}`}>
+                        ${isCore && html`
+                            <span class="settings-addon-core-bookmark" role="img" aria-label="Core add-on" title="Core add-on — recommended for most Piclaw installations">
+                                <svg viewBox="0 0 28 38" width="28" height="38" aria-hidden="true" focusable="false">
+                                    <path d="M0 0h28v38L14 29 0 38Z" fill="currentColor"></path>
+                                    <path d="M0 0h28v3H0Z" class="settings-addon-core-bookmark-highlight"></path>
+                                    <path d="m14 7 1.9 3.85 4.25.62-3.08 3 0.73 4.22L14 16.7l-3.8 1.99.73-4.22-3.08-3 4.25-.62Z" fill="#fff"></path>
+                                </svg>
+                            </span>
+                        `}
                         <div class="settings-addon-card-header">
                             ${homepage
                                 ? html`<a class="settings-addon-name-link" href=${homepage} target="_blank" rel="noopener noreferrer">${a.slug}</a>`

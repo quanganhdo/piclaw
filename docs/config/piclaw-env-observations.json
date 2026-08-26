@@ -51,7 +51,7 @@
   },
   "current": {
     "production": {
-      "referencedNames": 171,
+      "referencedNames": 172,
       "directReaderNames": 7,
       "directReaderOccurrences": 14,
       "helperReaderNames": 10,
@@ -60,7 +60,7 @@
       "semanticReaderOccurrences": 24
     },
     "runtimeSrc": {
-      "referencedNames": 170,
+      "referencedNames": 171,
       "directReaderNames": 7,
       "directReaderOccurrences": 14,
       "helperReaderNames": 10,
@@ -87,7 +87,7 @@
       "semanticReaderOccurrences": 67
     },
     "docsDeploy": {
-      "referencedNames": 121,
+      "referencedNames": 122,
       "directReaderNames": 16,
       "directReaderOccurrences": 32,
       "helperReaderNames": 0,
@@ -2805,6 +2805,41 @@
           "readerFiles": [
             "runtime/scripts/playwright/oobe-local-container.ts"
           ]
+        }
+      }
+    },
+    {
+      "name": "PICLAW_OPENROUTER_DEFAULT_MAX_TOKENS",
+      "scopes": {
+        "docsDeploy": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "docs/configuration.md"
+          ],
+          "readerFiles": []
+        },
+        "production": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "runtime/src/core/config-tools.ts"
+          ],
+          "readerFiles": []
+        },
+        "runtimeSrc": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "runtime/src/core/config-tools.ts"
+          ],
+          "readerFiles": []
         }
       }
     },

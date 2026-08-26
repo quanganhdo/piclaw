@@ -31,11 +31,18 @@ import { buildPiclawCompactionEventFields, type PiclawCompactionTriggerMetadata 
 import { RECOVERY_CONTINUATION_PROMPT } from "./context-pressure-retry.js";
 import type { AgentFailureCategory, AgentOutput, AgentRecoveryDiagnosticEntry, AgentRecoveryMetadata, RunAgentOptions } from "./contracts.js";
 import { getRecoveryPolicyConfig } from "../core/config.js";
+import {
+  decideOpenRouterAffordabilityRetry,
+  type OpenRouterOutputBudgetState,
+} from "../core/openrouter-output-budget.js";
 import { writeAgentLog } from "./logging.js";
 import { heartbeatTrackedPhase } from "../runtime/progress-watchdog.js";
-import { isRotationFallbackCompactionError } from "../session-rotation.js";
 import { rememberActiveToolSubset } from "./active-tool-subset-memory.js";
 import { logToolStateTransition } from "./tool-state-transitions.js";
+import {
+  buildProtectedRecoveryHandoffMetadata,
+  type ProtectedRecoveryHandoffReason,
+} from "./protected-recovery-handoff-reason.js";
 
 const MAX_RECOVERY_LOOP_GUARD_CHATS = 512;
 const MIN_RECOVERY_FINALIZATION_RESERVE_MS = 5_000;
@@ -81,6 +88,7 @@ export interface RunAgentRecoveryPhaseOptions {
   runOptions: RunAgentOptions;
   logsDir: string;
   runPromptAttempt: RunPromptAttemptCallback;
+  openRouterOutputBudgetState?: OpenRouterOutputBudgetState;
   onInfo?: (message: string, data: Record<string, unknown>) => void;
   onWarn?: (message: string, data: Record<string, unknown>) => void;
   clearAttachments(chatJid: string): void;
@@ -320,7 +328,7 @@ async function runRecoveryCompaction(
   chatJid: string,
   runOptions: RunAgentOptions,
   options: Pick<RunAgentRecoveryPhaseOptions, "onInfo" | "onWarn">,
-): Promise<{ ok: true; stillOverThreshold: boolean } | { ok: false; errorMessage: string }> {
+): Promise<{ ok: true; stillOverThreshold: boolean; compacted: boolean } | { ok: false; errorMessage: string }> {
   options.onInfo?.("Compacting before automatic recovery retry", {
     operation: "run_agent.recovery_compact",
     chatJid,
@@ -353,7 +361,10 @@ async function runRecoveryCompaction(
   });
   if (!compactionResult.ok) {
     const aborted = isCompactionCancellationError(compactionResult.errorMessage);
-    const benign = isRotationFallbackCompactionError(compactionResult.errorMessage);
+    const benign = [
+      "Already compacted",
+      "Nothing to compact (session too small)",
+    ].includes(compactionResult.errorMessage);
     if (!compactionResult.joined && !aborted && !benign) {
       noteCompactionFailure(chatJid, compactionResult.errorMessage);
     }
@@ -368,9 +379,10 @@ async function runRecoveryCompaction(
         ...retryEventFields,
         result: undefined,
         aborted: false,
-        willRetry: true,
+        skipped: true,
+        willRetry: false,
       } as unknown as AgentSessionEvent);
-      return { ok: true, stillOverThreshold: false };
+      return { ok: true, stillOverThreshold: false, compacted: false };
     }
     emitAgentSessionEvent(runOptions.onEvent, {
       type: "compaction_end",
@@ -406,7 +418,7 @@ async function runRecoveryCompaction(
   });
   if (usageEvent) emitAgentSessionEvent(runOptions.onEvent, usageEvent);
   const tokenStatus = getAutoCompactionTokenStatusForSession(session, chatJid);
-  return { ok: true, stillOverThreshold: Boolean(tokenStatus?.tokenStatus.tokenLimitReached) };
+  return { ok: true, stillOverThreshold: Boolean(tokenStatus?.tokenStatus.tokenLimitReached), compacted: true };
 }
 
 export async function runAgentRecoveryPhase(options: RunAgentRecoveryPhaseOptions): Promise<AgentOutput> {
@@ -424,11 +436,20 @@ export async function runAgentRecoveryPhase(options: RunAgentRecoveryPhaseOption
   let activeSessionCtrl = options.sessionCtrl;
   let attemptPrompt = prompt;
   let recoveryContinuationWithoutTools = false;
+  const protectedPostCompactionToolRetry = { available: Boolean(runOptions.protectedRecoveryContinuation) };
   let lastAttemptWasGenericProtected = false;
   let turnToolExecutionCount = 0;
   let recoveryAttemptsUsed = 0;
   let lastClassifier: RecoveryClassifier | null = null;
   let lastRecoveryErrorText: string | null = null;
+  const protectedRecoveryHandoffContext = runOptions.protectedRecoveryHandoffContext;
+  const protectedRecoveryPriorAttempts = protectedRecoveryHandoffContext?.recoveryAttempts ?? 0;
+  let lastRecoveryCompactionOutcome: "not_attempted" | "succeeded" | "failed" =
+    protectedRecoveryHandoffContext?.compaction ?? "not_attempted";
+  let hasFreshSuccessfulRecoveryCompaction = false;
+  let protectedRecoveryToolsRequired = protectedRecoveryHandoffContext?.toolsRequired ?? false;
+  let protectedRecoveryHasUnresolvedToolExecution =
+    protectedRecoveryHandoffContext?.reason === "unresolved_tool_execution";
   const strategyHistory: RecoveryStrategy[] = [];
   const recoveryDiagnostics: AgentRecoveryDiagnosticEntry[] = [];
   let recoveryBudgetStartedAt: number | null = null;
@@ -461,7 +482,30 @@ export async function runAgentRecoveryPhase(options: RunAgentRecoveryPhaseOption
     recoveryBudgetAccumulatedMs += Math.max(0, Date.now() - recoveryBudgetStartedAt);
     recoveryBudgetStartedAt = null;
   };
-  const buildProtectedHandoff = (duration: number, detail: string, finalText: string | null = null): AgentOutput => {
+  const buildHandoffMetadata = (reason: ProtectedRecoveryHandoffReason) => buildProtectedRecoveryHandoffMetadata(reason, {
+    recoveryAttempts: protectedRecoveryPriorAttempts + recoveryAttemptsUsed,
+    compaction: reason === "compaction_failed" ? "failed" : lastRecoveryCompactionOutcome,
+    toolsRequired: protectedRecoveryToolsRequired
+      || reason === "post_compaction_tools_required"
+      || reason === "tools_required"
+      || reason === "unresolved_tool_execution",
+    retryable: protectedRecoveryHandoffContext?.retryable,
+  });
+  const inferProtectedHandoffReason = (): ProtectedRecoveryHandoffReason => {
+    const latestDiagnostic = recoveryDiagnostics.at(-1);
+    if (protectedRecoveryHasUnresolvedToolExecution
+      || latestDiagnostic?.hasUnresolvedToolExecution) return "unresolved_tool_execution";
+    if (lastRecoveryCompactionOutcome === "failed" || latestDiagnostic?.compactionErrorMessage) return "compaction_failed";
+    if (hasFreshSuccessfulRecoveryCompaction
+      && lastRecoveryCompactionOutcome === "succeeded") return "post_compaction_tools_required";
+    return "tools_required";
+  };
+  const buildProtectedHandoff = (
+    duration: number,
+    detail: string,
+    finalText: string | null = null,
+    reason: ProtectedRecoveryHandoffReason = inferProtectedHandoffReason(),
+  ): AgentOutput => {
     const error = `Protected recovery cannot authoritatively complete tool-dependent work: ${detail}`;
     lastClassifier = "tool_activity";
     const recovery = buildRecoveryMetadata(
@@ -486,8 +530,11 @@ export async function runAgentRecoveryPhase(options: RunAgentRecoveryPhaseOption
       result: null,
       error,
       failureCategory: "no_terminal_output",
-      nextAction: "Continue automatically in one ordinary turn with the restored tool baseline.",
+      nextAction: reason === "unresolved_tool_execution"
+        ? "Review the unresolved tool side effects before explicitly continuing."
+        : "Continue automatically in one ordinary turn with the restored tool baseline.",
       requiresToolEnabledContinuation: true,
+      protectedRecoveryHandoff: buildHandoffMetadata(reason),
       recovery,
     };
   };
@@ -519,7 +566,14 @@ export async function runAgentRecoveryPhase(options: RunAgentRecoveryPhaseOption
     if (recoveryAttemptsUsed > 0 && getRecoveryBudgetElapsedMs() >= recoveryConfig.totalBudgetMs) {
       const duration = Date.now() - startTime;
       if (lastAttemptWasGenericProtected) {
-        return buildProtectedHandoff(duration, lastRecoveryErrorText || "the recovery budget was exhausted");
+        return buildProtectedHandoff(
+          duration,
+          lastRecoveryErrorText || "the recovery budget was exhausted",
+          null,
+          protectedRecoveryHasUnresolvedToolExecution
+            ? "unresolved_tool_execution"
+            : "recovery_budget_exhausted",
+        );
       }
       const error = lastRecoveryErrorText || "Automatic recovery budget exhausted before the next attempt could start.";
       lastClassifier = "budget_exhausted";
@@ -540,7 +594,18 @@ export async function runAgentRecoveryPhase(options: RunAgentRecoveryPhaseOption
         classifier: lastClassifier,
         errorMessage: error,
       });
-      return { status: "error" as const, result: null, error, failureCategory: "timeout", recovery };
+      return {
+        status: "error" as const,
+        result: null,
+        error,
+        failureCategory: "timeout",
+        recovery,
+        protectedRecoveryHandoff: runOptions.protectedRecoveryContinuation
+          ? buildHandoffMetadata(protectedRecoveryHasUnresolvedToolExecution
+            ? "unresolved_tool_execution"
+            : "recovery_budget_exhausted")
+          : undefined,
+      };
     }
 
     // The configured turn timeout bounds the initial attempt. Once that
@@ -623,6 +688,11 @@ export async function runAgentRecoveryPhase(options: RunAgentRecoveryPhaseOption
     try {
       attempt = await options.runPromptAttempt(attemptPrompt, attemptTimeoutMs, turnToolExecutionCount, finalizationReserveMs);
       turnToolExecutionCount = attempt.toolExecutionCount;
+      protectedRecoveryToolsRequired ||= Boolean(
+        attempt.snapshot.hadToolActivity || attempt.snapshot.hasUnresolvedToolExecution,
+      );
+      protectedRecoveryHasUnresolvedToolExecution ||=
+        Boolean(attempt.snapshot.hasUnresolvedToolExecution);
     } finally {
       if (recoveryOriginalSetActiveToolsByName && activeSessionCtrl) {
         activeSessionCtrl.setActiveToolsByName = recoveryOriginalSetActiveToolsByName;
@@ -639,6 +709,15 @@ export async function runAgentRecoveryPhase(options: RunAgentRecoveryPhaseOption
           restored: true,
         });
       }
+    }
+
+    if (protectedRecoveryHasUnresolvedToolExecution) {
+      return buildProtectedHandoff(
+        Date.now() - startTime,
+        "a tool execution did not reach a durable resolved state",
+        null,
+        "unresolved_tool_execution",
+      );
     }
 
     // If the tool-call cap was hit, abort immediately without recovery.
@@ -728,7 +807,17 @@ export async function runAgentRecoveryPhase(options: RunAgentRecoveryPhaseOption
       return attempt.output;
     }
 
-    const errorText = attempt.output.error || "Agent error";
+    let errorText = attempt.output.error || "Agent error";
+    const openRouterBudgetDecision = decideOpenRouterAffordabilityRetry(
+      errorText,
+      modelLabel,
+      options.openRouterOutputBudgetState,
+    );
+    if (openRouterBudgetDecision.kind !== "not_applicable") {
+      errorText = openRouterBudgetDecision.detail;
+      attempt.output.error = errorText;
+      attempt.output.failureCategory = "provider_budget";
+    }
     // Runtime attempts normally carry a typed category from finalization. The
     // fallback is only for injected/legacy attempt implementations that expose
     // an opaque error string at this compatibility boundary.
@@ -738,16 +827,32 @@ export async function runAgentRecoveryPhase(options: RunAgentRecoveryPhaseOption
     allowPostTimeoutRecoveryWindow = recoveryAttemptsUsed === 0
       && attempt.snapshot.hadToolActivity
       && attempt.timedOut;
-    const decision = decideAutomaticRecovery({
-      config: recoveryConfig,
-      failureCategory,
-      recoveryAttemptsUsed,
-      elapsedMs: getRecoveryDecisionElapsedMs(failureCategory, attempt.snapshot),
-      snapshot: attempt.snapshot,
-    });
+    const decision: RecoveryDecision = openRouterBudgetDecision.kind === "retry"
+      ? {
+          recover: true,
+          classifier: "provider_budget",
+          strategy: "retry",
+          reason: `OpenRouter reported ${openRouterBudgetDecision.affordable} affordable output tokens; retrying once with ${openRouterBudgetDecision.appliedLimit}.`,
+        }
+      : openRouterBudgetDecision.kind === "terminal"
+        ? {
+            recover: false,
+            classifier: "provider_budget",
+            strategy: null,
+            reason: `OpenRouter affordability retry stopped: ${openRouterBudgetDecision.reason}.`,
+          }
+        : decideAutomaticRecovery({
+            config: recoveryConfig,
+            failureCategory,
+            recoveryAttemptsUsed,
+            elapsedMs: getRecoveryDecisionElapsedMs(failureCategory, attempt.snapshot),
+            snapshot: attempt.snapshot,
+          });
 
     let effectiveDecision = decision;
-    if (decision.recover && decision.strategy) {
+    // This retry is already turn-scoped, one-shot, and parameter-changing.
+    // The generic cross-turn loop guard must not suppress its first safe use.
+    if (decision.recover && decision.strategy && decision.classifier !== "provider_budget") {
       const guard = shouldSuppressRecoveryLoop({
         chatJid,
         modelLabel,
@@ -829,12 +934,27 @@ export async function runAgentRecoveryPhase(options: RunAgentRecoveryPhaseOption
         attempt.output.toolStepsBudget = terminalBudgetFailure.toolStepsBudget;
         attempt.output.nextAction = terminalBudgetFailure.nextAction;
       }
+      const providerRetryExhausted = recoveryAttemptsUsed > 0
+        && (attempt.output.failureCategory === "rate_limit"
+          || attempt.output.failureCategory === "network"
+          || attempt.output.failureCategory === "timeout"
+          || attempt.output.failureCategory === "provider"
+          || attempt.output.failureCategory === "provider_unavailable"
+          || attempt.output.failureCategory === "unknown");
+      if (runOptions.protectedRecoveryContinuation
+        && (protectedRecoveryHasUnresolvedToolExecution || providerRetryExhausted)) {
+        attempt.output.protectedRecoveryHandoff = buildHandoffMetadata(
+          protectedRecoveryHasUnresolvedToolExecution
+            ? "unresolved_tool_execution"
+            : "provider_retry_exhausted",
+        );
+      }
       return attempt.output;
     }
 
     recoveryAttemptsUsed += 1;
     strategyHistory.push(effectiveDecision.strategy);
-    const retryDelayMs = effectiveDecision.strategy === "retry"
+    const retryDelayMs = effectiveDecision.strategy === "retry" && effectiveDecision.classifier !== "provider_budget"
       ? getAutomaticRecoveryDelayMs(recoveryConfig, recoveryAttemptsUsed)
       : 0;
     heartbeatTrackedPhase(chatJid, "recovery", {
@@ -850,10 +970,7 @@ export async function runAgentRecoveryPhase(options: RunAgentRecoveryPhaseOption
       maxAttempts: recoveryConfig.maxAttempts,
       totalBudgetMs: recoveryConfig.totalBudgetMs,
       delayMs: retryDelayMs,
-      reason: effectiveDecision.classifier === "unknown" && errorText
-        ? `${effectiveDecision.reason} Error: ${errorText}`
-        : effectiveDecision.reason,
-      errorMessage: errorText,
+      reason: effectiveDecision.classifier,
     });
 
     if (effectiveDecision.strategy !== "compact_then_retry"
@@ -910,7 +1027,18 @@ export async function runAgentRecoveryPhase(options: RunAgentRecoveryPhaseOption
 
     if (effectiveDecision.strategy === "compact_then_retry") {
       pauseRecoveryBudget();
+      // A new compaction attempt must establish fresh authority of its own;
+      // a benign skip cannot reuse an earlier successful compaction.
+      hasFreshSuccessfulRecoveryCompaction = false;
       const compactionResult = await runRecoveryCompaction(activeSession, chatJid, runOptions, options);
+      if (compactionResult.ok && compactionResult.compacted) {
+        hasFreshSuccessfulRecoveryCompaction = true;
+      }
+      lastRecoveryCompactionOutcome = !compactionResult.ok
+        ? "failed"
+        : compactionResult.compacted || hasFreshSuccessfulRecoveryCompaction
+          ? "succeeded"
+          : "not_attempted";
       heartbeatTrackedPhase(chatJid, "preprompt_compaction", {
         eventType: "recovery_compaction",
         attempt: recoveryAttemptsUsed,
@@ -999,15 +1127,10 @@ export async function runAgentRecoveryPhase(options: RunAgentRecoveryPhaseOption
             status: "error",
             result: null,
             error: terminalError,
-            recovery: buildRecoveryMetadata(
-              recoveryAttemptsUsed,
-              duration,
-              false,
-              true,
-              lastClassifier,
-              strategyHistory,
-              recoveryDiagnostics,
-            ),
+            recovery: recoveryMeta,
+            protectedRecoveryHandoff: buildHandoffMetadata(protectedRecoveryHasUnresolvedToolExecution
+              ? "unresolved_tool_execution"
+              : "compaction_failed"),
           };
         }
       } else if (compactionResult.stillOverThreshold) {
@@ -1030,6 +1153,20 @@ export async function runAgentRecoveryPhase(options: RunAgentRecoveryPhaseOption
           operation: "run_agent.recovery_compaction_emergency_rotate",
           chatJid,
           reason,
+        });
+      }
+      if (compactionResult.ok
+        && compactionResult.compacted
+        && recoveryContinuationWithoutTools
+        && !protectedRecoveryHasUnresolvedToolExecution
+        && protectedPostCompactionToolRetry.available) {
+        recoveryContinuationWithoutTools = false;
+        protectedPostCompactionToolRetry.available = false;
+        options.onInfo?.("Re-armed one tool-enabled retry after protected recovery compaction", {
+          operation: "run_agent.protected_recovery_post_compaction_retry",
+          chatJid,
+          recoveryAttempt: recoveryAttemptsUsed,
+          ...getRunObservabilityDetails(runOptions),
         });
       }
       startRecoveryBudget();

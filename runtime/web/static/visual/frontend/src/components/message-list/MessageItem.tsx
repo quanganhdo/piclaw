@@ -7,7 +7,7 @@ import { AttachmentChip } from "../AttachmentChip";
 import { DelimitedTable } from "./DelimitedTable";
 import { isDelimitedFile } from "../../utils/delimited-preview";
 import { renderMarkdown } from "../../utils/markdown-pipeline";
-import { relativeTime, getBlockKey } from "./helpers";
+import { relativeTime, getBlockKey, getTurnOutcomeMarker } from "./helpers";
 import { MessageActionBar } from "./MessageActionBar";
 import { userAvatarUrl, assistantAvatarUrl } from "../../api/identity";
 import { AvatarPopover } from "../AvatarPopover";
@@ -121,6 +121,52 @@ export function ToolCallBlock({ useBlock, resultBlock }: ToolCallBlockProps) {
               </div>
             </>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── TurnOutcomeBlock ───────────────────────────────────────────────────────
+
+function TurnOutcomeBlock({ marker }: { marker: ContentBlock }) {
+  const [open, setOpen] = useState(false);
+  const title = typeof marker.title === "string" && marker.title.trim()
+    ? marker.title.trim()
+    : "Turn outcome";
+  const detail = typeof marker.detail === "string" ? marker.detail.trim() : "";
+  const nextAction = typeof marker.next_action === "string" ? marker.next_action.trim() : "";
+  const label = typeof marker.label === "string" && marker.label.trim()
+    ? marker.label.trim()
+    : marker.kind ?? "issue";
+  const safeMetadata = [
+    typeof marker.reason === "string" ? marker.reason.replaceAll("_", " ") : null,
+    marker.compaction === "succeeded" || marker.compaction === "failed"
+      ? `compaction ${marker.compaction}`
+      : null,
+    marker.tools_required === true ? "tools required" : null,
+    Number.isInteger(marker.recovery_attempts)
+      ? `${marker.recovery_attempts} recovery attempt${marker.recovery_attempts === 1 ? "" : "s"}`
+      : null,
+  ].filter((value): value is string => Boolean(value));
+
+  return (
+    <div className={`message-list__outcome message-list__outcome--${marker.severity ?? "warning"}`}>
+      <button
+        type="button"
+        className="message-list__outcome-header"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+      >
+        <span aria-hidden="true">{open ? "▾" : "▸"}</span>
+        <span>{label}</span>
+      </button>
+      {open && (
+        <div className="message-list__outcome-detail">
+          <strong>{title}</strong>
+          {detail && <span>{detail}</span>}
+          {nextAction && <span><strong>Next:</strong> {nextAction}</span>}
+          {safeMetadata.length > 0 && <small>{safeMetadata.join(" · ")}</small>}
         </div>
       )}
     </div>
@@ -249,10 +295,14 @@ export function MessageItem({
     );
   };
 
+  const contentBlocks = Array.isArray(interaction.content_blocks)
+    ? interaction.content_blocks.filter((block): block is ContentBlock => Boolean(block) && typeof block === "object")
+    : [];
+
   // Pair tool_use with their tool_result blocks
   const toolPairs: { use: ContentBlock; result?: ContentBlock }[] = [];
-  if (interaction.content_blocks?.length) {
-    const blocks = interaction.content_blocks;
+  if (contentBlocks.length) {
+    const blocks = contentBlocks;
     const resultsByToolUseId = new Map<string, ContentBlock>();
     for (const b of blocks) {
       if (b.type === "tool_result" && b.tool_use_id) {
@@ -269,6 +319,7 @@ export function MessageItem({
     }
   }
 
+  const outcomeMarker = getTurnOutcomeMarker(contentBlocks);
   const displayName = isUser ? "You" : agentDisplayName.value;
 
   const [userImgError, setUserImgError] = useState(false);
@@ -374,10 +425,10 @@ export function MessageItem({
             ))}
           </div>
         )}
-        {!isUser && interaction.content_blocks?.find(
+        {!isUser && contentBlocks.find(
           (b: Record<string, unknown>) => b.type === "thinking_ref"
         ) && (() => {
-          const ref = interaction.content_blocks!.find(
+          const ref = contentBlocks.find(
             (b: Record<string, unknown>) => b.type === "thinking_ref"
           ) as Record<string, unknown>;
           return (
@@ -388,15 +439,16 @@ export function MessageItem({
             />
           );
         })()}
-        {interaction.content_blocks && extractCardBlocks(interaction.content_blocks).length > 0 && (
+        {!isUser && outcomeMarker && <TurnOutcomeBlock marker={outcomeMarker} />}
+        {extractCardBlocks(contentBlocks).length > 0 && (
           <AdaptiveCardRenderer
-            blocks={interaction.content_blocks}
+            blocks={contentBlocks}
             postId={interaction.id}
           />
         )}
-        {!isUser && interaction.content_blocks?.some((b: Record<string, unknown>) => b.type === "file") && (
+        {!isUser && contentBlocks.some((b: Record<string, unknown>) => b.type === "file") && (
           <div className="message-list__attachments">
-            {interaction.content_blocks
+            {contentBlocks
               .filter((b: Record<string, unknown>) => b.type === "file")
               .map((b: Record<string, unknown>, i: number) => {
                 const filename = String(b.filename ?? b.name ?? "file");
@@ -511,12 +563,12 @@ export function MessageItem({
             onDismiss={() => setPopup(null)}
           />
         )}
-        {interaction.content_blocks?.some((b) => b.type === "generated_widget") && (
+        {contentBlocks.some((b) => b.type === "generated_widget") && (
           <button
             type="button"
             className="message-list__widget-open-btn"
             onClick={() => {
-              const block = interaction.content_blocks?.find((b) => b.type === "generated_widget") as Record<string, unknown> | undefined;
+              const block = contentBlocks.find((b) => b.type === "generated_widget") as Record<string, unknown> | undefined;
               if (block) {
                 window.dispatchEvent(new CustomEvent("piclaw:widget-open", {
                   detail: block
@@ -527,7 +579,7 @@ export function MessageItem({
             📊 Open Widget
           </button>
         )}
-        {interaction.media_ids && interaction.media_ids.length > 0 && !interaction.content_blocks?.some((b: Record<string, unknown>) => b.type === "file") && (
+        {interaction.media_ids && interaction.media_ids.length > 0 && !contentBlocks.some((b: Record<string, unknown>) => b.type === "file") && (
           <div className="message-list__media" onClick={handleContentClick}>
             {interaction.media_ids.map((id) => (
               <img

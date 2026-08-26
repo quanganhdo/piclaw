@@ -9,12 +9,29 @@ export interface ContentBlock {
   tool_use_id?: string;
   // Adaptive card fields
   card_id?: string;
-  schema_version?: string;
+  schema_version?: string | number;
   state?: "active" | "completed" | "cancelled" | "failed";
   payload?: Record<string, unknown>;
   fallback_text?: string;
   completed_at?: string;
   last_submission?: unknown;
+  // Protected-recovery control/outcome fields
+  intent?: string;
+  label?: string;
+  title?: string;
+  detail?: string;
+  kind?: string;
+  severity?: string;
+  source_message_id?: string;
+  source_row_id?: number;
+  thread_id?: number;
+  handoff_depth?: number;
+  reason?: string;
+  compaction?: string;
+  tools_required?: boolean;
+  retryable?: boolean;
+  recovery_attempts?: number;
+  next_action?: string;
 }
 
 export interface Interaction {

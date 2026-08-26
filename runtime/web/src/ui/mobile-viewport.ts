@@ -1,16 +1,25 @@
 
 import { isMobileBrowserMode, isStandaloneWebAppMode } from './chat-window.js';
 
-export function shouldUseStandaloneMobileViewportFix(runtime = {}) {
-  return isStandaloneWebAppMode(runtime) && isMobileBrowserMode(runtime);
-}
-
-function shouldUseIphoneStandaloneComposeInset(runtime = {}): boolean {
-  if (!shouldUseStandaloneMobileViewportFix(runtime)) return false;
+function isIOSStandaloneRuntime(runtime = {}): boolean {
   const nav = runtime.navigator ?? (typeof navigator !== 'undefined' ? navigator : null);
   const userAgent = String(nav?.userAgent || '');
   if (/iPhone|iPad|iPod/i.test(userAgent)) return true;
   return String(nav?.platform || '') === 'MacIntel' && Number(nav?.maxTouchPoints || 0) > 1;
+}
+
+export function shouldUseStandaloneMobileViewportFix(runtime = {}) {
+  // This fix writes --app-height and forcibly resets the root/page scroll to
+  // counter iOS standalone PWA visualViewport drift. Android Chrome already
+  // keeps the page/visual viewport in sync around the soft keyboard; applying
+  // the iOS reset loop there fights native settling and can leave compose
+  // bouncing instead of pinned at the bottom.
+  return isStandaloneWebAppMode(runtime) && isMobileBrowserMode(runtime) && isIOSStandaloneRuntime(runtime);
+}
+
+function shouldUseIphoneStandaloneComposeInset(runtime = {}): boolean {
+  if (!shouldUseStandaloneMobileViewportFix(runtime)) return false;
+  return isIOSStandaloneRuntime(runtime);
 }
 
 function readIphoneStandaloneViewportCompensation(win: any, options: { keyboardActive?: boolean } = {}): number {

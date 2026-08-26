@@ -41,6 +41,7 @@ export type RecoveryClassifier =
   | "tool_history_pressure"
   | "thinking_only_stop"
   | "length_stop"
+  | "provider_budget"
   | "transient"
   | "compaction_failure"
   | "unknown";
@@ -225,6 +226,7 @@ export function decideAutomaticRecovery(input: RecoveryDecisionInput): RecoveryD
     || failureCategory === "network"
     || failureCategory === "timeout";
   const nonRecoverableFailure = failureCategory === "aborted"
+    || failureCategory === "provider_budget"
     || failureCategory === "session_corruption"
     || failureCategory === "non_recoverable";
 

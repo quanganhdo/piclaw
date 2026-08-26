@@ -118,12 +118,17 @@ erDiagram
     int output_tokens
     int cache_read_tokens
     int cache_write_tokens
+    int cache_read_reported
+    int cache_write_reported
     int total_tokens
     real cost_input
     real cost_output
     real cost_cache_read
     real cost_cache_write
     real cost_total
+    real provider_cost_total
+    real catalogue_cost_total
+    text cost_provenance
     text model
     text provider
     text api
@@ -215,8 +220,10 @@ erDiagram
 
 - `run_at` is the timestamp for the tool run (ISO 8601).
 - Token counts are stored in `input_tokens`, `output_tokens`, `cache_read_tokens`, `cache_write_tokens`, and `total_tokens`.
-- Costs are tracked in `cost_input`, `cost_output`, `cost_cache_read`, `cost_cache_write`, and `cost_total`.
-- `model`, `provider`, and `api` help with attribution.
+- `cache_read_reported` and `cache_write_reported` preserve whether the provider explicitly sent each cache field. `1` includes an explicit zero, `0` means the field was omitted, and `NULL` marks a legacy or unknown state.
+- `provider_cost_total` stores the provider's request charge. `catalogue_cost_total` stores Piclaw's price-catalogue calculation. `cost_total` selects the provider value when available.
+- `cost_provenance` is `provider_reported`, `catalogue_estimate`, or `unavailable`. Legacy rows retain `NULL`.
+- `model`, `response_model`, `provider`, and `api` identify the requested and concrete response models.
 
 ## Indexes
 

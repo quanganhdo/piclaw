@@ -108,7 +108,12 @@ describe("web agent streaming", () => {
         options.onEvent?.(makeEvent("message_update", {
           assistantMessageEvent: { type: "text_delta", delta: "Partial" },
         }));
-        options.onTurnComplete?.({ text: "intermediate", attachments: [] });
+        options.onTurnComplete?.({
+          text: "intermediate",
+          attachments: [],
+          turnKind: "intermediate",
+          cause: "completed_boundary",
+        });
         options.onEvent?.(makeEvent("message_update", {
           assistantMessageEvent: { type: "text_delta", delta: " final" },
         }));
@@ -167,6 +172,11 @@ describe("web agent streaming", () => {
 
       const responses = events.filter((event) => event.type === "agent_response");
       expect(responses.length).toBeGreaterThanOrEqual(2);
+      expect(responses.find((event) => event.data?.data?.content === "intermediate")?.data?.data?.content_blocks).toContainEqual(expect.objectContaining({
+        type: "agent_turn_marker",
+        kind: "intermediate",
+        cause: "completed_boundary",
+      }));
       for (const response of responses) {
         expect(typeof response.data?.id).toBe("number");
         expect(typeof response.data?.timestamp).toBe("string");
@@ -179,6 +189,58 @@ describe("web agent streaming", () => {
         (event) => event.type === "agent_status" && event.data?.type === "done"
       );
       expect(done).toBeDefined();
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
+  test("persists interrupted draft classification metadata without labeling the terminal reply", async () => {
+    const agentPool = {
+      setSessionBinder: () => {},
+      runAgent: async (_prompt: string, _chatJid: string, options: any) => {
+        options.onTurnComplete?.({
+          text: "Visible progress before steering.",
+          attachments: [],
+          turnKind: "draft_snapshot",
+          cause: "interrupted_text_start",
+        });
+        return { status: "success", result: "Final after steering.", attachments: [] };
+      },
+      getContextUsageForChat: async () => null,
+    } as any;
+    const fixture = await createWebChannelTestFixture({
+      workspace: "temp",
+      queue: new AgentQueue(),
+      agentPool,
+      resetSql: "DELETE FROM message_media; DELETE FROM messages; DELETE FROM chats; DELETE FROM chat_cursors;",
+    });
+
+    try {
+      const { channel, db } = fixture;
+      expect(channel.storeMessage("web:default", "continue", false, [])).not.toBeNull();
+      await channel.processChat("web:default", "default");
+
+      expect(db.getDb().prepare(`
+        SELECT json_extract(block.value, '$.kind') AS kind,
+               json_extract(block.value, '$.cause') AS cause
+        FROM messages AS message, json_each(message.content_blocks) AS block
+        WHERE message.chat_jid = ? AND message.content = ?
+          AND json_extract(block.value, '$.type') = 'agent_turn_marker'
+      `).get("web:default", "Visible progress before steering.")).toEqual({
+        kind: "draft_snapshot",
+        cause: "interrupted_text_start",
+      });
+      expect(db.getDb().prepare(`
+        SELECT is_terminal_agent_reply,
+               EXISTS (
+                 SELECT 1 FROM json_each(messages.content_blocks) AS block
+                 WHERE json_extract(block.value, '$.type') = 'agent_turn_marker'
+               ) AS has_turn_marker
+        FROM messages WHERE chat_jid = ? AND content = ?
+      `).get("web:default", "Final after steering.")).toEqual({
+        is_terminal_agent_reply: 1,
+        has_turn_marker: 0,
+      });
     } finally {
       fixture.cleanup();
     }
@@ -207,7 +269,13 @@ describe("web agent streaming", () => {
             ],
           },
         }));
-        options.onTurnComplete?.({ text: leadIn, attachments: [], followedByToolUse: true });
+        options.onTurnComplete?.({
+          text: leadIn,
+          attachments: [],
+          turnKind: "intermediate",
+          cause: "tool_use",
+          followedByToolUse: true,
+        });
 
         timelineAtToolStart = inspectTimeline();
         options.onEvent?.(makeEvent("tool_execution_start", {
@@ -243,6 +311,30 @@ describe("web agent streaming", () => {
       const finalTimeline = inspectTimeline();
       expect(finalTimeline.filter((row) => row.data?.content === "I will inspect the workspace now.")).toHaveLength(1);
       expect(finalTimeline.filter((row) => row.data?.content === "Inspection complete.")).toHaveLength(1);
+      expect(db.getDb().prepare(`
+        SELECT json_extract(block.value, '$.kind') AS kind,
+               json_extract(block.value, '$.cause') AS cause,
+               json_extract(block.value, '$.followed_by_tool_use') AS followed_by_tool_use
+        FROM messages AS message, json_each(message.content_blocks) AS block
+        WHERE message.chat_jid = ? AND message.content = ?
+          AND json_extract(block.value, '$.type') = 'agent_turn_marker'
+      `).get("web:default", "I will inspect the workspace now.")).toEqual({
+        kind: "intermediate",
+        cause: "tool_use",
+        followed_by_tool_use: 1,
+      });
+      expect(db.getDb().prepare(`
+        SELECT is_terminal_agent_reply,
+               EXISTS (
+                 SELECT 1 FROM json_each(messages.content_blocks) AS block
+                 WHERE json_extract(block.value, '$.type') = 'agent_turn_marker'
+                   AND json_extract(block.value, '$.kind') = 'draft_snapshot'
+               ) AS has_draft_marker
+        FROM messages WHERE chat_jid = ? AND content = ?
+      `).get("web:default", "Inspection complete.")).toEqual({
+        is_terminal_agent_reply: 1,
+        has_draft_marker: 0,
+      });
 
       const clearDraftIndices = events.flatMap((event, index) => event.type === "agent_draft" && event.data?.text === "" ? [index] : []);
       const committedResponseIndex = events.findIndex((event) => event.type === "agent_response" && event.data?.data?.content === "I will inspect the workspace now.");

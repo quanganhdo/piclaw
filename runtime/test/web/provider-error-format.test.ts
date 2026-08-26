@@ -77,6 +77,19 @@ test("formatProviderError parses API error status prefixes for Azure rate limits
   expect(formatted?.detail).toContain("status: 429");
 });
 
+test("OpenRouter adaptive-budget failures retain concise requested and affordable limits", () => {
+  const raw = "OpenRouter output budget rejected (HTTP 402): requested 32768 tokens; affordable 10000 tokens. The single adaptive retry was exhausted.";
+  const formatted = formatProviderError(raw);
+
+  expect(formatted).toMatchObject({
+    category: "quota",
+    label: "quota",
+    title: "Provider quota exceeded",
+  });
+  expect(formatted?.detail).toContain("requested 32768 tokens; affordable 10000 tokens");
+  expect(formatted?.detail.length).toBeLessThanOrEqual(900);
+});
+
 test("provider HTML error pages retain HTTP context without exposing markup or embedded data", () => {
   const raw = [
     "OAuth refresh failed for github-copilot: 502 Bad Gateway: ",

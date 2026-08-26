@@ -2,6 +2,7 @@
 
 import { DAY_MS, DEFAULT_LOG_RETENTION_CAP_MS } from "../utils/log-layout.js";
 import { parsePositiveIntStrict } from "../utils/strict-int.js";
+import { OPENROUTER_DEFAULT_MAX_TOKENS } from "./openrouter-output-budget.js";
 import { pickBoolean, pickNumber, pickString, pickStringArray } from "./config-helpers.js";
 import {
   compactionConfig,
@@ -64,6 +65,7 @@ export type SearchMatchMode = "or" | "and";
 export interface ToolsIntegrationConfig {
   githubCopilotDynamicModels: boolean;
   githubCopilotModelsTimeoutMs: number;
+  openRouterDefaultMaxTokens: number;
   mcpToolTimeoutMs: number;
   packageRoot: string;
   unknownModelContextWindow: number;
@@ -121,6 +123,24 @@ const toolsIntegrationDomainSchema = registerDomainConfig<ToolsIntegrationConfig
         replacement: "domains.tools.githubCopilotModelsTimeoutMs",
         removalVersion: "3.0.0",
         parse: (raw) => Math.max(500, Number(raw)),
+        skipInvalid: true,
+      }],
+    }),
+    openRouterDefaultMaxTokens: integerField({
+      key: "openRouterDefaultMaxTokens",
+      owner: "providers",
+      defaultValue: OPENROUTER_DEFAULT_MAX_TOKENS,
+      min: 1_024,
+      max: 1_048_576,
+      bounds: "1024..1048576 output tokens",
+      persistence: "json-config",
+      precedence: ["compat-env", "persisted", "default"],
+      secretClass: "none",
+      compatibilityEnv: [{
+        envKey: "PICLAW_OPENROUTER_DEFAULT_MAX_TOKENS",
+        replacement: "domains.tools.openRouterDefaultMaxTokens",
+        removalVersion: "3.0.0",
+        parse: (raw) => Number(raw),
         skipInvalid: true,
       }],
     }),

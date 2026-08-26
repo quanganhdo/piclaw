@@ -1291,6 +1291,37 @@
     border-left: 3px solid var(--accent-color, #1d9bf0);
 }
 
+.settings-addon-card.core .settings-addon-card-header {
+    padding-right: 36px;
+}
+
+.settings-addon-card.core .settings-addon-actions {
+    right: 50px;
+}
+
+.settings-addon-core-bookmark {
+    position: absolute;
+    z-index: 1;
+    top: -1px;
+    right: 10px;
+    width: 28px;
+    height: 38px;
+    color: #c81e3a;
+    filter: drop-shadow(0 2px 2px rgba(95, 11, 21, 0.28));
+    cursor: help;
+}
+
+.settings-addon-core-bookmark svg {
+    display: block;
+    width: 28px;
+    height: 38px;
+}
+
+.settings-addon-core-bookmark-highlight {
+    fill: #ef4764;
+    opacity: 0.9;
+}
+
 .settings-addon-card-header {
     display: flex;
     align-items: center;

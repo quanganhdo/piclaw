@@ -99,6 +99,23 @@ function describeCompactionTokenChange(event: Record<string, unknown>): string |
   return parts.length ? parts.join(" · ") : undefined;
 }
 
+function readAllowedString(value: unknown, allowed: readonly string[]): string | null {
+  return typeof value === "string" && allowed.includes(value) ? value : null;
+}
+
+const SAFE_COMPACTION_REASONS = ["manual", "overflow", "threshold", "idle", "previous_failure"] as const;
+const SAFE_COMPACTION_TRIGGERS = ["manual", "recovery", "pre_prompt", "idle"] as const;
+const SAFE_COMPACTION_SOURCES = [
+  "automatic_recovery", "compaction_recovery", "pre_prompt", "pre_prompt_auto_compaction",
+  "idle", "manual",
+] as const;
+const SAFE_RECOVERY_CLASSIFIERS = [
+  "disabled", "budget_exhausted", "auth_config", "recovery_suppressed",
+  "stale_progress_watchdog", "session_corruption", "non_recoverable", "tool_activity",
+  "completed_turn_output", "context_pressure", "tool_history_pressure", "thinking_only_stop",
+  "length_stop", "transient", "compaction_failure", "unknown",
+] as const;
+
 function buildCompactionStatusFields(event: Record<string, unknown>): Record<string, unknown> {
   const result = readJsonRecord(event.result);
   const tokensBefore = readWidgetNumber(event.tokensBefore) ?? readWidgetNumber(result?.tokensBefore);
@@ -106,20 +123,22 @@ function buildCompactionStatusFields(event: Record<string, unknown>): Record<str
   const safetyAdjustedTokensAfter = readWidgetNumber(event.safetyAdjustedTokensAfter);
   const reductionPercent = readWidgetNumber(event.reductionPercent);
   return {
-    reason: typeof event.reason === "string" ? event.reason : null,
-    trigger: typeof event.trigger === "string" ? event.trigger : null,
-    piclawReason: typeof event.piclawReason === "string" ? event.piclawReason : (typeof event.trigger === "string" ? event.trigger : null),
+    reason: readAllowedString(event.reason, SAFE_COMPACTION_REASONS),
+    trigger: readAllowedString(event.trigger, SAFE_COMPACTION_TRIGGERS),
+    piclawReason: readAllowedString(event.piclawReason, SAFE_COMPACTION_TRIGGERS)
+      ?? readAllowedString(event.trigger, SAFE_COMPACTION_TRIGGERS),
     willRetry: event.willRetry === true,
     aborted: event.aborted === true,
-    result: event.result,
-    errorMessage: typeof event.errorMessage === "string" ? event.errorMessage : null,
-    source: typeof event.source === "string" ? event.source : null,
+    skipped: event.skipped === true,
+    source: readAllowedString(event.source, SAFE_COMPACTION_SOURCES),
     chatJid: typeof event.chatJid === "string" ? event.chatJid : null,
     ...(typeof event.targetContextWindow === "number" && Number.isFinite(event.targetContextWindow) ? { targetContextWindow: event.targetContextWindow } : {}),
     ...(typeof event.targetModelLabel === "string" ? { targetModelLabel: event.targetModelLabel } : {}),
     ...(tokensBefore !== null ? { tokensBefore } : {}),
     ...(estimatedTokensAfter !== null ? { estimatedTokensAfter } : {}),
-    ...(typeof event.estimatedTokensAfterSource === "string" ? { estimatedTokensAfterSource: event.estimatedTokensAfterSource } : {}),
+    ...(event.estimatedTokensAfterSource === "upstream" || event.estimatedTokensAfterSource === "fallback"
+      ? { estimatedTokensAfterSource: event.estimatedTokensAfterSource }
+      : {}),
     ...(safetyAdjustedTokensAfter !== null ? { safetyAdjustedTokensAfter } : {}),
     ...(reductionPercent !== null ? { reductionPercent } : {}),
   };
@@ -131,11 +150,6 @@ function modelLabelFromEventModel(value: unknown): string | null {
   const provider = readWidgetString(record.provider);
   const id = readWidgetString(record.id);
   return provider && id ? `${provider}/${id}` : null;
-}
-
-function truncateErrorDetail(msg: string, maxLen = 120): string {
-  const s = String(msg || "").trim();
-  return s.length <= maxLen ? s : s.slice(0, maxLen) + "…";
 }
 
 const TOOL_OUTPUT_STATUS_PREVIEW_BYTES = 12 * 1024;
@@ -903,8 +917,16 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
         options.emitter.status({
           ...base,
           type: "error",
-          title: e.errorMessage,
+          title: "Compaction failed",
           detail: tokenDetail,
+          ...fields,
+        });
+      } else if (e.skipped) {
+        options.emitter.status({
+          ...base,
+          type: "intent",
+          title: "Compaction skipped",
+          detail: "The session was already compact enough to continue safely.",
           ...fields,
         });
       } else if (e.willRetry) {
@@ -955,10 +977,10 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
       const e = event as { detail?: string; compactionCount?: number; warningThreshold?: number };
       const count = typeof e.compactionCount === "number" && Number.isFinite(e.compactionCount) ? e.compactionCount : null;
       const threshold = typeof e.warningThreshold === "number" && Number.isFinite(e.warningThreshold) ? e.warningThreshold : null;
-      const detail = e.detail || [
+      const detail = [
         count != null ? `${count} successful auto-compactions in this chat` : null,
         threshold != null ? `warning threshold ${threshold}` : null,
-      ].filter(Boolean).join(" — ");
+      ].filter(Boolean).join(" — ") || "Repeated automatic compaction was detected.";
       options.emitter.status({
         ...base,
         type: "intent",
@@ -970,14 +992,11 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
     }
 
     if (customEventType === "compaction_suppressed") {
-      const e = event as { until?: string; failureCount?: number; detail?: string; errorMessage?: string };
+      const e = event as { failureCount?: number };
       const failureCount = typeof e.failureCount === "number" && Number.isFinite(e.failureCount) ? e.failureCount : null;
-      const detail = e.detail
-        || [
-          e.until ? `Skipping auto-compaction until ${e.until}` : null,
-          failureCount != null ? `${failureCount} recent failure${failureCount === 1 ? "" : "s"}` : null,
-          e.errorMessage ? `Last error: ${truncateErrorDetail(e.errorMessage)}` : null,
-        ].filter(Boolean).join(" — ");
+      const detail = failureCount != null
+        ? `Automatic compaction is paused after ${failureCount} recent failure${failureCount === 1 ? "" : "s"}.`
+        : "Automatic compaction is temporarily paused after a recent failure.";
       options.emitter.status({
         ...base,
         type: "intent",
@@ -991,24 +1010,25 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
     }
 
     if (customEventType === "recovery_start") {
-      const e = event as { strategy?: string; attempt?: number; maxAttempts?: number; delayMs?: number; reason?: string; errorMessage?: string; classifier?: string; failureCategory?: string };
+      const e = event as { strategy?: string; attempt?: number; maxAttempts?: number; delayMs?: number; classifier?: string; failureCategory?: string };
       const strategy = e.strategy === "compact_then_retry"
         ? "Compacting context and continuing"
         : "Recovering interrupted response";
       const delaySuffix = e.strategy === "retry" && typeof e.delayMs === "number"
         ? ` · ${Math.max(0, Math.round(e.delayMs / 1000))}s delay`
         : "";
-      const reasonOrError = e.errorMessage && e.errorMessage !== e.reason
-        ? (e.reason ? `${e.reason}` : truncateErrorDetail(e.errorMessage))
-        : (e.reason || null);
-      const detail = `Attempt ${e.attempt ?? "?"}/${e.maxAttempts ?? "?"}${delaySuffix}${reasonOrError ? ` — ${reasonOrError}` : ""}`;
+      const classifier = readAllowedString(e.classifier, SAFE_RECOVERY_CLASSIFIERS);
+      const classifierDetail = classifier ? classifier.replaceAll("_", " ") : null;
+      const detail = `Attempt ${e.attempt ?? "?"}/${e.maxAttempts ?? "?"}${delaySuffix}${classifierDetail ? ` — ${classifierDetail}` : ""}`;
       options.emitter.status({
         ...base,
         type: "intent",
         title: strategy,
         detail,
-        classifier: e.classifier ?? null,
-        failure_category: e.failureCategory ?? null,
+        classifier,
+        failure_category: typeof e.failureCategory === "string" && /^[a-z_]+$/.test(e.failureCategory)
+          ? e.failureCategory
+          : null,
         intent_key: "recovery",
         started_at: new Date().toISOString(),
       });
@@ -1030,7 +1050,7 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
           ...base,
           type: "error",
           title: "Automatic recovery exhausted",
-          detail: e.errorMessage || undefined,
+          detail: "The bounded recovery path ended without a terminal reply.",
           classifier: e.classifier ?? null,
           intent_key: "recovery",
         });

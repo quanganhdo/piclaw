@@ -2103,6 +2103,120 @@ test("processChat publishes retry metadata while providers are still initializin
   expect(retryStatus?.retry_delay_ms).toBe(5000);
 });
 
+test("processChat persists typed provider and timeout exhaustion without raw diagnostics", async () => {
+  const ws = createTempWorkspace("piclaw-web-channel-");
+  cleanupWorkspace = ws.cleanup;
+  restoreEnv = setEnv({ PICLAW_WORKSPACE: ws.workspace, PICLAW_STORE: ws.store, PICLAW_DATA: ws.data });
+
+  const db = await import("../../../src/db.js");
+  db.initDatabase();
+  db.getDb().exec("DELETE FROM message_media; DELETE FROM messages; DELETE FROM chats; DELETE FROM chat_cursors;");
+  db.storeChatMetadata("web:default", new Date().toISOString(), "Web");
+  db.storeMessage({
+    id: `msg-${Math.random()}`,
+    chat_jid: "web:default",
+    sender: "user",
+    sender_name: "User",
+    content: "finish the protected retry",
+    timestamp: new Date().toISOString(),
+    is_from_me: false,
+    is_bot_message: false,
+  });
+
+  let calls = 0;
+  const webMod = await import("../../../src/channels/web.js");
+  const web = new (webMod.WebChannel as any)({
+    queue: { enqueue: () => {} },
+    agentPool: {
+      setSessionBinder: () => {},
+      runAgent: async () => {
+        calls += 1;
+        if (calls === 1) {
+          return {
+            status: "error",
+            error: "No API provider registered for api: demo",
+            failureCategory: "provider_unavailable",
+            result: null,
+            protectedRecoveryHandoff: {
+              reason: "provider_retry_exhausted",
+              compaction: "not_attempted",
+              toolsRequired: false,
+              retryable: true,
+              recoveryAttempts: 1,
+            },
+            recovery: {
+              attemptsUsed: 1,
+              totalElapsedMs: 1000,
+              recovered: false,
+              exhausted: true,
+              lastClassifier: "provider_unavailable",
+              strategyHistory: ["retry"],
+              diagnostics: [],
+            },
+          };
+        }
+        return {
+          status: "error",
+          error: "provider-secret=must-not-persist raw timeout payload",
+          failureCategory: "timeout",
+          result: null,
+          protectedRecoveryHandoff: {
+            reason: "recovery_budget_exhausted",
+            compaction: "not_attempted",
+            toolsRequired: false,
+            retryable: true,
+            recoveryAttempts: 2,
+          },
+          recovery: {
+            attemptsUsed: 2,
+            totalElapsedMs: 2000,
+            recovered: false,
+            exhausted: true,
+            lastClassifier: "budget_exhausted",
+            strategyHistory: ["retry", "retry"],
+            diagnostics: [],
+          },
+        };
+      },
+      getContextUsageForChat: async () => null,
+    },
+  });
+
+  await expect(web.processChat("web:default", "default")).resolves.toBeUndefined();
+  const timeline = db.getTimeline("web:default", 10);
+  const terminal = timeline.findLast((item: any) => item.data.type === "agent_response");
+  expect(terminal?.data.content_blocks).toContainEqual(expect.objectContaining({
+    type: "turn_outcome_marker",
+    kind: "recovery",
+    reason: "provider_retry_exhausted",
+    tools_required: false,
+    retryable: true,
+  }));
+  expect(String(terminal?.data.content)).toContain("Provider recovery retries exhausted");
+
+  db.storeMessage({
+    id: `msg-${Math.random()}`,
+    chat_jid: "web:default",
+    sender: "user",
+    sender_name: "User",
+    content: "retry once more",
+    timestamp: new Date(Date.now() + 1000).toISOString(),
+    is_from_me: false,
+    is_bot_message: false,
+  });
+  await expect(web.processChat("web:default", "default")).resolves.toBeUndefined();
+  const timeoutTerminal = db.getTimeline("web:default", 20)
+    .findLast((item: any) => item.data.type === "agent_response");
+  expect(timeoutTerminal?.data.content_blocks).toContainEqual(expect.objectContaining({
+    type: "turn_outcome_marker",
+    reason: "recovery_budget_exhausted",
+    tools_required: false,
+  }));
+  expect(String(timeoutTerminal?.data.content)).toContain("Automatic recovery budget exhausted");
+  expect(JSON.stringify(timeoutTerminal?.data)).not.toContain("provider-secret");
+  expect(JSON.stringify(timeoutTerminal?.data)).not.toContain("raw timeout payload");
+});
+
 // --- New coverage: agent status lifecycle ---
 
 test("processChat publishes draft fallback when final result is missing", async () => {
@@ -2694,6 +2808,7 @@ test("processChat durably hands protected recovery to one ordinary tool-enabled 
 
   const prompts: string[] = [];
   const protectedDraft = "I cannot continue because workspace tools are unavailable.";
+  const committedToolProgress = "Validation completed with execution tools.";
   const webMod = await import("../../../src/channels/web.js");
   const web = new (webMod.WebChannel as any)({
     queue: { enqueue: () => {} },
@@ -2711,14 +2826,52 @@ test("processChat durably hands protected recovery to one ordinary tool-enabled 
             attachments: [],
             requiresToolEnabledContinuation: true,
             nextAction: "Continue automatically in one ordinary turn with the restored tool baseline.",
+            protectedRecoveryHandoff: {
+              reason: "provider_retry_exhausted",
+              compaction: "not_attempted",
+              toolsRequired: true,
+              retryable: true,
+              recoveryAttempts: 1,
+            },
             recovery: { attemptsUsed: 1, totalElapsedMs: 1000, recovered: false, exhausted: true, lastClassifier: "tool_activity", strategyHistory: ["retry"], diagnostics: [] },
           };
         }
-        return { status: "success", result: "Release completed with tools.", attachments: [] };
+        expect(options.protectedRecoveryContinuation).toBe(true);
+        expect(options.protectedRecoveryContinuationDepth).toBe(1);
+        expect(options.protectedRecoveryHandoffContext).toMatchObject({
+          reason: "provider_retry_exhausted",
+          compaction: "not_attempted",
+          toolsRequired: true,
+          retryable: true,
+          recoveryAttempts: 1,
+        });
+        await options.onTurnComplete?.({
+          text: committedToolProgress,
+          attachments: [],
+          followedByToolUse: true,
+        });
+        return {
+          status: "success",
+          result: "Release completed with tools.",
+          attachments: [],
+          recovery: {
+            attemptsUsed: 1,
+            totalElapsedMs: 1000,
+            recovered: true,
+            exhausted: false,
+            lastClassifier: "context_pressure",
+            strategyHistory: ["compact_then_retry"],
+            diagnostics: [],
+          },
+        };
       },
       getContextUsageForChat: async () => null,
     },
   });
+  const events: Array<{ type: string; data: any }> = [];
+  web.broadcastEvent = (type: string, data: unknown) => {
+    events.push({ type, data });
+  };
 
   await web.processChat("web:default", "default");
   const continuation = db.getDb().prepare(`
@@ -2727,21 +2880,49 @@ test("processChat durably hands protected recovery to one ordinary tool-enabled 
     WHERE chat_jid = ? AND is_bot_message = 0 AND content = ?
   `).get("web:default", PROTECTED_RECOVERY_CONTROL_LABEL) as any;
   expect(continuation).toMatchObject({ content: PROTECTED_RECOVERY_CONTROL_LABEL, thread_id: rootRowId });
-  expect(JSON.parse(continuation.content_blocks)).toEqual([
+  const typedFields = {
+    reason: "provider_retry_exhausted",
+    compaction: "not_attempted",
+    tools_required: true,
+    retryable: true,
+    recovery_attempts: 1,
+  };
+  const continuationBlocks = JSON.parse(continuation.content_blocks);
+  expect(continuationBlocks).toEqual([
     expect.objectContaining({
       type: "control_intent",
       intent: "protected_recovery_continuation",
       source_message_id: rootMessageId,
       source_row_id: rootRowId,
       thread_id: rootRowId,
+      ...typedFields,
     }),
   ]);
+  expect(events.find((event) => event.type === "agent_followup_queued")?.data.content_blocks).toEqual([
+    expect.objectContaining(typedFields),
+  ]);
+  const recoveryTimelineItem = db.getTimeline("web:default", 20)
+    .find((item: any) => (item.data.content_blocks ?? [])
+      .some((block: any) => block.type === "turn_outcome_marker" && block.kind === "recovery"));
+  const recoveryTimelineBlock = recoveryTimelineItem?.data.content_blocks
+    .find((block: any) => block.type === "turn_outcome_marker" && block.kind === "recovery");
+  expect(recoveryTimelineItem?.data.content).toBe("");
+  expect(recoveryTimelineBlock).toMatchObject({
+    title: PROTECTED_RECOVERY_CONTROL_LABEL,
+    ...typedFields,
+  });
+  const recoverySseBlock = events
+    .flatMap((event) => event.data.content_blocks ?? event.data.data?.content_blocks ?? [])
+    .find((block: any) => block.type === "turn_outcome_marker" && block.kind === "recovery");
+  expect(recoverySseBlock).toMatchObject(typedFields);
   expect(db.getDb().prepare(`SELECT COUNT(*) AS count FROM messages WHERE chat_jid = ? AND content = ?`).get("web:default", TOOL_ENABLED_RECOVERY_CONTINUATION_PROMPT) as any).toMatchObject({ count: 0 });
   expect(db.getDb().prepare(`SELECT COUNT(*) AS count FROM messages WHERE chat_jid = ? AND is_bot_message = 1 AND content = ?`).get("web:default", protectedDraft) as any).toMatchObject({ count: 0 });
   expect(db.getDb().prepare(`SELECT COUNT(*) AS count FROM messages WHERE chat_jid = ? AND is_bot_message = 1 AND content LIKE ?`).get("web:default", "%Protected recovery completed without execution tools%") as any).toMatchObject({ count: 0 });
   await web.processChat("web:default", "default", rootRowId);
 
   expect(prompts[1]).toContain(TOOL_ENABLED_RECOVERY_CONTINUATION_PROMPT);
+  expect(db.getDb().prepare(`SELECT COUNT(*) AS count FROM messages WHERE chat_jid = ? AND is_bot_message = 0 AND content = ?`).get("web:default", PROTECTED_RECOVERY_CONTROL_LABEL) as any).toMatchObject({ count: 1 });
+  expect(db.getDb().prepare(`SELECT COUNT(*) AS count FROM messages WHERE chat_jid = ? AND is_bot_message = 1 AND content = ? AND COALESCE(is_terminal_agent_reply, 0) = 0`).get("web:default", committedToolProgress) as any).toMatchObject({ count: 1 });
   const timeline = db.getTimeline("web:default", 20);
   expect(timeline.filter((item: any) => item.data.type === "agent_response").some((item: any) => String(item.data.content).includes("Release completed with tools"))).toBe(true);
   expect(web.getQueuedFollowupItems("web:default")).toHaveLength(0);
@@ -2781,6 +2962,15 @@ test("processChat chains one compacted protected continuation and completes with
     attachments: [],
     failureCategory: "no_terminal_output" as const,
     requiresToolEnabledContinuation: true,
+    protectedRecoveryHandoff: {
+      reason: strategyHistory.at(-1) === "compact_then_retry"
+        ? "post_compaction_tools_required" as const
+        : "provider_retry_exhausted" as const,
+      compaction: strategyHistory.at(-1) === "compact_then_retry" ? "succeeded" as const : "not_attempted" as const,
+      toolsRequired: true,
+      retryable: true,
+      recoveryAttempts: 1,
+    },
     recovery: {
       attemptsUsed: 1,
       totalElapsedMs: 1000,
@@ -2821,7 +3011,23 @@ test("processChat chains one compacted protected continuation and completes with
     WHERE chat_jid = ? AND is_bot_message = 0 AND content = ?
     ORDER BY rowid DESC LIMIT 1
   `).get("web:default", PROTECTED_RECOVERY_CONTROL_LABEL) as any;
-  expect(JSON.parse(secondControl.content_blocks)[0].handoff_depth).toBe(2);
+  expect(JSON.parse(secondControl.content_blocks)[0]).toMatchObject({
+    handoff_depth: 2,
+    reason: "post_compaction_tools_required",
+    compaction: "succeeded",
+    tools_required: true,
+    retryable: true,
+    recovery_attempts: 1,
+  });
+  const postCompactionOutcome = db.getTimeline("web:default", 20)
+    .flatMap((item: any) => item.data.content_blocks ?? [])
+    .find((block: any) => block.type === "turn_outcome_marker"
+      && block.reason === "post_compaction_tools_required");
+  expect(postCompactionOutcome).toMatchObject({
+    title: PROTECTED_RECOVERY_CONTROL_LABEL,
+    detail: expect.stringContaining("compaction succeeded"),
+    tools_required: true,
+  });
 
   await web.processChat("web:default", "default", rootRowId);
 
@@ -3070,7 +3276,7 @@ test("processChat does not chain protected-recovery continuations", async () => 
   expect(web.getQueuedFollowupItems("web:default")).toHaveLength(0);
 });
 
-test("processChat renders deterministic guidance at the protected handoff limit", async () => {
+test("processChat reproduces row 52350 with actionable post-compaction handoff guidance", async () => {
   const ws = createTempWorkspace("piclaw-web-channel-");
   cleanupWorkspace = ws.cleanup;
   restoreEnv = setEnv({ PICLAW_WORKSPACE: ws.workspace, PICLAW_STORE: ws.store, PICLAW_DATA: ws.data });
@@ -3114,6 +3320,13 @@ test("processChat renders deterministic guidance at the protected handoff limit"
         attachments: [],
         failureCategory: "no_terminal_output",
         requiresToolEnabledContinuation: true,
+        protectedRecoveryHandoff: {
+          reason: "post_compaction_tools_required",
+          compaction: "succeeded",
+          toolsRequired: true,
+          retryable: true,
+          recoveryAttempts: 1,
+        },
         recovery: {
           attemptsUsed: 1,
           totalElapsedMs: 1000,
@@ -3133,12 +3346,20 @@ test("processChat renders deterministic guidance at the protected handoff limit"
   expect(web.getQueuedFollowupItems("web:default")).toHaveLength(0);
   const timeline = db.getTimeline("web:default", 10);
   const terminal = timeline.findLast((item: any) => item.data.type === "agent_response");
-  expect(String(terminal?.data.content)).toContain("Automatic recovery paused");
+  expect(String(terminal?.data.content)).toContain("Automatic recovery paused after successful compaction");
+  expect(String(terminal?.data.content)).toContain("provider stopped following tool activity");
+  expect(String(terminal?.data.content)).toContain("unfinished task still requires execution tools");
   expect(String(terminal?.data.content)).toContain("session is preserved");
+  expect(String(terminal?.data.content)).toContain("Send “continue”");
   expect(terminal?.data.content_blocks).toContainEqual(expect.objectContaining({
     type: "turn_outcome_marker",
     kind: "recovery",
-    title: "Automatic recovery paused",
+    title: "Automatic recovery paused after successful compaction",
+    reason: "post_compaction_tools_required",
+    compaction: "succeeded",
+    tools_required: true,
+    retryable: true,
+    recovery_attempts: 1,
   }));
 });
 

@@ -445,12 +445,17 @@ function createSchema(database: Database): void {
       reasoning_tokens INTEGER DEFAULT 0,
       cache_read_tokens INTEGER DEFAULT 0,
       cache_write_tokens INTEGER DEFAULT 0,
+      cache_read_reported INTEGER,
+      cache_write_reported INTEGER,
       total_tokens INTEGER DEFAULT 0,
       cost_input REAL DEFAULT 0,
       cost_output REAL DEFAULT 0,
       cost_cache_read REAL DEFAULT 0,
       cost_cache_write REAL DEFAULT 0,
       cost_total REAL DEFAULT 0,
+      provider_cost_total REAL,
+      catalogue_cost_total REAL,
+      cost_provenance TEXT,
       model TEXT,
       response_model TEXT,
       provider TEXT,
@@ -625,6 +630,11 @@ function ensureTokenUsageColumns(database: Database): void {
   ensureColumn("response_model", "TEXT");
   ensureColumn("reasoning_tokens", "INTEGER DEFAULT 0");
   ensureColumn("usage_source", "TEXT DEFAULT 'assistant'");
+  ensureColumn("cache_read_reported", "INTEGER");
+  ensureColumn("cache_write_reported", "INTEGER");
+  ensureColumn("provider_cost_total", "REAL");
+  ensureColumn("catalogue_cost_total", "REAL");
+  ensureColumn("cost_provenance", "TEXT");
 }
 
 function ensureScheduledTaskColumns(database: Database): void {

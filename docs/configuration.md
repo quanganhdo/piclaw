@@ -303,6 +303,16 @@ Piclaw's `/login` provider picker uses Earendil's runtime provider catalog plus 
 
 Use `/login <provider-id>` to configure one of these providers directly. Provider composition details are available in the `/agent/models` payload under `provider_diagnostics`; the payload includes non-secret auth source/label and composition flags.
 
+### OpenRouter output budget
+
+Piclaw bounds OpenRouter output reservations to avoid HTTP 402 failures caused by a model's advertised maximum output. The filter applies only to `openrouter` requests, preserves a lower explicit `max_tokens` or `max_completion_tokens` value, and defaults absent, malformed, or excessive limits to 32,768 tokens. It does not change the model's context window.
+
+Set `domains.tools.openRouterDefaultMaxTokens` in `.piclaw/config.json` to change the ceiling. The value is bounded to 1,024–1,048,576 tokens. `PICLAW_OPENROUTER_DEFAULT_MAX_TOKENS` remains a compatibility alias until 3.0.0 and takes precedence over the persisted setting; the persisted setting takes precedence over the default.
+
+When OpenRouter returns its structured HTTP 402 affordability response with both requested and affordable token counts, Piclaw retries once at the smaller of the failed request limit and 90% of the reported affordable count. The override exists only for that turn. Repeated, malformed, non-reducing, mismatched, or sub-1,024-token affordability results are terminal and are not sent through generic unchanged retries. Logs record only provider/model identifiers, numeric limits, reason, token field, and attempt number—not prompts, credentials, or full provider bodies.
+
+Raising the configured ceiling enables longer OpenRouter generations but can increase reservation failures and worst-case spend.
+
 ### GitHub Copilot live model discovery
 
 After GitHub Copilot authentication is available, Piclaw supplements Earendil's static Copilot catalog with the account's live `/models` response. The refresh runs at process boot and again when a session starts, so newly enabled account models can appear in `/model` and model selectors without waiting for a package release.

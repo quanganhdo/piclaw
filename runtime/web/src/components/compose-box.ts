@@ -408,7 +408,8 @@ function tokenUsageCacheHitRate(record) {
     const cacheRead = finiteNumber(record.cacheReadTokens) ?? 0;
     const cacheWrite = finiteNumber(record.cacheWriteTokens) ?? 0;
     const denominator = input + cacheRead + cacheWrite;
-    if (denominator <= 0 || cacheRead <= 0) return null;
+    if (record.cacheReadReported === false || denominator <= 0) return null;
+    if (cacheRead <= 0 && record.cacheReadReported !== true) return null;
     return (cacheRead / denominator) * 100;
 }
 
@@ -423,35 +424,90 @@ function formatTokenUsagePart(label, value) {
     return numeric != null ? `${label} ${formatK(numeric)}` : null;
 }
 
-export function resolveComposeCacheHitMeta(contextUsage) {
+function formatUsageCost(value) {
+    const numeric = finiteNumber(value);
+    if (numeric == null || numeric < 0) return null;
+    return `$${numeric.toFixed(numeric >= 0.01 ? 2 : 4)}`;
+}
+
+export function formatOpenRouterKeyUsageTitle(modelUsage) {
+    if (modelUsage?.provider !== 'openrouter' || modelUsage?.availability !== 'available') return null;
+    return [
+        `Key spend: ${formatUsageCost(modelUsage.key_usage_usd) || 'unavailable'}`,
+        `Key limit: ${modelUsage.key_limit_configured === true
+            ? formatUsageCost(modelUsage.key_limit_usd) || 'unavailable'
+            : modelUsage.key_limit_unlimited ? 'not configured (unlimited)' : 'unavailable'}`,
+        `Key remaining: ${formatUsageCost(modelUsage.key_limit_remaining_usd) || 'unavailable'}`,
+    ].join(' • ');
+}
+
+export function resolveComposeRunUsageMeta(contextUsage, activeModel = null) {
     const cacheUsage = contextUsage && typeof contextUsage === 'object' ? contextUsage.cacheUsage : null;
     if (!cacheUsage || typeof cacheUsage !== 'object') return null;
     const latest = cacheUsage.latest && typeof cacheUsage.latest === 'object' ? cacheUsage.latest : null;
-    const totals = cacheUsage.totals && typeof cacheUsage.totals === 'object' ? cacheUsage.totals : null;
-    const source = latest || totals;
-    const cacheHitRate = tokenUsageCacheHitRate(source);
-    const formattedRate = formatCacheHitRate(cacheHitRate);
-    if (!formattedRate) return null;
+    if (!latest) return null;
 
-    const latestParts = latest ? [
+    const providerLabel = typeof latest.provider === 'string' && latest.provider.trim() ? latest.provider.trim() : null;
+    const modelLabel = typeof latest.model === 'string' && latest.model.trim() ? latest.model.trim() : null;
+    const requestedModel = modelLabel
+        ? (!providerLabel || modelLabel.startsWith(`${providerLabel}/`) ? modelLabel : `${providerLabel}/${modelLabel}`)
+        : providerLabel;
+    const responseModel = typeof latest.responseModel === 'string' && latest.responseModel.trim()
+        ? latest.responseModel.trim()
+        : null;
+    const sameRequestedModel = areRequestedModelLabelsSame(activeModel, requestedModel);
+    const isPreviousModel = Boolean(activeModel && requestedModel && !sameRequestedModel);
+    const cacheHitRate = tokenUsageCacheHitRate(latest);
+    const formattedRate = formatCacheHitRate(cacheHitRate);
+    const cacheLabel = formattedRate ? `CH${formattedRate}` : 'CH—';
+    const totalTokens = finiteNumber(latest.totalTokens);
+    const cost = formatUsageCost(latest.costTotal);
+    const costProvenance = typeof latest.costProvenance === 'string' ? latest.costProvenance : null;
+    const costLabel = costProvenance === 'provider_reported' ? cost
+        : costProvenance === 'catalogue_estimate' && cost ? `~${cost}`
+            : null;
+    const runLabel = isPreviousModel ? 'Prev' : 'Last';
+    const tokenParts = [
         formatTokenUsagePart('in', latest.inputTokens),
         formatTokenUsagePart('out', latest.outputTokens),
+        formatTokenUsagePart('reason', latest.reasoningTokens),
         formatTokenUsagePart('cache-r', latest.cacheReadTokens),
         formatTokenUsagePart('cache-w', latest.cacheWriteTokens),
-    ].filter(Boolean).join(', ') : '';
-    const totalRuns = finiteNumber(totals?.runs);
-    const totalRate = totals ? formatCacheHitRate(tokenUsageCacheHitRate(totals)) : null;
+        formatTokenUsagePart('total', latest.totalTokens),
+    ].filter(Boolean).join(', ');
+    const costTitle = costProvenance === 'provider_reported' && cost
+        ? `Provider-reported cost: ${cost}`
+        : costProvenance === 'catalogue_estimate' && cost
+            ? `Catalogue cost estimate: ~${cost}`
+            : 'Cost unavailable';
+    const cacheTitle = formattedRate
+        ? `Prompt cache hit: ${formattedRate}`
+        : latest.cacheReadReported === false
+            ? 'Prompt cache telemetry unavailable'
+            : 'Prompt cache hit unavailable';
     const titleParts = [
-        `Prompt cache hit: ${formattedRate}${latest ? ' latest run' : ''}`,
-        latestParts || null,
-        totalRate ? `Session total: ${totalRate}${totalRuns != null ? ` across ${totalRuns} run${totalRuns === 1 ? '' : 's'}` : ''}` : null,
+        `${isPreviousModel ? 'Previous' : 'Latest'} run${requestedModel ? `: ${requestedModel}` : ''}`,
+        responseModel && responseModel !== latest.model ? `Response model: ${responseModel}` : null,
+        tokenParts || null,
+        cacheTitle,
+        costTitle,
     ].filter(Boolean);
 
     return {
-        label: `CH${formattedRate}`,
+        label: [runLabel, totalTokens == null ? null : formatK(totalTokens), cacheLabel, costLabel].filter(Boolean).join(' • '),
         title: titleParts.join(' • '),
         cacheHitRate,
+        costTotal: finiteNumber(latest.costTotal),
+        costProvenance,
+        requestedModel,
+        responseModel,
+        isPreviousModel,
     };
+}
+
+export function resolveComposeCacheHitMeta(contextUsage) {
+    const meta = resolveComposeRunUsageMeta(contextUsage);
+    return meta?.cacheHitRate == null ? null : meta;
 }
 
 const MODEL_PICKER_CONTEXT_OVERHEAD_TOKENS = 4000;
@@ -520,6 +576,21 @@ export function formatModelPickerDisplayLabel(label, contextWindow) {
     return `${primaryLabel} • ${contextLabel}`;
 }
 
+export function formatModelPickerPricing(pricing) {
+    if (!pricing || typeof pricing !== 'object') return '';
+    const rates = [
+        ['in', pricing.input_per_million ?? pricing.inputPerMillion],
+        ['out', pricing.output_per_million ?? pricing.outputPerMillion],
+        ['cache-r', pricing.cache_read_per_million ?? pricing.cacheReadPerMillion],
+        ['cache-w', pricing.cache_write_per_million ?? pricing.cacheWritePerMillion],
+    ].map(([label, value]) => {
+        const numeric = finiteNumber(value);
+        if (numeric == null || numeric < 0) return null;
+        return `${label} $${numeric.toFixed(numeric >= 1 ? 2 : 4).replace(/0+$/, '').replace(/\.$/, '')}`;
+    }).filter(Boolean);
+    return rates.length > 0 ? `${rates.join(' / ')} per 1M` : '';
+}
+
 function normalizeModelPickerLabel(value, provider = '', id = '') {
     const explicit = typeof value === 'string' ? value.trim() : '';
     if (explicit) return explicit;
@@ -548,7 +619,8 @@ export function normalizeModelPickerOptions(payload) {
                 id,
                 name: null,
                 contextWindow: null,
-                reasoning: false,
+                pricing: null,
+                reasoning: null,
             });
             continue;
         }
@@ -560,13 +632,15 @@ export function normalizeModelPickerOptions(payload) {
         if (!label) continue;
         const name = typeof item.name === 'string' && item.name.trim() ? item.name.trim() : null;
         const contextWindow = Number(item.context_window ?? item.contextWindow);
+        const pricing = item.pricing && typeof item.pricing === 'object' ? item.pricing : null;
         options.push({
             label,
             provider,
             id,
             name,
             contextWindow: Number.isFinite(contextWindow) && contextWindow > 0 ? contextWindow : null,
-            reasoning: Boolean(item.reasoning),
+            pricing,
+            reasoning: typeof item.reasoning === 'boolean' ? item.reasoning : null,
         });
     }
 
@@ -582,6 +656,7 @@ export function getModelPickerOptionSearchLabel(option) {
         option.id,
         option.name,
         formatModelPickerContextWindow(option.contextWindow),
+        formatModelPickerPricing(option.pricing),
     ].filter(Boolean).join(' ');
 }
 
@@ -619,6 +694,13 @@ function areModelLabelsCompatible(left, right) {
     return a === b || a.endsWith(`/${b}`) || b.endsWith(`/${a}`);
 }
 
+function areRequestedModelLabelsSame(left, right) {
+    const a = normalizeComparableModelLabel(left);
+    const b = normalizeComparableModelLabel(right);
+    if (!a || !b) return false;
+    return a.includes('/') && b.includes('/') ? a === b : areModelLabelsCompatible(a, b);
+}
+
 export function resolveComposeRoutedModelStatus(activeModel, agentModelsPayload) {
     const payload = agentModelsPayload && typeof agentModelsPayload === 'object' ? agentModelsPayload : {};
     const responseModel = normalizeRoutedModelLabel(
@@ -632,7 +714,7 @@ export function resolveComposeRoutedModelStatus(activeModel, agentModelsPayload)
     if (requestedModel && areModelLabelsCompatible(responseModel, requestedModel)) return null;
 
     const currentModel = normalizeRoutedModelLabel(activeModel ?? payload.current ?? payload.model);
-    if (currentModel && requestedModel && !areModelLabelsCompatible(currentModel, requestedModel)) return null;
+    if (currentModel && requestedModel && !areRequestedModelLabelsSame(currentModel, requestedModel)) return null;
 
     return {
         label: `Routed: ${responseModel}`,
@@ -1388,20 +1470,30 @@ export function ComposeBox({
     const modelHintSuffix = supportsThinking && thinkingLevel ? ` (${thinkingLevel})` : '';
     const modelThinkingLabel = modelHintSuffix.trim() ? `${thinkingLevel}` : '';
     const routedModelStatus = resolveComposeRoutedModelStatus(activeModel, agentModelsPayload);
-    const cacheHitMeta = resolveComposeCacheHitMeta(contextUsage);
+    const runUsageMeta = resolveComposeRunUsageMeta(contextUsage, activeModel);
     const modelUsageLabel = typeof modelUsage?.hint_short === 'string' ? modelUsage.hint_short.trim() : '';
+    const activeModelOption = normalizeModelPickerOptions(agentModelsPayload)
+        .find((option) => areRequestedModelLabelsSame(option.label, activeModel));
+    const activeModelPricingLabel = formatModelPickerPricing(activeModelOption?.pricing);
+    const openRouterKeyTitle = formatOpenRouterKeyUsageTitle(modelUsage);
     const modelUsageSectionLabel = [
         modelThinkingLabel || null,
         routedModelStatus?.label || null,
         modelUsageLabel || null,
-        cacheHitMeta?.label || null,
+        runUsageMeta?.label || null,
     ].filter(Boolean).join(' • ');
     const modelUsageTitleParts = [
         activeModel ? `Current model: ${modelHintLabel}${modelHintSuffix}` : null,
         routedModelStatus?.title || null,
         modelUsage?.plan ? `Plan: ${modelUsage.plan}` : null,
         modelUsageLabel || null,
-        cacheHitMeta?.title || null,
+        modelUsage?.availability && modelUsage.availability !== 'available'
+            ? `Usage telemetry: ${modelUsage.availability.replaceAll('_', ' ')}`
+            : null,
+        modelUsage?.stale ? `Usage telemetry stale after ${String(modelUsage.refresh_failure || 'refresh failure').replaceAll('_', ' ')}` : null,
+        openRouterKeyTitle,
+        activeModelPricingLabel ? `Catalogue pricing: ${activeModelPricingLabel}` : null,
+        runUsageMeta?.title || null,
         modelUsage?.primary?.reset_description || null,
         modelUsage?.secondary?.reset_description || null,
     ].filter(Boolean);
@@ -1410,7 +1502,7 @@ export function ComposeBox({
         : (modelUsageTitleParts.join(' • ') || (showModelPickerHint
             ? 'Select a model (tap to open model picker)'
             : `Current model: ${modelHintLabel}${modelHintSuffix} (tap to open model picker)`));
-    const showComposeMetaRow = !searchMode && (showModelPickerHint || cacheHitMeta || (contextUsage && contextUsage.percent != null));
+    const showComposeMetaRow = !searchMode && (showModelPickerHint || runUsageMeta || (contextUsage && contextUsage.percent != null));
 
     const emitModelState = (payload) => {
         if (!payload || typeof payload !== 'object') return;
@@ -3369,6 +3461,10 @@ export function ComposeBox({
                                     const modelLabel = typeof modelOption?.label === 'string' ? modelOption.label : '';
                                     const contextWindowLabel = formatModelPickerContextWindow(modelOption?.contextWindow);
                                     const modelDisplayName = modelOption?.name || null;
+                                    const reasoningLabel = modelOption?.reasoning === true
+                                        ? 'reasoning'
+                                        : modelOption?.reasoning === false ? 'no reasoning' : null;
+                                    const pricingLabel = formatModelPickerPricing(modelOption?.pricing);
                                     const contextLimit = getModelPickerContextLimit(modelOption, contextUsage);
                                     return html`
                                         <button
@@ -3378,10 +3474,11 @@ export function ComposeBox({
                                             class=${`compose-model-popup-item compose-model-popup-model-item${modelPopupIndex === index ? ' active' : ''}${activeModel === modelLabel ? ' current-model' : ''}${contextLimit.blocked ? ' context-blocked' : ''}`}
                                             onClick=${() => { void handleSelectModel(modelOption); }}
                                             disabled=${switchingModel || contextLimit.blocked}
-                                            title=${[modelLabel, modelDisplayName, contextWindowLabel, contextLimit.title].filter(Boolean).join(' • ')}
+                                            title=${[modelLabel, modelDisplayName, contextWindowLabel, reasoningLabel, pricingLabel, contextLimit.title].filter(Boolean).join(' • ')}
                                         >
                                             <span class="compose-model-popup-model-stack">
                                                 <span class="compose-model-popup-model-label">${formatModelPickerDisplayLabel(modelLabel, modelOption?.contextWindow)}${modelDisplayName ? html` <span class="compose-model-popup-model-subtitle">${modelDisplayName}</span>` : ''}</span>
+                                                <span class="compose-model-popup-model-subtitle">${[reasoningLabel, pricingLabel].filter(Boolean).join(' • ')}</span>
                                                 ${contextLimit.blocked && html`<span class="compose-model-popup-model-note">${contextLimit.note}</span>`}
                                             </span>
                                         </button>
@@ -3600,7 +3697,7 @@ export function ComposeBox({
                     `}
                     ${showComposeMetaRow && html`
                     <div class="compose-meta-row">
-                        ${(showModelPickerHint || cacheHitMeta) && html`
+                        ${(showModelPickerHint || runUsageMeta) && html`
                             <div class="compose-model-meta">
                                 ${showModelPickerHint && html`
                                     <button

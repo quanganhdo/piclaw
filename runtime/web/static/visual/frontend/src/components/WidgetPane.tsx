@@ -55,7 +55,7 @@ function buildSrcDoc(html: string, title: string): string {
 </html>`;
 }
 
-export function WidgetPane({ tabMode = false, widgetHtml, widgetSrc, widgetTitle }: { tabMode?: boolean; widgetHtml?: string; widgetSrc?: string; widgetTitle?: string }) {
+export function WidgetPane({ tabMode = false, widgetHtml, widgetTitle }: { tabMode?: boolean; widgetHtml?: string; widgetTitle?: string }) {
   const [widget, setWidget] = useState<WidgetState | null>(
     widgetHtml ? { html: widgetHtml, title: widgetTitle || "Widget", subtitle: "", status: "final" } : null
   );
@@ -69,6 +69,23 @@ export function WidgetPane({ tabMode = false, widgetHtml, widgetSrc, widgetTitle
       setWidget({ html: widgetHtml, title: widgetTitle || "Widget", subtitle: "", status: "final" });
     }
   }, [widgetHtml, widgetTitle]);
+
+  useEffect(() => {
+    const handleMessage = (e: MessageEvent) => {
+      if (e.source !== iframeRef.current?.contentWindow || !e.data?.type) return;
+      if (e.data.type === "piclaw:widget-submit") {
+        const text = e.data.payload?.text;
+        if (text) {
+          window.dispatchEvent(new CustomEvent("piclaw:widget-submission", { detail: { text } }));
+        }
+      } else if (e.data.type === "piclaw:widget-close") {
+        window.dispatchEvent(new CustomEvent("piclaw:widget-close"));
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
 
   useEffect(() => {
     if (tabMode) return; // In tab mode, content comes from props
@@ -107,26 +124,11 @@ export function WidgetPane({ tabMode = false, widgetHtml, widgetSrc, widgetTitle
       setWidget((prev) => prev ? { ...prev, status: "error", error: detail?.error || "Widget failed" } : prev);
     };
 
-    // Handle messages from widget iframe
-    const handleMessage = (e: MessageEvent) => {
-      if (!e.data?.type) return;
-      if (e.data.type === "piclaw:widget-submit") {
-        const text = e.data.payload?.text;
-        if (text) {
-          // Post as user message
-          window.dispatchEvent(new CustomEvent("piclaw:widget-submission", { detail: { text } }));
-        }
-      } else if (e.data.type === "piclaw:widget-close") {
-        setWidget(null);
-      }
-    };
-
     window.addEventListener("piclaw:widget-open", handleOpen);
     window.addEventListener("piclaw:widget-delta", handleDelta);
     window.addEventListener("piclaw:widget-final", handleFinal);
     window.addEventListener("piclaw:widget-close", handleClose);
     window.addEventListener("piclaw:widget-error", handleError);
-    window.addEventListener("message", handleMessage);
 
     return () => {
       window.removeEventListener("piclaw:widget-open", handleOpen);
@@ -134,29 +136,13 @@ export function WidgetPane({ tabMode = false, widgetHtml, widgetSrc, widgetTitle
       window.removeEventListener("piclaw:widget-final", handleFinal);
       window.removeEventListener("piclaw:widget-close", handleClose);
       window.removeEventListener("piclaw:widget-error", handleError);
-      window.removeEventListener("message", handleMessage);
     };
-  }, []);
+  }, [tabMode]);
 
   const handleClose = useCallback(() => {
     htmlBufferRef.current = "";
     setWidget(null);
   }, []);
-
-  if (tabMode && widgetSrc) {
-    return (
-      <div className="widget-pane widget-pane--tab">
-        <div className="widget-pane__body widget-pane__body--full">
-          <iframe
-            className="widget-pane__frame"
-            src={widgetSrc}
-            sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
-            title={widgetTitle || "Widget"}
-          />
-        </div>
-      </div>
-    );
-  }
 
   if (!widget && !tabMode) return null;
   if (!widget) {

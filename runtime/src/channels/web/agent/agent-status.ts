@@ -16,9 +16,18 @@ export interface TokenUsageCounterSummary {
   total_tokens: number;
   cost_total: number;
   runs: number;
+  provider_reported_cost_runs?: number;
+  catalogue_estimate_cost_runs?: number;
+  unavailable_cost_runs?: number;
+  legacy_cost_runs?: number;
 }
 
 export interface LatestTokenUsageCounterSummary extends TokenUsageCounterSummary {
+  cache_read_reported?: number | null;
+  cache_write_reported?: number | null;
+  provider_cost_total?: number | null;
+  catalogue_cost_total?: number | null;
+  cost_provenance?: string | null;
   model?: string | null;
   response_model?: string | null;
   provider?: string | null;
@@ -63,7 +72,11 @@ function computeCacheHitRate(record: TokenUsageCounterSummary | null | undefined
   const cacheRead = Number(record.cache_read_tokens) || 0;
   const cacheWrite = Number(record.cache_write_tokens) || 0;
   const denominator = input + cacheRead + cacheWrite;
-  if (denominator <= 0 || cacheRead <= 0) return null;
+  const cacheReadReported = "cache_read_reported" in record
+    ? (record as LatestTokenUsageCounterSummary).cache_read_reported
+    : null;
+  if (cacheReadReported === 0 || denominator <= 0) return null;
+  if (cacheRead <= 0 && cacheReadReported !== 1) return null;
   return (cacheRead / denominator) * 100;
 }
 
@@ -75,8 +88,13 @@ function formatTokenUsageRecord(record: LatestTokenUsageCounterSummary | null | 
     reasoningTokens: record.reasoning_tokens ?? 0,
     cacheReadTokens: record.cache_read_tokens,
     cacheWriteTokens: record.cache_write_tokens,
+    cacheReadReported: record.cache_read_reported == null ? null : Boolean(record.cache_read_reported),
+    cacheWriteReported: record.cache_write_reported == null ? null : Boolean(record.cache_write_reported),
     totalTokens: record.total_tokens,
     costTotal: record.cost_total,
+    providerCostTotal: record.provider_cost_total ?? null,
+    catalogueCostTotal: record.catalogue_cost_total ?? null,
+    costProvenance: record.cost_provenance ?? null,
     runs: record.runs,
     cacheHitRate: computeCacheHitRate(record),
     model: record.model ?? null,
@@ -100,6 +118,12 @@ function formatTokenUsageTotals(record: TokenUsageCounterSummary | null | undefi
     costTotal: record.cost_total,
     runs: record.runs,
     cacheHitRate: computeCacheHitRate(record),
+    costCoverage: {
+      providerReportedRuns: record.provider_reported_cost_runs ?? 0,
+      catalogueEstimateRuns: record.catalogue_estimate_cost_runs ?? 0,
+      unavailableRuns: record.unavailable_cost_runs ?? 0,
+      legacyRuns: record.legacy_cost_runs ?? 0,
+    },
   };
 }
 

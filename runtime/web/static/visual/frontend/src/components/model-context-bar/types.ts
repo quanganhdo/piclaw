@@ -15,10 +15,26 @@ export interface AgentStatus {
   };
 }
 
+export interface TokenUsageSummary {
+  inputTokens?: number;
+  outputTokens?: number;
+  reasoningTokens?: number;
+  cacheReadTokens?: number;
+  cacheWriteTokens?: number;
+  cacheReadReported?: boolean | null;
+  totalTokens?: number;
+  costTotal?: number;
+  costProvenance?: string | null;
+  provider?: string | null;
+  model?: string | null;
+  responseModel?: string | null;
+}
+
 export interface AgentContext {
   tokens: number | null;
   contextWindow: number;
   percent: number | null;
+  cacheUsage?: { latest?: TokenUsageSummary | null } | null;
 }
 
 export interface OobeStatus {
@@ -29,7 +45,15 @@ export interface OobeStatus {
 export interface ModelInfo {
   current: string | null;
   models: string[];
-  model_options: { id: string; label?: string; provider?: string; context_window?: number }[];
+  model_options: {
+    id: string;
+    label?: string;
+    provider?: string;
+    name?: string | null;
+    context_window?: number | null;
+    reasoning?: boolean;
+    pricing?: ModelPricing | null;
+  }[];
   thinking_level: string | null;
   thinking_level_label: string | null;
   supports_thinking: boolean;
@@ -42,6 +66,9 @@ export interface ModelInfo {
 export interface ProviderUsage {
   provider?: string;
   plan?: string;
+  availability?: string;
+  stale?: boolean;
+  refresh_failure?: string | null;
   hint_short?: string;
   primary?: { label: string; used_percent: number; remaining_percent: number; resets_at?: string; reset_description?: string };
   secondary?: { label: string; used_percent: number; remaining_percent: number; resets_at?: string; reset_description?: string };
@@ -50,9 +77,27 @@ export interface ProviderUsage {
   total_tokens?: number;
   input_tokens?: number;
   output_tokens?: number;
+  key_usage_usd?: number | null;
+  key_limit_usd?: number | null;
+  key_limit_remaining_usd?: number | null;
+  key_limit_configured?: boolean | null;
+  key_limit_unlimited?: boolean;
 }
 
-export interface ModelEntry { id: string; context_window?: number }
+export interface ModelPricing {
+  input_per_million?: number | null;
+  output_per_million?: number | null;
+  cache_read_per_million?: number | null;
+  cache_write_per_million?: number | null;
+}
+
+export interface ModelEntry {
+  id: string;
+  name?: string | null;
+  context_window?: number | null;
+  reasoning?: boolean;
+  pricing?: ModelPricing | null;
+}
 
 export const FALLBACK_MODELS: ModelEntry[] = [
   { id: "github-copilot/claude-sonnet-4.6", context_window: 200000 },

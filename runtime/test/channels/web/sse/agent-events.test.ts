@@ -363,7 +363,8 @@ describe("web SSE agent compaction events", () => {
       type: "compaction_suppressed",
       reason: "previous_failure",
       failureCount: 2,
-      errorMessage: "Compaction timed out",
+      detail: "provider body with secret-token",
+      errorMessage: "Compaction timed out with secret-token",
     } as any);
 
     expect(statuses[0]).toMatchObject({
@@ -371,6 +372,77 @@ describe("web SSE agent compaction events", () => {
       title: "Compaction temporarily suppressed",
       reason: "previous_failure",
       willRetry: false,
+      detail: "Automatic compaction is paused after 2 recent failures.",
     });
+    expect(JSON.stringify(statuses[0])).not.toContain("secret-token");
+  });
+});
+
+describe("web SSE recovery events", () => {
+  it("does not expose provider diagnostics when bounded recovery is exhausted", () => {
+    const { handler, statuses } = makeHandler();
+    const sensitiveDiagnostic = "provider payload: secret-token timeout stack";
+
+    handler({
+      type: "recovery_end",
+      outcome: "exhausted",
+      attemptsUsed: 2,
+      classifier: "timeout",
+      errorMessage: sensitiveDiagnostic,
+    } as any);
+
+    expect(statuses).toHaveLength(1);
+    expect(statuses[0]).toMatchObject({
+      type: "error",
+      title: "Automatic recovery exhausted",
+      detail: "The bounded recovery path ended without a terminal reply.",
+      classifier: "timeout",
+    });
+    expect(JSON.stringify(statuses[0])).not.toContain(sensitiveDiagnostic);
+  });
+
+  it("sanitizes recovery-start reasons and errors", () => {
+    const { handler, statuses } = makeHandler();
+    const sensitiveDiagnostic = "provider payload: secret-token raw body";
+
+    handler({
+      type: "recovery_start",
+      strategy: "retry",
+      attempt: 1,
+      maxAttempts: 2,
+      classifier: "unknown",
+      reason: sensitiveDiagnostic,
+      errorMessage: sensitiveDiagnostic,
+    } as any);
+
+    expect(statuses[0]).toMatchObject({
+      type: "intent",
+      title: "Recovering interrupted response",
+      classifier: "unknown",
+    });
+    expect(JSON.stringify(statuses[0])).not.toContain(sensitiveDiagnostic);
+  });
+
+  it("whitelists compaction telemetry without forwarding summaries or errors", () => {
+    const { handler, statuses } = makeHandler();
+    const sensitiveDiagnostic = "summary with tool output and secret-token";
+
+    handler({
+      type: "compaction_end",
+      reason: "overflow",
+      trigger: "recovery",
+      errorMessage: sensitiveDiagnostic,
+      result: { summary: sensitiveDiagnostic, tokensBefore: 100, estimatedTokensAfter: 50 },
+    } as any);
+
+    expect(statuses[0]).toMatchObject({
+      type: "error",
+      title: "Compaction failed",
+      tokensBefore: 100,
+      estimatedTokensAfter: 50,
+    });
+    expect(JSON.stringify(statuses[0])).not.toContain(sensitiveDiagnostic);
+    expect(statuses[0]).not.toHaveProperty("result");
+    expect(statuses[0]).not.toHaveProperty("errorMessage");
   });
 });

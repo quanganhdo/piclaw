@@ -899,6 +899,7 @@ describe("core config", () => {
           tools: {
             githubCopilotDynamicModels: false,
             githubCopilotModelsTimeoutMs: 7_000,
+            openRouterDefaultMaxTokens: 65_536,
             mcpToolTimeoutMs: 0,
           },
         },
@@ -907,17 +908,20 @@ describe("core config", () => {
       const persisted = runConfigSubprocess(workspace, names, { env: {
         PICLAW_GITHUB_COPILOT_DYNAMIC_MODELS: undefined,
         PICLAW_GITHUB_COPILOT_MODELS_TIMEOUT_MS: undefined,
+        PICLAW_OPENROUTER_DEFAULT_MAX_TOKENS: undefined,
         PICLAW_MCP_TOOL_TIMEOUT_MS: undefined,
       } }).snapshot;
       expect(persisted["call:getToolsIntegrationConfig"]).toMatchObject({
         githubCopilotDynamicModels: false,
         githubCopilotModelsTimeoutMs: 7_000,
+        openRouterDefaultMaxTokens: 65_536,
         mcpToolTimeoutMs: 0,
       });
 
       const { snapshot, stderr } = runConfigSubprocess(workspace, names, { env: {
         PICLAW_GITHUB_COPILOT_DYNAMIC_MODELS: "yes",
         PICLAW_GITHUB_COPILOT_MODELS_TIMEOUT_MS: "200",
+        PICLAW_OPENROUTER_DEFAULT_MAX_TOKENS: "131072",
         PICLAW_MCP_TOOL_TIMEOUT_MS: "45000",
       } });
       expect(snapshot["call:getToolsIntegrationConfig"]).toMatchObject({
@@ -925,11 +929,13 @@ describe("core config", () => {
         githubCopilotDynamicModels: true,
         // Preserve the existing 500ms lower clamp.
         githubCopilotModelsTimeoutMs: 500,
+        openRouterDefaultMaxTokens: 131_072,
         mcpToolTimeoutMs: 45_000,
       });
       for (const envKey of [
         "PICLAW_GITHUB_COPILOT_DYNAMIC_MODELS",
         "PICLAW_GITHUB_COPILOT_MODELS_TIMEOUT_MS",
+        "PICLAW_OPENROUTER_DEFAULT_MAX_TOKENS",
         "PICLAW_MCP_TOOL_TIMEOUT_MS",
       ]) expectCompatWarningOnce(stderr, envKey);
     } finally {

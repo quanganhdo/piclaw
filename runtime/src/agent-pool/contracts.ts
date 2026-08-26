@@ -11,6 +11,7 @@ import type {
 import type { AttachmentInfo } from "./attachments.js";
 import type { AgentAbortCause } from "./abort-provenance.js";
 import type { PiclawCredentialStore } from "./credential-store.js";
+import type { ProtectedRecoveryHandoffMetadata } from "./protected-recovery-handoff-reason.js";
 
 export type AgentFailureCategory =
   | "rate_limit"
@@ -21,6 +22,7 @@ export type AgentFailureCategory =
   | "tool_budget"
   | "context_pressure"
   | "output_limit"
+  | "provider_budget"
   | "provider"
   | "no_terminal_output"
   | "stalled_work"
@@ -78,15 +80,24 @@ export interface AgentOutput {
   nextAction?: string;
   /** A protected recovery ran without tools and must hand off to one ordinary tool-enabled turn. */
   requiresToolEnabledContinuation?: boolean;
+  /** Safe machine-readable reason for a bounded protected-recovery handoff. */
+  protectedRecoveryHandoff?: ProtectedRecoveryHandoffMetadata;
   abortCause?: AgentAbortCause;
   abortOperation?: string;
 }
+
+export type AgentTurnKind = "draft_snapshot" | "intermediate";
+export type AgentTurnCause = "interrupted_text_start" | "tool_use" | "completed_boundary";
 
 /** A single turn's output within a multi-turn agent run. */
 export interface TurnOutput {
   text: string;
   attachments: AttachmentInfo[];
   usage?: Usage;
+  /** Narrow durable classification for non-terminal assistant output. */
+  turnKind?: AgentTurnKind;
+  /** Boundary that caused this non-terminal output to be committed. */
+  cause?: AgentTurnCause;
   /** The completed assistant message committed immediately before tool dispatch. */
   followedByToolUse?: boolean;
 }
@@ -165,6 +176,8 @@ export interface RunAgentOptions {
   protectedRecoveryContinuation?: boolean;
   /** One-based depth of the bounded protected-recovery handoff chain. */
   protectedRecoveryContinuationDepth?: number;
+  /** Validated safe evidence carried from the handoff that created this continuation. */
+  protectedRecoveryHandoffContext?: ProtectedRecoveryHandoffMetadata;
 }
 
 export interface RetrySettingsProvider {

@@ -56,7 +56,12 @@ test("AgentTurnCoordinator tracks streamed turns and fallback assistant text aft
     },
   } as any);
 
-  expect(completed).toEqual([{ text: "hello", attachments: [sampleAttachment] }]);
+  expect(completed).toEqual([{
+    text: "hello",
+    attachments: [sampleAttachment],
+    turnKind: "intermediate",
+    cause: "completed_boundary",
+  }]);
   expect(tracker.getTurnCount()).toBe(1);
   expect(tracker.getFinalText()).toBe("fallback answer");
 });
@@ -344,7 +349,7 @@ test("AgentTurnCoordinator subscribes and downgrades handler failures to warning
   expect(listener).toBeNull();
 });
 
-test("AgentTurnCoordinator does not flush an incomplete turn when a new text_start arrives before message_end", () => {
+test("AgentTurnCoordinator snapshots visible final-answer draft when a new text_start interrupts it before message_end", () => {
   const completed: Array<{ text: string; attachments: AttachmentInfo[] }> = [];
   const coordinator = new AgentTurnCoordinator({
     takeAttachments: () => [],
@@ -380,8 +385,13 @@ test("AgentTurnCoordinator does not flush an incomplete turn when a new text_sta
     },
   } as any);
 
-  expect(completed).toEqual([]);
-  expect(tracker.getTurnCount()).toBe(0);
+  expect(completed).toEqual([{
+    text: "hello",
+    attachments: [],
+    turnKind: "draft_snapshot",
+    cause: "interrupted_text_start",
+  }]);
+  expect(tracker.getTurnCount()).toBe(1);
 
   tracker.handleMessageUpdate({
     type: "message_end",
@@ -391,8 +401,13 @@ test("AgentTurnCoordinator does not flush an incomplete turn when a new text_sta
     },
   } as any);
 
-  expect(completed).toEqual([]);
-  expect(tracker.getTurnCount()).toBe(0);
+  expect(completed).toEqual([{
+    text: "hello",
+    attachments: [],
+    turnKind: "draft_snapshot",
+    cause: "interrupted_text_start",
+  }]);
+  expect(tracker.getTurnCount()).toBe(1);
   expect(tracker.getFinalText()).toBe("fallback answer");
 });
 
@@ -438,6 +453,8 @@ test("AgentTurnCoordinator commits assistant text as soon as its tool-use messag
   expect(completed).toEqual([{
     text: "Now let me inspect that file:",
     attachments: [],
+    turnKind: "intermediate",
+    cause: "tool_use",
     followedByToolUse: true,
   }]);
   expect(tracker.getTurnCount()).toBe(1);
@@ -462,6 +479,8 @@ test("AgentTurnCoordinator commits assistant text as soon as its tool-use messag
   expect(completed).toEqual([{
     text: "Now let me inspect that file:",
     attachments: [],
+    turnKind: "intermediate",
+    cause: "tool_use",
     followedByToolUse: true,
   }]);
   expect(tracker.getTurnCount()).toBe(1);
@@ -561,6 +580,8 @@ test("AgentTurnCoordinator commits explicit final-answer text at a tool-use boun
   expect(completed).toEqual([{
     text: "I have finished the requested action.",
     attachments: [],
+    turnKind: "intermediate",
+    cause: "tool_use",
     followedByToolUse: true,
   }]);
   expect(tracker.getFinalText()).toBe("");

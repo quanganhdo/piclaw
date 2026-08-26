@@ -1225,8 +1225,18 @@ body {
 
 .model-picker__item__name {
   flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.model-picker__item__meta {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-secondary, #71767b);
+  font-size: 10px;
+  line-height: 1.25;
+  white-space: normal;
 }
 
 .model-picker__item__ctx {
@@ -2470,6 +2480,56 @@ body {
   flex-direction: column;
   gap: 4px;
   margin-bottom: 4px;
+}
+
+.message-list__outcome {
+  margin: 4px 0 8px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--warning, #f0b429);
+  border-radius: 6px;
+  overflow: hidden;
+  font-size: 12px;
+}
+
+.message-list__outcome--info {
+  border-left-color: var(--accent);
+}
+
+.message-list__outcome--error,
+.message-list__outcome--critical {
+  border-left-color: var(--danger, #ef4444);
+}
+
+.message-list__outcome-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 9px;
+  border: 0;
+  background: var(--bg-sidebar);
+  color: var(--text-soft);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.message-list__outcome-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-code);
+  color: var(--text-soft);
+}
+
+.message-list__outcome-detail strong {
+  color: var(--text-primary, #e7e9ea);
+}
+
+.message-list__outcome-detail small {
+  color: var(--text-secondary, #71767b);
 }
 
 .message-list__tool-call {

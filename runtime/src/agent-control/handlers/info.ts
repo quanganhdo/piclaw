@@ -20,7 +20,7 @@ import { getCompactionRuntimeConfig, getSessionStorageConfig } from "../../core/
 import { getSessionFileLineCount } from "../../session-rotation.js";
 import { getAutoCompactionTokenStatusForSession } from "../../agent-pool/compaction.js";
 import { computePromptCacheWaste } from "../../agent-pool/cache-stats.js";
-import { peekProviderUsage, type ProviderUsageWindow } from "../../agent-pool/provider-usage.js";
+import { peekProviderUsageForRuntime, type ProviderUsageWindow } from "../../agent-pool/provider-usage.js";
 import { getTokenUsageByModel, getTokenUsageByProvider, getTokenUsageBySource, getTokenUsageTotals } from "../../db.js";
 import { createLogger, debugSuppressedError } from "../../utils/logger.js";
 import { searchWorkspace } from "../../workspace-search.js";
@@ -47,9 +47,29 @@ function formatPercent(value: number | null): string {
   return value === null ? "unknown" : `${value.toFixed(1)}%`;
 }
 
+function formatPersistedCost(total: number, coverage: {
+  provider_reported_cost_runs?: number;
+  catalogue_estimate_cost_runs?: number;
+  unavailable_cost_runs?: number;
+  legacy_cost_runs?: number;
+}): string {
+  const parts = [
+    coverage.provider_reported_cost_runs ? `${coverage.provider_reported_cost_runs} provider-reported` : null,
+    coverage.catalogue_estimate_cost_runs ? `${coverage.catalogue_estimate_cost_runs} estimated` : null,
+    coverage.unavailable_cost_runs ? `${coverage.unavailable_cost_runs} unavailable` : null,
+    coverage.legacy_cost_runs ? `${coverage.legacy_cost_runs} legacy` : null,
+  ].filter((part): part is string => Boolean(part));
+  return `${formatCurrency(total)}${parts.length > 0 ? ` (${parts.join(", ")})` : ""}`;
+}
+
 function contextUsageBar(percent: number | null): string {
   if (percent === null) return "⬜";
   return percent > 90 ? "🟥" : percent > 75 ? "🟧" : "🟩";
+}
+
+function formatQuotaMoney(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) return "unavailable";
+  return `$${value.toFixed(value >= 0.01 ? 2 : 4)}`;
 }
 
 function formatQuotaResetDescription(window: ProviderUsageWindow | null): string | null {
@@ -158,7 +178,7 @@ export async function handleStats(session: AgentSession, _command: StatsCommand)
     `| Messages | ${stats.userMessages} user, ${stats.assistantMessages} assistant, ${stats.toolResults} tool (${stats.totalMessages} total) |`,
     `| Tool calls | ${stats.toolCalls} |`,
     `| Tokens | in ${formatCompactNumber(tokens.input)}, out ${formatCompactNumber(tokens.output)}, cache-r ${formatCompactNumber(tokens.cacheRead)}, cache-w ${formatCompactNumber(tokens.cacheWrite)}, total ${formatCompactNumber(tokens.total)} |`,
-    `| Cost | ${formatCurrency(stats.cost)} |`,
+    `| Catalogue cost estimate | ~${formatCurrency(stats.cost)} |`,
   ];
 
   try {
@@ -190,7 +210,7 @@ export async function handleStats(session: AgentSession, _command: StatsCommand)
         "| Metric | Value |",
         "|---|---|",
         `| Tokens | in ${formatCompactNumber(totals.input_tokens)}, out ${formatCompactNumber(totals.output_tokens)}, reason ${formatCompactNumber(totals.reasoning_tokens ?? 0)}, cache-r ${formatCompactNumber(totals.cache_read_tokens)}, cache-w ${formatCompactNumber(totals.cache_write_tokens)}, total ${formatCompactNumber(totals.total_tokens)} |`,
-        `| Cost | ${formatCurrency(totals.cost_total)} |`,
+        `| Cost | ${formatPersistedCost(totals.cost_total, totals)} |`,
         `| Runs | ${formatCompactNumber(totals.runs)} |`,
       );
 
@@ -199,11 +219,11 @@ export async function handleStats(session: AgentSession, _command: StatsCommand)
           "",
           "**Per source**",
           "",
-          "| Source | Tokens | Reasoning | Cost | Runs |",
+          "| Source | Tokens | Reasoning | Tracked cost | Runs |",
           "|---|---|---|---|---|",
         );
         for (const row of sourceRows) {
-          lines.push(`| ${row.usage_source || "unknown"} | ${formatCompactNumber(row.total_tokens)} | ${formatCompactNumber(row.reasoning_tokens ?? 0)} | ${formatCurrency(row.cost_total)} | ${formatCompactNumber(row.runs)} |`);
+          lines.push(`| ${row.usage_source || "unknown"} | ${formatCompactNumber(row.total_tokens)} | ${formatCompactNumber(row.reasoning_tokens ?? 0)} | ${formatPersistedCost(row.cost_total, row)} | ${formatCompactNumber(row.runs)} |`);
         }
       }
 
@@ -212,11 +232,11 @@ export async function handleStats(session: AgentSession, _command: StatsCommand)
           "",
           "**Per provider**",
           "",
-          "| Provider | Tokens | Reasoning | Cost | Runs |",
+          "| Provider | Tokens | Reasoning | Tracked cost | Runs |",
           "|---|---|---|---|---|",
         );
         for (const row of providerRows) {
-          lines.push(`| ${row.provider || "unknown"} | ${formatCompactNumber(row.total_tokens)} | ${formatCompactNumber(row.reasoning_tokens ?? 0)} | ${formatCurrency(row.cost_total)} | ${formatCompactNumber(row.runs)} |`);
+          lines.push(`| ${row.provider || "unknown"} | ${formatCompactNumber(row.total_tokens)} | ${formatCompactNumber(row.reasoning_tokens ?? 0)} | ${formatPersistedCost(row.cost_total, row)} | ${formatCompactNumber(row.runs)} |`);
         }
       }
 
@@ -225,11 +245,11 @@ export async function handleStats(session: AgentSession, _command: StatsCommand)
           "",
           "**Per model**",
           "",
-          "| Model | Tokens | Reasoning | Cost | Runs |",
+          "| Model | Tokens | Reasoning | Tracked cost | Runs |",
           "|---|---|---|---|---|",
         );
         for (const row of modelRows) {
-          lines.push(`| ${row.model || "unknown"} | ${formatCompactNumber(row.total_tokens)} | ${formatCompactNumber(row.reasoning_tokens ?? 0)} | ${formatCurrency(row.cost_total)} | ${formatCompactNumber(row.runs)} |`);
+          lines.push(`| ${row.model || "unknown"} | ${formatCompactNumber(row.total_tokens)} | ${formatCompactNumber(row.reasoning_tokens ?? 0)} | ${formatPersistedCost(row.cost_total, row)} | ${formatCompactNumber(row.runs)} |`);
         }
       }
     }
@@ -301,9 +321,44 @@ export async function handleContext(session: AgentSession, _command: ContextComm
 export async function handleQuota(session: AgentSession, _command: QuotaCommand): Promise<AgentControlResult> {
   const provider = session.model?.provider ?? null;
   const modelLabel = session.model ? `${session.model.provider}/${session.model.id}` : "<none>";
-  const snapshot = provider ? peekProviderUsage(provider, { allowStale: true }) : null;
+  const snapshot = provider
+    ? await peekProviderUsageForRuntime(session.modelRuntime, provider, { allowStale: true })
+    : null;
   if (!snapshot) {
     return { status: "success", message: `${modelLabel}\nNo quota data available.` };
+  }
+
+  if (snapshot.provider === "openrouter") {
+    if (snapshot.availability !== "available") {
+      return { status: "success", message: `${modelLabel}\n${snapshot.hint_short || "OpenRouter key usage unavailable."}` };
+    }
+    const limit = snapshot.key_limit_configured === true
+      ? formatQuotaMoney(snapshot.key_limit_usd)
+      : snapshot.key_limit_unlimited
+        ? "not configured (unlimited)"
+        : "unavailable";
+    const reset = snapshot.key_limit_reset ?? "not configured";
+    const freshness = snapshot.stale
+      ? `stale; refresh failed (${snapshot.refresh_failure ?? "unknown"})`
+      : `fetched ${snapshot.fetched_at}`;
+    return {
+      status: "success",
+      message: [
+        modelLabel,
+        "**OpenRouter key usage**",
+        "",
+        "| Metric | Value |",
+        "|---|---|",
+        `| Spend | ${formatQuotaMoney(snapshot.key_usage_usd)} |`,
+        `| Limit | ${limit} |`,
+        `| Remaining | ${formatQuotaMoney(snapshot.key_limit_remaining_usd)} |`,
+        `| Daily / weekly / monthly | ${formatQuotaMoney(snapshot.key_usage_daily_usd)} / ${formatQuotaMoney(snapshot.key_usage_weekly_usd)} / ${formatQuotaMoney(snapshot.key_usage_monthly_usd)} |`,
+        `| Tier | ${snapshot.is_free_tier === null ? "unavailable" : snapshot.is_free_tier ? "free" : "paid"} |`,
+        `| BYOK included in limit | ${snapshot.include_byok_in_limit === null ? "unavailable" : snapshot.include_byok_in_limit ? "yes" : "no"} |`,
+        `| Limit reset | ${reset} |`,
+        `| Telemetry | ${freshness} |`,
+      ].join("\n"),
+    };
   }
 
   const parts = [

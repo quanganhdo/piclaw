@@ -2,6 +2,15 @@
 const INTERNAL_CONTENT_BLOCK_TYPES = new Set([
   "restart_handoff",
   "self_continuation",
+  "control_intent",
+  "turn_outcome_marker",
+  "agent_turn_marker",
+]);
+
+const MODEL_FORBIDDEN_CONTENT_BLOCK_TYPES = new Set([
+  "control_intent",
+  "turn_outcome_marker",
+  "agent_turn_marker",
 ]);
 
 /** Strip agent-owned metadata from public user-controlled content blocks. */
@@ -14,6 +23,17 @@ export function sanitizePublicInboundContentBlocks(value: unknown): unknown[] | 
       : "";
     return !INTERNAL_CONTENT_BLOCK_TYPES.has(type);
   });
+}
+
+/** Strip control authority from model-authored messages while retaining agent presentation metadata. */
+export function sanitizeModelPostedContentBlocks(value: unknown): unknown[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value.filter((block) => (
+    !block
+    || typeof block !== "object"
+    || Array.isArray(block)
+    || !MODEL_FORBIDDEN_CONTENT_BLOCK_TYPES.has(String((block as { type?: unknown }).type ?? ""))
+  ));
 }
 
 /** Strict persistence validation for already-resolved service-effect blocks. */

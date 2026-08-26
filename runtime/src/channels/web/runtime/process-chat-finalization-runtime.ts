@@ -7,6 +7,7 @@ import type { AgentEventEmitter } from "../sse/agent-events.js";
 import { storeAgentTurn } from "../messaging/agent-message-store.js";
 import { materializeDeferredFollowups } from "./process-chat-control-runtime.js";
 import type { AttachmentInfo } from "../../../agent-pool/attachments.js";
+import type { AgentTurnCause, AgentTurnKind } from "../../../agent-pool/contracts.js";
 import type { ChatChannel } from "../../../router.js";
 
 const log = createLogger("web.runtime.process-chat-finalization");
@@ -97,12 +98,36 @@ export interface PersistIntermediateTurnOptions {
   threadId: number | null;
   skipPlaceholder: boolean;
   timingBlock: Record<string, unknown>;
+  turnKind?: AgentTurnKind;
+  cause?: AgentTurnCause;
   followedByToolUse?: boolean;
   clearCommittedDraft(): void;
 }
 
+function buildAgentTurnMarker(options: PersistIntermediateTurnOptions): Record<string, unknown> | null {
+  const validDraft = options.turnKind === "draft_snapshot"
+    && options.cause === "interrupted_text_start"
+    && !options.followedByToolUse;
+  const validIntermediate = options.turnKind === "intermediate"
+    && ((options.cause === "completed_boundary" && !options.followedByToolUse)
+      || (options.cause === "tool_use" && options.followedByToolUse === true));
+  if (!validDraft && !validIntermediate) return null;
+
+  return {
+    type: "agent_turn_marker",
+    kind: options.turnKind,
+    cause: options.cause,
+    ...(options.followedByToolUse ? { followed_by_tool_use: true } : {}),
+    ...(typeof options.timingBlock.turn_id === "string" ? { turn_id: options.timingBlock.turn_id } : {}),
+    ...(typeof options.timingBlock.source_message_id === "string"
+      ? { source_message_id: options.timingBlock.source_message_id }
+      : {}),
+  };
+}
+
 /** Persist one non-terminal agent turn while preserving placeholder and draft ordering. */
 export function persistIntermediateProcessChatTurn(options: PersistIntermediateTurnOptions): number | null {
+  const marker = buildAgentTurnMarker(options);
   return storeAgentTurn(options.channel, options.emitter, {
     chatJid: options.chatJid,
     text: options.text,
@@ -110,7 +135,7 @@ export function persistIntermediateProcessChatTurn(options: PersistIntermediateT
     channelName: options.channelName,
     threadId: options.threadId,
     skipPlaceholder: options.skipPlaceholder,
-    extraContentBlocks: [options.timingBlock],
+    extraContentBlocks: [options.timingBlock, ...(marker ? [marker] : [])],
     onMessageStored: options.followedByToolUse ? options.clearCommittedDraft : undefined,
   });
 }

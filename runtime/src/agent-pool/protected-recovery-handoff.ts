@@ -9,6 +9,10 @@
 
 import { TOOL_ENABLED_RECOVERY_CONTINUATION_PROMPT } from "./context-pressure-retry.js";
 import type { AgentOutput, RunAgentOptions, TurnOutput } from "./contracts.js";
+import {
+  buildProtectedRecoveryHandoffMetadata,
+  formatProtectedRecoveryHandoff,
+} from "./protected-recovery-handoff-reason.js";
 
 export interface ProtectedRecoveryHandoffOptions {
   /** Web persists the continuation itself before terminal run finalization. */
@@ -22,17 +26,37 @@ export const PROTECTED_RECOVERY_HANDOFF_LIMIT_MESSAGE =
 /** A successful recovery compaction made one more ordinary turn useful. */
 export function isPostCompactionProtectedRecoveryHandoff(output: AgentOutput): boolean {
   return Boolean(output.requiresToolEnabledContinuation)
-    && output.recovery?.strategyHistory.at(-1) === "compact_then_retry";
+    && output.protectedRecoveryHandoff?.reason === "post_compaction_tools_required"
+    && output.protectedRecoveryHandoff.compaction === "succeeded";
 }
 
 export function finishBoundedProtectedRecoveryHandoff(output: AgentOutput): AgentOutput {
   const { requiresToolEnabledContinuation: _spent, ...terminal } = output;
+  const priorHandoff = output.protectedRecoveryHandoff;
+  const reason = priorHandoff?.reason
+    ?? (isPostCompactionProtectedRecoveryHandoff(output)
+      ? "post_compaction_tools_required"
+      : "continuation_generation_exhausted");
+  const protectedRecoveryHandoff = buildProtectedRecoveryHandoffMetadata(
+    reason,
+    {
+      recoveryAttempts: priorHandoff?.recoveryAttempts ?? output.recovery?.attemptsUsed ?? 0,
+      compaction: priorHandoff?.compaction,
+      toolsRequired: priorHandoff?.toolsRequired ?? true,
+      retryable: priorHandoff?.retryable ?? true,
+    },
+  );
+  const presentation = formatProtectedRecoveryHandoff(protectedRecoveryHandoff);
+  const terminalMessage = reason === "continuation_generation_exhausted"
+    ? PROTECTED_RECOVERY_HANDOFF_LIMIT_MESSAGE
+    : `${presentation.title}. ${presentation.detail} ${presentation.nextAction}`;
   return {
     ...terminal,
     status: "error",
-    result: PROTECTED_RECOVERY_HANDOFF_LIMIT_MESSAGE,
-    error: PROTECTED_RECOVERY_HANDOFF_LIMIT_MESSAGE,
-    nextAction: "Send “continue” to resume from the preserved session state.",
+    result: terminalMessage,
+    error: terminalMessage,
+    nextAction: presentation.nextAction,
+    protectedRecoveryHandoff,
   };
 }
 
@@ -51,6 +75,17 @@ export async function runWithProtectedRecoveryHandoff(
   const originalOnTurnComplete = options.onTurnComplete;
   const initialDepth = options.protectedRecoveryContinuationDepth
     ?? (options.protectedRecoveryContinuation ? 1 : 0);
+  if (options.protectedRecoveryHandoffContext?.reason === "unresolved_tool_execution") {
+    const terminal = finishBoundedProtectedRecoveryHandoff({
+      status: "error",
+      result: null,
+      error: "Automatic continuation stopped because a prior tool execution is unresolved.",
+      requiresToolEnabledContinuation: true,
+      protectedRecoveryHandoff: options.protectedRecoveryHandoffContext,
+    });
+    onOutput?.(terminal);
+    return terminal;
+  }
   const shouldBufferInitialTurns = Boolean(originalOnTurnComplete) && initialDepth === 0;
   const initialOptions = shouldBufferInitialTurns
     ? { ...options, onTurnComplete: (turn: TurnOutput) => bufferedTurns.push(turn) }
@@ -70,6 +105,9 @@ export async function runWithProtectedRecoveryHandoff(
     if (turn.followedByToolUse) originalOnTurnComplete?.(turn);
   }
   if (options.deferToolEnabledContinuation) return output;
+  if (output.protectedRecoveryHandoff?.reason === "unresolved_tool_execution") {
+    return finishBoundedProtectedRecoveryHandoff(output);
+  }
 
   let handoffDepth = initialDepth;
   while (output.requiresToolEnabledContinuation) {
@@ -79,10 +117,12 @@ export async function runWithProtectedRecoveryHandoff(
     if (!canHandoff) return finishBoundedProtectedRecoveryHandoff(output);
 
     handoffDepth += 1;
+    const protectedRecoveryHandoffContext = output.protectedRecoveryHandoff;
     output = await run(TOOL_ENABLED_RECOVERY_CONTINUATION_PROMPT, {
       ...options,
       protectedRecoveryContinuation: true,
       protectedRecoveryContinuationDepth: handoffDepth,
+      protectedRecoveryHandoffContext,
     });
     onOutput?.(output);
   }

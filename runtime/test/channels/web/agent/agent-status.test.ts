@@ -207,8 +207,13 @@ describe("web agent status helpers", () => {
           reasoning_tokens: 40,
           cache_read_tokens: 3000,
           cache_write_tokens: 1000,
+          cache_read_reported: 1,
+          cache_write_reported: 0,
           total_tokens: 5300,
           cost_total: 0.012,
+          provider_cost_total: 0.012,
+          catalogue_cost_total: 0.02,
+          cost_provenance: "provider_reported",
           runs: 1,
           model: "claude-sonnet",
           response_model: "claude-sonnet-4",
@@ -240,8 +245,13 @@ describe("web agent status helpers", () => {
           reasoningTokens: 40,
           cacheReadTokens: 3000,
           cacheWriteTokens: 1000,
+          cacheReadReported: true,
+          cacheWriteReported: false,
           totalTokens: 5300,
           costTotal: 0.012,
+          providerCostTotal: 0.012,
+          catalogueCostTotal: 0.02,
+          costProvenance: "provider_reported",
           runs: 1,
           cacheHitRate: 60,
           model: "claude-sonnet",
@@ -261,9 +271,39 @@ describe("web agent status helpers", () => {
           costTotal: 0.024,
           runs: 2,
           cacheHitRate: 60,
+          costCoverage: {
+            providerReportedRuns: 0,
+            catalogueEstimateRuns: 0,
+            unavailableRuns: 0,
+            legacyRuns: 0,
+          },
         },
       },
     });
+  });
+
+  test("handleAgentContextRequest distinguishes explicit zero from unavailable cache telemetry", async () => {
+    const request = new Request("https://example.com/agent/context?chat_jid=web:zero");
+    const makeLatest = (cacheReadReported: number) => ({
+      input_tokens: 1000,
+      output_tokens: 100,
+      cache_read_tokens: 0,
+      cache_write_tokens: 0,
+      cache_read_reported: cacheReadReported,
+      total_tokens: 1100,
+      cost_total: 0,
+      runs: 1,
+    });
+
+    const reportedResponse = await handleAgentContextRequest(request, createContext({
+      getTokenUsageForChat: () => ({ latest: makeLatest(1), totals: null }),
+    }));
+    expect((await reportedResponse.json()).cacheUsage.latest.cacheHitRate).toBe(0);
+
+    const unavailableResponse = await handleAgentContextRequest(request, createContext({
+      getTokenUsageForChat: () => ({ latest: makeLatest(0), totals: null }),
+    }));
+    expect((await unavailableResponse.json()).cacheUsage.latest.cacheHitRate).toBeNull();
   });
 
   test("handleAgentModelsRequest returns payload from model provider", async () => {

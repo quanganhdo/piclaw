@@ -8,12 +8,13 @@ import { ModelPicker } from "./model-context-bar/ModelPicker";
 import { ThinkingPicker } from "./model-context-bar/ThinkingPicker";
 import { ContextRing } from "./model-context-bar/ContextRing";
 import { providerConfigured } from "../app/providerState";
+import { formatVisualLatestRunUsage, formatVisualProviderUsage } from "./model-context-bar/telemetry";
 
 export function ModelContextBar() {
   const {
     agentStatus, agentContext, isStale,
     currentModel, currentThinkingLevel, modelContextWindow,
-    usageLabel, providerUsage,
+    providerUsage,
     fetchContext,
   } = useStatusPolling();
 
@@ -34,6 +35,8 @@ export function ModelContextBar() {
   const modelName = agentStatus.value?.data?.model ?? currentModel.value ?? "";
   const thinkingLevel = agentStatus.value?.data?.thinking_level || currentThinkingLevel.value || "";
   const activeModel = currentModel.value ?? modelName;
+  const providerUsageMeta = formatVisualProviderUsage(providerUsage.value);
+  const latestRunUsageMeta = formatVisualLatestRunUsage(agentContext.value, activeModel || null);
 
   const pickerOpen = showPicker.value || showThinkingPicker.value;
   const pickerWrapRef = useRef<HTMLSpanElement>(null);
@@ -111,15 +114,14 @@ export function ModelContextBar() {
         contextWindow={contextWindow.value}
         onClick={(e) => handleCompact(e, fetchContext)}
       />
-      {usageLabel.value && (
-        <span
-          className="usage-badge"
-          title={[
-            providerUsage.value?.provider ? `Provider: ${(providerUsage.value as Record<string, unknown>).provider}` : "",
-            providerUsage.value?.plan ? `Plan: ${(providerUsage.value as Record<string, unknown>).plan}` : "",
-          ].filter(Boolean).join("\n")}
-        >
-          {usageLabel.value}
+      {providerUsageMeta && (
+        <span className="usage-badge" title={providerUsageMeta.title}>
+          {providerUsageMeta.label}
+        </span>
+      )}
+      {latestRunUsageMeta && (
+        <span className="usage-badge" title={latestRunUsageMeta.title}>
+          {latestRunUsageMeta.label}
         </span>
       )}
     </span>

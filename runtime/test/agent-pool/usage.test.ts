@@ -52,6 +52,85 @@ describe("recordMessageUsage", () => {
     expect(row.run_at).toBe("2025-06-01T12:00:00.000Z");
   });
 
+  test("preserves explicit cache reporting and provider cost provenance", () => {
+    initDatabase();
+    const db = getDb();
+
+    recordMessageUsage("test:usage-provenance", {
+      role: "assistant",
+      usage: {
+        input: 100,
+        output: 25,
+        cacheRead: 0,
+        cacheWrite: 0,
+        cacheReadReported: true,
+        cacheWriteReported: false,
+        providerCost: 0.00123,
+        totalTokens: 125,
+        cost: { total: 0.00456 },
+      },
+      model: "auto",
+      responseModel: "anthropic/claude-sonnet-4-5",
+      provider: "openrouter",
+      api: "openai-completions",
+    });
+
+    const row = db.prepare("SELECT * FROM token_usage WHERE chat_jid = ?").get("test:usage-provenance") as any;
+    expect(row.cache_read_reported).toBe(1);
+    expect(row.cache_write_reported).toBe(0);
+    expect(row.provider_cost_total).toBe(0.00123);
+    expect(row.catalogue_cost_total).toBe(0.00456);
+    expect(row.cost_total).toBe(0.00123);
+    expect(row.cost_provenance).toBe("provider_reported");
+    expect(row.response_model).toBe("anthropic/claude-sonnet-4-5");
+  });
+
+  test("marks catalogue-only cost as estimated and absent cache fields as unknown", () => {
+    initDatabase();
+    const db = getDb();
+
+    recordMessageUsage("test:usage-estimate", {
+      role: "assistant",
+      usage: {
+        input: 10,
+        output: 5,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 15,
+        cost: { total: 0.005 },
+      },
+    });
+
+    const row = db.prepare("SELECT * FROM token_usage WHERE chat_jid = ?").get("test:usage-estimate") as any;
+    expect(row.cache_read_reported).toBeNull();
+    expect(row.cache_write_reported).toBeNull();
+    expect(row.provider_cost_total).toBeNull();
+    expect(row.catalogue_cost_total).toBe(0.005);
+    expect(row.cost_total).toBe(0.005);
+    expect(row.cost_provenance).toBe("catalogue_estimate");
+  });
+
+  test("preserves an explicitly reported zero provider cost", () => {
+    initDatabase();
+    const db = getDb();
+
+    recordMessageUsage("test:usage-zero-provider-cost", {
+      role: "assistant",
+      usage: {
+        input: 10,
+        output: 5,
+        providerCost: 0,
+        cost: { total: 0.005 },
+      },
+    });
+
+    const row = db.prepare("SELECT * FROM token_usage WHERE chat_jid = ?").get("test:usage-zero-provider-cost") as any;
+    expect(row.provider_cost_total).toBe(0);
+    expect(row.catalogue_cost_total).toBe(0.005);
+    expect(row.cost_total).toBe(0);
+    expect(row.cost_provenance).toBe("provider_reported");
+  });
+
   test("computes totals when not provided", () => {
     initDatabase();
     const db = getDb();
@@ -71,6 +150,8 @@ describe("recordMessageUsage", () => {
     expect(row).toBeDefined();
     expect(row.total_tokens).toBe(60); // 40 + 20
     expect(row.cost_total).toBe(0);
+    expect(row.catalogue_cost_total).toBeNull();
+    expect(row.cost_provenance).toBe("unavailable");
   });
 
   test("skips non-assistant messages", () => {

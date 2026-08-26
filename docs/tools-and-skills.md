@@ -634,6 +634,12 @@ Direct commands (no LLM round-trip):
 | `/mcp [status\|tools\|reconnect [server]\|setup]` | Open the MCP management panel in the web UI (or text status elsewhere), list MCP tools, reconnect bundled `pi-mcp-adapter` servers, or launch guided MCP setup |
 | `/mcp-auth <server>` | Show OAuth token-setup guidance for an MCP server managed by `pi-mcp-adapter` |
 
+### Session-tree ownership
+
+`/tree` is a core command: Piclaw parses navigation and summarization options, builds an invocation-scoped flat snapshot, performs navigation, and supplies a useful plain-text fallback. When `@rcarmo/piclaw-addon-session-tree` is installed, core passes `{ tree, chatJid }` through the generic widget-kind renderer registry and delivers the returned markup as an ordinary HTML artifact.
+
+The add-on exclusively owns the interactive renderer. Core intentionally exposes no session-tree-specific HTTP endpoint, static viewer, frontend component, or special artifact route; the renderer must use the supplied snapshot and submit `/tree` commands through the generic widget bridge.
+
 > [!NOTE]
 > Provider auth works via `pi /login` in the terminal or the experimental `/login` card flow in the web UI.
 > The card-based `/login` flow supports GitHub Copilot, Codex, and standard OpenAI providers. Anthropic is untested. The terminal remains the reliable fallback.
@@ -666,12 +672,22 @@ Adaptive Card and side-conversation helpers are intentionally explicit web-facin
 
 `/stats` combines two scopes:
 
-- **Session stats** are derived from the current persisted Pi session: message/tool counts, input/output/cache token totals, and the session's model-reported cost.
-- **Tracked usage (persisted)** comes from Piclaw's `token_usage` table for the current chat and includes provider/model attribution, reasoning tokens, costs, and run counts.
+- **Session stats** are derived from the current persisted Pi session: message/tool counts, input/output/cache token totals, and the catalogue cost estimate.
+- **Tracked usage (persisted)** comes from Piclaw's `token_usage` table for the current chat. The cost coverage marks runs as provider-reported, estimated, unavailable, or legacy.
 
 When a provider reports prompt-cache usage, the session table may also include **Cache re-billed**. This is an estimate of prompt tokens that were paid again after an expected cache reuse did not occur. Piclaw compares consecutive assistant requests, ignores differences of 1,024 tokens or less as noise, and resets comparison after compaction or branch-summary boundaries. Model switches are counted because the same persisted prompt is normally billed again even when cross-model cache reuse is impossible.
 
 The re-billed estimate is diagnostic rather than an invoice: it depends on provider-reported cache counters and known model pricing. The row is omitted when no material miss is detected or cache data is unavailable.
+
+The web model picker shows each model's catalogue context window, reasoning capability, and available per-million input, output, cache-read, and cache-write prices. Missing rates are omitted rather than shown as zero. These are static catalogue rates, not live cache-hit percentages.
+
+### Reading `/quota`
+
+`/quota` reads the cached usage snapshot for the selected provider and active credential; it does not make a synchronous provider API call. Model inspection starts an asynchronous refresh, caches it for 60 seconds, and reuses a refresh already in flight. Credential changes do not reuse another key's cached usage.
+
+For OpenRouter, the snapshot comes from `GET /api/v1/key` and reports key-level spend, configured limit, remaining limit, reset, free-tier state, and whether BYOK spend counts towards the limit. A key with `limit: null` is shown as having no configured key limit. Piclaw ignores the endpoint's deprecated `rate_limit` field.
+
+A successful snapshot remains available after a temporary refresh failure and is marked stale. Missing credentials, rejected credentials, temporary API failures, and malformed responses have separate status values. Piclaw does not store the OpenRouter credential or include it in `/quota`, `/agent/models`, logs, or persisted usage rows.
 
 ## Skill pipeline
 

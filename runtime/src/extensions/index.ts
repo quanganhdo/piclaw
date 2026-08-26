@@ -23,6 +23,7 @@
  *   - envTools: env for persistent workspace-scoped environment variables.
  *   - contextPrune: context_prune/context_tree_query for recoverable tool-result pruning.
  *   - providerRequestSanitizer: defensive provider payload cleanup before HTTP requests.
+ *   - openRouterRequestFilter: bounded OpenRouter output budgets and adaptive retry overrides.
  *   - llmContextNormalizer: defensive LLM message-shape cleanup before provider conversion.
  *   - mcpTimeoutPatch: Piclaw-compatible outer timeout/abort guard for MCP tools.
  *   - localLitePromptProfile: compact prompt/tool profile for local OpenAI-compatible models.
@@ -60,6 +61,7 @@ import { imageProcessing } from "./image-processing.js";
 import { sessionStatus } from "./session-status.js";
 import { providerResponseDiagnostics } from "./provider-response-diagnostics.js";
 import { providerRequestSanitizer } from "./provider-request-sanitizer.js";
+import { openRouterRequestFilter } from "./openrouter-request-filter.js";
 import { llmContextNormalizer } from "./llm-context-normalizer.js";
 import { persistedToolResultSanitizer } from "./persisted-tool-result-sanitizer.js";
 import { createContextPruneExtension } from "./context-prune.js";
@@ -96,6 +98,7 @@ export function createBuiltinExtensionFactories(options?: {
     imageProcessing,
     sessionStatus,
     providerRequestSanitizer,
+    openRouterRequestFilter,
     providerResponseDiagnostics,
     persistedToolResultSanitizer,
     createContextPruneExtension({ modelRuntime: options?.modelRuntime }),

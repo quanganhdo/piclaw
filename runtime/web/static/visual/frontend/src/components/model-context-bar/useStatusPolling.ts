@@ -2,10 +2,10 @@ import { useCallback, useEffect, useRef } from "preact/hooks";
 import { useSignal, useComputed } from "@preact/signals";
 import { getChatJid } from "../../api/chat-jid";
 import type { AgentStatus, AgentContext, ModelInfo, ProviderUsage } from "./types";
-import { fmtTokens } from "./types";
 import { addonHealthSignal } from "./addonHealthSignal";
 import { providerConfigured } from "../../app/providerState";
 import { safeGetItem, safeSetItem } from "../../utils/storage";
+import { mergeVisualLiveContext } from "./telemetry";
 
 import { createLogger } from "../../utils/logger";
 import { updateAgentDisplayName } from "../../api/agent-identity";
@@ -20,8 +20,6 @@ export interface UseStatusPollingResult {
   currentModel: ReturnType<typeof useSignal<string | null>>;
   currentThinkingLevel: ReturnType<typeof useSignal<string>>;
   modelContextWindow: ReturnType<typeof useSignal<number>>;
-  sessionTokens: ReturnType<typeof useSignal<number>>;
-  usageLabel: ReturnType<typeof useSignal<string>>;
   providerUsage: ReturnType<typeof useSignal<ProviderUsage | null>>;
   fetchStatus: () => Promise<void>;
   fetchContext: () => Promise<void>;
@@ -48,9 +46,6 @@ export function useStatusPolling(): UseStatusPollingResult {
   const currentThinkingLevel = useSignal<string>("");
   // #60: store model's context_window from /agent/models as fallback
   const modelContextWindow = useSignal<number>(0);
-  // billing: session usage
-  const sessionTokens = useSignal<number>(0);
-  const usageLabel = useSignal<string>("");
   const providerUsage = useSignal<ProviderUsage | null>(null);
 
   // Anti-race refs: versioning, abort controllers, and in-flight guards
@@ -97,29 +92,7 @@ export function useStatusPolling(): UseStatusPollingResult {
         // Set provider configured state from oobe field
         const oobeReady = info.oobe?.provider_ready_completed_instance;
         providerConfigured.value = oobeReady !== undefined ? !!oobeReady : !!(info.current);
-        // billing: store provider_usage (conditional on data shape)
-        if (info.provider_usage) {
-          providerUsage.value = info.provider_usage;
-          const pu = info.provider_usage as Record<string, unknown>;
-          // Check if percentage-based (GitHub Copilot style)
-          if (pu.primary && typeof (pu.primary as Record<string, unknown>).used_percent === "number") {
-            const pct = (pu.primary as Record<string, unknown>).used_percent as number;
-            const label = (pu.primary as Record<string, unknown>).label as string || "premium";
-            usageLabel.value = `${pct}% ${label}`;
-            sessionTokens.value = 0;
-          } else {
-            // Token-based provider (Anthropic, OpenAI, etc.)
-            const total = Object.values(pu).reduce((sum: number, p: unknown) => {
-              if (typeof p !== "object" || p === null) return sum;
-              const pp = p as Record<string, unknown>;
-              return sum + ((pp.total_tokens as number) ?? (((pp.input_tokens as number) ?? 0) + ((pp.output_tokens as number) ?? 0)));
-            }, 0);
-            if (total > 0) {
-              sessionTokens.value = total;
-              usageLabel.value = `▼ ${fmtTokens(total)}`;
-            }
-          }
-        }
+        providerUsage.value = info.provider_usage ?? null;
       }
       pollTick.value += 1;
 
@@ -154,10 +127,10 @@ export function useStatusPolling(): UseStatusPollingResult {
       if (contextVersion.current !== myVersion) return;
       if (res.ok) {
         const data = await res.json() as AgentContext;
-        // Only update if backend returned real data (not all-null)
-        if (data.tokens !== null) {
-          agentContext.value = data;
-          safeSetItem(`piclaw:context-cache:${getChatJid()}`, JSON.stringify(data));
+        // Keep latest-run telemetry even when live context-window usage is temporarily unavailable.
+        if (data.tokens !== null || data.cacheUsage?.latest) {
+          agentContext.value = mergeVisualLiveContext(agentContext.value, data);
+          safeSetItem(`piclaw:context-cache:${getChatJid()}`, JSON.stringify(agentContext.value));
         } else if (!agentContext.value) {
           // Load from cache on first null response
           const cached = safeGetItem(`piclaw:context-cache:${getChatJid()}`);
@@ -207,7 +180,7 @@ export function useStatusPolling(): UseStatusPollingResult {
       // Extract context_usage from done event (pushed by backend after each turn)
       if (detail?.context_usage && detail.context_usage.tokens !== null && detail.context_usage.tokens !== undefined) {
         const cu = detail.context_usage;
-        agentContext.value = { tokens: cu.tokens, contextWindow: cu.contextWindow ?? 0, percent: cu.percent ?? 0 };
+        agentContext.value = mergeVisualLiveContext(agentContext.value, cu);
         safeSetItem(`piclaw:context-cache:${getChatJid()}`, JSON.stringify(agentContext.value));
       }
       // Always refresh context after a turn completes
@@ -227,8 +200,6 @@ export function useStatusPolling(): UseStatusPollingResult {
     currentModel,
     currentThinkingLevel,
     modelContextWindow,
-    sessionTokens,
-    usageLabel,
     providerUsage,
     fetchStatus,
     fetchContext,

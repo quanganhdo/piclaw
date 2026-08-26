@@ -131,7 +131,7 @@ test("agent control info and mode commands", async () => {
   expect(stats.message).toContain("**Session stats**");
   expect(stats.message).toContain("**Tracked usage (persisted)**");
   expect(stats.message).toContain("**Per source**");
-  expect(stats.message).toContain("| assistant | 150 | 0 | $0.15 | 1 |");
+  expect(stats.message).toContain("| assistant | 150 | 0 | $0.15 (1 legacy) | 1 |");
   expect(stats.message).toContain("**Per provider**");
   expect(stats.message).toContain("**Per model**");
 
@@ -159,7 +159,33 @@ test("agent control info and mode commands", async () => {
     session.model = { provider: "zai", id: "glm-4.6", reasoning: true } as any;
     const warmQuota = await applyControlCommand(runtime as any, registry, { type: "quota", raw: "/quota" });
     expect(warmQuota.message).toBe("zai/glm-4.6\nPlan: Pro • 5h 62% • tools 41% • resets in ~1h 30m • resets in ~2d 0h");
+
+    clearProviderUsageCache();
+    globalThis.fetch = mock(async () => new Response(JSON.stringify({
+      data: {
+        usage: 1.25,
+        limit: 10,
+        limit_remaining: 8.75,
+        usage_daily: 0.25,
+        usage_weekly: 0.75,
+        usage_monthly: 1.25,
+        is_free_tier: false,
+        limit_reset: "2026-07-01T00:00:00Z",
+        include_byok_in_limit: true,
+      },
+    }))) as any;
+    registry.authStorage.set("openrouter", { type: "api_key", key: "openrouter-test-key" });
+    await warmProviderUsage(session.modelRuntime, "openrouter");
+    session.model = { provider: "openrouter", id: "auto", reasoning: true } as any;
+    const openRouterQuota = await applyControlCommand(runtime as any, registry, { type: "quota", raw: "/quota" });
+    expect(openRouterQuota.message).toContain("openrouter/auto\n**OpenRouter key usage**");
+    expect(openRouterQuota.message).toContain("| Spend | $1.25 |");
+    expect(openRouterQuota.message).toContain("| Limit | $10.00 |");
+    expect(openRouterQuota.message).toContain("| Remaining | $8.75 |");
+    expect(openRouterQuota.message).toContain("| BYOK included in limit | yes |");
+    expect(openRouterQuota.message).not.toContain("openrouter-test-key");
   } finally {
+    registry.authStorage.set("openrouter", undefined);
     globalThis.fetch = previousFetch;
     Date.now = previousNow;
   }
@@ -266,11 +292,10 @@ test("agent control session and tree commands", async () => {
   expect(exportHtml.message).toContain("Exported session");
 
   const tree = await applyControlCommand(runtime as any, registry, { type: "tree", raw: "/tree" });
-  expect(tree.message).toBe("");
-  expect(tree.contentBlocks?.[0]).toMatchObject({
-    type: "generated_widget",
-    artifact: { kind: "session_tree" },
-  });
+  expect(tree.contentBlocks).toBeUndefined();
+  expect(tree.message).toContain("Session tree:");
+  expect(tree.message).toContain("entry-1 user: \"hello\" [milestone] ← active");
+  expect(tree.message).toContain("Use /tree <entryId> to navigate.");
 
   const treeNav = await applyControlCommand(runtime as any, registry, { type: "tree", targetId: "entry-1", raw: "/tree entry-1" });
   expect(treeNav.message).toContain("Navigation complete");
@@ -281,6 +306,44 @@ test("agent control session and tree commands", async () => {
 
   const labels = await applyControlCommand(runtime as any, registry, { type: "labels", raw: "/labels" });
   expect(labels.message).toContain("Labels:");
+});
+
+test("tree command passes an invocation snapshot and chat scope through the generic renderer", async () => {
+  const ws = getTestWorkspace();
+  restoreEnv = setEnv({ PICLAW_WORKSPACE: ws.workspace, PICLAW_STORE: ws.store, PICLAW_DATA: ws.data });
+
+  const applyControlCommand = await getControl();
+  const session = new TestAgentControlSession(ws.workspace, registry);
+  const runtime = createTestSessionRuntime(session);
+  let rendererArtifact: Record<string, unknown> | null = null;
+  const registerWidgetKind = (globalThis as any).__piclaw_registerWidgetKind as
+    | ((kind: string, renderer: (artifact: Record<string, unknown>) => string) => void)
+    | undefined;
+  expect(typeof registerWidgetKind).toBe("function");
+
+  registerWidgetKind!("session_tree", (artifact) => {
+    rendererArtifact = artifact;
+    return "<main>add-on-owned tree</main>";
+  });
+
+  try {
+    const result = await withChatContext("web:tree-scope", "web", () =>
+      applyControlCommand(runtime as any, registry, { type: "tree", raw: "/tree" })
+    );
+
+    expect(rendererArtifact).toMatchObject({
+      chatJid: "web:tree-scope",
+      tree: { version: 1, leafId: "entry-1", flat: true, total: 1 },
+    });
+    expect(result.message).toBe("");
+    expect(result.contentBlocks).toHaveLength(1);
+    expect(result.contentBlocks?.[0]).toMatchObject({
+      type: "generated_widget",
+      artifact: { kind: "html", html: "<main>add-on-owned tree</main>" },
+    });
+  } finally {
+    registerWidgetKind!("session_tree", () => "");
+  }
 });
 
 test("provider-native compact report surfaces the marked readable checkpoint without opaque state", async () => {

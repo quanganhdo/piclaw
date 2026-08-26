@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { clearProviderUsageCache, getProviderUsage, peekProviderUsage, warmProviderUsage } from "../../src/agent-pool/provider-usage.js";
+import { clearProviderUsageCache, getProviderUsage, peekProviderUsage, peekProviderUsageForRuntime, warmProviderUsage } from "../../src/agent-pool/provider-usage.js";
 
 const roots: string[] = [];
 function createAuthStorage(credentials: Record<string, any>) {
@@ -133,6 +133,212 @@ describe("provider usage", () => {
       expect(usage?.hint_short).toContain("premium 70%");
       expect(usage?.hint_short).toContain("chat 80%");
     } finally {
+      globalThis.fetch = previousFetch;
+    }
+  });
+
+  test("fetches OpenRouter key spend and configured limit telemetry", async () => {
+    const fetchMock = mock(async () => new Response(JSON.stringify({
+      data: {
+        label: "piclaw",
+        usage: 1.25,
+        limit: 10,
+        limit_remaining: 8.75,
+        usage_daily: 0.25,
+        usage_weekly: 0.75,
+        usage_monthly: 1.25,
+        is_free_tier: false,
+        limit_reset: "2026-09-01T00:00:00Z",
+        include_byok_in_limit: true,
+        rate_limit: { requests: 100, interval: "10s" },
+      },
+    })));
+    const previousFetch = globalThis.fetch;
+    globalThis.fetch = fetchMock as any;
+
+    try {
+      const usage = await getProviderUsage(
+        createAuthStorage({ openrouter: { type: "api_key", key: "openrouter-secret" } }),
+        "openrouter"
+      );
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect((fetchMock as any).mock.calls[0][0]).toBe("https://openrouter.ai/api/v1/key");
+      expect((fetchMock as any).mock.calls[0][1]).toMatchObject({
+        headers: { Authorization: "Bearer openrouter-secret", Accept: "application/json", "User-Agent": "PiClaw" },
+      });
+      expect(usage).toMatchObject({
+        provider: "openrouter",
+        source: "openrouter-key-api",
+        availability: "available",
+        stale: false,
+        plan: "paid",
+        key_usage_usd: 1.25,
+        key_limit_usd: 10,
+        key_limit_remaining_usd: 8.75,
+        key_limit_configured: true,
+        key_limit_unlimited: false,
+        key_usage_daily_usd: 0.25,
+        key_usage_weekly_usd: 0.75,
+        key_usage_monthly_usd: 1.25,
+        is_free_tier: false,
+        include_byok_in_limit: true,
+      });
+      expect(usage?.hint_short).toBe("$1.25 / $10.00 • $8.75 left");
+      expect(JSON.stringify(usage)).not.toContain("openrouter-secret");
+      expect(JSON.stringify(usage)).not.toContain("rate_limit");
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
+  });
+
+  test("distinguishes an OpenRouter key without a configured spending limit", async () => {
+    const fetchMock = mock(async () => new Response(JSON.stringify({
+      data: {
+        usage: 0,
+        limit: null,
+        limit_remaining: null,
+        is_free_tier: true,
+        include_byok_in_limit: false,
+      },
+    })));
+    const previousFetch = globalThis.fetch;
+    globalThis.fetch = fetchMock as any;
+
+    try {
+      const usage = await getProviderUsage(
+        createAuthStorage({ openrouter: { type: "api_key", key: "token" } }),
+        "openrouter"
+      );
+
+      expect(usage).toMatchObject({
+        availability: "available",
+        plan: "free",
+        key_usage_usd: 0,
+        key_limit_usd: null,
+        key_limit_remaining_usd: null,
+        key_limit_configured: false,
+        key_limit_unlimited: true,
+      });
+      expect(usage?.hint_short).toBe("$0.0000 spent • no key limit");
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
+  });
+
+  test("keeps missing OpenRouter limit fields unavailable instead of coercing them to zero", async () => {
+    const fetchMock = mock(async () => new Response(JSON.stringify({ data: { usage: 0.5 } })));
+    const previousFetch = globalThis.fetch;
+    globalThis.fetch = fetchMock as any;
+
+    try {
+      const usage = await getProviderUsage(
+        createAuthStorage({ openrouter: { type: "api_key", key: "token" } }),
+        "openrouter"
+      );
+      expect(usage).toMatchObject({
+        availability: "available",
+        key_usage_usd: 0.5,
+        key_limit_usd: null,
+        key_limit_remaining_usd: null,
+        key_limit_configured: null,
+        key_limit_unlimited: false,
+      });
+      expect(usage?.hint_short).toBe("$0.50 spent");
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
+  });
+
+  test("distinguishes OpenRouter authentication, malformed response, and temporary failures", async () => {
+    const previousFetch = globalThis.fetch;
+    try {
+      const noAuthFetch = mock(async () => new Response("unexpected"));
+      globalThis.fetch = noAuthFetch as any;
+      const authRequired = await getProviderUsage(createAuthStorage({}), "openrouter");
+      expect(authRequired?.availability).toBe("authentication_required");
+      expect(noAuthFetch).not.toHaveBeenCalled();
+
+      clearProviderUsageCache();
+      globalThis.fetch = mock(async () => new Response("{}", { status: 401 })) as any;
+      const authFailed = await getProviderUsage(
+        createAuthStorage({ openrouter: { type: "api_key", key: "rejected" } }),
+        "openrouter"
+      );
+      expect(authFailed?.availability).toBe("authentication_failed");
+
+      clearProviderUsageCache();
+      globalThis.fetch = mock(async () => new Response(JSON.stringify({ data: { limit: 10 } }))) as any;
+      const malformed = await getProviderUsage(
+        createAuthStorage({ openrouter: { type: "api_key", key: "token" } }),
+        "openrouter"
+      );
+      expect(malformed?.availability).toBe("malformed_response");
+
+      clearProviderUsageCache();
+      globalThis.fetch = mock(async () => new Response("busy", { status: 503 })) as any;
+      const temporary = await getProviderUsage(
+        createAuthStorage({ openrouter: { type: "api_key", key: "token" } }),
+        "openrouter"
+      );
+      expect(temporary?.availability).toBe("temporary_failure");
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
+  });
+
+  test("never reuses OpenRouter telemetry across credential changes", async () => {
+    const credentials = { openrouter: { type: "api_key", key: "first-secret" } };
+    const runtime = createAuthStorage(credentials);
+    const previousFetch = globalThis.fetch;
+    const fetchMock = mock(async (_url: string, init?: RequestInit) => {
+      const authorization = (init?.headers as Record<string, string> | undefined)?.Authorization;
+      const usage = authorization === "Bearer first-secret" ? 1 : 2;
+      return new Response(JSON.stringify({ data: { usage, limit: 10, limit_remaining: 10 - usage } }));
+    });
+    globalThis.fetch = fetchMock as any;
+
+    try {
+      const first = await getProviderUsage(runtime, "openrouter");
+      expect(first?.key_usage_usd).toBe(1);
+
+      credentials.openrouter.key = "second-secret";
+      expect(await peekProviderUsageForRuntime(runtime, "openrouter", { allowStale: true })).toBeNull();
+      const second = await getProviderUsage(runtime, "openrouter");
+      expect(second?.key_usage_usd).toBe(2);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(JSON.stringify(second)).not.toContain("first-secret");
+      expect(JSON.stringify(second)).not.toContain("second-secret");
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
+  });
+
+  test("keeps stale OpenRouter key telemetry when refresh temporarily fails", async () => {
+    const previousFetch = globalThis.fetch;
+    const previousNow = Date.now;
+    let now = 1_800_000_000_000;
+    Date.now = () => now;
+    const runtime = createAuthStorage({ openrouter: { type: "api_key", key: "token" } });
+    try {
+      globalThis.fetch = mock(async () => new Response(JSON.stringify({
+        data: { usage: 2, limit: 10, limit_remaining: 8 },
+      }))) as any;
+      const fresh = await getProviderUsage(runtime, "openrouter");
+      expect(fresh?.stale).toBe(false);
+
+      now += 61_000;
+      globalThis.fetch = mock(async () => new Response("busy", { status: 503 })) as any;
+      const stale = await getProviderUsage(runtime, "openrouter");
+      expect(stale).toMatchObject({
+        availability: "available",
+        stale: true,
+        refresh_failure: "temporary_failure",
+        key_usage_usd: 2,
+        key_limit_remaining_usd: 8,
+      });
+    } finally {
+      Date.now = previousNow;
       globalThis.fetch = previousFetch;
     }
   });

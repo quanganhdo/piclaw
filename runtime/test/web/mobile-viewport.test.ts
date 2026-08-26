@@ -17,7 +17,7 @@ import {
   syncStandaloneMobileViewport,
 } from '../../web/src/ui/mobile-viewport.js';
 
-test('shouldUseStandaloneMobileViewportFix only enables for standalone mobile runtimes', () => {
+test('shouldUseStandaloneMobileViewportFix only enables for standalone iOS mobile runtimes', () => {
   expect(shouldUseStandaloneMobileViewportFix({
     navigator: {
       standalone: true,
@@ -28,6 +28,17 @@ test('shouldUseStandaloneMobileViewportFix only enables for standalone mobile ru
       matchMedia: () => ({ matches: true }),
     },
   })).toBe(true);
+
+  expect(shouldUseStandaloneMobileViewportFix({
+    navigator: {
+      standalone: true,
+      userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/124 Mobile Safari/537.36',
+      maxTouchPoints: 5,
+    },
+    window: {
+      matchMedia: () => ({ matches: true }),
+    },
+  })).toBe(false);
 
   expect(shouldUseStandaloneMobileViewportFix({
     navigator: {
@@ -313,6 +324,53 @@ test('syncStandaloneMobileViewport can reset page scroll when explicitly request
   expect(documentElement.scrollLeft).toBe(0);
   expect(body.scrollTop).toBe(0);
   expect(body.scrollLeft).toBe(0);
+});
+
+test('installStandaloneMobileViewportFix is inert on Android standalone so native keyboard scroll can settle', () => {
+  const cssVars = new Map<string, string>();
+  const added: string[] = [];
+  const documentElement = {
+    style: {
+      setProperty: (name: string, value: string) => cssVars.set(name, value),
+      removeProperty: (name: string) => cssVars.delete(name),
+    },
+    removeAttribute: () => {},
+  };
+  const document = {
+    documentElement,
+    addEventListener: (type: string) => added.push(`doc:${type}`),
+    removeEventListener: () => {},
+  };
+  const window = {
+    matchMedia: () => ({ matches: true }),
+    visualViewport: {
+      height: 640,
+      addEventListener: (type: string) => added.push(`vv:${type}`),
+      removeEventListener: () => {},
+    },
+    innerHeight: 800,
+    addEventListener: (type: string) => added.push(`win:${type}`),
+    removeEventListener: () => {},
+    requestAnimationFrame: () => 1,
+    cancelAnimationFrame: () => {},
+    setTimeout: () => 1,
+    clearTimeout: () => {},
+  };
+
+  const dispose = installStandaloneMobileViewportFix({
+    navigator: {
+      standalone: true,
+      userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/124 Mobile Safari/537.36',
+      maxTouchPoints: 5,
+    },
+    window,
+    document,
+  });
+
+  expect(cssVars.get('--app-height')).toBeUndefined();
+  expect(added).toEqual([]);
+
+  dispose();
 });
 
 test('installStandaloneMobileViewportFix restores standalone 100vh on focusout after keyboard sizing', () => {

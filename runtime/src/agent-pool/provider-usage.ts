@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { join } from "node:path";
 
 import { readStoredCredential, type ModelRuntime } from "@earendil-works/pi-coding-agent";
@@ -14,27 +15,94 @@ export interface ProviderUsageWindow {
   reset_description: string | null;
 }
 
+export type ProviderUsageAvailability =
+  | "available"
+  | "authentication_required"
+  | "authentication_failed"
+  | "temporary_failure"
+  | "malformed_response";
+
 export interface ProviderUsageSnapshot {
-  provider: "openai-codex" | "github-copilot" | "zai";
+  provider: "openai-codex" | "github-copilot" | "openrouter" | "zai";
   source: string;
+  availability: ProviderUsageAvailability;
+  stale: boolean;
+  refresh_failure: Exclude<ProviderUsageAvailability, "available"> | null;
   plan: string | null;
   fetched_at: string;
   primary: ProviderUsageWindow | null;
   secondary: ProviderUsageWindow | null;
   credits_remaining: number | null;
   credits_unlimited: boolean;
+  key_usage_usd: number | null;
+  key_limit_usd: number | null;
+  key_limit_remaining_usd: number | null;
+  key_limit_configured: boolean | null;
+  key_limit_unlimited: boolean;
+  key_limit_reset: string | null;
+  key_usage_daily_usd: number | null;
+  key_usage_weekly_usd: number | null;
+  key_usage_monthly_usd: number | null;
+  is_free_tier: boolean | null;
+  include_byok_in_limit: boolean | null;
   hint_short: string;
 }
 
-type CachedUsage = { expiresAt: number; value: ProviderUsageSnapshot | null };
+type CachedUsage = {
+  expiresAt: number;
+  value: ProviderUsageSnapshot | null;
+  credentialFingerprint: string | null;
+};
 type SupportedProviderId = ProviderUsageSnapshot["provider"];
 type UsageModelRuntime = Pick<ModelRuntime, "getAuth">;
+type ResolvedProviderAuth = Awaited<ReturnType<UsageModelRuntime["getAuth"]>>;
+type OpenRouterAuthResolution = {
+  resolved: ResolvedProviderAuth;
+  failed: boolean;
+  fingerprint: string;
+};
 
 // Internal cache policy, not a user-facing runtime setting.
 const USAGE_CACHE_TTL_MS = 60_000;
 const usageCache = new Map<string, CachedUsage>();
 const usageRefreshInFlight = new Map<string, Promise<ProviderUsageSnapshot | null>>();
+const activeCredentialFingerprints = new Map<string, string>();
 const log = createLogger("agent-pool.provider-usage");
+
+function baseUsageSnapshot(): Pick<
+  ProviderUsageSnapshot,
+  | "availability"
+  | "stale"
+  | "refresh_failure"
+  | "key_usage_usd"
+  | "key_limit_usd"
+  | "key_limit_remaining_usd"
+  | "key_limit_configured"
+  | "key_limit_unlimited"
+  | "key_limit_reset"
+  | "key_usage_daily_usd"
+  | "key_usage_weekly_usd"
+  | "key_usage_monthly_usd"
+  | "is_free_tier"
+  | "include_byok_in_limit"
+> {
+  return {
+    availability: "available",
+    stale: false,
+    refresh_failure: null,
+    key_usage_usd: null,
+    key_limit_usd: null,
+    key_limit_remaining_usd: null,
+    key_limit_configured: null,
+    key_limit_unlimited: false,
+    key_limit_reset: null,
+    key_usage_daily_usd: null,
+    key_usage_weekly_usd: null,
+    key_usage_monthly_usd: null,
+    is_free_tier: null,
+    include_byok_in_limit: null,
+  };
+}
 
 function clampPercent(value: unknown): number | null {
   const num = Number(value);
@@ -110,6 +178,40 @@ function buildZaiHint(primary: ProviderUsageWindow | null, secondary: ProviderUs
   ].filter(Boolean).join(" • ");
 }
 
+function nonNegativeNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+function formatUsd(value: number): string {
+  return `$${value.toFixed(value >= 0.01 ? 2 : 4)}`;
+}
+
+function buildOpenRouterHint(usage: number, limit: number | null, remaining: number | null, unlimited: boolean): string {
+  const parts = [limit === null ? `${formatUsd(usage)} spent` : `${formatUsd(usage)} / ${formatUsd(limit)}`];
+  if (remaining !== null) parts.push(`${formatUsd(remaining)} left`);
+  else if (unlimited) parts.push("no key limit");
+  return parts.join(" • ");
+}
+
+function openRouterFailureSnapshot(
+  availability: Exclude<ProviderUsageAvailability, "available">,
+  hintShort: string,
+): ProviderUsageSnapshot {
+  return {
+    ...baseUsageSnapshot(),
+    provider: "openrouter",
+    source: "openrouter-key-api",
+    availability,
+    plan: null,
+    fetched_at: new Date().toISOString(),
+    primary: null,
+    secondary: null,
+    credits_remaining: null,
+    credits_unlimited: false,
+    hint_short: hintShort,
+  };
+}
+
 async function fetchCodexUsage(modelRuntime: UsageModelRuntime, authPath: string): Promise<ProviderUsageSnapshot | null> {
   const resolved = await modelRuntime.getAuth("openai-codex");
   const stored = readStoredCredential("openai-codex", authPath) as { accountId?: unknown } | undefined;
@@ -125,7 +227,7 @@ async function fetchCodexUsage(modelRuntime: UsageModelRuntime, authPath: string
   const secondary = makeWindow("week", payload?.rate_limit?.secondary_window?.used_percent, payload?.rate_limit?.secondary_window?.reset_at, Number.isFinite(payload?.rate_limit?.secondary_window?.limit_window_seconds) ? Math.round(payload.rate_limit.secondary_window.limit_window_seconds / 60) : null);
   const credits = payload?.credits?.balance != null ? Number(payload.credits.balance) : null;
   const unlimited = Boolean(payload?.credits?.unlimited);
-  return { provider: "openai-codex", source: "chatgpt-usage-api", plan: typeof payload?.plan_type === "string" ? payload.plan_type : null, fetched_at: new Date().toISOString(), primary, secondary, credits_remaining: Number.isFinite(credits) ? credits : null, credits_unlimited: unlimited, hint_short: buildCodexHint(primary, secondary, Number.isFinite(credits) ? credits : null, unlimited) };
+  return { ...baseUsageSnapshot(), provider: "openai-codex", source: "chatgpt-usage-api", plan: typeof payload?.plan_type === "string" ? payload.plan_type : null, fetched_at: new Date().toISOString(), primary, secondary, credits_remaining: Number.isFinite(credits) ? credits : null, credits_unlimited: unlimited, hint_short: buildCodexHint(primary, secondary, Number.isFinite(credits) ? credits : null, unlimited) };
 }
 
 async function fetchGitHubCopilotUsage(modelRuntime: UsageModelRuntime, authPath: string): Promise<ProviderUsageSnapshot | null> {
@@ -150,7 +252,90 @@ async function fetchGitHubCopilotUsage(modelRuntime: UsageModelRuntime, authPath
   } : null;
   const primary = window("premium", payload?.quota_snapshots?.premium_interactions);
   const secondary = window("chat", payload?.quota_snapshots?.chat);
-  return { provider: "github-copilot", source: "github-copilot-internal-api", plan: typeof payload?.copilot_plan === "string" ? payload.copilot_plan : null, fetched_at: new Date().toISOString(), primary, secondary, credits_remaining: null, credits_unlimited: false, hint_short: buildCopilotHint(primary, secondary) };
+  return { ...baseUsageSnapshot(), provider: "github-copilot", source: "github-copilot-internal-api", plan: typeof payload?.copilot_plan === "string" ? payload.copilot_plan : null, fetched_at: new Date().toISOString(), primary, secondary, credits_remaining: null, credits_unlimited: false, hint_short: buildCopilotHint(primary, secondary) };
+}
+
+async function resolveOpenRouterAuth(modelRuntime: UsageModelRuntime): Promise<OpenRouterAuthResolution> {
+  try {
+    const resolved = await modelRuntime.getAuth("openrouter");
+    const token = resolved?.auth.apiKey;
+    return {
+      resolved,
+      failed: false,
+      fingerprint: token
+        ? `sha256:${createHash("sha256").update(token).digest("hex")}`
+        : "missing",
+    };
+  } catch {
+    return { resolved: undefined, failed: true, fingerprint: "authentication_failed" };
+  }
+}
+
+async function fetchOpenRouterUsage(auth: OpenRouterAuthResolution): Promise<ProviderUsageSnapshot> {
+  if (auth.failed) return openRouterFailureSnapshot("authentication_failed", "OpenRouter authentication failed");
+  const token = auth.resolved?.auth.apiKey;
+  if (!token) return openRouterFailureSnapshot("authentication_required", "OpenRouter login required");
+
+  let res: Response;
+  try {
+    res = await fetch("https://openrouter.ai/api/v1/key", {
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/json", "User-Agent": "PiClaw" },
+    });
+  } catch {
+    return openRouterFailureSnapshot("temporary_failure", "OpenRouter usage temporarily unavailable");
+  }
+  if (res.status === 401 || res.status === 403) {
+    return openRouterFailureSnapshot("authentication_failed", "OpenRouter authentication failed");
+  }
+  if (!res.ok) return openRouterFailureSnapshot("temporary_failure", "OpenRouter usage temporarily unavailable");
+
+  let payload: any;
+  try {
+    payload = await res.json();
+  } catch {
+    return openRouterFailureSnapshot("malformed_response", "OpenRouter returned invalid usage data");
+  }
+  const data = payload?.data;
+  const usage = nonNegativeNumber(data?.usage);
+  if (!data || usage === null) {
+    return openRouterFailureSnapshot("malformed_response", "OpenRouter returned incomplete usage data");
+  }
+
+  const limitWasReported = Object.hasOwn(data, "limit");
+  const limit = nonNegativeNumber(data.limit);
+  const limitConfigured = !limitWasReported ? null : data.limit === null ? false : limit === null ? null : true;
+  const unlimited = limitWasReported && data.limit === null;
+  const remaining = nonNegativeNumber(data.limit_remaining);
+  const limitReset = typeof data.limit_reset === "string" && data.limit_reset.trim()
+    ? data.limit_reset.trim()
+    : null;
+  const freeTier = typeof data.is_free_tier === "boolean" ? data.is_free_tier : null;
+  const includeByok = typeof data.include_byok_in_limit === "boolean" ? data.include_byok_in_limit : null;
+  const snapshot: ProviderUsageSnapshot = {
+    ...baseUsageSnapshot(),
+    provider: "openrouter",
+    source: "openrouter-key-api",
+    availability: "available",
+    plan: freeTier === true ? "free" : freeTier === false ? "paid" : null,
+    fetched_at: new Date().toISOString(),
+    primary: null,
+    secondary: null,
+    credits_remaining: null,
+    credits_unlimited: false,
+    key_usage_usd: usage,
+    key_limit_usd: limit,
+    key_limit_remaining_usd: remaining,
+    key_limit_configured: limitConfigured,
+    key_limit_unlimited: unlimited,
+    key_limit_reset: limitReset,
+    key_usage_daily_usd: nonNegativeNumber(data.usage_daily),
+    key_usage_weekly_usd: nonNegativeNumber(data.usage_weekly),
+    key_usage_monthly_usd: nonNegativeNumber(data.usage_monthly),
+    is_free_tier: freeTier,
+    include_byok_in_limit: includeByok,
+    hint_short: buildOpenRouterHint(usage, limit, remaining, unlimited),
+  };
+  return snapshot;
 }
 
 async function fetchZaiUsage(modelRuntime: UsageModelRuntime): Promise<ProviderUsageSnapshot | null> {
@@ -166,24 +351,54 @@ async function fetchZaiUsage(modelRuntime: UsageModelRuntime): Promise<ProviderU
   const reset = (value: unknown) => typeof value === "number" ? value / 1000 : value;
   const primary = makeWindow("5h", tokens?.percentage, reset(tokens?.nextResetTime), 300);
   const secondary = makeWindow("tools", tools?.percentage, reset(tools?.nextResetTime), null);
-  return { provider: "zai", source: "zai-usage-api", plan: typeof payload?.data?.level === "string" ? payload.data.level : null, fetched_at: new Date().toISOString(), primary, secondary, credits_remaining: null, credits_unlimited: false, hint_short: buildZaiHint(primary, secondary) };
+  return { ...baseUsageSnapshot(), provider: "zai", source: "zai-usage-api", plan: typeof payload?.data?.level === "string" ? payload.data.level : null, fetched_at: new Date().toISOString(), primary, secondary, credits_remaining: null, credits_unlimited: false, hint_short: buildZaiHint(primary, secondary) };
 }
 
 function isSupportedProviderId(providerId: string): providerId is SupportedProviderId {
-  return providerId === "openai-codex" || providerId === "github-copilot" || providerId === "zai";
+  return providerId === "openai-codex" || providerId === "github-copilot" || providerId === "openrouter" || providerId === "zai";
 }
 
-async function fetchProviderUsage(modelRuntime: UsageModelRuntime, providerId: SupportedProviderId, authPath: string): Promise<ProviderUsageSnapshot | null> {
+async function fetchProviderUsage(
+  modelRuntime: UsageModelRuntime,
+  providerId: SupportedProviderId,
+  authPath: string,
+  openRouterAuth?: OpenRouterAuthResolution,
+): Promise<ProviderUsageSnapshot | null> {
   if (providerId === "openai-codex") return fetchCodexUsage(modelRuntime, authPath);
   if (providerId === "github-copilot") return fetchGitHubCopilotUsage(modelRuntime, authPath);
+  if (providerId === "openrouter") return fetchOpenRouterUsage(openRouterAuth ?? await resolveOpenRouterAuth(modelRuntime));
   return fetchZaiUsage(modelRuntime);
+}
+
+function readCachedProviderUsage(
+  providerId: SupportedProviderId,
+  options: { allowStale?: boolean },
+  credentialFingerprint: string | null,
+): ProviderUsageSnapshot | null {
+  const cached = usageCache.get(providerId);
+  if (!cached || cached.credentialFingerprint !== credentialFingerprint) return null;
+  return options.allowStale === true || cached.expiresAt > Date.now() ? cached.value : null;
 }
 
 export function peekProviderUsage(providerId: string, options: { allowStale?: boolean } = {}): ProviderUsageSnapshot | null {
   if (!isSupportedProviderId(providerId)) return null;
-  const cached = usageCache.get(providerId);
-  if (!cached) return null;
-  return options.allowStale === true || cached.expiresAt > Date.now() ? cached.value : null;
+  const credentialFingerprint = providerId === "openrouter"
+    ? activeCredentialFingerprints.get(providerId) ?? null
+    : null;
+  return readCachedProviderUsage(providerId, options, credentialFingerprint);
+}
+
+/** Read cached usage only when it belongs to the runtime's current credential. Does not call the provider API. */
+export async function peekProviderUsageForRuntime(
+  modelRuntime: UsageModelRuntime,
+  providerId: string,
+  options: { allowStale?: boolean } = {},
+): Promise<ProviderUsageSnapshot | null> {
+  if (!isSupportedProviderId(providerId)) return null;
+  if (providerId !== "openrouter") return readCachedProviderUsage(providerId, options, null);
+  const auth = await resolveOpenRouterAuth(modelRuntime);
+  activeCredentialFingerprints.set(providerId, auth.fingerprint);
+  return readCachedProviderUsage(providerId, options, auth.fingerprint);
 }
 
 function resolveUsageAuthPath(modelRuntime: UsageModelRuntime, authPath?: string): string {
@@ -192,28 +407,59 @@ function resolveUsageAuthPath(modelRuntime: UsageModelRuntime, authPath?: string
 
 export async function warmProviderUsage(modelRuntime: UsageModelRuntime, providerId: string, authPath?: string): Promise<ProviderUsageSnapshot | null> {
   if (!isSupportedProviderId(providerId)) return null;
-  const cached = usageCache.get(providerId);
+  const openRouterAuth = providerId === "openrouter" ? await resolveOpenRouterAuth(modelRuntime) : undefined;
+  const credentialFingerprint = openRouterAuth?.fingerprint ?? null;
+  if (providerId === "openrouter" && credentialFingerprint) {
+    activeCredentialFingerprints.set(providerId, credentialFingerprint);
+  }
+  const cachedCandidate = usageCache.get(providerId);
+  const cached = cachedCandidate?.credentialFingerprint === credentialFingerprint
+    ? cachedCandidate
+    : undefined;
   if (cached && cached.expiresAt > Date.now()) return cached.value;
-  const existing = usageRefreshInFlight.get(providerId);
+  const refreshKey = `${providerId}:${credentialFingerprint ?? "default"}`;
+  const existing = usageRefreshInFlight.get(refreshKey);
   if (existing) return existing;
   const refreshPromise = (async () => {
     let value: ProviderUsageSnapshot | null;
     try {
-      value = await fetchProviderUsage(modelRuntime, providerId, resolveUsageAuthPath(modelRuntime, authPath));
+      const refreshed = await fetchProviderUsage(
+        modelRuntime,
+        providerId,
+        resolveUsageAuthPath(modelRuntime, authPath),
+        openRouterAuth,
+      );
+      const refreshFailure = refreshed?.availability === "available"
+        ? null
+        : refreshed?.availability ?? "temporary_failure";
+      value = refreshFailure && cached?.value?.availability === "available"
+        ? { ...cached.value, stale: true, refresh_failure: refreshFailure }
+        : refreshed;
     } catch (error) {
       debugSuppressedError(log, "Provider usage refresh failed; returning the cached usage snapshot when available.", error, { providerId, hasCachedValue: cached?.value != null });
-      value = cached?.value ?? null;
+      value = cached?.value
+        ? { ...cached.value, stale: true, refresh_failure: "temporary_failure" }
+        : null;
     }
-    usageCache.set(providerId, { expiresAt: Date.now() + USAGE_CACHE_TTL_MS, value });
-    usageRefreshInFlight.delete(providerId);
+    if (providerId !== "openrouter" || activeCredentialFingerprints.get(providerId) === credentialFingerprint) {
+      usageCache.set(providerId, {
+        expiresAt: Date.now() + USAGE_CACHE_TTL_MS,
+        value,
+        credentialFingerprint,
+      });
+    } else {
+      value = null;
+    }
+    usageRefreshInFlight.delete(refreshKey);
     return value;
   })();
-  usageRefreshInFlight.set(providerId, refreshPromise);
+  usageRefreshInFlight.set(refreshKey, refreshPromise);
   return refreshPromise;
 }
 
 export async function getProviderUsage(modelRuntime: UsageModelRuntime, providerId: string, authPath?: string): Promise<ProviderUsageSnapshot | null> {
   if (!isSupportedProviderId(providerId)) return null;
+  if (providerId === "openrouter") return warmProviderUsage(modelRuntime, providerId, authPath);
   const cached = usageCache.get(providerId);
   return cached && cached.expiresAt > Date.now() ? cached.value : warmProviderUsage(modelRuntime, providerId, authPath);
 }
@@ -221,4 +467,5 @@ export async function getProviderUsage(modelRuntime: UsageModelRuntime, provider
 export function clearProviderUsageCache(): void {
   usageCache.clear();
   usageRefreshInFlight.clear();
+  activeCredentialFingerprints.clear();
 }

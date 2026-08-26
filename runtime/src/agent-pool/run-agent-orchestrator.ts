@@ -16,6 +16,12 @@ import { clearLiveSshConfig } from "../extensions/ssh-core.js";
 
 import { getAutomaticRecoveryConfig } from "./automatic-recovery.js";
 import { getAgentRuntimeConfig, getSessionStorageConfig, getToolUseBudget } from "../core/config.js";
+import {
+  beginOpenRouterRequestAttempt,
+  createOpenRouterOutputBudgetState,
+  sanitizeOpenRouterProviderErrorText,
+  withOpenRouterOutputBudgetState,
+} from "../core/openrouter-output-budget.js";
 import { detectChannel } from "../router.js";
 import { pruneOrphanToolResults } from "./orphan-tool-results.js";
 import { writeAgentLog } from "./logging.js";
@@ -52,7 +58,7 @@ import {
   type PromptAttemptResult,
 } from "./run-agent-recovery-phase.js";
 import type { AgentTurnCoordinator } from "./turn-coordinator.js";
-import type { AgentOutput, RetrySettingsProvider, RunAgentOptions } from "./contracts.js";
+import type { AgentOutput, RetrySettingsProvider, RunAgentOptions, TurnOutput } from "./contracts.js";
 import { getDefaultActiveToolNames } from "../extensions/tool-activation.js";
 import { getRememberedActiveToolSubset, rememberActiveToolSubset } from "./active-tool-subset-memory.js";
 import { logToolStateTransition } from "./tool-state-transitions.js";
@@ -491,7 +497,7 @@ async function runPromptAttempt(
 
   const originalOnTurnComplete = runOptions.onTurnComplete;
   const onTurnComplete = originalOnTurnComplete
-    ? ((turn: { text: string; attachments: AttachmentInfo[]; usage?: unknown; followedByToolUse?: boolean }) => {
+    ? ((turn: TurnOutput) => {
         const hadOutput = !!(turn.text || turn.attachments.length > 0);
         hadCompletedTurnOutput = hadCompletedTurnOutput || hadOutput;
         hadTerminalTurnOutput = hadTerminalTurnOutput || (hadOutput && !turn.followedByToolUse);
@@ -529,6 +535,7 @@ async function runPromptAttempt(
   });
 
   const wrappedOnEvent = (event: AgentSessionEvent) => {
+    let forwardedEvent = event;
     if (event.type === "message_update") {
       heartbeatTrackedPhase(chatJid, "streaming", { eventType: event.type, providerEventObserved: true, model: modelLabel });
     } else if (
@@ -679,6 +686,16 @@ async function runPromptAttempt(
     if (event.type === "message_end") {
       const estimateSnapshot = attemptContext.publishContextUsageUpdate("message_end", true);
       const message = (event as { message?: { role?: unknown; content?: unknown; stopReason?: unknown; errorMessage?: unknown; usage?: Record<string, unknown> } }).message;
+      const rawErrorMessage = typeof message?.errorMessage === "string" ? message.errorMessage : null;
+      const safeErrorMessage = rawErrorMessage === null
+        ? null
+        : sanitizeOpenRouterProviderErrorText(rawErrorMessage, modelLabel);
+      if (rawErrorMessage !== null && safeErrorMessage !== rawErrorMessage) {
+        forwardedEvent = {
+          ...event,
+          message: { ...(message as Record<string, unknown>), errorMessage: safeErrorMessage },
+        } as AgentSessionEvent;
+      }
       if (message?.role === "assistant") {
         const durationMs = activeModelResponse ? Math.max(0, Date.now() - activeModelResponse.startedAt) : null;
         options.onInfo?.("Assistant model response completed", {
@@ -688,7 +705,7 @@ async function runPromptAttempt(
           sequence: activeModelResponse?.sequence ?? null,
           durationMs,
           stopReason: typeof message.stopReason === "string" ? message.stopReason : null,
-          errorMessage: typeof message.errorMessage === "string" ? message.errorMessage : null,
+          errorMessage: safeErrorMessage,
           usage: message.usage ?? null,
           ...getRunObservabilityDetails(runOptions),
         });
@@ -748,7 +765,7 @@ async function runPromptAttempt(
         compactionErrorMessage = errorMessage.trim();
       }
     }
-    runOptions.onEvent?.(event);
+    runOptions.onEvent?.(forwardedEvent);
   };
 
   const unsub = options.turnCoordinator.subscribe(session, chatJid, tracker, wrappedOnEvent);
@@ -1077,7 +1094,8 @@ export async function runAgentPrompt(
       ? { ...baseRecoveryConfig, totalBudgetMs: Math.min(baseRecoveryConfig.totalBudgetMs, timeoutMs) }
       : baseRecoveryConfig;
 
-    const runResult: AgentOutput = await withChatContext(chatJid, channel, async () => await runAgentRecoveryPhase({
+    const openRouterOutputBudgetState = createOpenRouterOutputBudgetState(chatJid, runOptions.turnId);
+    const runRecoveryPhaseWithOutputBudget = async (): Promise<AgentOutput> => await runAgentRecoveryPhase({
       prompt,
       chatJid,
       session,
@@ -1088,6 +1106,7 @@ export async function runAgentPrompt(
       recoveryConfig,
       runOptions,
       logsDir: options.logsDir,
+      openRouterOutputBudgetState,
       onInfo: options.onInfo,
       onWarn: options.onWarn,
       clearAttachments: options.clearAttachments,
@@ -1136,19 +1155,27 @@ export async function runAgentPrompt(
         updateSessionModel(chatJid, modelLabel, session.thinkingLevel ?? null);
         return { ok: true, session, sessionCtrl };
       },
-      runPromptAttempt: async (attemptPrompt, attemptTimeoutMs, turnToolExecutionCount, finalizationReserveMs = 0) => await runPromptAttempt(
-        attemptPrompt,
-        chatJid,
-        session,
-        attemptTimeoutMs,
-        finalizationReserveMs,
-        runOptions,
-        options,
-        startTime,
-        modelLabel,
-        turnToolExecutionCount,
-      ),
-    }));
+      runPromptAttempt: async (attemptPrompt, attemptTimeoutMs, turnToolExecutionCount, finalizationReserveMs = 0) => {
+        beginOpenRouterRequestAttempt(openRouterOutputBudgetState);
+        return await runPromptAttempt(
+          attemptPrompt,
+          chatJid,
+          session,
+          attemptTimeoutMs,
+          finalizationReserveMs,
+          runOptions,
+          options,
+          startTime,
+          modelLabel,
+          turnToolExecutionCount,
+        );
+      },
+    });
+    const runResult: AgentOutput = await withChatContext(
+      chatJid,
+      channel,
+      async () => await withOpenRouterOutputBudgetState(openRouterOutputBudgetState, runRecoveryPhaseWithOutputBudget),
+    );
 
     if (runOptions.scheduleIdleAutoCompaction && (runResult.status === "success" || runResult.status === "tool_complete")) {
       await maybeAutoCompactSessionAfterTurn(session, chatJid, options, (event) => {

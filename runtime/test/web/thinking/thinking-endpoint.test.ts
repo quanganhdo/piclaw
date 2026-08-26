@@ -79,6 +79,17 @@ describe("getThinkingContentForChat — endpoint validation", () => {
     expect(result!.truncated).toBe(false);
   });
 
+  test("agent turn classification remains orthogonal to thinking retrieval", () => {
+    const rowId = seedScenario({
+      chatJid: "web:default",
+      contentBlocks: [
+        { type: "agent_turn_marker", kind: "draft_snapshot", cause: "interrupted_text_start" },
+        { type: "thinking_ref", lines: 5, duration_ms: 1000 },
+      ],
+    });
+    expect(getThinkingContentForChat("web:default", String(rowId))?.text).toBe("reasoning trace text");
+  });
+
   test("IDOR: wrong chat_jid for a real message → returns null", () => {
     const rowId = seedScenario({ chatJid: "web:default" });
     // Attacker guesses the rowid but supplies the wrong chat

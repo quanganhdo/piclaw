@@ -46,6 +46,20 @@ function asNumber(record: Record<string, unknown>, key: string): number {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
+function asOptionalNonNegativeNumber(...values: unknown[]): number | null {
+  for (const value of values) {
+    if (typeof value === "number" && Number.isFinite(value) && value >= 0) return value;
+  }
+  return null;
+}
+
+function asOptionalBoolean(...values: unknown[]): boolean | null {
+  for (const value of values) {
+    if (typeof value === "boolean") return value;
+  }
+  return null;
+}
+
 function asStringOrNull(value: unknown): string | null {
   return typeof value === "string" ? value : null;
 }
@@ -92,6 +106,8 @@ function hasUsageTokensOrCost(usage: Record<string, unknown>): boolean {
     cost.cacheRead,
     cost.cacheWrite,
     cost.total,
+    usage.providerCost,
+    usage.provider_cost,
   ].some((value) => typeof value === "number" && Number.isFinite(value) && value !== 0);
 }
 
@@ -113,9 +129,18 @@ function storeUsageRecord(chatJid: string, usage: Record<string, unknown>, metad
   const costOutput = asNumber(cost, "output");
   const costCacheRead = asNumber(cost, "cacheRead");
   const costCacheWrite = asNumber(cost, "cacheWrite");
-  const costTotal =
-    asNumber(cost, "total") ||
-    costInput + costOutput + costCacheRead + costCacheWrite;
+  const catalogueCostCandidate = asOptionalNonNegativeNumber(cost.total)
+    ?? costInput + costOutput + costCacheRead + costCacheWrite;
+  // Earendil's catalogue cost object has no field-presence signal: zero can mean
+  // unknown rates, so only a positive total is a trustworthy estimate.
+  const catalogueCostTotal = catalogueCostCandidate > 0 ? catalogueCostCandidate : null;
+  const providerCostTotal = asOptionalNonNegativeNumber(usage.providerCost, usage.provider_cost);
+  const costTotal = providerCostTotal ?? catalogueCostTotal ?? 0;
+  const costProvenance = providerCostTotal !== null
+    ? "provider_reported"
+    : catalogueCostTotal !== null
+      ? "catalogue_estimate"
+      : "unavailable";
 
   storeTokenUsage({
     chat_jid: chatJid,
@@ -125,12 +150,17 @@ function storeUsageRecord(chatJid: string, usage: Record<string, unknown>, metad
     reasoning_tokens: reasoningTokens,
     cache_read_tokens: cacheRead,
     cache_write_tokens: cacheWrite,
+    cache_read_reported: asOptionalBoolean(usage.cacheReadReported, usage.cache_read_reported),
+    cache_write_reported: asOptionalBoolean(usage.cacheWriteReported, usage.cache_write_reported),
     total_tokens: totalTokens,
     cost_input: costInput,
     cost_output: costOutput,
     cost_cache_read: costCacheRead,
     cost_cache_write: costCacheWrite,
     cost_total: costTotal,
+    provider_cost_total: providerCostTotal,
+    catalogue_cost_total: catalogueCostTotal,
+    cost_provenance: costProvenance,
     model: asStringOrNull(metadata.model),
     response_model: asStringOrNull(metadata.responseModel),
     provider: asStringOrNull(metadata.provider),

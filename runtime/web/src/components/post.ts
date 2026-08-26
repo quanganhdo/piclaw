@@ -95,6 +95,32 @@ function FileAttachment({ mediaId, onPreview }) {
 
 const PROTECTED_RECOVERY_CONTROL_INTENT = 'protected_recovery_continuation';
 const PROTECTED_RECOVERY_CONTROL_LABEL = 'Recovery resumed with execution tools';
+const PROTECTED_RECOVERY_REASONS = new Set([
+    'post_compaction_tools_required',
+    'tools_required',
+    'compaction_failed',
+    'recovery_budget_exhausted',
+    'unresolved_tool_execution',
+    'continuation_generation_exhausted',
+    'provider_retry_exhausted',
+]);
+const PROTECTED_RECOVERY_TYPED_KEYS = ['reason', 'compaction', 'tools_required', 'retryable', 'recovery_attempts'];
+
+function hasValidProtectedRecoveryHandoffFields(block) {
+    const hasTypedFields = PROTECTED_RECOVERY_TYPED_KEYS.some(key => Object.prototype.hasOwnProperty.call(block, key));
+    if (!hasTypedFields) return true;
+    const valid = PROTECTED_RECOVERY_REASONS.has(block.reason)
+        && ['not_attempted', 'succeeded', 'failed'].includes(block.compaction)
+        && typeof block.tools_required === 'boolean'
+        && typeof block.retryable === 'boolean'
+        && Number.isInteger(block.recovery_attempts)
+        && block.recovery_attempts >= 0;
+    if (!valid) return false;
+    if (block.reason === 'post_compaction_tools_required') return block.compaction === 'succeeded' && block.tools_required;
+    if (block.reason === 'compaction_failed') return block.compaction === 'failed';
+    if (block.reason === 'tools_required' || block.reason === 'unresolved_tool_execution') return block.tools_required;
+    return true;
+}
 
 export function getProtectedRecoveryControlIntent(contentBlocks) {
     const block = Array.isArray(contentBlocks)
@@ -103,6 +129,16 @@ export function getProtectedRecoveryControlIntent(contentBlocks) {
             && typeof candidate === 'object'
             && candidate.type === 'control_intent'
             && candidate.intent === PROTECTED_RECOVERY_CONTROL_INTENT
+            && candidate.schema_version === 1
+            && typeof candidate.source_message_id === 'string'
+            && candidate.source_message_id.trim().length > 0
+            && Number.isInteger(candidate.source_row_id)
+            && Number(candidate.source_row_id) > 0
+            && Number.isInteger(candidate.thread_id)
+            && Number(candidate.thread_id) > 0
+            && Number.isInteger(candidate.handoff_depth ?? 1)
+            && Number(candidate.handoff_depth ?? 1) > 0
+            && hasValidProtectedRecoveryHandoffFields(candidate)
         ))
         : null;
     if (block) {
@@ -306,9 +342,11 @@ export function formatOutcomeChipTooltip(marker) {
     const title = typeof marker?.title === 'string' ? marker.title.trim() : '';
     const detail = typeof marker?.detail === 'string' ? marker.detail.trim() : '';
     const action = typeof marker?.tool_action_summary === 'string' ? marker.tool_action_summary.trim() : '';
+    const nextAction = typeof marker?.next_action === 'string' ? marker.next_action.trim() : '';
     const recoveredDraft = marker?.draft_recovered ? ' Showing recovered draft.' : '';
     const parts = [title, detail];
     if (action) parts.push(`Last action: ${action}`);
+    if (nextAction) parts.push(`Next: ${nextAction}`);
     return parts.filter(Boolean).join(' — ') + recoveredDraft;
 }
 
@@ -319,11 +357,22 @@ function OutcomePill({ marker }) {
     const title = typeof marker?.title === 'string' ? marker.title.trim() : '';
     const detail = typeof marker?.detail === 'string' ? marker.detail.trim() : '';
     const action = typeof marker?.tool_action_summary === 'string' ? marker.tool_action_summary.trim() : '';
+    const nextAction = typeof marker?.next_action === 'string' ? marker.next_action.trim() : '';
+    const reason = typeof marker?.reason === 'string' ? marker.reason.replaceAll('_', ' ') : '';
+    const compaction = marker?.compaction === 'succeeded' || marker?.compaction === 'failed'
+        ? `compaction ${marker.compaction}`
+        : '';
+    const attempts = Number.isInteger(marker?.recovery_attempts)
+        ? `${marker.recovery_attempts} recovery attempt${marker.recovery_attempts === 1 ? '' : 's'}`
+        : '';
+    const typedSummary = [reason, compaction, marker?.tools_required === true ? 'tools required' : '', attempts]
+        .filter(Boolean)
+        .join(' · ');
     const draftRecovered = marker?.draft_recovered;
     const severity = String(marker?.severity || 'warning');
     const label = action || title || String(marker?.label || marker?.kind || 'issue');
 
-    const hasDetail = Boolean(detail || (title && action));
+    const hasDetail = Boolean(detail || nextAction || typedSummary || (title && action));
 
     return html`
         <div class=${`post-outcome-pill post-outcome-pill-${severity}`}>
@@ -338,6 +387,8 @@ function OutcomePill({ marker }) {
                 <div class="post-outcome-pill-detail">
                     ${title && html`<div><strong>${title}</strong></div>`}
                     ${detail && detail !== title && html`<div>${detail}</div>`}
+                    ${nextAction && html`<div><strong>Next:</strong> ${nextAction}</div>`}
+                    ${typedSummary && html`<div class="post-outcome-pill-meta">${typedSummary}</div>`}
                 </div>
             `}
         </div>
@@ -1750,6 +1801,7 @@ export function Post({ post, onClick, onHashtagClick, onMessageRef, onScrollToMe
     const silentRecoveryPlaceholder = Boolean(
         isAgent
         && outcomeMarker?.kind === 'recovery'
+        && outcomeMarker?.severity === 'info'
         && !shouldRenderContent
         && mediaIds.length === 0
         && directCardBlocks.length === 0

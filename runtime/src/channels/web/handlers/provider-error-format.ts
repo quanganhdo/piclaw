@@ -174,7 +174,7 @@ function inferCategory(text: string): ProviderErrorCategory {
   if (/\b5\d\d\b|server[_ -]?error|internal[_ -]?error|bad gateway|service unavailable|gateway timeout|overloaded/i.test(text)) return "server";
   if (/authentication failed|credentials may have expired|no api key(?: found| for provider)?|token refresh failed\s*:\s*401|re-authenticate|unauthorized|\b401\b|\b403\b|invalid.*api.*key|api.*key.*invalid|token.*expired|oauth.*expired|refresh.*token/i.test(text)) return "auth";
   if (OUTPUT_LIMIT_PATTERN.test(text) && !/context(?: window| length)|maximum context length|context_length/i.test(text)) return "output_limit";
-  if (/quota|usage.*limit|out of.*usage|billing|insufficient.*funds|exceeded.*limit|credit/i.test(text)) return "quota";
+  if (/quota|usage.*limit|out of.*usage|billing|insufficient.*funds|exceeded.*limit|credit|affordable\s+\d+\s+tokens/i.test(text)) return "quota";
   if (NETWORK_ERROR_PATTERN.test(text)) return "network";
   if (/no model selected|select a model|use \/model|use \/login|model not found|deployment.*not found/i.test(text)) return "model_config";
   if (MODEL_AVAILABILITY_PATTERN.test(text)) return "model_availability";

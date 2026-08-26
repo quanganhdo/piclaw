@@ -40,7 +40,13 @@ export function useModelPicker(): UseModelPickerResult {
       if (res.ok) {
         const info = await res.json() as ModelInfo;
         models.value = info.model_options?.length
-          ? info.model_options.map(o => ({ id: o.label ?? o.id, context_window: o.context_window }))
+          ? info.model_options.map(o => ({
+            id: o.label ?? o.id,
+            name: o.name,
+            context_window: o.context_window,
+            reasoning: o.reasoning,
+            pricing: o.pricing,
+          }))
           : (info.models?.length ? info.models.map(id => ({ id })) : FALLBACK_MODELS);
         onCurrentModel(info.current ?? currentModelName);
         if (info.thinking_level_label || info.thinking_level) {
