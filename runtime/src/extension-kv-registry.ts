@@ -84,6 +84,11 @@ export function registerExtensionKvStore(store: ExtensionKvStore): void {
   registeredStore = store;
 }
 
+/** Reset the registry to an isolated in-memory store for monolithic test suites. */
+export function resetExtensionKvStoreForTests(): void {
+  registeredStore = new InMemoryKvStore();
+}
+
 /** Get the registered KV store. */
 export function getExtensionKvStore(): ExtensionKvStore {
   return registeredStore;

@@ -238,6 +238,7 @@ const groupDefinitions: GroupDefinition[] = [
       basenameIsOneOf(relativePath, [
         "auth-endpoints.test.ts",
         "auth-gateway.test.ts",
+        "content-block-safety.test.ts",
         "auth-runtime.test.ts",
         "auth.test.ts",
         "identity-endpoints.test.ts",
@@ -430,6 +431,7 @@ const groupDefinitions: GroupDefinition[] = [
           "compaction-settings-ui.test.ts",
           "compose-speech.test.ts",
           "post-speech.test.ts",
+          "visual-protected-recovery.test.ts",
           "markdown-surface-security.test.ts",
           "use-splitters.test.ts",
           "optional-api.test.ts",
@@ -464,6 +466,7 @@ const groupDefinitions: GroupDefinition[] = [
         basenameIsOneOf(relativePath, [
           "adaptive-card-input-lock.test.ts",
           "adaptive-card-renderer.test.ts",
+          "addons-core-bookmark.test.ts",
           "agent-thinking-panel-display.test.ts",
           "adaptive-card-submission.test.ts",
           "attachment-preview.test.ts",
@@ -505,6 +508,7 @@ const groupDefinitions: GroupDefinition[] = [
           "post-peer-message.test.ts",
           "post-timing.test.ts",
           "pwa-display-scale.test.ts",
+          "session-tree-addon-boundary.test.ts",
           "addons-handler.test.ts",
           "addon-web-extensions.test.ts",
           "general-settings-handler.test.ts",
@@ -538,6 +542,7 @@ const groupDefinitions: GroupDefinition[] = [
           "thinking-cleanup.test.ts",
           "thinking-endpoint.test.ts",
           "timeline-render-boundary.test.ts",
+          "visual-telemetry.test.ts",
         ])
         || isAppRenderingPaneTest(relativePath)
       ),

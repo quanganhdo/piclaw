@@ -38,17 +38,27 @@ fi
 
 TARBALL="$(realpath "$TARBALL")"
 
-GLOBAL_PKG="$BUN_INSTALL/install/global/package.json"
-GLOBAL_LOCK="$BUN_INSTALL/install/global/bun.lock"
+GLOBAL_DIR="$BUN_INSTALL/install/global"
+GLOBAL_PKG="$GLOBAL_DIR/package.json"
+GLOBAL_LOCK="$GLOBAL_DIR/bun.lock"
 PI_AGENT_VERSION="$(jq -r '.dependencies["@earendil-works/pi-coding-agent"] // "0.74.0"' package.json)"
+INSTALL_STAGE="$(mktemp -d)"
+INSTALL_TARBALL="$(mktemp --suffix=.tgz)"
+PATCH_STAGE="$(mktemp -d)"
+GLOBAL_PACKAGE="$(mktemp)"
+printf '[build-piclaw-package] prepare-global-install\n'
+bun run scripts/prepare-local-install.ts \
+  "$TARBALL" "$INSTALL_STAGE" "$INSTALL_TARBALL" "$PATCH_STAGE" "$GLOBAL_PACKAGE" "$PI_AGENT_VERSION"
 printf '[build-piclaw-package] install-global\n'
-printf '{"dependencies":{"@earendil-works/pi-coding-agent":"%s","piclaw":"%s"}}\n' "$PI_AGENT_VERSION" "$TARBALL" | sudo tee "$GLOBAL_PKG" >/dev/null
+sudo mkdir -p "$GLOBAL_DIR"
+sudo cp -R "$PATCH_STAGE"/. "$GLOBAL_DIR"/
+sudo cp "$GLOBAL_PACKAGE" "$GLOBAL_PKG"
 sudo rm -f "$GLOBAL_LOCK"
-sudo BUN_INSTALL="$BUN_INSTALL" BUN_INSTALL_CACHE_DIR="$BUN_INSTALL_CACHE_DIR" "$BUN_INSTALL/bin/bun" install -g "$TARBALL" --registry https://registry.npmjs.org --ignore-scripts
+sudo BUN_INSTALL="$BUN_INSTALL" BUN_INSTALL_CACHE_DIR="$BUN_INSTALL_CACHE_DIR" "$BUN_INSTALL/bin/bun" install -g "$INSTALL_TARBALL" --registry https://registry.npmjs.org --ignore-scripts
 
 printf '[build-piclaw-package] cleanup-tarball\n'
-rm -f "$TARBALL"
-rm -rf "$PACK_DIR"
+rm -f "$TARBALL" "$INSTALL_TARBALL" "$GLOBAL_PACKAGE"
+rm -rf "$PACK_DIR" "$INSTALL_STAGE" "$PATCH_STAGE"
 
 printf '[build-piclaw-package] wire-extension-node_modules\n'
 DEST_REAL="$BUN_INSTALL/install/global/node_modules/piclaw"
