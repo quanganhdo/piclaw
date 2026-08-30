@@ -99,13 +99,14 @@ describe("web channel endpoint context factory", () => {
       json: (payload: unknown, status = 200) => new Response(JSON.stringify(payload), { status }),
       getContextUsage: (chatJid: string) => {
         calls.push(`stored:${chatJid}`);
-        return { tokens: 21703, contextWindow: 200000, percent: 10.8515 };
+        return { tokens: 21703, contextWindow: 200000, percent: 10.8515, sessionGeneration: "session-current" };
       },
       agentPool: {
         getContextUsageForChat: async (chatJid: string) => {
           calls.push(`pool:${chatJid}`);
           return null;
         },
+        getSessionGenerationForChat: () => null,
         getAvailableModels: async () => ({ models: [] }),
       },
     };
@@ -123,16 +124,18 @@ describe("web channel endpoint context factory", () => {
       tokens: 21703,
       contextWindow: 200000,
       percent: 10.8515,
+      sessionGeneration: "session-current",
     });
     expect(calls).toEqual(["pool:web:compacted", "stored:web:compacted"]);
   });
 
-  test("falls back to persisted context usage when the pool returns null tokens", async () => {
+  test("falls back to persisted context usage when the pool returns null tokens for the same generation", async () => {
     const channel = {
       json: (payload: unknown, status = 200) => new Response(JSON.stringify(payload), { status }),
-      getContextUsage: () => ({ tokens: 21703, contextWindow: 200000, percent: 10.8515 }),
+      getContextUsage: () => ({ tokens: 21703, contextWindow: 200000, percent: 10.8515, sessionGeneration: "session-current" }),
       agentPool: {
-        getContextUsageForChat: async () => ({ tokens: null, contextWindow: 200000, percent: null }),
+        getContextUsageForChat: async () => ({ tokens: null, contextWindow: 200000, percent: null, sessionGeneration: "session-current" }),
+        getSessionGenerationForChat: () => "session-current",
         getAvailableModels: async () => ({ models: [] }),
       },
     };
@@ -150,15 +153,45 @@ describe("web channel endpoint context factory", () => {
       tokens: 21703,
       contextWindow: 200000,
       percent: 10.8515,
+      sessionGeneration: "session-current",
     });
   });
 
-  test("falls back to persisted context usage when the pool lookup rejects", async () => {
+  test("rejects persisted context usage from a replaced session generation", async () => {
     const channel = {
       json: (payload: unknown, status = 200) => new Response(JSON.stringify(payload), { status }),
-      getContextUsage: () => ({ tokens: 123, contextWindow: 1000, percent: 12.3 }),
+      getContextUsage: () => ({ tokens: 95000, contextWindow: 100000, percent: 95, sessionGeneration: "session-old" }),
+      agentPool: {
+        getContextUsageForChat: async () => ({ tokens: null, contextWindow: 100000, percent: null, sessionGeneration: "session-new" }),
+        getSessionGenerationForChat: () => "session-new",
+        getAvailableModels: async () => ({ models: [] }),
+      },
+    };
+
+    const contexts = createWebChannelEndpointContexts(
+      channel as unknown as Parameters<typeof createWebChannelEndpointContexts>[0],
+      {
+        defaultChatJid: "web:default",
+        defaultAgentId: "default",
+        getIdentitySnapshot: () => createIdentitySnapshot(),
+      },
+    );
+
+    await expect(contexts.agentStatus().getContextUsageForChat("web:compacted")).resolves.toEqual({
+      tokens: null,
+      contextWindow: 100000,
+      percent: null,
+      sessionGeneration: "session-new",
+    });
+  });
+
+  test("falls back to generation-scoped persisted context usage when the pool lookup rejects", async () => {
+    const channel = {
+      json: (payload: unknown, status = 200) => new Response(JSON.stringify(payload), { status }),
+      getContextUsage: () => ({ tokens: 123, contextWindow: 1000, percent: 12.3, sessionGeneration: "session-current" }),
       agentPool: {
         getContextUsageForChat: async () => { throw new Error("session evicted"); },
+        getSessionGenerationForChat: () => null,
         getAvailableModels: async () => ({ models: [] }),
       },
     };
@@ -176,6 +209,7 @@ describe("web channel endpoint context factory", () => {
       tokens: 123,
       contextWindow: 1000,
       percent: 12.3,
+      sessionGeneration: "session-current",
     });
   });
 

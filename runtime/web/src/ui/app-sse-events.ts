@@ -44,11 +44,11 @@ import {
 } from './app-sse-event-routing.js';
 import { isAppChatActivationRecent } from './app-refresh-coordination.js';
 import {
-  hasRenderableContextUsage,
+  getContextSessionGeneration,
   haveSameContextUsage,
-  mergeContextUsage,
   normalizeContextUsage,
   persistContextUsage,
+  reconcileContextUsageForChat,
 } from './app-status-refresh-orchestration.js';
 
 type StateSetter<T> = (next: T | ((prev: T) => T)) => void;
@@ -63,6 +63,49 @@ interface RefBox<T> {
 // dropped deltas and duplicate replay when the first snapshot already included
 // an event that was in flight.
 const dirtyPreviewResyncRefs = new WeakSet<object>();
+
+interface PreviewTrailingFlushState {
+  generation: number;
+  draftTimer: ReturnType<typeof setTimeout> | null;
+  thoughtTimer: ReturnType<typeof setTimeout> | null;
+  draftSnapshot: { text: string; totalLines: unknown } | null;
+  thoughtSnapshot: { text: string; totalLines: unknown } | null;
+  draftDeltaActive: boolean;
+  thoughtDeltaActive: boolean;
+}
+
+const previewTrailingFlushStates = new WeakMap<object, PreviewTrailingFlushState>();
+
+function previewTrailingFlushState(key: object): PreviewTrailingFlushState {
+  let state = previewTrailingFlushStates.get(key);
+  if (!state) {
+    state = {
+      generation: 0,
+      draftTimer: null,
+      thoughtTimer: null,
+      draftSnapshot: null,
+      thoughtSnapshot: null,
+      draftDeltaActive: false,
+      thoughtDeltaActive: false,
+    };
+    previewTrailingFlushStates.set(key, state);
+  }
+  return state;
+}
+
+/** Cancel delayed preview writes when their owning chat/turn lifecycle ends. */
+export function invalidateAppPreviewTrailingFlushes(key: object): void {
+  const state = previewTrailingFlushState(key);
+  state.generation += 1;
+  if (state.draftTimer) clearTimeout(state.draftTimer);
+  if (state.thoughtTimer) clearTimeout(state.thoughtTimer);
+  state.draftTimer = null;
+  state.thoughtTimer = null;
+  state.draftSnapshot = null;
+  state.thoughtSnapshot = null;
+  state.draftDeltaActive = false;
+  state.thoughtDeltaActive = false;
+}
 
 export interface HandleAppSseEventDependencies {
   currentChatJid: string;
@@ -200,18 +243,67 @@ export function handleAppSseEvent(
     openEditor,
   } = deps;
 
+  const cancelPanelTrailingFlush = (panel: 'draft' | 'thought') => {
+    const state = previewTrailingFlushState(previewResyncGenerationRef);
+    const timerKey = panel === 'draft' ? 'draftTimer' : 'thoughtTimer';
+    if (state[timerKey]) clearTimeout(state[timerKey]);
+    state[timerKey] = null;
+  };
+
+  const scheduleTrailingPreviewFlush = (
+    panel: 'draft' | 'thought',
+    lastRenderedAt: number,
+    bufferRef: RefBox<string>,
+    setter: StateSetter<any>,
+  ) => {
+    const state = previewTrailingFlushState(previewResyncGenerationRef);
+    const timerKey = panel === 'draft' ? 'draftTimer' : 'thoughtTimer';
+    if (state[timerKey]) clearTimeout(state[timerKey]);
+    const generation = state.generation;
+    const targetChatJid = currentChatJid;
+    const targetTurnId = turnId || currentTurnIdRef.current;
+    const delay = Math.max(0, 100 - Math.max(0, Date.now() - lastRenderedAt));
+    state[timerKey] = setTimeout(() => {
+      state[timerKey] = null;
+      if (state.generation !== generation) return;
+      if (activeChatJidRef.current !== targetChatJid) return;
+      if (currentTurnIdRef.current !== targetTurnId) return;
+      const fullText = bufferRef.current;
+      const snapshotKey = panel === 'draft' ? 'draftSnapshot' : 'thoughtSnapshot';
+      const snapshot = state[snapshotKey];
+      state[snapshotKey] = null;
+      setter((previous) => buildAuthoritativeAgentPreviewState(fullText, previous, snapshot
+        ? { previewText: snapshot.text, totalLines: snapshot.totalLines }
+        : undefined));
+      if (panel === 'draft') draftThrottleRef.current = Date.now();
+      else thoughtThrottleRef.current = Date.now();
+    }, delay);
+  };
+
   const flushAuthoritativePreviews = () => {
+    cancelPanelTrailingFlush('draft');
+    cancelPanelTrailingFlush('thought');
+    const trailingState = previewTrailingFlushState(previewResyncGenerationRef);
     if (draftBufferRef.current) {
       const fullText = draftBufferRef.current;
-      setAgentDraft((previous) => buildAuthoritativeAgentPreviewState(fullText, previous));
+      const snapshot = trailingState.draftSnapshot;
+      trailingState.draftSnapshot = null;
+      setAgentDraft((previous) => buildAuthoritativeAgentPreviewState(fullText, previous, snapshot
+        ? { previewText: snapshot.text, totalLines: snapshot.totalLines }
+        : undefined));
     }
     if (thoughtBufferRef.current) {
       const fullText = thoughtBufferRef.current;
-      setAgentThought((previous) => buildAuthoritativeAgentPreviewState(fullText, previous));
+      const snapshot = trailingState.thoughtSnapshot;
+      trailingState.thoughtSnapshot = null;
+      setAgentThought((previous) => buildAuthoritativeAgentPreviewState(fullText, previous, snapshot
+        ? { previewText: snapshot.text, totalLines: snapshot.totalLines }
+        : undefined));
     }
   };
 
   const clearPreviewState = () => {
+    invalidateAppPreviewTrailingFlushes(previewResyncGenerationRef);
     draftBufferRef.current = '';
     thoughtBufferRef.current = '';
     setAgentDraft({ text: '', totalLines: 0 });
@@ -273,6 +365,7 @@ export function handleAppSseEvent(
   }
 
   if (eventType === 'connected') {
+    invalidateAppPreviewTrailingFlushes(previewResyncGenerationRef);
     if (handleUiVersionDrift(data?.app_asset_version)) {
       return;
     }
@@ -373,6 +466,12 @@ export function handleAppSseEvent(
 
   if (eventType === 'agent_status') {
     if (!isCurrentChatEvent) {
+      const eventChatJid = typeof data?.chat_jid === 'string' ? data.chat_jid.trim() : '';
+      const inactiveContextUsage = normalizeContextUsage(data?.context_usage);
+      if (eventChatJid && data?.context_reset === true && inactiveContextUsage?.sessionGeneration) {
+        const resetUsage = reconcileContextUsageForChat(eventChatJid, null, inactiveContextUsage, { reset: true });
+        persistContextUsage(eventChatJid, resetUsage);
+      }
       if (data?.type === 'done' || data?.type === 'error') {
         void refreshActiveChatAgents();
         void refreshCurrentChatBranches();
@@ -381,10 +480,12 @@ export function handleAppSseEvent(
     }
 
     const liveContextUsage = normalizeContextUsage(data.context_usage);
-    if (hasRenderableContextUsage(liveContextUsage)) {
+    if (liveContextUsage) {
       setContextUsage((prev) => {
-        const merged = mergeContextUsage(prev, liveContextUsage);
-        if (!hasRenderableContextUsage(merged) || haveSameContextUsage(prev, merged)) return prev;
+        const merged = reconcileContextUsageForChat(currentChatJid, prev, liveContextUsage, {
+          reset: data.context_reset === true,
+        });
+        if (haveSameContextUsage(prev, merged)) return prev;
         persistContextUsage(currentChatJid, merged);
         return merged;
       });
@@ -398,6 +499,7 @@ export function handleAppSseEvent(
         return;
       }
       flushAuthoritativePreviews();
+      invalidateAppPreviewTrailingFlushes(previewResyncGenerationRef);
       if (data.type === 'done') {
         notifyForFinalResponse(turnId || currentTurnIdRef.current);
         if (isMainTimelineView(viewStateRef.current)) {
@@ -432,6 +534,7 @@ export function handleAppSseEvent(
       // phases (post-tool waiting, fresh reasoning, and drafting) must preserve
       // the accumulated panes until their typed preview events update them.
       if (data.type === 'thinking' && !data.phase) {
+        invalidateAppPreviewTrailingFlushes(previewResyncGenerationRef);
         draftBufferRef.current = '';
         thoughtBufferRef.current = '';
         setAgentDraft({ text: '', totalLines: 0 });
@@ -503,10 +606,23 @@ export function handleAppSseEvent(
     noteAgentActivity({ running: true, clearSilence: true });
     draftBufferRef.current = applyDraftDeltaBuffer(draftBufferRef.current, data);
     const now = Date.now();
+    const trailingState = previewTrailingFlushState(previewResyncGenerationRef);
+    if (data.reset) {
+      cancelPanelTrailingFlush('draft');
+      trailingState.draftSnapshot = null;
+    }
+    trailingState.draftDeltaActive = true;
     if (data.reset || !draftThrottleRef.current || now - draftThrottleRef.current >= 100) {
+      cancelPanelTrailingFlush('draft');
       draftThrottleRef.current = now;
       const fullText = draftBufferRef.current;
-      setAgentDraft((previous) => buildAuthoritativeAgentPreviewState(fullText, previous));
+      const snapshot = trailingState.draftSnapshot;
+      trailingState.draftSnapshot = null;
+      setAgentDraft((previous) => buildAuthoritativeAgentPreviewState(fullText, previous, snapshot
+        ? { previewText: snapshot.text, totalLines: snapshot.totalLines }
+        : undefined));
+    } else {
+      scheduleTrailingPreviewFlush('draft', draftThrottleRef.current, draftBufferRef, setAgentDraft);
     }
     return;
   }
@@ -530,8 +646,13 @@ export function handleAppSseEvent(
     if (data.kind === 'plan') {
       setAgentPlan((prev) => resolveAgentPlanText(prev, text, mode));
     } else if (!draftExpandedRef.current) {
-      const fullText = draftBufferRef.current;
-      setAgentDraft((previous) => mergeAgentPreviewSnapshot(text, data.total_lines, fullText, previous));
+      const trailingState = previewTrailingFlushState(previewResyncGenerationRef);
+      if (trailingState.draftDeltaActive) {
+        trailingState.draftSnapshot = { text, totalLines: data.total_lines };
+      } else {
+        // Snapshot-only/legacy delivery still renders immediately.
+        setAgentDraft((previous) => mergeAgentPreviewSnapshot(text, data.total_lines, '', previous));
+      }
     }
     return;
   }
@@ -551,10 +672,23 @@ export function handleAppSseEvent(
     noteAgentActivity({ running: true, clearSilence: true });
     thoughtBufferRef.current = applyThoughtDeltaBuffer(thoughtBufferRef.current, data);
     const now = Date.now();
+    const trailingState = previewTrailingFlushState(previewResyncGenerationRef);
+    if (data.reset) {
+      cancelPanelTrailingFlush('thought');
+      trailingState.thoughtSnapshot = null;
+    }
+    trailingState.thoughtDeltaActive = true;
     if (data.reset || !thoughtThrottleRef.current || now - thoughtThrottleRef.current >= 100) {
+      cancelPanelTrailingFlush('thought');
       thoughtThrottleRef.current = now;
       const fullText = thoughtBufferRef.current;
-      setAgentThought((previous) => buildAuthoritativeAgentPreviewState(fullText, previous));
+      const snapshot = trailingState.thoughtSnapshot;
+      trailingState.thoughtSnapshot = null;
+      setAgentThought((previous) => buildAuthoritativeAgentPreviewState(fullText, previous, snapshot
+        ? { previewText: snapshot.text, totalLines: snapshot.totalLines }
+        : undefined));
+    } else {
+      scheduleTrailingPreviewFlush('thought', thoughtThrottleRef.current, thoughtBufferRef, setAgentThought);
     }
     return;
   }
@@ -574,8 +708,12 @@ export function handleAppSseEvent(
     noteAgentActivity({ running: true, clearSilence: true });
     const text = data.text || '';
     if (!thoughtExpandedRef.current) {
-      const fullText = thoughtBufferRef.current;
-      setAgentThought((previous) => mergeAgentPreviewSnapshot(text, data.total_lines, fullText, previous));
+      const trailingState = previewTrailingFlushState(previewResyncGenerationRef);
+      if (trailingState.thoughtDeltaActive) {
+        trailingState.thoughtSnapshot = { text, totalLines: data.total_lines };
+      } else {
+        setAgentThought((previous) => mergeAgentPreviewSnapshot(text, data.total_lines, '', previous));
+      }
     }
     return;
   }
@@ -584,18 +722,20 @@ export function handleAppSseEvent(
     if (!isCurrentChatEvent) return;
     applyModelState(data);
     const targetChatJid = currentChatJid;
+    const expectedSessionGeneration = getContextSessionGeneration(targetChatJid);
     getAgentContext(targetChatJid)
       .then((contextPayload) => {
         if (activeChatJidRef.current !== targetChatJid) return;
         const nextContextUsage = normalizeContextUsage(contextPayload);
-        if (hasRenderableContextUsage(nextContextUsage)) {
-          setContextUsage((prev) => {
-            const merged = mergeContextUsage(prev, nextContextUsage);
-            if (!hasRenderableContextUsage(merged) || haveSameContextUsage(prev, merged)) return prev;
-            persistContextUsage(targetChatJid, merged);
-            return merged;
+        setContextUsage((prev) => {
+          const merged = reconcileContextUsageForChat(targetChatJid, prev, nextContextUsage, {
+            authoritative: true,
+            expectedSessionGeneration,
           });
-        }
+          if (haveSameContextUsage(prev, merged)) return prev;
+          persistContextUsage(targetChatJid, merged);
+          return merged;
+        });
       })
       .catch(() => {
         if (activeChatJidRef.current !== targetChatJid) return;
@@ -636,10 +776,10 @@ export function handleAppSseEvent(
     if (!isCurrentChatEvent) return;
 
     const extensionContextUsage = resolveExtensionUiContextUsage(eventType, data);
-    if (hasRenderableContextUsage(extensionContextUsage)) {
+    if (extensionContextUsage) {
       setContextUsage((prev) => {
-        const merged = mergeContextUsage(prev, extensionContextUsage);
-        return !hasRenderableContextUsage(merged) || haveSameContextUsage(prev, merged) ? prev : merged;
+        const merged = reconcileContextUsageForChat(currentChatJid, prev, extensionContextUsage);
+        return haveSameContextUsage(prev, merged) ? prev : merged;
       });
     }
 
@@ -660,6 +800,7 @@ export function handleAppSseEvent(
   if (eventType === 'agent_response') {
     if (!isCurrentChatEvent) return;
     flushAuthoritativePreviews();
+    invalidateAppPreviewTrailingFlushes(previewResyncGenerationRef);
     setExtensionWorkingState({ message: null, indicator: null, visible: true });
     removeStalledPost();
     lastAgentResponseRef.current = {

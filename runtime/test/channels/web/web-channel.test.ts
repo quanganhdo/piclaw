@@ -4482,6 +4482,7 @@ test("processChat broadcasts context usage after deferred compact command materi
         return { status: "success", result: "should not run", attachments: [] };
       },
       getContextUsageForChat: async () => null,
+      getSessionGenerationForChat: () => "session-compact",
     },
   });
   const originalBroadcast = web.broadcastEvent.bind(web);
@@ -4495,7 +4496,12 @@ test("processChat broadcasts context usage after deferred compact command materi
 
   expect(runCount).toBe(0);
   expect(applyCalls).toEqual([{ chatJid: "web:default", type: "compact" }]);
-  expect(web.getContextUsage("web:default")).toEqual({ tokens: 222, contextWindow: 1000, percent: 22.2 });
+  expect(web.getContextUsage("web:default")).toEqual({
+    tokens: 222,
+    contextWindow: 1000,
+    percent: 22.2,
+    sessionGeneration: "session-compact",
+  });
   expect(broadcasts).toContainEqual(expect.objectContaining({
     event: "agent_status",
     payload: expect.objectContaining({
@@ -4548,6 +4554,7 @@ test("processChat replaces a null-token compact result with live pool usage", as
       }),
       runAgent: async () => ({ status: "success", result: "should not run", attachments: [] }),
       getContextUsageForChat: async () => ({ tokens: 21703, contextWindow: 200000, percent: 10.8515 }),
+      getSessionGenerationForChat: () => "session-compact-live",
     },
   });
   const originalBroadcast = web.broadcastEvent.bind(web);
@@ -4559,7 +4566,12 @@ test("processChat replaces a null-token compact result with live pool usage", as
   web.enqueueQueuedFollowupItem("web:default", 0, "/compact now");
   await web.processChat("web:default", "default");
 
-  expect(web.getContextUsage("web:default")).toEqual({ tokens: 21703, contextWindow: 200000, percent: 10.8515 });
+  expect(web.getContextUsage("web:default")).toEqual({
+    tokens: 21703,
+    contextWindow: 200000,
+    percent: 10.8515,
+    sessionGeneration: "session-compact-live",
+  });
   expect(broadcasts).toContainEqual(expect.objectContaining({
     event: "agent_status",
     payload: expect.objectContaining({

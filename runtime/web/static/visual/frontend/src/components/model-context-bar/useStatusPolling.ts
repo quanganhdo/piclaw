@@ -173,6 +173,53 @@ export function useStatusPolling(): UseStatusPollingResult {
     return () => window.removeEventListener("piclaw:sse-connected", onConnect);
   }, [fetchStatus, fetchContext]);
 
+  useEffect(() => {
+    const onModelStateChanged = (event: Event) => {
+      const detail = (event as CustomEvent<{ chatJid?: string; payload?: ModelInfo }>).detail;
+      if (detail?.chatJid && detail.chatJid !== getChatJid()) return;
+      const payload = detail?.payload;
+      if (payload?.current) {
+        currentModel.value = payload.current;
+        agentStatus.value = {
+          ...(agentStatus.value ?? { status: "idle" }),
+          data: { ...agentStatus.value?.data, model: payload.current },
+        };
+        const currentOpt = payload.model_options?.find((option) => {
+          const id = typeof option.id === "string" ? option.id : "";
+          const key = id.includes("/") || !option.provider ? id : `${option.provider}/${id}`;
+          return key === payload.current || option.label === payload.current;
+        });
+        if (typeof currentOpt?.context_window === "number") {
+          modelContextWindow.value = currentOpt.context_window;
+          const tokens = agentContext.value?.tokens ?? null;
+          agentContext.value = {
+            ...(agentContext.value ?? { tokens: null, percent: null }),
+            contextWindow: currentOpt.context_window,
+            percent: tokens === null ? null : (tokens / currentOpt.context_window) * 100,
+          };
+        }
+      }
+      if (payload?.thinking_level_label || payload?.thinking_level) {
+        currentThinkingLevel.value = payload.thinking_level_label ?? payload.thinking_level!;
+        if (agentStatus.value) {
+          agentStatus.value = {
+            ...agentStatus.value,
+            data: {
+              ...agentStatus.value.data,
+              thinking_level: payload.thinking_level_label ?? payload.thinking_level ?? undefined,
+            },
+          };
+        }
+      }
+      if (payload?.provider_usage) providerUsage.value = payload.provider_usage;
+      statusVersion.current += 1;
+      statusAbort.current?.abort();
+      setTimeout(() => void fetchStatus(), 0);
+    };
+    window.addEventListener("piclaw:model-state-changed", onModelStateChanged);
+    return () => window.removeEventListener("piclaw:model-state-changed", onModelStateChanged);
+  }, [fetchStatus]);
+
   // Listen for agent_status events — extract context_usage from done events
   useEffect(() => {
     const onStatus = (e: Event) => {

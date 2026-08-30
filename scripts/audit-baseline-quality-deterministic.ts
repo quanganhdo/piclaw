@@ -189,6 +189,7 @@ const groupDefinitions: GroupDefinition[] = [
         "agent-status.test.ts",
         "chat-isolation.test.ts",
         "chat-run-control.test.ts",
+        "channel-state-context-generation.test.ts",
         "followup-placeholders.test.ts",
         "interaction-broadcaster.test.ts",
         "message-write-flows.test.ts",
@@ -224,6 +225,7 @@ const groupDefinitions: GroupDefinition[] = [
         "web-response-service.test.ts",
         "web-sse-client.test.ts",
         "agent-events.test.ts",
+        "display-update-coalescer.test.ts",
         "tool-status-hints.test.ts",
         "agent-command-status-title.test.ts",
         "session-recordings-handler.test.ts",
@@ -394,6 +396,20 @@ const groupDefinitions: GroupDefinition[] = [
     match: (relativePath) => relativePath.startsWith("service-effects/"),
   },
   {
+    id: "web-ui-model-catalogue",
+    label: "web ui model catalogue",
+    notes: "Model catalogue projection/preferences plus classic and visual picker/settings component contracts.",
+    match: (relativePath) =>
+      relativePath.startsWith("web/") && basenameIsOneOf(relativePath, [
+        "model-catalogue-preferences.test.ts",
+        "model-catalogue.test.ts",
+        "model-picker-components.test.ts",
+        "model-settings-catalogue.test.ts",
+        "model-settings-components.test.ts",
+        "visual-model-catalogue.test.ts",
+      ]),
+  },
+  {
     id: "web-ui-interaction-and-state",
     label: "web ui interaction and state",
     notes: "Compose, queue state, session switching, tabs, app resume, routing, and interaction-heavy UI flows.",
@@ -543,6 +559,7 @@ const groupDefinitions: GroupDefinition[] = [
           "thinking-endpoint.test.ts",
           "timeline-render-boundary.test.ts",
           "visual-telemetry.test.ts",
+          "visual-agent-status-utils.test.ts",
         ])
         || isAppRenderingPaneTest(relativePath)
       ),

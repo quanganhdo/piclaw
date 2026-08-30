@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "preact/hooks";
+import { useRef } from "preact/hooks";
 import { useComputed } from "@preact/signals";
 import { useDismissableLayer } from "../hooks/useDismissableLayer";
 import { useStatusPolling } from "./model-context-bar/useStatusPolling";
@@ -22,7 +22,7 @@ export function ModelContextBar() {
 
   const {
     showPicker, showThinkingPicker, models, thinkingLevels,
-    handleBadgeClick, handleSelectModel, handleThinkingClick, handleSelectThinking,
+    handleBadgeClick, handleSelectModel, handleTogglePin, handleThinkingClick, handleSelectThinking,
   } = useModelPicker();
 
   const contextTokens = useComputed(() => agentContext.value?.tokens ?? 0);
@@ -40,7 +40,12 @@ export function ModelContextBar() {
 
   const pickerOpen = showPicker.value || showThinkingPicker.value;
   const pickerWrapRef = useRef<HTMLSpanElement>(null);
+  const modelBadgeRef = useRef<HTMLSpanElement>(null);
   const dismissPickers = () => { showPicker.value = false; showThinkingPicker.value = false; };
+  const closeModelPicker = () => {
+    showPicker.value = false;
+    requestAnimationFrame(() => modelBadgeRef.current?.focus());
+  };
   useDismissableLayer({ ref: pickerWrapRef, open: pickerOpen, onDismiss: dismissPickers, outsideEvent: "click" });
 
   return (
@@ -65,13 +70,25 @@ export function ModelContextBar() {
         <ModelPicker
           models={models.value ?? []}
           activeModel={activeModel}
+          contextTokens={agentContext.value?.tokens ?? null}
           onSelectModel={(id) => handleSelectModel(id, (m) => { currentModel.value = m; })}
+          onTogglePin={handleTogglePin}
+          onClose={closeModelPicker}
+          onCompact={() => {
+            showPicker.value = false;
+            void handleCompact(new Event("click"), fetchContext);
+          }}
+          onOpenSettings={() => {
+            showPicker.value = false;
+            window.dispatchEvent(new CustomEvent("piclaw:open-settings", { detail: { section: "models" } }));
+          }}
         />
       )}
       {isCompacting.value && (
         <span className="compaction-badge">⟳ Compacting... {compactElapsed.value}s</span>
       )}
       <span
+        ref={modelBadgeRef}
         className={`model-badge${!modelName ? " model-badge--empty" : ""}`}
         role="button"
         tabIndex={0}
@@ -110,6 +127,7 @@ export function ModelContextBar() {
         </span>
       )}
       <ContextRing
+        percent={contextPercent.value}
         tokens={contextTokens.value}
         contextWindow={contextWindow.value}
         onClick={(e) => handleCompact(e, fetchContext)}

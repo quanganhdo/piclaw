@@ -63,6 +63,8 @@ export interface NewMessage {
 export interface ScheduledTask {
   /** Unique task identifier. */
   id: string;
+  /** Monotonic configuration revision used to fence durable occurrences. */
+  revision: number;
   /** JID of the chat where results are delivered. */
   chat_jid: string;
   /** The prompt to send to the agent when the task fires. */

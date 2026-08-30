@@ -22,14 +22,66 @@ describe("process chat finalization runtime", () => {
       const statuses: Array<Record<string, unknown>> = [];
       const calls: string[] = [];
       const channel: any = {
-        agentPool: { getContextUsageForChat: async () => ({ tokens: 10, contextWindow: 100, percent: 10 }) },
+        agentPool: {
+          getContextUsageForChat: async () => ({ tokens: 10, contextWindow: 100, percent: 10, sessionGeneration: "session-current" }),
+          getSessionGenerationForChat: () => "session-current",
+        },
         consumePendingSteering: () => [], saveState: () => calls.push("save"), setContextUsage: () => calls.push("context"),
         resumeChat: () => calls.push("resume"), peekQueuedFollowupItem: () => { calls.push("peek-queue"); return null; }, consumeQueuedFollowupItem: () => { calls.push("consume-queue"); return null; },
         prependQueuedFollowupItem() {}, replaceQueuedFollowupItem: () => false, storeMessage() { return null; }, broadcastEvent() {}, sendMessage: async () => {}, updateAgentStatus() {}, retryFailedOnModelSwitch: () => false,
       };
       await finalizeSuccessfulProcessChatRun({ channel, emitter: emitter(statuses) as any, chatJid, agentId: "default", turnId: "turn-1", threadId: 1, prevCursor: getChatCursor(chatJid), recovery: null });
       expect(calls).toEqual(["save", "context", "peek-queue"]);
-      expect(statuses).toEqual([expect.objectContaining({ type: "done", context_usage: { tokens: 10, contextWindow: 100, percent: 10 } })]);
+      expect(statuses).toEqual([expect.objectContaining({
+        type: "done",
+        context_usage: { tokens: 10, contextWindow: 100, percent: 10, sessionGeneration: "session-current" },
+      })]);
+    });
+  });
+
+  test("drops stale usage snapshots after the active session generation changes", async () => {
+    await withTempWorkspaceEnv("process-chat-finalize-stale-generation-", {}, async () => {
+      initDatabase();
+      const chatJid = "web:test";
+      storeChatMetadata(chatJid, "2026-01-01T00:00:00.000Z", "Web");
+      setChatCursor(chatJid, "2026-01-01T00:00:00.000Z");
+      const statuses: Array<Record<string, unknown>> = [];
+      const writes: unknown[] = [];
+      let resolveUsage!: (value: any) => void;
+      const usagePromise = new Promise((resolve) => { resolveUsage = resolve; });
+      let currentGeneration = "session-old";
+      const channel: any = {
+        agentPool: {
+          getContextUsageForChat: () => usagePromise,
+          getSessionGenerationForChat: () => currentGeneration,
+        },
+        consumePendingSteering: () => [], saveState() {}, setContextUsage: (_chatJid: string, usage: unknown) => writes.push(usage),
+        resumeChat() {}, peekQueuedFollowupItem: () => null, consumeQueuedFollowupItem: () => null,
+        prependQueuedFollowupItem() {}, replaceQueuedFollowupItem: () => false, storeMessage() { return null; }, broadcastEvent() {}, sendMessage: async () => {}, updateAgentStatus() {}, retryFailedOnModelSwitch: () => false,
+      };
+
+      const pending = finalizeSuccessfulProcessChatRun({ channel, emitter: emitter(statuses) as any, chatJid, agentId: "default", turnId: "turn-old", threadId: 1, prevCursor: getChatCursor(chatJid), recovery: null });
+      currentGeneration = "session-new";
+      resolveUsage({ tokens: 95_000, contextWindow: 100_000, percent: 95, sessionGeneration: "session-old" });
+      await pending;
+
+      expect(writes).toEqual([{
+        tokens: null,
+        contextWindow: null,
+        percent: null,
+        sessionGeneration: "session-new",
+        reset: true,
+      }]);
+      expect(statuses[0]).toMatchObject({
+        context_reset: true,
+        context_usage: {
+          tokens: null,
+          contextWindow: null,
+          percent: null,
+          sessionGeneration: "session-new",
+        },
+        sessionGeneration: "session-new",
+      });
     });
   });
 

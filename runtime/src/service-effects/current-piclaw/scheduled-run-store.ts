@@ -278,12 +278,12 @@ class CurrentPiclawScheduledRunStore implements ScheduledRunStore {
       for (const candidate of candidates) {
         if (leases.length >= request.limit) break;
         if (candidate.kind === "new") {
-          const runId = deriveScheduledRunId(candidate.taskId, candidate.scheduledFor);
+          const head = this.readHead(candidate.taskId);
+          if (!head || head.status !== "active" || head.next_run_at !== candidate.scheduledFor) continue;
+          const runId = deriveScheduledRunId(candidate.taskId, head.current_revision, candidate.scheduledFor);
           const existing = this.readRunRow(runId);
           const tombstone = this.readTombstone(runId);
           if (existing || tombstone) continue;
-          const head = this.readHead(candidate.taskId);
-          if (!head || head.status !== "active" || head.next_run_at !== candidate.scheduledFor) continue;
           const snapshot = this.readSnapshot(candidate.taskId, head.current_revision);
           const expires = addCanonicalDuration(request.now, request.leaseDurationMs);
           if (!expires) throw new AbortMutation(errorOf("invalid_request"));
@@ -602,7 +602,7 @@ class CurrentPiclawScheduledRunStore implements ScheduledRunStore {
   }
   private readRunRow(runId: string): RunRow | null {
     const row = this.database.query(`SELECT * FROM ${RUNS} WHERE run_id=?`).get(runId) as RunRow | undefined;
-    if (row && !validateScheduledRunId(row.run_id, row.task_id, row.scheduled_for)) throw new CorruptState();
+    if (row && !validateScheduledRunId(row.run_id, row.task_id, row.task_revision, row.scheduled_for)) throw new CorruptState();
     return row ?? null;
   }
   private readSnapshot(taskId: string, revision: number): ScheduledTaskSnapshot {
@@ -632,7 +632,7 @@ class CurrentPiclawScheduledRunStore implements ScheduledRunStore {
   }
 
   private recordFromRun(run: RunRow): ScheduledRunRecord {
-    if (!validateScheduledRunId(run.run_id, run.task_id, run.scheduled_for)) throw new CorruptState();
+    if (!validateScheduledRunId(run.run_id, run.task_id, run.task_revision, run.scheduled_for)) throw new CorruptState();
     const links = this.database.query(`SELECT ordinal,outbox_id FROM ${LINKS} WHERE run_id=? ORDER BY ordinal`).all(run.run_id) as Array<{ ordinal: unknown; outbox_id: unknown }>;
     const outboxIds: string[] = [];
     for (const [index, link] of links.entries()) {

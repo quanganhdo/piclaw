@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { createStreamingEventHandler } from "../../../../src/channels/web/sse/agent-events.js";
 
-function makeHandler(formatThinkingLevel?: (level: string) => string, includeThoughtFull = false) {
+function makeHandler(
+  formatThinkingLevel?: (level: string) => string,
+  includeThoughtFull = false,
+  displayUpdateIntervalMs = 0,
+  includeDraftFull = false,
+) {
   const statuses: Record<string, unknown>[] = [];
   const emitter = {
     status: vi.fn((payload: Record<string, unknown>) => statuses.push(payload)),
@@ -24,6 +29,8 @@ function makeHandler(formatThinkingLevel?: (level: string) => string, includeTho
     turnId: "turn-1",
     formatThinkingLevel,
     includeThoughtFull: () => includeThoughtFull,
+    includeDraftFull: () => includeDraftFull,
+    displayUpdateIntervalMs,
   });
   return { handler, statuses, emitter };
 }
@@ -112,6 +119,154 @@ describe("web SSE tool execution events", () => {
     expect(thoughtDeltaPayloads.filter((payload) => payload.reset === true)).toHaveLength(1);
     expect(thoughtDeltaPayloads.map((payload) => payload.delta).join(""))
       .toBe("before tool\n\nafter tool");
+  });
+});
+
+describe("web SSE display update coalescing", () => {
+  it("coalesces burst Draft snapshots and ordered deltas to the configured display rate", async () => {
+    const { emitter } = makeHandler(undefined, false, 25);
+    const includeDraftFull = vi.fn(() => true);
+    const coalescedEmitter = {
+      ...emitter,
+      draft: vi.fn(),
+      draftDelta: vi.fn(),
+    };
+    const burstHandler = createStreamingEventHandler({
+      emitter: coalescedEmitter,
+      agentId: "agent-1",
+      threadId: "thread-1",
+      turnId: "turn-1",
+      includeDraftFull,
+      displayUpdateIntervalMs: 25,
+    });
+
+    burstHandler({ type: "message_update", assistantMessageEvent: { type: "text_start" } } as any);
+    burstHandler({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "a" } } as any);
+    burstHandler({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "b" } } as any);
+    burstHandler({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "c" } } as any);
+
+    expect(coalescedEmitter.draft).not.toHaveBeenCalled();
+    expect(coalescedEmitter.draftDelta).toHaveBeenCalledTimes(1);
+    expect(coalescedEmitter.draftDelta).toHaveBeenLastCalledWith(expect.objectContaining({ reset: true, delta: "" }));
+
+    await new Promise((resolve) => setTimeout(resolve, 40));
+
+    expect(coalescedEmitter.draft).toHaveBeenCalledTimes(1);
+    expect(coalescedEmitter.draft).toHaveBeenLastCalledWith(expect.objectContaining({ text: "abc" }));
+    expect(coalescedEmitter.draftDelta).toHaveBeenCalledTimes(2);
+    expect(coalescedEmitter.draftDelta).toHaveBeenLastCalledWith(expect.objectContaining({ delta: "abc" }));
+    const resetOrder = coalescedEmitter.draftDelta.mock.invocationCallOrder[0];
+    const snapshotOrder = coalescedEmitter.draft.mock.invocationCallOrder[0];
+    const deltaOrder = coalescedEmitter.draftDelta.mock.invocationCallOrder[1];
+    expect(resetOrder).toBeLessThan(snapshotOrder);
+    expect(snapshotOrder).toBeLessThan(deltaOrder);
+  });
+
+  it("bounds a dense mixed display burst without losing final Draft or Thought text", async () => {
+    const { handler, emitter, statuses } = makeHandler(undefined, true, 20, true);
+
+    handler({ type: "message_update", assistantMessageEvent: { type: "thinking_start" } } as any);
+    for (let index = 0; index < 200; index += 1) {
+      handler({ type: "message_update", assistantMessageEvent: { type: "thinking_delta", delta: `t${index},` } } as any);
+    }
+    handler({ type: "message_update", assistantMessageEvent: { type: "thinking_end", content: "" } } as any);
+    handler({ type: "message_update", assistantMessageEvent: { type: "text_start" } } as any);
+    for (let index = 0; index < 200; index += 1) {
+      handler({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: `d${index},` } } as any);
+    }
+    handler({ type: "message_end", message: { role: "assistant", stopReason: "stop" } } as any);
+
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    const thoughtDeltaText = emitter.thoughtDelta.mock.calls.map(([payload]) => payload.delta || "").join("");
+    const draftDeltaText = emitter.draftDelta.mock.calls.map(([payload]) => payload.delta || "").join("");
+    expect(thoughtDeltaText).toBe(Array.from({ length: 200 }, (_, index) => `t${index},`).join(""));
+    expect(draftDeltaText).toBe(Array.from({ length: 200 }, (_, index) => `d${index},`).join(""));
+    expect(emitter.thought.mock.calls.length).toBeLessThan(10);
+    expect(emitter.thoughtDelta.mock.calls.length).toBeLessThan(10);
+    expect(emitter.draft.mock.calls.length).toBeLessThan(10);
+    expect(emitter.draftDelta.mock.calls.length).toBeLessThan(10);
+    expect(statuses.filter((payload) => payload.type === "thinking")).toHaveLength(2);
+  });
+
+  it("flushes the latest coalesced tool output before the tool completion lifecycle status", () => {
+    const { handler, statuses } = makeHandler(undefined, false, 1000);
+
+    handler({ type: "tool_execution_start", toolCallId: "tool-1", toolName: "bash", args: { command: "run" } } as any);
+    handler({
+      type: "tool_execution_update",
+      toolCallId: "tool-1",
+      toolName: "bash",
+      args: { command: "run" },
+      partialResult: { content: [{ type: "text", text: "first" }] },
+    } as any);
+    handler({
+      type: "tool_execution_update",
+      toolCallId: "tool-1",
+      toolName: "bash",
+      args: { command: "run" },
+      partialResult: { content: [{ type: "text", text: "latest" }] },
+    } as any);
+
+    expect(statuses).toHaveLength(1);
+
+    handler({ type: "tool_execution_end", toolCallId: "tool-1", toolName: "bash", isError: false } as any);
+
+    expect(statuses).toHaveLength(3);
+    expect(statuses[1]).toMatchObject({ type: "tool_status", output_preview: "latest" });
+    expect(statuses[2]).toMatchObject({ type: "waiting", last_completed_tool: expect.objectContaining({ tool_call_id: "tool-1" }) });
+  });
+});
+
+describe("web SSE MCP tool identity", () => {
+  it("includes the MCP server, selected tool, operation, and readable title", () => {
+    const { handler, statuses } = makeHandler();
+
+    handler({
+      type: "tool_execution_start",
+      toolCallId: "tool-mcp-1",
+      toolName: "mcp",
+      args: { server: "memento", tool: "memory_search", args: { query: "draft metadata" } },
+    } as any);
+
+    expect(statuses[0]).toMatchObject({
+      type: "tool_call",
+      title: "mcp: memento → memory_search",
+      tool_name: "mcp",
+      mcp_operation: "call",
+      mcp_server: "memento",
+      mcp_tool: "memory_search",
+      mcp_target: "memory_search",
+    });
+    expect(statuses[0].active_tools).toContainEqual(expect.objectContaining({
+      title: "mcp: memento → memory_search",
+      mcp_server: "memento",
+      mcp_tool: "memory_search",
+    }));
+
+    handler({
+      type: "tool_execution_update",
+      toolCallId: "tool-mcp-1",
+      toolName: "mcp",
+      partialResult: { content: [{ type: "text", text: "searching" }] },
+    } as any);
+    handler({ type: "tool_execution_end", toolCallId: "tool-mcp-1", toolName: "mcp", isError: false } as any);
+
+    expect(statuses[1]).toMatchObject({
+      type: "tool_status",
+      title: "mcp: memento → memory_search",
+      mcp_server: "memento",
+      mcp_tool: "memory_search",
+      output_preview: "searching",
+    });
+    expect(statuses[2]).toMatchObject({
+      type: "waiting",
+      last_completed_tool: expect.objectContaining({
+        title: "mcp: memento → memory_search",
+        mcp_server: "memento",
+        mcp_tool: "memory_search",
+      }),
+    });
   });
 });
 

@@ -83,6 +83,20 @@ export async function buildPiclawStateSnapshot(channel: WebChannelLike): Promise
     if (!chatJid) continue;
     const runtimeContext = await channel.agentPool.getContextUsageForChat(chatJid).catch(() => null);
     const storedContext = channel.getContextUsage(chatJid);
+    const currentGeneration = (typeof channel.agentPool.getSessionGenerationForChat === "function"
+      ? channel.agentPool.getSessionGenerationForChat(chatJid)
+      : null)
+      ?? (typeof record.session_id === "string" ? record.session_id : null)
+      ?? (typeof runtimeContext?.sessionGeneration === "string" ? runtimeContext.sessionGeneration : null);
+    const runtimeGeneration = typeof runtimeContext?.sessionGeneration === "string" ? runtimeContext.sessionGeneration : null;
+    const storedGeneration = typeof storedContext?.sessionGeneration === "string" ? storedContext.sessionGeneration : null;
+    const context = runtimeContext && (!runtimeGeneration || !currentGeneration || runtimeGeneration === currentGeneration)
+      ? { ...runtimeContext, ...(currentGeneration ? { sessionGeneration: currentGeneration } : {}) }
+      : storedContext && (!currentGeneration || storedGeneration === currentGeneration)
+        ? storedContext
+        : currentGeneration
+          ? { tokens: null, contextWindow: null, percent: null, sessionGeneration: currentGeneration }
+          : null;
     chats.push({
       chat_jid: chatJid,
       agent_name: typeof record.agent_name === "string" ? record.agent_name : null,
@@ -95,7 +109,7 @@ export async function buildPiclawStateSnapshot(channel: WebChannelLike): Promise
       has_side_session: Boolean(record.has_side_session),
       queued_followups: channel.getQueuedFollowupCount(chatJid),
       status: channel.getAgentStatus(chatJid),
-      context: runtimeContext ? { ...runtimeContext } : storedContext,
+      context: context ? { ...context } : null,
     });
   }
 

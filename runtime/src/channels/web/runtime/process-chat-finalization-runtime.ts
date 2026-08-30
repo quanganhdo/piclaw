@@ -50,17 +50,57 @@ export async function finalizeSuccessfulProcessChatRun(options: ProcessChatFinal
 
   channel.saveState();
   const contextUsage = await channel.agentPool.getContextUsageForChat(chatJid);
-  channel.setContextUsage(chatJid, contextUsage
-    ? { tokens: contextUsage.tokens, contextWindow: contextUsage.contextWindow, percent: contextUsage.percent }
-    : null);
+  const activeSessionGeneration = typeof channel.agentPool.getSessionGenerationForChat === "function"
+    ? channel.agentPool.getSessionGenerationForChat(chatJid)
+    : null;
+  const usageSessionGeneration = typeof contextUsage?.sessionGeneration === "string"
+    ? contextUsage.sessionGeneration.trim()
+    : "";
+  const staleUsage = Boolean(
+    usageSessionGeneration
+      && activeSessionGeneration
+      && usageSessionGeneration !== activeSessionGeneration,
+  );
+  const sessionGeneration = activeSessionGeneration || usageSessionGeneration || null;
+  const storedUsage = (channel as typeof channel & { getContextUsage?: (jid: string) => Record<string, unknown> | null })
+    .getContextUsage?.(chatJid) ?? null;
+  const storedGeneration = typeof storedUsage?.sessionGeneration === "string"
+    ? storedUsage.sessionGeneration.trim()
+    : "";
+  const generationChanged = Boolean(sessionGeneration && storedGeneration && storedGeneration !== sessionGeneration);
+  const contextReset = Boolean(sessionGeneration && (staleUsage || generationChanged));
+  const boundaryUsage = sessionGeneration
+    ? { tokens: null, contextWindow: null, percent: null, sessionGeneration }
+    : null;
+
+  if (contextReset && boundaryUsage) {
+    channel.setContextUsage(chatJid, { ...boundaryUsage, reset: true });
+  }
+  if (!staleUsage && sessionGeneration) {
+    channel.setContextUsage(chatJid, {
+      tokens: contextUsage?.tokens ?? null,
+      contextWindow: contextUsage?.contextWindow ?? null,
+      percent: contextUsage?.percent ?? null,
+      sessionGeneration,
+    });
+  }
   options.emitter.status({
     thread_id: options.threadId,
     agent_id: options.agentId,
     type: "done",
     turn_id: options.turnId,
-    context_usage: contextUsage
-      ? { tokens: contextUsage.tokens, contextWindow: contextUsage.contextWindow, percent: contextUsage.percent }
-      : null,
+    sessionGeneration,
+    ...(contextReset ? { context_reset: true } : {}),
+    context_usage: staleUsage
+      ? boundaryUsage
+      : sessionGeneration
+        ? {
+          tokens: contextUsage?.tokens ?? null,
+          contextWindow: contextUsage?.contextWindow ?? null,
+          percent: contextUsage?.percent ?? null,
+          sessionGeneration,
+        }
+        : null,
     recovery: options.recovery,
   });
 

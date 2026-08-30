@@ -8,11 +8,11 @@ import {
   updateUserProfileFromEvent,
 } from './app-auth-bootstrap.js';
 import {
-  hasRenderableContextUsage,
+  getContextSessionGeneration,
   haveSameContextUsage,
-  mergeContextUsage,
   normalizeContextUsage,
   persistContextUsage,
+  reconcileContextUsageForChat,
   restoreContextUsage,
 } from './app-status-refresh-orchestration.js';
 import { refreshModelAndQueueState as refreshModelAndQueueStateBundle } from './app-status-refresh-orchestration.js';
@@ -227,6 +227,7 @@ export function useChatRefreshLifecycle(options: UseChatRefreshLifecycleOptions)
         }
 
         const targetChatJid = currentChatJid;
+        const expectedSessionGeneration = getContextSessionGeneration(targetChatJid);
         try {
           const [modelPayload, contextPayloadRaw] = await Promise.all([
             (async () => {
@@ -251,14 +252,15 @@ export function useChatRefreshLifecycle(options: UseChatRefreshLifecycleOptions)
           applyModelState(modelPayload);
 
           const contextPayload = normalizeContextUsage(contextPayloadRaw);
-          if (hasRenderableContextUsage(contextPayload)) {
-            setContextUsage((prev) => {
-              const merged = mergeContextUsage(prev, contextPayload);
-              if (!hasRenderableContextUsage(merged) || haveSameContextUsage(prev, merged)) return prev;
-              persistContextUsage(targetChatJid, merged);
-              return merged;
+          setContextUsage((prev) => {
+            const merged = reconcileContextUsageForChat(targetChatJid, prev, contextPayload, {
+              authoritative: true,
+              expectedSessionGeneration,
             });
-          }
+            if (haveSameContextUsage(prev, merged)) return prev;
+            persistContextUsage(targetChatJid, merged);
+            return merged;
+          });
         } catch {
           if (activeChatJidRef.current && activeChatJidRef.current !== targetChatJid) return null;
           applyModelState(null);

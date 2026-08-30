@@ -34,6 +34,8 @@ import {
 import { VncRemoteDisplayProtocol } from './remote-display-vnc.js';
 
 export const VNC_TAB_PREFIX = 'piclaw://vnc';
+export const DEFAULT_DIRECT_VNC_TARGET = Object.freeze({ host: 'localhost', port: '5901' });
+export const VNC_DIRECT_TARGET_STORAGE_KEY = 'piclaw:vnc-direct-target';
 export const MAX_VNC_FRAMEBUFFER_DIMENSION = 8192;
 export const MAX_VNC_FRAMEBUFFER_PIXELS = 16 * 1024 * 1024;
 export const MAX_VNC_CURSOR_DIMENSION = 256;
@@ -73,13 +75,27 @@ interface StorageLike {
 
 const VNC_POPOUT_SECRET_PREFIX = 'piclaw:vnc-popout:';
 const VNC_POPOUT_SECRET_TTL_MS = 60_000;
+let vncPagePassword: string | null = null;
 
-function getVncPopoutStorage(runtime = globalThis): StorageLike | null {
+function getVncLocalStorage(runtime = globalThis): StorageLike | null {
     try {
         return runtime?.localStorage ?? null;
     } catch {
         return null;
     }
+}
+
+export function getVncPagePassword(): string | null {
+    return vncPagePassword;
+}
+
+export function clearVncPagePassword(): void {
+    vncPagePassword = null;
+}
+
+export function rememberVncPagePassword(password?: string | null): string | null {
+    vncPagePassword = normalizeVncPassword(password);
+    return vncPagePassword;
 }
 
 function generateVncPopoutSecretToken(runtime = globalThis): string {
@@ -118,7 +134,7 @@ function sweepExpiredVncPopoutSecrets(storage: StorageLike | null, nowMs = Date.
 export function stashVncPopoutPassword(password?: string | null, runtime = globalThis, nowMs = Date.now()): string | null {
     const normalized = normalizeVncPassword(password);
     if (normalized === null) return null;
-    const storage = getVncPopoutStorage(runtime);
+    const storage = getVncLocalStorage(runtime);
     if (!storage) return null;
     sweepExpiredVncPopoutSecrets(storage, nowMs);
     const token = generateVncPopoutSecretToken(runtime);
@@ -136,7 +152,7 @@ export function stashVncPopoutPassword(password?: string | null, runtime = globa
 export function consumeVncPopoutPassword(token?: string | null, runtime = globalThis, nowMs = Date.now()): string | null {
     const normalizedToken = String(token || '').trim();
     if (!normalizedToken) return null;
-    const storage = getVncPopoutStorage(runtime);
+    const storage = getVncLocalStorage(runtime);
     if (!storage) return null;
     sweepExpiredVncPopoutSecrets(storage, nowMs);
     const key = `${VNC_POPOUT_SECRET_PREFIX}${normalizedToken}`;
@@ -223,15 +239,21 @@ function buildVncWebSocketUrl(targetId, handoffToken = null) {
 
 export function normalizeDirectVncHost(host) {
     const rawHost = String(host || '').trim();
-    return rawHost || 'localhost';
+    return rawHost || DEFAULT_DIRECT_VNC_TARGET.host;
+}
+
+function normalizeDirectVncTarget(host, port): { host: string; port: string } | null {
+    const normalizedHost = normalizeDirectVncHost(host);
+    const normalizedPort = Number(String(port ?? '').trim());
+    if (!Number.isInteger(normalizedPort) || normalizedPort <= 0 || normalizedPort > 65535) return null;
+    return { host: normalizedHost, port: String(normalizedPort) };
 }
 
 export function buildDirectVncTargetReference(host, port) {
-    const rawHost = normalizeDirectVncHost(host);
-    const normalizedPort = Math.floor(Number(port || 0));
-    if (!Number.isFinite(normalizedPort) || normalizedPort <= 0 || normalizedPort > 65535) return null;
-    const normalizedHost = rawHost.includes(':') && !rawHost.startsWith('[') ? `[${rawHost}]` : rawHost;
-    return `${normalizedHost}:${normalizedPort}`;
+    const target = normalizeDirectVncTarget(host, port);
+    if (!target) return null;
+    const normalizedHost = target.host.includes(':') && !target.host.startsWith('[') ? `[${target.host}]` : target.host;
+    return `${normalizedHost}:${target.port}`;
 }
 
 function parseDirectVncTargetReference(value) {
@@ -247,6 +269,46 @@ function parseDirectVncTargetReference(value) {
     return {
         host: text.slice(0, lastColon),
         port: text.slice(lastColon + 1),
+    };
+}
+
+export function loadVncDirectTarget(runtime = globalThis): { host: string; port: string } {
+    const fallback = { ...DEFAULT_DIRECT_VNC_TARGET };
+    const storage = getVncLocalStorage(runtime);
+    if (!storage) return fallback;
+    try {
+        const raw = storage.getItem(VNC_DIRECT_TARGET_STORAGE_KEY);
+        if (!raw) return fallback;
+        const parsed = JSON.parse(raw);
+        return normalizeDirectVncTarget(parsed?.host, parsed?.port) ?? fallback;
+    } catch {
+        return fallback;
+    }
+}
+
+export function persistVncDirectTarget(host, port, runtime = globalThis): boolean {
+    const target = normalizeDirectVncTarget(host, port);
+    if (!target) return false;
+    const storage = getVncLocalStorage(runtime);
+    if (!storage) return false;
+    try {
+        storage.setItem(VNC_DIRECT_TARGET_STORAGE_KEY, JSON.stringify(target));
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+/** A validated form submission counts as selected before the asynchronous socket attempt starts. */
+export function prepareDirectVncSelection(host, port, password?: string | null, runtime = globalThis): { targetRef: string; password: string | null } | null {
+    const target = normalizeDirectVncTarget(host, port);
+    if (!target) return null;
+    const targetRef = buildDirectVncTargetReference(target.host, target.port);
+    if (!targetRef) return null;
+    persistVncDirectTarget(target.host, target.port, runtime);
+    return {
+        targetRef,
+        password: rememberVncPagePassword(password),
     };
 }
 
@@ -345,7 +407,7 @@ class VncPaneInstance implements PaneInstance {
     private pressedKeysyms = new Map();
     private passwordInputEl = null;
     private clipboardInputEl = null;
-    private authPassword = null;
+    private authPassword = getVncPagePassword();
     private directHostInputEl = null;
     private directPortInputEl = null;
     private directPasswordInputEl = null;
@@ -365,7 +427,7 @@ class VncPaneInstance implements PaneInstance {
         const passwordToken = consumePanePopoutTransferToken('vnc_secret');
         const transferredPassword = consumeVncPopoutPassword(passwordToken);
         if (transferredPassword !== null) {
-            this.authPassword = transferredPassword;
+            this.authPassword = rememberVncPagePassword(transferredPassword);
         }
 
         this.root = document.createElement('div');
@@ -511,6 +573,7 @@ class VncPaneInstance implements PaneInstance {
             directConnectEnabled,
             targets,
         });
+        const directTarget = loadVncDirectTarget();
         this.bodyEl.innerHTML = `
             <div style="width:100%;height:100%;min-height:0;display:grid;align-content:start;justify-items:center;gap:16px;overflow:auto;padding:24px;box-sizing:border-box;">
                 ${directConnectEnabled ? `
@@ -522,11 +585,11 @@ class VncPaneInstance implements PaneInstance {
                         <div style="display:grid;gap:10px;align-items:end;">
                             <label style="display:grid;gap:6px;min-width:0;">
                                 <span style="font-size:12px;color:var(--text-secondary);">Server</span>
-                                <input type="text" data-vnc-direct-host value="localhost" placeholder="localhost" spellcheck="false" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;background:transparent;color:inherit;" />
+                                <input type="text" data-vnc-direct-host value="${esc(directTarget.host)}" placeholder="${esc(DEFAULT_DIRECT_VNC_TARGET.host)}" spellcheck="false" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;background:transparent;color:inherit;" />
                             </label>
                             <label style="display:grid;gap:6px;min-width:0;">
                                 <span style="font-size:12px;color:var(--text-secondary);">Port</span>
-                                <input type="number" data-vnc-direct-port min="1" max="65535" step="1" placeholder="5900" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;background:transparent;color:inherit;" />
+                                <input type="number" data-vnc-direct-port min="1" max="65535" step="1" value="${esc(directTarget.port)}" placeholder="${esc(DEFAULT_DIRECT_VNC_TARGET.port)}" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;background:transparent;color:inherit;" />
                             </label>
                             <label style="display:grid;gap:6px;min-width:0;">
                                 <span style="font-size:12px;color:var(--text-secondary);">Password</span>
@@ -564,13 +627,18 @@ class VncPaneInstance implements PaneInstance {
         this.directHostInputEl = this.bodyEl.querySelector('[data-vnc-direct-host]');
         this.directPortInputEl = this.bodyEl.querySelector('[data-vnc-direct-port]');
         this.directPasswordInputEl = this.bodyEl.querySelector('[data-vnc-direct-password]');
+        if (this.directPasswordInputEl && this.authPassword !== null) {
+            this.directPasswordInputEl.value = this.authPassword;
+        }
         const openDirectTarget = () => {
-            const targetRef = buildDirectVncTargetReference(this.directHostInputEl?.value, this.directPortInputEl?.value);
-            if (!targetRef) {
-                return;
-            }
-            this.authPassword = normalizeVncPassword(this.directPasswordInputEl ? this.directPasswordInputEl.value : this.authPassword);
-            this.openTargetTab(targetRef, targetRef);
+            const selection = prepareDirectVncSelection(
+                this.directHostInputEl?.value,
+                this.directPortInputEl?.value,
+                this.directPasswordInputEl ? this.directPasswordInputEl.value : this.authPassword,
+            );
+            if (!selection) return;
+            this.authPassword = selection.password;
+            this.openTargetTab(selection.targetRef, selection.targetRef);
         };
         this.directHostInputEl?.addEventListener('keydown', (event) => {
             if (event.key !== 'Enter') return;
@@ -685,7 +753,7 @@ class VncPaneInstance implements PaneInstance {
             this.passwordInputEl.value = this.authPassword;
         }
         this.passwordInputEl?.addEventListener('input', () => {
-            this.authPassword = normalizeVncPassword(this.passwordInputEl.value);
+            this.authPassword = rememberVncPagePassword(this.passwordInputEl.value);
         });
         this.passwordInputEl?.addEventListener('keydown', (event) => {
             if (event.key !== 'Enter') return;
@@ -698,7 +766,7 @@ class VncPaneInstance implements PaneInstance {
 
         const reconnectBtn = this.bodyEl.querySelector('[data-vnc-reconnect]');
         reconnectBtn?.addEventListener('click', () => {
-            this.authPassword = normalizeVncPassword(this.passwordInputEl ? this.passwordInputEl.value : this.authPassword);
+            this.authPassword = rememberVncPagePassword(this.passwordInputEl ? this.passwordInputEl.value : this.authPassword);
             void this.connectSocket();
         });
         const pickerBtn = this.bodyEl.querySelector('[data-open-target-picker]');

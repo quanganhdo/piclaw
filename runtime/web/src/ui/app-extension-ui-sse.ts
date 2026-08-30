@@ -154,10 +154,14 @@ export function resolveExtensionUiContextUsage(
     const tokens = data.tokens == null ? null : Number(data.tokens);
     const contextWindow = data.contextWindow == null ? null : Number(data.contextWindow);
     const percent = data.percent == null ? null : Number(data.percent);
+    const sessionGeneration = typeof (payload.sessionGeneration ?? data.sessionGeneration) === 'string'
+      ? String(payload.sessionGeneration ?? data.sessionGeneration).trim()
+      : '';
     return {
       tokens: Number.isFinite(tokens) ? tokens : null,
       contextWindow: Number.isFinite(contextWindow) ? contextWindow : null,
       percent: Number.isFinite(percent) ? percent : null,
+      ...(sessionGeneration ? { sessionGeneration } : {}),
       estimated: data.estimated === true,
       source: typeof data.source === 'string' ? data.source : null,
       phase: typeof data.phase === 'string' ? data.phase : null,

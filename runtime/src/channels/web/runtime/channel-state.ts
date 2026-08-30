@@ -73,16 +73,35 @@ export class WebChannelState {
     return { ...this.agentStatuses };
   }
 
+  /**
+   * Persist usage only for the active Pi session identity. Legacy entries without
+   * sessionGeneration remain readable JSON but are intentionally not trusted.
+   */
   setContextUsage(chatJid: string, usage: Record<string, unknown> | null): void {
     if (!usage) {
       delete this.contextUsages[chatJid];
       return;
     }
-    this.contextUsages[chatJid] = usage;
+    const sessionGeneration = typeof usage.sessionGeneration === "string"
+      ? usage.sessionGeneration.trim()
+      : "";
+    if (!sessionGeneration) return;
+
+    const current = this.contextUsages[chatJid];
+    const currentGeneration = typeof current?.sessionGeneration === "string"
+      ? current.sessionGeneration.trim()
+      : "";
+    if (currentGeneration && currentGeneration !== sessionGeneration && usage.reset !== true) return;
+
+    const { reset: _reset, ...persisted } = usage;
+    this.contextUsages[chatJid] = { ...persisted, sessionGeneration };
   }
 
   getContextUsage(chatJid: string): Record<string, unknown> | null {
-    return this.contextUsages[chatJid] ?? null;
+    const usage = this.contextUsages[chatJid];
+    return usage && typeof usage.sessionGeneration === "string" && usage.sessionGeneration.trim()
+      ? usage
+      : null;
   }
 
   setDraftRecovery(chatJid: string, entry: PersistedDraftRecoveryEntry | null): void {

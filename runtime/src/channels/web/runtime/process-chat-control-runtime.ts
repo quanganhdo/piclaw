@@ -90,7 +90,7 @@ export interface ResolvedCommandModelState {
 }
 
 export interface DeferredControlCommandRuntime {
-  agentPool: Pick<WebChannelLike["agentPool"], "applyControlCommand" | "getAvailableModels" | "getCurrentModelLabel" | "getContextUsageForChat">;
+  agentPool: Pick<WebChannelLike["agentPool"], "applyControlCommand" | "getAvailableModels" | "getCurrentModelLabel" | "getContextUsageForChat" | "getSessionGenerationForChat">;
   sendMessage: WebChannelLike["sendMessage"];
   setContextUsage(chatJid: string, usage: Record<string, unknown> | null): void;
   updateAgentStatus(chatJid: string, status: Record<string, unknown>): void;
@@ -279,7 +279,29 @@ export async function executeDeferredControlCommand(
   const formatted = formatOutbound(result.message, "web");
   const commandThreadId = message.threadId ?? effectiveThreadRootId ?? message.rowId ?? null;
 
-  if (result.status === "success" && command.type === "compact") {
+  if (result.status === "success" && result.sessionGenerationChanged && result.sessionGeneration) {
+    const boundaryUsage = {
+      tokens: null,
+      contextWindow: null,
+      percent: null,
+      sessionGeneration: result.sessionGeneration,
+    };
+    const statusPayload = {
+      chat_jid: chatJid,
+      thread_id: commandThreadId,
+      agent_id: agentId,
+      turn_id: createUuid("turn"),
+      type: "context_usage",
+      context_reset: true,
+      sessionGeneration: result.sessionGeneration,
+      context_usage: boundaryUsage,
+    };
+    channel.setContextUsage(chatJid, { ...boundaryUsage, reset: true });
+    channel.updateAgentStatus(chatJid, statusPayload);
+    channel.broadcastEvent("agent_status", statusPayload);
+  }
+
+  if (result.status === "success" && !result.sessionGenerationChanged && command.type === "compact") {
     let contextUsage = result.contextUsage;
     if (contextUsage?.tokens === null || contextUsage?.tokens === undefined) {
       const current = typeof channel.agentPool.getContextUsageForChat === "function"
@@ -290,33 +312,47 @@ export async function executeDeferredControlCommand(
           tokens: current.tokens,
           contextWindow: current.contextWindow,
           percent: current.percent,
+          ...(typeof current.sessionGeneration === "string" ? { sessionGeneration: current.sessionGeneration } : {}),
           source: "agent_pool",
           phase: "after_command",
         };
       }
     }
     if (contextUsage?.tokens !== null && contextUsage?.tokens !== undefined) {
-      const persistedUsage = {
-        tokens: contextUsage.tokens,
-        contextWindow: contextUsage.contextWindow,
-        percent: contextUsage.percent,
-      };
-      const statusPayload = {
-        chat_jid: chatJid,
-        thread_id: commandThreadId,
-        agent_id: agentId,
-        turn_id: createUuid("turn"),
-        type: "context_usage",
-        context_usage: {
-          ...persistedUsage,
-          estimated: contextUsage.estimated === true,
-          source: contextUsage.source ?? null,
-          phase: contextUsage.phase ?? null,
-        },
-      };
-      channel.setContextUsage(chatJid, persistedUsage);
-      channel.updateAgentStatus(chatJid, statusPayload);
-      channel.broadcastEvent("agent_status", statusPayload);
+      const activeGeneration = typeof channel.agentPool.getSessionGenerationForChat === "function"
+        ? channel.agentPool.getSessionGenerationForChat(chatJid)
+        : null;
+      const usageGeneration = typeof contextUsage.sessionGeneration === "string"
+        ? contextUsage.sessionGeneration
+        : result.sessionGeneration ?? null;
+      if (usageGeneration && activeGeneration && usageGeneration !== activeGeneration) {
+        contextUsage = undefined;
+      }
+      const sessionGeneration = usageGeneration ?? activeGeneration;
+      if (contextUsage && sessionGeneration) {
+        const persistedUsage = {
+          tokens: contextUsage.tokens,
+          contextWindow: contextUsage.contextWindow,
+          percent: contextUsage.percent,
+          sessionGeneration,
+        };
+        const statusPayload = {
+          chat_jid: chatJid,
+          thread_id: commandThreadId,
+          agent_id: agentId,
+          turn_id: createUuid("turn"),
+          type: "context_usage",
+          context_usage: {
+            ...persistedUsage,
+            estimated: contextUsage.estimated === true,
+            source: contextUsage.source ?? null,
+            phase: contextUsage.phase ?? null,
+          },
+        };
+        channel.setContextUsage(chatJid, persistedUsage);
+        channel.updateAgentStatus(chatJid, statusPayload);
+        channel.broadcastEvent("agent_status", statusPayload);
+      }
     }
   }
 

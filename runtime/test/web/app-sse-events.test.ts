@@ -5,9 +5,14 @@ import {
   noteAppChatActivation,
   resetAppRefreshCoordination,
 } from '../../web/src/ui/app-refresh-coordination.js';
+import {
+  reconcileContextUsageForChat,
+  resetContextSessionGenerationsForTests,
+} from '../../web/src/ui/app-status-refresh-orchestration.js';
 
 afterEach(() => {
   resetAppRefreshCoordination();
+  resetContextSessionGenerationsForTests();
 });
 
 function applyUpdate<T>(current: T, next: T | ((prev: T) => T)): T {
@@ -28,6 +33,7 @@ function createDeps() {
   let agentStatus: any = null;
   let agentDraft: any = { text: '', totalLines: 0 };
   let agentThought: any = { text: '', totalLines: 0 };
+  let contextUsage: any = null;
 
   const deps: HandleAppSseEventDependencies = {
     currentChatJid: 'chat:alpha',
@@ -80,7 +86,9 @@ function createDeps() {
     refreshActiveChatAgents: () => undefined,
     refreshCurrentChatBranches: () => undefined,
     notifyForFinalResponse: () => undefined,
-    setContextUsage: () => undefined,
+    setContextUsage: (next) => {
+      contextUsage = applyUpdate(contextUsage, next);
+    },
     refreshContextUsage: () => undefined,
     refreshQueueState: () => {
       refreshQueueCalls += 1;
@@ -125,6 +133,8 @@ function createDeps() {
     getAgentStatusState: () => agentStatus,
     getAgentDraftState: () => agentDraft,
     getAgentThoughtState: () => agentThought,
+    getContextUsageState: () => contextUsage,
+    setContextUsageState: (next: any) => { contextUsage = next; },
   };
 }
 
@@ -517,4 +527,74 @@ test('handleAppSseEvent maps extension notify events into intent toasts', () => 
   expect(state.getToastCalls()).toEqual([
     ['Widget synced', null, 'success', undefined],
   ]);
+});
+
+test('handleAppSseEvent resets context on a new session generation and rejects stale usage events', () => {
+  const state = createDeps();
+  const oldUsage = reconcileContextUsageForChat('chat:alpha', null, {
+    tokens: 95000,
+    contextWindow: 100000,
+    percent: 95,
+    sessionGeneration: 'session-old',
+  }, { authoritative: true });
+  state.setContextUsageState(oldUsage);
+
+  handleAppSseEvent('agent_status', {
+    chat_jid: 'chat:alpha',
+    type: 'context_usage',
+    context_reset: true,
+    context_usage: {
+      tokens: null,
+      contextWindow: 100000,
+      percent: null,
+      sessionGeneration: 'session-new',
+    },
+  }, state.deps);
+  expect(state.getContextUsageState()).toMatchObject({
+    tokens: null,
+    sessionGeneration: 'session-new',
+  });
+
+  handleAppSseEvent('agent_status', {
+    chat_jid: 'chat:alpha',
+    type: 'context_usage',
+    context_usage: {
+      tokens: 99000,
+      contextWindow: 100000,
+      percent: 99,
+      sessionGeneration: 'session-old',
+    },
+  }, state.deps);
+  expect(state.getContextUsageState()).toMatchObject({
+    tokens: null,
+    sessionGeneration: 'session-new',
+  });
+});
+
+test('handleAppSseEvent accepts current-generation compaction context updates', () => {
+  const state = createDeps();
+  state.setContextUsageState(reconcileContextUsageForChat('chat:alpha', null, {
+    tokens: 80000,
+    contextWindow: 100000,
+    percent: 80,
+    sessionGeneration: 'session-current',
+  }, { authoritative: true }));
+
+  handleAppSseEvent('agent_status', {
+    chat_jid: 'chat:alpha',
+    type: 'context_usage',
+    context_usage: {
+      tokens: 25000,
+      contextWindow: 100000,
+      percent: 25,
+      sessionGeneration: 'session-current',
+      phase: 'after_manual_compaction',
+    },
+  }, state.deps);
+
+  expect(state.getContextUsageState()).toMatchObject({
+    tokens: 25000,
+    percent: 25,
+    sessionGeneration: 'session-current',
+  });
 });

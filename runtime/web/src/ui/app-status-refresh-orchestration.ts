@@ -12,7 +12,11 @@ import { getLocalStorageJSON, setLocalStorageItem } from '../utils/storage.js';
 
 type StateSetter<T> = (next: T | ((prev: T) => T)) => void;
 
+// Keep the existing per-chat key for storage compatibility, but only restore
+// payloads carrying the currently verified Pi session generation. Legacy
+// generation-less values are ignored rather than migrated as current usage.
 const CONTEXT_STORAGE_PREFIX = 'piclaw:ctx:';
+const contextSessionGenerations = new Map<string, string>();
 
 function finiteOrNull(value: unknown): number | null {
   if (value == null) return null;
@@ -83,11 +87,13 @@ export function normalizeContextUsage(payload: unknown): Record<string, unknown>
   const contextWindow = finiteOrNull(data.contextWindow);
   const percent = finiteOrNull(data.percent);
   const cacheUsage = normalizeCacheUsage(data.cacheUsage);
+  const sessionGeneration = stringOrNull(data.sessionGeneration ?? data.session_generation);
   return {
     tokens,
     contextWindow,
     percent,
     cacheUsage,
+    ...(sessionGeneration ? { sessionGeneration } : {}),
   };
 }
 
@@ -95,12 +101,60 @@ export function mergeContextUsage(previous: unknown, incoming: unknown): Record<
   const next = normalizeContextUsage(incoming);
   if (!next) return normalizeContextUsage(previous);
   const prev = normalizeContextUsage(previous);
+  const previousGeneration = stringOrNull(prev?.sessionGeneration);
+  const nextGeneration = stringOrNull(next.sessionGeneration);
+  const generationChanged = Boolean(nextGeneration && previousGeneration !== nextGeneration);
   return {
-    tokens: next.tokens ?? prev?.tokens ?? null,
-    contextWindow: next.contextWindow ?? prev?.contextWindow ?? null,
-    percent: next.percent ?? prev?.percent ?? null,
+    tokens: generationChanged ? next.tokens ?? null : next.tokens ?? prev?.tokens ?? null,
+    contextWindow: generationChanged ? next.contextWindow ?? null : next.contextWindow ?? prev?.contextWindow ?? null,
+    percent: generationChanged ? next.percent ?? null : next.percent ?? prev?.percent ?? null,
+    // Cache telemetry is aggregated independently from Pi session context, so
+    // retain it across a generation reset while clearing session-scoped meters.
     cacheUsage: next.cacheUsage ?? prev?.cacheUsage ?? null,
+    ...(nextGeneration || previousGeneration ? { sessionGeneration: nextGeneration ?? previousGeneration } : {}),
   };
+}
+
+export function getContextSessionGeneration(chatJid: string): string | null {
+  return contextSessionGenerations.get(chatJid) ?? null;
+}
+
+export function reconcileContextUsageForChat(
+  chatJid: string,
+  previous: unknown,
+  incoming: unknown,
+  options: {
+    authoritative?: boolean;
+    reset?: boolean;
+    requireKnown?: boolean;
+    expectedSessionGeneration?: string | null;
+  } = {},
+): Record<string, unknown> | null {
+  const next = normalizeContextUsage(incoming);
+  if (!chatJid || !next) return normalizeContextUsage(previous);
+  const incomingGeneration = stringOrNull(next.sessionGeneration);
+  const knownGeneration = getContextSessionGeneration(chatJid);
+  if (!incomingGeneration) {
+    return knownGeneration || options.requireKnown
+      ? normalizeContextUsage(previous)
+      : mergeContextUsage(previous, next);
+  }
+  if (Object.prototype.hasOwnProperty.call(options, 'expectedSessionGeneration')
+    && knownGeneration !== (options.expectedSessionGeneration ?? null)) {
+    return normalizeContextUsage(previous);
+  }
+  if (options.requireKnown && !knownGeneration) return normalizeContextUsage(previous);
+  if (knownGeneration && knownGeneration !== incomingGeneration && !options.authoritative && !options.reset) {
+    return normalizeContextUsage(previous);
+  }
+  if (!knownGeneration || options.authoritative || options.reset) {
+    contextSessionGenerations.set(chatJid, incomingGeneration);
+  }
+  return mergeContextUsage(previous, next);
+}
+
+export function resetContextSessionGenerationsForTests(): void {
+  contextSessionGenerations.clear();
 }
 
 export function haveSameContextUsage(a: unknown, b: unknown): boolean {
@@ -111,6 +165,7 @@ export function haveSameContextUsage(a: unknown, b: unknown): boolean {
   return left.tokens === right.tokens
     && left.contextWindow === right.contextWindow
     && left.percent === right.percent
+    && left.sessionGeneration === right.sessionGeneration
     && JSON.stringify(left.cacheUsage ?? null) === JSON.stringify(right.cacheUsage ?? null);
 }
 
@@ -121,10 +176,10 @@ export function hasRenderableContextUsage(payload: unknown): boolean {
 
 export function persistContextUsage(chatJid: string, payload: unknown): void {
   if (!chatJid || !payload || typeof payload !== 'object') return;
-  const data = payload as Record<string, unknown>;
-  if (data.percent == null && data.cacheUsage == null) return;
+  const data = normalizeContextUsage(payload);
+  if (!data?.sessionGeneration) return;
   try {
-    setLocalStorageItem(CONTEXT_STORAGE_PREFIX + chatJid, JSON.stringify(payload));
+    setLocalStorageItem(CONTEXT_STORAGE_PREFIX + chatJid, JSON.stringify(data));
   } catch (error) {
     console.debug('[app-status-refresh] Ignoring best-effort context usage persistence failure.', error, {
       chatJid,
@@ -134,7 +189,10 @@ export function persistContextUsage(chatJid: string, payload: unknown): void {
 
 export function restoreContextUsage(chatJid: string): Record<string, unknown> | null {
   if (!chatJid) return null;
-  return getLocalStorageJSON<Record<string, unknown>>(CONTEXT_STORAGE_PREFIX + chatJid);
+  const knownGeneration = getContextSessionGeneration(chatJid);
+  if (!knownGeneration) return null;
+  const stored = normalizeContextUsage(getLocalStorageJSON<Record<string, unknown>>(CONTEXT_STORAGE_PREFIX + chatJid));
+  return stored?.sessionGeneration === knownGeneration ? stored : null;
 }
 
 
@@ -215,21 +273,19 @@ export async function refreshContextUsageForChat(options: RefreshContextUsageFor
   } = options;
 
   const targetChatJid = currentChatJid;
+  const expectedSessionGeneration = getContextSessionGeneration(targetChatJid);
   try {
     const contextPayload = normalizeContextUsage(await getAgentContext(targetChatJid));
     if (activeChatJidRef.current !== targetChatJid) return;
-    // Only update state when the server returns meaningful context/cache data.
-    // After a reload or for inactive chats, the API may return empty context
-    // metrics; keep restored localStorage values unless token cache telemetry
-    // is available.
-    if (hasRenderableContextUsage(contextPayload)) {
-      setContextUsage((prev: unknown) => {
-        const merged = mergeContextUsage(prev, contextPayload);
-        if (!hasRenderableContextUsage(merged) || haveSameContextUsage(prev, merged)) return prev;
-        persistContextUsage(targetChatJid, merged);
-        return merged;
+    setContextUsage((prev: unknown) => {
+      const merged = reconcileContextUsageForChat(targetChatJid, prev, contextPayload, {
+        authoritative: true,
+        expectedSessionGeneration,
       });
-    }
+      if (haveSameContextUsage(prev, merged)) return prev;
+      persistContextUsage(targetChatJid, merged);
+      return merged;
+    });
   } catch (error) {
     if (activeChatJidRef.current !== targetChatJid) return;
     console.warn('Failed to fetch agent context:', error);

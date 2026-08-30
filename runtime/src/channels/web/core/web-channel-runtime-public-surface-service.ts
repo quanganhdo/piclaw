@@ -59,6 +59,7 @@ type WebChannelRuntimePublicSurfaceAgentMessageEntry = {
 
 type WebChannelRuntimePublicSurfaceAgentPool = {
   isStreaming?: (chatJid: string) => boolean;
+  getSessionGenerationForChat?: (chatJid: string) => string | null;
   isActive?: (chatJid: string) => boolean;
   queueStreamingMessage?: (
     chatJid: string,
@@ -584,8 +585,17 @@ export class WebChannelRuntimePublicSurfaceService {
   }
 
   broadcastEvent(eventType: string, data: unknown): void {
-    this.updateExtensionWorkingStateFromEvent(eventType, data);
-    this.channel.sessionBroadcast.broadcastEvent(eventType, data);
+    let payload = data;
+    if (eventType === "extension_ui_status" && data && typeof data === "object") {
+      const record = data as Record<string, unknown>;
+      const chatJid = readEventChatJid(record);
+      if (record.key === "context_usage" && chatJid) {
+        const sessionGeneration = this.channel.agentPool?.getSessionGenerationForChat?.(chatJid) ?? null;
+        if (sessionGeneration) payload = { ...record, sessionGeneration };
+      }
+    }
+    this.updateExtensionWorkingStateFromEvent(eventType, payload);
+    this.channel.sessionBroadcast.broadcastEvent(eventType, payload);
   }
 
   async processChat(chatJid: string, agentId: string, threadRootId?: number | null): Promise<void> {

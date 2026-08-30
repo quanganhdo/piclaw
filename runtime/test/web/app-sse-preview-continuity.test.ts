@@ -200,6 +200,116 @@ test('collapsed Thought has parity with Draft for non-empty full deltas and term
   expect(harness.getThought().text).toBe(lines.slice(0, 8).join('\n'));
 });
 
+test('bounded snapshots do not duplicate state writes once full Draft and Thought deltas are authoritative', () => {
+  const harness = createPreviewHarness();
+
+  handleAppSseEvent('agent_draft_delta', {
+    chat_jid: 'chat:preview', turn_id: 'turn-preview', reset: true, delta: 'draft-full',
+  }, harness.deps);
+  handleAppSseEvent('agent_thought_delta', {
+    chat_jid: 'chat:preview', turn_id: 'turn-preview', reset: true, delta: 'thought-full',
+  }, harness.deps);
+  const writesBeforeSnapshots = harness.getWrites().length;
+
+  for (let index = 0; index < 50; index += 1) {
+    handleAppSseEvent('agent_draft', {
+      chat_jid: 'chat:preview', turn_id: 'turn-preview', text: `draft-preview-${index}`,
+      total_lines: index + 1, kind: 'draft', mode: 'replace',
+    }, harness.deps);
+    handleAppSseEvent('agent_thought', {
+      chat_jid: 'chat:preview', turn_id: 'turn-preview', text: `thought-preview-${index}`,
+      total_lines: index + 1,
+    }, harness.deps);
+  }
+
+  expect(harness.getWrites()).toHaveLength(writesBeforeSnapshots);
+  expect(harness.getDraft().fullText).toBe('draft-full');
+  expect(harness.getThought().fullText).toBe('thought-full');
+
+  const snapshotOnly = createPreviewHarness();
+  handleAppSseEvent('agent_draft', {
+    chat_jid: 'chat:preview', turn_id: 'turn-preview', text: 'legacy draft', total_lines: 1,
+    kind: 'draft', mode: 'replace',
+  }, snapshotOnly.deps);
+  handleAppSseEvent('agent_thought', {
+    chat_jid: 'chat:preview', turn_id: 'turn-preview', text: 'legacy thought', total_lines: 1,
+  }, snapshotOnly.deps);
+  expect(snapshotOnly.getDraft()).toMatchObject({ text: 'legacy draft', totalLines: 1 });
+  expect(snapshotOnly.getThought()).toMatchObject({ text: 'legacy thought', totalLines: 1 });
+});
+
+test('sub-throttle Draft and Thought suffixes render after a bounded live pause', async () => {
+  const harness = createPreviewHarness();
+
+  handleAppSseEvent('agent_draft_delta', {
+    chat_jid: 'chat:preview', turn_id: 'turn-preview', reset: true, delta: 'draft-a',
+  }, harness.deps);
+  handleAppSseEvent('agent_thought_delta', {
+    chat_jid: 'chat:preview', turn_id: 'turn-preview', reset: true, delta: 'thought-a',
+  }, harness.deps);
+  handleAppSseEvent('agent_draft_delta', {
+    chat_jid: 'chat:preview', turn_id: 'turn-preview', delta: '-draft-b',
+  }, harness.deps);
+  handleAppSseEvent('agent_thought_delta', {
+    chat_jid: 'chat:preview', turn_id: 'turn-preview', delta: '-thought-b',
+  }, harness.deps);
+
+  expect(harness.getDraft().fullText).toBe('draft-a');
+  expect(harness.getThought().fullText).toBe('thought-a');
+  await new Promise((resolve) => setTimeout(resolve, 125));
+  expect(harness.getDraft().fullText).toBe('draft-a-draft-b');
+  expect(harness.getThought().fullText).toBe('thought-a-thought-b');
+});
+
+test('new-turn and chat lifecycle changes invalidate stale trailing preview callbacks', async () => {
+  const turnHarness = createPreviewHarness();
+  handleAppSseEvent('agent_draft_delta', {
+    chat_jid: 'chat:preview', turn_id: 'turn-preview', reset: true, delta: 'old-a',
+  }, turnHarness.deps);
+  handleAppSseEvent('agent_draft_delta', {
+    chat_jid: 'chat:preview', turn_id: 'turn-preview', delta: '-old-b',
+  }, turnHarness.deps);
+  turnHarness.deps.currentTurnIdRef.current = 'turn-next';
+  handleAppSseEvent('agent_status', {
+    chat_jid: 'chat:preview', turn_id: 'turn-next', type: 'thinking',
+  }, turnHarness.deps);
+
+  const chatHarness = createPreviewHarness();
+  handleAppSseEvent('agent_thought_delta', {
+    chat_jid: 'chat:preview', turn_id: 'turn-preview', reset: true, delta: 'chat-a',
+  }, chatHarness.deps);
+  handleAppSseEvent('agent_thought_delta', {
+    chat_jid: 'chat:preview', turn_id: 'turn-preview', delta: '-chat-b',
+  }, chatHarness.deps);
+  chatHarness.deps.activeChatJidRef.current = 'chat:other';
+
+  const resetHarness = createPreviewHarness();
+  handleAppSseEvent('agent_draft_delta', {
+    chat_jid: 'chat:preview', turn_id: 'turn-preview', reset: true, delta: 'reset-old-a',
+  }, resetHarness.deps);
+  handleAppSseEvent('agent_draft_delta', {
+    chat_jid: 'chat:preview', turn_id: 'turn-preview', delta: '-reset-old-b',
+  }, resetHarness.deps);
+  handleAppSseEvent('agent_draft_delta', {
+    chat_jid: 'chat:preview', turn_id: 'turn-preview', reset: true, delta: 'reset-new',
+  }, resetHarness.deps);
+
+  const reconnectHarness = createPreviewHarness();
+  handleAppSseEvent('agent_thought_delta', {
+    chat_jid: 'chat:preview', turn_id: 'turn-preview', reset: true, delta: 'reconnect-a',
+  }, reconnectHarness.deps);
+  handleAppSseEvent('agent_thought_delta', {
+    chat_jid: 'chat:preview', turn_id: 'turn-preview', delta: '-reconnect-b',
+  }, reconnectHarness.deps);
+  handleAppSseEvent('connected', {}, reconnectHarness.deps);
+
+  await new Promise((resolve) => setTimeout(resolve, 125));
+  expect(turnHarness.getDraft().fullText || '').not.toContain('old-b');
+  expect(chatHarness.getThought().fullText).toBe('chat-a');
+  expect(resetHarness.getDraft().fullText).toBe('reset-new');
+  expect(reconnectHarness.getThought().fullText || '').not.toContain('reconnect-b');
+});
+
 test('terminal status flushes authoritative preview state before clearing run refs', () => {
   const harness = createPreviewHarness();
   const lines = Array.from({ length: 24 }, (_, index) => `draft-line-${String(index + 1).padStart(2, '0')}`);

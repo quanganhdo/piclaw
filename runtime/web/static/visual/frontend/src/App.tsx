@@ -25,7 +25,7 @@ import { EditorFrame } from "./app/EditorFrame";
 import { useDialog } from "./hooks/useDialog";
 import { ProviderWizard } from "./components/ProviderWizard";
 import { providerConfigured } from "./app/providerState";
-import { safeGetItem } from "./utils/storage";
+import { safeGetItem, safeSetItem } from "./utils/storage";
 
 const PANEL_NAMES: Record<string, string> = {
   explorer: "Workspace", search: "Search", extensions: "Addons",
@@ -132,6 +132,18 @@ function AppContent() {
     window.addEventListener('piclaw:close-sidebar', onClose);
     return () => window.removeEventListener('piclaw:close-sidebar', onClose);
   }, [sidebarCollapsed]);
+
+  useEffect(() => {
+    const onOpenSettings = (event: Event) => {
+      const section = (event as CustomEvent<{ section?: string }>).detail?.section;
+      if (section) safeSetItem("piclaw-settings-category", section);
+      if (activePanel.value !== "settings") previousPanel.value = activePanel.value;
+      activePanel.value = "settings";
+      sidebarCollapsed.value = false;
+    };
+    window.addEventListener("piclaw:open-settings", onOpenSettings);
+    return () => window.removeEventListener("piclaw:open-settings", onOpenSettings);
+  }, [activePanel, previousPanel, sidebarCollapsed]);
 
   // Listen for piclaw:show-wizard to re-show the wizard (optionally for a specific provider)
   const wizardProviderId = useSignal<string | undefined>(undefined);

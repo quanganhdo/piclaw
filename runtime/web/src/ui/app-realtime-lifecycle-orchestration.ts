@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from '../vendor/preact-htm.js';
 import { useSseConnection } from './use-sse-connection.js';
-import { handleAppSseEvent } from './app-sse-events.js';
+import { handleAppSseEvent, invalidateAppPreviewTrailingFlushes } from './app-sse-events.js';
 import { runBackstopRefreshTick } from './app-connection-lifecycle.js';
 import { watchReturnToApp } from './app-resume.js';
 
@@ -295,6 +295,7 @@ export function useRealtimeLifecycleOrchestration(options: UseRealtimeLifecycleO
     const api = window.__PICLAW_TEST_API || {};
     api.emit = handleSseEvent;
     api.reset = () => {
+      invalidateAppPreviewTrailingFlushes(previewResyncGenerationRef);
       removeStalledPost();
       clearAgentRunState();
       setAgentStatus(null);
@@ -311,7 +312,11 @@ export function useRealtimeLifecycleOrchestration(options: UseRealtimeLifecycleO
         window.__PICLAW_TEST_API = undefined;
       }
     };
-  }, [clearAgentRunState, finalizeStalledResponse, handleSseEvent, removeStalledPost, setAgentDraft, setAgentPlan, setAgentStatus, setAgentThought, setExtensionWorkingState, setPendingRequest]);
+  }, [clearAgentRunState, finalizeStalledResponse, handleSseEvent, previewResyncGenerationRef, removeStalledPost, setAgentDraft, setAgentPlan, setAgentStatus, setAgentThought, setExtensionWorkingState, setPendingRequest]);
+
+  useEffect(() => () => {
+    invalidateAppPreviewTrailingFlushes(previewResyncGenerationRef);
+  }, [currentChatJid, previewResyncGenerationRef]);
 
   useSseConnection({
     handleSseEvent,

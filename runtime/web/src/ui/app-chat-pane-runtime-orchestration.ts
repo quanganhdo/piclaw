@@ -21,6 +21,7 @@ export function shouldResetSteerQueue(options: {
 }
 
 interface UseChatPaneRuntimeOrchestrationOptions {
+  currentChatJid: string;
   isAgentTurnActive: boolean;
   steerQueuedTurnId: string | null;
   currentTurnId: string | null;
@@ -91,6 +92,7 @@ export function formatAgentReplyNotificationBody(post: any): string {
 
 export function useChatPaneRuntimeOrchestration(options: UseChatPaneRuntimeOrchestrationOptions) {
   const {
+    currentChatJid,
     isAgentTurnActive,
     steerQueuedTurnId,
     currentTurnId,
@@ -214,6 +216,7 @@ export function useChatPaneRuntimeOrchestration(options: UseChatPaneRuntimeOrche
   const restoreChatPaneState = useCallback((snapshot: unknown) => {
     applyChatPaneStateSnapshot({
       snapshot,
+      currentChatJid,
       clearLastActivityTimer,
       refs: {
         isAgentRunningRef,
@@ -250,6 +253,7 @@ export function useChatPaneRuntimeOrchestration(options: UseChatPaneRuntimeOrche
     });
   }, [
     agentStatusRef,
+    currentChatJid,
     clearLastActivityTimer,
     currentTurnIdRef,
     draftBufferRef,

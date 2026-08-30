@@ -637,8 +637,12 @@ function buildEmptyCurrentState(recentDays: number): AgentMemoryCurrentState {
   };
 }
 
-export function refreshAgentMemoryFromDailyNotes(options?: { recentDays?: number }): RefreshAgentMemoryResult {
+export function refreshAgentMemoryFromDailyNotes(options?: {
+  recentDays?: number;
+  writeTypedMemories?: boolean;
+}): RefreshAgentMemoryResult {
   const recentDays = Math.max(1, options?.recentDays ?? 7);
+  const writeTypedMemories = options?.writeTypedMemories !== false;
   mkdirSync(AGENT_MEMORY_DIR, { recursive: true });
 
   const currentStatePath = `${AGENT_MEMORY_DIR}/current-state.md`;
@@ -749,10 +753,12 @@ export function refreshAgentMemoryFromDailyNotes(options?: { recentDays?: number
   // That subtree is model-owned and should remain sparse/optional rather than
   // acting as a mirrored shadow tree of every complete daily note.
 
-  writeFileSync(AGENT_MEMORY_USER_PATH, buildUserMemoryMarkdown(currentState), "utf8");
-  writeFileSync(AGENT_MEMORY_FEEDBACK_PATH, buildFeedbackMemoryMarkdown(currentState), "utf8");
-  writeFileSync(AGENT_MEMORY_PROJECT_PATH, buildProjectMemoryMarkdown(currentState), "utf8");
-  writeFileSync(AGENT_MEMORY_REFERENCE_PATH, buildReferenceMemoryMarkdown(), "utf8");
+  if (writeTypedMemories) {
+    writeFileSync(AGENT_MEMORY_USER_PATH, buildUserMemoryMarkdown(currentState), "utf8");
+    writeFileSync(AGENT_MEMORY_FEEDBACK_PATH, buildFeedbackMemoryMarkdown(currentState), "utf8");
+    writeFileSync(AGENT_MEMORY_PROJECT_PATH, buildProjectMemoryMarkdown(currentState), "utf8");
+    writeFileSync(AGENT_MEMORY_REFERENCE_PATH, buildReferenceMemoryMarkdown(), "utf8");
+  }
   writeFileSync(memoryPath, buildMemoryMarkdown(currentState), "utf8");
 
   return { sidecars, currentState, currentStatePath, recentContextPath, memoryPath };

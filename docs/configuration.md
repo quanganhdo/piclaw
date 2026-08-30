@@ -124,7 +124,9 @@ export PICLAW_WEB_VNC_TARGETS='[{"id":"lab","host":"192.168.1.50","port":5901,"r
 export PICLAW_WEB_VNC_TARGETS='{ "lab": { "id": "lab", "host": "192.168.1.50", "port": 5901 }, "pi": { "host": "192.168.1.20", "port": 5900 } }'
 ```
 
-When direct-connect is allowed, the UI accepts inputs like `server` + `port` from the VNC target picker and connects to `<host>:<port>` directly.
+When direct-connect is allowed, the VNC target picker starts at `localhost:5901`. After a valid direct target is selected, the browser stores its host and port under `piclaw:vnc-direct-target` for the next viewer. Invalid or unavailable browser storage falls back to `localhost:5901`.
+
+The VNC password stays in JavaScript memory for the loaded page and is reused by in-page viewers and reconnects. Submitting an empty password clears it. A full reload or closed tab clears it; host and port remain. The existing pop-out flow can copy the password through its one-time, 60-second handoff record. Piclaw does not add the password to direct-target storage, URLs, cookies or logs. Same-origin code can access page memory while the viewer is loaded.
 
 Direct-connect is enabled by default on Linux, macOS, and Windows. Disable it explicitly with:
 

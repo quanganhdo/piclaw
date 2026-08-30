@@ -60,11 +60,22 @@ Uses a 2-day window, and the day slices it refreshes use that same runtime timez
 Runs silently unless you inspect task results.
 Skips when no sessions have occurred since the last consolidation.
 
-## First-boot bootstrap
+## Startup bootstrap and recovery
 
-On a fresh workspace, if the core memory files are missing, runtime queues a
-silent Dream bootstrap on startup using a broader window to populate the memory
-layer and initial daily summaries.
+Runtime distinguishes a fresh workspace from an established workspace whose
+derived memory files were lost. It uses non-`dream:%` message history, existing
+`notes/daily/*.md` files, and `notes/memory/.dream-state` as durable evidence.
+
+A fresh workspace with missing core memory files queues one silent, model-driven
+Dream bootstrap. An established workspace never makes a startup provider request
+for the same file loss. Runtime deterministically rebuilds `MEMORY.md`,
+`current-state.md`, and `recent-context.md` from available Daily notes.
+
+If Daily notes or summaries cannot support complete recovery, `.dream-state`
+records `recovery: backfill_required`. Later restarts leave that state unchanged
+and queue no recovery work. The next scheduled AutoDream or an explicit
+`/dream` performs the usual bounded consolidation and records
+`recovery: complete` when no backlog remains.
 
 ## Search indexing
 

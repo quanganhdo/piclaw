@@ -107,6 +107,8 @@ flowchart TD
 - VNC targets are resolved from:
   1. `PICLAW_WEB_VNC_TARGETS` / `PICLAW_VNC_TARGETS` allow-list (JSON array or map)
   2. Direct-connect when `PICLAW_WEB_VNC_ALLOW_DIRECT` / `PICLAW_VNC_ALLOW_DIRECT` is enabled (default on Linux, macOS, and Windows)
+- The direct-connect form defaults to `localhost:5901`. It stores the last validated host and port in `piclaw:vnc-direct-target`; malformed or unavailable storage falls back to the defaults.
+- Direct-connect passwords remain in page-lifetime JavaScript memory so in-page viewers and reconnects can reuse them. Empty-password submission clears that memory, and a page reload clears it. The existing pop-out handoff uses a one-time, 60-second record. Same-origin code can access the in-memory password while the page is loaded.
 - When neither saved targets nor direct-connect are available, the pane renders explicit empty-state copy that tells the user direct connect is disabled instead of pretending the manual entry flow still exists.
 - `WebSocketTcpBridge` is protocol-agnostic:
   - forwards binary traffic between websocket clients and TCP sockets

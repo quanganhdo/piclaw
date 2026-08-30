@@ -16,7 +16,6 @@ const SSE_RECONNECT_COOLDOWN_MS = 60000;
 
 interface UseTimelineStreamParams {
   setMessages: (fn: (prev: Interaction[]) => Interaction[]) => void;
-  setDraft: (v: string | ((prev: string) => string)) => void;
   setConnected: (v: boolean) => void;
   scrollToBottom: (force?: boolean) => void;
   refetchTimelineOnReconnect: () => Promise<void>;
@@ -37,7 +36,6 @@ interface UseTimelineStreamParams {
  */
 export function useTimelineStream({
   setMessages,
-  setDraft,
   setConnected,
   scrollToBottom,
   refetchTimelineOnReconnect,
@@ -52,16 +50,16 @@ export function useTimelineStream({
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cooldownUntilRef = useRef(0);
   const destroyedRef = useRef(false);
+  const draftDeltaActiveRef = useRef(false);
+  const thoughtDeltaActiveRef = useRef(false);
 
   // Callback refs to avoid recreating EventSource when stable dependencies change
   const setMessagesRef = useRef(setMessages);
-  const setDraftRef = useRef(setDraft);
   const setConnectedRef = useRef(setConnected);
   const scrollToBottomRef = useRef(scrollToBottom);
   const refetchRef = useRef(refetchTimelineOnReconnect);
   const timelineErrorRef = useRef(timelineError);
   useEffect(() => { setMessagesRef.current = setMessages; }, [setMessages]);
-  useEffect(() => { setDraftRef.current = setDraft; }, [setDraft]);
   useEffect(() => { setConnectedRef.current = setConnected; }, [setConnected]);
   useEffect(() => { scrollToBottomRef.current = scrollToBottom; }, [scrollToBottom]);
   useEffect(() => { refetchRef.current = refetchTimelineOnReconnect; }, [refetchTimelineOnReconnect]);
@@ -91,6 +89,8 @@ export function useTimelineStream({
 
     function connect() {
       if (destroyedRef.current) return;
+      draftDeltaActiveRef.current = false;
+      thoughtDeltaActiveRef.current = false;
       if (esRef.current) {
         esRef.current.close();
         esRef.current = null;
@@ -108,10 +108,6 @@ export function useTimelineStream({
           if (prev.some((m) => m.id === interaction.id)) return prev;
           return [...prev, interaction];
         });
-        // Clear draft when a new agent post arrives
-        if (interaction.type === "agent") {
-          setDraftRef.current("");
-        }
         scrollToBottomRef.current(true);
       } catch (err) {
         log.warn("SSE parse error", err);
@@ -121,12 +117,8 @@ export function useTimelineStream({
     es.addEventListener("agent_draft_delta", (e: MessageEvent) => {
       try {
         const parsed = JSON.parse(e.data);
-        if (parsed.delta) {
-          setDraftRef.current((prev) => prev + parsed.delta);
-        } else if (parsed.text !== undefined) {
-          setDraftRef.current(parsed.text);
-        }
-        window.dispatchEvent(new CustomEvent("piclaw:agent-draft", { detail: { delta: parsed.delta, text: parsed.text } }));
+        draftDeltaActiveRef.current = true;
+        window.dispatchEvent(new CustomEvent("piclaw:agent-draft", { detail: { delta: parsed.delta, text: parsed.text, reset: parsed.reset } }));
         scrollToBottomRef.current();
       } catch (err) {
         log.warn("SSE parse error:", err);
@@ -136,8 +128,8 @@ export function useTimelineStream({
     es.addEventListener("agent_draft", (e: MessageEvent) => {
       try {
         const parsed = JSON.parse(e.data);
+        if (draftDeltaActiveRef.current) return;
         const text = parsed.text ?? parsed.content ?? "";
-        setDraftRef.current(text);
         window.dispatchEvent(new CustomEvent("piclaw:agent-draft", { detail: { text } }));
         scrollToBottomRef.current();
       } catch (err) {
@@ -148,7 +140,8 @@ export function useTimelineStream({
     es.addEventListener("agent_thought_delta", (e: MessageEvent) => {
       try {
         const parsed = JSON.parse(e.data);
-        window.dispatchEvent(new CustomEvent("piclaw:agent-thought", { detail: { delta: parsed.delta, text: parsed.text } }));
+        thoughtDeltaActiveRef.current = true;
+        window.dispatchEvent(new CustomEvent("piclaw:agent-thought", { detail: { delta: parsed.delta, text: parsed.text, reset: parsed.reset } }));
       } catch (err) {
         log.warn("SSE thought parse error:", err);
       }
@@ -157,6 +150,7 @@ export function useTimelineStream({
     es.addEventListener("agent_thought", (e: MessageEvent) => {
       try {
         const parsed = JSON.parse(e.data);
+        if (thoughtDeltaActiveRef.current) return;
         const text = parsed.text ?? parsed.content ?? "";
         window.dispatchEvent(new CustomEvent("piclaw:agent-thought", { detail: { text } }));
       } catch (err) {
@@ -172,7 +166,8 @@ export function useTimelineStream({
           if (prev.some((m) => m.id === interaction.id)) return prev;
           return [...prev, interaction];
         });
-        setDraftRef.current("");
+        draftDeltaActiveRef.current = false;
+        thoughtDeltaActiveRef.current = false;
         scrollToBottomRef.current(true);
         // Notify for browser notifications
         window.dispatchEvent(new CustomEvent("piclaw:new-message", { detail: { content: interaction.content, type: "agent" } }));
@@ -183,7 +178,8 @@ export function useTimelineStream({
         );
       } catch (err) {
         log.warn("SSE parse error:", err);
-        setDraftRef.current("");
+        draftDeltaActiveRef.current = false;
+        thoughtDeltaActiveRef.current = false;
         scrollToBottomRef.current(true);
         window.dispatchEvent(new CustomEvent("piclaw:agent-turn-end"));
         window.dispatchEvent(

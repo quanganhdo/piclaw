@@ -34,6 +34,7 @@ describe("process chat streaming runtime", () => {
     runtime.streamingHandler({ type: "message_update", assistantMessageEvent: { type: "thinking_delta", delta: "hidden reasoning" } });
     runtime.streamingHandler({ type: "message_update", assistantMessageEvent: { type: "text_start" } });
     runtime.streamingHandler({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "pre-tool commentary" } });
+    runtime.streamingHandler({ type: "message_end", message: { role: "assistant", stopReason: "stop" } });
 
     expect(events).toEqual(expect.arrayContaining([
       expect.objectContaining({ type: "agent_thought_delta", payload: expect.objectContaining({ delta: "hidden reasoning" }) }),

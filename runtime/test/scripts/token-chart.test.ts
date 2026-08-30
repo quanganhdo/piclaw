@@ -90,7 +90,7 @@ test("token chart handles empty sessions directory", () => {
   expect(output).toContain("0 tokens");
 });
 
-test("token chart combines normal and autoresearch into one daily stack when reading token_usage", () => {
+test("token chart aggregates cached and uncached daily usage without provenance columns", () => {
   const base = join(tmpdir(), `piclaw-tokenchart-db-${Date.now()}`);
   const storeDir = join(base, "store");
   const svgPath = join(base, "token-chart.svg");
@@ -115,9 +115,7 @@ test("token chart combines normal and autoresearch into one daily stack when rea
       model TEXT,
       provider TEXT,
       api TEXT,
-      turns INTEGER DEFAULT 0,
-      source TEXT,
-      source_ref TEXT
+      turns INTEGER DEFAULT 0
     )
   `);
 
@@ -126,12 +124,12 @@ test("token chart combines normal and autoresearch into one daily stack when rea
     INSERT INTO token_usage (
       chat_jid, run_at, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens,
       total_tokens, cost_input, cost_output, cost_cache_read, cost_cache_write, cost_total,
-      model, provider, api, turns, source, source_ref
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      model, provider, api, turns
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
-  insert.run("web:default", now.toISOString(), 1000, 500, 200, 100, 1800, 0, 0, 0, 0, 0, "model-a", "openai-codex", null, 1, "agent_pool", "agent-1");
-  insert.run("web:default", now.toISOString(), 300, 100, 50, 50, 500, 0, 0, 0, 0, 0, "model-b", "openai-codex", null, 1, "autoresearch", "autoresearch-1");
+  insert.run("web:default", now.toISOString(), 1000, 500, 200, 100, 1800, 0, 0, 0, 0, 0, "model-a", "openai-codex", null, 1);
+  insert.run("web:default", now.toISOString(), 300, 100, 50, 50, 500, 0, 0, 0, 0, 0, "model-b", "openai-codex", null, 1);
   db.close();
 
   const proc = Bun.spawnSync([
@@ -154,13 +152,12 @@ test("token chart combines normal and autoresearch into one daily stack when rea
   const svg = readFileSync(svgPath, "utf8");
 
   expect(output).toContain("total 2.3K");
-  expect(output).toContain("Normal 1.8K tokens • cached 300 • uncached 1.5K");
-  expect(output).toContain("Autoresearch 500 tokens • cached 100 • uncached 400");
-  expect(output).toContain("normal 1.8K: cached 300, uncached 1.5K; autoresearch 500: cached 100, uncached 400");
-  expect(svg).toContain("normal uncached");
-  expect(svg).toContain("autoresearch uncached");
-  expect(svg).toContain("normal cached 300");
-  expect(svg).toContain("autoresearch uncached 400");
+  expect(output).toContain("Cached 400 tokens • uncached 1.9K");
+  expect(output).toContain("cached 400, uncached 1.9K");
+  expect(svg).toContain(">uncached</text>");
+  expect(svg).toContain(">cached</text>");
+  expect(svg).toContain("cached 400");
+  expect(svg).toContain("uncached 1.9K");
 
   rmSync(base, { recursive: true, force: true });
 });

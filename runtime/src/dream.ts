@@ -9,6 +9,7 @@ import { formatRecoverySummary } from "./agent-pool/automatic-recovery.js";
 import { buildDreamPrompt } from "./agent-memory/dream-prompt.js";
 import { inspectDailyNoteSummaryBacklog, refreshDailyNotesFromMessages } from "./agent-memory/daily-notes.js";
 import { refreshAgentMemoryFromDailyNotes, type RefreshAgentMemoryResult } from "./agent-memory/refresh.js";
+import { dreamStartupBackfillRequired, recordDreamConsolidationResult } from "./agent-memory/startup-state.js";
 import { AUTO_DREAM_DEFAULT_DAYS, MANUAL_DREAM_DEFAULT_DAYS } from "./dream-defaults.js";
 import { DATA_DIR, SESSIONS_DIR, WORKSPACE_DIR, getDreamConfig } from "./core/config.js";
 import { getTaskById, createTask, getDb, updateTask } from "./db.js";
@@ -188,7 +189,11 @@ export function parseDreamPromptToken(prompt: string): { matched: boolean; mode:
 
 export function hasOutstandingDreamConsolidation(recentDays: number): boolean {
   const backlog = inspectDailyNoteSummaryBacklog({ recentDays });
-  return backlog.unsummarised > 0 || backlog.partial > 0 || backlog.missing_watermark > 0 || backlog.missing > 0;
+  return dreamStartupBackfillRequired(WORKSPACE_DIR)
+    || backlog.unsummarised > 0
+    || backlog.partial > 0
+    || backlog.missing_watermark > 0
+    || backlog.missing > 0;
 }
 
 function hasDailyNoteBacklog(backlog: ReturnType<typeof inspectDailyNoteSummaryBacklog>): boolean {
@@ -575,6 +580,11 @@ export async function runDreamAgentTurn(options: { chatJid: string; days?: numbe
     const postBacklog = inspectDailyNoteSummaryBacklog({ recentDays: days });
     const workspaceIndexRefreshed = await refreshWorkspaceSearchIndex();
     const recoverySummary = formatRecoverySummary(out.recovery);
+    recordDreamConsolidationResult({
+      successful: out.status !== "error",
+      outstandingBacklog: hasDailyNoteBacklog(postBacklog),
+      workspaceRoot: WORKSPACE_DIR,
+    });
     const suffix = [
       `- Daily notes refreshed before Dream: ${dailyNotesRefreshed ? "yes" : "no"}`,
       formatDailyNoteBacklogSummary(postBacklog),

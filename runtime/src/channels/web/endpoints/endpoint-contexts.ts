@@ -55,7 +55,7 @@ export interface AgentStatusContextDeps extends JsonLike {
   getBuffer(turnId: string, panel: "thought" | "draft"): WebAgentBufferEntry | undefined;
   getContextUsageForChat(
     chatJid: string
-  ): Promise<{ tokens: number | null; contextWindow: number; percent: number | null } | null>;
+  ): Promise<{ tokens: number | null; contextWindow: number | null; percent: number | null; sessionGeneration?: string } | null>;
   getTokenUsageForChat(chatJid: string): AgentTokenUsageContext | null;
   getAvailableModels(chatJid: string): Promise<unknown>;
   getProviderReadyCompletedForInstance(): boolean;

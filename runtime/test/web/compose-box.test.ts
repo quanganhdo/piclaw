@@ -72,6 +72,22 @@ test('normalizeModelPickerOptions prefers structured model metadata and sorts by
   ]);
 });
 
+test('normalizeModelPickerOptions preserves normalized current state for non-canonical backend labels', () => {
+  expect(normalizeModelPickerOptions({
+    current: 'gpt-5',
+    model_options: [{ provider: 'openai', id: 'gpt-5', label: 'gpt-5', reasoning: true }],
+  })).toEqual([{
+    label: 'openai/gpt-5',
+    provider: 'openai',
+    id: 'gpt-5',
+    name: null,
+    contextWindow: null,
+    pricing: null,
+    reasoning: true,
+    current: true,
+  }]);
+});
+
 test('normalizeModelPickerOptions falls back to legacy string labels', () => {
   expect(normalizeModelPickerOptions({
     models: ['openai/gpt-4.1', 'anthropic/claude-sonnet-4'],

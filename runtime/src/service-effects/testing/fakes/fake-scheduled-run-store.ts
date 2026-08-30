@@ -78,7 +78,7 @@ function err(tag: ScheduledRunStoreError["_tag"], certainty: "not_applied" | "un
 class FakeFailure extends Error {
   constructor(readonly error: ScheduledRunStoreError) { super(error._tag); }
 }
-function runId(taskId: string, scheduledFor: string): string { return deriveScheduledRunId(taskId, scheduledFor); }
+function runId(taskId: string, taskRevision: number, scheduledFor: string): string { return deriveScheduledRunId(taskId, taskRevision, scheduledFor); }
 function token(prefix: string, id: string, attempt: number): string { return deriveScheduledLeaseToken(prefix, id, attempt); }
 function tokenHash(value: string): string { return hashScheduledLeaseToken(value); }
 function requestHash(value: unknown): string { return hashCanonicalRequest(value as CanonicalJsonValue); }
@@ -158,7 +158,7 @@ export class FakeScheduledRunStore implements ScheduledRunStore {
       if (replay !== undefined) return Result.ok(this.restoreClaim(request, replay));
       type Candidate = { kind: "new" | "expired"; taskId: string; scheduledFor: string; id: string };
       const candidates: Candidate[] = [];
-      for (const [taskId, head] of this.backend.heads) if (head.status === "active" && head.nextRunAt && head.nextRunAt <= request.now) candidates.push({ kind: "new", taskId, scheduledFor: head.nextRunAt, id: runId(taskId, head.nextRunAt) });
+      for (const [taskId, head] of this.backend.heads) if (head.status === "active" && head.nextRunAt && head.nextRunAt <= request.now) candidates.push({ kind: "new", taskId, scheduledFor: head.nextRunAt, id: runId(taskId, head.revision, head.nextRunAt) });
       for (const [id, run] of this.backend.runs) if ((run.record.state === "claimed" || run.record.state === "source_bound") && run.record.leaseExpiresAt! <= request.now) candidates.push({ kind: "expired", taskId: run.record.taskId, scheduledFor: run.record.scheduledFor, id });
       candidates.sort((a, b) => a.scheduledFor.localeCompare(b.scheduledFor) || a.taskId.localeCompare(b.taskId) || a.kind.localeCompare(b.kind));
       const leases: ScheduledRunLease[] = [], rows: Array<{ runId: string; attempt: number; state: "claimed" | "source_bound" }> = [];

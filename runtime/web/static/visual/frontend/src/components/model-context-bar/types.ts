@@ -1,3 +1,5 @@
+import type { ModelCatalogueEntry } from "../../../../../../src/ui/model-catalogue";
+
 export interface AddonApiStatus {
   healthy: boolean;
   degraded_addons?: string[];
@@ -93,11 +95,14 @@ export interface ModelPricing {
 
 export interface ModelEntry {
   id: string;
+  current?: boolean;
   name?: string | null;
   context_window?: number | null;
   reasoning?: boolean;
   pricing?: ModelPricing | null;
 }
+
+export type VisualModelEntry = ModelCatalogueEntry & { reasoningKnown: boolean };
 
 export const FALLBACK_MODELS: ModelEntry[] = [
   { id: "github-copilot/claude-sonnet-4.6", context_window: 200000 },

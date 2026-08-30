@@ -70,6 +70,7 @@ export {
   deleteTask,
   getDueTasks,
   updateTaskAfterRun,
+  applyScheduledRunToTask,
   logTaskRun,
   getTaskRunLogs,
 } from "./db/tasks.js";

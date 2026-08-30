@@ -1,16 +1,43 @@
-import { expect, test } from 'bun:test';
+import { afterEach, expect, test } from 'bun:test';
 
-import { buildDirectVncTargetReference, buildVncTabPath, consumeVncPopoutPassword, createVncPopoutTransferPayload, getVncTargetsEmptyStateCopy, isVncCursorRectAllowed, isVncFramebufferSizeAllowed, normalizeDirectVncHost, relocateVncPaneRoot, shouldRetryVncPopoutWithoutHandoff, stashVncPopoutPassword } from '../../web/src/panes/vnc-pane.js';
+import {
+  buildDirectVncTargetReference,
+  buildVncTabPath,
+  clearVncPagePassword,
+  consumeVncPopoutPassword,
+  createVncPopoutTransferPayload,
+  DEFAULT_DIRECT_VNC_TARGET,
+  getVncPagePassword,
+  getVncTargetsEmptyStateCopy,
+  isVncCursorRectAllowed,
+  isVncFramebufferSizeAllowed,
+  loadVncDirectTarget,
+  normalizeDirectVncHost,
+  prepareDirectVncSelection,
+  relocateVncPaneRoot,
+  shouldRetryVncPopoutWithoutHandoff,
+  stashVncPopoutPassword,
+  VNC_DIRECT_TARGET_STORAGE_KEY,
+} from '../../web/src/panes/vnc-pane.js';
 
 test('buildVncTabPath encodes target ids when present', () => {
   expect(buildVncTabPath()).toBe('piclaw://vnc');
   expect(buildVncTabPath('host:5901')).toBe('piclaw://vnc/host%3A5901');
 });
 
-test('direct VNC host defaults to localhost when omitted', () => {
+test('direct VNC target formatting preserves defaults, host formats, and integer port validation', () => {
+  expect(DEFAULT_DIRECT_VNC_TARGET).toEqual({ host: 'localhost', port: '5901' });
   expect(normalizeDirectVncHost('')).toBe('localhost');
   expect(normalizeDirectVncHost(' lab-host ')).toBe('lab-host');
-  expect(buildDirectVncTargetReference('', 5900)).toBe('localhost:5900');
+  expect(buildDirectVncTargetReference('', 5901)).toBe('localhost:5901');
+  expect(buildDirectVncTargetReference('lab-host', '5902')).toBe('lab-host:5902');
+  expect(buildDirectVncTargetReference('192.168.1.10', 5903)).toBe('192.168.1.10:5903');
+  expect(buildDirectVncTargetReference('2001:db8::1', 5904)).toBe('[2001:db8::1]:5904');
+  expect(buildDirectVncTargetReference('[2001:db8::1]', 5904)).toBe('[2001:db8::1]:5904');
+  expect(buildDirectVncTargetReference('lab-host', 0)).toBeNull();
+  expect(buildDirectVncTargetReference('lab-host', 65536)).toBeNull();
+  expect(buildDirectVncTargetReference('lab-host', 5901.5)).toBeNull();
+  expect(buildDirectVncTargetReference('lab-host', 'invalid')).toBeNull();
 });
 
 function createMemoryStorage() {
@@ -26,6 +53,79 @@ function createMemoryStorage() {
     map,
   };
 }
+
+afterEach(() => clearVncPagePassword());
+
+test('untouched direct VNC defaults select localhost:5901 without a password', () => {
+  const memory = createMemoryStorage();
+  const runtime = { localStorage: memory.storage } as any;
+
+  expect(loadVncDirectTarget(runtime)).toEqual(DEFAULT_DIRECT_VNC_TARGET);
+  expect(prepareDirectVncSelection('localhost', '5901', '', runtime)).toEqual({
+    targetRef: 'localhost:5901',
+    password: null,
+  });
+  expect(getVncPagePassword()).toBeNull();
+  expect(memory.map.get(VNC_DIRECT_TARGET_STORAGE_KEY)).toBe(JSON.stringify({ host: 'localhost', port: '5901' }));
+  expect(createVncPopoutTransferPayload('localhost:5901', getVncPagePassword(), runtime)).toEqual({
+    pane_path: 'piclaw://vnc/localhost%3A5901',
+  });
+  expect(Array.from(memory.map.keys())).toEqual([VNC_DIRECT_TARGET_STORAGE_KEY]);
+});
+
+test('direct VNC selection persists only validated host and port and keeps its password in page memory', () => {
+  const memory = createMemoryStorage();
+  const runtime = { localStorage: memory.storage } as any;
+
+  expect(prepareDirectVncSelection(' lab-host ', '5902', 'secret-long', runtime)).toEqual({
+    targetRef: 'lab-host:5902',
+    password: 'secret-l',
+  });
+  expect(loadVncDirectTarget(runtime)).toEqual({ host: 'lab-host', port: '5902' });
+  expect(getVncPagePassword()).toBe('secret-l');
+  expect(memory.map.get(VNC_DIRECT_TARGET_STORAGE_KEY)).toBe(JSON.stringify({ host: 'lab-host', port: '5902' }));
+  expect(Array.from(memory.map.values()).join('\n')).not.toContain('secret');
+
+  clearVncPagePassword();
+  expect(loadVncDirectTarget(runtime)).toEqual({ host: 'lab-host', port: '5902' });
+  expect(getVncPagePassword()).toBeNull();
+});
+
+test('clearing a direct VNC password forgets the older page-lifetime credential', () => {
+  const memory = createMemoryStorage();
+  const runtime = { localStorage: memory.storage } as any;
+
+  expect(prepareDirectVncSelection('lab-host', '5902', 'secret', runtime)?.password).toBe('secret');
+  expect(prepareDirectVncSelection('lab-host', '5902', '', runtime)?.password).toBeNull();
+  expect(getVncPagePassword()).toBeNull();
+});
+
+test('direct VNC storage failures and malformed settings fall back without blocking selection', () => {
+  const malformed = createMemoryStorage();
+  malformed.map.set(VNC_DIRECT_TARGET_STORAGE_KEY, '{bad json');
+  expect(loadVncDirectTarget({ localStorage: malformed.storage } as any)).toEqual(DEFAULT_DIRECT_VNC_TARGET);
+  malformed.map.set(VNC_DIRECT_TARGET_STORAGE_KEY, JSON.stringify({ host: 'lab-host', port: 70000 }));
+  expect(loadVncDirectTarget({ localStorage: malformed.storage } as any)).toEqual(DEFAULT_DIRECT_VNC_TARGET);
+
+  const unavailable = Object.defineProperty({}, 'localStorage', {
+    get() { throw new Error('storage disabled'); },
+  });
+  expect(loadVncDirectTarget(unavailable as any)).toEqual(DEFAULT_DIRECT_VNC_TARGET);
+  expect(prepareDirectVncSelection('lab-host', '5902', 'secret', unavailable as any)).toEqual({
+    targetRef: 'lab-host:5902',
+    password: 'secret',
+  });
+
+  const writeFailure = {
+    localStorage: {
+      getItem: () => null,
+      setItem: () => { throw new Error('quota exceeded'); },
+      removeItem: () => {},
+    },
+  };
+  expect(prepareDirectVncSelection('lab-host', '5902', '', writeFailure as any)?.targetRef).toBe('lab-host:5902');
+  expect(prepareDirectVncSelection('lab-host', '5901.5', '', writeFailure as any)).toBeNull();
+});
 
 test('createVncPopoutTransferPayload serializes target identity and optional password token', () => {
   const memory = createMemoryStorage();

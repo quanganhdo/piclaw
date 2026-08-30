@@ -96,16 +96,38 @@ AutoDream behaves as follows:
 
 This preserves a nightly cadence, retries unresolved daily-note work, and skips empty runs.
 
-## First-boot bootstrap
+## Startup bootstrap and state-loss recovery
 
-Fresh workspaces may start with only seeded scaffolding files and placeholder daily-note summaries.
-When the core memory files are missing, runtime queues a silent Dream bootstrap on startup:
+Runtime classifies startup memory as `fresh`, `established_complete`, or
+`established_missing_derived`. The three derived files are:
 
 - `notes/memory/MEMORY.md`
 - `notes/memory/current-state.md`
 - `notes/memory/recent-context.md`
 
-That bootstrap runs as an out-of-band Dream turn on the temporary `dream:` channel and uses the 2-day AutoDream window to populate the memory layer and recent daily summaries.
+Missing derived files do not by themselves prove that a workspace is fresh.
+Runtime also checks for non-`dream:%` message history, `notes/daily/*.md`, and the
+durable `notes/memory/.dream-state` marker.
+
+A fresh workspace queues the existing silent, model-driven bootstrap on the
+temporary `dream:` channel with the 2-day AutoDream window. An established
+workspace makes no startup provider request. Runtime rebuilds the three derived
+files deterministically from available Daily notes.
+
+The marker uses this stable text format:
+
+```text
+version: 1
+initialized: true
+recovery: complete | backfill_required
+```
+
+`backfill_required` means the available Daily notes or summaries cannot support
+complete recovery. Repeated restarts do not repeat materialisation or queue a
+model turn. The scheduled AutoDream gate treats this marker as outstanding work;
+a successful scheduled or manual Dream changes it to `complete` once no Daily-note
+backlog remains. Startup logs separate fresh bootstrap, deterministic recovery,
+deferred consolidation, complete state, and corrupt evidence.
 
 ## Memory lifecycle and content model
 

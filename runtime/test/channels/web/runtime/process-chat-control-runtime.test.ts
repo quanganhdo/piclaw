@@ -213,6 +213,83 @@ describe("process chat control runtime", () => {
     expect(resumeCalls).toEqual([{ chatJid: "web:test", threadRootId: undefined }]);
   });
 
+  test("executeDeferredControlCommand emits only a reset when compact usage came from a replaced session", async () => {
+    const contextUpdates: Array<Record<string, unknown> | null> = [];
+    const statusUpdates: Array<Record<string, unknown>> = [];
+    const broadcasts: Array<{ event: string; payload: any }> = [];
+    let cursor = "";
+    const cursorStore: ProcessChatCursorStore = {
+      getChatCursor: () => cursor,
+      setChatCursor: (_chatJid, ts) => { cursor = ts; },
+      getMessagesSince: () => [],
+    };
+    const channel: DeferredControlCommandRuntime = {
+      agentPool: {
+        applyControlCommand: async () => ({
+          status: "success",
+          message: "Compaction complete.",
+          sessionGeneration: "session-new",
+          sessionGenerationChanged: true,
+          contextUsage: {
+            tokens: 95_000,
+            contextWindow: 100_000,
+            percent: 95,
+            sessionGeneration: "session-old",
+          },
+        }),
+        getAvailableModels: async () => ({ models: [] } as any),
+        getCurrentModelLabel: async () => null,
+        getContextUsageForChat: async () => null,
+        getSessionGenerationForChat: () => "session-new",
+      },
+      sendMessage: async () => {},
+      setContextUsage: (_chatJid, usage) => { contextUpdates.push(usage); },
+      updateAgentStatus: (_chatJid, status) => { statusUpdates.push(status); },
+      broadcastEvent: (event, payload) => { broadcasts.push({ event, payload }); },
+      saveState: () => {},
+      retryFailedOnModelSwitch: () => false,
+      resumeChat: () => {},
+    };
+
+    await executeDeferredControlCommand({
+      channel,
+      chatJid: "web:test",
+      agentId: "default",
+      command: { type: "compact", raw: "/compact" } as any,
+      message: {
+        rowId: 20,
+        messageId: "m2",
+        content: "/compact",
+        timestamp: "2024-01-01T00:00:02.000Z",
+        threadId: 89,
+      },
+      effectiveThreadRootId: 89,
+      assistantName: "Pi",
+      cursorStore,
+    });
+
+    expect(contextUpdates).toEqual([{
+      tokens: null,
+      contextWindow: null,
+      percent: null,
+      sessionGeneration: "session-new",
+      reset: true,
+    }]);
+    expect(statusUpdates).toHaveLength(1);
+    expect(statusUpdates[0]).toMatchObject({
+      type: "context_usage",
+      context_reset: true,
+      sessionGeneration: "session-new",
+      context_usage: {
+        tokens: null,
+        contextWindow: null,
+        percent: null,
+        sessionGeneration: "session-new",
+      },
+    });
+    expect(broadcasts).toContainEqual({ event: "agent_status", payload: statusUpdates[0] });
+  });
+
   test("materializeDeferredFollowups drains deferred commands before resuming the next persisted prompt turn", async () => {
     const queued: QueuedFollowupItem[] = [
       {

@@ -9,6 +9,17 @@ test("refreshAgentModelStateBestEffort emits latest model state when refresh suc
   expect(emitted).toEqual([{ chatJid: "web:default", model: "gpt-4.1" }]);
 });
 
+test("refreshAgentModelStateBestEffort exposes the confirmed payload after emitting it", async () => {
+  const confirmed: unknown[] = [];
+  await expect(refreshAgentModelStateBestEffort(
+    async () => ({ current: "openai/gpt-5" }),
+    "web:default",
+    () => {},
+    (state) => confirmed.push(state),
+  )).resolves.toBe(true);
+  expect(confirmed).toEqual([{ current: "openai/gpt-5" }]);
+});
+
 test("refreshAgentModelStateBestEffort tolerates failed background refreshes", async () => {
   const emitted: unknown[] = [];
 

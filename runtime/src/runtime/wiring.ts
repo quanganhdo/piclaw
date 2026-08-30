@@ -2,11 +2,15 @@
  * runtime/wiring.ts – Runtime message/scheduler wiring helpers.
  */
 
-import { existsSync } from "fs";
-import { resolve } from "path";
-
+import {
+  classifyDreamWorkspaceState,
+  getDreamDerivedMemoryFiles,
+  recoverEstablishedDreamWorkspace,
+  writeDreamStartupMarker,
+  type DreamStartupRecoveryResult,
+  type DreamWorkspaceState,
+} from "../agent-memory/startup-state.js";
 import { ensureDreamTask, runDreamAgentTurn } from "../dream.js";
-import { getWorkspaceDir } from "../core/config.js";
 import { AUTO_DREAM_DEFAULT_DAYS } from "../dream-defaults.js";
 import { startIpcWatcher, type IpcDeps } from "../ipc.js";
 import { startSchedulerLoop, type SchedulerDeps } from "../task-scheduler.js";
@@ -15,24 +19,31 @@ import { createLogger } from "../utils/logger.js";
 
 const log = createLogger("runtime.wiring");
 
-const DREAM_BOOTSTRAP_RELATIVE_FILES = [
-  "notes/memory/MEMORY.md",
-  "notes/memory/current-state.md",
-  "notes/memory/recent-context.md",
-];
-
 /** Queue-lane key for out-of-band Dream work; separate from the interactive chat lane. */
 export function getDreamQueueLane(chatJid: string): string {
   return `dream:${chatJid || "web:default"}`;
 }
 
 export function getDreamBootstrapFiles(): string[] {
-  const workspaceRoot = getWorkspaceDir();
-  return DREAM_BOOTSTRAP_RELATIVE_FILES.map((path) => resolve(workspaceRoot, path));
+  return getDreamDerivedMemoryFiles();
 }
 
-export function workspaceNeedsDreamBootstrap(): boolean {
-  return getDreamBootstrapFiles().some((path) => !existsSync(path));
+export function workspaceNeedsDreamBootstrap(state = classifyDreamWorkspaceState()): boolean {
+  return state.kind === "fresh";
+}
+
+export type DreamWorkspaceStartupAction =
+  | "bootstrap_queued"
+  | "recovered"
+  | "recovered_backfill_deferred"
+  | "deferred"
+  | "none"
+  | "recovery_failed";
+
+export interface DreamWorkspaceStartupResult {
+  state: DreamWorkspaceState;
+  action: DreamWorkspaceStartupAction;
+  recovery: DreamStartupRecoveryResult | null;
 }
 
 /** Minimal sender contract exposed to runtime worker wiring. */
@@ -86,23 +97,20 @@ export function createRuntimeSenders(
   return { sendMessage, sendNudge };
 }
 
-/** Start IPC and scheduler background workers with runtime callbacks. */
-export function startRuntimeWorkers(
+export function initializeDreamWorkspaceAtStartup(
   queue: SchedulerDeps["queue"],
-  agentPool: SchedulerDeps["agentPool"] & RuntimeModelResolver,
-  web: RuntimeWebWorkerChannel,
-  senders: RuntimeSenders
-): void {
-  ensureDreamTask("web:default");
+  agentPool: SchedulerDeps["agentPool"],
+): DreamWorkspaceStartupResult {
+  const state = classifyDreamWorkspaceState();
+  const chatJid = "web:default";
 
-  if (workspaceNeedsDreamBootstrap()) {
-    const chatJid = "web:default";
+  if (state.kind === "fresh") {
     const taskId = `dream-bootstrap:${createUuid("dream")}`;
-    log.info("Queueing initial Dream bootstrap", {
-      operation: "start_runtime_workers.queue_dream_bootstrap",
+    log.info("Queueing initial Dream bootstrap for a fresh workspace", {
+      operation: "start_runtime_workers.dream_state_fresh",
       chatJid,
       days: AUTO_DREAM_DEFAULT_DAYS,
-      missingFiles: getDreamBootstrapFiles().filter((path) => !existsSync(path)),
+      missingFiles: state.missingDerivedFiles,
     });
     queue.enqueueTask(taskId, async () => {
       const result = await runDreamAgentTurn({
@@ -117,7 +125,82 @@ export function startRuntimeWorkers(
         skipped: result.skipped,
       });
     }, getDreamQueueLane(chatJid));
+    return { state, action: "bootstrap_queued", recovery: null };
   }
+
+  if (state.kind === "established_complete") {
+    if (state.evidenceError) {
+      log.error("Dream startup evidence is corrupt; preserving established workspace state", {
+        operation: "start_runtime_workers.dream_state_corrupt",
+        errorMessage: state.evidenceError,
+      });
+    }
+    const markerChanged = !state.evidenceError && !state.initialized
+      ? writeDreamStartupMarker(state.backfillRequired ? "backfill_required" : "complete")
+      : false;
+    if (state.backfillRequired) {
+      log.warn("Dream startup recovery awaits scheduled or manual consolidation", {
+        operation: "start_runtime_workers.defer_dream_consolidation",
+        reason: "backfill_required",
+      });
+      return { state, action: "deferred", recovery: null };
+    }
+    log.info("Dream startup memory is complete", {
+      operation: "start_runtime_workers.dream_state_complete",
+      initialized: state.initialized || markerChanged,
+      markerChanged,
+      hasDailyNotes: state.hasDailyNotes,
+      hasNonDreamMessages: state.hasNonDreamMessages,
+    });
+    return { state, action: "none", recovery: null };
+  }
+
+  if (state.evidenceError) {
+    log.error("Dream startup evidence is corrupt; attempting deterministic recovery only", {
+      operation: "start_runtime_workers.dream_state_corrupt",
+      errorMessage: state.evidenceError,
+      missingFiles: state.missingDerivedFiles,
+    });
+  }
+  try {
+    const recovery = recoverEstablishedDreamWorkspace(state, { recentDays: AUTO_DREAM_DEFAULT_DAYS });
+    log.info("Recovered derived Dream memory without a provider request", {
+      operation: "start_runtime_workers.recover_dream_state",
+      missingFiles: state.missingDerivedFiles,
+      materializedFiles: recovery.materializedFiles,
+      backfillRequired: recovery.backfillRequired,
+      markerChanged: recovery.markerChanged,
+    });
+    if (recovery.backfillRequired) {
+      log.warn("Dream startup recovery awaits scheduled or manual consolidation", {
+        operation: "start_runtime_workers.defer_dream_consolidation",
+        reason: "backfill_required",
+      });
+    }
+    return {
+      state,
+      action: recovery.backfillRequired ? "recovered_backfill_deferred" : "recovered",
+      recovery,
+    };
+  } catch (error) {
+    log.error("Dream startup recovery failed without queueing model work", {
+      operation: "start_runtime_workers.dream_state_corrupt",
+      missingFiles: state.missingDerivedFiles,
+      err: error,
+    });
+    return { state, action: "recovery_failed", recovery: null };
+  }
+}
+
+/** Start IPC and scheduler background workers with runtime callbacks. */
+export function startRuntimeWorkers(
+  queue: SchedulerDeps["queue"],
+  agentPool: SchedulerDeps["agentPool"] & RuntimeModelResolver,
+  web: RuntimeWebWorkerChannel,
+  senders: RuntimeSenders
+): void {
+  ensureDreamTask("web:default");
+  initializeDreamWorkspaceAtStartup(queue, agentPool);
 
   startIpcWatcher({
     sendMessage: senders.sendMessage,

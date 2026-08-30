@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdirSync, writeFileSync } from "fs";
+import { mkdirSync, rmSync, writeFileSync } from "fs";
 import { join } from "path";
 
 import { createTempWorkspace, importFresh, setEnv } from "../helpers.js";
@@ -56,7 +56,7 @@ describe("runtime wiring", () => {
     expect(webCalls).toHaveLength(0);
   });
 
-  test("workspaceNeedsDreamBootstrap only requires the core Dream memory files", async () => {
+  test("workspaceNeedsDreamBootstrap is true only for missing derived files without established evidence", async () => {
     const ws = createTempWorkspace("piclaw-runtime-wiring-");
     restoreEnv = setEnv({
       PICLAW_WORKSPACE: ws.workspace,
@@ -64,6 +64,8 @@ describe("runtime wiring", () => {
       PICLAW_DATA: ws.data,
     });
 
+    const db = await importFresh<typeof import("../src/db.js")>("../src/db.js");
+    db.initDatabase();
     const wiring = await importFresh<typeof import("../src/runtime/wiring.js")>("../src/runtime/wiring.js");
     expect(wiring.workspaceNeedsDreamBootstrap()).toBe(true);
 
@@ -91,6 +93,7 @@ describe("runtime wiring", () => {
       "utf8",
     );
 
+    rmSync(join(ws.workspace, "notes", "memory", "MEMORY.md"));
     wiringFresh = await importFresh<typeof import("../src/runtime/wiring.js")>("../src/runtime/wiring.js");
     expect(wiringFresh.workspaceNeedsDreamBootstrap()).toBe(false);
 

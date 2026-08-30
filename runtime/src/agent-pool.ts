@@ -423,8 +423,13 @@ export class AgentPool {
     tokens: number | null;
     contextWindow: number;
     percent: number | null;
+    sessionGeneration?: string;
   } | null> {
     return this.runtimeFacade.getContextUsageForChat(chatJid);
+  }
+
+  getSessionGenerationForChat(chatJid: string): string | null {
+    return this.runtimeFacade.getSessionGenerationForChat(chatJid);
   }
 
   scheduleRecentChatWarmup(options: { limit?: number; excludeChatJids?: string[] } = {}): string[] {

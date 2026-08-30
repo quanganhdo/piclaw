@@ -193,13 +193,13 @@ describe("web agent status helpers", () => {
 
     expect(res.status).toBe(200);
     expect(res.headers.get("Server-Timing")).toContain("agent_context;dur=");
-    expect(await res.json()).toEqual({ tokens: null, contextWindow: null, percent: null, cacheUsage: null });
+    expect(await res.json()).toEqual({ tokens: null, contextWindow: null, percent: null, sessionGeneration: null, cacheUsage: null });
   });
 
   test("handleAgentContextRequest includes prompt cache-hit telemetry", async () => {
     const req = new Request("https://example.com/agent/context?chat_jid=web:usage");
     const res = await handleAgentContextRequest(req, createContext({
-      getContextUsageForChat: async () => ({ tokens: 5000, contextWindow: 100000, percent: 5 }),
+      getContextUsageForChat: async () => ({ tokens: 5000, contextWindow: 100000, percent: 5, sessionGeneration: "session-current" }),
       getTokenUsageForChat: () => ({
         latest: {
           input_tokens: 1000,
@@ -238,6 +238,7 @@ describe("web agent status helpers", () => {
       tokens: 5000,
       contextWindow: 100000,
       percent: 5,
+      sessionGeneration: "session-current",
       cacheUsage: {
         latest: {
           inputTokens: 1000,

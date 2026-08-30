@@ -603,15 +603,19 @@ export async function processTaskCommand(data: JsonRecord, deps: IpcDeps): Promi
         }
       }
 
-      // Recalculate next_run if schedule changed.
+      // Recalculate next_run if schedule changed. Ignore an invalid schedule
+      // pair rather than persisting legacy state that EF-S07 cannot represent.
       if (updates.schedule_type || updates.schedule_value) {
         const currentScheduleType = String(updates.schedule_type ?? t.schedule_type);
         const currentScheduleValue = String(updates.schedule_value ?? t.schedule_value);
-        if (isScheduleType(currentScheduleType)) {
-          const nextRun = computeScheduledNextRun(currentScheduleType, currentScheduleValue);
-          if (nextRun !== undefined) {
-            updates.next_run = nextRun;
-          }
+        const nextRun = isScheduleType(currentScheduleType)
+          ? computeScheduledNextRun(currentScheduleType, currentScheduleValue)
+          : undefined;
+        if (nextRun === undefined) {
+          delete updates.schedule_type;
+          delete updates.schedule_value;
+        } else {
+          updates.next_run = nextRun;
         }
       }
 

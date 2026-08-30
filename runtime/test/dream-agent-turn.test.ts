@@ -115,6 +115,8 @@ test("runDreamAgentTurn reaps a stale dream lock and materializes memory files a
     expect(existsSync(join(config.WORKSPACE_DIR, "notes", "memory", "MEMORY.md"))).toBe(true);
     expect(existsSync(join(config.WORKSPACE_DIR, "notes", "memory", "current-state.md"))).toBe(true);
     expect(existsSync(join(config.WORKSPACE_DIR, "notes", "memory", "recent-context.md"))).toBe(true);
+    expect(readFileSync(join(config.WORKSPACE_DIR, "notes", "memory", ".dream-state"), "utf8"))
+      .toContain("recovery: complete");
     expect(result.result).toContain("Memory refreshed after Dream: yes");
 
     expect(rawDb.prepare("SELECT COUNT(*) AS count FROM chats WHERE jid = ?").get(dreamChatJid)).toEqual({ count: 0 });
@@ -203,6 +205,46 @@ test("runDreamAgentTurn records recovery summaries when the model pass succeeds 
   expect(result.result).toContain("AutoDream complete.");
   expect(result.result).toContain("Automatic recovery succeeded after 1 attempt");
   expect(result.result).toContain("context_pressure");
+});
+
+test("scheduled Dream consumes deferred startup backfill state and clears it after successful consolidation", async () => {
+  const config = await import("../src/core/config.js");
+  rmSync(join(config.WORKSPACE_DIR, "notes"), { recursive: true, force: true });
+  rmSync(join(config.DATA_DIR, "dream-backups"), { recursive: true, force: true });
+  rmSync(join(config.DATA_DIR, "workspace-search"), { recursive: true, force: true });
+  mkdirSync(join(config.WORKSPACE_DIR, "notes", "memory"), { recursive: true });
+  writeFileSync(
+    join(config.WORKSPACE_DIR, "notes", "memory", "current-state.md"),
+    "# Current Dream state\n\nGenerated: 2026-01-02T03:04:05.000Z\n",
+    "utf8",
+  );
+
+  const db = await importFresh<typeof import("../src/db.js")>("../src/db.js");
+  db.initDatabase();
+  const startupState = await importFresh<typeof import("../src/agent-memory/startup-state.js")>("../src/agent-memory/startup-state.js");
+  startupState.writeDreamStartupMarker("backfill_required", config.WORKSPACE_DIR);
+  const dream = await importFresh<typeof import("../src/dream.js")>("../src/dream.js");
+  expect(dream.hasOutstandingDreamConsolidation(2)).toBe(true);
+
+  let modelCalls = 0;
+  const result = await dream.runDreamAgentTurn({
+    chatJid: "web:default",
+    days: 2,
+    mode: "auto",
+    agentPool: {
+      applyControlCommand: acceptModelChange,
+      runAgent: async () => {
+        modelCalls += 1;
+        return { status: "success", result: "Scheduled consolidation complete." };
+      },
+      disposeChatSession: async () => {},
+    } as any,
+  });
+
+  expect(result.skipped).toBe(false);
+  expect(modelCalls).toBe(1);
+  expect(readFileSync(startupState.getDreamStartupMarkerPath(config.WORKSPACE_DIR), "utf8")).toContain("recovery: complete");
+  expect(dream.hasOutstandingDreamConsolidation(2)).toBe(false);
 });
 
 test("runDreamAgentTurn falls back to deterministic refresh when the model pass errors", async () => {

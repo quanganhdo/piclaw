@@ -290,6 +290,7 @@ function MainApp({ locationParams, navigate }) {
             setAgentDraft,
         },
         chatPaneRuntime: {
+            currentChatJid,
             isAgentTurnActive: surface.isAgentTurnActive,
             steerQueuedTurnId,
             currentTurnId,

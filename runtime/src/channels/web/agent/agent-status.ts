@@ -51,7 +51,7 @@ export interface AgentStatusContext {
   getBuffer(turnId: string, panel: "thought" | "draft"): WebAgentBufferEntry | undefined;
   getContextUsageForChat(
     chatJid: string
-  ): Promise<{ tokens: number | null; contextWindow: number; percent: number | null } | null>;
+  ): Promise<{ tokens: number | null; contextWindow: number | null; percent: number | null; sessionGeneration?: string } | null>;
   getTokenUsageForChat(chatJid: string): AgentTokenUsageContext | null;
   getAvailableModels(chatJid: string): Promise<unknown>;
   getProviderReadyCompletedForInstance(): boolean;
@@ -257,13 +257,14 @@ export async function handleAgentContextRequest(req: Request, ctx: AgentStatusCo
     const cacheUsage = formatTokenUsageContext(ctx.getTokenUsageForChat(chatJid));
     const usage = await ctx.getContextUsageForChat(chatJid);
     if (!usage) {
-      return ctx.json({ tokens: null, contextWindow: null, percent: null, cacheUsage });
+      return ctx.json({ tokens: null, contextWindow: null, percent: null, sessionGeneration: null, cacheUsage });
     }
 
     return ctx.json({
       tokens: usage.tokens,
       contextWindow: usage.contextWindow,
       percent: usage.percent,
+      sessionGeneration: usage.sessionGeneration ?? null,
       cacheUsage,
     });
   });

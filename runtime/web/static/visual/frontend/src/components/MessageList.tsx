@@ -10,7 +10,6 @@ import { shouldHideTimelineInteraction } from "./message-list/helpers";
 
 export function MessageList() {
   const [connected, setConnected] = useState<boolean | null>(null);
-  const [draft, setDraft] = useState<string>("");
   const timelineError = useSignal<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -54,7 +53,6 @@ export function MessageList() {
 
   useTimelineStream({
     setMessages,
-    setDraft,
     setConnected,
     scrollToBottom,
     refetchTimelineOnReconnect,

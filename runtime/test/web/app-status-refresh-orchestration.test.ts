@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { afterEach, expect, test } from 'bun:test';
 
 import {
   hasRenderableContextUsage,
@@ -9,7 +9,13 @@ import {
   refreshCurrentView,
   refreshModelAndQueueState,
   refreshQueueStateForChat,
+  resetContextSessionGenerationsForTests,
+  reconcileContextUsageForChat,
+  persistContextUsage,
+  restoreContextUsage,
 } from '../../web/src/ui/app-status-refresh-orchestration.js';
+
+afterEach(() => resetContextSessionGenerationsForTests());
 
 type QueueRow = { row_id: string | number; content?: string };
 
@@ -118,6 +124,28 @@ test('normalizeContextUsage preserves prompt cache-hit telemetry', () => {
 
   expect(hasRenderableContextUsage({ tokens: null, contextWindow: null, percent: null })).toBe(false);
   expect(hasRenderableContextUsage({ tokens: null, contextWindow: null, percent: null, cacheUsage: { latest: { cacheHitRate: 50 } } })).toBe(true);
+});
+
+test('reconcileContextUsageForChat keeps generation-less compatibility only until a generation is known', () => {
+  const legacy = reconcileContextUsageForChat('chat:legacy', null, {
+    tokens: 1200,
+    contextWindow: 10000,
+    percent: 12,
+  });
+  expect(legacy).toMatchObject({ tokens: 1200, percent: 12 });
+
+  const scoped = reconcileContextUsageForChat('chat:legacy', legacy, {
+    tokens: 800,
+    contextWindow: 10000,
+    percent: 8,
+    sessionGeneration: 'session-current',
+  }, { authoritative: true });
+  const staleLegacy = reconcileContextUsageForChat('chat:legacy', scoped, {
+    tokens: 9900,
+    contextWindow: 10000,
+    percent: 99,
+  });
+  expect(staleLegacy).toMatchObject({ tokens: 800, sessionGeneration: 'session-current' });
 });
 
 test('haveSameContextUsage includes cache telemetry in equality checks', () => {
@@ -244,6 +272,41 @@ test('refreshQueueStateForChat preserves optimistic rows when the backend only r
   expect(clearCounts).toEqual([]);
 });
 
+test('restoreContextUsage rejects local storage from a replaced session generation', () => {
+  const previousWindow = (globalThis as any).window;
+  const storage = new Map<string, string>();
+  (globalThis as any).window = {
+    localStorage: {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => storage.set(key, value),
+    },
+  };
+  try {
+    reconcileContextUsageForChat('chat:alpha', null, {
+      tokens: 95000,
+      contextWindow: 100000,
+      percent: 95,
+      sessionGeneration: 'session-old',
+    }, { authoritative: true });
+    persistContextUsage('chat:alpha', {
+      tokens: 95000,
+      contextWindow: 100000,
+      percent: 95,
+      sessionGeneration: 'session-old',
+    });
+    reconcileContextUsageForChat('chat:alpha', null, {
+      tokens: null,
+      contextWindow: 100000,
+      percent: null,
+      sessionGeneration: 'session-new',
+    }, { authoritative: true });
+
+    expect(restoreContextUsage('chat:alpha')).toBeNull();
+  } finally {
+    (globalThis as any).window = previousWindow;
+  }
+});
+
 test('refreshContextUsageForChat ignores stale chat responses', async () => {
   const activeChatJidRef = { current: 'chat:alpha' };
   let contextState: any = null;
@@ -251,7 +314,7 @@ test('refreshContextUsageForChat ignores stale chat responses', async () => {
   const pending = refreshContextUsageForChat({
     currentChatJid: 'chat:alpha',
     activeChatJidRef,
-    getAgentContext: async () => ({ usage: 42 }),
+    getAgentContext: async () => ({ tokens: 4200, contextWindow: 100000, percent: 4.2, sessionGeneration: 'session-alpha' }),
     setContextUsage: (next) => {
       contextState = typeof next === 'function' ? next(contextState) : next;
     },
@@ -263,22 +326,31 @@ test('refreshContextUsageForChat ignores stale chat responses', async () => {
   expect(contextState).toBeNull();
 });
 
-test('refreshContextUsageForChat does not overwrite cached state with null-percent API response', async () => {
+test('refreshContextUsageForChat preserves cached metrics for an empty response from the same generation', async () => {
   const activeChatJidRef = { current: 'chat:alpha' };
-  let contextState: any = { tokens: 5000, contextWindow: 128000, percent: 3.9 };
+  let contextState: any = reconcileContextUsageForChat('chat:alpha', null, {
+    tokens: 5000,
+    contextWindow: 128000,
+    percent: 3.9,
+    sessionGeneration: 'session-alpha',
+  }, { authoritative: true });
 
   await refreshContextUsageForChat({
     currentChatJid: 'chat:alpha',
     activeChatJidRef,
-    getAgentContext: async () => ({ tokens: null, contextWindow: null, percent: null }),
+    getAgentContext: async () => ({ tokens: null, contextWindow: null, percent: null, sessionGeneration: 'session-alpha' }),
     setContextUsage: (next) => {
       contextState = typeof next === 'function' ? next(contextState) : next;
     },
   });
 
-  // The null-percent response from inactive pools must not overwrite
-  // the previously cached/restored context usage.
-  expect(contextState).toEqual({ tokens: 5000, contextWindow: 128000, percent: 3.9 });
+  expect(contextState).toEqual({
+    tokens: 5000,
+    contextWindow: 128000,
+    percent: 3.9,
+    cacheUsage: null,
+    sessionGeneration: 'session-alpha',
+  });
 });
 
 test('refreshContextUsageForChat updates state when API returns real data', async () => {
@@ -288,18 +360,23 @@ test('refreshContextUsageForChat updates state when API returns real data', asyn
   await refreshContextUsageForChat({
     currentChatJid: 'chat:alpha',
     activeChatJidRef,
-    getAgentContext: async () => ({ tokens: 8000, contextWindow: 128000, percent: 6.25 }),
+    getAgentContext: async () => ({ tokens: 8000, contextWindow: 128000, percent: 6.25, sessionGeneration: 'session-alpha' }),
     setContextUsage: (next) => {
       contextState = typeof next === 'function' ? next(contextState) : next;
     },
   });
 
-  expect(contextState).toEqual({ tokens: 8000, contextWindow: 128000, percent: 6.25, cacheUsage: null });
+  expect(contextState).toEqual({ tokens: 8000, contextWindow: 128000, percent: 6.25, cacheUsage: null, sessionGeneration: 'session-alpha' });
 });
 
 test('refreshContextUsageForChat merges cache-only telemetry into existing context metrics', async () => {
   const activeChatJidRef = { current: 'chat:alpha' };
-  let contextState: any = { tokens: 5000, contextWindow: 128000, percent: 3.9 };
+  let contextState: any = reconcileContextUsageForChat('chat:alpha', null, {
+    tokens: 5000,
+    contextWindow: 128000,
+    percent: 3.9,
+    sessionGeneration: 'session-alpha',
+  }, { authoritative: true });
 
   await refreshContextUsageForChat({
     currentChatJid: 'chat:alpha',
@@ -309,93 +386,105 @@ test('refreshContextUsageForChat merges cache-only telemetry into existing conte
       contextWindow: null,
       percent: null,
       cacheUsage: { latest: { cacheHitRate: 87.3, cacheReadTokens: 873, inputTokens: 100, cacheWriteTokens: 27 } },
+      sessionGeneration: 'session-alpha',
     }),
     setContextUsage: (next) => {
       contextState = typeof next === 'function' ? next(contextState) : next;
     },
   });
 
-  expect(contextState).toEqual({
+  expect(contextState).toMatchObject({
     tokens: 5000,
     contextWindow: 128000,
     percent: 3.9,
-    cacheUsage: {
-      latest: {
-        inputTokens: 100,
-        outputTokens: null,
-        reasoningTokens: null,
-        cacheReadTokens: 873,
-        cacheWriteTokens: 27,
-        cacheReadReported: null,
-        cacheWriteReported: null,
-        totalTokens: null,
-        costTotal: null,
-        providerCostTotal: null,
-        catalogueCostTotal: null,
-        costProvenance: null,
-        runs: null,
-        cacheHitRate: 87.3,
-        model: null,
-        responseModel: null,
-        provider: null,
-        api: null,
-        turns: null,
-        runAt: null,
-      },
-      totals: null,
-    },
+    sessionGeneration: 'session-alpha',
+    cacheUsage: { latest: { cacheHitRate: 87.3 } },
   });
 });
 
 test('refreshContextUsageForChat preserves cache telemetry when context metrics update', async () => {
   const activeChatJidRef = { current: 'chat:alpha' };
-  const cacheUsage = {
-    latest: {
-      inputTokens: 100,
-      outputTokens: null,
-      reasoningTokens: null,
-      cacheReadTokens: 873,
-      cacheWriteTokens: 27,
-      cacheReadReported: null,
-      cacheWriteReported: null,
-      totalTokens: null,
-      costTotal: null,
-      providerCostTotal: null,
-      catalogueCostTotal: null,
-      costProvenance: null,
-      runs: null,
-      cacheHitRate: 87.3,
-      model: null,
-      responseModel: null,
-      provider: null,
-      api: null,
-      turns: null,
-      runAt: null,
-    },
-    totals: null,
-  };
-  let contextState: any = {
+  const cacheUsage = { latest: { cacheHitRate: 87.3 }, totals: null };
+  let contextState: any = reconcileContextUsageForChat('chat:alpha', null, {
     tokens: 5000,
     contextWindow: 128000,
     percent: 3.9,
     cacheUsage,
-  };
+    sessionGeneration: 'session-alpha',
+  }, { authoritative: true });
 
   await refreshContextUsageForChat({
     currentChatJid: 'chat:alpha',
     activeChatJidRef,
-    getAgentContext: async () => ({ tokens: 8000, contextWindow: 128000, percent: 6.25 }),
+    getAgentContext: async () => ({ tokens: 8000, contextWindow: 128000, percent: 6.25, sessionGeneration: 'session-alpha' }),
+    setContextUsage: (next) => {
+      contextState = typeof next === 'function' ? next(contextState) : next;
+    },
+  });
+
+  expect(contextState).toMatchObject({
+    tokens: 8000,
+    contextWindow: 128000,
+    percent: 6.25,
+    sessionGeneration: 'session-alpha',
+    cacheUsage: { latest: { cacheHitRate: 87.3 } },
+  });
+});
+
+test('refreshContextUsageForChat clears stale metrics when the authoritative generation changes', async () => {
+  const activeChatJidRef = { current: 'chat:alpha' };
+  let contextState: any = reconcileContextUsageForChat('chat:alpha', null, {
+    tokens: 95000,
+    contextWindow: 100000,
+    percent: 95,
+    sessionGeneration: 'session-old',
+  }, { authoritative: true });
+
+  await refreshContextUsageForChat({
+    currentChatJid: 'chat:alpha',
+    activeChatJidRef,
+    getAgentContext: async () => ({ tokens: null, contextWindow: 100000, percent: null, sessionGeneration: 'session-new' }),
     setContextUsage: (next) => {
       contextState = typeof next === 'function' ? next(contextState) : next;
     },
   });
 
   expect(contextState).toEqual({
-    tokens: 8000,
-    contextWindow: 128000,
-    percent: 6.25,
-    cacheUsage,
+    tokens: null,
+    contextWindow: 100000,
+    percent: null,
+    cacheUsage: null,
+    sessionGeneration: 'session-new',
   });
+});
+
+test('refreshContextUsageForChat drops an old API response after a newer generation is adopted', async () => {
+  const activeChatJidRef = { current: 'chat:alpha' };
+  let contextState: any = null;
+  let resolveOld!: (value: any) => void;
+  const oldResponse = new Promise((resolve) => { resolveOld = resolve; });
+
+  const stale = refreshContextUsageForChat({
+    currentChatJid: 'chat:alpha',
+    activeChatJidRef,
+    getAgentContext: () => oldResponse,
+    setContextUsage: (next) => {
+      contextState = typeof next === 'function' ? next(contextState) : next;
+    },
+  });
+  await refreshContextUsageForChat({
+    currentChatJid: 'chat:alpha',
+    activeChatJidRef,
+    getAgentContext: async () => ({ tokens: null, contextWindow: 100000, percent: null, sessionGeneration: 'session-new' }),
+    setContextUsage: (next) => {
+      contextState = typeof next === 'function' ? next(contextState) : next;
+    },
+  });
+  resolveOld({ tokens: 95000, contextWindow: 100000, percent: 95, sessionGeneration: 'session-old' });
+  await stale;
+
+  expect(contextState?.sessionGeneration).toBe('session-new');
+  expect(contextState?.tokens).toBeNull();
 });
 
 test('refreshAutoresearchStatusForChat updates panels and clears autoresearch pending actions', async () => {

@@ -8,7 +8,7 @@ function constraint(template: string, column: string): string {
   return template.replaceAll("%s", column);
 }
 
-/** Install the latent EF-S05 schema on an explicitly supplied isolated database. */
+/** Install EF-S05 on an explicitly supplied production or isolated database. */
 export function installServiceOutboxSchema(database: Database): void {
   database.exec("PRAGMA foreign_keys = ON");
   const foreignKeys = database.query("PRAGMA foreign_keys").get() as

@@ -25,6 +25,8 @@ import { createLogger, debugSuppressedError } from "../utils/logger.js";
 import { recompressExistingMedia } from "./media-recompress.js";
 import { createVerifiedSqliteBackup, type SqliteBackupManifest } from "./backup.js";
 import { ensureOwnedMigrationLedger } from "./migrations.js";
+import { migrateScheduledTaskAuthorities } from "./scheduled-task-authority.js";
+import { installScheduledRunCompositionSchema } from "../service-effects/current-piclaw/scheduled-run-schema.js";
 
 const log = createLogger("db.connection");
 
@@ -317,7 +319,8 @@ function createSchema(database: Database): void {
       last_run TEXT,
       last_result TEXT,
       status TEXT DEFAULT 'active',
-      created_at TEXT NOT NULL
+      created_at TEXT NOT NULL,
+      revision INTEGER NOT NULL DEFAULT 1
     );
     CREATE INDEX IF NOT EXISTS idx_next_run ON scheduled_tasks(next_run);
     CREATE INDEX IF NOT EXISTS idx_status ON scheduled_tasks(status);
@@ -659,6 +662,7 @@ function ensureScheduledTaskColumns(database: Database): void {
   ensureColumn("cwd", "TEXT");
   ensureColumn("timeout_sec", "INTEGER");
   ensureColumn("notify_on_complete", "INTEGER NOT NULL DEFAULT 1");
+  ensureColumn("revision", "INTEGER NOT NULL DEFAULT 1");
 }
 
 function ensureWebSessionColumns(database: Database): void {
@@ -878,8 +882,10 @@ export function initDatabase(): void {
     throw new Error("Database initialization failed");
   }
 
+  const foreignKeysBeforeInitialization = (db.query("PRAGMA foreign_keys").get() as { foreign_keys?: number } | undefined)?.foreign_keys === 1;
   db.exec(useMemory ? "PRAGMA journal_mode = MEMORY;" : "PRAGMA journal_mode = WAL;");
   db.exec("PRAGMA busy_timeout = 5000;");
+  db.exec("PRAGMA foreign_keys = ON;");
   db.exec("PRAGMA secure_delete = ON;");
   if (!useMemory) {
     if (isZfsFilesystem(nextPath)) {
@@ -902,6 +908,8 @@ export function initDatabase(): void {
   ensureKeychainNoteColumns(db);
   ensureTokenUsageColumns(db);
   ensureScheduledTaskColumns(db);
+  installScheduledRunCompositionSchema(db);
+  migrateScheduledTaskAuthorities(db);
   ensureWebSessionColumns(db);
   ensureFts(db);
   ensureChatCursorColumns(db);
@@ -910,6 +918,11 @@ export function initDatabase(): void {
   dropObsoleteRemoteInteropSchema(db);
   ensureMediaCompression(db);
   ensureThinkingContentDuration(db);
+  // The legacy live store historically runs without global FK enforcement.
+  // EF-S07 uses a dedicated FK-enabled scheduler connection in production;
+  // restore the caller's prior setting so unrelated legacy write paths retain
+  // their established behaviour.
+  if (!foreignKeysBeforeInitialization) db.exec("PRAGMA foreign_keys = OFF;");
   if (!useMemory) {
     ensureIncrementalAutoVacuum(db);
   }

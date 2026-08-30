@@ -61,16 +61,19 @@ export interface WebChannelEndpointFactoryOptions {
 /** Lazily built endpoint contexts consumed by WebChannel handlers. */
 function normalizeStoredContextUsage(value: Record<string, unknown> | null): {
   tokens: number | null;
-  contextWindow: number;
+  contextWindow: number | null;
   percent: number | null;
+  sessionGeneration: string;
 } | null {
   if (!value) return null;
+  const sessionGeneration = typeof value.sessionGeneration === "string" ? value.sessionGeneration.trim() : "";
+  if (!sessionGeneration) return null;
   const tokens = typeof value.tokens === "number" && Number.isFinite(value.tokens) ? value.tokens : null;
   const contextWindow = typeof value.contextWindow === "number" && Number.isFinite(value.contextWindow)
     ? value.contextWindow
     : null;
   const percent = typeof value.percent === "number" && Number.isFinite(value.percent) ? value.percent : null;
-  return contextWindow !== null ? { tokens, contextWindow, percent } : null;
+  return { tokens, contextWindow, percent, sessionGeneration };
 }
 
 function getTokenUsageForChat(chatJid: string): AgentTokenUsageContext | null {
@@ -136,11 +139,30 @@ export function createWebChannelEndpointContexts(
           getBuffer: (turnId, panel) => channel.getBuffer(turnId, panel),
           getContextUsageForChat: async (chatJid) => {
             const runtimeUsage = await channel.agentPool.getContextUsageForChat(chatJid).catch(() => null);
-            if (runtimeUsage?.tokens !== null && runtimeUsage?.tokens !== undefined) return runtimeUsage;
-            const storedUsage = normalizeStoredContextUsage(channel.getContextUsage(chatJid));
-            return storedUsage?.tokens !== null && storedUsage?.tokens !== undefined
+            const currentGeneration = typeof channel.agentPool.getSessionGenerationForChat === "function"
+              ? channel.agentPool.getSessionGenerationForChat(chatJid)
+              : null;
+            const runtimeGeneration = typeof runtimeUsage?.sessionGeneration === "string"
+              ? runtimeUsage.sessionGeneration.trim()
+              : "";
+            const storedUsage = normalizeStoredContextUsage(
+              typeof channel.getContextUsage === "function" ? channel.getContextUsage(chatJid) : null,
+            );
+            const authoritativeGeneration = currentGeneration || runtimeGeneration || storedUsage?.sessionGeneration || null;
+            const currentRuntimeUsage = runtimeUsage && (!authoritativeGeneration || runtimeGeneration === authoritativeGeneration)
+              ? runtimeUsage
+              : null;
+            const currentStoredUsage = storedUsage && (!authoritativeGeneration || storedUsage.sessionGeneration === authoritativeGeneration)
               ? storedUsage
-              : (runtimeUsage ?? storedUsage);
+              : null;
+
+            if (currentRuntimeUsage?.tokens !== null && currentRuntimeUsage?.tokens !== undefined) return currentRuntimeUsage;
+            if (currentStoredUsage?.tokens !== null && currentStoredUsage?.tokens !== undefined) return currentStoredUsage;
+            if (currentRuntimeUsage) return currentRuntimeUsage;
+            if (currentStoredUsage) return currentStoredUsage;
+            return authoritativeGeneration
+              ? { tokens: null, contextWindow: null, percent: null, sessionGeneration: authoritativeGeneration }
+              : null;
           },
           getTokenUsageForChat,
           getAvailableModels: (chatJid) => channel.agentPool.getAvailableModels(chatJid),

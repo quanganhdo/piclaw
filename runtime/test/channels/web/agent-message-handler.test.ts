@@ -613,6 +613,8 @@ describe("web agent message handler", () => {
           expect(command.type).toBe("session_rotate");
           return {
             status: "success",
+            sessionGeneration: "session-after-rotate",
+            sessionGenerationChanged: true,
             message: [
               "Session rotated.",
               "Archived previous session: /tmp/archive/session.jsonl",
@@ -672,8 +674,24 @@ describe("web agent message handler", () => {
       title: "Rotating session",
       model: "github-copilot/gpt-5.4",
     });
-    expect(statusUpdates.some((status) => status.type === "context_usage" && status.context_usage?.tokens === 4_096)).toBe(true);
-    expect(contextUsages).toContainEqual({ tokens: 4_096, contextWindow: 128_000, percent: 3.2 });
+    expect(statusUpdates).toContainEqual(expect.objectContaining({
+      type: "context_usage",
+      context_reset: true,
+      sessionGeneration: "session-after-rotate",
+      context_usage: {
+        tokens: null,
+        contextWindow: null,
+        percent: null,
+        sessionGeneration: "session-after-rotate",
+      },
+    }));
+    expect(contextUsages).toContainEqual({
+      tokens: null,
+      contextWindow: null,
+      percent: null,
+      sessionGeneration: "session-after-rotate",
+      reset: true,
+    });
     expect(broadcasts).toContainEqual(expect.objectContaining({
       event: "model_changed",
       payload: expect.objectContaining({ chat_jid: "web:default", model: "github-copilot/gpt-5.4" }),

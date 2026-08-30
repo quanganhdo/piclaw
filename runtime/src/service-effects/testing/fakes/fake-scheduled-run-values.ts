@@ -154,11 +154,11 @@ function digestTuple(values: readonly unknown[]): string {
   return createHash("sha256").update(JSON.stringify(values), "utf8").digest("hex");
 }
 
-export function deriveScheduledRunId(taskId: string, scheduledFor: string): string {
-  return `scheduled_run:${digestTuple([taskId, scheduledFor])}`;
+export function deriveScheduledRunId(taskId: string, taskRevision: number, scheduledFor: string): string {
+  return `scheduled_run:${digestTuple([taskId, taskRevision, scheduledFor])}`;
 }
-export function validateScheduledRunId(runId: string, taskId: string, scheduledFor: string): boolean {
-  return runId === deriveScheduledRunId(taskId, scheduledFor);
+export function validateScheduledRunId(runId: string, taskId: string, taskRevision: number, scheduledFor: string): boolean {
+  return runId === deriveScheduledRunId(taskId, taskRevision, scheduledFor);
 }
 export function deriveScheduledLeaseToken(prefix: string, runId: string, attempt: number): string {
   return `scheduled_lease:${digestTuple([prefix, runId, attempt])}`;
@@ -358,7 +358,7 @@ export function decodeScheduledRunRecord(candidate: unknown): ScheduledRunRecord
   const status = input.value("status"), durationMs = input.value("durationMs"), resultRef = input.value("resultRef"), errorCode = input.value("errorCode");
   const nextRunAt = input.value("nextRunAt"), disposition = input.value("headDisposition"), settledAt = input.value("settledAt"), reason = input.value("abandonmentReasonTag");
   const outboxIds = arrayOf(input.value("outboxIds"), 100, (id) => text.id(id) ? id : null);
-  if (!validScheduledRunId(runId) || !text.id(taskId) || !scheduledFor || runId !== deriveScheduledRunId(taskId, scheduledFor)
+  if (!validScheduledRunId(runId) || !text.id(taskId) || !scheduledFor || runId !== deriveScheduledRunId(taskId, revision as number, scheduledFor)
     || !integer(revision, 1) || !integer(attempt, 1) || !["claimed", "source_bound", "completed", "abandoned"].includes(state as string)
     || typeof retained !== "boolean" || !outboxIds || new Set(outboxIds).size !== outboxIds.length
     || (workerId !== null && !text.id(workerId)) || (leaseExpiresAt !== null && !canonicalInstant(leaseExpiresAt))

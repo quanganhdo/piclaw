@@ -11,9 +11,10 @@
 
 import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 import type { WebChannelLike } from "../core/web-channel-contracts.js";
-import { buildPreview, createToolTitleTracker, type AgentProfileBuilder } from "../agent/agent-utils.js";
+import { buildPreview, createToolTitleTracker, resolveMcpToolStatusIdentity, type AgentProfileBuilder } from "../agent/agent-utils.js";
 import { formatProviderError, sanitizeProviderErrorDetail } from "../handlers/provider-error-format.js";
 import { classifyOpaqueAgentFailure } from "../../../agent-pool/automatic-recovery.js";
+import { createDisplayUpdateCoalescer } from "./display-update-coalescer.js";
 
 /** Interface for broadcasting agent events to SSE clients. */
 export interface AgentEventEmitter {
@@ -244,13 +245,22 @@ export interface StreamingEventHandlerOptions {
   onThoughtBuffer?: (text: string, totalLines: number) => void;
   onThinkingComplete?: (text: string, totalLines: number, durationMs: number) => void;
   onDraftBuffer?: (text: string, totalLines: number) => void;
+  /** Maximum display-update cadence. Set to 0 in synchronous unit tests. */
+  displayUpdateIntervalMs?: number;
+}
+
+/** Callable streaming handler with an explicit display flush for lifecycle ordering. */
+export interface StreamingEventHandler {
+  (event: AgentSessionEvent): void;
+  flushDisplayUpdates(): void;
 }
 
 /** Create an event handler that translates agent session events to SSE broadcasts. */
-export function createStreamingEventHandler(options: StreamingEventHandlerOptions): (event: AgentSessionEvent) => void {
+export function createStreamingEventHandler(options: StreamingEventHandlerOptions): StreamingEventHandler {
   const thoughtPreviewLines = options.thoughtPreviewLines ?? 8;
   const draftPreviewLines = options.draftPreviewLines ?? 8;
   const previewMaxCharsPerLine = options.previewMaxCharsPerLine ?? 160;
+  const displayUpdateIntervalMs = Math.max(0, options.displayUpdateIntervalMs ?? 100);
 
   let thoughtBuffer = "";
   let thoughtSegmentBuffer = "";
@@ -276,12 +286,43 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
   const toolStartedAt = new Map<string, string>();
   const activeToolStatuses = new Map<string, ActiveToolStatus>();
   const widgetStreams = new Map<number, { toolCallId: string | null; widgetId: string | null }>();
+  const displayUpdates = createDisplayUpdateCoalescer({
+    intervalMs: displayUpdateIntervalMs,
+    // Keep the established snapshot-before-delta wire order. Current clients
+    // ignore bounded snapshots after full-delta mode starts; older clients can
+    // still use snapshots while full-delta clients append the ordered batch.
+    order: ["thought-snapshot", "thought-delta", "draft-snapshot", "draft-delta", "tool-status"],
+  });
+  const flushDisplayUpdates = () => displayUpdates.flush();
+
+  const emitThoughtSnapshot = (payload: Record<string, unknown>) =>
+    displayUpdates.queue("thought-snapshot", payload, options.emitter.thought);
+  const emitThoughtDelta = (payload: Record<string, unknown>) => payload.reset
+    ? displayUpdates.emitImmediate(payload, options.emitter.thoughtDelta)
+    : displayUpdates.queue("thought-delta", payload, options.emitter.thoughtDelta, { mergeDelta: true });
+  const emitDraftSnapshot = (payload: Record<string, unknown>) =>
+    displayUpdates.queue("draft-snapshot", payload, options.emitter.draft);
+  const emitDraftDelta = (payload: Record<string, unknown>) => payload.reset
+    ? displayUpdates.emitImmediate(payload, options.emitter.draftDelta)
+    : displayUpdates.queue("draft-delta", payload, options.emitter.draftDelta, { mergeDelta: true });
+
+  const withMcpStatusIdentity = (toolName: string, args: unknown): Record<string, unknown> => {
+    const identity = resolveMcpToolStatusIdentity(toolName, args);
+    if (!identity) return {};
+    return {
+      mcp_operation: identity.operation,
+      mcp_server: identity.server,
+      mcp_tool: identity.tool,
+      mcp_target: identity.target,
+    };
+  };
 
   const toActiveToolSnapshot = (state: ActiveToolStatus): Record<string, unknown> => ({
     tool_call_id: state.toolCallId,
     tool_name: state.toolName,
     title: state.title,
     tool_args: state.args,
+    ...withMcpStatusIdentity(state.toolName, state.args),
     status: state.status,
     started_at: state.startedAt,
     last_progress_at: state.lastProgressAt,
@@ -292,9 +333,10 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
   const emitActiveToolStatus = (
     state: ActiveToolStatus,
     extra: Record<string, unknown> = {},
+    coalesce = false,
   ) => {
     const activeTools = Array.from(activeToolStatuses.values()).map(toActiveToolSnapshot);
-    options.emitter.status({
+    const payload = {
       ...base,
       type: state.output.output_preview ? "tool_status" : "tool_call",
       title: state.title,
@@ -302,6 +344,7 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
       tool_call_id: state.toolCallId,
       tool_name: state.toolName,
       tool_args: state.args,
+      ...withMcpStatusIdentity(state.toolName, state.args),
       started_at: state.startedAt,
       last_event_at: state.heartbeatAt || state.lastProgressAt,
       last_progress_at: state.lastProgressAt,
@@ -310,7 +353,9 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
       active_tools: activeTools,
       ...state.output,
       ...extra,
-    });
+    };
+    if (coalesce) displayUpdates.queue("tool-status", payload, options.emitter.status);
+    else displayUpdates.emitImmediate(payload, options.emitter.status);
   };
 
   const base = {
@@ -373,8 +418,15 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
     }, 0);
   };
 
-  return (event: AgentSessionEvent) => {
+  const handleStreamingEvent = ((event: AgentSessionEvent) => {
     const eventType = (event as { type?: string }).type;
+    const messageUpdateType = event.type === "message_update"
+      ? (event.assistantMessageEvent as { type?: string } | undefined)?.type
+      : null;
+    const isCoalescibleDisplayEvent = messageUpdateType === "thinking_delta"
+      || messageUpdateType === "text_delta"
+      || eventType === "tool_execution_update";
+    if (!isCoalescibleDisplayEvent) flushDisplayUpdates();
 
     if (eventType === "thinking_level_changed" || eventType === "thinking_level_select") {
       const record = event as { level?: unknown; previousLevel?: unknown; previous_level?: unknown };
@@ -410,6 +462,7 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
     if (event.type === "message_update") {
       const messageEvent = event.assistantMessageEvent;
       if (messageEvent.type === "thinking_start") {
+        flushDisplayUpdates();
         thoughtSegmentBuffer = "";
         thoughtSegmentPrefix = thoughtBuffer ? "\n\n" : "";
         thoughtStartedAt = Date.now();
@@ -425,7 +478,7 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
         });
         if (options.includeThoughtFull?.() && !thoughtDeltaActive) {
           thoughtDeltaActive = true;
-          options.emitter.thoughtDelta({
+          emitThoughtDelta({
             ...base,
             delta: thoughtBuffer,
             reset: true,
@@ -437,7 +490,7 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
         if (!thoughtHasDelta && thoughtSegmentPrefix) {
           thoughtBuffer += thoughtSegmentPrefix;
           if (shouldSendDelta && thoughtDeltaActive) {
-            options.emitter.thoughtDelta({ ...base, delta: thoughtSegmentPrefix });
+            emitThoughtDelta({ ...base, delta: thoughtSegmentPrefix });
           }
         }
         thoughtSegmentBuffer += messageEvent.delta;
@@ -449,20 +502,20 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
           previewMaxCharsPerLine
         );
         options.onThoughtBuffer?.(thoughtBuffer, totalLines);
-        options.emitter.thought({
+        emitThoughtSnapshot({
           ...base,
           text: preview,
           total_lines: totalLines,
         });
         if (shouldSendDelta && !thoughtDeltaActive) {
           thoughtDeltaActive = true;
-          options.emitter.thoughtDelta({
+          emitThoughtDelta({
             ...base,
             delta: thoughtBuffer,
             reset: true,
           });
         } else if (shouldSendDelta) {
-          options.emitter.thoughtDelta({
+          emitThoughtDelta({
             ...base,
             delta: messageEvent.delta,
           });
@@ -471,6 +524,7 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
         }
       }
       if (messageEvent.type === "thinking_end") {
+        flushDisplayUpdates();
         const completedThought = messageEvent.content || thoughtSegmentBuffer;
         if (!thoughtHasDelta && completedThought) {
           thoughtBuffer += `${thoughtSegmentPrefix}${completedThought}`;
@@ -484,7 +538,7 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
         const thinkingDurationMs = thoughtStartedAt > 0 ? Date.now() - thoughtStartedAt : 0;
         const completedThoughtLines = completedThought ? completedThought.split("\n").length : 0;
         options.onThinkingComplete?.(completedThought, completedThoughtLines, thinkingDurationMs);
-        options.emitter.thought({
+        emitThoughtSnapshot({
           ...base,
           text: preview,
           total_lines: totalLines,
@@ -493,13 +547,13 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
         if (shouldSendDelta && !thoughtHasDelta && completedThought) {
           if (!thoughtDeltaActive) {
             thoughtDeltaActive = true;
-            options.emitter.thoughtDelta({
+            emitThoughtDelta({
               ...base,
               delta: thoughtBuffer,
               reset: true,
             });
           } else {
-            options.emitter.thoughtDelta({
+            emitThoughtDelta({
               ...base,
               delta: `${thoughtSegmentPrefix}${completedThought}`,
             });
@@ -509,6 +563,7 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
         }
       }
       if (messageEvent.type === "toolcall_start") {
+        flushDisplayUpdates();
         const partial: any = messageEvent.partial;
         const block = partial?.content?.[messageEvent.contentIndex];
         if (block?.type === "toolCall" && block?.name === "show_widget") {
@@ -543,6 +598,7 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
         }
       }
       if (messageEvent.type === "toolcall_end") {
+        flushDisplayUpdates();
         const title = remember(
           messageEvent.toolCall.id,
           messageEvent.toolCall.name,
@@ -573,11 +629,13 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
           tool_call_id: messageEvent.toolCall.id,
           tool_name: messageEvent.toolCall.name,
           tool_args: messageEvent.toolCall.arguments,
+          ...withMcpStatusIdentity(messageEvent.toolCall.name, messageEvent.toolCall.arguments),
           active_tool_count: activeToolStatuses.size,
           active_tools: Array.from(activeToolStatuses.values()).map(toActiveToolSnapshot),
         });
       }
       if (messageEvent.type === "text_start") {
+        flushDisplayUpdates();
         draftBuffer = "";
         draftDeltaActive = false;
         const now = new Date().toISOString();
@@ -592,7 +650,7 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
         options.onDraftBuffer?.(draftBuffer, 0);
         if (options.includeDraftFull?.()) {
           draftDeltaActive = true;
-          options.emitter.draftDelta({
+          emitDraftDelta({
             ...base,
             delta: "",
             reset: true,
@@ -607,7 +665,7 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
           previewMaxCharsPerLine
         );
         options.onDraftBuffer?.(draftBuffer, totalLines);
-        options.emitter.draft({
+        emitDraftSnapshot({
           ...base,
           text: preview,
           total_lines: totalLines,
@@ -617,13 +675,13 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
         const shouldSendDelta = Boolean(options.includeDraftFull?.());
         if (shouldSendDelta && !draftDeltaActive) {
           draftDeltaActive = true;
-          options.emitter.draftDelta({
+          emitDraftDelta({
             ...base,
             delta: draftBuffer,
             reset: true,
           });
         } else if (shouldSendDelta) {
-          options.emitter.draftDelta({
+          emitDraftDelta({
             ...base,
             delta: messageEvent.delta,
           });
@@ -655,16 +713,19 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
 
     if (event.type === "tool_execution_update") {
       const lastEventAt = new Date().toISOString();
-      const title = lookup(event.toolCallId, event.toolName, event.args);
+      const priorContext = toolExecutionContext.get(event.toolCallId) || null;
+      const toolName = event.toolName || priorContext?.toolName || "tool";
+      const args = event.args ?? priorContext?.args ?? null;
+      const title = lookup(event.toolCallId, toolName, args);
       const startedAt = toolStartedAt.get(event.toolCallId) || lastEventAt;
       toolStartedAt.set(event.toolCallId, startedAt);
-      toolExecutionContext.set(event.toolCallId, { toolName: event.toolName, args: event.args });
+      toolExecutionContext.set(event.toolCallId, { toolName, args });
       const outputPreview = buildToolOutputStatusPreview((event as { partialResult?: unknown }).partialResult);
       const state: ActiveToolStatus = {
         toolCallId: event.toolCallId,
-        toolName: event.toolName,
+        toolName,
         title,
-        args: event.args,
+        args,
         startedAt,
         lastProgressAt: lastEventAt,
         heartbeatAt: lastEventAt,
@@ -672,7 +733,7 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
         output: outputPreview,
       };
       activeToolStatuses.set(event.toolCallId, state);
-      emitActiveToolStatus(state);
+      emitActiveToolStatus(state, {}, true);
     }
 
     if (eventType === "tool_execution_heartbeat") {
@@ -708,6 +769,7 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
     }
 
     if (event.type === "tool_execution_end") {
+      flushDisplayUpdates();
       const lastEventAt = new Date().toISOString();
       const toolContext = toolExecutionContext.get(event.toolCallId) || null;
       const activeTool = activeToolStatuses.get(event.toolCallId) || null;
@@ -740,6 +802,7 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
         tool_name: toolContext?.toolName || event.toolName,
         title,
         tool_args: toolContext?.args,
+        ...withMcpStatusIdentity(toolContext?.toolName || event.toolName, toolContext?.args),
         started_at: startedAt,
         completed_at: lastEventAt,
         duration_ms: typeof reportedDurationMs === "number"
@@ -771,6 +834,7 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
     }
 
     if (event.type === "message_end") {
+      flushDisplayUpdates();
       const message = event.message as { role?: string; stopReason?: string; errorMessage?: string };
       const safeErrorMessage = sanitizeProviderErrorDetail(message?.errorMessage);
       if (message?.role === "assistant" && message.stopReason === "error" && classifyOpaqueAgentFailure(safeErrorMessage) === "rate_limit") {
@@ -1056,5 +1120,7 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
         });
       }
     }
-  };
+  }) as StreamingEventHandler;
+  handleStreamingEvent.flushDisplayUpdates = flushDisplayUpdates;
+  return handleStreamingEvent;
 }

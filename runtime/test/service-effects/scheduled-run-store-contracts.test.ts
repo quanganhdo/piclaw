@@ -198,6 +198,32 @@ describe("EF-S07 SQLite hardening", () => {
     } finally { subject.dispose?.(); }
   });
 
+  test("same scheduledFor across revisions derives distinct durable occurrence identities", async () => {
+    const subject = isolated();
+    try {
+      const scheduledFor = "2026-08-16T01:00:00.000Z";
+      subject.authority.create(authorityTask("task:revision-identity", { nextRunAt: scheduledFor }));
+      const first = await subject.store.claimDue(dueClaim("revision-identity-v1"));
+      expect(first.ok && first.value.length).toBe(1);
+      if (!first.ok) return;
+
+      subject.authority.update({
+        ...authorityTask("task:revision-identity", {
+          payloadRef: "payload:revision-identity:v2",
+          nextRunAt: scheduledFor,
+          authoredAt: "2026-08-16T01:00:05.000Z",
+        }),
+        expectedRevision: 1,
+      });
+      const second = await subject.store.claimDue(dueClaim("revision-identity-v2", "2026-08-16T01:00:06.000Z"));
+      expect(second.ok && second.value.length).toBe(1);
+      if (!second.ok) return;
+      expect(second.value[0].record.taskRevision).toBe(2);
+      expect(first.value[0].record.runId).not.toBe(second.value[0].record.runId);
+      expect(first.value[0].record.scheduledFor).toBe(second.value[0].record.scheduledFor);
+    } finally { subject.dispose?.(); }
+  });
+
   test("abandon writes no run log, retention tombstones identity, and exact replay remains stable", async () => {
     const subject = isolated();
     try {

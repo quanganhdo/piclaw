@@ -80,6 +80,17 @@ export function SettingsPanel() {
   }, []);
 
   useEffect(() => {
+    const onOpenSettings = (event: Event) => {
+      const section = (event as CustomEvent<{ section?: string }>).detail?.section;
+      if (!section || !getRegisteredPanes().some((pane) => pane.id === section)) return;
+      activeCategory.value = section;
+      safeSetItem("piclaw-settings-category", section);
+    };
+    window.addEventListener("piclaw:open-settings", onOpenSettings);
+    return () => window.removeEventListener("piclaw:open-settings", onOpenSettings);
+  }, [activeCategory]);
+
+  useEffect(() => {
     void (async () => {
       try {
         const res = await fetch("/agent/settings-data", { credentials: "same-origin" });

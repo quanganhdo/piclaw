@@ -270,6 +270,10 @@ export interface AgentControlResult {
   /** A steer lost its active stream race and should be retried as a normal follow-up. */
   retry_as_followup?: boolean;
   model_label?: string | null;
+  /** Active Pi session identity after the command completes. */
+  sessionGeneration?: string;
+  /** True only when the command replaced the active Pi session. */
+  sessionGenerationChanged?: boolean;
   thinking_level?: string | null;
   thinking_level_label?: string | null;
   rolled_up_to?: string;
@@ -283,6 +287,7 @@ export interface AgentControlResult {
     tokens: number | null;
     contextWindow: number | null;
     percent: number | null;
+    sessionGeneration?: string;
     estimated?: boolean;
     source?: string;
     phase?: string;

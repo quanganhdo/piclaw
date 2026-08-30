@@ -25,7 +25,7 @@ export interface ScheduledRunInstallObserver {
   afterBoundary(boundary: ScheduledRunInstallBoundary): void;
 }
 
-/** Install only EF-S07 tables on an explicitly supplied isolated database. */
+/** Install EF-S07 tables on an explicitly supplied database connection. */
 export function installScheduledRunSchema(database: Database): void {
   database.exec("PRAGMA foreign_keys = ON");
   const foreignKeys = database.query("PRAGMA foreign_keys").get() as
@@ -80,7 +80,7 @@ export function installScheduledRunSchema(database: Database): void {
       settled_at TEXT CHECK(settled_at IS NULL OR ${instant("settled_at")}),
       abandonment_reason_tag TEXT CHECK(abandonment_reason_tag IS NULL OR (length(abandonment_reason_tag) BETWEEN 1 AND 128 AND abandonment_reason_tag NOT GLOB '*[^A-Za-z0-9_.:-]*')),
       retained INTEGER NOT NULL DEFAULT 0 CHECK(retained=0),
-      UNIQUE(task_id,scheduled_for),
+      UNIQUE(task_id,task_revision,scheduled_for),
       FOREIGN KEY(task_id,task_revision) REFERENCES ${PREFIX}task_revisions(task_id,revision),
       CHECK(
         (state IN ('claimed','source_bound') AND worker_id IS NOT NULL AND lease_token_hash IS NOT NULL AND lease_expires_at IS NOT NULL AND claimed_at < lease_expires_at AND result_status IS NULL AND duration_ms IS NULL AND result_ref IS NULL AND error_code IS NULL AND next_run_at IS NULL AND head_disposition='pending' AND settled_at IS NULL AND abandonment_reason_tag IS NULL)
@@ -201,7 +201,7 @@ export function installScheduledRunSchema(database: Database): void {
       settled_at TEXT NOT NULL CHECK(${instant("settled_at")}),
       decision_method TEXT NOT NULL CHECK(decision_method IN ('complete','abandon')),
       decision_hash TEXT NOT NULL CHECK(${hash("decision_hash")}),
-      UNIQUE(task_id,scheduled_for),
+      UNIQUE(task_id,task_revision,scheduled_for),
       CHECK((state='completed' AND decision_method='complete') OR (state='abandoned' AND decision_method='abandon'))
     ) STRICT;
 
@@ -222,8 +222,8 @@ export function installScheduledRunSchema(database: Database): void {
 }
 
 /**
- * Install the complete latent S01 + S05 + S07 composition atomically on a
- * caller-owned database. It is never registered with production startup.
+ * Install the complete S01 + S05 + S07 composition atomically on a
+ * caller-owned database. Production startup uses this before task migration.
  */
 export function installScheduledRunCompositionSchema(
   database: Database,

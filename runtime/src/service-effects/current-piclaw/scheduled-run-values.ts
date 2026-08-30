@@ -165,15 +165,15 @@ function outbox(value: unknown): EnqueueOutboxRequest | null {
   });
 }
 
-export function deriveScheduledRunId(taskId: string, scheduledFor: string): string {
+export function deriveScheduledRunId(taskId: string, taskRevision: number, scheduledFor: string): string {
   const digest = createHash("sha256")
-    .update(JSON.stringify([taskId, scheduledFor]), "utf8")
+    .update(JSON.stringify([taskId, taskRevision, scheduledFor]), "utf8")
     .digest("hex");
   return `scheduled_run:${digest}`;
 }
 
-export function validateScheduledRunId(runId: string, taskId: string, scheduledFor: string): boolean {
-  return runId === deriveScheduledRunId(taskId, scheduledFor);
+export function validateScheduledRunId(runId: string, taskId: string, taskRevision: number, scheduledFor: string): boolean {
+  return runId === deriveScheduledRunId(taskId, taskRevision, scheduledFor);
 }
 
 export function deriveScheduledLeaseToken(prefix: string, runId: string, attempt: number): string {
@@ -431,7 +431,7 @@ export function decodeScheduledRunRecord(value: unknown): ScheduledRunRecord | n
   const row = readObject(value, RECORD_KEYS);
   const scheduledFor = row && canonicalInstant(row.scheduledFor);
   if (!row || !scheduledFor || !validScheduledRunId(row.runId) || !validId(row.taskId) || !safeInteger(row.taskRevision, 1)
-    || !validateScheduledRunId(row.runId, row.taskId, scheduledFor)
+    || !validateScheduledRunId(row.runId, row.taskId, row.taskRevision as number, scheduledFor)
     || !safeInteger(row.attempt, 1) || typeof row.retained !== "boolean") return null;
   if (!Array.isArray(row.outboxIds) || row.outboxIds.length > 100) return null;
   const outboxIds: string[] = [], seen = new Set<string>();

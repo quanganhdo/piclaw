@@ -315,7 +315,7 @@ export function SettingsDialogContent({ onClose }) {
             case 'workspace': return html`<${Comp} settingsData=${settingsData} setStatus=${setStatus} mergeSettingsData=${mergeSettingsData} />`;
             case 'environment': return html`<${Comp} settingsData=${settingsData} filter=${filter} setStatus=${setStatus} mergeSettingsData=${mergeSettingsData} />`;
             case 'providers': return html`<${Comp} providers=${settingsData?.providers} setStatus=${setStatus} />`;
-            case 'models': return html`<${Comp} filter=${filter} />`;
+            case 'models': return html`<${Comp} filter=${filter} onFilterChange=${setFilter} />`;
             case 'theme': return html`<${Comp} themes=${settingsData?.themes} colorKeys=${settingsData?.colorKeys} settingsData=${settingsData} setStatus=${setStatus} mergeSettingsData=${mergeSettingsData} />`;
             case 'scheduled-tasks': return html`<${Comp} filter=${filter} setStatus=${setStatus} />`;
             case 'quick-actions': return html`<${Comp} filter=${filter} setStatus=${setStatus} mergeSettingsData=${mergeSettingsData} />`;
@@ -335,7 +335,8 @@ export function SettingsDialogContent({ onClose }) {
                 <div class="settings-dialog-header">
                     <span class="settings-dialog-title">${t('settings.title')}</span>
                     ${activeMeta?.searchable && html`
-                        <input ref=${filterRef} type="text" class="settings-header-filter"
+                        <input ref=${filterRef} type="search" class="settings-header-filter"
+                            aria-label=${sectionPlaceholder(activeMeta)}
                             placeholder=${sectionPlaceholder(activeMeta)}
                             value=${filter} onInput=${e => setFilter(e.target.value)} />
                     `}
@@ -349,7 +350,9 @@ export function SettingsDialogContent({ onClose }) {
                             return html`
                                 ${showSep && html`<div class="settings-nav-separator"></div>`}
                                 <button class=${`settings-nav-item ${s.id === activeSection ? 'active' : ''}`} onClick=${() => switchSection(s.id)}>
-                                    <span class="settings-nav-icon">${s.icon}</span>
+                                    <span class="settings-nav-icon">${typeof s.icon === 'string' && s.icon.trim().startsWith('<')
+                                        ? html`<span dangerouslySetInnerHTML=${{ __html: s.icon }}></span>`
+                                        : s.icon}</span>
                                     <span class="settings-nav-label">${sectionLabel(s)}</span>
                                 </button>
                             `;

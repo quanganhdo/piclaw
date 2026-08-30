@@ -16,8 +16,8 @@ function sourceSimilarity(left: string, right: string): number {
   return intersection / Math.max(1, a.size + b.size - intersection);
 }
 
-describe("EF-S07 latent import boundary", () => {
-  test("fake is independent and no production scheduler or task surface activates EF-S07", () => {
+describe("EF-S07 production import boundary", () => {
+  test("fake remains independent while the live scheduler uses only the bounded store constructor", () => {
     const root = join(import.meta.dir, "../..");
     for (const relative of ["src/service-effects/testing/fakes/fake-scheduled-run-store.ts", "src/service-effects/testing/fakes/fake-scheduled-run-values.ts"]) {
       const fake = readFileSync(join(root, relative), "utf8");
@@ -33,19 +33,30 @@ describe("EF-S07 latent import boundary", () => {
     const adapter = readFileSync(join(root, "src/service-effects/current-piclaw/scheduled-run-store.ts"), "utf8");
     expect(adapter).toContain("private constructor(");
     expect(adapter).not.toContain("export class CurrentPiclawScheduledRunStore");
+  });
+
+  test("production installs and claims EF-S07 while the legacy unclaimed poll path is unreachable", () => {
+    const root = join(import.meta.dir, "../..");
+    const scheduler = readFileSync(join(root, "src/task-scheduler.ts"), "utf8");
+    const connection = readFileSync(join(root, "src/db/connection.ts"), "utf8");
+    const tasks = readFileSync(join(root, "src/db/tasks.ts"), "utf8");
+
+    expect(connection).toContain("installScheduledRunCompositionSchema(db)");
+    expect(tasks).toContain("createScheduledTaskAuthorityRecord");
+    expect(scheduler).toContain("createCurrentPiclawScheduledRunStore");
+    expect(scheduler).toContain("store.claimDue");
+    expect(scheduler).toContain("lease.record.runId");
+    expect(scheduler).not.toContain("getDueTasks(");
+    expect(scheduler).not.toContain("enqueueTask(cur.id");
+
     for (const relative of [
       "src/index.ts",
-      "src/db/connection.ts",
-      "src/db/tasks.ts",
-      "src/task-scheduler.ts",
       "src/task-scheduler-utils.ts",
       "src/queue.ts",
       "src/extensions/scheduled-tasks.ts",
       "src/scheduled-task-query-service.ts",
     ]) {
       const source = readFileSync(join(root, relative), "utf8");
-      expect(source).not.toContain("scheduled-run-store");
-      expect(source).not.toContain("ScheduledRunStore");
       expect(source).not.toContain("service_effect_s07");
     }
   });
