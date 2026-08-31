@@ -1,4 +1,8 @@
 import { expect, test } from 'bun:test';
+import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fetchQmdAsset, QmdAssetError } from '../../../src/channels/web/http/qmd-asset-service.js';
 import { QmdDocumentError } from '../../../src/channels/web/http/qmd-document-service.js';
 import { parseQmdReference, QmdReferenceError } from '../../../src/channels/web/http/qmd-reference.js';
 import { generateQmdViewerPage, handleQmdViewerRoute } from '../../../src/channels/web/http/qmd-viewer-route.js';
@@ -44,6 +48,7 @@ test('parseQmdReference rejects unsafe or unbounded references', () => {
 test('QMD viewer page is same-origin, CSP constrained, and fetches the authenticated document endpoint', () => {
   const page = generateQmdViewerPage();
   expect(page).toContain('/qmd-viewer/document?ref=');
+  expect(page).toContain("'/qmd-viewer/asset?ref='");
   expect(page).toContain('/static/common/js/marked.min.js');
   expect(page).toContain("safeTags = new Set");
   expect(page).not.toContain('allow-scripts');
@@ -66,6 +71,60 @@ test('QMD document route validates and resolves references through the injected 
     fromLine: 12,
     maxLines: 8,
   });
+});
+
+test('QMD asset service resolves relative raster images within the collection', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'qmd-assets-'));
+  try {
+    const assetDir = join(root, 'books', 'book', 'assets');
+    await mkdir(assetDir, { recursive: true });
+    const jpeg = Uint8Array.from([0xff, 0xd8, 0xff, 0xdb, 0x00, 0x01]);
+    await writeFile(join(assetDir, 'photo.jpg'), jpeg);
+    const reference = parseQmdReference('qmd://books/book/chapters/chapter.md:41:40');
+    const result = await fetchQmdAsset(reference, '../assets/photo.jpg', root);
+    expect(result.mimeType).toBe('image/jpeg');
+    expect(result.bytes).toEqual(jpeg);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('QMD asset service rejects collection escapes, symlink escapes, and unsupported content', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'qmd-assets-'));
+  try {
+    const chapters = join(root, 'books', 'book', 'chapters');
+    const assets = join(root, 'books', 'book', 'assets');
+    await mkdir(chapters, { recursive: true });
+    await mkdir(assets, { recursive: true });
+    await writeFile(join(root, 'outside.jpg'), Uint8Array.from([0xff, 0xd8, 0xff, 0xdb]));
+    await symlink(join(root, 'outside.jpg'), join(assets, 'linked.jpg'));
+    await writeFile(join(assets, 'fake.png'), Uint8Array.from([0xff, 0xd8, 0xff, 0xdb]));
+    const reference = parseQmdReference('qmd://books/book/chapters/chapter.md');
+
+    await expect(fetchQmdAsset(reference, '../../../../outside.jpg', root)).rejects.toMatchObject({ status: 403 });
+    await expect(fetchQmdAsset(reference, '../assets/linked.jpg', root)).rejects.toMatchObject({ status: 404 });
+    await expect(fetchQmdAsset(reference, '../assets/fake.png', root)).rejects.toMatchObject({ status: 415 });
+    await expect(fetchQmdAsset(reference, 'https://example.com/photo.jpg', root)).rejects.toBeInstanceOf(QmdAssetError);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('QMD asset route returns an allowlisted image with bounded response headers', async () => {
+  const ref = 'qmd://books/book/chapters/chapter.md:41:40';
+  const jpeg = Uint8Array.from([0xff, 0xd8, 0xff, 0xdb]);
+  let receivedPath = '';
+  const response = await handleQmdViewerRoute(
+    new Request(`https://example.com/qmd-viewer/asset?ref=${encodeURIComponent(ref)}&path=${encodeURIComponent('../assets/photo.jpg')}`),
+    '/qmd-viewer/asset',
+    { fetchAsset: async (_reference, path) => { receivedPath = path; return { bytes: jpeg, mimeType: 'image/jpeg' }; } },
+  );
+  expect(response.status).toBe(200);
+  expect(receivedPath).toBe('../assets/photo.jpg');
+  expect(response.headers.get('content-type')).toBe('image/jpeg');
+  expect(response.headers.get('content-length')).toBe('4');
+  expect(response.headers.get('cross-origin-resource-policy')).toBe('same-origin');
+  expect(new Uint8Array(await response.arrayBuffer())).toEqual(jpeg);
 });
 
 test('QMD document route returns bounded public errors', async () => {
