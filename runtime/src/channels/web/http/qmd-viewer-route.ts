@@ -1,8 +1,10 @@
+import { fetchQmdAsset, QmdAssetError, type QmdAsset } from "./qmd-asset-service.js";
 import { fetchQmdDocument, QmdDocumentError } from "./qmd-document-service.js";
 import { registerExtensionRoute } from "./extension-routes.js";
 import { parseQmdReference, QmdReferenceError, type ParsedQmdReference } from "./qmd-reference.js";
 
 const ROUTE_PREFIX = "/qmd-viewer";
+const ASSET_TIMEOUT_MS = 5_000;
 const VIEWER_CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'",
@@ -17,6 +19,7 @@ const VIEWER_CSP = [
 
 export interface QmdViewerRouteDependencies {
   fetchDocument?: (reference: ParsedQmdReference, signal?: AbortSignal) => Promise<string>;
+  fetchAsset?: (reference: ParsedQmdReference, path: string, signal?: AbortSignal) => Promise<QmdAsset>;
 }
 
 export function generateQmdViewerPage(): string {
@@ -74,7 +77,15 @@ export function generateQmdViewerPage(): string {
     return null;
   }
 
-  function sanitize(html) {
+  function imageHref(value, documentRef) {
+    var raw = String(value || '').trim();
+    if (!raw) return null;
+    if (/^(?:https?:|data:|blob:)/i.test(raw)) return safeHref(raw);
+    if (/^[A-Za-z][A-Za-z0-9+.-]*:/.test(raw) || /^[\\/#]/.test(raw) || raw.indexOf('?') >= 0 || raw.indexOf('#') >= 0) return null;
+    return '/qmd-viewer/asset?ref=' + encodeURIComponent(documentRef) + '&path=' + encodeURIComponent(raw);
+  }
+
+  function sanitize(html, documentRef) {
     var doc = new DOMParser().parseFromString(String(html || ''), 'text/html');
     var nodes = Array.from(doc.body.querySelectorAll('*'));
     nodes.forEach(function (el) {
@@ -95,13 +106,17 @@ export function generateQmdViewerPage(): string {
           return;
         }
         if (el.tagName === 'IMG' && name === 'src') {
-          var src = safeHref(attr.value);
-          if (src && !/^qmd:/i.test(src)) el.setAttribute('src', src); else el.removeAttribute(attr.name);
+          var src = imageHref(attr.value, documentRef);
+          if (src) el.setAttribute('src', src); else el.removeAttribute(attr.name);
           return;
         }
         if (el.tagName === 'IMG' && name === 'alt') return;
         el.removeAttribute(attr.name);
       });
+      if (el.tagName === 'IMG' && el.hasAttribute('src')) {
+        el.setAttribute('loading', 'lazy');
+        el.setAttribute('decoding', 'async');
+      }
     });
     return doc.body.innerHTML;
   }
@@ -126,7 +141,7 @@ export function generateQmdViewerPage(): string {
       source.textContent = body.source || ref;
       document.title = title.textContent + ' · QMD';
       var rendered = window.marked ? window.marked.parse(String(body.markdown || ''), { gfm: true, breaks: true }) : '<pre>' + String(body.markdown || '').replace(/[&<>]/g, function (c) { return ({'&':'&amp;','<':'&lt;','>':'&gt;'})[c]; }) + '</pre>';
-      content.innerHTML = sanitize(rendered);
+      content.innerHTML = sanitize(rendered, body.source || ref);
       status.hidden = true;
       content.hidden = false;
     })
@@ -157,6 +172,20 @@ function json(payload: unknown, status = 200): Response {
   });
 }
 
+async function loadAssetWithTimeout(
+  task: (signal: AbortSignal) => Promise<QmdAsset>,
+  requestSignal: AbortSignal,
+): Promise<QmdAsset> {
+  const timeoutSignal = AbortSignal.timeout(ASSET_TIMEOUT_MS);
+  const signal = AbortSignal.any([requestSignal, timeoutSignal]);
+  if (signal.aborted) throw new QmdAssetError(504, "QMD asset retrieval timed out.");
+  return await new Promise<QmdAsset>((resolve, reject) => {
+    const onAbort = () => reject(new QmdAssetError(504, "QMD asset retrieval timed out."));
+    signal.addEventListener("abort", onAbort, { once: true });
+    task(signal).then(resolve, reject).finally(() => signal.removeEventListener("abort", onAbort));
+  });
+}
+
 export async function handleQmdViewerRoute(
   req: Request,
   pathname: string,
@@ -164,6 +193,38 @@ export async function handleQmdViewerRoute(
 ): Promise<Response> {
   if (req.method !== "GET" && req.method !== "HEAD") {
     return new Response("Method Not Allowed", { status: 405, headers: { Allow: "GET, HEAD" } });
+  }
+
+  if (pathname === `${ROUTE_PREFIX}/asset`) {
+    const params = new URL(req.url).searchParams;
+    const rawReference = params.get("ref") ?? "";
+    const rawAssetPath = params.get("path") ?? "";
+    let reference: ParsedQmdReference;
+    try {
+      reference = parseQmdReference(rawReference);
+    } catch (error) {
+      const message = error instanceof QmdReferenceError ? error.message : "Invalid QMD reference.";
+      return json({ error: message }, 400);
+    }
+
+    try {
+      const asset = await loadAssetWithTimeout(
+        (signal) => (dependencies.fetchAsset ?? ((ref, path, assetSignal) => fetchQmdAsset(ref, path, undefined, assetSignal)))(reference, rawAssetPath, signal),
+        req.signal,
+      );
+      const headers = {
+        "Content-Type": asset.mimeType,
+        "Content-Length": String(asset.bytes.byteLength),
+        "Cache-Control": "private, max-age=3600",
+        "X-Content-Type-Options": "nosniff",
+        "Cross-Origin-Resource-Policy": "same-origin",
+      };
+      const body = req.method === "HEAD" ? null : Uint8Array.from(asset.bytes).buffer;
+      return new Response(body, { status: 200, headers });
+    } catch (error) {
+      if (error instanceof QmdAssetError) return json({ error: error.message }, error.status);
+      return json({ error: "QMD asset retrieval failed." }, 502);
+    }
   }
 
   if (pathname === `${ROUTE_PREFIX}/document`) {
