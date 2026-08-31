@@ -14,10 +14,10 @@ import {
   scheduleIdleAutoCompaction,
   setCompactionSettlementGraceForTests,
 } from "../../src/agent-pool/compaction.js";
-import { getChatAutoCompactionWindow, getChatCompactionBackoff, initDatabase, setChatCompactionBackoff } from "../../src/db.js";
+import { getChatAutoCompactionWindow, getChatCompactionBackoff, initDatabase, listCompactionTelemetryAfter, setChatCompactionBackoff } from "../../src/db.js";
 import { resetCompactionRuntimeConfigForTests, setCompactionRuntimeConfigForTests } from "../../src/core/config.js";
 import { recordCompactionCancellationReason } from "../../src/agent-pool/compaction-cancel-reason.js";
-import { getActivePiclawCompactionTrigger } from "../../src/agent-pool/compaction-trigger-context.js";
+import { getActivePiclawCompactionTrigger, updatePiclawCompactionExecution } from "../../src/agent-pool/compaction-trigger-context.js";
 import { getSessionActivitySnapshot } from "../../src/extensions/session-status.js";
 
 beforeEach(() => {
@@ -485,6 +485,7 @@ test("runCompactionWithTimeout joins concurrent compaction calls for the same ch
     expect(ownerOutcome.generationId).toBe(joinedOutcome.generationId);
     expect(calls).toBe(1);
     expect(warnings).toEqual(["Compaction already in progress; joining existing compaction"]);
+    expect(listCompactionTelemetryAfter(0).filter((row) => row.generation_id === ownerOutcome.generationId)).toHaveLength(1);
   } finally {
     if (previousTimeout === undefined) delete process.env.PICLAW_COMPACTION_TIMEOUT_MS;
     else process.env.PICLAW_COMPACTION_TIMEOUT_MS = previousTimeout;
@@ -596,6 +597,39 @@ test("runCompactionWithTimeout keeps the single-flight lock until timed-out comp
     expect(second).toEqual({ ok: true, result: "second" });
     expect(calls).toBe(2);
   } finally {
+    if (previousTimeout === undefined) delete process.env.PICLAW_COMPACTION_TIMEOUT_MS;
+    else process.env.PICLAW_COMPACTION_TIMEOUT_MS = previousTimeout;
+  }
+});
+
+test("runCompactionWithTimeout attributes provider first-token and settlement timeout stages", async () => {
+  const previousTimeout = process.env.PICLAW_COMPACTION_TIMEOUT_MS;
+  process.env.PICLAW_COMPACTION_TIMEOUT_MS = "5";
+  const restoreGrace = setCompactionSettlementGraceForTests(5);
+  try {
+    const never = deferred<void>();
+    const session = {
+      ...makeSession([]),
+      isCompacting: true,
+      abortCompaction: () => undefined,
+    };
+    const result = await runCompactionWithTimeout(session, "web:timeout-attribution", {}, async () => {
+      updatePiclawCompactionExecution({
+        executionStage: "first_token",
+        providerModel: "local/slow-prefill",
+        providerRequestCount: 1,
+      });
+      await never.promise;
+      return "impossible";
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      errorMessage: "Compaction timed out during first_token using local/slow-prefill after 0.0s; provider did not settle within 0.0s after abort",
+    });
+    never.resolve();
+  } finally {
+    restoreGrace();
     if (previousTimeout === undefined) delete process.env.PICLAW_COMPACTION_TIMEOUT_MS;
     else process.env.PICLAW_COMPACTION_TIMEOUT_MS = previousTimeout;
   }

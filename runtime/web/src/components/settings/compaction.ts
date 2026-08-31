@@ -4,6 +4,8 @@
 import { html, useState, useEffect, useCallback, useMemo, useRef } from '../../vendor/preact-htm.js';
 import { NumberStepper } from './number-stepper.js';
 import { useTranslation } from '../../utils/i18n.js';
+import { getAgentModels } from '../../api.js';
+import { formatModelCatalogueContextWindow, normaliseModelCatalogue } from '../../ui/model-catalogue.ts';
 
 function normalizeSmartCompactionMethod(value) {
     const normalized = String(value ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_');
@@ -14,6 +16,8 @@ function normalizeCompactionSettings(data: Record<string, any> = {}) {
     return {
         autoCompactionEnabled: Boolean(data.autoCompactionEnabled ?? true),
         smartCompactionMethod: normalizeSmartCompactionMethod(data.smartCompactionMethod),
+        compactionModel: String(data.compactionModel ?? '').trim(),
+        compactionLatencyEstimate: data.compactionLatencyEstimate && typeof data.compactionLatencyEstimate === 'object' ? data.compactionLatencyEstimate : null,
         remoteCompactionEnabled: Boolean(data.remoteCompactionEnabled ?? false),
         remoteCompactionTimeoutSec: data.remoteCompactionTimeoutSec ?? 300,
         remoteCompactionSupportedProviders: Array.isArray(data.remoteCompactionSupportedProviders) ? data.remoteCompactionSupportedProviders : ['openai', 'openai-codex'],
@@ -46,6 +50,11 @@ export function CompactionSection({ settingsData, setStatus, mergeSettingsData }
     const { t } = useTranslation();
     const [autoCompactionEnabled, setAutoCompactionEnabled] = useState(true);
     const [smartCompactionMethod, setSmartCompactionMethod] = useState('selective');
+    const [compactionModel, setCompactionModel] = useState('');
+    const [compactionLatencyEstimate, setCompactionLatencyEstimate] = useState(null);
+    const [modelPayload, setModelPayload] = useState(null);
+    const [probeBusy, setProbeBusy] = useState(false);
+    const [probeResult, setProbeResult] = useState(null);
     const [remoteCompactionEnabled, setRemoteCompactionEnabled] = useState(false);
     const [remoteCompactionTimeoutSec, setRemoteCompactionTimeoutSec] = useState(300);
     const [remoteCompactionSupportedProviders, setRemoteCompactionSupportedProviders] = useState(['openai', 'openai-codex']);
@@ -77,6 +86,8 @@ export function CompactionSection({ settingsData, setStatus, mergeSettingsData }
         const next = normalizeCompactionSettings(data);
         setAutoCompactionEnabled(next.autoCompactionEnabled);
         setSmartCompactionMethod(next.smartCompactionMethod);
+        setCompactionModel(next.compactionModel);
+        setCompactionLatencyEstimate(next.compactionLatencyEstimate);
         setRemoteCompactionEnabled(next.remoteCompactionEnabled);
         setRemoteCompactionTimeoutSec(next.remoteCompactionTimeoutSec);
         setRemoteCompactionSupportedProviders(next.remoteCompactionSupportedProviders);
@@ -97,6 +108,7 @@ export function CompactionSection({ settingsData, setStatus, mergeSettingsData }
         savedSnapshotRef.current = JSON.stringify({
             autoCompactionEnabled: next.autoCompactionEnabled,
             smartCompactionMethod: next.smartCompactionMethod,
+            compactionModel: next.compactionModel,
             remoteCompactionEnabled: next.remoteCompactionEnabled,
             remoteCompactionTimeoutSec: next.remoteCompactionTimeoutSec,
             compactionTimeoutSec: next.compactionTimeoutSec,
@@ -118,9 +130,43 @@ export function CompactionSection({ settingsData, setStatus, mergeSettingsData }
         applyIncoming(settingsData || {});
     }, [settingsData, applyIncoming]);
 
+    useEffect(() => {
+        let active = true;
+        getAgentModels().then(payload => { if (active) setModelPayload(payload); }).catch(() => { if (active) setModelPayload({ models: [], model_options: [] }); });
+        return () => { active = false; };
+    }, []);
+
+    const catalogue = useMemo(() => normaliseModelCatalogue(modelPayload || {}), [modelPayload]);
+    const providerAuthById = useMemo(() => new Map(
+        (modelPayload?.provider_diagnostics?.providers || []).map(provider => [provider.provider, Boolean(provider.auth_configured)]),
+    ), [modelPayload]);
+    const configuredModelMissing = Boolean(compactionModel && !catalogue.some(entry => entry.key === compactionModel));
+    const effectiveProbeModel = compactionModel || modelPayload?.current || '';
+
+    const probeCompactionModel = useCallback(async () => {
+        if (!effectiveProbeModel || probeBusy) return;
+        setProbeBusy(true);
+        setProbeResult(null);
+        try {
+            const response = await fetch('/agent/settings/compaction/probe', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model: effectiveProbeModel }),
+            });
+            const payload = await response.json().catch(() => ({}));
+            setProbeResult(payload);
+        } catch (error) {
+            setProbeResult({ ok: false, model: effectiveProbeModel, error: error instanceof Error ? error.message : String(error) });
+        } finally {
+            setProbeBusy(false);
+        }
+    }, [effectiveProbeModel, probeBusy]);
+
     const currentSnapshot = useMemo(() => JSON.stringify({
         autoCompactionEnabled,
         smartCompactionMethod,
+        compactionModel,
         remoteCompactionEnabled,
         remoteCompactionTimeoutSec,
         compactionTimeoutSec,
@@ -138,6 +184,7 @@ export function CompactionSection({ settingsData, setStatus, mergeSettingsData }
     }), [
         autoCompactionEnabled,
         smartCompactionMethod,
+        compactionModel,
         remoteCompactionEnabled,
         remoteCompactionTimeoutSec,
         compactionTimeoutSec,
@@ -240,6 +287,27 @@ export function CompactionSection({ settingsData, setStatus, mergeSettingsData }
                         ? t('settings.compaction.methodPipelinedHint')
                         : t('settings.compaction.methodSelectiveHint')}
                 </span>
+            </div>
+            <div class="settings-row compaction-model-picker">
+                <label for="compactionModel">${t('settings.compaction.model')}</label>
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; min-width:0;">
+                    <select id="compactionModel" value=${compactionModel} onChange=${e => { setCompactionModel(e.target.value); setProbeResult(null); }} aria-describedby="compactionModelHint">
+                        <option value="">Use active model${modelPayload?.current ? ` (${modelPayload.current})` : ''}</option>
+                        ${configuredModelMissing && html`<option value=${compactionModel}>Unavailable: ${compactionModel}</option>`}
+                        ${catalogue.map(entry => html`<option value=${entry.key}>${entry.displayName} — ${entry.key} · ${formatModelCatalogueContextWindow(entry.contextWindow) || 'unknown context'} · ${providerAuthById.get(entry.provider) ? 'credentials configured' : 'credentials not configured'}</option>`)}
+                    </select>
+                    <button type="button" class="settings-btn" disabled=${!effectiveProbeModel || probeBusy} onClick=${probeCompactionModel}>${probeBusy ? 'Testing…' : 'Test compaction model'}</button>
+                </div>
+                <span id="compactionModelHint" class="settings-hint" style="margin:0">${t('settings.compaction.modelHint')}</span>
+                ${configuredModelMissing && html`<span class="settings-hint" role="alert" style="margin:0;color:var(--error, #dc2626)">Configured model is not currently available. It remains selected so you can repair it explicitly.</span>`}
+                ${probeResult && html`<div class=${`settings-hint compaction-model-probe-result ${probeResult.ok ? 'success' : 'error'}`} role="status" aria-live="polite" style="margin:0">
+                    ${probeResult.ok
+                        ? `${probeResult.model} ready · ${probeResult.contextWindow?.toLocaleString?.() || 'unknown'} context · TTFT ${probeResult.timeToFirstTokenMs ?? 'n/a'}ms · ${probeResult.durationMs}ms total${probeResult.compactionLatencyEstimate ? ` · observed compaction median ${Math.round(probeResult.compactionLatencyEstimate.medianDurationMs / 1000)}s, p90 ${Math.round(probeResult.compactionLatencyEstimate.p90DurationMs / 1000)}s (${probeResult.compactionLatencyEstimate.sampleCount} samples)` : ''}`
+                        : `${probeResult.model || effectiveProbeModel}: ${probeResult.stage ? `${probeResult.stage} · ` : ''}${probeResult.error || 'Probe failed'}`}
+                </div>`}
+                ${compactionLatencyEstimate && html`<div class=${`settings-hint compaction-latency-estimate ${compactionLatencyEstimate.warning ? 'error' : ''}`} role=${compactionLatencyEstimate.warning ? 'alert' : 'status'} style="margin:0">
+                    Observed ${Math.round(compactionLatencyEstimate.medianDurationMs / 1000)}–${Math.round(compactionLatencyEstimate.p90DurationMs / 1000)}s across ${compactionLatencyEstimate.sampleCount} recent comparable samples (${compactionLatencyEstimate.inputBucketMin.toLocaleString()}–${(compactionLatencyEstimate.inputBucketMax - 1).toLocaleString()} input tokens; newest ${formatIso(compactionLatencyEstimate.newestSampleAt)}). ${compactionLatencyEstimate.warningText || 'The conservative estimate is within the configured deadline.'}
+                </div>`}
             </div>
             <div class="settings-row">
                 <label>${t('settings.compaction.remoteNative')}</label>

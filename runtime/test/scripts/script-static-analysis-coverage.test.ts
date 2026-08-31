@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 
-import { createRepoDevCommandPlan } from "../../scripts/repo-dev-command.js";
+import { buildRepoDevSpawnCommand, createRepoDevCommandPlan } from "../../scripts/repo-dev-command.js";
 
 const RUNTIME_DIR = resolve(import.meta.dir, "../..");
 const PACKAGE_DIR = resolve(RUNTIME_DIR, "..");
@@ -32,7 +32,10 @@ function scriptEntrypoints(): string[] {
 function runOxlintProbe(file: string) {
   const plan = createRepoDevCommandPlan("lint", RUNTIME_DIR);
   return Bun.spawnSync({
-    cmd: [plan.binaryPath, "--config", resolve(PACKAGE_DIR, ".oxlintrc.json"), "--deny-warnings", file],
+    cmd: buildRepoDevSpawnCommand({
+      ...plan,
+      args: ["--config", resolve(PACKAGE_DIR, ".oxlintrc.json"), "--deny-warnings", file],
+    }),
     cwd: PACKAGE_DIR,
     stdout: "pipe",
     stderr: "pipe",

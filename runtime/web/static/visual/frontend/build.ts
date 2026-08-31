@@ -1,11 +1,17 @@
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { build, context, type BuildOptions } from "esbuild";
+import type { BuildOptions } from "esbuild";
+
+import { ensureEsbuildExecutable } from "../../../../scripts/repo-dev-command.js";
 
 const watchMode = process.argv.includes("--watch");
 const frontendDir = path.dirname(fileURLToPath(import.meta.url));
+const packageDir = path.resolve(frontendDir, "../../../../..");
 const outputDir = path.resolve(frontendDir, "../dist");
+
+ensureEsbuildExecutable(packageDir);
+const { build, context } = await import("esbuild");
 
 const options: BuildOptions = {
   entryPoints: [path.join(frontendDir, "src/index.tsx")],

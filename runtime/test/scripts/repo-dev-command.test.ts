@@ -1,7 +1,13 @@
 import { expect, test } from "bun:test";
+import { chmodSync, mkdtempSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import {
+  buildRepoDevSpawnCommand,
   createRepoDevCommandPlan,
+  ensureEsbuildExecutable,
+  ensureTypeScriptCompilerExecutable,
   listMissingRepoBinaries,
   resolveRepoBinary,
 } from "../../scripts/repo-dev-command.js";
@@ -31,10 +37,20 @@ test("createRepoDevCommandPlan resolves repo-root binaries for build, lint, and 
     "runtime/scripts",
     "scripts",
   ]);
+  expect(buildRepoDevSpawnCommand(lintPlan)).toEqual([
+    process.execPath,
+    "/workspace/piclaw/node_modules/.bin/oxlint",
+    ...lintPlan.args,
+  ]);
 
   expect(typecheckPlan.cwd).toBe("/workspace/piclaw/runtime");
   expect(typecheckPlan.binaryPath).toBe("/workspace/piclaw/node_modules/typescript/bin/tsc");
   expect(typecheckPlan.args).toEqual(["--noEmit", "-p", "tsconfig.json"]);
+  expect(buildRepoDevSpawnCommand(typecheckPlan)).toEqual([
+    process.execPath,
+    "/workspace/piclaw/node_modules/typescript/bin/tsc",
+    ...typecheckPlan.args,
+  ]);
 
   expect(scriptTypecheckPlan.cwd).toBe("/workspace/piclaw/runtime");
   expect(scriptTypecheckPlan.binaryPath).toBe("/workspace/piclaw/node_modules/typescript/bin/tsc");
@@ -51,6 +67,31 @@ test("createRepoDevCommandPlan resolves repo-root binaries for build, lint, and 
 
 test("resolveRepoBinary points at the repo-local node_modules bin directory", () => {
   expect(resolveRepoBinary("/workspace/piclaw", "tsc")).toBe("/workspace/piclaw/node_modules/typescript/bin/tsc");
+});
+
+test("repo native-tool repairs restore only extracted TypeScript and esbuild executables", () => {
+  const root = mkdtempSync(join(tmpdir(), "piclaw-native-tool-mode-"));
+  const compiler = join(root, "node_modules/@typescript/typescript-linux-x64/lib/tsc");
+  const esbuild = join(root, "node_modules/@esbuild/linux-x64/bin/esbuild");
+  mkdirSync(join(root, "node_modules/@typescript/typescript-linux-x64/lib"), { recursive: true });
+  mkdirSync(join(root, "node_modules/@esbuild/linux-x64/bin"), { recursive: true });
+  writeFileSync(compiler, "native-tsc", { mode: 0o600 });
+  writeFileSync(esbuild, "native-esbuild", { mode: 0o600 });
+  chmodSync(compiler, 0o600);
+  chmodSync(esbuild, 0o600);
+  try {
+    const expected = process.platform === "win32" ? 0 : 1;
+    expect(ensureTypeScriptCompilerExecutable(root)).toBe(expected);
+    expect(ensureEsbuildExecutable(root)).toBe(expected);
+    if (process.platform !== "win32") {
+      expect(statSync(compiler).mode & 0o111).not.toBe(0);
+      expect(statSync(esbuild).mode & 0o111).not.toBe(0);
+    }
+    expect(readFileSync(compiler, "utf8")).toBe("native-tsc");
+    expect(readFileSync(esbuild, "utf8")).toBe("native-esbuild");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("listMissingRepoBinaries reports missing tools from the repo-local bin directory", () => {

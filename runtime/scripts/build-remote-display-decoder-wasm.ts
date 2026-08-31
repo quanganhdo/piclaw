@@ -20,11 +20,13 @@ function sha256ForFile(path: string): string {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
 
-function resolveAscCommand(): string[] {
+export function resolveAscCommand(): string[] {
+  // Invoke the JavaScript entry through Bun so builds do not depend on archive
+  // extraction preserving executable mode on the .bin symlink target.
+  if (existsSync(ASC_JS)) return [process.execPath, ASC_JS];
   const found = ASC_BIN_CANDIDATES.find((candidate) => existsSync(candidate));
   if (found) return [found];
-  if (existsSync(ASC_JS)) return ["bun", ASC_JS];
-  throw new Error(`${LOG_PREFIX} Missing asc compiler at ${[...ASC_BIN_CANDIDATES, ASC_JS].join(" or ")}. Run bun install first.`);
+  throw new Error(`${LOG_PREFIX} Missing asc compiler at ${[ASC_JS, ...ASC_BIN_CANDIDATES].join(" or ")}. Run bun install first.`);
 }
 
 function main(): void {

@@ -5,6 +5,7 @@ import path from "node:path";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import * as actualCodingAgent from "../../../node_modules/@earendil-works/pi-coding-agent/dist/index.js";
 import { resetCompactionRuntimeConfigForTests, setCompactionRuntimeConfigForTests } from "../../src/core/config.js";
+import { initDatabase } from "../../src/db.js";
 import { resetExtensionKvStoreForTests } from "../../src/extension-kv-registry.js";
 
 // We test the module by importing its factory and invoking it with a
@@ -434,6 +435,7 @@ describe("smart-compaction", () => {
 
   beforeEach(() => {
     handler = null;
+    initDatabase();
     resetExtensionKvStoreForTests();
     // Method selection is mutable process state. Keep default-method tests
     // isolated from earlier parametrized or cross-file cases.

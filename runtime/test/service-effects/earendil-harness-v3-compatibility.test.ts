@@ -25,6 +25,7 @@ import {
   normalizeEarendilHarnessCompatibilityManifest,
 } from "../../src/service-effects/earendil-harness-v3-compatibility/manifest.js";
 import type { PiclawToolContext } from "../../src/service-effects/contracts/execution-context-resolver.js";
+import { ensureTypeScriptCompilerExecutable } from "../../scripts/repo-dev-command.js";
 import { collectModuleSpecifiers } from "./fixtures/typescript-syntax-oracle.js";
 import {
   EARENDIL_HARNESS_DIRECT_OPERATIONS,
@@ -67,18 +68,19 @@ function compileCompatibilitySource(source: string): readonly CompilerDiagnostic
       compilerOptions: { noEmit: true, rootDir: localPath(runtimeRoot) },
       files: [basename(probePath), localPath(directAssignmentsPath)],
     })}\n`);
-    const process = Bun.spawnSync([tscPath, "--project", configPath, "--pretty", "false"], {
+    ensureTypeScriptCompilerExecutable(resolve(runtimeRoot, ".."));
+    const compiler = Bun.spawnSync([process.execPath, tscPath, "--project", configPath, "--pretty", "false"], {
       cwd: runtimeRoot,
       stdout: "pipe",
       stderr: "pipe",
     });
-    const output = `${process.stdout.toString()}\n${process.stderr.toString()}`;
+    const output = `${compiler.stdout.toString()}\n${compiler.stderr.toString()}`;
     const diagnostics = [...output.matchAll(/error TS(\d+): ([^\r\n]+)/g)].map((match) => Object.freeze({
       code: Number(match[1]),
       message: match[2],
     }));
-    if (process.exitCode !== 0 && diagnostics.length === 0) {
-      throw new Error(`TypeScript compatibility probe exited ${process.exitCode}: ${output.trim()}`);
+    if (compiler.exitCode !== 0 && diagnostics.length === 0) {
+      throw new Error(`TypeScript compatibility probe exited ${compiler.exitCode}: ${output.trim()}`);
     }
     return Object.freeze(diagnostics);
   } finally {

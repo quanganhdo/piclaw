@@ -40,6 +40,7 @@ test('saveCompactionSettings persists and applies compaction settings immediatel
     const saved = await handler.saveCompactionSettings({
       autoCompactionEnabled: false,
       smartCompactionMethod: 'traditional-pipelined',
+      compactionModel: 'local/fast-summary',
       remoteCompactionEnabled: true,
       remoteCompactionTimeoutSec: 45,
       compactionTimeoutSec: 240,
@@ -60,6 +61,7 @@ test('saveCompactionSettings persists and applies compaction settings immediatel
     expect(saved).toMatchObject({
       autoCompactionEnabled: false,
       smartCompactionMethod: 'pipelined',
+      compactionModel: 'local/fast-summary',
       remoteCompactionEnabled: true,
       remoteCompactionTimeoutSec: 45,
       remoteCompactionSupportedProviders: ['openai', 'openai-codex'],
@@ -102,6 +104,7 @@ test('saveCompactionSettings persists and applies compaction settings immediatel
         compaction: {
           autoCompactionEnabled: false,
           smartCompactionMethod: 'pipelined',
+          model: 'local/fast-summary',
           remoteCompactionEnabled: true,
           remoteCompactionTimeoutMs: 45000,
           timeoutMs: 240000,
@@ -124,6 +127,29 @@ test('saveCompactionSettings persists and applies compaction settings immediatel
   });
 });
 
+test('compaction settings expose advisory latency estimates without changing the deadline', async () => {
+  await withTempWorkspaceEnv('piclaw-compaction-latency-estimate-', {}, async () => {
+    const db = await importFresh<typeof import('../../src/db.js')>('../src/db.js');
+    db.initDatabase();
+    const config = await import('../../src/core/config.js');
+    config.setCompactionRuntimeConfigForTests({ compactionModel: 'local/summary', timeoutMs: 100_000 });
+    for (const [index, duration] of [40_000, 70_000, 90_000].entries()) {
+      db.storeCompactionTelemetry({
+        generation_id: `settings-estimate-${index}`, recorded_at: new Date(Date.now() - index * 1000).toISOString(), trigger: 'manual', method: 'selective', execution: 'single_pass', outcome: 'success',
+        provider: 'local', model: 'summary', timeout_stage: null, input_tokens: 48_000, total_duration_ms: duration,
+        deterministic_duration_ms: 100, time_to_first_token_ms: duration * 0.7, provider_generation_ms: duration * 0.2,
+        provider_request_count: 1, processed_chunk_count: null, total_chunk_count: null, settlement_timed_out: false,
+      });
+    }
+    const handler = await importFresh<typeof import('../../src/channels/web/handlers/compaction-settings.js')>('../src/channels/web/handlers/compaction-settings.js');
+    const before = config.getCompactionRuntimeConfig().timeoutMs;
+    const data = handler.getCompactionSettingsData();
+    expect(data.compactionLatencyEstimate).toMatchObject({ sampleCount: 3, warning: true, p90DurationMs: 90_000 });
+    expect(config.getCompactionRuntimeConfig().timeoutMs).toBe(before);
+    config.resetCompactionRuntimeConfigForTests();
+  });
+});
+
 test('saveCompactionSettings preserves the current processing method for invalid input', async () => {
   await withTempWorkspaceEnv('piclaw-compaction-method-invalid-', {
     PICLAW_SMART_COMPACTION_METHOD: undefined,
@@ -136,13 +162,15 @@ test('saveCompactionSettings preserves the current processing method for invalid
 
     const before = await handler.saveCompactionSettings({
       smartCompactionMethod: 'pipelined',
+      compactionModel: 'local/fast-summary',
       compactionTimeoutSec: 211,
       compactionBackoffBaseMin: 17,
       progressWatchdogEnabled: false,
     });
-    const saved = await handler.saveCompactionSettings({ smartCompactionMethod: 'unsafe-unknown-method' });
+    const saved = await handler.saveCompactionSettings({ smartCompactionMethod: 'unsafe-unknown-method', compactionModel: 'ambiguous' });
 
     expect(saved.smartCompactionMethod).toBe('pipelined');
+    expect(saved.compactionModel).toBe('local/fast-summary');
     expect(saved.compactionTimeoutSec).toBe(before.compactionTimeoutSec);
     expect(saved.compactionBackoffBaseMin).toBe(before.compactionBackoffBaseMin);
     expect(saved.progressWatchdogEnabled).toBe(before.progressWatchdogEnabled);

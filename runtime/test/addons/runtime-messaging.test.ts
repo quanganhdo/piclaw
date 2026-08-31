@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { afterEach, describe, expect, test } from "bun:test";
 
 import { createAddonMessagingRuntimeHandlers } from "../../src/addons/runtime-messaging.js";
-import { getMediaById } from "../../src/db.js";
+import { getMediaById, initDatabase } from "../../src/db.js";
 
 afterEach(() => {
   // No process-global state is retained by this service; keep this hook so new
@@ -117,6 +117,7 @@ describe("add-on runtime messaging handlers", () => {
   });
 
   test("persists verified peer attachments through the normal media path", async () => {
+    initDatabase();
     const { handlers, requests } = createFixture();
     const data = new TextEncoder().encode("remote file");
     await handlers.deliverPeerMessage({

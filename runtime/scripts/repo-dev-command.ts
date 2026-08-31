@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { existsSync, mkdirSync, rmSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { findProjectPackageDir } from "./vendor-workflow.js";
@@ -110,6 +110,44 @@ export function createRepoDevCommandPlan(commandName: string, projectDir = proce
   }
 }
 
+export function buildRepoDevSpawnCommand(plan: RepoDevCommandPlan): string[] {
+  // Supported repo tooling is JavaScript-backed. Invoke it through Bun so
+  // archive extraction does not need to preserve executable mode on targets.
+  return [process.execPath, plan.binaryPath, ...plan.args];
+}
+
+function ensureNativeExecutables(scope: string, prefix: string, relativeExecutable: string): number {
+  if (process.platform === "win32") return 0;
+  let repaired = 0;
+  try {
+    for (const entry of readdirSync(scope, { withFileTypes: true })) {
+      if (!entry.isDirectory() || !entry.name.startsWith(prefix)) continue;
+      const executable = resolve(scope, entry.name, relativeExecutable);
+      if (!existsSync(executable)) continue;
+      const mode = statSync(executable).mode & 0o777;
+      if ((mode & 0o111) !== 0) continue;
+      chmodSync(executable, mode | 0o755);
+      repaired += 1;
+    }
+  } catch (error) {
+    const code = error && typeof error === "object" && "code" in error
+      ? String((error as { code?: unknown }).code || "")
+      : "";
+    if (code !== "ENOENT") throw error;
+  }
+  return repaired;
+}
+
+/** Restore executable mode on TypeScript 7's extracted native compiler. */
+export function ensureTypeScriptCompilerExecutable(packageDir: string): number {
+  return ensureNativeExecutables(resolve(packageDir, "node_modules/@typescript"), "typescript-", "lib/tsc");
+}
+
+/** Restore executable mode on esbuild's extracted native binary. */
+export function ensureEsbuildExecutable(packageDir: string): number {
+  return ensureNativeExecutables(resolve(packageDir, "node_modules/@esbuild"), "", "bin/esbuild");
+}
+
 export function listMissingRepoBinaries(plan: RepoDevCommandPlan): string[] {
   return plan.requiredBinaries.filter((binaryName) => !existsSync(resolveRepoBinary(plan.packageDir, binaryName)));
 }
@@ -162,10 +200,11 @@ export function runRepoDevCommand(
   const plan = createRepoDevCommandPlan(commandName, options.projectDir || process.cwd());
   const env = options.env ?? process.env;
   ensureRepoDevTooling(plan, env);
+  if (plan.requiredBinaries.includes("tsc")) ensureTypeScriptCompilerExecutable(plan.packageDir);
   plan.preRun?.();
 
   try {
-    const proc = Bun.spawnSync([plan.binaryPath, ...plan.args], {
+    const proc = Bun.spawnSync(buildRepoDevSpawnCommand(plan), {
       cwd: plan.cwd,
       stdout: "inherit",
       stderr: "inherit",

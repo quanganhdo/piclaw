@@ -14,7 +14,16 @@ test("classic compaction settings expose and persist both canonical processing m
   const bundle = source("web/static/classic/dist/app.bundle.js");
 
   expect(component).toContain("smartCompactionMethod: normalizeSmartCompactionMethod(data.smartCompactionMethod)");
-  expect(component).toContain("smartCompactionMethod,\n        remoteCompactionEnabled,\n        remoteCompactionTimeoutSec,\n        compactionTimeoutSec");
+  expect(component).toContain("smartCompactionMethod,\n        compactionModel,\n        remoteCompactionEnabled,\n        remoteCompactionTimeoutSec,\n        compactionTimeoutSec");
+  expect(component).toContain('normaliseModelCatalogue(modelPayload || {})');
+  expect(component).toContain('<select id="compactionModel"');
+  expect(component).toContain('<option value="">Use active model');
+  expect(component).toContain('Unavailable: ${compactionModel}');
+  expect(component).toContain("'/agent/settings/compaction/probe'");
+  expect(component).toContain("'Test compaction model'");
+  expect(component).toContain('compactionLatencyEstimate');
+  expect(component).toContain('compaction-latency-estimate');
+  expect(component).toContain('p90DurationMs');
   expect(component).toContain("body: currentSnapshot");
   expect(component).toContain("replace(/[\\s-]+/g, '_')");
   expect(component).toContain("normalized === 'pipelined' || normalized === 'traditional_pipelined' ? 'pipelined' : 'selective'");
@@ -38,6 +47,7 @@ test("visual compaction settings use the same canonical processing-method contra
   const bundle = source("web/static/visual/dist/app.bundle.js");
 
   expect(types).toContain('smartCompactionMethod?: "selective" | "pipelined"');
+  expect(types).toContain('compactionModel?: string');
   expect(types).toContain('remoteCompactionEnabled?: boolean');
   expect(types).toContain('remoteCompactionTimeoutSec?: number');
   expect(component).toContain('replace(/[\\s-]+/g, "_")');
@@ -45,6 +55,16 @@ test("visual compaction settings use the same canonical processing-method contra
   expect(component).toContain('<option value="selective">Selective</option>');
   expect(component).toContain('<option value="pipelined">Pipelined</option>');
   expect(component).toContain('onSaveCompaction("smartCompactionMethod", value)');
+  expect(component).toContain('normaliseModelCatalogue(modelPayload ?? {})');
+  expect(component).toContain('<select');
+  expect(component).toContain('<option value="">Use active model');
+  expect(component).toContain('Unavailable: {compactionModel.value}');
+  expect(component).toContain('fetch("/agent/settings/compaction/probe"');
+  expect(component).toContain('Test compaction model');
+  expect(component).toContain('data.compactionLatencyEstimate');
+  expect(component).toContain('compaction-latency-estimate');
+  expect(component).toContain('p90DurationMs');
+  expect(component).toContain('onSaveCompaction("compactionModel", value)');
   expect(component).toContain('onSaveCompaction("remoteCompactionEnabled", value)');
   expect(component).toContain('onSaveCompaction("remoteCompactionTimeoutSec", v)');
   expect(component).toContain('saveSetting("compaction", field, value)');
