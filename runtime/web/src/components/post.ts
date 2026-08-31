@@ -2,6 +2,7 @@ import { html, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import { useTranslation } from '../utils/i18n.js';
 import { getMediaInfo, getMediaUrl, getThumbnailUrl, submitAdaptiveCardAction } from '../api.js';
 import { renderMarkdown, renderMermaidDiagrams, renderThinkingMarkdown, sanitizeUrl } from '../markdown.js';
+import { dispatchQmdViewerOpen, handleQmdLinkClick, sanitizeQmdHref } from '../qmd-links.js';
 import { formatCount, formatFileSize, formatTime, formatTimestamp } from '../utils/format.js';
 import { buildPostMarkdownCopyPayload } from '../utils/post-copy-markdown.js';
 import { DEFAULT_AGENT_NAME, getAvatarInfo } from '../ui/agent-utils.js';
@@ -661,13 +662,19 @@ function ResourceLinkBlock({ block }) {
     const mimeType = block.mime_type || '';
     const icon = getMimeIcon(mimeType);
     const safeUrl = sanitizeUrl(block.uri);
+    const qmdUrl = sanitizeQmdHref(block.uri);
     return html`
         <a
             href=${safeUrl || '#'}
             class="resource-link"
-            target=${safeUrl ? "_blank" : undefined}
-            rel=${safeUrl ? "noopener noreferrer" : undefined}
-            onClick=${(e) => e.stopPropagation()}>
+            target=${safeUrl && !qmdUrl ? "_blank" : undefined}
+            rel=${safeUrl && !qmdUrl ? "noopener noreferrer" : undefined}
+            onClick=${(e) => {
+                e.stopPropagation();
+                if (!qmdUrl) return;
+                e.preventDefault();
+                dispatchQmdViewerOpen(e.currentTarget, qmdUrl);
+            }}>
             <div class="resource-link-main">
                 <div class="resource-link-header">
                     <span class="resource-link-icon-inline">${icon}</span>
@@ -1656,9 +1663,16 @@ export function Post({ post, onClick, onHashtagClick, onMessageRef, onScrollToMe
 
     // Render mermaid diagrams and enhance code blocks after content is mounted
     useEffect(() => {
-        if (!contentRef.current) return undefined;
-        renderMermaidDiagrams(contentRef.current);
-        return enhanceCodeBlocks(contentRef.current);
+        const container = contentRef.current;
+        if (!container) return undefined;
+        renderMermaidDiagrams(container);
+        const cleanupCodeBlocks = enhanceCodeBlocks(container);
+        const onClick = (event: MouseEvent) => handleQmdLinkClick(event, container);
+        container.addEventListener('click', onClick);
+        return () => {
+            cleanupCodeBlocks?.();
+            container.removeEventListener('click', onClick);
+        };
     }, [renderedHtml]);
 
     // Re-apply saved text highlights and asides after content renders
