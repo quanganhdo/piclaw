@@ -1,5 +1,6 @@
 import { highlightCodeToHtml } from './utils/code-highlighting.js';
 import { getThemeMode } from './ui/theme.js';
+import { sanitizeQmdHref } from './qmd-links.js';
 
 declare const katex: { renderToString: (tex: string, options?: Record<string, unknown>) => string };
 declare const marked: { parse: (text: string, options?: Record<string, unknown>) => string };
@@ -207,6 +208,8 @@ export function sanitizeUrl(url, options: MarkdownOptions = {}) {
     if (!raw) return null;
 
     if (raw.startsWith('#') || raw.startsWith('/')) return raw;
+
+    if (/^qmd:/i.test(raw)) return sanitizeQmdHref(raw);
 
     if (raw.startsWith('data:')) {
         if (options.allowDataImage && /^data:image\//i.test(raw)) {

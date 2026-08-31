@@ -228,3 +228,21 @@ test('renderMarkdown honors sanitize: false for trusted surfaces', async () => {
   expect(renderMarkdown('trusted', null)).toBe('<a>trusted</a>');
   expect(renderMarkdown('trusted', null, { sanitize: false })).toBe('<a href="javascript:alert(1)">trusted</a>');
 });
+
+test('renderMarkdown preserves validated QMD document links and rejects malformed ones', async () => {
+  installSimpleHtmlDomParser();
+  globalThis.window = {
+    location: { origin: 'https://example.com' },
+    marked: {
+      parse: (value: string) => value.includes('unsafe')
+        ? '<a href="qmd://books/../chapter.txt">unsafe</a>'
+        : '<a href="qmd://books/system-design/chapter.md:10:20">chapter</a>',
+    },
+  } as any;
+  globalThis.marked = globalThis.window.marked;
+
+  const { renderMarkdown } = await import('../../web/src/markdown.ts');
+
+  expect(renderMarkdown('safe', null)).toContain('href="qmd://books/system-design/chapter.md:10:20"');
+  expect(renderMarkdown('unsafe', null)).toBe('<a>unsafe</a>');
+});
