@@ -178,7 +178,7 @@ test("compatibility installation is idempotent and ignores malformed usage event
     ].join("\n\n"), { headers: { "content-type": "text/event-stream" } }),
   }).result();
   expect(message.stopReason).toBe("stop");
-  expect(message.usage.cacheReadReported).toBeUndefined();
-  expect(message.usage.cacheWriteReported).toBeUndefined();
+  expect(message.usage.cacheReadReported).toBe(false);
+  expect(message.usage.cacheWriteReported).toBe(false);
   expect(message.usage.providerCost).toBeUndefined();
 });
