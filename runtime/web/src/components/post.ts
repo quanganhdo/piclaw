@@ -3,6 +3,7 @@ import { useTranslation } from '../utils/i18n.js';
 import { getMediaInfo, getMediaUrl, getThumbnailUrl, submitAdaptiveCardAction } from '../api.js';
 import { renderMarkdown, renderMermaidDiagrams, renderThinkingMarkdown, sanitizeUrl } from '../markdown.js';
 import { dispatchQmdViewerOpen, handleQmdLinkClick, sanitizeQmdHref } from '../qmd-links.js';
+import { dispatchVaultViewerOpen, handleVaultLinkClick, sanitizeVaultHref } from '../vault-links.js';
 import { formatCount, formatFileSize, formatTime, formatTimestamp } from '../utils/format.js';
 import { buildPostMarkdownCopyPayload } from '../utils/post-copy-markdown.js';
 import { DEFAULT_AGENT_NAME, getAvatarInfo } from '../ui/agent-utils.js';
@@ -663,17 +664,19 @@ function ResourceLinkBlock({ block }) {
     const icon = getMimeIcon(mimeType);
     const safeUrl = sanitizeUrl(block.uri);
     const qmdUrl = sanitizeQmdHref(block.uri);
+    const vaultUrl = sanitizeVaultHref(block.uri);
     return html`
         <a
             href=${safeUrl || '#'}
             class="resource-link"
-            target=${safeUrl && !qmdUrl ? "_blank" : undefined}
-            rel=${safeUrl && !qmdUrl ? "noopener noreferrer" : undefined}
+            target=${safeUrl && !qmdUrl && !vaultUrl ? "_blank" : undefined}
+            rel=${safeUrl && !qmdUrl && !vaultUrl ? "noopener noreferrer" : undefined}
             onClick=${(e) => {
                 e.stopPropagation();
-                if (!qmdUrl) return;
+                if (!qmdUrl && !vaultUrl) return;
                 e.preventDefault();
-                dispatchQmdViewerOpen(e.currentTarget, qmdUrl);
+                if (qmdUrl) dispatchQmdViewerOpen(e.currentTarget, qmdUrl);
+                else dispatchVaultViewerOpen(e.currentTarget, vaultUrl);
             }}>
             <div class="resource-link-main">
                 <div class="resource-link-header">
@@ -1667,7 +1670,10 @@ export function Post({ post, onClick, onHashtagClick, onMessageRef, onScrollToMe
         if (!container) return undefined;
         renderMermaidDiagrams(container);
         const cleanupCodeBlocks = enhanceCodeBlocks(container);
-        const onClick = (event: MouseEvent) => handleQmdLinkClick(event, container);
+        const onClick = (event: MouseEvent) => {
+            if (handleQmdLinkClick(event, container)) return;
+            handleVaultLinkClick(event, container);
+        };
         container.addEventListener('click', onClick);
         return () => {
             cleanupCodeBlocks?.();

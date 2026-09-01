@@ -246,3 +246,21 @@ test('renderMarkdown preserves validated QMD document links and rejects malforme
   expect(renderMarkdown('safe', null)).toContain('href="qmd://books/system-design/chapter.md:10:20"');
   expect(renderMarkdown('unsafe', null)).toBe('<a>unsafe</a>');
 });
+
+test('renderMarkdown preserves validated learning-vault links and rejects other Obsidian paths', async () => {
+  installSimpleHtmlDomParser();
+  globalThis.window = {
+    location: { origin: 'https://example.com' },
+    marked: {
+      parse: (value: string) => value.includes('unsafe')
+        ? '<a href="obsidian:////workspace/vaults/private/Secret">unsafe</a>'
+        : '<a href="obsidian:////workspace/vaults/learning/Learning/Staff%20Systems/Unit%2001#Reading%20packet">unit</a>',
+    },
+  } as any;
+  globalThis.marked = globalThis.window.marked;
+
+  const { renderMarkdown } = await import('../../web/src/markdown.ts');
+
+  expect(renderMarkdown('safe', null)).toContain('href="obsidian:////workspace/vaults/learning/Learning/Staff%20Systems/Unit%2001#Reading%20packet"');
+  expect(renderMarkdown('unsafe', null)).toBe('<a>unsafe</a>');
+});

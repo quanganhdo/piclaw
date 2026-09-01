@@ -12,6 +12,7 @@ import {
   dataViewerPaneExtension,
   webViewerPaneExtension,
   qmdViewerPaneExtension,
+  vaultViewerPaneExtension,
   highlightPreviewerPaneExtension,
 } from '../panes/index.js';
 import {
@@ -62,6 +63,7 @@ export function registerAppPaneExtensions(): void {
   paneRegistry.register(dataViewerPaneExtension);
   paneRegistry.register(webViewerPaneExtension);
   paneRegistry.register(qmdViewerPaneExtension);
+  paneRegistry.register(vaultViewerPaneExtension);
   paneRegistry.register(highlightPreviewerPaneExtension);
   paneRegistry.register(vncPaneExtension);
   preloadEditorBundle();

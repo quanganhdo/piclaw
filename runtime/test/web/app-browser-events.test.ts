@@ -45,6 +45,7 @@ test('watchPaneOpenEvents routes supported tab, edit-source, and popout custom e
   doc.dispatch('office-viewer:open-tab', { detail: { path: '/docs/report.docx', label: 'Report' } });
   doc.dispatch('html-viewer:open-tab', { detail: { path: '/site/index.html', label: 'Home' } });
   doc.dispatch('qmd-viewer:open-tab', { detail: { path: 'qmd://books/chapter.md', label: 'chapter.md' } });
+  doc.dispatch('vault-viewer:open-tab', { detail: { path: 'obsidian:////workspace/vaults/learning/Learning/Unit%2001', label: 'Unit 01' } });
   doc.dispatch('html-viewer:edit-source', { detail: { path: '/site/index.html', label: 'Home' } });
   doc.dispatch('mindmap:open-tab', { detail: { path: '/maps/plan.mindmap.yaml', label: 'Plan' } });
   doc.dispatch('pane:popout', { detail: { path: '/tabs/terminal', label: 'Terminal' } });
@@ -53,6 +54,7 @@ test('watchPaneOpenEvents routes supported tab, edit-source, and popout custom e
     'tab:/docs/report.docx:Report',
     'tab:/site/index.html:Home',
     'tab:qmd://books/chapter.md:chapter.md',
+    'tab:obsidian:////workspace/vaults/learning/Learning/Unit%2001:Unit 01',
     'edit:/site/index.html:Home',
     'tab:/maps/plan.mindmap.yaml:Plan',
     'pop:/tabs/terminal:Terminal',
@@ -63,6 +65,7 @@ test('watchPaneOpenEvents routes supported tab, edit-source, and popout custom e
   expect(doc.count('office-viewer:open-tab')).toBe(0);
   expect(doc.count('html-viewer:open-tab')).toBe(0);
   expect(doc.count('qmd-viewer:open-tab')).toBe(0);
+  expect(doc.count('vault-viewer:open-tab')).toBe(0);
   expect(doc.count('html-viewer:edit-source')).toBe(0);
   expect(doc.count('mindmap:open-tab')).toBe(0);
   expect(doc.count('pane:popout')).toBe(0);

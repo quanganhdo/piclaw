@@ -43,6 +43,7 @@ import "./http/video-viewer-route.js";
 import "./http/pdf-viewer-route.js";
 import "./http/html-viewer-route.js";
 import "./http/qmd-viewer-route.js";
+import "./http/vault-viewer-route.js";
 import { handleExtensionRoutes } from "./http/extension-routes.js";
 import { handleExternalAddonRoutes } from "../../addons/external-routes.js";
 import { enforceRequestGuards } from "./http/request-guards.js";
