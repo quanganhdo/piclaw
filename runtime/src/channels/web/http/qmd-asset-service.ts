@@ -19,6 +19,14 @@ export class QmdAssetError extends Error {
   }
 }
 
+function containsControlCharacter(value: string): boolean {
+  for (const character of value) {
+    const code = character.charCodeAt(0);
+    if (code <= 0x1f || code === 0x7f) return true;
+  }
+  return false;
+}
+
 function detectImageMime(bytes: Uint8Array): string | null {
   if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
   if (
@@ -56,7 +64,7 @@ function resolveRelativeAssetPath(reference: ParsedQmdReference, rawAssetPath: s
   } catch {
     throw new QmdAssetError(400, "QMD asset path contains invalid percent encoding.");
   }
-  if (!decoded || decoded.includes("\\") || /[\u0000-\u001f\u007f]/.test(decoded)) {
+  if (!decoded || decoded.includes("\\") || containsControlCharacter(decoded)) {
     throw new QmdAssetError(400, "Invalid QMD asset path.");
   }
 

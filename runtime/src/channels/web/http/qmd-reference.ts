@@ -24,6 +24,14 @@ export class QmdReferenceError extends Error {
   }
 }
 
+function containsControlCharacter(value: string): boolean {
+  for (const character of value) {
+    const code = character.charCodeAt(0);
+    if (code <= 0x1f || code === 0x7f) return true;
+  }
+  return false;
+}
+
 function parsePositiveInteger(raw: string | undefined, label: string, max: number): number | undefined {
   if (raw === undefined) return undefined;
   if (!/^\d+$/.test(raw)) throw new QmdReferenceError(`${label} must be a positive integer.`);
@@ -128,7 +136,7 @@ export function parseQmdReference(input: string): ParsedQmdReference {
     throw new QmdReferenceError("QMD path contains invalid percent encoding.");
   }
   const { base: path, fromLine, maxLines } = splitLineRange(decodedPath);
-  if (!path || path.length > 2_048 || path.includes("\\") || /[\u0000-\u001f\u007f]/.test(path)) {
+  if (!path || path.length > 2_048 || path.includes("\\") || containsControlCharacter(path)) {
     throw new QmdReferenceError("Invalid QMD document path.");
   }
   const segments = path.split("/");

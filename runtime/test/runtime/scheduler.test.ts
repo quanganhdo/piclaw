@@ -9,10 +9,16 @@ import { afterEach, expect, test } from "bun:test";
 import { getTestWorkspace, importFresh, setEnv } from "../helpers.js";
 
 let restoreEnv: (() => void) | null = null;
+let restoreForeignKeys: (() => void) | null = null;
 
 afterEach(() => {
-  restoreEnv?.();
-  restoreEnv = null;
+  try {
+    restoreForeignKeys?.();
+  } finally {
+    restoreForeignKeys = null;
+    restoreEnv?.();
+    restoreEnv = null;
+  }
 });
 
 test("computeNextRun handles cron and interval", async () => {
@@ -520,10 +526,13 @@ test("durable polling queues one runId and binds scheduled-agent source before d
 
   const db = await import("../../src/db.js");
   db.initDatabase();
-  db.getDb().exec("PRAGMA foreign_keys=ON");
+  const database = db.getDb();
+  const foreignKeysWereEnabled = (database.query("PRAGMA foreign_keys").get() as { foreign_keys?: number } | undefined)?.foreign_keys === 1;
+  database.exec("PRAGMA foreign_keys=ON");
+  restoreForeignKeys = () => database.exec(`PRAGMA foreign_keys=${foreignKeysWereEnabled ? "ON" : "OFF"}`);
   const scheduler = await import("../../src/task-scheduler.js");
   const { createCurrentPiclawScheduledRunStore } = await import("../../src/service-effects/current-piclaw/scheduled-run-store.js");
-  const built = createCurrentPiclawScheduledRunStore(db.getDb(), { hitFault: () => false, recordTrace: () => undefined });
+  const built = createCurrentPiclawScheduledRunStore(database, { hitFault: () => false, recordTrace: () => undefined });
   expect(built.ok).toBe(true);
   if (!built.ok) return;
 
@@ -598,10 +607,13 @@ test("expired scheduled-agent claim is reclaimed only after stable source absenc
   restoreEnv = setEnv({ PICLAW_WORKSPACE: ws.workspace, PICLAW_STORE: ws.store, PICLAW_DATA: ws.data });
   const db = await import("../../src/db.js");
   db.initDatabase();
-  db.getDb().exec("PRAGMA foreign_keys=ON");
+  const database = db.getDb();
+  const foreignKeysWereEnabled = (database.query("PRAGMA foreign_keys").get() as { foreign_keys?: number } | undefined)?.foreign_keys === 1;
+  database.exec("PRAGMA foreign_keys=ON");
+  restoreForeignKeys = () => database.exec(`PRAGMA foreign_keys=${foreignKeysWereEnabled ? "ON" : "OFF"}`);
   const scheduler = await import("../../src/task-scheduler.js");
   const { createCurrentPiclawScheduledRunStore } = await import("../../src/service-effects/current-piclaw/scheduled-run-store.js");
-  const built = createCurrentPiclawScheduledRunStore(db.getDb(), { hitFault: () => false, recordTrace: () => undefined });
+  const built = createCurrentPiclawScheduledRunStore(database, { hitFault: () => false, recordTrace: () => undefined });
   expect(built.ok).toBe(true);
   if (!built.ok) return;
 
