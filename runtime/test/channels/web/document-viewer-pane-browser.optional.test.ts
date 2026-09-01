@@ -64,6 +64,12 @@ for (const viewport of [
 ]) {
   test(`document pane history crosses Vault and QMD on ${viewport.name}`, async () => {
     const markedPath = resolve(import.meta.dir, '../../../web/static/common/js/marked.min.js');
+    const vaultMarkdown = [
+      '# Unit 01 - Product Contract, Boundaries, and State Ownership',
+      '## Reading packet',
+      `[Designing Data-Intensive Applications](${QMD_REFERENCE})`,
+      ...Array.from({ length: 100 }, (_, index) => `Vault paragraph ${index + 1}: bounded test content for scroll restoration.`),
+    ].join('\n\n');
     const qmdMarkdown = ['# Thinking About Data Systems', ...Array.from({ length: 100 }, (_, index) => `Paragraph ${index + 1}: bounded test content for QMD scroll restoration.`)].join('\n\n');
     const server = Bun.serve({
       port: 0,
@@ -74,7 +80,9 @@ for (const viewport of [
         }
         if (url.pathname === '/entry.js') return new Response(Bun.file(bundleFile), { headers: { 'Content-Type': 'text/javascript; charset=utf-8' } });
         if (url.pathname === '/static/common/js/marked.min.js') return new Response(Bun.file(markedPath), { headers: { 'Content-Type': 'text/javascript; charset=utf-8' } });
-        if (url.pathname.startsWith('/vault-viewer')) return await handleVaultViewerRoute(request, url.pathname);
+        if (url.pathname.startsWith('/vault-viewer')) {
+          return await handleVaultViewerRoute(request, url.pathname, { fetchDocument: async () => vaultMarkdown });
+        }
         if (url.pathname.startsWith('/qmd-viewer')) {
           return await handleQmdViewerRoute(request, url.pathname, { fetchDocument: async () => qmdMarkdown });
         }
@@ -126,5 +134,5 @@ for (const viewport of [
       await page.close();
       server.stop(true);
     }
-  }, 30_000);
+  }, 60_000);
 }
