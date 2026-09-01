@@ -37,6 +37,8 @@ export function generateQmdViewerPage(): string {
   header { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-bottom: 1px solid color-mix(in srgb, CanvasText 16%, transparent); background: color-mix(in srgb, Canvas 92%, transparent); backdrop-filter: blur(8px); }
   #title { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 650; }
   #source { max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: color-mix(in srgb, CanvasText 62%, transparent); font: 11px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .embedded header { display: none; }
+  .embedded main { padding-top: 22px; }
   main { width: min(920px, 100%); margin: 0 auto; padding: 28px clamp(18px, 5vw, 58px) 80px; line-height: 1.62; }
   #status { color: color-mix(in srgb, CanvasText 66%, transparent); padding: 28px 0; }
   #content { min-width: 0; overflow-wrap: anywhere; }
@@ -63,6 +65,10 @@ export function generateQmdViewerPage(): string {
   'use strict';
   var params = new URLSearchParams(location.search);
   var ref = params.get('ref') || '';
+  var embedded = params.get('embedded') === '1' && window.parent !== window;
+  if (embedded) document.documentElement.classList.add('embedded');
+  var currentReference = ref;
+  var messageType = 'piclaw-document-viewer';
   var status = document.getElementById('status');
   var content = document.getElementById('content');
   var title = document.getElementById('title');
@@ -121,6 +127,11 @@ export function generateQmdViewerPage(): string {
     return doc.body.innerHTML;
   }
 
+  function postToHost(action, detail) {
+    if (!embedded) return;
+    window.parent.postMessage(Object.assign({ type: messageType, action: action }, detail || {}), location.origin);
+  }
+
   function fail(message) {
     status.hidden = false;
     status.className = 'error';
@@ -138,14 +149,31 @@ export function generateQmdViewerPage(): string {
     })
     .then(function (body) {
       title.textContent = body.title || 'QMD Document';
-      source.textContent = body.source || ref;
+      currentReference = body.source || ref;
+      source.textContent = currentReference;
       document.title = title.textContent + ' · QMD';
       var rendered = window.marked ? window.marked.parse(String(body.markdown || ''), { gfm: true, breaks: true }) : '<pre>' + String(body.markdown || '').replace(/[&<>]/g, function (c) { return ({'&':'&amp;','<':'&lt;','>':'&gt;'})[c]; }) + '</pre>';
       content.innerHTML = sanitize(rendered, body.source || ref);
       status.hidden = true;
       content.hidden = false;
+      postToHost('ready', { reference: currentReference, currentReference: currentReference, title: title.textContent });
     })
     .catch(function (error) { fail(error && error.message); });
+
+  document.addEventListener('keydown', function (event) {
+    if (!embedded || !event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      event.preventDefault();
+      postToHost('history', { delta: event.key === 'ArrowLeft' ? -1 : 1, currentReference: currentReference, scrollY: window.scrollY });
+    }
+  });
+  window.addEventListener('message', function (event) {
+    if (!embedded || event.origin !== location.origin || event.source !== window.parent) return;
+    var message = event.data || {};
+    if (message.type === messageType && message.action === 'restore' && Number.isFinite(message.scrollY)) {
+      requestAnimationFrame(function () { window.scrollTo(0, Math.max(0, message.scrollY)); });
+    }
+  });
 
   content.addEventListener('click', function (event) {
     var anchor = event.target && event.target.closest ? event.target.closest('a[href]') : null;
@@ -153,7 +181,8 @@ export function generateQmdViewerPage(): string {
     var href = anchor.getAttribute('href') || '';
     if (!/^qmd:/i.test(href)) return;
     event.preventDefault();
-    location.href = '/qmd-viewer/?ref=' + encodeURIComponent(href);
+    if (embedded) postToHost('navigate', { reference: href, currentReference: currentReference, scrollY: window.scrollY });
+    else location.href = '/qmd-viewer/?ref=' + encodeURIComponent(href);
   });
 })();
 </script>

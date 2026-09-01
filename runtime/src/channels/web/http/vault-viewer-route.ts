@@ -42,6 +42,8 @@ export function generateVaultViewerPage(): string {
   #title { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 650; }
   #source { max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: color-mix(in srgb, CanvasText 62%, transparent); font: 11px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; }
   @media (max-width: 600px) { header { padding: 8px 10px; gap: 8px; } #source { display: none; } }
+  .embedded header { display: none; }
+  .embedded main { padding-top: 22px; }
   main { width: min(920px, 100%); margin: 0 auto; padding: 28px clamp(18px, 5vw, 58px) 80px; line-height: 1.62; }
   #status { color: color-mix(in srgb, CanvasText 66%, transparent); padding: 28px 0; }
   #content { min-width: 0; overflow-wrap: anywhere; }
@@ -70,6 +72,8 @@ export function generateVaultViewerPage(): string {
   var vaultPathPrefix = '//workspace/vaults/learning/';
   var params = new URLSearchParams(location.search);
   var ref = params.get('ref') || '';
+  var embedded = params.get('embedded') === '1' && window.parent !== window;
+  if (embedded) document.documentElement.classList.add('embedded');
   var status = document.getElementById('status');
   var content = document.getElementById('content');
   var title = document.getElementById('title');
@@ -81,6 +85,7 @@ export function generateVaultViewerPage(): string {
   var navigationIndex = navigationEntries.length ? 0 : -1;
   var navigationRequest = 0;
   var navigationController = null;
+  var messageType = 'piclaw-document-viewer';
   var safeTags = new Set(['A','ABBR','BLOCKQUOTE','BR','CODE','DEL','DIV','EM','H1','H2','H3','H4','H5','H6','HR','IMG','KBD','LI','MARK','OL','P','PRE','S','SMALL','SPAN','STRONG','SUB','SUP','TABLE','TBODY','TD','TH','THEAD','TR','U','UL']);
 
   function vaultParts(value) {
@@ -247,6 +252,11 @@ export function generateVaultViewerPage(): string {
     status.hidden = false; status.className = 'error'; status.textContent = message || 'Unable to load learning note.'; content.hidden = true;
   }
 
+  function postToHost(action, detail) {
+    if (!embedded) return;
+    window.parent.postMessage(Object.assign({ type: messageType, action: action }, detail || {}), location.origin);
+  }
+
   function updateNavigationControls() {
     var previous = navigationIndex > 0 ? navigationEntries[navigationIndex - 1] : null;
     var next = navigationIndex >= 0 && navigationIndex < navigationEntries.length - 1 ? navigationEntries[navigationIndex + 1] : null;
@@ -283,6 +293,7 @@ export function generateVaultViewerPage(): string {
         content.innerHTML = sanitize(rendered, entry.ref); assignHeadingIds(); status.hidden = true; content.hidden = false; updateNavigationControls();
         if (Number.isFinite(entry.scrollY)) requestAnimationFrame(function () { window.scrollTo(0, entry.scrollY); });
         else scrollToHeading(body.heading || '');
+        postToHost('ready', { reference: entry.ref, currentReference: entry.ref, title: entry.title });
       })
       .catch(function (error) {
         if (request !== navigationRequest || (error && error.name === 'AbortError')) return;
@@ -315,8 +326,20 @@ export function generateVaultViewerPage(): string {
   forwardButton.addEventListener('click', function () { moveInHistory(1); });
   document.addEventListener('keydown', function (event) {
     if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    if (embedded && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
+      event.preventDefault();
+      postToHost('history', { delta: event.key === 'ArrowLeft' ? -1 : 1, currentReference: navigationEntries[navigationIndex] && navigationEntries[navigationIndex].ref, scrollY: window.scrollY });
+      return;
+    }
     if (event.key === 'ArrowLeft' && !backButton.disabled) { event.preventDefault(); moveInHistory(-1); }
     else if (event.key === 'ArrowRight' && !forwardButton.disabled) { event.preventDefault(); moveInHistory(1); }
+  });
+  window.addEventListener('message', function (event) {
+    if (!embedded || event.origin !== location.origin || event.source !== window.parent) return;
+    var message = event.data || {};
+    if (message.type === messageType && message.action === 'restore' && Number.isFinite(message.scrollY)) {
+      requestAnimationFrame(function () { window.scrollTo(0, Math.max(0, message.scrollY)); });
+    }
   });
 
   content.addEventListener('click', function (event) {
@@ -327,9 +350,19 @@ export function generateVaultViewerPage(): string {
       event.preventDefault();
       var current = navigationEntries[navigationIndex];
       var anchored = current ? noteHref(href, current.ref, false) : null;
-      if (anchored) navigateTo(anchored);
-    } else if (/^obsidian:/i.test(href)) { event.preventDefault(); navigateTo(href); }
-    else if (/^qmd:/i.test(href)) { event.preventDefault(); location.href = '/qmd-viewer/?ref=' + encodeURIComponent(href); }
+      if (anchored) {
+        if (embedded) postToHost('navigate', { reference: anchored, currentReference: current.ref, scrollY: window.scrollY });
+        else navigateTo(anchored);
+      }
+    } else if (/^obsidian:/i.test(href)) {
+      event.preventDefault();
+      if (embedded) postToHost('navigate', { reference: href, currentReference: navigationEntries[navigationIndex] && navigationEntries[navigationIndex].ref, scrollY: window.scrollY });
+      else navigateTo(href);
+    } else if (/^qmd:/i.test(href)) {
+      event.preventDefault();
+      if (embedded) postToHost('navigate', { reference: href, currentReference: navigationEntries[navigationIndex] && navigationEntries[navigationIndex].ref, scrollY: window.scrollY });
+      else location.href = '/qmd-viewer/?ref=' + encodeURIComponent(href);
+    }
   });
 })();
 </script>

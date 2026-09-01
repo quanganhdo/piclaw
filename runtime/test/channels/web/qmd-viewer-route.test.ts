@@ -51,7 +51,13 @@ test('QMD viewer page is same-origin, CSP constrained, and fetches the authentic
   expect(page).toContain("'/qmd-viewer/asset?ref='");
   expect(page).toContain('/static/common/js/marked.min.js');
   expect(page).toContain("safeTags = new Set");
+  expect(page).toContain("messageType = 'piclaw-document-viewer'");
+  expect(page).toContain("postToHost('navigate'");
+  expect(page).toContain("message.action === 'restore'");
   expect(page).not.toContain('allow-scripts');
+  const scriptStart = page.indexOf('<script>\n(function');
+  const scriptEnd = page.indexOf('</script>', scriptStart);
+  expect(() => new Function(page.slice(scriptStart + 8, scriptEnd))).not.toThrow();
 });
 
 test('QMD document route validates and resolves references through the injected service', async () => {

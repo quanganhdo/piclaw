@@ -80,6 +80,9 @@ test('vault viewer page reuses the authenticated Markdown viewer pattern with wi
   expect(page).toContain('navigationEntries');
   expect(page).toContain('captureCurrentPosition');
   expect(page).toContain('moveInHistory');
+  expect(page).toContain("messageType = 'piclaw-document-viewer'");
+  expect(page).toContain("postToHost('navigate'");
+  expect(page).toContain("message.action === 'restore'");
   expect(page).toContain('aria-label="Back"');
   expect(page).not.toContain('history.pushState');
   expect(page).toContain("location.href = '/qmd-viewer/?ref='");
