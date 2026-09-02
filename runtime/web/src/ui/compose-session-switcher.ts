@@ -72,9 +72,32 @@ export function matchesSessionPickerSearch(chat: any, query: string): boolean {
   return terms.every(term => document.includes(term));
 }
 
+function getSessionPickerHandleMatchRank(chat: any, query: string): number {
+  if (!matchesSessionPickerSearch(chat, query)) return 4;
+  const handle = clean(chat?.agent_name).toLocaleLowerCase();
+  const terms = clean(query)
+    .toLocaleLowerCase()
+    .split(/\s+/)
+    .map(term => term.replace(/^@/, ''))
+    .filter(Boolean);
+  if (!handle || terms.length === 0) return 3;
+  if (terms.some(term => handle === term)) return 0;
+  if (terms.some(term => handle.startsWith(term))) return 1;
+  if (terms.some(term => handle.includes(term))) return 2;
+  return 3;
+}
+
 export function resolveSessionPickerSearchInitialIndex(chats: Array<Record<string, any>>, query: string): number {
-  const index = chats.findIndex(chat => matchesSessionPickerSearch(chat, query));
-  return index >= 0 ? index : 0;
+  let bestIndex = 0;
+  let bestRank = Number.POSITIVE_INFINITY;
+  for (let index = 0; index < chats.length; index += 1) {
+    const rank = getSessionPickerHandleMatchRank(chats[index], query);
+    if (rank >= bestRank) continue;
+    bestIndex = index;
+    bestRank = rank;
+    if (rank === 0) break;
+  }
+  return bestIndex;
 }
 
 export function filterSessionPickerChats<T extends Record<string, any>>(chats: T[], query: string): T[] {

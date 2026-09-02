@@ -32,6 +32,29 @@ test('session picker search covers handle, JID, lifecycle state, and model while
   expect(filterSessionPickerChats(chats, 'worker')).toHaveLength(3);
 });
 
+test('session picker search prioritizes @name over metadata-only matches', () => {
+  const ranked = [
+    { chat_jid: 'web:target', agent_name: 'metadata-first', model: 'local/qwen' },
+    { chat_jid: 'web:other', agent_name: 'my-target-session', model: 'local/qwen' },
+    { chat_jid: 'web:last', agent_name: 'target-session', model: 'local/qwen' },
+    { chat_jid: 'web:exact', agent_name: 'target', model: 'local/qwen' },
+  ];
+
+  expect(resolveSessionPickerSearchInitialIndex(ranked, 'target')).toBe(3);
+  expect(resolveSessionPickerSearchInitialIndex(ranked.slice(0, 3), '@target')).toBe(2);
+  expect(resolveSessionPickerSearchInitialIndex(ranked.slice(0, 2), 'target')).toBe(1);
+});
+
+test('session picker handle priority still requires every search term to match', () => {
+  const ranked = [
+    { chat_jid: 'web:root', agent_name: 'target', model: 'anthropic/claude' },
+    { chat_jid: 'web:other', agent_name: 'target-worker', model: 'local/qwen' },
+  ];
+
+  expect(resolveSessionPickerSearchInitialIndex(ranked, 'target qwen')).toBe(1);
+  expect(resolveSessionPickerSearchInitialIndex(ranked, 'claude')).toBe(0);
+});
+
 test('session picker formats model and bounded context metrics without inventing missing values', () => {
   expect(formatSessionPickerMetrics({
     model: 'openai/gpt-5',

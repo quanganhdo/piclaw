@@ -11,7 +11,9 @@ const sessions = Array.from({ length: 30 }, (_, index) => {
     root_chat_jid: rootJid,
     branch_id: isRoot ? `root-${rootIndex}` : `branch-${index}`,
     parent_branch_id: isRoot ? null : `root-${rootIndex}`,
-    agent_name: index === 1 || index === 2 ? "duplicate" : `session-${String(index).padStart(2, "0")}`,
+    agent_name: index === 1 || index === 2
+      ? "duplicate"
+      : index === 24 ? "root-2" : `session-${String(index).padStart(2, "0")}`,
     model: ["openai/gpt-5.4", "local/qwen", "anthropic/claude"][index % 3],
     context_tokens: index === 8 ? 42_000 : null,
     context_window: index === 8 ? 128_000 : null,

@@ -91,6 +91,12 @@ optionalBrowserTest("desktop session picker has stable geometry, one-line header
     expect(await page.locator("#session-picker-action").textContent()).toBe("none");
     expect(await page.evaluate(() => localStorage.getItem("piclaw:session-picker-preferences:v1"))).toContain("web:root-1:branch:9");
     await page.waitForFunction((expected) => document.querySelector('[role="listbox"]')?.getAttribute("aria-activedescendant")?.includes(expected), encodeURIComponent("web:root-1:branch:9"));
+    await search.fill("root-2");
+    expect(await page.locator('[role="option"]').count()).toBe(7);
+    await page.waitForFunction((expected) => document.querySelector('[role="listbox"]')?.getAttribute("aria-activedescendant")?.includes(expected), encodeURIComponent("web:root-4:branch:24"));
+    await page.keyboard.press("Enter");
+    expect(await page.locator("#session-picker-action").textContent()).toBe("switch:web:root-4:branch:24");
+    await page.getByTestId("session-switcher").click();
     await search.fill("duplicate");
     expect(await page.locator('[role="option"]').count()).toBe(3);
     expect(await page.getByRole("button", { name: "New branch" }).count()).toBe(0);
