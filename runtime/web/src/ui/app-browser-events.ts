@@ -69,8 +69,6 @@ export function watchPaneOpenEvents(callbacks: PaneOpenEventCallbacks, runtime: 
     'image-viewer:open-tab',
     'video-viewer:open-tab',
     'html-viewer:open-tab',
-    'qmd-viewer:open-tab',
-    'vault-viewer:open-tab',
     'mindmap:open-tab',
     'vnc:open-tab',
   ];

@@ -1,6 +1,5 @@
 import { expect, test } from 'bun:test';
 import { dispatchVaultViewerOpen, sanitizeVaultHref, vaultLinkLabel } from '../../web/src/vault-links.js';
-import { vaultViewerPaneExtension } from '../../web/src/panes/vault-viewer-pane.js';
 
 const unitRef = 'obsidian:////workspace/vaults/learning/Learning/Staff%20Systems/Unit%2001%20-%20Product%20Contract%2C%20Boundaries%2C%20and%20State%20Ownership#Reading%20packet';
 
@@ -24,19 +23,14 @@ test('sanitizeVaultHref rejects other vaults and traversal-shaped paths', () => 
   ]) expect(sanitizeVaultHref(value)).toBeNull();
 });
 
-test('dispatchVaultViewerOpen emits the native pane event', () => {
+test('dispatchVaultViewerOpen emits the generic pane event', () => {
   const events: CustomEvent[] = [];
   const target = { dispatchEvent: (event: CustomEvent) => { events.push(event); return true; } } as unknown as EventTarget;
   expect(dispatchVaultViewerOpen(target, unitRef)).toBe(true);
-  expect(events[0]?.type).toBe('vault-viewer:open-tab');
+  expect(events[0]?.type).toBe('pane:open-tab');
   expect(events[0]?.detail).toEqual({
     path: unitRef,
     label: 'Unit 01 - Product Contract, Boundaries, and State Ownership',
   });
   expect(dispatchVaultViewerOpen(target, 'obsidian:////etc/passwd')).toBe(false);
-});
-
-test('vault pane claims only validated learning-vault references', () => {
-  expect(vaultViewerPaneExtension.canHandle?.({ path: unitRef, mode: 'edit' })).toBe(100);
-  expect(vaultViewerPaneExtension.canHandle?.({ path: 'qmd://books/chapter.md', mode: 'edit' })).toBe(false);
 });

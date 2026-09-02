@@ -57,18 +57,18 @@ export function qmdLinkLabel(href: string): string {
   }
 }
 
-/** Ask the app shell to open a validated QMD reference in its native viewer tab. */
+/** Ask the app shell to resolve a validated QMD reference through the pane registry. */
 export function dispatchQmdViewerOpen(target: EventTarget, value: unknown): boolean {
   const href = sanitizeQmdHref(value);
   if (!href || typeof (target as EventTarget | null)?.dispatchEvent !== 'function') return false;
-  target.dispatchEvent(new CustomEvent('qmd-viewer:open-tab', {
+  target.dispatchEvent(new CustomEvent('pane:open-tab', {
     bubbles: true,
     detail: { path: href, label: qmdLinkLabel(href) },
   }));
   return true;
 }
 
-/** Intercept a rendered QMD citation and ask the app shell to open its native viewer tab. */
+/** Intercept a rendered QMD citation and ask the app shell to resolve its pane. */
 export function handleQmdLinkClick(event: MouseEvent, container: HTMLElement): boolean {
   const target = event.target as Element | null;
   const anchor = target?.closest?.('a[href]') as HTMLAnchorElement | null;

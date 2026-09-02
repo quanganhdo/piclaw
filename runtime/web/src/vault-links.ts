@@ -45,7 +45,7 @@ export function vaultLinkLabel(href: string): string {
 export function dispatchVaultViewerOpen(target: EventTarget, value: unknown): boolean {
   const href = sanitizeVaultHref(value);
   if (!href || typeof (target as EventTarget | null)?.dispatchEvent !== 'function') return false;
-  target.dispatchEvent(new CustomEvent('vault-viewer:open-tab', {
+  target.dispatchEvent(new CustomEvent('pane:open-tab', {
     bubbles: true,
     detail: { path: href, label: vaultLinkLabel(href) },
   }));

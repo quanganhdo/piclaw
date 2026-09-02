@@ -1,6 +1,5 @@
 import { expect, test } from 'bun:test';
 import { dispatchQmdViewerOpen, qmdLinkLabel, sanitizeQmdHref } from '../../web/src/qmd-links.js';
-import { qmdViewerPaneExtension } from '../../web/src/panes/qmd-viewer-pane.js';
 
 test('sanitizeQmdHref preserves safe collection and document-ID references', () => {
   expect(sanitizeQmdHref('qmd://books/designing%20systems/chapter.md:10:20')).toBe(
@@ -20,16 +19,11 @@ test('sanitizeQmdHref rejects credentials, queries, traversal, and non-Markdown 
   expect(sanitizeQmdHref('qmd://books/chapter.html')).toBeNull();
 });
 
-test('dispatchQmdViewerOpen emits the native pane event for validated references', () => {
+test('dispatchQmdViewerOpen emits the generic pane event for validated references', () => {
   const events: CustomEvent[] = [];
   const target = { dispatchEvent: (event: CustomEvent) => { events.push(event); return true; } } as unknown as EventTarget;
   expect(dispatchQmdViewerOpen(target, 'qmd://books/chapter.md:5:10')).toBe(true);
-  expect(events[0]?.type).toBe('qmd-viewer:open-tab');
+  expect(events[0]?.type).toBe('pane:open-tab');
   expect(events[0]?.detail).toEqual({ path: 'qmd://books/chapter.md:5:10', label: 'chapter.md' });
   expect(dispatchQmdViewerOpen(target, 'javascript:alert(1)')).toBe(false);
-});
-
-test('QMD pane claims only validated qmd references', () => {
-  expect(qmdViewerPaneExtension.canHandle?.({ path: 'qmd://books/chapter.md', mode: 'edit' })).toBe(100);
-  expect(qmdViewerPaneExtension.canHandle?.({ path: 'https://example.com/chapter.md', mode: 'edit' })).toBe(false);
 });

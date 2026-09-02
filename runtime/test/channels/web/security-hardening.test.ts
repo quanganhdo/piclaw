@@ -553,25 +553,6 @@ describe("CSRF origin checks", () => {
     expect(reached).toBe(false);
   });
 
-  test("auth-gates learning-vault viewer routes before local file access", async () => {
-    class AuthChannel extends StubChannel {
-      authGateway = {
-        isAuthEnabled: () => true,
-        isInternalSecretEnabled: () => false,
-        verifyInternalSecret: () => false,
-        isAuthenticated: () => false,
-      };
-    }
-
-    const router = new RequestRouterService(new AuthChannel() as any);
-    const reference = encodeURIComponent("obsidian:////workspace/vaults/learning/Learning/Staff Systems/Unit 01");
-    for (const path of ["/vault-viewer/", `/vault-viewer/document?ref=${reference}`, `/vault-viewer/asset?ref=${reference}&path=image.png`]) {
-      const response = await router.handle(new Request(`http://localhost${path}`));
-      expect(response.status).toBe(302);
-      expect(response.headers.get("location")).toBe("/login");
-    }
-  });
-
   test("blocked unauthenticated requests do not overwrite the remembered web origin", async () => {
     rememberWebOrigin("web:default", new Request("https://safe.example/app", {
       headers: { host: "safe.example" },
