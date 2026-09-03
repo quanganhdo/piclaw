@@ -100,6 +100,15 @@ export function resolveSessionPickerSearchInitialIndex(chats: Array<Record<strin
   return bestIndex;
 }
 
+export function resolveSessionPickerChatIndex(
+  chats: Array<Record<string, any>>,
+  chatJid: string,
+): number {
+  const target = clean(chatJid);
+  if (!target) return -1;
+  return chats.findIndex(chat => clean(chat?.chat_jid) === target);
+}
+
 export function filterSessionPickerChats<T extends Record<string, any>>(chats: T[], query: string): T[] {
   const normalized = clean(query).toLocaleLowerCase();
   if (!normalized) return chats;

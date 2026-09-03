@@ -253,6 +253,7 @@ export interface StreamingEventHandlerOptions {
 export interface StreamingEventHandler {
   (event: AgentSessionEvent): void;
   flushDisplayUpdates(): void;
+  consumePreviews(): void;
 }
 
 /** Create an event handler that translates agent session events to SSE broadcasts. */
@@ -362,6 +363,24 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
     thread_id: options.threadId,
     agent_id: options.agentId,
     turn_id: options.turnId,
+  };
+
+  const consumePreviews = () => {
+    flushDisplayUpdates();
+    thoughtBuffer = "";
+    thoughtSegmentBuffer = "";
+    thoughtSegmentPrefix = "";
+    thoughtStartedAt = 0;
+    thoughtHasDelta = false;
+    thoughtDeltaActive = false;
+    draftBuffer = "";
+    draftDeltaActive = false;
+    options.onThoughtBuffer?.("", 0);
+    options.onDraftBuffer?.("", 0);
+    options.emitter.thought({ ...base, text: "", total_lines: 0 });
+    options.emitter.thoughtDelta({ ...base, delta: "", reset: true });
+    options.emitter.draft({ ...base, text: "", total_lines: 0, kind: "draft", mode: "replace" });
+    options.emitter.draftDelta({ ...base, delta: "", reset: true });
   };
 
   const describeRateLimit = (message?: string): string => {
@@ -1122,5 +1141,6 @@ export function createStreamingEventHandler(options: StreamingEventHandlerOption
     }
   }) as StreamingEventHandler;
   handleStreamingEvent.flushDisplayUpdates = flushDisplayUpdates;
+  handleStreamingEvent.consumePreviews = consumePreviews;
   return handleStreamingEvent;
 }

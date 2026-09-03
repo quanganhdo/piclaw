@@ -303,6 +303,29 @@ test('handleAppSseEvent restores active agent status on reconnect', async () => 
   });
 });
 
+test('handleAppSseEvent applies explicit empty preview snapshots during reconnect', async () => {
+  const state = createDeps();
+  state.deps.currentTurnIdRef.current = 'turn-42';
+  state.deps.draftBufferRef.current = 'stale draft';
+  state.deps.thoughtBufferRef.current = 'stale thought';
+  state.deps.setAgentDraft({ text: 'stale draft', totalLines: 1 });
+  state.deps.setAgentThought({ text: 'stale thought', totalLines: 1 });
+  state.deps.getAgentStatus = async () => ({
+    status: 'active',
+    data: { chat_jid: 'chat:alpha', type: 'thinking', turn_id: 'turn-42' },
+    draft: { text: '', totalLines: 0 },
+    thought: { text: '', totalLines: 0 },
+  });
+
+  handleAppSseEvent('connected', { app_asset_version: 'test' }, state.deps);
+  await Promise.resolve();
+
+  expect(state.deps.draftBufferRef.current).toBe('');
+  expect(state.deps.thoughtBufferRef.current).toBe('');
+  expect(state.getAgentDraftState()).toEqual({ text: '', totalLines: 0 });
+  expect(state.getAgentThoughtState()).toEqual({ text: '', totalLines: 0 });
+});
+
 test('handleAppSseEvent applies terminal status context after reconnect', async () => {
   const state = createDeps();
   let contextRefreshes = 0;
@@ -393,6 +416,53 @@ test('handleAppSseEvent refetches preview state when updates race reconnect rest
   expect(state.deps.previewResyncPendingRef.current).toBe(false);
   expect(state.deps.draftBufferRef.current).toBe('snapshot including racing draft');
   expect(state.deps.thoughtBufferRef.current).toBe('snapshot including racing thought');
+});
+
+test('handleAppSseEvent refetches when preview consumption races reconnect restore', async () => {
+  const state = createDeps();
+  const firstStatusRequest = deferred<any>();
+  const secondStatusRequest = deferred<any>();
+  let statusCalls = 0;
+  state.deps.currentTurnIdRef.current = 'turn-99';
+  state.deps.getAgentStatus = async () => {
+    statusCalls += 1;
+    return statusCalls === 1 ? firstStatusRequest.promise : secondStatusRequest.promise;
+  };
+  state.deps.draftBufferRef.current = 'visible draft';
+  state.deps.thoughtBufferRef.current = 'visible thought';
+  state.deps.setAgentDraft({ text: 'visible draft', totalLines: 1 });
+  state.deps.setAgentThought({ text: 'visible thought', totalLines: 1 });
+
+  handleAppSseEvent('connected', { app_asset_version: 'test' }, state.deps);
+  handleAppSseEvent('agent_preview_consumed', {
+    chat_jid: 'chat:alpha', turn_id: 'turn-99', row_id: 42,
+  }, state.deps);
+
+  expect(state.getAgentDraftState()).toEqual({ text: '', totalLines: 0 });
+  expect(state.getAgentThoughtState()).toEqual({ text: '', totalLines: 0 });
+
+  firstStatusRequest.resolve({
+    status: 'active',
+    data: { chat_jid: 'chat:alpha', type: 'thinking', turn_id: 'turn-99' },
+    draft: { text: 'stale draft', totalLines: 1 },
+    thought: { text: 'stale thought', totalLines: 1 },
+  });
+  await firstStatusRequest.promise;
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(statusCalls).toBe(2);
+
+  secondStatusRequest.resolve({
+    status: 'active',
+    data: { chat_jid: 'chat:alpha', type: 'thinking', turn_id: 'turn-99' },
+    draft: { text: '', totalLines: 0 },
+    thought: { text: '', totalLines: 0 },
+  });
+  await secondStatusRequest.promise;
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  expect(state.deps.previewResyncPendingRef.current).toBe(false);
+  expect(state.getAgentDraftState()).toEqual({ text: '', totalLines: 0 });
+  expect(state.getAgentThoughtState()).toEqual({ text: '', totalLines: 0 });
 });
 
 test('handleAppSseEvent skips duplicate reconnect recovery during a fresh cold-open activation', async () => {

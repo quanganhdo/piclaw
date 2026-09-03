@@ -42,13 +42,19 @@ describe("process chat streaming runtime", () => {
     ]));
   });
 
-  test("normalizes timing usage and clears committed drafts", async () => {
+  test("normalizes timing usage and consumes persisted Draft and Thought", async () => {
     const events: Array<{ type: string; payload: any }> = [];
     const fake = channel(events);
     const runtime = await createProcessChatStreamingRuntime({ channel: fake, chatJid: "web:test", agentId: "default", threadId: "thread-1", turnId: "turn-1", runStartedAt: new Date(Date.now() - 100).toISOString(), sourceMessageId: "m1", withResolvedToolStatusHints: (_jid, payload) => payload, withAgentStatusProgressMetadata: (payload) => payload });
     fake.updateDraftBuffer("turn-1", "draft", 1);
-    runtime.clearCommittedDraft();
+    fake.updateThoughtBuffer("turn-1", "thought", 1);
+    runtime.consumePersistedPreviewsForRow(42, 7);
     expect(fake.getBuffer("turn-1", "draft")).toEqual({ text: "", totalLines: 0 });
+    expect(fake.getBuffer("turn-1", "thought")).toEqual({ text: "", totalLines: 0 });
+    expect(events).toContainEqual(expect.objectContaining({
+      type: "agent_preview_consumed",
+      payload: expect.objectContaining({ turn_id: "turn-1", thread_id: 7, row_id: 42 }),
+    }));
     expect(runtime.buildAgentTimingBlock({ input: 10, output: 4, cacheRead: 2 })).toMatchObject({ type: "agent_timing", source_message_id: "m1", usage: { input_tokens: 10, output_tokens: 4, cache_read_tokens: 2, total_tokens: 16 } });
   });
 });

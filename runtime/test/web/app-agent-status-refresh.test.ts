@@ -25,12 +25,16 @@ test('resolveAgentPreviewRestoreState normalizes preview payloads', () => {
     text: 'fallback',
     totalLines: 0,
   });
-  expect(resolveAgentPreviewRestoreState({ text: '' })).toBeNull();
+  expect(resolveAgentPreviewRestoreState({ text: '', totalLines: 0 })).toEqual({
+    text: '',
+    totalLines: 0,
+  });
 });
 
 test('shouldKeepExistingPreview retains longer or equal existing preview text', () => {
   expect(shouldKeepExistingPreview({ text: 'existing text' }, 'short')).toBe(true);
   expect(shouldKeepExistingPreview({ text: 'same' }, 'same')).toBe(true);
   expect(shouldKeepExistingPreview({ text: 'old' }, 'longer incoming')).toBe(false);
+  expect(shouldKeepExistingPreview({ text: 'stale' }, '')).toBe(false);
   expect(shouldKeepExistingPreview(null, 'incoming')).toBe(false);
 });

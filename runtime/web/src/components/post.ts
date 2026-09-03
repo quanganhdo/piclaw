@@ -12,6 +12,7 @@ import { extractCardBlocks, renderAdaptiveCard } from '../ui/adaptive-card-rende
 import { buildAdaptiveCardSubmissionFallbackText, describeAdaptiveCardSubmission, extractAdaptiveCardSubmissionBlocks } from '../ui/adaptive-card-submission.js';
 import { buildGeneratedWidgetPayload, canRenderGeneratedWidget } from '../ui/generated-widget.js';
 import { disclosureTriangleSvgString, renderDisclosureTriangle } from '../ui/disclosure-triangle.js';
+import { isIOSDevice } from '../ui/app-helpers.js';
 import { attachHeaderAnchor } from '../ui/scroll-anchor.js';
 import { ImageModal } from './image-modal.js';
 import { ImageAnnotator, canAnnotate } from './image-annotator.js';
@@ -27,6 +28,8 @@ import {
     persistAside,
     buildHighlightFromSelectionSnapshot,
     removeAnnotationAtIndex,
+    resolveHighlightPopupPlacement,
+    hasCoarseAnnotationPointer,
     subscribePostSelectionChanges,
     type PostHighlight,
     type PostAside,
@@ -1389,6 +1392,9 @@ export function Post({ post, onClick, onHashtagClick, onMessageRef, onScrollToMe
     const [asideText, setAsideText] = useState('');
     const contentRef = useRef(null);
     const copyResetTimerRef = useRef(null);
+    const highlightPopupRef = useRef(null);
+    const highlightPopupInteractionRef = useRef(false);
+    const highlightInteractionReleaseTimerRef = useRef(null);
 
     const data = post.data;
     const blocks = data.content_blocks || [];
@@ -1521,6 +1527,7 @@ export function Post({ post, onClick, onHashtagClick, onMessageRef, onScrollToMe
         }
         const highlight = buildHighlightFromSelectionSnapshot(highlightPopup, color);
         if (!highlight) return;
+        highlightPopupInteractionRef.current = false;
         // Clear popup and selection immediately
         setHighlightPopup(null);
         window.getSelection()?.removeAllRanges();
@@ -1540,11 +1547,37 @@ export function Post({ post, onClick, onHashtagClick, onMessageRef, onScrollToMe
 
     const handleAddAside = useCallback(() => {
         if (!highlightPopup) return;
+        highlightPopupInteractionRef.current = false;
         setAsideInput({ text: highlightPopup.text, textOffset: highlightPopup.textOffset, rect: highlightPopup.rect });
         setAsideText('');
         setHighlightPopup(null);
         window.getSelection()?.removeAllRanges();
     }, [highlightPopup]);
+
+    const holdHighlightPopup = useCallback((event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        highlightPopupInteractionRef.current = true;
+        if (highlightInteractionReleaseTimerRef.current) {
+            clearTimeout(highlightInteractionReleaseTimerRef.current);
+        }
+        highlightInteractionReleaseTimerRef.current = setTimeout(() => {
+            highlightInteractionReleaseTimerRef.current = null;
+            highlightPopupInteractionRef.current = false;
+            setHighlightPopup(null);
+        }, 1500);
+    }, []);
+
+    const releaseHighlightPopup = useCallback((event) => {
+        event.stopPropagation();
+        if (highlightInteractionReleaseTimerRef.current) {
+            clearTimeout(highlightInteractionReleaseTimerRef.current);
+            highlightInteractionReleaseTimerRef.current = null;
+        }
+        setTimeout(() => {
+            highlightPopupInteractionRef.current = false;
+        }, 0);
+    }, []);
 
     const handleSaveAside = useCallback(async () => {
         if (!asideInput || !asideText.trim()) return;
@@ -1770,19 +1803,13 @@ export function Post({ post, onClick, onHashtagClick, onMessageRef, onScrollToMe
     useEffect(() => {
         const el = contentRef.current;
         if (!el) return;
-        let dismissTimer = null;
         const onSelectionChange = () => {
             const info = getSelectionInElement(el);
             if (info && info.text.length > 0) {
-                if (dismissTimer) { clearTimeout(dismissTimer); dismissTimer = null; }
                 setHighlightPopup(info);
             } else {
-                // Delay clearing so the user can tap a color button
-                if (dismissTimer) clearTimeout(dismissTimer);
-                dismissTimer = setTimeout(() => {
-                    dismissTimer = null;
-                    setHighlightPopup(null);
-                }, 600);
+                if (highlightPopupInteractionRef.current) return;
+                setHighlightPopup(null);
             }
         };
         // Also listen for pointerup/touchend on the post content to detect
@@ -1797,9 +1824,41 @@ export function Post({ post, onClick, onHashtagClick, onMessageRef, onScrollToMe
             unsubscribeSelectionChanges();
             el.removeEventListener('pointerup', onPointerUp);
             el.removeEventListener('touchend', onPointerUp);
-            if (dismissTimer) clearTimeout(dismissTimer);
+            if (highlightInteractionReleaseTimerRef.current) {
+                clearTimeout(highlightInteractionReleaseTimerRef.current);
+                highlightInteractionReleaseTimerRef.current = null;
+            }
+            highlightPopupInteractionRef.current = false;
         };
     }, [renderedHtml]);
+
+    const highlightPopupIsDocked = highlightPopup
+        ? isIOSDevice() || hasCoarseAnnotationPointer(typeof window === 'undefined' ? null : window)
+        : false;
+    const highlightPopupPlacement = highlightPopup && !highlightPopupIsDocked
+        ? resolveHighlightPopupPlacement(
+            highlightPopup.rect,
+            { width: window.innerWidth, height: window.innerHeight },
+            {
+                width: highlightPopupRef.current?.offsetWidth || 180,
+                height: highlightPopupRef.current?.offsetHeight || 40,
+            },
+        )
+        : null;
+
+    useLayoutEffect(() => {
+        if (!highlightPopup || highlightPopupIsDocked || !highlightPopupRef.current) return;
+        const placement = resolveHighlightPopupPlacement(
+            highlightPopup.rect,
+            { width: window.innerWidth, height: window.innerHeight },
+            {
+                width: highlightPopupRef.current.offsetWidth,
+                height: highlightPopupRef.current.offsetHeight,
+            },
+        );
+        highlightPopupRef.current.style.left = `${placement.left}px`;
+        highlightPopupRef.current.style.top = `${placement.top}px`;
+    }, [highlightPopup, highlightPopupIsDocked]);
 
     useEffect(() => {
         return subscribeSpeechPlayback((nextState) => {
@@ -2205,8 +2264,14 @@ export function Post({ post, onClick, onHashtagClick, onMessageRef, onScrollToMe
         `}
         ${highlightPopup && html`
             <div
-                class="post-highlight-popup"
-                style="position:fixed; left:${Math.max(8, highlightPopup.rect.left)}px; top:${highlightPopup.rect.top - 42}px; z-index:100"
+                ref=${highlightPopupRef}
+                class=${`post-highlight-popup${highlightPopupIsDocked ? ' post-highlight-popup-docked' : ''}`}
+                style=${highlightPopupPlacement
+                    ? `left:${highlightPopupPlacement.left}px; top:${highlightPopupPlacement.top}px`
+                    : undefined}
+                onPointerDown=${holdHighlightPopup}
+                onPointerUp=${releaseHighlightPopup}
+                onPointerCancel=${releaseHighlightPopup}
             >
                 ${HIGHLIGHT_COLORS.map((c) => html`
                     <button

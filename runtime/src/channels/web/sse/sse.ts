@@ -20,6 +20,7 @@ const CHAT_SCOPED_EVENT_TYPES = new Set([
   "agent_thought_delta",
   "agent_draft",
   "agent_draft_delta",
+  "agent_preview_consumed",
   "agent_response",
   "new_post",
   "new_reply",

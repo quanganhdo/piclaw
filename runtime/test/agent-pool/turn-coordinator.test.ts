@@ -122,15 +122,14 @@ test("AgentTurnCoordinator preserves raw provider stop reasons for diagnostics",
   expect(tracker.getError()?.errorMessage).toContain("unmapped terminal reason");
 });
 
-test("AgentTurnCoordinator discards commentary-only text without exposing hidden thinking", () => {
-  const discarded: Array<{ reason: string }> = [];
+test("AgentTurnCoordinator keeps visible commentary without exposing hidden thinking", () => {
   const coordinator = new AgentTurnCoordinator({
     takeAttachments: () => [],
     touchSession: () => {},
     recordMessageUsage: () => {},
   });
 
-  const tracker = coordinator.createTracker("web:default", undefined, (discard) => discarded.push(discard));
+  const tracker = coordinator.createTracker("web:default");
 
   tracker.handleMessageUpdate({
     type: "message_update",
@@ -160,14 +159,12 @@ test("AgentTurnCoordinator discards commentary-only text without exposing hidden
     },
   } as any);
 
-  expect(tracker.getFinalText()).toBe("");
-  expect(discarded).toEqual([{ reason: "commentary_only" }]);
+  expect(tracker.getFinalText()).toBe("progress update");
   expect(tracker.getTurnCount()).toBe(0);
 });
 
-test("AgentTurnCoordinator does not flush completed commentary before a later final answer", () => {
+test("AgentTurnCoordinator persists completed visible commentary before a later final answer", () => {
   const completed: Array<{ text: string; attachments: AttachmentInfo[] }> = [];
-  const discarded: Array<{ reason: string }> = [];
   const coordinator = new AgentTurnCoordinator({
     takeAttachments: () => [],
     touchSession: () => {},
@@ -177,7 +174,6 @@ test("AgentTurnCoordinator does not flush completed commentary before a later fi
   const tracker = coordinator.createTracker(
     "web:default",
     (turn) => completed.push(turn),
-    (discard) => discarded.push(discard),
   );
 
   tracker.handleMessageUpdate({
@@ -229,9 +225,13 @@ test("AgentTurnCoordinator does not flush completed commentary before a later fi
     },
   } as any);
 
-  expect(completed).toEqual([]);
-  expect(discarded).toEqual([{ reason: "commentary_only" }]);
-  expect(tracker.getTurnCount()).toBe(0);
+  expect(completed).toEqual([{
+    text: "progress",
+    attachments: [],
+    turnKind: "intermediate",
+    cause: "completed_boundary",
+  }]);
+  expect(tracker.getTurnCount()).toBe(1);
   expect(tracker.getFinalText()).toBe("done");
 });
 
@@ -284,14 +284,13 @@ test("AgentTurnCoordinator preserves unphased text while filtering signed commen
   expect(tracker.getFinalText()).toBe("Legacy visible answer.");
 });
 
-test("AgentTurnCoordinator discards dangling commentary when an attempt ends without message_end", () => {
-  const discarded: Array<{ reason: string }> = [];
+test("AgentTurnCoordinator keeps dangling visible commentary when an attempt ends without message_end", () => {
   const coordinator = new AgentTurnCoordinator({
     takeAttachments: () => [],
     touchSession: () => {},
     recordMessageUsage: () => {},
   });
-  const tracker = coordinator.createTracker("web:default", undefined, (discard) => discarded.push(discard));
+  const tracker = coordinator.createTracker("web:default");
   const signature = JSON.stringify({ phase: "commentary" });
 
   tracker.handleMessageUpdate({
@@ -306,8 +305,7 @@ test("AgentTurnCoordinator discards dangling commentary when an attempt ends wit
 
   tracker.finalizeAttempt();
 
-  expect(tracker.getFinalText()).toBe("");
-  expect(discarded).toEqual([{ reason: "commentary_only" }]);
+  expect(tracker.getFinalText()).toBe("Still investigating.");
 });
 
 test("AgentTurnCoordinator subscribes and downgrades handler failures to warnings", () => {
@@ -347,6 +345,47 @@ test("AgentTurnCoordinator subscribes and downgrades handler failures to warning
 
   unsub();
   expect(listener).toBeNull();
+});
+
+test("AgentTurnCoordinator persists an interrupted Draft before text_start resets presentation", () => {
+  let listener: ((event: any) => void) | null = null;
+  const order: string[] = [];
+  const session = {
+    subscribe(callback: (event: any) => void) {
+      listener = callback;
+      return () => { listener = null; };
+    },
+  };
+  const coordinator = new AgentTurnCoordinator({
+    takeAttachments: () => [],
+    touchSession: () => {},
+    recordMessageUsage: () => {},
+  });
+  const tracker = coordinator.createTracker("web:default", (turn) => {
+    order.push(`persist:${turn.text}`);
+  });
+  coordinator.subscribe(session as any, "web:default", tracker, (event) => {
+    if (event.type === "message_update" && event.assistantMessageEvent.type === "text_start") {
+      order.push("present:text_start");
+    }
+  });
+  const signature = JSON.stringify({ phase: "commentary" });
+
+  listener?.({
+    type: "message_update",
+    assistantMessageEvent: { type: "text_start", contentIndex: 0, partial: { content: [{ type: "text", textSignature: signature }] } },
+  });
+  listener?.({
+    type: "message_update",
+    assistantMessageEvent: { type: "text_delta", delta: "checkpoint", contentIndex: 0, partial: { content: [{ type: "text", textSignature: signature }] } },
+  });
+  order.length = 0;
+  listener?.({
+    type: "message_update",
+    assistantMessageEvent: { type: "text_start", contentIndex: 1, partial: { content: [{ type: "text", textSignature: signature }, { type: "text" }] } },
+  });
+
+  expect(order).toEqual(["persist:checkpoint", "present:text_start"]);
 });
 
 test("AgentTurnCoordinator snapshots visible final-answer draft when a new text_start interrupts it before message_end", () => {
@@ -491,9 +530,8 @@ test("AgentTurnCoordinator commits assistant text as soon as its tool-use messag
   }));
 });
 
-test("AgentTurnCoordinator discards signed commentary at a tool-use boundary", () => {
+test("AgentTurnCoordinator persists visible commentary at a tool-use boundary", () => {
   const completed: Array<{ text: string; attachments: AttachmentInfo[]; followedByToolUse?: boolean }> = [];
-  const discarded: Array<{ reason: string }> = [];
   const coordinator = new AgentTurnCoordinator({
     takeAttachments: () => [],
     touchSession: () => {},
@@ -502,7 +540,6 @@ test("AgentTurnCoordinator discards signed commentary at a tool-use boundary", (
   const tracker = coordinator.createTracker(
     "web:default",
     (turn) => completed.push(turn),
-    (discard) => discarded.push(discard),
   );
 
   tracker.handleMessageUpdate({
@@ -533,8 +570,13 @@ test("AgentTurnCoordinator discards signed commentary at a tool-use boundary", (
       ],
     },
   } as any);
-  expect(completed).toEqual([]);
-  expect(discarded).toEqual([{ reason: "tool_use_commentary" }]);
+  expect(completed).toEqual([{
+    text: "Need inspect logs then retry.",
+    attachments: [],
+    turnKind: "intermediate",
+    cause: "tool_use",
+    followedByToolUse: true,
+  }]);
   expect(tracker.getFinalText()).toBe("");
 
   tracker.handleMessageUpdate({
@@ -542,8 +584,8 @@ test("AgentTurnCoordinator discards signed commentary at a tool-use boundary", (
     assistantMessageEvent: { type: "text_start", contentIndex: 0, partial: { content: [{ type: "text" }] } },
   } as any);
 
-  expect(completed).toHaveLength(0);
-  expect(tracker.getTurnCount()).toBe(0);
+  expect(completed).toHaveLength(1);
+  expect(tracker.getTurnCount()).toBe(1);
 });
 
 test("AgentTurnCoordinator commits explicit final-answer text at a tool-use boundary", () => {
@@ -671,9 +713,8 @@ test("AgentTurnCoordinator captures provider error from assistant message_end", 
   expect(tracker.getError()?.errorMessage).toContain("extra usage");
 });
 
-test("AgentTurnCoordinator discards commentary on error and lets a later final answer supersede it", () => {
-  const completed: Array<{ text: string }> = [];
-  const discarded: Array<{ reason: string }> = [];
+test("AgentTurnCoordinator persists visible commentary on error before a later final answer", () => {
+  const completed: Array<{ text: string; cause?: string }> = [];
   const coordinator = new AgentTurnCoordinator({
     takeAttachments: () => [],
     touchSession: () => {},
@@ -681,8 +722,7 @@ test("AgentTurnCoordinator discards commentary on error and lets a later final a
   });
   const tracker = coordinator.createTracker(
     "web:default",
-    (turn) => completed.push({ text: turn.text }),
-    (discard) => discarded.push(discard),
+    (turn) => completed.push({ text: turn.text, cause: turn.cause }),
   );
   const commentarySignature = JSON.stringify({ phase: "commentary" });
   const finalSignature = JSON.stringify({ phase: "final_answer" });
@@ -701,8 +741,7 @@ test("AgentTurnCoordinator discards commentary on error and lets a later final a
 
   expect(tracker.getError()?.errorMessage).toContain("Temporary provider error");
   expect(tracker.getFinalText()).toBe("");
-  expect(completed).toEqual([]);
-  expect(discarded).toEqual([{ reason: "commentary_only" }]);
+  expect(completed).toEqual([{ text: "Searching logs.", cause: "failed_boundary" }]);
 
   tracker.handleMessageUpdate({
     type: "message_update",
@@ -724,7 +763,7 @@ test("AgentTurnCoordinator discards commentary on error and lets a later final a
     },
   } as any);
 
-  expect(completed).toEqual([]);
+  expect(completed).toEqual([{ text: "Searching logs.", cause: "failed_boundary" }]);
   expect(tracker.getError()).toBeNull();
   expect(tracker.getFinalText()).toBe("The request completed successfully.");
 });

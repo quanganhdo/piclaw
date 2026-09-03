@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef } from '../vendor/preact-htm.js';
 import { setLocalStorageItem } from '../utils/storage.js';
 import {
   DESKTOP_WORKSPACE_LAYOUT_MEDIA_QUERY,
-  persistWorkspaceOpenPreference,
   resolveWorkspaceLayoutBucket,
+  shouldCollapseWorkspaceAfterLayoutChange,
 } from './workspace-visibility.js';
 import { initTheme, reapplyStoredTheme } from './theme.js';
 import { useTimestampRefresh } from './app-helpers.js';
@@ -26,7 +26,6 @@ export interface UseAppShellEnvironmentEffectsOptions {
   renameBranchNameInputRef: RefBox<any>;
   appShellRef: RefBox<HTMLElement | null>;
   setIsWebAppMode: (next: boolean) => void;
-  workspaceOpen: boolean;
   setWorkspaceOpen: (next: boolean) => void;
   btwSession: any;
   agents: Record<string, unknown> | null | undefined;
@@ -134,7 +133,6 @@ export function useAppShellEnvironmentEffects(options: UseAppShellEnvironmentEff
     renameBranchNameInputRef,
     appShellRef,
     setIsWebAppMode,
-    workspaceOpen,
     setWorkspaceOpen,
     btwSession,
     agents,
@@ -181,12 +179,6 @@ export function useAppShellEnvironmentEffects(options: UseAppShellEnvironmentEff
   const workspaceLayoutBucketRef = useRef(resolveWorkspaceLayoutBucket());
 
   useEffect(() => {
-    persistWorkspaceOpenPreference(workspaceOpen, {
-      bucket: workspaceLayoutBucketRef.current,
-    });
-  }, [workspaceOpen]);
-
-  useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return undefined;
 
     const media = window.matchMedia(DESKTOP_WORKSPACE_LAYOUT_MEDIA_QUERY);
@@ -195,10 +187,7 @@ export function useAppShellEnvironmentEffects(options: UseAppShellEnvironmentEff
       if (workspaceLayoutBucketRef.current === nextBucket) return;
       const prevBucket = workspaceLayoutBucketRef.current;
       workspaceLayoutBucketRef.current = nextBucket;
-      // When shrinking to narrow, collapse the workspace to avoid overlap.
-      // When widening to desktop, do NOT auto-open — respect the user's
-      // explicit toggle. They can open it themselves.
-      if (prevBucket === 'desktop' && nextBucket === 'narrow') {
+      if (shouldCollapseWorkspaceAfterLayoutChange(prevBucket, nextBucket)) {
         setWorkspaceOpen(false);
       }
     };

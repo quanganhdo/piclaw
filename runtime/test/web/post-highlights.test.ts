@@ -1,5 +1,10 @@
 import { expect, test } from 'bun:test';
-import { buildHighlightFromSelectionSnapshot, getSelectionInElement } from '../../web/src/components/post-highlights.ts';
+import {
+  buildHighlightFromSelectionSnapshot,
+  getSelectionInElement,
+  hasCoarseAnnotationPointer,
+  resolveHighlightPopupPlacement,
+} from '../../web/src/components/post-highlights.ts';
 
 test('getSelectionInElement preserves multiline list selection while trimming only edge whitespace', () => {
   if (typeof document === 'undefined') return;
@@ -98,4 +103,30 @@ test('getSelectionInElement computes offset from absolute start instead of first
     (window as any).getSelection = previousGetSelection;
     host.remove();
   }
+});
+
+test('desktop annotation toolbar prefers above, falls below, and stays inside the viewport', () => {
+  expect(resolveHighlightPopupPlacement(
+    { left: 100, right: 180, top: 200, bottom: 220 },
+    { width: 800, height: 600 },
+    { width: 180, height: 40 },
+  )).toEqual({ left: 50, top: 152 });
+
+  expect(resolveHighlightPopupPlacement(
+    { left: 2, right: 42, top: 20, bottom: 40 },
+    { width: 320, height: 200 },
+    { width: 180, height: 40 },
+  )).toEqual({ left: 8, top: 48 });
+
+  expect(resolveHighlightPopupPlacement(
+    { left: 300, right: 320, top: 190, bottom: 200 },
+    { width: 320, height: 200 },
+    { width: 180, height: 40 },
+  )).toEqual({ left: 132, top: 142 });
+});
+
+test('annotation toolbar docks only for a coarse primary pointer', () => {
+  expect(hasCoarseAnnotationPointer({ matchMedia: (query) => ({ matches: query === '(pointer: coarse)' }) } as any)).toBe(true);
+  expect(hasCoarseAnnotationPointer({ matchMedia: (query) => ({ matches: query === '(any-pointer: coarse)' }) } as any)).toBe(false);
+  expect(hasCoarseAnnotationPointer({ matchMedia: () => ({ matches: false }) } as any)).toBe(false);
 });

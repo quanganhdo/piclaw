@@ -1071,6 +1071,7 @@ export class SSEClient {
         bindJsonEvent('agent_draft_delta');
         bindJsonEvent('agent_thought');
         bindJsonEvent('agent_thought_delta');
+        bindJsonEvent('agent_preview_consumed');
         bindJsonEvent('model_changed');
         bindJsonEvent('ui_theme');
         bindJsonEvent('ui_meters');

@@ -23,7 +23,6 @@ export interface ProcessChatStreamingRuntime {
   emitter: AgentEventEmitter;
   trackedEmitter: AgentEventEmitter;
   streamingHandler(event: Record<string, unknown>): void;
-  clearCommittedDraft(): void;
   timeoutMs: number;
   state: {
     lastRecoveryMeta: ProcessChatRecoverySummary | null;
@@ -36,7 +35,7 @@ export interface ProcessChatStreamingRuntime {
   getActiveRecoveryIntent(): "compaction" | "recovery" | null;
   buildAgentTimingBlock(usage?: unknown): Record<string, unknown>;
   buildThinkingRefBlocks(): Array<Record<string, unknown>>;
-  persistThinkingForRow(messageRowId: number | null): void;
+  consumePersistedPreviewsForRow(messageRowId: number, persistedThreadId?: string | number | null): void;
 }
 
 export async function createProcessChatStreamingRuntime(options: {
@@ -161,17 +160,35 @@ export async function createProcessChatStreamingRuntime(options: {
     generatedWidgetError: flushBefore(emitter.generatedWidgetError),
     modelChanged: flushBefore(emitter.modelChanged),
   };
-  const clearCommittedDraft = () => {
-    baseHandler.flushDisplayUpdates();
-    channel.updateDraftBuffer(turnId, "", 0);
-    trackedEmitter.draft({ thread_id: threadId, agent_id: agentId, turn_id: turnId, text: "", total_lines: 0, kind: "draft", mode: "replace" });
-    trackedEmitter.draftDelta({ thread_id: threadId, agent_id: agentId, turn_id: turnId, delta: "", reset: true });
+  const persistThinkingForRow = (rowId: number | null) => {
+    if (!shouldPersistThinking || !pendingThinkingText || !rowId || rowId <= 0) return;
+    const max = getPersistThinkingMaxChars(); const truncated = pendingThinkingText.length > max; const text = truncated ? safeTruncateUtf16(pendingThinkingText, max) : pendingThinkingText;
+    try {
+      storeThinkingContent(String(rowId), text, pendingThinkingLines, pendingThinkingDurationMs, currentModel ?? undefined, truncated);
+    } finally {
+      // The message row is already durable. Never let an auxiliary thinking
+      // write failure attach consumed reasoning to a later response.
+      pendingThinkingText = ""; pendingThinkingLines = 0; pendingThinkingDurationMs = 0;
+    }
+  };
+  const consumePersistedPreviewsForRow = (rowId: number, persistedThreadId?: string | number | null) => {
+    try {
+      persistThinkingForRow(rowId);
+    } finally {
+      baseHandler.consumePreviews();
+      channel.broadcastEvent("agent_preview_consumed", {
+        chat_jid: chatJid,
+        thread_id: persistedThreadId ?? threadId,
+        turn_id: turnId,
+        row_id: rowId,
+      });
+    }
   };
   lifecycleEmitter.status({ thread_id: threadId, agent_id: agentId, type: "thinking", title: "Thinking...", turn_id: turnId });
   const runtimeConfig = getAgentRuntimeConfig();
   const timeoutMs = channel.sse.clients.size > 0 ? runtimeConfig.timeoutMs : (runtimeConfig.backgroundTimeoutMs > 0 ? runtimeConfig.backgroundTimeoutMs : runtimeConfig.timeoutMs);
   return {
-    turnId, emitter: persistenceEmitter, trackedEmitter: lifecycleEmitter, streamingHandler, clearCommittedDraft, timeoutMs, state,
+    turnId, emitter: persistenceEmitter, trackedEmitter: lifecycleEmitter, streamingHandler, timeoutMs, state,
     getActiveRecoveryIntent: () => {
       const status = channel.getAgentStatus(chatJid); const key = status?.intent_key ?? status?.intentKey;
       return status?.type === "intent" && (key === "compaction" || key === "recovery") ? key : null;
@@ -185,11 +202,6 @@ export async function createProcessChatStreamingRuntime(options: {
       return { type: "agent_timing", started_at: options.runStartedAt, completed_at: completedAt, duration_ms: Math.max(0, Date.parse(completedAt) - Date.parse(options.runStartedAt)), turn_id: turnId, source_message_id: options.sourceMessageId, ...(normalized ? { usage: normalized } : {}) };
     },
     buildThinkingRefBlocks: () => shouldPersistThinking && pendingThinkingText ? [{ type: "thinking_ref", lines: pendingThinkingLines, duration_ms: pendingThinkingDurationMs }] : [],
-    persistThinkingForRow: (rowId) => {
-      if (!shouldPersistThinking || !pendingThinkingText || !rowId || rowId <= 0) return;
-      const max = getPersistThinkingMaxChars(); const truncated = pendingThinkingText.length > max; const text = truncated ? safeTruncateUtf16(pendingThinkingText, max) : pendingThinkingText;
-      storeThinkingContent(String(rowId), text, pendingThinkingLines, pendingThinkingDurationMs, currentModel ?? undefined, truncated);
-      pendingThinkingText = ""; pendingThinkingLines = 0; pendingThinkingDurationMs = 0;
-    },
+    consumePersistedPreviewsForRow,
   };
 }

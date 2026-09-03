@@ -12,7 +12,7 @@ export function readAgentTurnId(payload: Record<string, unknown> | null | undefi
 export function resolveAgentPreviewRestoreState(
   payload: AgentPreviewStateLike | null | undefined,
 ): { text: string; totalLines: number } | null {
-  if (typeof payload?.text !== 'string' || !payload.text) return null;
+  if (typeof payload?.text !== 'string') return null;
   const totalLines = Number.isFinite(payload?.totalLines as number)
     ? Number(payload.totalLines)
     : (Number.isFinite(payload?.total_lines as number) ? Number(payload.total_lines) : 0);
@@ -26,5 +26,6 @@ export function shouldKeepExistingPreview(
   previous: AgentPreviewStateLike | null | undefined,
   incomingText: string,
 ): boolean {
+  if (!incomingText) return false;
   return typeof previous?.text === 'string' && previous.text.length >= incomingText.length;
 }

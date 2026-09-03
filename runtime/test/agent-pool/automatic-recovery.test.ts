@@ -469,6 +469,27 @@ test("skips recovery when a terminal assistant reply already completed", () => {
   expect(decision.classifier).toBe("completed_turn_output");
 });
 
+test("retries after an intermediate visible checkpoint when no terminal reply completed", () => {
+  const decision = decideAutomaticRecovery({
+    config: DEFAULT_AUTOMATIC_RECOVERY_CONFIG,
+    errorText: "503 temporarily unavailable",
+    recoveryAttemptsUsed: 0,
+    elapsedMs: 1000,
+    snapshot: {
+      hadToolActivity: false,
+      hadPartialOutput: true,
+      hadCompletedTurnOutput: true,
+      hadTerminalTurnOutput: false,
+    },
+  });
+
+  expect(decision).toMatchObject({
+    recover: true,
+    classifier: "transient",
+    strategy: "retry",
+  });
+});
+
 test("does not continue non-recoverable tool failures", () => {
   const decision = decideAutomaticRecovery({
     config: DEFAULT_AUTOMATIC_RECOVERY_CONFIG,

@@ -36,6 +36,23 @@ function makeHandler(
 }
 
 describe("web SSE tool execution events", () => {
+  it("consumes Draft and Thought before the next streamed segment", () => {
+    const { handler, emitter } = makeHandler(undefined, true, 0, true);
+
+    handler({ type: "message_update", assistantMessageEvent: { type: "thinking_start" } } as any);
+    handler({ type: "message_update", assistantMessageEvent: { type: "thinking_delta", delta: "old thought" } } as any);
+    handler({ type: "message_update", assistantMessageEvent: { type: "text_start" } } as any);
+    handler({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "old draft" } } as any);
+    handler.consumePreviews();
+
+    expect(emitter.thought).toHaveBeenLastCalledWith(expect.objectContaining({ text: "", total_lines: 0 }));
+    expect(emitter.draft).toHaveBeenLastCalledWith(expect.objectContaining({ text: "", total_lines: 0 }));
+
+    handler({ type: "message_update", assistantMessageEvent: { type: "thinking_start" } } as any);
+    handler({ type: "message_update", assistantMessageEvent: { type: "thinking_delta", delta: "new thought" } } as any);
+    expect(emitter.thought).toHaveBeenLastCalledWith(expect.objectContaining({ text: "new thought", total_lines: 1 }));
+  });
+
   it("retains concurrent active-tool state, refreshes heartbeats, and exits tool execution on the final end", () => {
     const { handler, statuses } = makeHandler();
 

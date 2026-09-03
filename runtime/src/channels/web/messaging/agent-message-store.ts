@@ -85,10 +85,11 @@ function maybeWarnOnEscapedSvgSource(
  * truthy/falsy boolean to preserve legacy call patterns.
  *
  * The optional `onMessageStored` callback fires AFTER the message row is
- * written but BEFORE any SSE broadcast or web-push notification, so callers
- * that need to write related rows (e.g. thinking_content keyed by rowid) can
- * do so without a race window where a fast client receives the broadcast and
- * fetches the related data before it exists. */
+ * written but BEFORE any SSE broadcast or web-push notification. It receives
+ * both the rowid and stored interaction so auxiliary writes and lifecycle
+ * events can use the row's authoritative thread metadata without racing a
+ * fast client.
+ */
 export function storeAgentTurn(
   channel: WebChannelLike,
   emitter: AgentEventEmitter,
@@ -109,10 +110,10 @@ export function storeAgentTurn(
     extraContentBlocks?: Array<Record<string, unknown>>;
     dispatchWebPushNotification?: (interaction: ReturnType<WebChannelLike["storeMessage"]>) => Promise<unknown>;
     /** Fires after the row is persisted but BEFORE any SSE broadcast or web
-     *  push. Receives the persisted message rowid. Errors thrown from this
-     *  callback are caught and logged but do not prevent the broadcast —
+     *  push. Receives its rowid and stored interaction. Errors thrown from
+     *  this callback are caught and logged but do not prevent the broadcast —
      *  message persistence wins over auxiliary writes. */
-    onMessageStored?: (rowId: number) => void;
+    onMessageStored?: (rowId: number, interaction: NonNullable<ReturnType<WebChannelLike["storeMessage"]>>) => void;
   }
 ): number | null {
   const { mediaIds, contentBlocks } = buildAttachmentBlocks(params.attachments);
@@ -126,10 +127,13 @@ export function storeAgentTurn(
 
   // Safely invoke onMessageStored — catches errors so auxiliary writes
   // (e.g. thinking_content) can fail without blocking the message broadcast.
-  const safeOnStored = (rowId: number): void => {
+  const safeOnStored = (
+    rowId: number,
+    interaction: NonNullable<ReturnType<WebChannelLike["storeMessage"]>>,
+  ): void => {
     if (!params.onMessageStored) return;
     try {
-      params.onMessageStored(rowId);
+      params.onMessageStored(rowId, interaction);
     } catch (err) {
       debugSuppressedError(log, "onMessageStored callback failed; continuing with broadcast.", err, {
         chatJid: params.chatJid,
@@ -157,10 +161,10 @@ export function storeAgentTurn(
         const resolvedRowId = typeof updated.id === "number" ? updated.id : placeholderId;
         // Run auxiliary writes BEFORE broadcasting so clients that fetch
         // related data on the broadcast event don't race the row creation.
-        safeOnStored(resolvedRowId);
+        safeOnStored(resolvedRowId, updated);
         channel.broadcastEvent?.("agent_followup_consumed", {
           chat_jid: params.chatJid,
-          thread_id: params.threadId ?? null,
+          thread_id: updated.data?.thread_id ?? params.threadId ?? null,
           row_id: placeholderId,
         });
         if (params.isTerminalAgentReply) {
@@ -179,7 +183,7 @@ export function storeAgentTurn(
   });
   if (interaction) {
     const resolvedRowId = typeof interaction.id === "number" ? interaction.id : null;
-    if (resolvedRowId !== null) safeOnStored(resolvedRowId);
+    if (resolvedRowId !== null) safeOnStored(resolvedRowId, interaction);
     emitter.response(interaction);
     if (params.isTerminalAgentReply) {
       dispatchStoredReplyWebPush(interaction, params.dispatchWebPushNotification);

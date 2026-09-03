@@ -87,7 +87,7 @@ export interface AgentOutput {
 }
 
 export type AgentTurnKind = "draft_snapshot" | "intermediate";
-export type AgentTurnCause = "interrupted_text_start" | "tool_use" | "completed_boundary";
+export type AgentTurnCause = "interrupted_text_start" | "tool_use" | "completed_boundary" | "failed_boundary";
 
 /** A single turn's output within a multi-turn agent run. */
 export interface TurnOutput {
@@ -100,10 +100,6 @@ export interface TurnOutput {
   cause?: AgentTurnCause;
   /** The completed assistant message committed immediately before tool dispatch. */
   followedByToolUse?: boolean;
-}
-
-export interface TurnDiscard {
-  reason: "tool_use_commentary" | "commentary_only";
 }
 
 /** Result returned from a side prompt run. */
@@ -131,8 +127,6 @@ export interface RunAgentOptions {
   onEvent?: (event: AgentSessionEvent) => void;
   /** Called when a completed assistant message can be committed, including before tool dispatch. */
   onTurnComplete?: (turn: TurnOutput) => void;
-  /** Called when completed provider commentary must remain transient. */
-  onTurnDiscard?: (discard: TurnDiscard) => void;
   /** Stable runtime turn identifier for observability/correlation. */
   turnId?: string;
   /** Optional browser/user correlation identifier supplied by the caller. */

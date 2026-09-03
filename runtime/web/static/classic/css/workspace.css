@@ -34,6 +34,10 @@
     padding-top: env(safe-area-inset-top, 0px);
 }
 
+.workspace-drawer-backdrop {
+    display: none;
+}
+
 .workspace-sidebar[data-workspace-scale="compact"] {
     --workspace-header-font-size: 12px;
     --workspace-header-button-size: 26px;
@@ -122,6 +126,44 @@
 
 .workspace-toggle-tab.open .workspace-toggle-tab-icon {
     transform: rotate(180deg);
+}
+
+/* The desktop layout keeps the workspace in the flex row. On narrower or
+   portrait viewports, an explicit Show workspace action opens it as a drawer
+   instead of leaving the state open while the base display:none rule wins. */
+@media (max-width: 1023px), (orientation: portrait) {
+    .app-shell:not(.workspace-collapsed) > .workspace-sidebar {
+        display: flex;
+        position: absolute;
+        inset: 0 auto 0 0;
+        z-index: 61;
+        width: min(var(--sidebar-width, 280px), calc(100vw - 48px));
+        min-width: 0;
+        max-width: calc(100vw - 48px);
+        box-shadow: var(--shadow-lg, 0 18px 48px rgba(0, 0, 0, 0.32));
+    }
+
+    .app-shell:not(.workspace-collapsed) > .workspace-drawer-backdrop {
+        display: block;
+        position: absolute;
+        inset: 0;
+        z-index: 60;
+        border: 0;
+        padding: 0;
+        background: color-mix(in srgb, var(--bg-primary) 44%, transparent);
+        backdrop-filter: blur(2px);
+        cursor: pointer;
+    }
+
+    .app-shell:not(.workspace-collapsed) > .workspace-toggle-tab {
+        display: flex;
+        left: calc(min(var(--sidebar-width, 280px), calc(100vw - 48px)) - var(--workspace-tab-width, 20px));
+        z-index: 62;
+    }
+
+    .app-shell > .workspace-splitter {
+        display: none;
+    }
 }
 
 .workspace-header {

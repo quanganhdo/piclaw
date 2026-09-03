@@ -32,11 +32,6 @@ export interface AgentTurnOutput {
   followedByToolUse?: boolean;
 }
 
-/** A completed assistant text stream intentionally kept out of durable output. */
-export interface AgentTurnDiscard {
-  reason: "tool_use_commentary" | "commentary_only";
-}
-
 /** Error state captured from an assistant message with stopReason "error". */
 export interface AgentTurnError {
   stopReason: "error";
@@ -94,7 +89,6 @@ export class AgentTurnCoordinator {
   createTracker(
     chatJid: string,
     onTurnComplete?: (turn: AgentTurnOutput) => void,
-    onTurnDiscard?: (discard: AgentTurnDiscard) => void,
   ): AgentTurnTracker {
     let currentTurnText = "";
     let currentTurnPhase: AssistantTextPhase = null;
@@ -165,15 +159,16 @@ export class AgentTurnCoordinator {
         .map((block) => (typeof block.text === "string" ? block.text : ""))
         .join("");
       const hasFinalAnswer = Boolean(finalAnswerText.trim());
-      const text = hasFinalAnswer ? finalAnswerText : unphasedText;
+      const hasUnphasedText = Boolean(unphasedText.trim());
+      const text = hasFinalAnswer ? finalAnswerText : hasUnphasedText ? unphasedText : commentaryText;
       const hasCommentary = Boolean(commentaryText.trim());
 
       return {
         text,
-        phase: hasFinalAnswer ? "final_answer" : null,
+        phase: hasFinalAnswer ? "final_answer" : hasUnphasedText ? null : hasCommentary ? "commentary" : null,
         hasText: Boolean(allText.trim()),
         hasCommentary,
-        commentaryOnly: hasCommentary && !text.trim(),
+        commentaryOnly: hasCommentary && !hasFinalAnswer && !hasUnphasedText,
       };
     };
 
@@ -241,16 +236,13 @@ export class AgentTurnCoordinator {
           } else if (messageHasDelta || currentTurnText || currentTurnPhase !== null) {
             // A new text stream started before the previous assistant message
             // emitted message_end. If the interrupted stream was visible
-            // final-answer/unphased text, snapshot it as a completed turn so
+            // visible text, snapshot it as a completed turn so
             // steering or provider-side response boundaries do not erase model
-            // output that already appeared in Draft. Signed commentary stays
-            // transient and is discarded as before.
-            if (currentTurnText.trim() && currentTurnPhase !== "commentary" && onTurnComplete) {
+            // output that already appeared in Draft. Provider phase labels do
+            // not make visible text disposable.
+            if (currentTurnText.trim() && onTurnComplete) {
               flushTurn({ turnKind: "draft_snapshot", cause: "interrupted_text_start" });
             } else {
-              if (currentTurnText.trim() && currentTurnPhase === "commentary") {
-                onTurnDiscard?.({ reason: "commentary_only" });
-              }
               resetCurrentTurn();
             }
           }
@@ -339,17 +331,12 @@ export class AgentTurnCoordinator {
 
           messageHasDelta = false;
           messageComplete = true;
-          // Signed commentary is transient provider narration. Discard it at
-          // every completed-message boundary, not only before a tool call: an
-          // error/abort can otherwise leave it buffered for the next response
-          // to flush as a durable turn.
-          if (commentaryOnly) {
-            onTurnDiscard?.({
-              reason: message.stopReason === "toolUse" && hadToolCallContent
-                ? "tool_use_commentary"
-                : "commentary_only",
-            });
-            resetCurrentTurn();
+          if (commentaryOnly && message.stopReason === "error") {
+            if (currentTurnText.trim() && onTurnComplete) {
+              flushTurn({ turnKind: "intermediate", cause: "failed_boundary" });
+            } else {
+              resetCurrentTurn();
+            }
             return;
           }
           if (message.stopReason === "toolUse" && hadToolCallContent) {
@@ -367,19 +354,14 @@ export class AgentTurnCoordinator {
     };
 
     const finalizeAttempt = () => {
-      // Providers can throw or abort without emitting message_end. Never let a
-      // dangling signed commentary stream become final text or a web draft
-      // fallback when the attempt is finalized.
-      if (currentTurnText.trim() && currentTurnPhase === "commentary") {
-        onTurnDiscard?.({ reason: "commentary_only" });
-        resetCurrentTurn();
-      }
+      // Visible streamed text remains eligible for persistence even when the
+      // provider labels it commentary and omits message_end.
     };
 
     return {
       handleMessageUpdate,
       finalizeAttempt,
-      getFinalText: () => currentTurnPhase === "commentary" ? "" : currentTurnText.trim(),
+      getFinalText: () => currentTurnText.trim(),
       getTurnCount: () => turnCount,
       getError: () => lastError,
       getLastAssistantState: () => lastAssistantState,
@@ -396,6 +378,18 @@ export class AgentTurnCoordinator {
     return session.subscribe((event: AgentSessionEvent) => {
       this.options.touchSession(chatJid);
 
+      const messageUpdate = event.type === "message_update"
+        ? event.assistantMessageEvent as { type?: string } | undefined
+        : undefined;
+      const persistBoundaryBeforePresentationReset = messageUpdate?.type === "text_start";
+
+      // text_start resets the presentation Draft buffer. Resolve any prior
+      // visible segment first so failed persistence cannot erase its recovery
+      // source. All other events keep the established presentation-first order.
+      if (persistBoundaryBeforePresentationReset) {
+        tracker.handleMessageUpdate(event);
+      }
+
       if (onEvent) {
         try {
           onEvent(event);
@@ -408,7 +402,9 @@ export class AgentTurnCoordinator {
         }
       }
 
-      tracker.handleMessageUpdate(event);
+      if (!persistBoundaryBeforePresentationReset) {
+        tracker.handleMessageUpdate(event);
+      }
 
     });
   }

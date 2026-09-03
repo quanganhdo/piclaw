@@ -500,12 +500,16 @@ async function runPromptAttempt(
     ? ((turn: TurnOutput) => {
         const hadOutput = !!(turn.text || turn.attachments.length > 0);
         hadCompletedTurnOutput = hadCompletedTurnOutput || hadOutput;
-        hadTerminalTurnOutput = hadTerminalTurnOutput || (hadOutput && !turn.followedByToolUse);
+        hadTerminalTurnOutput = hadTerminalTurnOutput || (
+          hadOutput
+          && !turn.followedByToolUse
+          && turn.cause !== "failed_boundary"
+        );
         originalOnTurnComplete(turn as Parameters<NonNullable<RunAgentOptions["onTurnComplete"]>>[0]);
       })
     : undefined;
 
-  const tracker = options.turnCoordinator.createTracker(chatJid, onTurnComplete, runOptions.onTurnDiscard);
+  const tracker = options.turnCoordinator.createTracker(chatJid, onTurnComplete);
   const toolExecutionWatchdogHeartbeat = createToolExecutionWatchdogHeartbeatController(chatJid, {
     onHeartbeat: (event) => runOptions.onEvent?.(event as unknown as AgentSessionEvent),
   });

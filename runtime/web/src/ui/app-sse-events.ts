@@ -311,6 +311,14 @@ export function handleAppSseEvent(
     setAgentThought({ text: '', totalLines: 0 });
   };
 
+  const consumeTextPreviews = () => {
+    invalidateAppPreviewTrailingFlushes(previewResyncGenerationRef);
+    draftBufferRef.current = '';
+    thoughtBufferRef.current = '';
+    setAgentDraft({ text: '', totalLines: 0 });
+    setAgentThought({ text: '', totalLines: 0 });
+  };
+
   const { turnId, isCurrentChatEvent } = resolveSseEventRoutingContext(eventType, data, currentChatJid);
 
   if (isCurrentChatEvent) {
@@ -588,6 +596,16 @@ export function handleAppSseEvent(
       setFollowupQueueItems((current) => removeFollowupQueueRow(current, optimisticRemoval.rowId).items);
     }
     void refreshQueueState();
+    return;
+  }
+
+  if (eventType === 'agent_preview_consumed') {
+    if (!isCurrentChatEvent) return;
+    if (shouldIgnoreMismatchedTurn(turnId, currentTurnIdRef.current)) return;
+    if (previewResyncPendingRef.current) {
+      dirtyPreviewResyncRefs.add(previewResyncPendingRef);
+    }
+    consumeTextPreviews();
     return;
   }
 

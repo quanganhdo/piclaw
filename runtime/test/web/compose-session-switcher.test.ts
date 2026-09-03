@@ -8,6 +8,7 @@ import {
   groupSessionPickerChats,
   matchesSessionPickerSearch,
   moveSessionPickerIndex,
+  resolveSessionPickerChatIndex,
   resolveSessionPickerSearchInitialIndex,
   shouldOpenSessionSwitcherFromBlankCompose,
   shouldRouteComposeValueToSessionSwitcher,
@@ -30,6 +31,20 @@ test('session picker search covers handle, JID, lifecycle state, and model while
   expect(filterSessionPickerChats(chats, 'web:other').map(chat => chat.chat_jid)).toEqual(['web:other']);
   expect(filterSessionPickerChats(chats, 'archived').map(chat => chat.chat_jid)).toEqual(['web:archived']);
   expect(filterSessionPickerChats(chats, 'worker')).toHaveLength(3);
+});
+
+test('session picker selection follows a stable chat JID after pinning reorders filtered results', () => {
+  const filtered = chats.slice(0, 3);
+  const reordered = groupSessionPickerChats(filtered, 'web:root', ['web:root:branch:b'])
+    .flatMap(section => section.items);
+
+  expect(reordered.map(chat => chat.chat_jid)).toEqual([
+    'web:root',
+    'web:root:branch:b',
+    'web:root:branch:a',
+  ]);
+  expect(resolveSessionPickerChatIndex(reordered, 'web:root:branch:b')).toBe(1);
+  expect(resolveSessionPickerChatIndex(reordered, 'missing')).toBe(-1);
 });
 
 test('session picker search prioritizes @name over metadata-only matches', () => {

@@ -1578,7 +1578,7 @@ export async function processChat(
     channel, chatJid, agentId, threadId, turnId, runStartedAt, sourceMessageId: lastMessage.id ?? null,
     withResolvedToolStatusHints, withAgentStatusProgressMetadata,
   });
-  const { emitter, trackedEmitter, streamingHandler: trackedStreamingHandler, clearCommittedDraft, timeoutMs } = streamRuntime;
+  const { emitter, trackedEmitter, streamingHandler: trackedStreamingHandler, timeoutMs } = streamRuntime;
   const streamState = streamRuntime.state;
   let turnCount = 0;
   let hadIntermediateOutput = false;
@@ -1620,13 +1620,16 @@ export async function processChat(
         ...(Array.isArray(options.additionalBlocks) ? options.additionalBlocks : []),
         ...streamRuntime.buildThinkingRefBlocks(),
       ],
-      onMessageStored: streamRuntime.persistThinkingForRow,
+      onMessageStored: (rowId, interaction) => streamRuntime.consumePersistedPreviewsForRow(
+        rowId,
+        interaction.data?.thread_id ?? resolvedThreadRootId,
+      ),
     });
   };
   const persistVisibleFailureOutcome = (
     markerBase: Record<string, unknown>,
     detail?: string,
-    options: { requireDraft?: boolean } = {},
+    options: { requireDraft?: boolean; suppressDraft?: boolean } = {},
   ) => {
     const draft = channel.getBuffer(turnId, "draft");
     const draftText = typeof draft?.text === "string" ? draft.text.trim() : "";
@@ -1648,7 +1651,7 @@ export async function processChat(
       || markerKind === "context"
       || (markerKind === "recovery" && markerSeverity !== "info");
     const text = buildFailureVisibleText({
-      draftText,
+      draftText: options.suppressDraft ? '' : draftText,
       title,
       detail: detail || markerDetail,
       actionSummary: lastAction?.summary,
@@ -1761,9 +1764,6 @@ export async function processChat(
       ?? turnId,
     recoveryGeneration: protectedRecoveryHandoffContext?.recoveryGeneration ?? 0,
     onEvent: trackedStreamingHandler,
-    onTurnDiscard: () => {
-      clearCommittedDraft();
-    },
     onTurnComplete: (turn: TurnOutput) => {
       // Turn boundary: the first turn (index 0) is the original prompt's
       // response — skip placeholder consumption so it doesn't steal a
@@ -1787,7 +1787,8 @@ export async function processChat(
           turnKind: turn.turnKind,
           cause: turn.cause,
           followedByToolUse: turn.followedByToolUse,
-          clearCommittedDraft,
+          buildThinkingRefBlocks: streamRuntime.buildThinkingRefBlocks,
+          consumePersistedPreviewsForRow: streamRuntime.consumePersistedPreviewsForRow,
         });
         if (!stored) {
           intermediatePersistFailed = true;
@@ -2058,7 +2059,6 @@ export async function processChat(
       // The runtime deliberately refuses an unbounded recovery chain. Unlike a
       // normal marker-only blank final, this terminal state must remain readable
       // even when the client cannot render structured outcome blocks.
-      clearCommittedDraft();
       shouldRemoveStaleProtectedContinuation = true;
       const terminalReason = output.protectedRecoveryHandoff?.reason
         ?? (isPostCompactionProtectedRecoveryHandoff(output)
@@ -2113,7 +2113,6 @@ export async function processChat(
       // draft is not a terminal answer and may falsely claim tools are missing.
       // Replace that transient prose with a deterministic recovery marker while
       // the durable typed continuation resumes the work with tools restored.
-      clearCommittedDraft();
       const handoffPresentation = output.protectedRecoveryHandoff
         ? formatProtectedRecoveryHandoff(output.protectedRecoveryHandoff)
         : null;
@@ -2132,7 +2131,7 @@ export async function processChat(
         failureCategory: output.failureCategory,
         protectedRecoveryHandoff: output.protectedRecoveryHandoff,
       });
-      const persisted = persistVisibleFailureOutcome(marker);
+      const persisted = persistVisibleFailureOutcome(marker, undefined, { suppressDraft: true });
       if (persisted) {
         await finalizeSuccessfulRun();
       } else {
@@ -2225,7 +2224,10 @@ export async function processChat(
           ...(buildRecoveryMarkerBlocks(output.recovery) ?? []),
           ...streamRuntime.buildThinkingRefBlocks(),
         ],
-        onMessageStored: streamRuntime.persistThinkingForRow,
+        onMessageStored: (rowId, interaction) => streamRuntime.consumePersistedPreviewsForRow(
+          rowId,
+          interaction.data?.thread_id ?? resolvedThreadRootId,
+        ),
       })
     : hasDraftFallback
       ? publishDraftFallback("empty-final")

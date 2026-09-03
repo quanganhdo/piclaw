@@ -386,12 +386,14 @@ export function decideAutomaticRecovery(input: RecoveryDecisionInput): RecoveryD
     };
   }
 
-  if (input.snapshot.hadCompletedTurnOutput) {
+  const hadTerminalTurnOutput = input.snapshot.hadTerminalTurnOutput
+    ?? Boolean(input.snapshot.hadCompletedTurnOutput);
+  if (hadTerminalTurnOutput) {
     return {
       recover: false,
       classifier: "completed_turn_output",
       strategy: null,
-      reason: "Automatic recovery skipped because a completed assistant turn was already emitted during the failed run.",
+      reason: "Automatic recovery skipped because a terminal assistant reply already completed during the failed run.",
     };
   }
 

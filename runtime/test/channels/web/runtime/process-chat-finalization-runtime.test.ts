@@ -110,10 +110,11 @@ describe("process chat finalization runtime", () => {
       turnKind: "intermediate",
       cause: "tool_use",
       followedByToolUse: true,
-      clearCommittedDraft: () => calls.push("clear-draft"),
+      buildThinkingRefBlocks: () => [{ type: "thinking_ref", lines: 2 }],
+      consumePersistedPreviewsForRow: (rowId, threadId) => calls.push(`consume-previews:${rowId}:thread=${threadId}`),
     });
     expect(result).toBe(42);
-    expect(calls).toEqual(["store:7", "clear-draft"]);
+    expect(calls).toEqual(["store:7", "consume-previews:42:thread=7"]);
     expect(storedOptions.contentBlocks).toContainEqual({
       type: "agent_turn_marker",
       kind: "intermediate",
@@ -122,6 +123,8 @@ describe("process chat finalization runtime", () => {
       turn_id: "turn-1",
       source_message_id: "msg-1",
     });
+    expect(storedOptions.contentBlocks).toContainEqual({ type: "thinking_ref", lines: 2 });
+    expect(storedOptions.threadId).toBe(7);
   });
 
   test("contradictory completed-boundary metadata is not persisted as authoritative", () => {
@@ -147,12 +150,14 @@ describe("process chat finalization runtime", () => {
       turnKind: "intermediate",
       cause: "completed_boundary",
       followedByToolUse: true,
-      clearCommittedDraft: () => {},
+      buildThinkingRefBlocks: () => [],
+      consumePersistedPreviewsForRow: () => {},
     })).toBe(44);
     expect(storedOptions.contentBlocks).not.toContainEqual(expect.objectContaining({ type: "agent_turn_marker" }));
   });
 
-  test("interrupted draft persistence stores a draft snapshot marker without clearing the draft", () => {
+  test("interrupted draft persistence stores a marker and consumes both live previews", () => {
+    const consumed: number[] = [];
     let storedOptions: any = null;
     const channel: any = {
       consumeQueuedFollowupPlaceholder: () => null,
@@ -174,9 +179,11 @@ describe("process chat finalization runtime", () => {
       timingBlock: { type: "agent_timing", turn_id: "turn-2" },
       turnKind: "draft_snapshot",
       cause: "interrupted_text_start",
-      clearCommittedDraft: () => { throw new Error("draft should not clear"); },
+      buildThinkingRefBlocks: () => [],
+      consumePersistedPreviewsForRow: (rowId) => consumed.push(rowId),
     });
     expect(result).toBe(43);
+    expect(consumed).toEqual([43]);
     expect(storedOptions.contentBlocks).toContainEqual({
       type: "agent_turn_marker",
       kind: "draft_snapshot",

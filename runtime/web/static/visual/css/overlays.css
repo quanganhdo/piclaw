@@ -660,6 +660,8 @@ mark.post-highlight {
 }
 
 .post-highlight-popup {
+    position: fixed;
+    z-index: 100;
     display: flex;
     gap: 6px;
     padding: 6px 8px;
@@ -669,6 +671,20 @@ mark.post-highlight {
     box-shadow: var(--shadow-lg);
     pointer-events: auto;
     animation: fadeIn 0.15s ease-out;
+}
+
+.post-highlight-popup.post-highlight-popup-docked {
+    left: 50%;
+    top: auto;
+    bottom: max(12px, calc(env(safe-area-inset-bottom, 0px) + 12px));
+    max-width: calc(100vw - 16px);
+    transform: translateX(-50%);
+}
+
+.post-highlight-popup-docked .post-highlight-color-btn,
+.post-highlight-popup-docked .post-aside-add-btn {
+    width: 36px;
+    height: 36px;
 }
 
 .post-highlight-color-btn {

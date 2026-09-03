@@ -2,9 +2,14 @@ import { expect, test } from 'bun:test';
 
 import {
   createBranchLoaderState,
+  getInitialWorkspaceOpen,
   resolveCurrentBranchRecord,
   resolveStableRootChatJid,
 } from '../../web/src/ui/app-main-surface-state.js';
+
+test('workspace starts closed until the user explicitly opens it', () => {
+  expect(getInitialWorkspaceOpen()).toBe(false);
+});
 
 test('createBranchLoaderState reflects branch-loader mode', () => {
   expect(createBranchLoaderState(false)).toEqual({ status: 'idle', message: '' });

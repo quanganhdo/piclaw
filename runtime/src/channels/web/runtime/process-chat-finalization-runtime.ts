@@ -141,7 +141,8 @@ export interface PersistIntermediateTurnOptions {
   turnKind?: AgentTurnKind;
   cause?: AgentTurnCause;
   followedByToolUse?: boolean;
-  clearCommittedDraft(): void;
+  buildThinkingRefBlocks(): Array<Record<string, unknown>>;
+  consumePersistedPreviewsForRow(rowId: number, persistedThreadId?: string | number | null): void;
 }
 
 function buildAgentTurnMarker(options: PersistIntermediateTurnOptions): Record<string, unknown> | null {
@@ -150,6 +151,7 @@ function buildAgentTurnMarker(options: PersistIntermediateTurnOptions): Record<s
     && !options.followedByToolUse;
   const validIntermediate = options.turnKind === "intermediate"
     && ((options.cause === "completed_boundary" && !options.followedByToolUse)
+      || (options.cause === "failed_boundary" && !options.followedByToolUse)
       || (options.cause === "tool_use" && options.followedByToolUse === true));
   if (!validDraft && !validIntermediate) return null;
 
@@ -165,7 +167,7 @@ function buildAgentTurnMarker(options: PersistIntermediateTurnOptions): Record<s
   };
 }
 
-/** Persist one non-terminal agent turn while preserving placeholder and draft ordering. */
+/** Persist one non-terminal agent turn, then consume its Draft and Thought previews before broadcast. */
 export function persistIntermediateProcessChatTurn(options: PersistIntermediateTurnOptions): number | null {
   const marker = buildAgentTurnMarker(options);
   return storeAgentTurn(options.channel, options.emitter, {
@@ -175,7 +177,14 @@ export function persistIntermediateProcessChatTurn(options: PersistIntermediateT
     channelName: options.channelName,
     threadId: options.threadId,
     skipPlaceholder: options.skipPlaceholder,
-    extraContentBlocks: [options.timingBlock, ...(marker ? [marker] : [])],
-    onMessageStored: options.followedByToolUse ? options.clearCommittedDraft : undefined,
+    extraContentBlocks: [
+      options.timingBlock,
+      ...(marker ? [marker] : []),
+      ...options.buildThinkingRefBlocks(),
+    ],
+    onMessageStored: (rowId, interaction) => options.consumePersistedPreviewsForRow(
+      rowId,
+      interaction.data?.thread_id ?? options.threadId,
+    ),
   });
 }

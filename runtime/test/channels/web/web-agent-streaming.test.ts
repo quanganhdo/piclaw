@@ -7,6 +7,7 @@
 
 import { describe, test, expect } from "bun:test";
 import { AgentQueue } from "../../../src/queue.js";
+import { AgentTurnCoordinator } from "../../../src/agent-pool/turn-coordinator.js";
 import { buildAgentStatusPhaseKey } from "../../../src/channels/web/handlers/agent.js";
 import { waitFor } from "../../helpers.js";
 import { createWebChannelTestFixture } from "./helpers/web-channel-fixture.js";
@@ -50,6 +51,123 @@ test("agent status phase identity ignores presentation text", () => {
 });
 
 describe("web agent streaming", () => {
+  test("persists visible commentary and final reply in the same thread while consuming each preview", async () => {
+    const checkpoint = "Agreed. Draft and Thoughts represent only uncommitted output.";
+    const finalReply = "The lifecycle rule is now enforced.";
+    const agentPool = {
+      setSessionBinder: () => {},
+      runAgent: async (_prompt: string, chatJid: string, options: any) => {
+        const tracker = new AgentTurnCoordinator({
+          takeAttachments: () => [],
+          touchSession: () => {},
+          recordMessageUsage: () => {},
+        }).createTracker(chatJid, options.onTurnComplete);
+        const emit = (event: any) => {
+          options.onEvent?.(event);
+          tracker.handleMessageUpdate(event);
+        };
+        const commentary = JSON.stringify({ phase: "commentary" });
+        const finalAnswer = JSON.stringify({ phase: "final_answer" });
+
+        emit(makeEvent("message_update", {
+          assistantMessageEvent: {
+            type: "thinking_start",
+          },
+        }));
+        emit(makeEvent("message_update", {
+          assistantMessageEvent: {
+            type: "thinking_delta",
+            delta: "Define one deterministic lifecycle rule.",
+          },
+        }));
+        emit(makeEvent("message_update", {
+          assistantMessageEvent: {
+            type: "thinking_end",
+            content: "Define one deterministic lifecycle rule.",
+          },
+        }));
+        emit(makeEvent("message_update", {
+          assistantMessageEvent: {
+            type: "text_start",
+            contentIndex: 0,
+            partial: { content: [{ type: "text", textSignature: commentary }] },
+          },
+        }));
+        emit(makeEvent("message_update", {
+          assistantMessageEvent: {
+            type: "text_delta",
+            delta: checkpoint,
+            contentIndex: 0,
+            partial: { content: [{ type: "text", textSignature: commentary }] },
+          },
+        }));
+        emit(makeEvent("message_end", {
+          message: {
+            role: "assistant",
+            stopReason: "stop",
+            content: [{ type: "text", text: checkpoint, textSignature: commentary }],
+          },
+        }));
+        emit(makeEvent("message_update", {
+          assistantMessageEvent: {
+            type: "text_start",
+            contentIndex: 0,
+            partial: { content: [{ type: "text", textSignature: finalAnswer }] },
+          },
+        }));
+        emit(makeEvent("message_update", {
+          assistantMessageEvent: {
+            type: "text_delta",
+            delta: finalReply,
+            contentIndex: 0,
+            partial: { content: [{ type: "text", textSignature: finalAnswer }] },
+          },
+        }));
+        emit(makeEvent("message_end", {
+          message: {
+            role: "assistant",
+            stopReason: "stop",
+            content: [{ type: "text", text: finalReply, textSignature: finalAnswer }],
+          },
+        }));
+
+        return { status: "success", result: tracker.getFinalText(), attachments: [] };
+      },
+      getContextUsageForChat: async () => null,
+    } as any;
+    const fixture = await createWebChannelTestFixture({
+      workspace: "temp",
+      queue: new AgentQueue(),
+      agentPool,
+      resetSql: "DELETE FROM message_media; DELETE FROM messages; DELETE FROM chats; DELETE FROM chat_cursors;",
+    });
+
+    try {
+      const { channel, db, events } = fixture;
+      const user = channel.storeMessage("web:default", "set a lifecycle rule", false, []);
+      expect(user).not.toBeNull();
+      await channel.processChat("web:default", "default");
+
+      const rows = db.getTimeline("web:default", 20);
+      const checkpointRow = rows.find((row) => row.data?.content === checkpoint);
+      const finalRow = rows.find((row) => row.data?.content === finalReply);
+      expect(checkpointRow?.data?.thread_id).toBe(user?.id);
+      expect(finalRow?.data?.thread_id).toBe(user?.id);
+
+      const consumed = events.filter((event) => event.type === "agent_preview_consumed");
+      expect(consumed).toHaveLength(2);
+      expect(consumed.map((event) => event.data?.thread_id)).toEqual([user?.id, user?.id]);
+      for (const row of [checkpointRow, finalRow]) {
+        const consumedIndex = events.findIndex((event) => event.type === "agent_preview_consumed" && event.data?.row_id === row?.id);
+        const responseIndex = events.findIndex((event) => event.type === "agent_response" && event.data?.id === row?.id);
+        expect(consumedIndex).toBeGreaterThanOrEqual(0);
+        expect(consumedIndex).toBeLessThan(responseIndex);
+      }
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
   test("processChat broadcasts streaming events and stores turns", async () => {
     const agentPool = {
       setSessionBinder: () => {},
@@ -311,6 +429,8 @@ describe("web agent streaming", () => {
       const finalTimeline = inspectTimeline();
       expect(finalTimeline.filter((row) => row.data?.content === "I will inspect the workspace now.")).toHaveLength(1);
       expect(finalTimeline.filter((row) => row.data?.content === "Inspection complete.")).toHaveLength(1);
+      expect(finalTimeline.find((row) => row.data?.content === "I will inspect the workspace now.")?.data?.thread_id).toBe(1);
+      expect(finalTimeline.find((row) => row.data?.content === "Inspection complete.")?.data?.thread_id).toBe(1);
       expect(db.getDb().prepare(`
         SELECT json_extract(block.value, '$.kind') AS kind,
                json_extract(block.value, '$.cause') AS cause,
@@ -337,11 +457,14 @@ describe("web agent streaming", () => {
       });
 
       const clearDraftIndices = events.flatMap((event, index) => event.type === "agent_draft" && event.data?.text === "" ? [index] : []);
+      const consumedPreviewIndices = events.flatMap((event, index) => event.type === "agent_preview_consumed" ? [index] : []);
       const committedResponseIndex = events.findIndex((event) => event.type === "agent_response" && event.data?.data?.content === "I will inspect the workspace now.");
       const toolStartIndex = events.findIndex((event) => event.type === "agent_status" && event.data?.type === "tool_call" && event.data?.tool_name === "read");
-      expect(clearDraftIndices).toHaveLength(1);
+      expect(clearDraftIndices).toHaveLength(2);
+      expect(consumedPreviewIndices).toHaveLength(2);
       expect(committedResponseIndex).toBeLessThan(toolStartIndex);
       expect(clearDraftIndices[0]).toBeLessThan(toolStartIndex);
+      expect(consumedPreviewIndices[0]).toBeLessThan(committedResponseIndex);
       expect(toolStartIndex).toBeGreaterThan(committedResponseIndex);
     } finally {
       fixture.cleanup();
@@ -394,13 +517,14 @@ describe("web agent streaming", () => {
         kind: "tool_complete",
         draft_recovered: true,
       }));
-      expect(events.filter((event) => event.type === "agent_draft" && event.data?.text === "")).toHaveLength(0);
+      expect(events.filter((event) => event.type === "agent_draft" && event.data?.text === "")).toHaveLength(1);
+      expect(events.filter((event) => event.type === "agent_preview_consumed")).toHaveLength(1);
     } finally {
       fixture.cleanup();
     }
   });
 
-  test("discards tool-use commentary without persisting or recovering it", async () => {
+  test("persists visible commentary even when a lower layer requests discard", async () => {
     const commentary = "Need inspect logs then retry.";
     const agentPool = {
       setSessionBinder: () => {},
@@ -441,20 +565,21 @@ describe("web agent streaming", () => {
       await channel.processChat("web:default", "default");
 
       const timeline = db.getTimeline("web:default", 20);
-      expect(timeline.some((row) => String(row.data?.content || "").includes(commentary))).toBe(false);
+      expect(timeline.some((row) => String(row.data?.content || "").includes(commentary))).toBe(true);
       const outcomeBlocks = timeline.flatMap((row) => row.data?.content_blocks || []);
       expect(outcomeBlocks).toContainEqual(expect.objectContaining({
         type: "turn_outcome_marker",
         kind: "tool_complete",
-        draft_recovered: false,
+        draft_recovered: true,
       }));
       expect(events.some((event) => event.type === "agent_draft" && event.data?.text === "")).toBe(true);
+      expect(events.filter((event) => event.type === "agent_preview_consumed")).toHaveLength(1);
     } finally {
       fixture.cleanup();
     }
   });
 
-  test("does not recover discarded commentary into a provider-error reply", async () => {
+  test("keeps visible commentary in a provider-error reply despite a discard request", async () => {
     const commentary = "Searching saved output for a matching record.";
     const agentPool = {
       setSessionBinder: () => {},
@@ -490,15 +615,16 @@ describe("web agent streaming", () => {
       await channel.processChat("web:default", "default");
 
       const timeline = db.getTimeline("web:default", 20);
-      expect(timeline.some((row) => String(row.data?.content || "").includes(commentary))).toBe(false);
+      expect(timeline.some((row) => String(row.data?.content || "").includes(commentary))).toBe(true);
       const outcomeBlocks = timeline.flatMap((row) => row.data?.content_blocks || []);
       expect(outcomeBlocks).toContainEqual(expect.objectContaining({
         type: "turn_outcome_marker",
         kind: "provider",
         failure_category: "provider",
-        draft_recovered: false,
+        draft_recovered: true,
       }));
       expect(events.some((event) => event.type === "agent_draft" && event.data?.text === "")).toBe(true);
+      expect(events.filter((event) => event.type === "agent_preview_consumed")).toHaveLength(1);
     } finally {
       fixture.cleanup();
     }

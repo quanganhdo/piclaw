@@ -344,6 +344,36 @@ export function getSelectionInElement(element: HTMLElement): {
   return { text, textOffset, rect };
 }
 
+export interface HighlightPopupPlacement {
+  left: number;
+  top: number;
+}
+
+/** Keep the desktop annotation toolbar near the selection without clipping. */
+export function resolveHighlightPopupPlacement(
+  rect: Pick<DOMRect, 'left' | 'right' | 'top' | 'bottom'>,
+  viewport: { width: number; height: number },
+  popup: { width?: number; height?: number } = {},
+): HighlightPopupPlacement {
+  const margin = 8;
+  const gap = 8;
+  const width = Math.max(1, popup.width ?? 180);
+  const height = Math.max(1, popup.height ?? 40);
+  const maxLeft = Math.max(margin, viewport.width - width - margin);
+  const selectionCenter = (rect.left + rect.right) / 2;
+  const left = Math.min(maxLeft, Math.max(margin, selectionCenter - width / 2));
+  const above = rect.top - height - gap;
+  const below = rect.bottom + gap;
+  const maxTop = Math.max(margin, viewport.height - height - margin);
+  const top = above >= margin ? above : Math.min(maxTop, Math.max(margin, below));
+  return { left, top };
+}
+
+export function hasCoarseAnnotationPointer(runtime: Pick<Window, 'matchMedia'> | null | undefined): boolean {
+  if (!runtime?.matchMedia) return false;
+  return Boolean(runtime.matchMedia('(pointer: coarse)').matches);
+}
+
 // ── Aside DOM application ───────────────────────────────────────
 
 /**

@@ -323,6 +323,7 @@ describe("SSE client cap", () => {
     };
 
     expect(requiresChatScopedDelivery("agent_status")).toBe(true);
+    expect(requiresChatScopedDelivery("agent_preview_consumed")).toBe(true);
     broadcastEvent(channel, "agent_status", { type: "thinking" });
     expect(seen.length).toBe(0);
 

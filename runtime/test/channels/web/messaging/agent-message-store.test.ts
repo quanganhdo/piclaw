@@ -6,9 +6,11 @@ import type { AgentEventEmitter } from "../../../../src/channels/web/sse/agent-e
 /** Minimal mock of WebChannel that tracks placeholder and store calls. */
 function createMockChannel(placeholderIds: number[] = []) {
   const calls: string[] = [];
+  const broadcasts: Array<{ event: string; payload: any }> = [];
   const queue = [...placeholderIds];
   return {
     calls,
+    broadcasts,
     channel: {
       consumeQueuedFollowupPlaceholder: (chatJid: string) => {
         const next = queue.shift() ?? null;
@@ -41,6 +43,7 @@ function createMockChannel(placeholderIds: number[] = []) {
         );
         return { id: 100, timestamp: "t", data: {} };
       },
+      broadcastEvent: (event: string, payload: any) => broadcasts.push({ event, payload }),
     } as unknown as WebChannel,
   };
 }
@@ -109,6 +112,34 @@ describe("storeAgentTurn", () => {
       "consume:web:default:50",
       "replace:web:default:50:thread=undefined:terminal=0",
     ]);
+  });
+
+  test("stored callback receives the placeholder replacement with its preserved thread", () => {
+    const { channel, broadcasts } = createMockChannel([50]);
+    channel.replaceQueuedFollowupPlaceholder = (() => ({
+      id: 50,
+      timestamp: "t",
+      data: { thread_id: 27 },
+    })) as any;
+    const stored: Array<{ rowId: number; threadId: number | null }> = [];
+
+    storeAgentTurn(channel, createMockEmitter().emitter, {
+      chatJid: "web:default",
+      text: "response",
+      attachments: [],
+      channelName: "web",
+      threadId: 999,
+      onMessageStored: (rowId, interaction) => stored.push({
+        rowId,
+        threadId: interaction.data?.thread_id ?? null,
+      }),
+    });
+
+    expect(stored).toEqual([{ rowId: 50, threadId: 27 }]);
+    expect(broadcasts).toContainEqual({
+      event: "agent_followup_consumed",
+      payload: expect.objectContaining({ row_id: 50, thread_id: 27 }),
+    });
   });
 
   test("intermediate then final turn: placeholder consumed only by final", () => {

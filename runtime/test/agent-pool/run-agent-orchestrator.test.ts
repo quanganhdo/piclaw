@@ -3819,7 +3819,7 @@ test("runAgentPrompt surfaces latent session state errors when no final text is 
   }
 });
 
-test("runAgentPrompt does not return commentary-only output as a completed reply", async () => {
+test("runAgentPrompt returns visible commentary when it is the completed reply", async () => {
   initDatabase();
   const restoreEnv = setEnv({ PICLAW_TURN_AUTO_RECOVERY_ENABLED: "0" });
   class StubSession {
@@ -3867,7 +3867,6 @@ test("runAgentPrompt does not return commentary-only output as a completed reply
 
   try {
     const session = new StubSession();
-    const discarded: Array<{ reason: string }> = [];
     const turnCoordinator = new AgentTurnCoordinator({
       takeAttachments: () => [],
       touchSession: () => {},
@@ -3876,7 +3875,6 @@ test("runAgentPrompt does not return commentary-only output as a completed reply
 
     const result = await runAgentPrompt("test", "web:default", {
       timeoutMs: 0,
-      onTurnDiscard: (discard) => discarded.push(discard),
     }, {
       getOrCreateRuntime: async () => createRuntime(session, { enabled: false }) as any,
       turnCoordinator,
@@ -3887,10 +3885,8 @@ test("runAgentPrompt does not return commentary-only output as a completed reply
       clearActiveForkBaseLeaf: () => {},
     });
 
-    expect(result.status).toBe("error");
-    expect(result.result).toBeNull();
-    expect(result.error).toContain("without emitting an assistant reply");
-    expect(discarded).toEqual([{ reason: "commentary_only" }]);
+    expect(result.status).toBe("success");
+    expect(result.result).toBe("progress update");
   } finally {
     restoreEnv();
   }
@@ -3975,7 +3971,7 @@ test("runAgentPrompt commits interrupted visible draft before a later text strea
   }]);
 });
 
-test("runAgentPrompt uses a later final answer after a commentary-only provider error", async () => {
+test("runAgentPrompt persists visible commentary before a later recovered final answer", async () => {
   initDatabase();
   class StubSession {
     private listeners: Array<(event: any) => void> = [];
@@ -4051,12 +4047,10 @@ test("runAgentPrompt uses a later final answer after a commentary-only provider 
   }
 
   const session = new StubSession();
-  const completed: Array<{ text: string }> = [];
-  const discarded: Array<{ reason: string }> = [];
+  const completed: Array<{ text: string; cause?: string }> = [];
   const result = await runAgentPrompt("test", "web:default", {
     timeoutMs: 0,
-    onTurnComplete: (turn) => completed.push({ text: turn.text }),
-    onTurnDiscard: (discard) => discarded.push(discard),
+    onTurnComplete: (turn) => completed.push({ text: turn.text, cause: turn.cause }),
   }, {
     getOrCreateRuntime: async () => createRuntime(session) as any,
     turnCoordinator: new AgentTurnCoordinator({ takeAttachments: () => [], touchSession: () => {}, recordMessageUsage: () => {} }),
@@ -4069,11 +4063,10 @@ test("runAgentPrompt uses a later final answer after a commentary-only provider 
 
   expect(result.status).toBe("success");
   expect(result.result).toBe("The request completed successfully.");
-  expect(completed).toEqual([]);
-  expect(discarded).toEqual([{ reason: "commentary_only" }]);
+  expect(completed).toEqual([{ text: "Searching saved output.", cause: "failed_boundary" }]);
 });
 
-test("runAgentPrompt retries a persisted commentary-only error instead of classifying it as completed output", async () => {
+test("runAgentPrompt retries after persisting visible commentary from a provider error", async () => {
   initDatabase();
   const restoreEnv = setEnv({
     PICLAW_TURN_AUTO_RECOVERY_ENABLED: "1",
@@ -4133,12 +4126,10 @@ test("runAgentPrompt retries a persisted commentary-only error instead of classi
 
   try {
     const session = new StubSession();
-    const completed: Array<{ text: string }> = [];
-    const discarded: Array<{ reason: string }> = [];
+    const completed: Array<{ text: string; cause?: string }> = [];
     const result = await runAgentPrompt("test", "web:default", {
       timeoutMs: 0,
-      onTurnComplete: (turn) => completed.push({ text: turn.text }),
-      onTurnDiscard: (discard) => discarded.push(discard),
+      onTurnComplete: (turn) => completed.push({ text: turn.text, cause: turn.cause }),
     }, {
       getOrCreateRuntime: async () => createRuntime(session, { maxRetries: 2, baseDelayMs: 1, maxDelayMs: 60000 }) as any,
       turnCoordinator: new AgentTurnCoordinator({ takeAttachments: () => [], touchSession: () => {}, recordMessageUsage: () => {} }),
@@ -4158,8 +4149,7 @@ test("runAgentPrompt retries a persisted commentary-only error instead of classi
       strategyHistory: ["retry"],
     }));
     expect(session.promptTexts).toEqual(["test", RECOVERY_CONTINUATION_PROMPT]);
-    expect(completed).toEqual([]);
-    expect(discarded).toEqual([{ reason: "commentary_only" }]);
+    expect(completed).toEqual([{ text: "Checking transient state.", cause: "failed_boundary" }]);
   } finally {
     restoreEnv();
   }

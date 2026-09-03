@@ -342,11 +342,19 @@ export function renderMainShell(options: MainShellRenderOptions): any {
           onOpenTerminalTab=${openTerminalTab}
           onOpenVncTab=${openVncTab}
         />
+        ${workspaceOpen && !zenMode && html`
+          <div
+            class="workspace-drawer-backdrop"
+            onClick=${toggleWorkspace}
+            aria-hidden="true"
+          ></div>
+        `}
         <button
           class=${`workspace-toggle-tab${workspaceOpen ? ' open' : ' closed'}`}
           onClick=${toggleWorkspace}
           title=${workspaceOpen ? 'Hide workspace' : 'Show workspace'}
           aria-label=${workspaceOpen ? 'Hide workspace' : 'Show workspace'}
+          aria-expanded=${workspaceOpen ? 'true' : 'false'}
         >
           <svg class="workspace-toggle-tab-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <polyline points="6 3 11 8 6 13" />

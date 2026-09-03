@@ -9,6 +9,7 @@ function applyUpdate<T>(current: T, next: T | ((prev: T) => T)): T {
 function createPreviewHarness() {
   let draft: any = { text: '', totalLines: 0 };
   let thought: any = { text: '', totalLines: 0 };
+  let plan = '';
   const writes: Array<{ panel: 'draft' | 'thought'; value: any }> = [];
   const lifecycle: string[] = [];
 
@@ -46,7 +47,7 @@ function createPreviewHarness() {
       draft = applyUpdate(draft, next);
       writes.push({ panel: 'draft', value: structuredClone(draft) });
     },
-    setAgentPlan: () => undefined,
+    setAgentPlan: (next) => { plan = applyUpdate(plan, next); },
     setAgentThought: (next) => {
       thought = applyUpdate(thought, next);
       writes.push({ panel: 'thought', value: structuredClone(thought) });
@@ -87,6 +88,7 @@ function createPreviewHarness() {
     deps,
     getDraft: () => draft,
     getThought: () => thought,
+    getPlan: () => plan,
     getWrites: () => writes,
     getLifecycle: () => lifecycle,
   };
@@ -145,7 +147,7 @@ function expectAuthoritativePreview(state: any, lines: string[]) {
   expect((state.fullText.match(new RegExp(lines.at(-1)!, 'g')) || []).length).toBe(1);
 }
 
-test('collapsed Draft keeps the 24-line delta stream authoritative across preview snapshots and terminal flush', () => {
+test('persisted response consumes the authoritative Draft preview', () => {
   const harness = createPreviewHarness();
   const lines = Array.from({ length: 24 }, (_, index) => `draft-line-${String(index + 1).padStart(2, '0')}`);
 
@@ -164,16 +166,36 @@ test('collapsed Draft keeps the 24-line delta stream authoritative across previe
     }, harness.deps);
   }
 
-  handleAppSseEvent('agent_response', {
+  handleAppSseEvent('agent_preview_consumed', {
     chat_jid: 'chat:preview', turn_id: 'turn-preview', content: 'done',
   }, harness.deps);
 
-  expect(harness.deps.draftBufferRef.current).toBe(lines.join('\n'));
-  expectAuthoritativePreview(harness.getDraft(), lines);
-  expect(harness.getDraft().text).toBe(lines.slice(0, 8).join('\n'));
+  expect(harness.deps.draftBufferRef.current).toBe('');
+  expect(harness.getDraft()).toEqual({ text: '', totalLines: 0 });
 });
 
-test('collapsed Thought has parity with Draft for non-empty full deltas and terminal flush', () => {
+test('persisted response consumes Draft and Thought without clearing Plan', () => {
+  const harness = createPreviewHarness();
+  handleAppSseEvent('agent_draft', {
+    chat_jid: 'chat:preview', turn_id: 'turn-preview', kind: 'plan', mode: 'replace', text: 'keep plan',
+  }, harness.deps);
+  handleAppSseEvent('agent_draft_delta', {
+    chat_jid: 'chat:preview', turn_id: 'turn-preview', reset: true, delta: 'draft',
+  }, harness.deps);
+  handleAppSseEvent('agent_thought_delta', {
+    chat_jid: 'chat:preview', turn_id: 'turn-preview', reset: true, delta: 'thought',
+  }, harness.deps);
+
+  handleAppSseEvent('agent_preview_consumed', {
+    chat_jid: 'chat:preview', turn_id: 'turn-preview', row_id: 42,
+  }, harness.deps);
+
+  expect(harness.getDraft()).toEqual({ text: '', totalLines: 0 });
+  expect(harness.getThought()).toEqual({ text: '', totalLines: 0 });
+  expect(harness.getPlan()).toBe('keep plan');
+});
+
+test('persisted response consumes the authoritative Thought preview', () => {
   const harness = createPreviewHarness();
   const lines = Array.from({ length: 24 }, (_, index) => `thought-line-${String(index + 1).padStart(2, '0')}`);
 
@@ -191,13 +213,32 @@ test('collapsed Thought has parity with Draft for non-empty full deltas and term
     }, harness.deps);
   }
 
-  handleAppSseEvent('agent_response', {
+  handleAppSseEvent('agent_preview_consumed', {
     chat_jid: 'chat:preview', turn_id: 'turn-preview', content: 'done',
   }, harness.deps);
 
-  expect(harness.deps.thoughtBufferRef.current).toBe(lines.join('\n'));
-  expectAuthoritativePreview(harness.getThought(), lines);
-  expect(harness.getThought().text).toBe(lines.slice(0, 8).join('\n'));
+  expect(harness.deps.thoughtBufferRef.current).toBe('');
+  expect(harness.getThought()).toEqual({ text: '', totalLines: 0 });
+});
+
+test('stale preview consumption cannot clear a newer turn', () => {
+  const harness = createPreviewHarness();
+  harness.deps.currentTurnIdRef.current = 'turn-new';
+  harness.deps.draftBufferRef.current = 'new draft';
+  harness.deps.thoughtBufferRef.current = 'new thought';
+
+  handleAppSseEvent('agent_draft_delta', {
+    chat_jid: 'chat:preview', turn_id: 'turn-new', reset: true, delta: 'new draft',
+  }, harness.deps);
+  handleAppSseEvent('agent_thought_delta', {
+    chat_jid: 'chat:preview', turn_id: 'turn-new', reset: true, delta: 'new thought',
+  }, harness.deps);
+  handleAppSseEvent('agent_preview_consumed', {
+    chat_jid: 'chat:preview', turn_id: 'turn-old', row_id: 42,
+  }, harness.deps);
+
+  expect(harness.getDraft().fullText).toBe('new draft');
+  expect(harness.getThought().fullText).toBe('new thought');
 });
 
 test('bounded snapshots do not duplicate state writes once full Draft and Thought deltas are authoritative', () => {

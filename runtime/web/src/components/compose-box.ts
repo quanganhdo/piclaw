@@ -5,7 +5,7 @@ import { getAgentModels, sendAgentMessage } from '../api.js';
 import { uploadFileBatch, uploadMedia } from '../ui/upload-transfers.js';
 import { getLocalStorageItem, setLocalStorageItem } from '../utils/storage.js';
 import { buildMentionValue, filterMentionAgents, parseMentionAutocompleteQuery } from '../ui/agent-mentions.js';
-import { filterSessionPickerChats, formatSessionPickerMetrics, groupSessionPickerChats, moveSessionPickerIndex, resolveSessionPickerSearchInitialIndex, shouldOpenSessionSwitcherFromBlankCompose, shouldRouteComposeValueToSessionSwitcher } from '../ui/compose-session-switcher.js';
+import { filterSessionPickerChats, formatSessionPickerMetrics, groupSessionPickerChats, moveSessionPickerIndex, resolveSessionPickerChatIndex, resolveSessionPickerSearchInitialIndex, shouldOpenSessionSwitcherFromBlankCompose, shouldRouteComposeValueToSessionSwitcher } from '../ui/compose-session-switcher.js';
 import {
     readSessionPickerPreferences,
     SESSION_PICKER_PREFERENCES_EVENT,
@@ -1882,16 +1882,26 @@ export function ComposeBox({
     const toggleSessionPin = useCallback((chatJid) => {
         const preferences = togglePinnedSessionChatJid(chatJid);
         setPinnedSessionChatJids(preferences.pinnedChatJids);
-        const nextIndex = groupSessionPickerChats(
-            filteredSessionChats,
+        const currentEntries = sessionPopupEntriesRef.current;
+        const currentChats = currentEntries
+            .filter((entry) => entry?.type === 'session')
+            .map((entry) => entry.chat);
+        const nextChats = groupSessionPickerChats(
+            currentChats,
             currentChatJid,
             preferences.pinnedChatJids,
-        ).flatMap((section) => section.items).findIndex((chat) => chat.chat_jid === chatJid);
+        ).flatMap((section) => section.items);
+        const sessionEntries = currentEntries.filter((entry) => entry?.type === 'session');
+        const actionEntries = currentEntries.filter((entry) => entry?.type !== 'session');
+        const entriesByChatJid = new Map(sessionEntries.map((entry) => [entry.chat.chat_jid, entry]));
+        const nextEntries = nextChats.map((chat) => entriesByChatJid.get(chat.chat_jid)).filter(Boolean);
+        sessionPopupEntriesRef.current = [...nextEntries, ...actionEntries];
+        const nextIndex = resolveSessionPickerChatIndex(nextChats, chatJid);
         if (nextIndex >= 0) {
             sessionPopupIndexRef.current = nextIndex;
             setSessionPopupIndex(nextIndex);
         }
-    }, [currentChatJid, filteredSessionChats]);
+    }, [currentChatJid]);
 
     const handleRenameSession = async (event) => {
         if (event?.preventDefault) event.preventDefault();

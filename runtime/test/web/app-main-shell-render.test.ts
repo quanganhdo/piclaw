@@ -25,6 +25,44 @@ test('buildMainShellClassName composes workspace/editor/chat/zen modifiers', () 
   })).toBe('app-shell workspace-collapsed editor-open chat-only zen-mode');
 });
 
+test('renderMainShell gives an open workspace a dismissible drawer backdrop', () => {
+  const toggleWorkspace = mock(() => {});
+  const tree = renderMainShell(createMainShellRenderOptions({
+    chatOnlyMode: false,
+    workspaceOpen: true,
+    toggleWorkspace,
+  }));
+  let backdrop: any = null;
+  let toggle: any = null;
+
+  walkVNodes(tree, (node) => {
+    if (node.props?.class === 'workspace-drawer-backdrop') backdrop = node;
+    if (String(node.props?.class || '').split(/\s+/).includes('workspace-toggle-tab')) toggle = node;
+  });
+
+  expect(backdrop).toBeTruthy();
+  expect(backdrop.type).toBe('div');
+  expect(backdrop.props['aria-hidden']).toBe('true');
+  expect(backdrop.props.onClick).toBe(toggleWorkspace);
+  expect(toggle.props['aria-expanded']).toBe('true');
+});
+
+test('renderMainShell omits the workspace drawer backdrop in zen mode', () => {
+  const tree = renderMainShell(createMainShellRenderOptions({
+    chatOnlyMode: false,
+    workspaceOpen: true,
+    editorOpen: true,
+    zenMode: true,
+  }));
+  let backdropCount = 0;
+
+  walkVNodes(tree, (node) => {
+    if (node.props?.class === 'workspace-drawer-backdrop') backdropCount += 1;
+  });
+
+  expect(backdropCount).toBe(0);
+});
+
 test('extractPostedUserMessageId prefers user_message.id and falls back to row_id', () => {
   expect(extractPostedUserMessageId({ user_message: { id: 42 }, row_id: 7 })).toBe(42);
   expect(extractPostedUserMessageId({ row_id: 7 })).toBe(7);
