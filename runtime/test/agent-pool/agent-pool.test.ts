@@ -6,7 +6,7 @@
  */
 
 import { expect, test, afterEach } from "bun:test";
-import { readdirSync, readFileSync, writeFileSync } from "fs";
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import type { AgentSessionRuntime } from "@earendil-works/pi-coding-agent";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
@@ -111,6 +111,77 @@ test("agent pool aggregates streamed text and writes logs", async () => {
     .map((path) => readFileSync(path, "utf8"))
     .find((content) => content.includes("Hello world"));
   expect(matchingContent).toBeDefined();
+});
+
+test("agent pool exposes the shared model registry and active scoped models to standalone add-ons", async () => {
+  const ws = getTestWorkspace();
+  restoreEnv = setEnv({ PICLAW_WORKSPACE: ws.workspace, PICLAW_STORE: ws.store, PICLAW_DATA: ws.data });
+
+  const { AgentPool } = await importFresh<typeof import("../src/agent-pool.js")>("../src/agent-pool.js");
+  const model = { provider: "free", id: "zero", cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } };
+  const options = createAgentPoolModelOptions([model]);
+  const physicalStream = { marker: "physical-stream" };
+  (options.modelRuntime as any).streamSimple = (streamModel: unknown, context: unknown, streamOptions: unknown) => {
+    expect(streamModel).toBe(model);
+    expect(context).toEqual({ messages: [] });
+    expect(streamOptions).toEqual({ maxTokens: 123 });
+    return physicalStream;
+  };
+  const session = {
+    sessionId: "session-cheapskate",
+    scopedModels: [{ model, thinkingLevel: "low" }],
+    subscribe: () => () => {},
+    prompt: async () => {},
+    abort: async () => {},
+    dispose() {},
+  };
+  const pool = new AgentPool({
+    ...options,
+    createSession: async () => { throw new Error("unused"); },
+  });
+  (pool as any).pool.set("web:cheapskate", { runtime: createRuntime(session), lastUsed: Date.now() });
+
+  const interop = (globalThis as any).__piclawRuntimeInterop;
+  expect(interop.getModelRegistry()).toBe((pool as any).modelRegistry);
+  expect(interop.hasKnownModelCost("free", "zero")).toBe(true);
+  expect(interop.streamSimple(model, { messages: [] }, { maxTokens: 123 })).toBe(physicalStream);
+  expect(interop.getSessionId("web:cheapskate")).toBe("session-cheapskate");
+  expect(interop.getSessionId("web:missing")).toBeNull();
+  expect(interop.getScopedModels("web:cheapskate")).toEqual(session.scopedModels);
+  expect(interop.getScopedModels("web:missing")).toEqual([]);
+
+  await pool.shutdown();
+});
+
+test("model-cost provenance requires explicit cost metadata on models.json definitions", async () => {
+  const ws = createTempWorkspace("piclaw-model-cost-provenance-");
+  const agentDir = join(ws.workspace, ".pi", "agent");
+  mkdirSync(agentDir, { recursive: true });
+  writeFileSync(join(agentDir, "models.json"), `{
+    // comments and trailing commas are valid in models.json
+    "providers": {
+      "custom": {
+        "models": [
+          { "id": "unknown" },
+          { "id": "free", "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }, },
+          { "id": "paid", "cost": { "input": 1, "output": 0, "cacheRead": 0, "cacheWrite": 0 } }
+        ]
+      }
+    }
+  }`);
+  const { createKnownModelCostResolver } = await importFresh<typeof import("../src/agent-pool.js")>("../src/agent-pool.js");
+  const known = createKnownModelCostResolver(agentDir);
+  expect(known("custom", "unknown")).toBe(false);
+  expect(known("custom", "free")).toBe(true);
+  expect(known("custom", "paid")).toBe(true);
+  expect(known("builtin", "catalogued")).toBe(true);
+
+  writeFileSync(join(agentDir, "models.json"), JSON.stringify({ providers: { custom: { models: [{ id: "unknown", cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } }] } } }));
+  expect(known("custom", "unknown")).toBe(true);
+  writeFileSync(join(agentDir, "models.json"), "{ invalid");
+  expect(known("custom", "unknown")).toBe(false);
+  expect(known("builtin", "catalogued")).toBe(false);
+  ws.cleanup();
 });
 
 test("agent pool aggregates recovery counters into memory instrumentation", async () => {

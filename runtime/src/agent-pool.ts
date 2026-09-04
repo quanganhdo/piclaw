@@ -21,7 +21,7 @@
  *   - agent-control handlers call methods on AgentPool for session/model ops.
  */
 
-import { mkdirSync, statSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, statSync } from "fs";
 import { join } from "path";
 import {
   type AgentSession,
@@ -30,7 +30,7 @@ import {
   type ModelRuntime,
   SettingsManager,
 } from "@earendil-works/pi-coding-agent";
-import type { Provider } from "@earendil-works/pi-ai";
+import type { AssistantMessageEventStream, Context, Model, Provider, SimpleStreamOptions } from "@earendil-works/pi-ai";
 
 import { type AgentControlCommand, type AgentControlResult } from "./agent-control/index.js";
 import { getPiclawAgentDir } from "./core/agent-dir.js";
@@ -108,6 +108,11 @@ interface RuntimeInteropBridge {
   getChatJid?: (defaultValue?: string) => string;
   getChatChannel?: (defaultValue?: string) => string;
   registerChannelDetector?: (detector: (chatJid: string) => string | null) => () => void;
+  getModelRegistry?: () => ModelRegistry;
+  hasKnownModelCost?: (provider: string, modelId: string) => boolean;
+  streamSimple?: (model: Model<any>, context: Context, options?: SimpleStreamOptions) => AssistantMessageEventStream;
+  getSessionId?: (chatJid?: string) => string | null;
+  getScopedModels?: (chatJid?: string) => ReadonlyArray<{ model: Model<any>; thinkingLevel?: string }>;
   getExtensionKvStore?: () => {
     get<T = unknown>(extensionId: string, key: string, scope?: string, scopeKey?: string): T | null;
     set(extensionId: string, key: string, value: unknown, scope?: string, scopeKey?: string): void;
@@ -175,6 +180,91 @@ function collectSessionResourceInstrumentation(
 
 const DEFAULT_PROVIDER_RATE_LIMIT_MAX_RETRIES = 5;
 const DEFAULT_PROVIDER_RATE_LIMIT_BASE_DELAY_MS = 5000;
+
+function stripJsonCommentsAndTrailingCommas(input: string): string {
+  let output = "";
+  let inString = false;
+  let escaped = false;
+  let lineComment = false;
+  let blockComment = false;
+  for (let index = 0; index < input.length; index += 1) {
+    const char = input[index] || "";
+    const next = input[index + 1] || "";
+    if (lineComment) {
+      if (char === "\n") { lineComment = false; output += char; }
+      continue;
+    }
+    if (blockComment) {
+      if (char === "*" && next === "/") { blockComment = false; index += 1; }
+      continue;
+    }
+    if (inString) {
+      output += char;
+      if (escaped) escaped = false;
+      else if (char === "\\") escaped = true;
+      else if (char === '"') inString = false;
+      continue;
+    }
+    if (char === '"') { inString = true; output += char; continue; }
+    if (char === "/" && next === "/") { lineComment = true; index += 1; continue; }
+    if (char === "/" && next === "*") { blockComment = true; index += 1; continue; }
+    output += char;
+  }
+  return output.replace(/,(\s*[}\]])/g, "$1");
+}
+
+function hasExplicitCostRates(value: unknown): boolean {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  return ["input", "output", "cacheRead", "cacheWrite"].every((field) =>
+    typeof record[field] === "number" && Number.isFinite(record[field]) && Number(record[field]) >= 0);
+}
+
+export function createKnownModelCostResolver(agentDir: string): (provider: string, modelId: string) => boolean {
+  const modelsPath = join(agentDir, "models.json");
+  let signature = "unread";
+  let provenanceReliable = !existsSync(modelsPath);
+  let configuredCosts = new Map<string, boolean>();
+  const refresh = () => {
+    const nextSignature = existsSync(modelsPath)
+      ? (() => { const stat = statSync(modelsPath); return `${stat.mtimeMs}:${stat.size}`; })()
+      : "missing";
+    if (nextSignature === signature) return;
+    try {
+      const nextCosts = new Map<string, boolean>();
+      if (nextSignature !== "missing") {
+        const parsed = JSON.parse(stripJsonCommentsAndTrailingCommas(readFileSync(modelsPath, "utf8"))) as {
+          providers?: Record<string, { models?: Array<{ id?: unknown; cost?: unknown }> }>;
+        };
+        for (const [provider, config] of Object.entries(parsed.providers || {})) {
+          for (const model of config.models || []) {
+            if (typeof model?.id !== "string") continue;
+            nextCosts.set(`${provider}/${model.id}`, hasExplicitCostRates(model.cost));
+          }
+        }
+      }
+      configuredCosts = nextCosts;
+      signature = nextSignature;
+      provenanceReliable = true;
+    } catch (error) {
+      // Invalid current configuration invalidates provenance. Retry only after
+      // the file changes so a hot path cannot flood logs.
+      configuredCosts = new Map();
+      signature = nextSignature;
+      provenanceReliable = false;
+      log.warn("Could not inspect models.json cost provenance; all models fail closed until the file changes", {
+        operation: "agent_pool.runtime_interop.model_cost_provenance_failed",
+        modelsPath,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  };
+  return (provider, modelId) => {
+    refresh();
+    if (!provenanceReliable) return false;
+    return configuredCosts.get(`${provider}/${modelId}`) ?? true;
+  };
+}
 
 /**
  * Manages a pool of persistent AgentSession instances keyed by chat JID.
@@ -272,6 +362,15 @@ export class AgentPool {
     runtimeInterop.getChatJid = getChatJid;
     runtimeInterop.getChatChannel = getChatChannel;
     runtimeInterop.registerChannelDetector = registerChannelDetector;
+    runtimeInterop.getModelRegistry = () => this.modelRegistry;
+    runtimeInterop.hasKnownModelCost = createKnownModelCostResolver(getPiclawAgentDir());
+    runtimeInterop.streamSimple = (model, context, options) => this.modelRuntime.streamSimple(model, context, options);
+    const getSessionEntry = (chatJid = getChatJid("")): PoolEntry | undefined => {
+      const normalizedChatJid = String(chatJid || "").trim();
+      return normalizedChatJid ? this.pool.get(normalizedChatJid) ?? this.sidePool.get(normalizedChatJid) : undefined;
+    };
+    runtimeInterop.getSessionId = (chatJid) => getSessionEntry(chatJid)?.runtime.session.sessionId ?? null;
+    runtimeInterop.getScopedModels = (chatJid) => getSessionEntry(chatJid)?.runtime.session.scopedModels ?? [];
     runtimeInterop.getExtensionKvStore = () => ({
       get: extensionKvGet,
       set: extensionKvSet,

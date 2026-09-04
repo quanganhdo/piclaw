@@ -1,10 +1,41 @@
 import { expect, test } from 'bun:test';
 
 import {
+  readPersistedIntermediateTurnId,
   resolveSteerQueuedTurnId,
   shouldAdoptIncomingTurn,
   shouldIgnoreMismatchedTurn,
 } from '../../web/src/ui/app-agent-turn-events.js';
+
+test('readPersistedIntermediateTurnId accepts exact typed markers from response envelopes', () => {
+  for (const marker of [
+    { kind: 'intermediate', cause: 'tool_use', followed_by_tool_use: true },
+    { kind: 'intermediate', cause: 'completed_boundary' },
+    { kind: 'intermediate', cause: 'failed_boundary' },
+    { kind: 'draft_snapshot', cause: 'interrupted_text_start' },
+  ]) {
+    expect(readPersistedIntermediateTurnId({
+      data: {
+        content_blocks: [{ type: 'agent_turn_marker', turn_id: 'turn-42', ...marker }],
+      },
+    })).toBe('turn-42');
+  }
+});
+
+test('readPersistedIntermediateTurnId rejects contradictory and terminal response metadata', () => {
+  for (const marker of [
+    { kind: 'intermediate', cause: 'tool_use' },
+    { kind: 'intermediate', cause: 'completed_boundary', followed_by_tool_use: true },
+    { kind: 'draft_snapshot', cause: 'interrupted_text_start', followed_by_tool_use: true },
+    { kind: 'terminal', cause: 'tool_use', followed_by_tool_use: true },
+  ]) {
+    expect(readPersistedIntermediateTurnId({
+      data: {
+        content_blocks: [{ type: 'agent_turn_marker', turn_id: 'turn-42', ...marker }],
+      },
+    })).toBeNull();
+  }
+});
 
 test('shouldIgnoreMismatchedTurn only blocks events tied to a different active turn', () => {
   expect(shouldIgnoreMismatchedTurn('turn:1', 'turn:2')).toBe(true);

@@ -164,3 +164,27 @@ const dataDir = messaging.getAddonDataDir("remote-peer");
 The add-on ID must be a lowercase 1–64 character slug containing letters, digits, dots, underscores or hyphens. Piclaw creates `<PICLAW_DATA>/addons/<id>` and rejects path or symlink escapes. The add-on owns files under this directory, including its SQLite database and identity material.
 
 The runtime API does not expose Piclaw's database handle. Relational add-on state belongs in an add-on-owned database; extension KV is suitable only for small preference values.
+
+## Agent extension interop
+
+Agent extensions loaded through Pi can feature-detect `globalThis.__piclawRuntimeInterop`. Piclaw keeps this compatibility bridge deliberately small; installed add-ons must not import Piclaw runtime source or private installed modules.
+
+Catalogue-backed extensions may use:
+
+```ts
+const interop = globalThis.__piclawRuntimeInterop;
+const registry = interop?.getModelRegistry?.();
+const priceIsKnown = interop?.hasKnownModelCost?.(model.provider, model.id) ?? false;
+const chatJid = interop?.getChatJid?.("") || "";
+const sessionId = interop?.getSessionId?.(chatJid) || null;
+const scopedModels = interop?.getScopedModels?.(chatJid) || [];
+const stream = interop?.streamSimple?.(model, context, options);
+```
+
+- `getModelRegistry()` returns Piclaw's shared Pi `ModelRegistry`. Use its public catalogue, authentication and provider methods; do not mutate unrelated providers.
+- `hasKnownModelCost(provider, modelId)` reports whether the effective model's price has a declared source. Built-in/native catalogue models return true. A `models.json` model returns true only when its exact model definition explicitly contains finite, non-negative input, output, cache-read and cache-write rates; omitted custom-model costs return false even though Pi normalises them to zero.
+- `streamSimple(model, context, options)` dispatches through Piclaw's shared `ModelRuntime`, including composed provider authentication, configured headers, endpoint overrides and the model's native API implementation. It returns the normal `AssistantMessageEventStream`.
+- `getSessionId(chatJid)` returns the active main or side-session ID, or `null` when that chat has no resident session.
+- `getScopedModels(chatJid)` returns the active session's read-only scoped-model list. An empty list means Pi has no model scope; it does not mean that no model is allowed.
+
+The registry object is process-scoped. Scoped models and session IDs are session-scoped snapshots and can change when a session is replaced. Resolve them for each operation rather than retaining them across lifecycle changes.

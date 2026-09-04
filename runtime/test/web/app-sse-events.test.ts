@@ -256,6 +256,58 @@ test('handleAppSseEvent clears extension working state when the turn completes',
   expect(state.getExtensionWorkingState()).toEqual({ message: null, indicator: null, visible: true });
 });
 
+test('handleAppSseEvent consumes previews from a matching typed intermediate response', () => {
+  const state = createDeps();
+  state.deps.currentTurnIdRef.current = 'turn-current';
+  state.deps.draftBufferRef.current = 'persisted draft';
+  state.deps.thoughtBufferRef.current = 'persisted thought';
+  state.deps.setAgentDraft({ text: 'persisted draft', totalLines: 1 });
+  state.deps.setAgentThought({ text: 'persisted thought', totalLines: 1 });
+
+  handleAppSseEvent('agent_response', {
+    chat_jid: 'chat:alpha',
+    data: {
+      content: 'persisted draft',
+      content_blocks: [{
+        type: 'agent_turn_marker',
+        kind: 'intermediate',
+        cause: 'tool_use',
+        followed_by_tool_use: true,
+        turn_id: 'turn-current',
+      }],
+    },
+  }, state.deps);
+
+  expect(state.deps.draftBufferRef.current).toBe('');
+  expect(state.deps.thoughtBufferRef.current).toBe('');
+  expect(state.getAgentDraftState()).toEqual({ text: '', totalLines: 0 });
+  expect(state.getAgentThoughtState()).toEqual({ text: '', totalLines: 0 });
+});
+
+test('handleAppSseEvent does not let an old typed response clear a newer turn', () => {
+  const state = createDeps();
+  state.deps.currentTurnIdRef.current = 'turn-new';
+  state.deps.draftBufferRef.current = 'new draft';
+  state.deps.setAgentDraft({ text: 'new draft', totalLines: 1 });
+
+  handleAppSseEvent('agent_response', {
+    chat_jid: 'chat:alpha',
+    data: {
+      content: 'old draft',
+      content_blocks: [{
+        type: 'agent_turn_marker',
+        kind: 'intermediate',
+        cause: 'tool_use',
+        followed_by_tool_use: true,
+        turn_id: 'turn-old',
+      }],
+    },
+  }, state.deps);
+
+  expect(state.deps.draftBufferRef.current).toBe('new draft');
+  expect(state.getAgentDraftState()).toMatchObject({ text: 'new draft', totalLines: 1 });
+});
+
 test('handleAppSseEvent removes followup rows on removal events and schedules queue refresh', () => {
   const state = createDeps();
 

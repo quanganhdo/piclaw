@@ -8,6 +8,7 @@ import {
   resolveAgentPlanText,
 } from './app-agent-previews.js';
 import {
+  readPersistedIntermediateTurnId,
   resolveSteerQueuedTurnId,
   shouldAdoptIncomingTurn,
   shouldIgnoreMismatchedTurn,
@@ -817,8 +818,14 @@ export function handleAppSseEvent(
   const onMainTimeline = isMainTimelineView(viewStateRef.current);
   if (eventType === 'agent_response') {
     if (!isCurrentChatEvent) return;
-    flushAuthoritativePreviews();
-    invalidateAppPreviewTrailingFlushes(previewResyncGenerationRef);
+    const persistedIntermediateTurnId = readPersistedIntermediateTurnId(data);
+    if (persistedIntermediateTurnId
+      && !shouldIgnoreMismatchedTurn(persistedIntermediateTurnId, currentTurnIdRef.current)) {
+      consumeTextPreviews();
+    } else {
+      flushAuthoritativePreviews();
+      invalidateAppPreviewTrailingFlushes(previewResyncGenerationRef);
+    }
     setExtensionWorkingState({ message: null, indicator: null, visible: true });
     removeStalledPost();
     lastAgentResponseRef.current = {

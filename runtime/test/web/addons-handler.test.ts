@@ -215,7 +215,7 @@ test('handleInstallAddon installs public tarball addons without repo-tree fallba
     setAddonInstallTestHooksForTests({
       async runBunCommand(args, cwd) {
         bunCalls.push({ args, cwd });
-        return args.join(' ') === 'bun install --force'
+        return args.join(' ') === 'bun install --force --omit=peer'
           ? { ok: true, exitCode: 0, stdout: 'installed', stderr: '' }
           : { ok: false, exitCode: 1, stdout: '', stderr: 'unexpected bun command' };
       },
@@ -243,7 +243,7 @@ test('handleInstallAddon installs public tarball addons without repo-tree fallba
         installKind: 'tarball',
       }));
       expect(bunCalls).toHaveLength(1);
-      expect(bunCalls[0]?.args).toEqual(['bun', 'install', '--force']);
+      expect(bunCalls[0]?.args).toEqual(['bun', 'install', '--force', '--omit=peer']);
       expect(bunCalls[0]?.cwd).toContain(join('.pi', 'extensions', '.staging'));
       expect(JSON.parse(readFileSync(join(workspace.workspace, '.pi', 'extensions', 'package.json'), 'utf8')).dependencies).toEqual({
         '@rcarmo/piclaw-addon-observability': 'https://rcarmo.github.io/piclaw-addons/packages/piclaw-addon-observability-0.1.2.tgz',

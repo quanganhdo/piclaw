@@ -71,6 +71,42 @@ test("SSEClient connects to a chat-scoped SSE stream when chatJid is provided", 
   }
 });
 
+test("SSEClient preserves connected payload for asset-version reconciliation", () => {
+  const OriginalEventSource = globalThis.EventSource;
+  let source: FakeEventSource | null = null;
+  const events: Array<{ type: string; data: unknown }> = [];
+
+  class FakeEventSource {
+    onopen: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    listeners = new Map<string, Array<(event: { data: string }) => void>>();
+    constructor(_url: string) { source = this; }
+    addEventListener(event: string, listener: (event: { data: string }) => void) {
+      const current = this.listeners.get(event) ?? [];
+      current.push(listener);
+      this.listeners.set(event, current);
+    }
+    emit(event: string, data: unknown) {
+      for (const listener of this.listeners.get(event) ?? []) listener({ data: JSON.stringify(data) });
+    }
+    close() {}
+  }
+
+  globalThis.EventSource = FakeEventSource as any;
+  try {
+    const client = new SSEClient((type, data) => events.push({ type, data }), () => {});
+    client.connect();
+    source!.emit("connected", { app_asset_version: "next-build", chat_jid: "web:default" });
+    expect(events).toEqual([{
+      type: "connected",
+      data: { app_asset_version: "next-build", chat_jid: "web:default" },
+    }]);
+    client.disconnect();
+  } finally {
+    globalThis.EventSource = OriginalEventSource;
+  }
+});
+
 test("SSEClient disposal fences delayed stale callbacks across an A-to-B-to-A remount", () => {
   const OriginalEventSource = globalThis.EventSource;
   const originalSetTimeout = globalThis.setTimeout;

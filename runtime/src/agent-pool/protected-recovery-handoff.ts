@@ -63,6 +63,17 @@ export function finishBoundedProtectedRecoveryHandoff(output: AgentOutput): Agen
   };
 }
 
+/** Typed non-terminal boundaries are safe to publish before recovery authority is known. */
+export function isAuthoritativeIntermediateTurn(turn: TurnOutput): boolean {
+  if (turn.turnKind === "draft_snapshot") {
+    return turn.cause === "interrupted_text_start" && !turn.followedByToolUse;
+  }
+  if (turn.turnKind !== "intermediate") return false;
+  if (turn.cause === "tool_use") return turn.followedByToolUse === true;
+  return (turn.cause === "completed_boundary" || turn.cause === "failed_boundary")
+    && !turn.followedByToolUse;
+}
+
 /**
  * Run one prompt and a bounded ordinary tool-enabled continuation. A generated
  * continuation may hand off once more only after recovery successfully compacted
@@ -74,7 +85,6 @@ export async function runWithProtectedRecoveryHandoff(
   run: (nextPrompt: string, nextOptions: RunAgentOptions) => Promise<AgentOutput>,
   onOutput?: (output: AgentOutput) => void,
 ): Promise<AgentOutput> {
-  const bufferedTurns: TurnOutput[] = [];
   const originalOnTurnComplete = options.onTurnComplete;
   const initialDepth = options.protectedRecoveryContinuationDepth
     ?? (options.protectedRecoveryContinuation ? 1 : 0);
@@ -90,23 +100,30 @@ export async function runWithProtectedRecoveryHandoff(
     return terminal;
   }
   const shouldBufferInitialTurns = Boolean(originalOnTurnComplete) && initialDepth === 0;
+  const bufferedTerminalCandidates: TurnOutput[] = [];
   const initialOptions = shouldBufferInitialTurns
-    ? { ...options, onTurnComplete: (turn: TurnOutput) => bufferedTurns.push(turn) }
+    ? {
+        ...options,
+        onTurnComplete: (turn: TurnOutput) => {
+          if (isAuthoritativeIntermediateTurn(turn)) {
+            originalOnTurnComplete?.(turn);
+            return;
+          }
+          bufferedTerminalCandidates.push(turn);
+        },
+      }
     : options;
   let output = await run(prompt, initialOptions);
   onOutput?.(output);
 
   if (!output.requiresToolEnabledContinuation) {
-    for (const turn of bufferedTurns) originalOnTurnComplete?.(turn);
+    for (const turn of bufferedTerminalCandidates) originalOnTurnComplete?.(turn);
     return output;
   }
 
-  // Preserve committed pre-tool progress from the protected run, but suppress
-  // any unauthoritative terminal prose produced by legacy/injected runners:
-  // only an ordinary continuation may close tool-dependent work.
-  for (const turn of bufferedTurns) {
-    if (turn.followedByToolUse) originalOnTurnComplete?.(turn);
-  }
+  // Typed intermediate progress was already delivered synchronously. Suppress
+  // buffered terminal prose: only an ordinary continuation may close
+  // tool-dependent work.
   if (options.deferToolEnabledContinuation) return output;
   if (output.protectedRecoveryHandoff?.reason === "unresolved_tool_execution") {
     return finishBoundedProtectedRecoveryHandoff(output);

@@ -660,7 +660,7 @@ async function installAddonFromTarball(
 
     const peerOnly = !hasAddonRuntimeDependencies(manifest);
     if (!peerOnly) {
-      const nestedInstall = await (addonInstallTestHooks?.runBunCommand || runBunCommand)(["bun", "install", "--force"], installRoot);
+      const nestedInstall = await (addonInstallTestHooks?.runBunCommand || runBunCommand)(["bun", "install", "--force", "--omit=peer"], installRoot);
       if (!nestedInstall.ok) {
         const detail = nestedInstall.stderr || nestedInstall.stdout || `bun install exited ${nestedInstall.exitCode}`;
         throw new Error(`Add-on dependency install failed: ${detail}`);

@@ -1044,11 +1044,17 @@ export class SSEClient {
         };
         
         // Event handlers
-        source.addEventListener('connected', () => {
+        source.addEventListener('connected', (e) => {
             if (!this.isAuthoritativeConnection(source, generation)) return;
             this.markActivity();
             console.log('SSE connected');
-            this.onEvent('connected', {});
+            let payload = {};
+            try {
+                payload = e?.data ? JSON.parse(e.data) : {};
+            } catch {
+                payload = {};
+            }
+            this.onEvent('connected', payload);
         });
 
         source.addEventListener('heartbeat', () => {

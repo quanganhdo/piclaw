@@ -4,6 +4,7 @@ import { TOOL_ENABLED_RECOVERY_CONTINUATION_PROMPT } from "../../src/agent-pool/
 import {
   PROTECTED_RECOVERY_HANDOFF_LIMIT_MESSAGE,
   finishBoundedProtectedRecoveryHandoff,
+  isAuthoritativeIntermediateTurn,
   runWithProtectedRecoveryHandoff,
 } from "../../src/agent-pool/protected-recovery-handoff.js";
 import {
@@ -46,6 +47,79 @@ const protectedOutput = (strategyHistory: string[] = []): AgentOutput => ({
     : undefined,
 });
 
+test("classifies typed checkpoints separately from terminal candidates", () => {
+  for (const turn of [
+    {
+      text: "tool progress",
+      attachments: [],
+      turnKind: "intermediate" as const,
+      cause: "tool_use" as const,
+      followedByToolUse: true,
+    },
+    {
+      text: "failed attempt progress",
+      attachments: [],
+      turnKind: "intermediate" as const,
+      cause: "failed_boundary" as const,
+    },
+    {
+      text: "completed segment",
+      attachments: [],
+      turnKind: "intermediate" as const,
+      cause: "completed_boundary" as const,
+    },
+    {
+      text: "interrupted draft",
+      attachments: [],
+      turnKind: "draft_snapshot" as const,
+      cause: "interrupted_text_start" as const,
+    },
+  ]) {
+    expect(isAuthoritativeIntermediateTurn(turn)).toBe(true);
+  }
+  expect(isAuthoritativeIntermediateTurn({
+    text: "terminal candidate",
+    attachments: [],
+  })).toBe(false);
+  expect(isAuthoritativeIntermediateTurn({
+    text: "contradictory tool metadata",
+    attachments: [],
+    turnKind: "intermediate",
+    cause: "completed_boundary",
+    followedByToolUse: true,
+  })).toBe(false);
+  expect(isAuthoritativeIntermediateTurn({
+    text: "untyped tool claim",
+    attachments: [],
+    followedByToolUse: true,
+  })).toBe(false);
+});
+
+test("delivers typed progress before the protected run resolves", async () => {
+  const delivered: string[] = [];
+  const order: string[] = [];
+
+  await runWithProtectedRecoveryHandoff(
+    "finish the task",
+    { onTurnComplete: (turn) => delivered.push(turn.text) },
+    async (_prompt, options) => {
+      options.onTurnComplete?.({
+        text: "live tool progress",
+        attachments: [],
+        turnKind: "intermediate",
+        cause: "tool_use",
+        followedByToolUse: true,
+      });
+      order.push(`during-run:${delivered.join(",")}`);
+      options.onTurnComplete?.({ text: "terminal result", attachments: [] });
+      return { status: "success", result: "terminal result" };
+    },
+  );
+
+  expect(order).toEqual(["during-run:live tool progress"]);
+  expect(delivered).toEqual(["live tool progress", "terminal result"]);
+});
+
 test("protected recovery runs exactly one ordinary continuation at the AgentPool boundary", async () => {
   const prompts: string[] = [];
   const observed: AgentOutput[] = [];
@@ -82,7 +156,13 @@ test("protected handoff preserves pre-tool progress but hides unauthoritative te
     async (prompt, options) => {
       prompts.push(prompt);
       if (prompts.length === 1) {
-        options.onTurnComplete?.({ text: "committed tool progress", attachments: [], followedByToolUse: true });
+        options.onTurnComplete?.({
+          text: "committed tool progress",
+          attachments: [],
+          turnKind: "intermediate",
+          cause: "tool_use",
+          followedByToolUse: true,
+        });
         options.onTurnComplete?.({ text: "protected terminal prose", attachments: [] });
         return protectedOutput();
       }
@@ -121,7 +201,13 @@ test("web defers protected recovery without publishing its tool-free terminal pr
     },
     async (prompt, options) => {
       prompts.push(prompt);
-      options.onTurnComplete?.({ text: "committed tool progress", attachments: [], followedByToolUse: true });
+      options.onTurnComplete?.({
+        text: "committed tool progress",
+        attachments: [],
+        turnKind: "intermediate",
+        cause: "tool_use",
+        followedByToolUse: true,
+      });
       options.onTurnComplete?.({ text: "tools are unavailable in this recovered turn", attachments: [] });
       return protectedOutput();
     },
