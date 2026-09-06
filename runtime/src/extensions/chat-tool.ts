@@ -11,6 +11,7 @@ import { createHash } from "node:crypto";
 import { basename, isAbsolute, relative, resolve } from "node:path";
 import { realpathSync, statSync } from "node:fs";
 import { getChatJid } from "../core/chat-context.js";
+import { readAccessConfig } from "../core/config-access.js";
 import { getWorkspaceDir } from "../core/config.js";
 import { getChatBranchByChatJid, getMediaById } from "../db.js";
 import { localChatAddressFromSelector, parseChatAddress } from "./chat-address.js";
@@ -126,6 +127,10 @@ const HINT = [
 
 export function buildChatTransportDirectoryHint(directories: Awaited<ReturnType<typeof getChatTransportDirectories>>): string {
   const entries = directories.flatMap((directory) => directory.entries);
+  if (readAccessConfig().mode !== "single-user") {
+    return ["## Owner-local session directory", "Only read-only discovery is available in this access mode. Cross-session sends and remote transports are disabled until owner-bound delivery is integrated.",
+      ...entries.map(entry => `- ${entry.address} — ${entry.label} (discovery only)`)].join("\n");
+  }
   if (entries.length === 0) return `${HINT}\nNo remote chat addresses are currently available.`;
   const lines = entries.map((entry) => {
     const filePolicy = entry.attachments?.enabled
@@ -221,7 +226,9 @@ export const chatTool: ExtensionFactory = (pi: ExtensionAPI) => {
   pi.on("before_agent_start", async (event) => {
     let hint: string;
     try { hint = buildChatTransportDirectoryHint(await getChatTransportDirectories()); }
-    catch { hint = `${HINT}\nRemote directory refresh failed; call chat action=directory before remote delivery.`; }
+    catch { hint = readAccessConfig().mode === "single-user"
+      ? `${HINT}\nRemote directory refresh failed; call chat action=directory before remote delivery.`
+      : "## Owner-local session directory\nNo authorised directory is available. Cross-session sends and remote transports are disabled."; }
     return { systemPrompt: `${event.systemPrompt}\n\n${hint}` };
   });
 
@@ -236,11 +243,12 @@ export const chatTool: ExtensionFactory = (pi: ExtensionAPI) => {
         const directories = await getChatTransportDirectories();
         const entries = directories.flatMap((directory) => directory.entries);
         const text = entries.length
-          ? ["Available remote chat addresses:", ...entries.map((entry) => `- ${entry.address} — ${entry.label}; modes=${entry.modes.join(",")}; status=${entry.status}${entry.attachments?.enabled ? `; files≤${entry.attachments.max_files}, ${Math.round(entry.attachments.max_file_bytes / 1024 / 1024)} MiB each` : "; files=disabled"}`)].join("\n")
+          ? [readAccessConfig().mode === "single-user" ? "Available remote chat addresses:" : "Owner-local sessions (discovery only; sends disabled):", ...entries.map((entry) => `- ${entry.address} — ${entry.label}; modes=${entry.modes.join(",")}; status=${entry.status}${entry.attachments?.enabled ? `; files≤${entry.attachments.max_files}, ${Math.round(entry.attachments.max_file_bytes / 1024 / 1024)} MiB each` : "; files=disabled"}`)].join("\n")
           : "No remote chat addresses are currently available. Pair and configure a transport in Settings first.";
         return { content: [{ type: "text", text }], details: { action: "directory", directories, entries } };
       }
 
+      if (readAccessConfig().mode !== "single-user") return err("Cross-session sends are disabled until owner-bound queue delivery is available.");
       const sourceChatJid = getChatJid("").trim();
       if (!sourceChatJid) return err("Cannot determine the source chat. The chat tool requires an active chat context.");
 

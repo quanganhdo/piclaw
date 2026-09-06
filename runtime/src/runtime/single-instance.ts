@@ -14,6 +14,7 @@ export interface RuntimeLockRecord {
   startedAt: string;
   workspace: string;
   command: string;
+  kind?: 'maintenance';
 }
 
 export interface RuntimeProcessInspector {
@@ -33,6 +34,8 @@ export interface AcquireRuntimeLockOptions {
   lockPath?: string;
   inspector?: RuntimeProcessInspector;
   disabled?: boolean;
+  /** Maintenance refuses malformed locks and every live owner, without command-line heuristics. */
+  maintenance?: boolean;
 }
 
 const DEFAULT_LOCK_FILE = "runtime.lock";
@@ -82,6 +85,7 @@ function parseRuntimeLockRecord(raw: string): RuntimeLockRecord | null {
       startedAt: typeof parsed.startedAt === "string" ? parsed.startedAt : "",
       workspace: typeof parsed.workspace === "string" ? parsed.workspace : "",
       command: typeof parsed.command === "string" ? parsed.command : "",
+      ...(parsed.kind === 'maintenance' ? { kind: 'maintenance' as const } : {}),
     };
   } catch {
     return null;
@@ -104,6 +108,7 @@ function commandLooksLikePiclawRuntime(command: string | null): boolean {
 function isActiveRuntimeOwner(record: RuntimeLockRecord | null, inspector: RuntimeProcessInspector): boolean {
   if (!record) return false;
   if (!inspector.isAlive(record.pid)) return false;
+  if (record.kind === 'maintenance') return true;
   const command = inspector.commandLine(record.pid);
   return commandLooksLikePiclawRuntime(command);
 }
@@ -139,6 +144,7 @@ export function acquireRuntimeLock(options: AcquireRuntimeLockOptions = {}): Run
   const lockPath = options.lockPath ?? getDefaultRuntimeLockPath();
   const inspector = options.inspector ?? createDefaultRuntimeProcessInspector();
   const record = createRuntimeLockRecord(inspector);
+  if (options.maintenance) record.kind = 'maintenance';
 
   if (disabled) {
     return {
@@ -166,7 +172,7 @@ export function acquireRuntimeLock(options: AcquireRuntimeLockOptions = {}): Run
       const code = (error as NodeJS.ErrnoException)?.code;
       if (code !== "EEXIST") throw error;
       const existing = readRuntimeLockRecord(lockPath);
-      if (isActiveRuntimeOwner(existing, inspector)) {
+      if ((options.maintenance && (!existing || inspector.isAlive(existing.pid))) || isActiveRuntimeOwner(existing, inspector)) {
         throw lockError(lockPath, existing);
       }
       rmSync(lockPath, { force: true });

@@ -20,8 +20,12 @@ import { Type } from "typebox";
 import { createBashTool } from "@earendil-works/pi-coding-agent";
 
 import { getToolOutputPresentationConfig } from "../core/config.js";
+import { createToolOutputAccessGuard, ToolOutputAccessDenied } from "../core/tool-output-access.js";
 import { buildPreview, saveToolOutput, searchToolOutput, getToolOutput, readToolOutputFile } from "../tool-output.js";
 import { createTrackedBashOperations } from "./tracked-bash.js";
+import { createLogger, debugSuppressedError } from "../utils/logger.js";
+
+const log = createLogger("tools.context-tools");
 
 const { storeBytes: STORE_THRESHOLD_BYTES, storeLines: STORE_THRESHOLD_LINES, previewLines: PREVIEW_LINES, previewLineChars: PREVIEW_LINE_CHARS } = getToolOutputPresentationConfig();
 
@@ -36,6 +40,21 @@ type BashToolInstance = ReturnType<typeof createBashTool>;
 type BashToolParams = Parameters<BashToolInstance["execute"]>[1];
 type BashToolSignal = Parameters<BashToolInstance["execute"]>[2];
 type BashToolUpdate = Parameters<BashToolInstance["execute"]>[3];
+
+function guardOutputUpdates(checkAccess: () => void, onUpdate?: BashToolUpdate): BashToolUpdate {
+  if (!onUpdate) return undefined;
+  return (update) => {
+    // SDK updates can arrive from stream event listeners: never throw a denial
+    // into that emitter. The guard latches it and execute rejects on completion.
+    try { checkAccess(); } catch { return; }
+    try { onUpdate(update); } finally {
+      // Preserve caller callback errors, but always latch access loss.
+      try { checkAccess(); } catch (error) {
+        debugSuppressedError(log, "Output access changed during an update callback", error, { operation: "context_tools.update_denied" });
+      }
+    }
+  };
+}
 
 function extractTextContent(content: unknown): string {
   if (!Array.isArray(content)) return "";
@@ -69,7 +88,10 @@ export function createContextBashTool(cwd: string) {
     label: "bash",
     description: `${base.description} Large outputs are stored and summarized to save context.`,
     execute: async (toolCallId: string, params: BashToolParams, signal?: BashToolSignal, onUpdate?: BashToolUpdate) => {
-      const result = await base.execute(toolCallId, params, signal, onUpdate);
+      const checkAccess = createToolOutputAccessGuard();
+      const guardedUpdate = guardOutputUpdates(checkAccess, onUpdate);
+      let result;
+      try { result = await base.execute(toolCallId, params, signal, guardedUpdate); } finally { checkAccess(); }
       const text = extractTextContent(result.content);
 
       let fullOutput = text;
@@ -123,6 +145,7 @@ export function createToolOutputSearchTool() {
       limit: Type.Optional(Type.Number({ description: "Max snippets to return", default: 5 })),
     }),
     execute: async (_toolCallId: string, params: { handle: string; query: string; limit?: number }) => {
+      createToolOutputAccessGuard();
       const handle = params.handle.trim();
       const query = params.query.trim();
       const limit = params.limit && params.limit > 0 ? Math.floor(params.limit) : 5;
@@ -171,16 +194,22 @@ export function createBatchExecTool(cwd: string, bashTool = createContextBashToo
       signal?: BashToolSignal,
       onUpdate?: BashToolUpdate,
     ) => {
+      const checkAccess = createToolOutputAccessGuard();
+      const guardedUpdate = guardOutputUpdates(checkAccess, onUpdate);
       const outputs: string[] = [];
       for (const command of params.commands || []) {
+        checkAccess();
         if (signal?.aborted) {
           throw new Error("aborted");
         }
         try {
-          const result = await base.execute(toolCallId, { command, timeout: params.timeout }, signal, onUpdate);
+          const result = await base.execute(toolCallId, { command, timeout: params.timeout }, signal, guardedUpdate);
+          checkAccess();
           const text = extractTextContent(result.content).trim() || "(no output)";
           outputs.push(`Command: ${command}\n${text}`);
         } catch (err) {
+          if (err instanceof ToolOutputAccessDenied) throw err;
+          checkAccess();
           if (signal?.aborted || (err instanceof Error && err.message === "aborted")) {
             throw err;
           }

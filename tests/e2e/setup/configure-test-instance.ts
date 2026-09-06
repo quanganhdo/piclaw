@@ -20,7 +20,7 @@ import { homedir } from "node:os";
 
 const OPENCODE_BASE_URL = process.env.OPENCODE_BASE_URL || "https://opencode.ai/zen/v1";
 const OPENCODE_API_KEY = process.env.OPENCODE_API_KEY || ""; // optional — free models work without a key
-const OPENCODE_MODEL = process.env.OPENCODE_MODEL || "laguna-s-2.1-free";
+const OPENCODE_MODEL = process.env.OPENCODE_MODEL || "mimo-v2.5-free";
 const OPENCODE_PROVIDER_ID = "opencode-zen";
 
 const PI_AGENT_DIR = process.env.PICLAW_PI_AGENT_DIR?.trim() || join(homedir(), ".pi", "agent");

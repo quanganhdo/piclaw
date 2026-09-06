@@ -17,6 +17,7 @@ const LATENT_ROOT = "src/service-effects/earendil-harness-v3-compatibility/";
 const EXPECTED_LATENT_FILES = [
   `${LATENT_ROOT}direct-assignments.ts`,
   `${LATENT_ROOT}manifest.ts`,
+  `${LATENT_ROOT}preparation-contract.ts`,
 ] as const;
 const APPROVED_PUBLIC_EARENDIL_SPECIFIERS = new Set([
   "@earendil-works/pi-agent-core",
@@ -63,7 +64,7 @@ describe("latent Earendil Harness v3 non-interference boundary", () => {
   const tree = readRepositorySourceTree();
   const latentFiles = Object.keys(tree.files).filter((path) => path.startsWith(LATENT_ROOT)).sort();
 
-  test("contains exactly the two authorized latent source files and no barrel", () => {
+  test("contains exactly the authorized latent source files and no barrel", () => {
     expect(latentFiles).toEqual([...EXPECTED_LATENT_FILES]);
     expect(latentFiles.some((path) => path.endsWith("/index.ts"))).toBe(false);
   });
@@ -82,19 +83,31 @@ describe("latent Earendil Harness v3 non-interference boundary", () => {
     expect(tree.files["package.json"]).not.toContain("earendil-harness-v3-compatibility");
   });
 
-  test("uses type-only public roots and emits no assignment runtime", () => {
+  test("uses type-only public roots and emits no assignment or preparation runtime", () => {
     const assignmentsPath = EXPECTED_LATENT_FILES[0];
     const assignments = tree.files[assignmentsPath];
-    const ast = parseTypeScriptSource(assignmentsPath, assignments);
-    const imports = ast.statements.filter(syntax.isImportDeclaration);
-    expect(imports.every((declaration) => declaration.importKind === "type")).toBe(true);
+    const assignmentsAst = parseTypeScriptSource(assignmentsPath, assignments);
+    const assignmentImports = assignmentsAst.statements.filter(syntax.isImportDeclaration);
+    expect(assignmentImports.every((declaration) => declaration.importKind === "type")).toBe(true);
     expect(moduleSpecifiers(assignmentsPath, assignments).filter((specifier) => specifier.startsWith("@earendil-works/")))
       .toEqual([
         "@earendil-works/pi-ai",
         "@earendil-works/pi-agent-core",
         "@earendil-works/pi-coding-agent",
       ]);
-    expect(ast.statements.every(isTypeOnlyStatement)).toBe(true);
+    expect(assignmentsAst.statements.every(isTypeOnlyStatement)).toBe(true);
+
+    const preparationPath = EXPECTED_LATENT_FILES[2];
+    const preparation = tree.files[preparationPath];
+    const preparationAst = parseTypeScriptSource(preparationPath, preparation);
+    expect(preparationAst.statements.filter(syntax.isImportDeclaration)
+      .every((declaration) => declaration.importKind === "type")).toBe(true);
+    expect(moduleSpecifiers(preparationPath, preparation)).toEqual([
+      "../contracts/execution-context-resolver.js",
+    ]);
+    expect(preparationAst.statements.every(isTypeOnlyStatement)).toBe(true);
+    expect(preparation).not.toContain("@earendil-works/chord");
+    expect(preparation).not.toContain("@earendil-works/pi-agent-core");
   });
 
   test("contains no runtime package import, activation primitive, shim declaration, or import-time I/O", () => {
@@ -132,6 +145,23 @@ describe("latent Earendil Harness v3 non-interference boundary", () => {
       expect(source).not.toMatch(/\b(?:process|Bun|Deno)\.env\b/);
     }
     expect(findings).toEqual([]);
+  });
+
+  test("keeps version-specific preparation isolated from version-neutral Piclaw authority contracts", () => {
+    const preparation = tree.files[EXPECTED_LATENT_FILES[2]];
+    expect(preparation).toContain("PiclawExecutionAuthority");
+    expect(preparation).toContain("PiclawToolContext");
+    expect(preparation).not.toMatch(/interface\s+(?:ServiceWorkStore|TerminalSettlementStore|ServiceOutboxStore|ScheduledRunStore|AgentProjectionSink)\b/);
+    for (const path of [
+      "src/service-effects/contracts/service-work-store.ts",
+      "src/service-effects/contracts/terminal-settlement-store.ts",
+      "src/service-effects/contracts/service-outbox-store.ts",
+      "src/service-effects/contracts/scheduled-run-store.ts",
+      "src/service-effects/contracts/agent-projection-sink.ts",
+    ]) {
+      expect(tree.files[path]).not.toContain("EarendilV3");
+      expect(tree.files[path]).not.toContain("0.85");
+    }
   });
 
   test("keeps both test fixtures on declared public exports and outside production source", async () => {

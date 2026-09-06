@@ -8,6 +8,9 @@
 import { Type } from "typebox";
 import type { AgentToolResult, ExtensionAPI, ExtensionFactory } from "@earendil-works/pi-coding-agent";
 import { getChatJid } from "../core/chat-context.js";
+import { readAccessConfig } from "../core/config-access.js";
+import { resolveOwnedSessionTarget } from "../agent-pool/owned-session-target.js";
+import { requireFamilyToolAccess } from '../agent-pool/family-tool-access.js';
 
 export type SessionControlAction =
   | "inspect"
@@ -113,7 +116,7 @@ function formatResult(result: SessionControlResult): string {
 
 export const sessionControl: ExtensionFactory = (pi: ExtensionAPI) => {
   pi.on("before_agent_start", async (event) => ({
-    systemPrompt: `${event.systemPrompt}\n\n${HINT}`,
+    systemPrompt: `${event.systemPrompt}\n\n${readAccessConfig().mode === "single-user" ? HINT : "## Owner-local session control\nOnly inspect and assess_stuck are available for active owned sessions. Mutating controls and wake/retry are disabled until owner-bound execution and queue delivery are integrated. An alias is resolved only in the current owner's namespace."}`,
   }));
 
   pi.registerTool({
@@ -123,6 +126,8 @@ export const sessionControl: ExtensionFactory = (pi: ExtensionAPI) => {
     promptSnippet: "session_control: inspect/assess/compact/abort/switch_model/retry_failed/skip_failed/wake/unblock another session. Prefer target_agent_name='@alias' over raw chat/session IDs. Separate from chat relay.",
     parameters: SessionControlSchema,
     async execute(_toolCallId, params: SessionControlParams) {
+      try { requireFamilyToolAccess('session_control'); }
+      catch { return err('Session access denied.'); }
       const sourceChatJid = getChatJid("").trim();
       if (!sourceChatJid) return err("Cannot determine the source chat. session_control requires an active chat context.");
 
@@ -138,6 +143,13 @@ export const sessionControl: ExtensionFactory = (pi: ExtensionAPI) => {
       }
 
       try {
+        if (readAccessConfig().mode !== "single-user") {
+          if (action !== "inspect" && action !== "assess_stuck") return err("Mutating session controls require owner-bound execution and queue integration.");
+          resolveOwnedSessionTarget(sourceChatJid, {
+            ...(targetChatJid ? { target_chat_jid: targetChatJid } : {}),
+            ...(targetAgentName ? { target_agent_name: targetAgentName } : {}),
+          });
+        }
         const result = await registeredSessionControlHandler({
           source_chat_jid: sourceChatJid,
           action,

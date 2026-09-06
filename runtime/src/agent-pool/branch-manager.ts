@@ -28,6 +28,15 @@ import { existsSync, readdirSync, renameSync, rmSync } from "fs";
 import { join } from "path";
 import { createLogger, debugSuppressedError } from "../utils/logger.js";
 import { createDeferredBranchSeed, writeDeferredBranchSeed } from "./branch-seeding.js";
+import { readAccessConfig } from "../core/config-access.js";
+import { getDb } from "../db/connection.js";
+import { commitOwnedFork, findOwnedFork } from "../db/owned-forks.js";
+import { getExecutionIdentity } from "../core/execution-context.js";
+import { requireOwnedSessionExecution } from "./owned-session-access.js";
+import { resolveOwnedSessionHandle, listOwnedSessionHandles, renameOwnedSessionHandle } from "../db/session-handles.js";
+import { ChatAccessDenied } from "../db/session-ownership.js";
+import type { AuthenticatedPrincipal } from "../core/access-types.js";
+import { archiveOwnedSession, restoreOwnedSession, resolveOwnedLifecycleSession } from "../db/owned-session-lifecycle.js";
 import type { PoolEntry } from "./session-manager.js";
 
 /** Active/known chat metadata surfaced by AgentPool. */
@@ -66,6 +75,7 @@ export interface AgentBranchManagerOptions {
   isActive: (chatJid: string) => boolean;
   scheduleSessionWarmup?: (chatJid: string) => void;
   cancelSessionWarmup?: (chatJid: string) => void;
+  hasPendingSessionWork?: (chatJid: string) => boolean;
   onWarn?: (message: string, details: Record<string, unknown>) => void;
 }
 
@@ -237,6 +247,8 @@ export function removeSessionArtifacts(chatJid: string): string[] {
 }
 
 export class AgentBranchManager {
+  private readonly ownedLifecycleInFlight = new Set<string>();
+
   constructor(private readonly options: AgentBranchManagerOptions) {}
 
   ensureBranchRegistration(chatJid: string, session?: AgentSession | null): ChatBranchRecord {
@@ -263,7 +275,13 @@ export class AgentBranchManager {
     chatJid: string,
     options: { agentName?: string | null } = {},
   ): Promise<ChatBranchRecord> {
+    const owner = requireOwnedSessionExecution(chatJid);
     const session = this.options.pool.get(chatJid)?.runtime.session ?? null;
+    if (owner) {
+      const renamed = renameOwnedSessionHandle(getDb(), owner, chatJid, options.agentName ?? "");
+      if (session) session.setSessionName(renamed.agent_name);
+      return getChatBranchByChatJid(chatJid)!;
+    }
     this.ensureBranchRegistration(chatJid, session);
     const nextAgentName = options.agentName !== undefined ? options.agentName : undefined;
     const renamed = renameChatBranchIdentity({
@@ -297,6 +315,7 @@ export class AgentBranchManager {
     oldJid: string,
     newJid: string,
   ): Promise<{ oldJid: string; newJid: string; branch: ChatBranchRecord }> {
+    if (readAccessConfig().mode !== "single-user") throw new ChatAccessDenied();
     const old = String(oldJid || "").trim();
     const next = String(newJid || "").trim();
     if (!old) throw new Error("Old JID is required.");
@@ -366,6 +385,7 @@ export class AgentBranchManager {
   }
 
   async createRootChatSession(agentName: string): Promise<ChatBranchRecord> {
+    if (readAccessConfig().mode !== "single-user") throw new ChatAccessDenied();
     const normalized = normalizeAgentHandlePart(agentName || "");
     if (!normalized) throw new Error("Root session handle must contain at least one letter or number.");
     if (normalized === "branch") throw new Error("Root session handle cannot be 'branch'.");
@@ -395,6 +415,7 @@ export class AgentBranchManager {
   async mergeChatBranchIntoParent(
     chatJid: string,
   ): Promise<ReturnType<typeof mergeChatBranchIntoParentDb>> {
+    if (readAccessConfig().mode !== "single-user") throw new ChatAccessDenied();
     const normalizedChatJid = String(chatJid || "").trim();
     if (!normalizedChatJid) throw new Error("chat_jid is required");
     if (this.options.isActive(normalizedChatJid)) {
@@ -427,7 +448,39 @@ export class AgentBranchManager {
     return result;
   }
 
+  /** Browser lifecycle does not hydrate an archived target or impersonate its owner. */
+  async changeOwnedSessionLifecycle(actor: AuthenticatedPrincipal, chatJid: string, action: "archive" | "restore", agentName?: string): Promise<ChatBranchRecord> {
+    if (readAccessConfig().mode !== "family-shared") throw new ChatAccessDenied();
+    resolveOwnedLifecycleSession(getDb(), actor, chatJid);
+    const sideSession = this.options.sidePool.get(chatJid)?.runtime.session;
+    if (this.ownedLifecycleInFlight.has(chatJid) || this.options.hasPendingSessionWork?.(chatJid)
+      || this.options.isActive(chatJid) || (sideSession && isSessionActive(sideSession))) {
+      throw new Error("Session lifecycle operation requires an idle session.");
+    }
+    this.ownedLifecycleInFlight.add(chatJid);
+    try {
+      const branch = action === "archive" ? archiveOwnedSession(getDb(), actor, chatJid) : restoreOwnedSession(getDb(), actor, chatJid, agentName);
+      if (action === "archive") {
+        // Archive commits before any await; detach caches so readers cannot acquire the old runtime.
+        const main = this.options.pool.get(chatJid);
+        const side = this.options.sidePool.get(chatJid);
+        this.options.pool.delete(chatJid);
+        this.options.sidePool.delete(chatJid);
+        this.options.activeForkBaseLeafByChat.delete(chatJid);
+        this.options.cancelSessionWarmup?.(chatJid);
+        for (const entry of new Set([main, side])) {
+          if (!entry) continue;
+          try { await entry.runtime.dispose(); }
+          catch (error) { this.options.onWarn?.("Archived session runtime disposal failed", { operation: "owned_session.archive.dispose", chatJid, error }); }
+        }
+      }
+      // Restore is metadata-only; first use hydrates under its own current identity.
+      return { ...branch, display_name: null };
+    } finally { this.ownedLifecycleInFlight.delete(chatJid); }
+  }
+
   async pruneChatBranch(chatJid: string): Promise<ChatBranchRecord> {
+    if (readAccessConfig().mode !== "single-user") throw new ChatAccessDenied();
     const session = this.options.pool.get(chatJid)?.runtime.session ?? null;
     const existing = this.ensureBranchRegistration(chatJid, session);
     const isRootChat = existing.chat_jid === existing.root_chat_jid;
@@ -480,6 +533,7 @@ export class AgentBranchManager {
   async permanentPurgeChatBranch(
     chatJid: string,
   ): Promise<{ branch: ChatBranchRecord; removedSessionArtifacts: string[] }> {
+    if (readAccessConfig().mode !== "single-user") throw new ChatAccessDenied();
     const normalizedChatJid = String(chatJid || "").trim();
     if (!normalizedChatJid) throw new Error("chat_jid is required");
     if (this.options.isActive(normalizedChatJid)) {
@@ -543,6 +597,7 @@ export class AgentBranchManager {
     chatJid: string,
     options: { agentName?: string | null } = {},
   ): Promise<ChatBranchRecord> {
+    if (readAccessConfig().mode !== "single-user") throw new ChatAccessDenied();
     const restored = restoreChatBranchIdentity({
       chat_jid: chatJid,
       ...(options.agentName !== undefined ? { agent_name: options.agentName } : {}),
@@ -563,8 +618,13 @@ export class AgentBranchManager {
 
   async createForkedChatBranch(
     sourceChatJid: string,
-    options: { agentName?: string | null } = {},
+    options: { agentName?: string | null; requestId?: string } = {},
   ): Promise<ChatBranchRecord> {
+    const owner = requireOwnedSessionExecution(sourceChatJid);
+    if (owner) {
+      const existing = findOwnedFork(getDb(), owner, sourceChatJid, options.requestId ?? "");
+      if (existing) return { ...existing, display_name: null };
+    }
     const sourceSession = (await this.options.getOrCreateRuntime(sourceChatJid)).session;
     const sourceIsActive = isSessionActive(sourceSession);
     const stableForkLeafId = this.options.activeForkBaseLeafByChat.has(sourceChatJid)
@@ -578,6 +638,16 @@ export class AgentBranchManager {
     const requestedAgentName = typeof options.agentName === "string" && options.agentName.trim()
       ? options.agentName.trim()
       : sourceBranch.agent_name;
+    if (owner) {
+      const seed = await createDeferredBranchSeed(sourceSession, {
+        stableLeafId: stableForkLeafId, sessionName: requestedAgentName, sourceIsActive,
+      });
+      const current = requireOwnedSessionExecution(sourceChatJid);
+      if (!current) throw new ChatAccessDenied();
+      const child = commitOwnedFork(getDb(), current, sourceChatJid, options.requestId ?? "", requestedAgentName, JSON.stringify(seed));
+      // No eager family warmup: the eventual caller must carry its own live provenance.
+      return { ...child, display_name: null };
+    }
     const knownBranches = listChatBranches(null, { includeArchived: true });
     const { chatJid: nextChatJid, agentName: nextAgentName } = buildForkedChatIdentity(sourceBranch, requestedAgentName, knownBranches);
     storeChatMetadata(nextChatJid, new Date().toISOString(), nextAgentName || nextChatJid);
@@ -603,9 +673,20 @@ export class AgentBranchManager {
     });
   }
 
+  private ownedChatFilter(): Set<string> | null {
+    if (readAccessConfig().mode === "single-user") return null;
+    const source = getExecutionIdentity()?.provenance.chatJid;
+    if (!source) throw new ChatAccessDenied();
+    const owner = requireOwnedSessionExecution(source);
+    if (!owner) throw new ChatAccessDenied();
+    return new Set(listOwnedSessionHandles(getDb(), owner).map(branch => branch.chat_jid));
+  }
+
   listActiveChats(): ActiveChatAgent[] {
+    const allowed = this.ownedChatFilter();
     const chats = [...this.options.pool.entries()]
       .flatMap(([chatJid, entry]): ActiveChatAgent[] => {
+        if (allowed && !allowed.has(chatJid)) return [];
         const session = entry.runtime.session;
         const branch = this.ensureBranchRegistration(chatJid, session);
         if (branch.archived_at) return [];
@@ -656,10 +737,13 @@ export class AgentBranchManager {
   }
 
   listKnownChats(rootChatJid?: string | null, options?: { includeArchived?: boolean }): ActiveChatAgent[] {
+    const allowed = this.ownedChatFilter();
+    if (allowed && rootChatJid && !allowed.has(rootChatJid)) throw new ChatAccessDenied();
     const activeChats = this.listActiveChats();
     const activeByChat = new Map(activeChats.map((chat) => [chat.chat_jid, chat]));
     try {
       return listChatBranches(rootChatJid || null, { includeArchived: Boolean(options?.includeArchived) })
+        .filter(branch => !allowed || allowed.has(branch.chat_jid))
         .map((branch) => {
           const active = activeByChat.get(branch.chat_jid);
           return {
@@ -705,12 +789,24 @@ export class AgentBranchManager {
   }
 
   findActiveChatByAgentName(agentName: string): ActiveChatAgent | null {
+    if (readAccessConfig().mode !== "single-user") {
+      const target = this.findChatByAgentName(agentName);
+      return target ? this.listActiveChats().find(chat => chat.chat_jid === target.chat_jid) ?? null : null;
+    }
     const normalized = normalizeAgentHandlePart(agentName);
     if (!normalized) return null;
     return this.listActiveChats().find((chat) => chat.agent_name === normalized) ?? null;
   }
 
   findChatByAgentName(agentName: string): { chat_jid: string; agent_name: string } | null {
+    if (readAccessConfig().mode !== "single-user") {
+      const chatJid = getExecutionIdentity()?.provenance.chatJid;
+      if (!chatJid) throw new ChatAccessDenied();
+      const owner = requireOwnedSessionExecution(chatJid);
+      if (!owner) throw new ChatAccessDenied();
+      const branch = resolveOwnedSessionHandle(getDb(), owner, agentName);
+      return branch ? { chat_jid: branch.chat_jid, agent_name: branch.agent_name } : null;
+    }
     const normalized = normalizeAgentHandlePart(agentName);
     if (!normalized) return null;
     try {

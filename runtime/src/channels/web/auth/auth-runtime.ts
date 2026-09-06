@@ -15,6 +15,7 @@ import type { WebauthnChallengeTracker } from "./webauthn-challenges.js";
 
 /** Runtime auth feature flags and cookie settings derived from config/env. */
 export interface WebAuthRuntimeConfig {
+  accessMode?: import("../../../core/config-access.js").AccessMode;
   passkeyMode: string;
   totpSecret: string;
   internalSecret: string;
@@ -24,6 +25,7 @@ export interface WebAuthRuntimeConfig {
 
 /** Return true when TOTP auth is configured with a non-empty shared secret. */
 export function isTotpEnabled(config: WebAuthRuntimeConfig): boolean {
+  if (config.accessMode && config.accessMode !== "single-user") return !isPasskeyOnly(config);
   return Boolean(config.totpSecret && config.totpSecret.trim());
 }
 
@@ -42,7 +44,8 @@ export function isPasskeyOnly(config: WebAuthRuntimeConfig): boolean {
 
 /** Return true when either TOTP or passkey auth is active. */
 export function isAuthEnabled(config: WebAuthRuntimeConfig): boolean {
-  return isTotpEnabled(config) || isPasskeyEnabled(config);
+  return (config.accessMode !== undefined && config.accessMode !== "single-user")
+    || isTotpEnabled(config) || isPasskeyEnabled(config);
 }
 
 /** Return true when internal-secret authentication is configured. */
@@ -90,6 +93,7 @@ export function createTotpAuthContext(
   deps: TotpAuthContextDeps
 ): TotpAuthContext {
   return {
+    accessMode: config.accessMode ?? "single-user",
     isAuthEnabled: () => isAuthEnabled(config),
     isTotpEnabled: () => isTotpEnabled(config),
     json: deps.json,
@@ -106,6 +110,7 @@ export function createWebauthnAuthContext(
   deps: WebauthnAuthContextDeps
 ): WebauthnAuthContext {
   return {
+    accessMode: config.accessMode ?? "single-user",
     isPasskeyEnabled: () => isPasskeyEnabled(config),
     json: deps.json,
     buildSessionCookie: (token, req) => buildSessionCookie(token, req, config),

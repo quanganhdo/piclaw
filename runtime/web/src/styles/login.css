@@ -6,6 +6,7 @@
   --muted: #94a3b8;
   --border: #1f2937;
   --accent: #38bdf8;
+  --error: #f87171;
 }
 
 @media (prefers-color-scheme: light) {
@@ -16,8 +17,12 @@
     --muted: #64748b;
     --border: #e2e8f0;
     --accent: #2563eb;
+    --error: #b91c1c;
   }
 }
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
 
 html {
   text-size-adjust: 100%;
@@ -30,13 +35,14 @@ body {
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
+  padding: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .card {
-  width: min(92vw, 420px);
+  width: min(100%, 420px);
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 16px;
@@ -71,18 +77,36 @@ input {
   text-align: center;
 }
 
+#username-field { display: flex; flex-direction: column; gap: 8px; }
+#username { text-align: left; letter-spacing: normal; }
+.enrolment-qr { display: block; width: min(100%, 260px); height: auto; margin: 0 auto 16px; }
+.enrolment-secret { display: block; overflow-wrap: anywhere; user-select: all; margin: 0 0 20px; }
+#claim-invitation { width: 100%; }
+#invitation-login { color: var(--accent); display: inline-block; margin-top: 12px; }
+label { font-size: 14px; color: var(--text); }
+input:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+button:disabled { opacity: 0.6; cursor: wait; }
+#passkey-button, #retry-options { width: 100%; margin-bottom: 16px; }
+
 button {
   padding: 12px 16px;
   border-radius: 10px;
   border: none;
   background: var(--accent);
-  color: white;
+  color: #0b0f14;
+  font-weight: 600;
   font-size: 16px;
   cursor: pointer;
 }
 
+@media (prefers-color-scheme: light) {
+  button { color: white; }
+}
+
 .error {
-  color: #f87171;
+  color: var(--error);
   font-size: 13px;
   min-height: 18px;
+  margin-top: 12px;
+  overflow-wrap: anywhere;
 }

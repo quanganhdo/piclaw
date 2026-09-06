@@ -7,6 +7,8 @@
  * chat with a structured reply-to descriptor.
  */
 import type { AgentPool } from "../agent-pool.js";
+import { readAccessConfig } from "../core/config-access.js";
+import { ChatAccessDenied } from "../db/session-ownership.js";
 import { getIdentityConfig } from "../core/config.js";
 import { createMedia, getChatBranchByAgentName, getChatBranchByChatJid } from "../db.js";
 import { createLogger, debugSuppressedError } from "../utils/logger.js";
@@ -219,6 +221,8 @@ export function createDirectChatToolRelayHandler(
 ): (request: ChatRelayRequest) => Promise<ChatRelayResult> {
   const defaultAgentId = options.defaultAgentId || "default";
   return async (request) => {
+    // Direct callers must not bypass the registry's durable-delivery gate.
+    if (readAccessConfig().mode !== "single-user") throw new ChatAccessDenied();
     const displayName = getRuntimeAgentDisplayName(options);
     const source = resolveChatIdentity(agentPool, request.source_chat_jid, displayName, {
       allowDerivedFallback: true,

@@ -3,10 +3,10 @@
 <!--
   login.html – TOTP/WebAuthn authentication page for PiClaw.
 
-  Shown when WEB_TOTP_SECRET is configured. The page shell is static HTML,
-  with minimal CSS/JS bundles loaded from /static/common/dist/.
+  The static shell loads public /auth/options before offering code/passkey
+  authentication. Family account controls remain behind the startup gate.
 
-  Served by: channels/web/auth.ts when the user is not authenticated.
+  Served by: channels/web/auth/auth-endpoints.ts.
 -->
   <head>
     <meta charset="utf-8" />
@@ -16,23 +16,20 @@
   </head>
   <body>
     <div class="card">
-      <h1>Enter your code</h1>
-      <p>Use the 6-digit code from your authenticator app.</p>
-      <form id="login-form">
-        <input
-          id="code"
-          name="code"
-          type="text"
-          inputmode="numeric"
-          autocomplete="one-time-code"
-          pattern="[0-9]*"
-          maxlength="6"
-          placeholder="••••••"
-          autofocus
-        />
-        <button type="submit">Verify</button>
-        <div class="error" id="error"></div>
+      <h1 id="login-title">Sign in to PiClaw</h1>
+      <p id="login-description" role="status">Loading sign-in options…</p>
+      <button id="passkey-button" type="button" hidden>Sign in with a passkey</button>
+      <form id="login-form" hidden>
+        <div id="username-field" hidden>
+          <label for="username">Account username</label>
+          <input id="username" name="username" type="text" autocomplete="username webauthn" autocapitalize="none" spellcheck="false" maxlength="64" disabled />
+        </div>
+        <label for="code">Authenticator code</label>
+        <input id="code" name="code" type="text" inputmode="numeric" pattern="[0-9]{6}" autocomplete="one-time-code" placeholder="••••••" maxlength="6" required disabled />
+        <button id="verify-button" type="submit" disabled>Verify code</button>
       </form>
+      <button id="retry-options" type="button" hidden>Retry loading sign-in options</button>
+      <div class="error" id="error" role="alert" aria-live="polite"></div>
     </div>
     <script type="module" src="/static/common/dist/login.bundle.js?v=__LOGIN_ASSET_VERSION__"></script>
   </body>

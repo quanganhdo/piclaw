@@ -489,7 +489,7 @@ export function installWebChannelPrototype(
     handleSse: {
       configurable: true,
       writable: true,
-      value: withHttpSurface((service, req: Request) => service.handleSse(req)),
+      value: withHttpSurface((service, req: Request, authorisation?: import("../sse/sse.js").SseAuthorisation) => service.handleSse(req, authorisation)),
     },
     handleTerminalSession: {
       configurable: true,

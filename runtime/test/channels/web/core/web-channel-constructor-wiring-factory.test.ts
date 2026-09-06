@@ -332,6 +332,7 @@ describe("web channel constructor wiring factory", () => {
     expect(result.peerMessageRelayService).toBe(peerMessageRelayService);
 
     expect(authConfig).toEqual({
+      accessMode: "single-user",
       passkeyMode: "passkey-only",
       totpSecret: "totp-secret",
       internalSecret: "internal-secret",

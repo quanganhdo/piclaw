@@ -514,6 +514,7 @@ test("agent pool schedules lightweight warmup for the most recent inactive chats
   restoreEnv = setEnv({ PICLAW_WORKSPACE: ws.workspace, PICLAW_STORE: ws.store, PICLAW_DATA: ws.data });
 
   const db = await importFresh<typeof import("../src/db.js")>("../src/db.js");
+  db.closeDatabase(); // Recent-chat ordering must not include fixtures from earlier test files.
   db.initDatabase();
   db.storeChatMetadata("web:older", "2026-04-14T10:00:00.000Z", "Older");
   db.storeChatMetadata("web:newer", "2026-04-14T11:00:00.000Z", "Newer");
@@ -557,6 +558,7 @@ test("agent pool recent-chat warmup skips internal maintenance chats", async () 
   restoreEnv = setEnv({ PICLAW_WORKSPACE: ws.workspace, PICLAW_STORE: ws.store, PICLAW_DATA: ws.data });
 
   const db = await importFresh<typeof import("../src/db.js")>("../src/db.js");
+  db.closeDatabase(); // Recent-chat ordering must not include fixtures from earlier test files.
   db.initDatabase();
   db.storeChatMetadata("web:ipc-fts-123", "2099-04-14T14:00:00.000Z", "IPC");
   db.storeChatMetadata("dream:auto:web-default:123", "2099-04-14T13:00:00.000Z", "Dream");
@@ -583,6 +585,7 @@ test("agent pool keeps expanding recent-chat warmup past already-warm top rows",
   restoreEnv = setEnv({ PICLAW_WORKSPACE: ws.workspace, PICLAW_STORE: ws.store, PICLAW_DATA: ws.data });
 
   const db = await importFresh<typeof import("../src/db.js")>("../src/db.js");
+  db.closeDatabase(); // Recent-chat ordering must not include fixtures from earlier test files.
   db.initDatabase();
   const baseTimeMs = Date.parse("2026-04-14T23:59:00.000Z");
   for (let index = 0; index < 101; index += 1) {

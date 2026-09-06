@@ -18,6 +18,7 @@ function config(overrides: Partial<WebAuthRuntimeConfig> = {}): WebAuthRuntimeCo
 describe("web auth gateway", () => {
   test("evaluates auth mode and request authorization helpers", () => {
     const gateway = new WebAuthGateway(config(), {
+      principalResolver: { getSession: () => null, getUser: () => null, getLocalDisplayName: () => "User" },
       json: (payload, status = 200) => new Response(JSON.stringify(payload), { status }),
       challenges: new WebauthnChallengeTracker(),
       failureTracker: new TotpFailureTracker(),

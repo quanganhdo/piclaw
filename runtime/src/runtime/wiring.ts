@@ -11,6 +11,7 @@ import {
   type DreamWorkspaceState,
 } from "../agent-memory/startup-state.js";
 import { ensureDreamTask, runDreamAgentTurn } from "../dream.js";
+import { createDreamAccessGuard } from "../core/dream-access.js";
 import { AUTO_DREAM_DEFAULT_DAYS } from "../dream-defaults.js";
 import { startIpcWatcher, type IpcDeps } from "../ipc.js";
 import { startSchedulerLoop, type SchedulerDeps } from "../task-scheduler.js";
@@ -101,6 +102,7 @@ export function initializeDreamWorkspaceAtStartup(
   queue: SchedulerDeps["queue"],
   agentPool: SchedulerDeps["agentPool"],
 ): DreamWorkspaceStartupResult {
+  createDreamAccessGuard();
   const state = classifyDreamWorkspaceState();
   const chatJid = "web:default";
 
@@ -113,12 +115,14 @@ export function initializeDreamWorkspaceAtStartup(
       missingFiles: state.missingDerivedFiles,
     });
     queue.enqueueTask(taskId, async () => {
+      const checkAccess = createDreamAccessGuard();
       const result = await runDreamAgentTurn({
         chatJid,
         days: AUTO_DREAM_DEFAULT_DAYS,
         mode: "auto",
         agentPool,
       });
+      checkAccess();
       log.info("Initial Dream bootstrap finished", {
         operation: "start_runtime_workers.complete_dream_bootstrap",
         chatJid,
@@ -220,6 +224,7 @@ export function startRuntimeWorkers(
       web.resumePendingChats(chatJid);
     },
     runDream: async (data) => {
+      createDreamAccessGuard();
       const chatJid = typeof data.chatJid === "string" && data.chatJid.trim()
         ? data.chatJid.trim()
         : typeof data.chat_jid === "string" && data.chat_jid.trim()
@@ -233,12 +238,14 @@ export function startRuntimeWorkers(
           : 7;
       const taskId = `dream-ipc:${createUuid("dream")}`;
       queue.enqueueTask(taskId, async () => {
+        const checkAccess = createDreamAccessGuard();
         const result = await runDreamAgentTurn({
           chatJid,
           days,
           mode,
           agentPool,
         });
+        checkAccess();
         if (mode !== "auto") {
           await senders.sendMessage(chatJid, result.result, { forceRoot: true, source: "dream" });
         }

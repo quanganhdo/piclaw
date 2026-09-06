@@ -12,6 +12,7 @@ import { refreshAgentMemoryFromDailyNotes, type RefreshAgentMemoryResult } from 
 import { dreamStartupBackfillRequired, recordDreamConsolidationResult } from "./agent-memory/startup-state.js";
 import { AUTO_DREAM_DEFAULT_DAYS, MANUAL_DREAM_DEFAULT_DAYS } from "./dream-defaults.js";
 import { DATA_DIR, SESSIONS_DIR, WORKSPACE_DIR, getDreamConfig } from "./core/config.js";
+import { createDreamAccessGuard } from "./core/dream-access.js";
 import { getTaskById, createTask, getDb, updateTask } from "./db.js";
 import { deleteThinkingContentByChatJid, deleteThinkingContentByChatJidPattern } from "./db/thinking-cleanup.js";
 import { refreshWorkspaceIndex } from "./workspace-search.js";
@@ -281,12 +282,13 @@ function reapDreamArtifacts(excludeDreamChatJid?: string | null): void {
   }
 }
 
-async function cleanupDreamChat(agentPool: AgentPool, dreamChatJid: string): Promise<void> {
+async function cleanupDreamChat(agentPool: AgentPool, dreamChatJid: string, checkAccess: () => void): Promise<void> {
   try {
     await agentPool.disposeChatSession(dreamChatJid);
   } catch (error) {
     debugSuppressedError(log, "failed to dispose Dream chat session", error, { dreamChatJid });
   }
+  checkAccess();
 
   try {
     const db = getDb();
@@ -458,7 +460,7 @@ function pruneOldDreamBackups(): void {
   }
 }
 
-async function createDreamBackup(chatJid: string, mode: "manual" | "auto", days: number): Promise<string> {
+async function createDreamBackup(chatJid: string, mode: "manual" | "auto", days: number, checkAccess: () => void): Promise<string> {
   mkdirSync(DREAM_BACKUPS_DIR, { recursive: true });
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const backupPath = resolve(DREAM_BACKUPS_DIR, `${stamp}-${mode}-${sanitiseJid(chatJid)}.zip`);
@@ -474,6 +476,7 @@ async function createDreamBackup(chatJid: string, mode: "manual" | "auto", days:
     },
   };
   const { strToU8, zipSync } = await loadFflate();
+  checkAccess();
   const entries: Zippable = {
     "manifest.json": strToU8(`${JSON.stringify(manifest, null, 2)}\n`),
   };
@@ -487,6 +490,7 @@ async function createDreamBackup(chatJid: string, mode: "manual" | "auto", days:
 }
 
 export async function runDreamAgentTurn(options: { chatJid: string; days?: number; mode?: "manual" | "auto"; model?: string | null; agentPool: AgentPool }): Promise<DreamAgentTurnResult> {
+  const checkAccess = createDreamAccessGuard();
   const chatJid = options.chatJid;
   const mode = options.mode === "auto" ? "auto" : "manual";
   const days = Number.isFinite(options.days) && Number(options.days) > 0
@@ -546,14 +550,17 @@ export async function runDreamAgentTurn(options: { chatJid: string; days?: numbe
     lockFd = lock.fd;
     shouldCleanupDreamChat = true;
     reapDreamArtifacts(null);
-    const backupPath = await createDreamBackup(chatJid, mode, days);
+    const backupPath = await createDreamBackup(chatJid, mode, days, checkAccess);
+    checkAccess();
     const dailyNotesRefreshed = refreshDailyNotes(chatJid, days);
     if (requestedDreamModel) {
       const modelError = await applyModelLabel(options.agentPool, dreamChatJid, requestedDreamModel);
+      checkAccess();
       if (modelError) {
         const refresh = refreshAgentMemoryFromDailyNotes({ recentDays: days });
         const postBacklog = inspectDailyNoteSummaryBacklog({ recentDays: days });
         const workspaceIndexRefreshed = await refreshWorkspaceSearchIndex();
+        checkAccess();
         return {
           mode,
           skipped: false,
@@ -576,9 +583,11 @@ export async function runDreamAgentTurn(options: { chatJid: string; days?: numbe
       timeoutMs: getDreamAgentTimeoutMs(),
       toolCeilingFilter: isDreamToolAllowed,
     });
+    checkAccess();
     const refresh = refreshAgentMemoryFromDailyNotes({ recentDays: days });
     const postBacklog = inspectDailyNoteSummaryBacklog({ recentDays: days });
     const workspaceIndexRefreshed = await refreshWorkspaceSearchIndex();
+    checkAccess();
     const recoverySummary = formatRecoverySummary(out.recovery);
     recordDreamConsolidationResult({
       successful: out.status !== "error",
@@ -631,21 +640,27 @@ export async function runDreamAgentTurn(options: { chatJid: string; days?: numbe
       result: `${(out.result || `${mode === "auto" ? "AutoDream" : "Dream"} complete.`).trimEnd()}\n${suffix}`,
     };
   } finally {
-    log.info("Dream maintenance completed", {
-      operation: "dream.complete",
-      chatJid,
-      mode,
-      days,
-      durationMs: Date.now() - dreamStartTime,
-    });
-    if (lockFd !== null) releaseDreamLock(lockFd);
-    if (shouldCleanupDreamChat) {
-      await cleanupDreamChat(options.agentPool, dreamChatJid);
+    try {
+      checkAccess();
+      log.info("Dream maintenance completed", {
+        operation: "dream.complete",
+        chatJid,
+        mode,
+        days,
+        durationMs: Date.now() - dreamStartTime,
+      });
+      if (shouldCleanupDreamChat) {
+        await cleanupDreamChat(options.agentPool, dreamChatJid, checkAccess);
+      }
+    } finally {
+      // Resource release remains necessary on denial; do not reap chat or memory data.
+      if (lockFd !== null) releaseDreamLock(lockFd);
     }
   }
 }
 
 export async function runDreamMaintenance(options?: { chatJid?: string; days?: number; mode?: "manual" | "auto" }): Promise<DreamRunResult> {
+  const checkAccess = createDreamAccessGuard();
   const chatJid = typeof options?.chatJid === "string" && options.chatJid.trim()
     ? options.chatJid.trim()
     : "web:default";
@@ -711,10 +726,12 @@ export async function runDreamMaintenance(options?: { chatJid?: string; days?: n
       };
     }
     lockFd = lock.fd;
-    const backupPath = await createDreamBackup(chatJid, mode, days);
+    const backupPath = await createDreamBackup(chatJid, mode, days, checkAccess);
+    checkAccess();
     const dailyNotesRefreshed = refreshDailyNotes(chatJid, days);
     const refresh = refreshAgentMemoryFromDailyNotes({ recentDays: days });
     const workspaceIndexRefreshed = await refreshWorkspaceSearchIndex();
+    checkAccess();
     return {
       generated_at: new Date().toISOString(),
       mode,
@@ -737,7 +754,7 @@ export async function runDreamMaintenance(options?: { chatJid?: string; days?: n
       backup_path: backupPath,
     };
   } finally {
-    if (lockFd !== null) releaseDreamLock(lockFd);
+    try { checkAccess(); } finally { if (lockFd !== null) releaseDreamLock(lockFd); }
   }
 }
 
@@ -790,6 +807,7 @@ export function formatDreamSummary(result: DreamRunResult): string {
 }
 
 export function ensureDreamTask(chatJid = "web:default") {
+  createDreamAccessGuard();
   const existing = getTaskById(DREAM_TASK_ID);
   const dreamConfig = getDreamConfig();
   const nextRun = computeNextRun("cron", dreamConfig.cron);

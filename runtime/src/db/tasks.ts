@@ -5,6 +5,7 @@
  */
 
 import type { ScheduledRunRecord } from "../service-effects/contracts/scheduled-run-store.js";
+import type Database from "bun:sqlite";
 import type { ScheduledTask, TaskRunLog } from "../types.js";
 import { getDb } from "./connection.js";
 import {
@@ -33,8 +34,7 @@ function equivalent(field: keyof TaskUpdate, left: unknown, right: unknown): boo
 }
 
 /** Insert a task and its first durable authority revision atomically. */
-export function createTask(task: Omit<ScheduledTask, "last_run" | "last_result" | "revision">): void {
-  const db = getDb();
+export function createTask(task: Omit<ScheduledTask, "last_run" | "last_result" | "revision">, db: Database = getDb()): void {
   const canonicalNextRun = task.next_run ? new Date(task.next_run).toISOString() : null;
   const canonicalScheduleValue = task.schedule_type === "once" && canonicalNextRun ? canonicalNextRun : task.schedule_value;
   const stored: ScheduledTask = {

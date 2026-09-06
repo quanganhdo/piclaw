@@ -26,6 +26,8 @@ import { getWebPreviewMaxChars, shouldPreviewWebContent } from "../../../db/web-
 import { scheduleLinkPreviews, type LinkPreviewChannel } from "../media/link-previews.js";
 import type { InteractionRow } from "../../../db.js";
 import type { NewMessage } from "../../../types.js";
+import { readAccessConfig } from "../../../core/config-access.js";
+import { requireOwnedSessionExecution } from "../../../agent-pool/owned-session-access.js";
 import { createUuid } from "../../../utils/ids.js";
 
 /** Options for storing a web channel message (content, media, thread). */
@@ -61,6 +63,11 @@ export function storeWebMessage(
   params: StoreWebMessageParams,
   options: StoreWebMessageOptions = {}
 ): InteractionRow | null {
+  if (readAccessConfig().mode !== "single-user") {
+    // Generic user writes have no immutable admission record. Reject before media/preview side effects.
+    if (!params.isBot) return null;
+    try { requireOwnedSessionExecution(params.chatJid); } catch { return null; }
+  }
   const messageId = createUuid("web");
   let contentBlocks = Array.isArray(options.contentBlocks)
     ? [...options.contentBlocks]
@@ -158,7 +165,12 @@ export function storeWebMessage(
         setDeferredQueuedFollowups(params.chatJid, queued);
       }
 
-      storeChatMetadata(params.chatJid, msg.timestamp, getChatBranchByChatJid(params.chatJid)?.agent_name || undefined);
+      if (readAccessConfig().mode === "single-user") {
+        storeChatMetadata(params.chatJid, msg.timestamp, getChatBranchByChatJid(params.chatJid)?.agent_name || undefined);
+      } else {
+        requireOwnedSessionExecution(params.chatJid);
+        getDb().query("UPDATE chats SET last_message_time=MAX(COALESCE(last_message_time,''),?) WHERE jid=?").run(msg.timestamp, params.chatJid);
+      }
     }).immediate();
   } catch {
     return null;

@@ -2,7 +2,7 @@
 
 > Experimental: this Bun repo-install path works, but it is not yet the main recommended production install route.
 >
-> This repository requires Bun 1.4.0 or newer. Its version 2 lockfiles are not readable by Bun 1.3; rollback to a pre-1.4 runtime requires reverting the lockfile migration as well.
+> This repository requires Bun 1.4.1 or newer. Its version 2 lockfiles are not readable by Bun 1.3; rollback to a pre-1.4 runtime requires reverting the lockfile migration as well.
 
 PiClaw can be installed directly from a tagged release with Bun:
 
@@ -27,10 +27,7 @@ For maintainer-facing placement rules inside the repo, see
 
 ## What happens at install time
 
-Repo installs are expected to include the vendored Draw.io editor and the other
-bundled runtime assets directly in the package tree, so a tagged
-`bun add -g github:rcarmo/piclaw#<version>` install should not need a Draw.io download at
-install time — including on Windows.
+Tagged repo installs include core runtime assets in the package tree. Draw.io, Office backend and Windows desktop automation are optional add-ons; installing core does not install those add-ons.
 
 A small `postinstall` repair step still runs automatically after `bun add`, but
 it is only a fallback for incomplete source checkouts or damaged package trees.
@@ -77,11 +74,11 @@ After install:
 - bundled web assets are already present
 - bundled extensions/viewers required by normal runtime behavior are included
 - bundled Pi extensions such as `pi-mcp-adapter` are installed with the package and available to session startup wiring
-- the vendored Draw.io editor ships in the repo/package and does not rely on a Windows-time download
+- Draw.io and the Office backend are available separately through optional add-ons
 - bundled automation extensions such as `cdp_browser` are available after install
-- Windows-only `win_*` desktop automation extensions are included but remain inert on non-Windows hosts
+- Windows-only `win_*` desktop automation is available through the optional `@rcarmo/piclaw-addon-win-ui` add-on
 - first runtime startup seeds missing workspace skeleton files from the packaged `skel/` tree (for example `AGENTS.md`, `.pi/skills/`, `notes/`, `.piclaw/config.json.example`, `.piclaw/README.md`, and the Dream/notes bootstrap files)
-- if the core Dream memory files are missing, first startup also queues a silent Dream bootstrap so `notes/memory/` and daily summaries are populated instead of staying at placeholder state
+- a fresh workspace with missing Dream memory queues a silent bootstrap; an established workspace with lost derived files uses deterministic recovery first, as described in [Dream memory](dream-memory.md#startup-bootstrap-and-recovery)
 - Dream/AutoDream workspace bootstrap files are present for direct Bun installs as well as container installs
 - out-of-band Dream runs use a temporary `dream:` channel/session and clean it up after the cycle, so direct installs do not accumulate visible Dream chats
 
@@ -95,6 +92,10 @@ After install:
 - Build, pack, and install commands should be run from the repo root; `runtime/` is not a separate package.
 - If repo-install behavior differs slightly from the published package layout, those differences should stay small and documented.
 - Dream/AutoDream details, file sequence, and outputs are documented in [`runtime/docs/dream-memory.md`](../runtime/docs/dream-memory.md).
+
+## Access modes and upgrades
+
+Only single-user mode is supported, regardless of Docker or native installation. Development account APIs do not enable family mode; see [Access modes](multi-user/README.md). Back up configuration, database, sessions and bootstrap key together before changing versions. Never remove access markers to downgrade a store or point an older binary at a multi-user database.
 
 ## Post-install: update AGENTS.md
 

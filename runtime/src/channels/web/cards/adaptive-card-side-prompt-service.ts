@@ -7,6 +7,7 @@ import {
   replaceMessageContent,
 } from "../../../db.js";
 import { setWebTotpSecret } from "../../../core/config.js";
+import { readAccessConfig } from "../../../core/config-access.js";
 import { createLogger, debugSuppressedError } from "../../../utils/logger.js";
 import type { SendMessageOptions } from "../messaging/message-write-flows.js";
 import {
@@ -174,7 +175,14 @@ export function createWebAdaptiveCardSidePromptService(
 export class WebAdaptiveCardSidePromptService {
   constructor(private readonly options: WebAdaptiveCardSidePromptServiceOptions) {}
 
+  private denyUnscopedAction(): Response {
+    return new Response(JSON.stringify({ error: "Account-bound card and side-prompt actions are not available yet." }), {
+      status: 403, headers: { "Content-Type": "application/json", "Cache-Control": "private, no-store", Vary: "Cookie" },
+    });
+  }
+
   async handleAdaptiveCardAction(req: Request): Promise<Response> {
+    if (readAccessConfig().mode !== "single-user") return this.denyUnscopedAction();
     const parsed = await parseJsonObjectRequest(req);
     if (!parsed.ok) return this.options.json({ error: parsed.error }, 400);
 
@@ -596,6 +604,7 @@ export class WebAdaptiveCardSidePromptService {
   }
 
   async handleAgentSidePrompt(req: Request): Promise<Response> {
+    if (readAccessConfig().mode !== "single-user") return this.denyUnscopedAction();
     const parsed = await parseJsonObjectRequest(req);
     if (!parsed.ok) return this.options.json({ error: parsed.error }, 400);
 
@@ -617,6 +626,7 @@ export class WebAdaptiveCardSidePromptService {
   }
 
   async handleAgentSidePromptStream(req: Request): Promise<Response> {
+    if (readAccessConfig().mode !== "single-user") return this.denyUnscopedAction();
     const parsed = await parseJsonObjectRequest(req);
     if (!parsed.ok) return this.options.json({ error: parsed.error }, 400);
 

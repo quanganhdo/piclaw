@@ -5,6 +5,8 @@
  *   "role": "module"
  * }
  */
+import refreshedPricing from "./pricing-2026-09-05.json";
+
 export interface ProviderModelPricingReference {
   canonicalModel: string;
   basis: string;
@@ -24,7 +26,7 @@ interface ProviderModelPricingRule extends ProviderModelPricingReference {
 
 // Tag this reference snapshot with the commit date that introduced it so future
 // updates can track pricing provenance without guessing.
-export const PROVIDER_MODEL_PRICING_REFERENCE_TAG = "2026-08-03";
+export const PROVIDER_MODEL_PRICING_REFERENCE_TAG = "2026-09-05";
 
 const ANTHROPIC_PRICING_SOURCE = "https://docs.anthropic.com/en/docs/about-claude/pricing";
 const OPENAI_PRICING_SOURCE = "https://developers.openai.com/api/docs/pricing";
@@ -602,6 +604,13 @@ export function resolveProviderModelPricing(provider: string, model: string): Pr
       candidate.models.includes(normalizedModel) &&
       (!candidate.providers || candidate.providers.includes(normalizedProvider)),
   );
+  const refreshed = refreshedPricing.find((entry) =>
+    entry.provider === normalizedProvider && normalizeModel(entry.model) === normalizedModel,
+  );
+  if (refreshed) {
+    const { provider: _provider, model: _model, ...reference } = refreshed;
+    return { ...reference, canonicalModel: rule?.canonicalModel ?? reference.canonicalModel };
+  }
   if (rule) {
     return {
       canonicalModel: rule.canonicalModel,

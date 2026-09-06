@@ -88,6 +88,20 @@ flowchart LR
 - **Background workers** schedule or enqueue work without going through the interactive compose path.
 - **SQLite / sessions / workspace** hold durable state, note memory, scheduled tasks, and session trees.
 
+## Access and ownership boundaries
+
+Only `single-user` can start. The [multi-user implementation guide](multi-user/README.md) describes gated backend work; the diagrams above describe the supported single-user execution paths, not completed multi-user isolation.
+
+- `core/config-access.ts` and `db/access-state.ts` validate the configured/stored mode before add-ons, maintenance and listeners start.
+- `auth/principal.ts` resolves a browser actor; a login session, an agent session and the owning user are distinct identities. Admin role alone grants no foreign transcript access.
+- `db/session-ownership.ts` validates the stored parent chain. `db/session-handles.ts` separates legacy handles from owner-local names; friendly renames preserve durable IDs.
+- `http/family-authorisation.ts` makes a terminal HTTP allow/deny decision before legacy add-on/widget dispatch. It enables scoped reads, SSE and selected fork/account operations; unsupported routes deny.
+- `db/owned-forks.ts` commits child registry and deferred seed together. Session hydration revalidates server execution provenance before reading/replaying the seed. Background family prewarm remains disabled.
+- `secure/` contains account invitations, multiple-passkey registration, recovery and encrypted TOTP factors. `runtime/auth-maintenance.ts` prunes transient auth state every minute after access validation.
+- `core/execution-context.ts` carries immutable actor/owner metadata through AsyncLocalStorage. The memory hook selects personal files plus explicit family memory; this does not confine tools or shared files.
+
+Separate terminal/VNC WebSocket upgrades now reject family/isolated modes before target resolution or socket upgrade. Legacy `/totp`/`/passkey` commands, direct card actions and HTTP side-prompt services also deny multi-user mode before reading or mutating state. These blocked features still need owner-aware replacements. Owner-bound cross-session discovery and metadata inspection now use execution/chat context without global fallback; sends and mutating session controls are denied at both tool and runtime/registry boundaries. Message-tool reads use an owner-bound SQL scope (including row-ID/context and search fallback paths), while message writes, raw SQL introspection and scheduling tools deny multi-user mode. Session status exposes only owned activity without arguments or restart permission. Remaining direct tools/transports, queues, browser storage and notification recipients need end-to-end ownership integration; HTTP route gating alone does not secure those paths. The isolated-container gateway and per-user deployment profile are not implemented; no family-mode release gate has passed.
+
 ## Code layout (high level)
 
 ```
@@ -112,7 +126,7 @@ piclaw/
 │   │   ├── tools/                   # Bash tracking + context wrappers
 │   │   ├── db/                      # SQLite schema + accessors
 │   │   ├── db.ts                    # DB facade re-export
-│   │   ├── secure/                  # Keychain (AES-256-GCM)
+│   │   ├── secure/                  # Keychain, account factors, invitations and recovery
 │   │   ├── utils/                   # Shared helpers (ids, preview, model utils)
 │   │   ├── workspace-search.ts      # FTS over workspace files
 │   │   ├── task-scheduler.ts        # Cron/interval scheduling
@@ -166,7 +180,7 @@ These are compiled into the package and registered via `extensionFactories` on t
 | `sendDashboardWidget` | `send_dashboard_widget` |
 | `openWorkspaceFile` | `open_workspace_file` |
 | `exitProcess` | `exit_process` |
-| `autoresearchSupervisor` | `start_autoresearch`, `stop_autoresearch`, `autoresearch_status` |
+| Optional autoresearch add-on | Experiment-loop tools are supplied by the installed add-on, not a core inline factory |
 | `imageProcessing` | `image_process` for sharp-backed image manipulation and animated GIF/frame workflows |
 | `envTools` | `env` — persistent workspace-scoped environment variable management (`/workspace/.env.sh` + immediate `process.env` update) |
 
@@ -187,13 +201,13 @@ Piclaw also ships **packaged runtime extensions** under `extensions/` in the pac
 | per-session `ssh-core` session extension | Created per session by `AgentPool` | Wraps `read`/`write`/`edit`/`bash` with session-scoped local-or-remote SSH execution |
 | `browser/cdp-browser/` | Always loaded | Cross-platform Chromium CDP browser control tool (`cdp_browser`) |
 | `@rcarmo/piclaw-addon-win-ui` | Installable add-on | Windows desktop automation via bun:ffi + IAccessible (`win_*` tools) |
-| `viewers/office-viewer/` | Always loaded | Lightweight JS Office document viewer with extension route |
+| Office viewer add-on | Installable add-on | Office document backend and viewer routes |
 
 WhatsApp is an opt-in runtime channel. The default web-first runtime uses a no-op WhatsApp boundary; the Baileys-backed channel module is lazy-loaded only when `PICLAW_WHATSAPP_ENABLED=1`/`WHATSAPP_ENABLED=1` (or `whatsapp.enabled: true` in config) and a phone number are configured.
 
 These packaged runtime extensions use relative imports into `runtime/src/...` where needed. Piclaw also loads selected bundled Pi-package extensions from `node_modules/` (currently `pi-mcp-adapter`). A `node_modules` symlink next to the `extensions/` directory is created automatically at startup so jiti can resolve deep package imports for both the local packaged extension tree and bundled npm/Pi-package extensions. `runtime/src/extensions/` remains a separate built-in factory surface and should not be confused with the filesystem-backed packaged extension tree.
 
-Dream-backed startup memory follows a compact-index pattern inside the workspace:
+In single-user mode, Dream-backed startup memory follows a compact-index pattern inside the workspace. Gated family execution instead selects `notes/users/<user-id>/MEMORY.md`, `preferences.md` and `notes/family/MEMORY.md`; Dream/AutoDream owner propagation is still incomplete. The existing single-user layout is:
 - `notes/memory/MEMORY.md` is the startup index and is kept under the session budget (line-capped and under ~25KB)
 - typed memory files (`user.md`, `feedback.md`, `project.md`, `reference.md`) hold the richer agent-facing detail
 - optional sparse files under `notes/memory/days/` preserve durable transcript-derived signals only when a day needs extra agent-facing memory beyond the human-readable `notes/daily/*.md` note

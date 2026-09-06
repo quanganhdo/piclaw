@@ -54,6 +54,7 @@ import { rotateSession, type SessionRotationResult } from "./session-rotation.js
 import { type AgentRuntimeFacade, type AvailableModelsResult } from "./agent-pool/runtime-facade.js";
 import { createAgentPoolServices, type AgentPoolServices } from "./agent-pool/service-factory.js";
 import { type AgentSessionManagerInstrumentationSnapshot, type PoolEntry } from "./agent-pool/session-manager.js";
+import { ownAccountModelDefaults } from './agent-pool/family-model-defaults.js';
 import type { PiclawCredentialStore } from "./agent-pool/credential-store.js";
 import { installLegacySessionAffinityCompatibility } from "./agent-pool/session-affinity-compat.js";
 import {
@@ -64,6 +65,7 @@ import {
   type SshConfigClearResult,
   type SshConfigSetResult,
   deleteSshConfig,
+  getDb,
   getSshConfig,
   listRecentChatJids,
   pruneOldTokenUsage,
@@ -515,6 +517,10 @@ export class AgentPool {
     return this.runtimeFacade.getAvailableModels(chatJid);
   }
 
+  accountModelDefaults(actor: import('./core/access-types.js').AuthenticatedPrincipal, input?: unknown) {
+    return ownAccountModelDefaults(getDb(), actor, this.modelRuntime, this.settingsManager, input);
+  }
+
   setProviderUsageRefreshListener(
     listener: Parameters<AgentRuntimeFacade["setProviderUsageRefreshListener"]>[0],
   ): void {
@@ -687,6 +693,10 @@ export class AgentPool {
     return this.branchManager.renameChatBranch(chatJid, options);
   }
 
+  async changeOwnedSessionLifecycle(actor: import("./core/access-types.js").AuthenticatedPrincipal, chatJid: string, action: "archive" | "restore", agentName?: string): Promise<ChatBranchRecord> {
+    return this.branchManager.changeOwnedSessionLifecycle(actor, chatJid, action, agentName);
+  }
+
   async pruneChatBranch(chatJid: string): Promise<ChatBranchRecord> {
     return this.branchManager.pruneChatBranch(chatJid);
   }
@@ -717,7 +727,7 @@ export class AgentPool {
 
   async createForkedChatBranch(
     sourceChatJid: string,
-    options: { agentName?: string | null } = {},
+    options: { agentName?: string | null; requestId?: string } = {},
   ): Promise<ChatBranchRecord> {
     return this.branchManager.createForkedChatBranch(sourceChatJid, options);
   }

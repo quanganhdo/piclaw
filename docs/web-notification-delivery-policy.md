@@ -2,6 +2,10 @@
 
 PiClaw uses a per-**device**, per-**chat** delivery coordinator to choose between a local in-page notification and server-side Web Push for a finished agent reply.
 
+## Access-mode scope
+
+This is the existing single-user notification policy. Device/chat delivery keys are routing metadata, not proof of account ownership. Family HTTP denies push/presence APIs until subscription ownership, account switching, browser storage and recipient checks are integrated. Do not infer cross-user confidentiality from SSE chat scoping or this coordinator. [Family startup remains disabled](multi-user/README.md).
+
 ## Rule
 
 For a given **device + chat_jid** pair:

@@ -56,3 +56,15 @@ test("runtime lock removes a stale owner and writes the new owner", async () => 
     ws.cleanup();
   }
 });
+
+test('maintenance refuses malformed/live owners and runtime recognises an active maintenance owner regardless of command', async () => {
+  const ws=createTempWorkspace('piclaw-maintenance-lock-');
+  try {
+    const {acquireRuntimeLock}=await importFresh<typeof import('../src/runtime/single-instance.js')>('../src/runtime/single-instance.js');
+    const lockPath=join(ws.store,'runtime.lock');
+    writeFileSync(lockPath,'broken');expect(()=>acquireRuntimeLock({lockPath,maintenance:true,disabled:false,inspector:makeInspector(9999)})).toThrow('already running');
+    writeFileSync(lockPath,JSON.stringify({pid:4242,command:'unrecognised'}));expect(()=>acquireRuntimeLock({lockPath,maintenance:true,disabled:false,inspector:makeInspector(9999,new Set([4242]),'unrelated')})).toThrow();
+    const handle=acquireRuntimeLock({lockPath,maintenance:true,disabled:false,inspector:makeInspector(9999)});
+    expect(handle.record.kind).toBe('maintenance');expect(()=>acquireRuntimeLock({lockPath,disabled:false,inspector:makeInspector(8888,new Set([9999]),'bun offline-script.ts')})).toThrow();handle.release();
+  } finally {ws.cleanup();}
+});

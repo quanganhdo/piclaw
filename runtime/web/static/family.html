@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="referrer" content="no-referrer" />
+  <title>PiClaw family workspace</title>
+  <link rel="stylesheet" href="/static/common/dist/family.bundle.css?v=__FAMILY_ASSET_VERSION__" />
+</head>
+<body>
+  <main class="family-shell">
+    <header>
+      <h1>PiClaw</h1><span id="account-name">Checking account…</span>
+      <button id="open-account" type="button" disabled>My account</button>
+      <button id="open-preferences" type="button" disabled>My preferences</button>
+      <button id="open-sessions" type="button" disabled>My sessions</button>
+      <button id="open-results" type="button" disabled>Scheduled results</button>
+      <button id="open-administration" type="button" hidden disabled>Family administration</button>
+      <button id="open-workspace-policy" type="button" disabled>Workspace and security</button>
+      <button id="sign-out" type="button" disabled>Sign out</button>
+      <a href="/login">Sign in</a>
+    </header>
+    <p class="notice">Family preview: text conversations only. Shared workspace files are not private between tool-capable users.</p>
+    <section id="account-settings" aria-labelledby="account-heading" hidden>
+      <header><h2 id="account-heading" tabindex="-1">My account</h2><button id="close-account" type="button">Close account settings</button></header>
+      <p class="notice">Personal profile and sign-in security. Workspace files, skills, providers and add-ons are shared; these controls do not change them.</p>
+      <p>Account settings drafts are discarded when this tab loses focus. Sign in changes the browser account; the owned-session picker only changes the conversation.</p>
+      <button id="refresh-account" type="button">Refresh account</button>
+      <p id="account-status" role="status" aria-live="polite"></p>
+      <div id="account-details" hidden>
+        <p id="account-auth-notice"></p>
+        <form id="account-profile" class="account-section">
+          <h3>Profile</h3>
+          <label for="account-username">Username</label><input id="account-username" required maxlength="64" pattern="[a-z0-9][a-z0-9_-]{0,63}" autocomplete="username" autocapitalize="none" spellcheck="false" />
+          <label for="account-display-name">Display name</label><input id="account-display-name" required maxlength="128" autocomplete="name" />
+          <button id="account-save-profile" type="submit">Save profile</button>
+        </form>
+        <section id="account-avatar" class="account-section" aria-labelledby="account-avatar-heading">
+          <h3 id="account-avatar-heading">Account avatar</h3>
+          <p>Static PNG, JPEG or WebP, up to 2 MiB and 4 million pixels. Saved as a 256-pixel square without metadata. Only your account can read it; no shared avatar or agent icon changes. File selections clear on blur or close.</p>
+          <img id="account-avatar-image" alt="Your saved account avatar" width="96" height="96" hidden />
+          <p id="account-avatar-status" role="status" aria-live="polite"></p>
+          <button id="refresh-account-avatar" type="button" disabled>Refresh avatar</button>
+          <form id="account-avatar-form"><label for="account-avatar-file">New avatar image</label><input id="account-avatar-file" type="file" accept="image/png,image/jpeg,image/webp" disabled /><button id="save-account-avatar" type="submit" disabled>Save avatar</button></form>
+          <label><input id="account-avatar-confirm" type="checkbox" disabled /> Remove my saved avatar</label>
+          <button id="remove-account-avatar" type="button" disabled>Confirm avatar removal</button>
+        </section>
+        <section class="account-section" aria-labelledby="account-factors-heading">
+          <h3 id="account-factors-heading">Sign-in factors</h3>
+          <p>Several passkeys can belong to one account. Removing a factor signs out every device; the last usable factor cannot be removed.</p>
+          <p id="account-totp-status"></p><button id="account-remove-totp" type="button">Remove authenticator</button>
+          <button id="account-add-totp" type="button" disabled>Add authenticator</button>
+          <section id="account-totp-setup" aria-label="New authenticator setup" hidden>
+            <p>Keep this new setup key private. It is displayed once and cleared on blur, close or navigation. Cancel revokes the pending setup; closing only clears the display. A new setup replaces the previous pending one. Existing factors cannot be overwritten.</p>
+            <img id="account-totp-qr" alt="New authenticator QR code" width="240" height="240" />
+            <p>Manual setup key: <code id="account-totp-secret"></code></p>
+            <form id="account-totp-form"><label for="account-totp-code">Authenticator confirmation code</label><input id="account-totp-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required /><button id="account-totp-confirm" type="submit" disabled>Confirm authenticator</button></form>
+            <button id="account-totp-cancel" type="button">Cancel authenticator setup</button>
+          </section>
+          <ul id="account-passkeys" class="account-list"></ul><button id="account-add-passkey" type="button">Add another passkey</button>
+        </section>
+        <section class="account-section" aria-labelledby="account-devices-heading">
+          <h3 id="account-devices-heading">Signed-in devices</h3><ul id="account-sessions" class="account-list"></ul>
+        </section>
+        <form id="account-label-form" class="account-section" hidden>
+          <h3 id="account-label-title"></h3>
+          <p>Names are personal display labels, not verified device identities. Duplicate names are allowed; the exact ID still identifies the item. Device names belong to this login and disappear when it is revoked or expires.</p>
+          <label for="account-label">Name (up to 80 characters; blank clears it)</label><input id="account-label" type="text" autocomplete="off" />
+          <button id="account-label-save" type="submit">Save name</button><button id="account-label-cancel" type="button">Cancel name change</button>
+        </form>
+        <section id="account-confirmation" class="account-section" aria-label="Confirm account change" hidden>
+          <p id="account-confirm-text"></p><label><input id="account-confirm-check" type="checkbox" /> I understand and confirm this change</label>
+          <button id="account-confirm-action" type="button" disabled>Confirm change</button><button id="account-cancel-action" type="button">Cancel</button>
+        </section>
+        <p class="notice">Administrators have a separate account-management panel, without access to another account’s avatar.</p>
+      </div>
+    </section>
+    <section id="session-settings" aria-labelledby="session-settings-heading" hidden>
+      <header><h2 id="session-settings-heading" tabindex="-1">My sessions</h2><button id="close-sessions" type="button">Close session settings</button></header>
+      <p>Only your roots and forks appear here. Archive retains history and files. Home changes affect future landing, not conversations already open. Form drafts are discarded on blur or close.</p>
+      <p id="session-home"></p><button id="refresh-sessions" type="button">Refresh owned sessions</button>
+      <p id="session-settings-status" role="status" aria-live="polite"></p>
+      <form id="create-root-form" class="account-section">
+        <label for="root-name">New root handle</label><input id="root-name" required maxlength="64" pattern="[a-z0-9_-]{1,64}" autocapitalize="none" spellcheck="false" />
+        <button id="create-root" type="submit" disabled>Create root</button>
+      </form>
+      <form id="session-action-form" class="account-section" hidden>
+        <h3 id="session-action-title"></h3><p id="session-action-warning"></p>
+        <div id="session-action-name-field"><label for="session-action-name">Handle</label><input id="session-action-name" maxlength="64" pattern="[a-z0-9_-]{1,64}" autocapitalize="none" spellcheck="false" /></div>
+        <label id="session-action-confirm-field"><input id="session-action-confirm" type="checkbox" /> I understand and confirm this session change</label>
+        <button id="submit-session-action" type="submit">Save session change</button><button id="cancel-session-action" type="button">Cancel</button>
+      </form>
+      <ul id="owned-tree-list"></ul>
+      <section id="transcript-export" class="account-section" aria-labelledby="transcript-heading" hidden>
+        <h3 id="transcript-heading" tabindex="-1">Archived text transcript</h3><p id="transcript-target"></p>
+        <p>This download contains private conversation text. It excludes attachments, rich blocks, annotations, tasks, settings and session files. It is not a full backup or an atomic database snapshot. Each message is limited to 32,000 characters; truncation is marked. Maximum: 2,000 messages and 8 MiB; larger exports fail without a partial file.</p>
+        <label><input id="transcript-confirm" type="checkbox" /> I understand the limits and will protect the downloaded file</label>
+        <button id="prepare-transcript" type="button" disabled>Prepare transcript</button>
+        <button id="save-transcript" type="button" disabled>Save text file</button>
+        <button id="cancel-transcript" type="button">Cancel transcript</button>
+        <p id="transcript-status" role="status" aria-live="polite"></p>
+        <p>Close, blur, refresh or changing session discards prepared text. A file already downloaded cannot be recalled by signing out.</p>
+      </section>
+      <p class="notice">Eligibility is checked again on every write. Archive/restore require an idle session; forks require a stable turn boundary. Merge, purge and full archive backup are not available.</p>
+    </section>
+    <section id="scheduled-results" aria-labelledby="scheduled-results-heading" hidden>
+      <header><h2 id="scheduled-results-heading" tabindex="-1">Scheduled results</h2><button id="close-results" type="button">Close results</button></header>
+      <p class="notice">Development results only. Scheduling and automatic execution are not enabled. This panel does not create or run tasks.</p>
+      <p>Only metadata from the newest 50 owned execution records is listed; inaccessible targets are omitted. Inspect to load private result text. Closing, refreshing, switching sessions or losing focus clears text and confirmation.</p>
+      <button id="refresh-results" type="button">Refresh results</button><p id="scheduled-results-status" role="status" aria-live="polite"></p>
+      <ul id="scheduled-result-list" class="account-list"></ul>
+      <section id="scheduled-result-detail" class="account-section" hidden>
+        <h3 id="scheduled-result-detail-heading" tabindex="-1">Inspect scheduled result</h3>
+        <p id="scheduled-result-target"></p><p id="scheduled-result-state"></p><pre id="scheduled-result-text"></pre>
+        <p>Publishing adds one service-labelled message to the original conversation. It does not switch conversations, run an agent or send notifications. A sign-in within five minutes is required. A sent request may finish after you close this panel; refresh before retrying.</p>
+        <label><input id="confirm-result-publication" type="checkbox" disabled /> I confirm publication to the original conversation</label>
+        <button id="publish-result" type="button" disabled>Publish result</button>
+      </section>
+    </section>
+    <section id="administration-settings" aria-labelledby="administration-heading" hidden>
+      <header><h2 id="administration-heading" tabindex="-1">Family administration</h2><button id="close-administration" type="button">Close administration</button></header>
+      <p class="notice">Account management never opens another user’s conversations. Reset replaces another account’s sign-in factors. Shared workspace files have a separate trust boundary.</p>
+      <p>Forms and invitation links are cleared on blur, close, session switch and navigation. A request already sent may still complete. Refresh to inspect the result before repeating it.</p>
+      <p id="administration-auth-notice"></p><button id="refresh-administration" type="button">Refresh accounts</button>
+      <p id="administration-status" role="status" aria-live="polite"></p>
+      <form id="create-account-form" class="account-section">
+        <h3>Create disabled account</h3>
+        <label for="new-account-username">Account username</label><input id="new-account-username" required maxlength="64" pattern="[a-z0-9][a-z0-9_-]{0,63}" autocapitalize="none" spellcheck="false" />
+        <label for="new-account-display-name">Account display name</label><input id="new-account-display-name" required maxlength="128" />
+        <label for="new-account-role">Role</label><select id="new-account-role"><option value="member">Member</option><option value="admin">Administrator</option></select>
+        <button id="create-account" type="submit" disabled>Create account</button>
+      </form>
+      <form id="administration-action" class="account-section" hidden>
+        <h3 id="administration-action-title"></h3><p id="administration-action-warning"></p>
+        <label for="administration-confirm-name">Type the account username to confirm</label><input id="administration-confirm-name" autocomplete="off" spellcheck="false" />
+        <label><input id="administration-confirm" type="checkbox" /> I understand and confirm this account change</label>
+        <button id="submit-administration-action" type="submit" disabled>Confirm account change</button><button id="cancel-administration-action" type="button">Cancel</button>
+      </form>
+      <section id="administration-invitation" class="account-section" aria-label="Private invitation link" hidden>
+        <p>This one-use link allows the selected authenticator or passkey enrolment. Share only with the intended person; it does not sign you in as them. Clearing this display does not revoke the invitation.</p>
+        <label for="administration-invitation-link">Private invitation link</label><input id="administration-invitation-link" readonly autocomplete="off" spellcheck="false" />
+        <p id="administration-invitation-expiry"></p><button id="clear-administration-invitation" type="button">Clear link display</button>
+      </section>
+      <ul id="administration-users"></ul>
+      <section id="administration-security" class="account-section" aria-labelledby="administration-security-title" hidden>
+        <h3 id="administration-security-title"></h3><button id="close-administration-security" type="button">Close security details</button>
+        <p>Security metadata is available only after recent administrator authentication. Names are user-authored labels; exact IDs select items. Revocation does not reveal or open conversation content. Use My account for your own factors and devices.</p>
+        <ul id="administration-security-items"></ul>
+      </section>
+      <section id="administration-home" class="account-section" aria-labelledby="administration-home-title" hidden>
+        <h3 id="administration-home-title"></h3><button id="close-administration-home" type="button">Close home details</button>
+        <p>Only this account’s active owned roots can be assigned. This changes future landing and targetless requests, without opening content, transferring ownership or moving a running conversation. Use My sessions for your own home.</p>
+        <ul id="administration-home-roots"></ul>
+      </section>
+      <section id="administration-tools" class="account-section" aria-labelledby="administration-tools-title" hidden>
+        <h3 id="administration-tools-title"></h3><button id="close-administration-tools" type="button">Close tool restrictions</button>
+        <p>Checked tools are denied for this account’s new model runs. A running turn retains its snapshot. Clearing a denial restores only the fixed preview ceiling; it cannot enable shell, SQL, keychain or unknown tools. This does not revoke account management or isolate shared files.</p>
+        <form id="administration-tools-form">
+          <fieldset><legend>Deny tools</legend><div id="administration-tools-list"></div></fieldset>
+          <label for="administration-tools-username">Type the account username to confirm restrictions</label><input id="administration-tools-username" autocomplete="off" spellcheck="false" />
+          <label><input id="administration-tools-confirm" type="checkbox" /> I confirm this account’s next-run tool restrictions</label>
+          <button id="save-administration-tools" type="submit" disabled>Save tool restrictions</button>
+        </form>
+      </section>
+      <p class="notice">Container destination assignment and offline lone-admin recovery are not available here. Reset account uses an authenticator; Reset to passkey uses a new passkey invitation.</p>
+    </section>
+    <section id="workspace-policy" aria-labelledby="workspace-policy-heading" hidden>
+      <header><h2 id="workspace-policy-heading" tabindex="-1">Workspace and security</h2><button id="close-workspace-policy" type="button">Close workspace policy</button></header>
+      <p class="notice">Development preview only. This page reports policy and sharing boundaries; it cannot enable family mode, change grants or restart the service.</p>
+      <button id="refresh-workspace-policy" type="button">Refresh workspace policy</button>
+      <p id="workspace-policy-status" role="status" aria-live="polite"></p>
+      <div id="workspace-policy-details"></div>
+    </section>
+    <section id="account-preferences" aria-labelledby="preferences-heading" hidden>
+      <header><h2 id="preferences-heading" tabindex="-1">My preferences</h2><button id="close-preferences" type="button">Close preferences</button></header>
+      <p>These preferences belong to your account across devices. They do not edit global Settings or shared memory files. Unsaved edits clear on blur, close, session switch or navigation. Guidance applies only to new model runs and grants no permissions.</p>
+      <button id="refresh-preferences" type="button">Refresh preferences</button><p id="preferences-status" role="status" aria-live="polite"></p>
+      <form id="preferences-form" hidden>
+        <label for="preferences-theme">Appearance</label><select id="preferences-theme"><option value="system">System (default)</option><option value="light">Light</option><option value="dark">Dark</option></select>
+        <label for="preferences-guidance">Response guidance (up to 2,000 characters)</label><textarea id="preferences-guidance" rows="5" maxlength="2000" placeholder="For example: use British English and concise bullet points."></textarea>
+        <button id="reset-preferences" type="button">Use defaults</button><button id="save-preferences" type="submit">Save preferences</button>
+      </form>
+      <section class="account-section" aria-labelledby="model-defaults-heading">
+        <h3 id="model-defaults-heading">Model defaults for empty roots</h3>
+        <p>Applied when an empty owned root is first opened by the runtime. Existing conversations, resumed sessions and forks keep their model. Choices use the instance’s available model catalogue and scope; credentials remain shared and cannot be edited here. Unavailable explicit choices block initial creation until you change or reset them.</p>
+        <button id="refresh-model-defaults" type="button" disabled>Refresh model defaults</button>
+        <p id="model-defaults-status" role="status" aria-live="polite"></p><p id="model-defaults-effective"></p>
+        <form id="model-defaults-form" hidden>
+          <label for="default-model">Personal model default</label><select id="default-model"></select>
+          <label for="default-thinking">Thinking level for this model</label><select id="default-thinking"></select>
+          <button id="reset-model-defaults" type="button">Use instance defaults</button><button id="save-model-defaults" type="submit">Save model defaults</button>
+        </form>
+      </section>
+    </section>
+    <section class="session-controls" aria-label="Session navigation">
+      <label for="session-select">Owned session</label>
+      <select id="session-select" disabled></select>
+      <button id="go-home" type="button" disabled>Go home</button>
+      <button id="refresh" type="button" disabled>Refresh</button>
+    </section>
+    <p id="family-status" role="status">Loading…</p>
+    <p id="family-error" role="alert" aria-live="polite"></p>
+    <section id="timeline" aria-label="Conversation"></section>
+    <section id="message-recovery" aria-label="Held message recovery" hidden>
+      <p id="recovery-status" role="status"></p>
+      <div id="recovery-actions" hidden>
+        <p id="recovery-warning">Retry or skip requires a sign-in within the last five minutes. Skipping leaves the message in history but prevents execution.</p>
+        <button id="retry-message" type="button" disabled>Retry held message</button>
+        <label><input id="confirm-skip" type="checkbox" disabled /> Leave this held input in history without running it</label>
+        <button id="skip-message" type="button" disabled>Skip held message</button>
+      </div>
+    </section>
+    <form id="compose-form">
+      <label for="message-text">Message</label>
+      <textarea id="message-text" rows="4" maxlength="102400" placeholder="Write a message (commands, attachments and steering are not yet available)" disabled required></textarea>
+      <button id="send-message" type="submit" disabled>Send</button>
+    </form>
+  </main>
+  <script type="module" src="/static/common/dist/family.bundle.js?v=__FAMILY_ASSET_VERSION__"></script>
+</body>
+</html>

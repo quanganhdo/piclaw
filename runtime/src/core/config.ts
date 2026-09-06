@@ -22,6 +22,7 @@ export {
   STORE_DIR,
   WORKSPACE_DIR,
 } from "./config-context.js";
+export * from "./config-access.js";
 export * from "./config-identity.js";
 export * from "./config-integrations.js";
 export * from "./config-network-bootstrap.js";

@@ -768,16 +768,23 @@ test("runAgentPrompt emits turn-aware observability log metadata for turn and to
       };
     }
     async prompt() {
-      for (const listener of this.listeners) {
-        listener({ type: "message_update", assistantMessageEvent: { type: "text_start" } });
-        listener({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "thinking..." } });
-        listener({ type: "message_end", message: { role: "assistant", content: [{ type: "toolCall", id: "tool-1", name: "read" }], stopReason: "toolUse", usage: { inputTokens: 5, outputTokens: 2, totalTokens: 7 } } });
-        listener({ type: "tool_execution_start", toolCallId: "tool-1", toolName: "read", args: { path: "README.md" } });
-        listener({ type: "tool_execution_end", toolCallId: "tool-1", toolName: "read", isError: false, durationMs: 12 });
-        listener({ type: "message_update", assistantMessageEvent: { type: "text_start" } });
-        listener({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "done" } });
-        listener({ type: "message_end", message: createAssistantMessage("done") });
-      }
+      const emit = async (event: any) => {
+        for (const listener of this.listeners) await listener(event);
+      };
+      await emit({ type: "turn_start" });
+      await emit({ type: "message_start", message: { role: "assistant", content: [] } });
+      await emit({ type: "message_update", assistantMessageEvent: { type: "thinking_start" } });
+      await emit({ type: "message_update", assistantMessageEvent: { type: "thinking_delta", delta: "thinking..." } });
+      await emit({ type: "message_update", assistantMessageEvent: { type: "text_start" } });
+      await emit({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "calling tool" } });
+      await emit({ type: "message_end", message: { role: "assistant", content: [{ type: "toolCall", id: "tool-1", name: "read" }], stopReason: "toolUse", usage: { input: 5, output: 7, reasoning: 5, totalTokens: 12 } } });
+      await emit({ type: "tool_execution_start", toolCallId: "tool-1", toolName: "read", args: { path: "README.md" } });
+      await emit({ type: "tool_execution_end", toolCallId: "tool-1", toolName: "read", isError: false, durationMs: 12 });
+      await emit({ type: "turn_start" });
+      await emit({ type: "message_start", message: { role: "assistant", content: [] } });
+      await emit({ type: "message_update", assistantMessageEvent: { type: "text_start" } });
+      await emit({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "done" } });
+      await emit({ type: "message_end", message: createAssistantMessage("done") });
     }
     async abort() {}
   }
@@ -818,6 +825,33 @@ test("runAgentPrompt emits turn-aware observability log metadata for turn and to
     expect.objectContaining({ operation: "run_agent.prompt_resolved", turnId: "turn-obs-1", sessionLeafId: "leaf-obs" }),
     expect.objectContaining({ operation: "run_agent.complete", turnId: "turn-obs-1", sessionLeafId: "leaf-obs" }),
   ]));
+  expect(logs.filter((entry) => entry.operation === "model.call.start")).toEqual([
+    expect.objectContaining({ sequence: 1, model: "openai/gpt-test" }),
+    expect.objectContaining({ sequence: 2, model: "openai/gpt-test" }),
+  ]);
+  const modelEnds = logs.filter((entry) => entry.operation === "model.response.end");
+  expect(modelEnds).toHaveLength(2);
+  for (const entry of modelEnds) {
+    const callDurationMs = entry.callDurationMs as number;
+    const responseDurationMs = entry.responseDurationMs as number;
+    const responseStartLatencyMs = entry.responseStartLatencyMs as number;
+    const timingValues = [
+      callDurationMs,
+      responseDurationMs,
+      responseStartLatencyMs,
+      entry.timeToFirstOutputMs,
+      entry.timeToFirstTextMs,
+      entry.generationDurationMs,
+      entry.textGenerationDurationMs,
+    ];
+    expect(timingValues.every((value) => typeof value === "number" && value >= 0 && value < 60_000)).toBe(true);
+    expect(
+      responseDurationMs <= callDurationMs
+      && responseStartLatencyMs <= callDurationMs
+      && Math.abs(responseDurationMs + responseStartLatencyMs - callDurationMs) < 0.001
+    ).toBe(true);
+    expect(entry).toMatchObject({ model: "openai/gpt-test" });
+  }
   expect(contextEvents.map((event) => event.phase)).toEqual(expect.arrayContaining([
     "prompt_start",
     "message_end",
@@ -4154,6 +4188,98 @@ test("runAgentPrompt retries after persisting visible commentary from a provider
     restoreEnv();
   }
 });
+
+for (const boundary of ["error", "aborted", "length", "interrupted", "commentary", "terminal"] as const) {
+  test(`runAgentPrompt preserves ${boundary} output without poisoning later context recovery`, async () => {
+    initDatabase();
+    const chatJid = `web:checkpoint-pressure-${boundary}`;
+    const restoreEnv = setEnv({
+      PICLAW_TURN_AUTO_RECOVERY_ENABLED: "1",
+      PICLAW_TURN_TRANSIENT_RECOVERY_TOOLS_ENABLED: "1",
+      PICLAW_TURN_AUTO_RECOVERY_MAX_ATTEMPTS: "2",
+      PICLAW_TURN_AUTO_RECOVERY_TOTAL_BUDGET_MS: "30000",
+    });
+    class StubSession {
+      listeners: Array<(event: any) => void> = [];
+      promptCalls = 0;
+      compactCalls = 0;
+      promptTexts: string[] = [];
+      isStreaming = false;
+      isCompacting = false;
+      isRetrying = false;
+      sessionManager = { getLeafId: () => `leaf-${this.promptCalls}` };
+      activeTools = ["bash", "read"];
+      getActiveToolNames() { return [...this.activeTools]; }
+      setActiveToolsByName(names: string[]) { this.activeTools = [...names]; }
+      subscribe(listener: (event: any) => void) {
+        this.listeners.push(listener);
+        return () => { this.listeners = this.listeners.filter((entry) => entry !== listener); };
+      }
+      emit(event: any) { for (const listener of this.listeners) listener(event); }
+      async compact() { this.compactCalls += 1; }
+      async abort() {}
+      async prompt(text: string) {
+        this.promptTexts.push(text);
+        if (++this.promptCalls > 1) {
+          this.emit({ type: "message_end", message: createAssistantMessage("Recovered final answer.") });
+          return;
+        }
+        this.emit({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "Reading gate summaries." } });
+        if (boundary !== "interrupted") {
+          this.emit({ type: "message_end", message: {
+            role: "assistant",
+            stopReason: boundary === "commentary" || boundary === "terminal" ? "stop" : boundary,
+            errorMessage: boundary === "error" ? "Connection error: WebSocket closed 1000 session_shutdown" : undefined,
+            content: [{ type: "text", text: "Reading gate summaries.",
+              ...(boundary === "commentary" ? { textSignature: JSON.stringify({ phase: "commentary" }) } : {}) }],
+          } });
+        }
+        // Provider retry/new text boundary within the SAME prompt attempt.
+        this.emit({ type: "message_update", assistantMessageEvent: { type: "text_start" } });
+        this.emit({ type: "message_end", message: { role: "assistant", stopReason: "toolUse",
+          content: [{ type: "toolCall", id: "check", name: "bash", arguments: {} }] } });
+        this.emit({ type: "tool_execution_start", toolName: "bash", toolCallId: "check", args: {} });
+        this.emit({ type: "tool_execution_end", toolName: "bash", toolCallId: "check", isError: true });
+        recordAgentAbortCause(chatJid, "context_pressure", "run_agent.mid_turn_context_pressure");
+        this.emit({ type: "message_end", message: { role: "assistant", stopReason: "error",
+          errorMessage: "The operation was aborted.", content: [] } });
+      }
+    }
+    try {
+      const session = new StubSession();
+      const completed: string[] = [];
+      const result = await runAgentPrompt("finish release", chatJid, {
+        timeoutMs: 0,
+        skipPrePromptCompaction: true,
+        onTurnComplete: (turn) => { if (turn.text) completed.push(turn.text); },
+      }, {
+        getOrCreateRuntime: async () => createRuntime(session, { baseDelayMs: 1 }),
+        turnCoordinator: new AgentTurnCoordinator({ takeAttachments: () => [], touchSession: () => {} }),
+        clearAttachments: () => {}, takeAttachments: () => [], logsDir: createTestLogsDir(),
+        setActiveForkBaseLeaf: () => {}, clearActiveForkBaseLeaf: () => {},
+      });
+      expect(completed).toEqual(["Reading gate summaries."]);
+      if (boundary === "terminal") {
+        expect(result.recovery?.lastClassifier).toBe("completed_turn_output");
+        expect(session.compactCalls).toBe(0);
+        expect(session.promptCalls).toBe(1);
+      } else {
+        // Context recovery after tool work compacts, then hands off to the
+        // existing ordinary tool-enabled continuation. Never replay the push.
+        expect(result).toMatchObject({
+          status: "error", requiresToolEnabledContinuation: true,
+          protectedRecoveryHandoff: { reason: "post_compaction_tools_required", compaction: "succeeded" },
+        });
+        expect(result.recovery).toMatchObject({ attemptsUsed: 1, strategyHistory: ["compact_then_retry"] });
+        expect(result.recovery?.diagnostics[0]).toMatchObject({
+          hadCompletedTurnOutput: true, hadTerminalTurnOutput: false, failureCategory: "context_pressure",
+        });
+        expect(session.compactCalls).toBe(1);
+        expect(session.promptTexts).toEqual(["finish release"]);
+      }
+    } finally { restoreEnv(); }
+  });
+}
 
 test("runAgentPrompt continues with tools after a resolved side-effecting tool", async () => {
   const restoreEnv = setEnv({

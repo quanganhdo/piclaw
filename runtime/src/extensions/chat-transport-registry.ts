@@ -1,6 +1,10 @@
 /** Process-wide registry for chat destination transports. */
 
 import type { ParsedChatAddress, ChatAddressKind } from "./chat-address.js";
+import { readAccessConfig } from "../core/config-access.js";
+import { listCurrentOwnerSessions } from "../agent-pool/owned-session-target.js";
+import { ChatAccessDenied } from "../db/session-ownership.js";
+import { requireFamilyToolAccess } from '../agent-pool/family-tool-access.js';
 
 export type ChatTransportMode = "auto" | "queue" | "steer";
 
@@ -126,6 +130,15 @@ export function getChatTransport(kind: ChatAddressKind): ChatTransport | null {
 }
 
 export async function getChatTransportDirectories(): Promise<ChatTransportDirectory[]> {
+  requireFamilyToolAccess('chat');
+  if (readAccessConfig().mode !== "single-user") {
+    // Discovery is metadata-only until durable owner-aware delivery is integrated.
+    return [{ transport: "local", generated_at: new Date().toISOString(),
+      entries: listCurrentOwnerSessions().map(branch => ({ address: `@${branch.agent_name}`, label: branch.agent_name,
+        target_kind: "agent" as const, modes: [], status: "ready" as const })),
+      notes: ["Owner-local discovery only; cross-session sends and remote transports are disabled in this access mode."],
+    }];
+  }
   const directories: ChatTransportDirectory[] = [];
   for (const transport of transports.values()) {
     if (typeof transport.directory !== "function") continue;
@@ -138,6 +151,7 @@ export async function sendViaChatTransport(
   request: ChatTransportRequest,
   options: { annotate?: boolean } = {},
 ): Promise<ChatTransportResult> {
+  if (readAccessConfig().mode !== "single-user") throw new ChatAccessDenied();
   const transport = getChatTransport(request.address.kind);
   if (!transport) {
     throw new Error(

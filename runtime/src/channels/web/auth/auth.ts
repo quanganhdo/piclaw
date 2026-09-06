@@ -76,6 +76,20 @@ export function verifyTotp(secret: string, code: string, windowSteps = 1, stepSe
   return valid;
 }
 
+/** Strict per-account TOTP verification returning the accepted step for atomic replay protection. */
+export function matchTotpStep(secret: string, code: string, nowMs = Date.now(), windowSteps = 1): number | null {
+  if (!/^[0-9]{6}$/.test(code) || !Number.isSafeInteger(nowMs) || nowMs < 0
+    || !Number.isInteger(windowSteps) || windowSteps < 0 || windowSteps > 2) return null;
+  const current = Math.floor(nowMs / 30_000);
+  let matched: number | null = null;
+  for (let offset = -windowSteps; offset <= windowSteps; offset++) {
+    const step = current + offset;
+    if (step < 0) continue;
+    if (safeEqual(totpAtTime(secret, 30, 6, step * 30_000), code)) matched = step;
+  }
+  return matched;
+}
+
 /** Constant-time string comparison for secrets. */
 export function safeEqual(a: string, b: string): boolean {
   const bufA = Buffer.from(a, "utf8");

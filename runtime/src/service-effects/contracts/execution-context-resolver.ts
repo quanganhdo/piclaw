@@ -5,9 +5,12 @@ import type {
 
 import type { PiclawEffectError } from "./common.js";
 
-export interface PiclawToolContext {
+export interface PiclawExecutionAuthority {
   readonly chatJid: string;
   readonly operationId: string;
+}
+
+export interface PiclawToolContext extends PiclawExecutionAuthority {
   readonly env: ExecutionEnv;
   readonly localEnv: ExecutionEnv;
 }

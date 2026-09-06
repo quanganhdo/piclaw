@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <title>PiClaw account enrolment</title>
+    <link rel="stylesheet" href="/static/common/dist/login.bundle.css?v=__LOGIN_ASSET_VERSION__" />
+  </head>
+  <body>
+    <main class="card">
+      <h1>Set up your account</h1>
+      <p id="invitation-status" role="status">Checking invitation…</p>
+      <button id="claim-invitation" type="button" hidden>Begin authenticator setup</button>
+      <section id="passkey-enrolment" hidden aria-label="Passkey setup">
+        <p id="passkey-enrolment-account"></p>
+        <p>Create a discoverable passkey for this account. Device verification is required. This setup does not sign you in; use the sign-in page afterward. Cancel or leaving this page discards the one-use setup.</p>
+        <button id="create-invitation-passkey" type="button" disabled>Create account passkey</button>
+        <button id="cancel-invitation-passkey" type="button">Cancel setup</button>
+      </section>
+      <section id="enrolment" hidden aria-label="Authenticator setup">
+        <p id="enrolment-account"></p>
+        <img id="enrolment-qr" class="enrolment-qr" alt="Scan this QR code with your authenticator app" />
+        <p>Or enter this setup key manually:</p>
+        <code id="enrolment-secret" class="enrolment-secret"></code>
+        <form id="confirmation-form">
+          <label for="confirmation-code">Authenticator code</label>
+          <input id="confirmation-code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required disabled />
+          <button id="confirm-invitation" type="submit" disabled>Confirm account setup</button>
+        </form>
+      </section>
+      <div id="invitation-error" class="error" role="alert" aria-live="polite"></div>
+      <a id="invitation-login" href="/login">Return to sign in</a>
+    </main>
+    <script type="module" src="/static/common/dist/invitation.bundle.js?v=__LOGIN_ASSET_VERSION__"></script>
+  </body>
+</html>

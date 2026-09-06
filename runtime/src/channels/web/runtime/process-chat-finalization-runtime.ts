@@ -1,4 +1,5 @@
 import { getIdentityConfig } from "../../../core/config.js";
+import { readAccessConfig } from "../../../core/config-access.js";
 import { endChatRun, getChatCursor, getMessagesSince } from "../../../db.js";
 import { checkPendingShutdown } from "../../../runtime/shutdown-registry.js";
 import { createLogger } from "../../../utils/logger.js";
@@ -124,7 +125,7 @@ export async function finalizeSuccessfulProcessChatRun(options: ProcessChatFinal
     return;
   }
 
-  await materializeDeferredFollowups({ channel: channel as WebChannelLike, chatJid, agentId: options.agentId });
+  if (readAccessConfig().mode === "single-user") await materializeDeferredFollowups({ channel: channel as WebChannelLike, chatJid, agentId: options.agentId });
   checkPendingShutdown(chatJid);
 }
 

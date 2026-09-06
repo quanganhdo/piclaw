@@ -17,6 +17,7 @@
  */
 
 import type { AgentPool } from "../agent-pool.js";
+import { readAccessConfig } from "../core/config-access.js";
 import { formatRecoverySummary } from "../agent-pool/automatic-recovery.js";
 import { parseControlCommand, type AgentControlCommand } from "../agent-control/index.js";
 import { stripTrigger } from "../agent-control/parser-utils.js";
@@ -43,6 +44,7 @@ export interface MessageProcessingDeps {
 
 /** Process pending messages for a single chat: send to agent, deliver response. */
 export async function processMessages(chatJid: string, deps: MessageProcessingDeps): Promise<boolean> {
+  if (readAccessConfig().mode !== "single-user") throw new Error("Owner-bound non-web message processing is not available.");
   const since = deps.state.lastAgentTimestamp[chatJid] || "";
   const messages = getMessagesSince(chatJid, since, deps.assistantName);
   if (messages.length === 0) return true;

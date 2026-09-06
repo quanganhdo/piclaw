@@ -17,7 +17,7 @@ This page lists Piclaw's environment variables, config files, secrets, authentic
 [Pushover](#pushover-notifications) ·
 [Dream](#dream-and-autodream) ·
 [External workspace](#using-an-external-workspace) ·
-[Cross-instance interop](#cross-instance-interop)
+[Cross-instance interop](#remote-peer-add-on)
 
 ## Configuration surface policy
 
@@ -760,9 +760,23 @@ Search collection should stay narrow:
 
 See [runtime/docs/dream-memory.md](../runtime/docs/dream-memory.md) for the detailed file sequence and outputs.
 
+## Access mode
+
+`domains.access.mode` defaults to `single-user` on fresh or legacy single-user stores. Only this mode can start. Account, ownership, authentication and fork APIs exist for development, but `family-shared` and `isolated-containers` are rejected by startup until their integration gates pass.
+
+```json
+{ "domains": { "access": { "mode": "single-user" } } }
+```
+
+Access configuration is read directly from `.piclaw/config.json`, outside the ordinary environment override precedence above: there is no access-mode environment variable or top-level `access` alias. Unknown keys, malformed values, incompatible isolation settings and a configuration/store mode mismatch fail closed. Creating accounts, assigning roots or migrating handle namespaces does not activate a mode. Do not edit `access_state` to bypass the gate.
+
+The planned family profile shares workspace files, tools, skills, add-ons and provider credentials. It offers application-level ownership, not filesystem isolation from other tool-capable users. The per-user container gateway is not implemented. See [Access modes and implementation status](multi-user/README.md) for backend APIs, remaining work, coordinated backup and downgrade constraints.
+
 ## Authentication (TOTP + passkeys)
 
-You can gate the entire web UI behind a 6-digit TOTP challenge and optionally enable WebAuthn passkeys. Static assets needed by iOS/Android webapps (manifest, icons, avatars, `/static/*`) remain public so homescreen shortcuts keep working.
+The setup below applies to supported **single-user deployments**. A 6-digit TOTP challenge can gate the UI, with optional WebAuthn passkeys. The manifest, service worker, agent avatar/icons, fonts, login bundles and static images have explicit public exceptions; arbitrary `/static/*` assets and app bundles are not all public. See `runtime/src/channels/web/http/route-flags.ts` for the classification.
+
+The login shell discovers enabled methods through public `/auth/options`, displays a username field only when family TOTP requires it, and offers an explicit passkey action. A failed policy fetch leaves credential entry disabled until retry. The gated family backend uses per-account TOTP, multiple independent passkeys, restricted invitations, device revocation and administrator-assisted reset. It does not use the shared `/totp` seed or legacy `/passkey enrol` flow as a multi-user setup procedure. Its account/passkey mutations require a matching Origin and recent authentication; its public asset exceptions are narrower. The restricted invitation page uses `/auth/invitation#token=<grant>` (fragment only) and a Secure HttpOnly enrolment cookie; use HTTPS and deliver grants privately. It is an implemented development UI, not a way to bypass family startup validation. The [family API inventory](../runtime/docs/web-api-endpoint-inventory.md#family-development-routes) describes the implemented endpoints, not an available deployment option.
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
@@ -788,11 +802,11 @@ You can either preconfigure `PICLAW_WEB_TOTP_SECRET` yourself or initialize it f
 
 #### Preconfigured setup
 
-1. Set `PICLAW_WEB_TOTP_SECRET` to a base32 string (for example, output from `oathtool --totp -b`).
+1. Set `PICLAW_WEB_TOTP_SECRET` to a securely generated base32 seed. A six-digit TOTP code is not a seed; `oathtool --totp -b <seed>` produces a code from an existing seed.
 2. Restart piclaw.
 3. Visiting the UI redirects to `/login`.
 4. Enter the 6-digit code from your authenticator app to receive an HTTP-only `piclaw_session` cookie.
-5. Sessions expire automatically after `PICLAW_WEB_SESSION_TTL` seconds or when you delete the cookie.
+5. Server sessions expire after `PICLAW_WEB_SESSION_TTL` seconds. Deleting a browser cookie removes that browser's copy; it does not revoke a copied token on the server.
 6. To re-display the active secret for another device, run `/totp` in the web UI.
 
 #### Reset flow
@@ -814,17 +828,17 @@ You can either preconfigure `PICLAW_WEB_TOTP_SECRET` yourself or initialize it f
 
 - Multiple passkeys are supported per user; use `/passkey list` to review and `/passkey delete` to revoke.
 - Passkeys are bound to the hostname used during enrolment (RP ID).
-- Login attempts automatically try passkeys first when supported; TOTP remains as fallback unless you set `PICLAW_WEB_PASSKEY_MODE=passkey-only`.
+- The login page offers an explicit passkey button and optional conditional mediation when passkeys are enabled. TOTP remains available only when configured; passkey-only mode hides the code form, and totp-only mode makes no passkey attempt.
 - `/passkey enrol` still requires a TOTP-authenticated session. Passkeys are a login factor; TOTP remains the enrollment/bootstrap factor.
 - All auth endpoints (`/auth/verify`, WebAuthn login, and enrol) are rate-limited per IP (10–20 attempts per 5 minutes).
 - After five failed TOTP attempts in five minutes, the IP is temporarily locked out for five minutes (with audit logs emitted on failures).
 - TOTP confirmation flows return explicit success/failure feedback and report whether the secret/session state changed.
 
-Internal automation still works via `/internal/post` as long as the request includes the configured secret in the `x-piclaw-internal-secret` header or the `Authorization` header.
+In single-user mode, internal automation can use `/internal/post` with the configured secret in `x-piclaw-internal-secret` or `Authorization`. Family dispatch denies this route; an internal/widget secret does not establish an account principal.
 
 ## Keychain secrets
 
-See [keychain.md](keychain.md) for full details.
+See [keychain.md](keychain.md) for full details. The same bootstrap key material also encrypts the separate user TOTP-factor store. Back up both stores and the key together; changing the key alone makes existing ciphertext unreadable. [Offline factor re-encryption](multi-user/README.md#authentication-maintenance) does not rotate generic keychain entries or change configuration.
 
 The keychain is disabled unless you provide a master key:
 

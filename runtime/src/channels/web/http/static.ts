@@ -12,6 +12,7 @@ import { extname, resolve } from "path";
 import { existsSync, readFileSync, statSync } from "fs";
 
 import { createLogger, debugSuppressedError } from "../../../utils/logger.js";
+import { APP_ASSET_VERSION_REL_PATHS, computeAssetContentVersion } from "../../../utils/asset-content-version.js";
 import { WEB_RUNTIME_CONFIG } from "../../../core/config.js";
 
 const RUNTIME_DIR = resolve(import.meta.dir, "..", "..", "..", "..");
@@ -41,8 +42,7 @@ const MIME_TYPES: Record<string, string> = {
 const APP_ASSET_VERSION_PLACEHOLDER = "__APP_ASSET_VERSION__";
 const LOGIN_ASSET_VERSION_PLACEHOLDER = "__LOGIN_ASSET_VERSION__";
 const NOTIFICATION_SOURCE_LABELS_PLACEHOLDER = "__PICLAW_NOTIFICATION_SOURCE_LABELS_FLAG__";
-const APP_VERSION_FILES = ["classic/dist/app.bundle.js", "classic/dist/app.bundle.css"];
-const LOGIN_VERSION_FILES = ["common/dist/login.bundle.js", "common/dist/login.bundle.css"];
+const LOGIN_VERSION_FILES = ["common/dist/login.bundle.js", "common/dist/login.bundle.css", "common/dist/invitation.bundle.js"];
 const TEXT_ASSET_CACHE = new Map<string, { mtimeMs: number; text: string }>();
 const GZIP_ASSET_CACHE = new Map<string, { mtimeMs: number; data: Uint8Array }>();
 
@@ -63,29 +63,37 @@ const SKIP_COMPRESSION_EXTS = new Set([
 ]);
 
 function readAssetVersion(relPaths: string[]): string {
+  const filePaths = relPaths.map((relPath) => resolve(STATIC_DIR, relPath));
+  const contentVersion = computeAssetContentVersion(filePaths, (filePath, error) => {
+    debugSuppressedError(log, "Static asset content-version probe skipped a missing or unreadable asset.", error, { filePath });
+  });
+  if (contentVersion) return contentVersion;
+
   let newestMtimeMs = 0;
-  for (const relPath of relPaths) {
-    const filePath = resolve(STATIC_DIR, relPath);
+  for (const [index, filePath] of filePaths.entries()) {
     try {
       const stats = statSync(filePath);
       newestMtimeMs = Math.max(newestMtimeMs, stats.mtimeMs || 0);
     } catch (error) {
       debugSuppressedError(log, "Static asset version probe skipped a missing or unreadable asset.", error, {
-        relPath,
+        relPath: relPaths[index],
         filePath,
       });
     }
   }
-
-  if (newestMtimeMs > 0) {
-    return Math.floor(newestMtimeMs).toString(36);
-  }
-
-  return "dev";
+  return newestMtimeMs > 0 ? Math.floor(newestMtimeMs).toString(36) : "dev";
 }
 
 export function getAppAssetVersion(): string {
-  return readAssetVersion(APP_VERSION_FILES);
+  const indexPath = resolve(STATIC_DIR, "classic/index.html");
+  try {
+    const indexHtml = readFileSync(indexPath, "utf8");
+    const stampedVersion = indexHtml.match(/\/static\/classic\/dist\/app\.bundle\.js\?v=([a-z0-9]+)/i)?.[1];
+    if (stampedVersion && stampedVersion !== APP_ASSET_VERSION_PLACEHOLDER) return stampedVersion;
+  } catch (error) {
+    debugSuppressedError(log, "Static app version probe could not read the stamped index.", error, { indexPath });
+  }
+  return readAssetVersion([...APP_ASSET_VERSION_REL_PATHS]);
 }
 
 export function getLoginAssetVersion(): string {
@@ -103,8 +111,11 @@ function renderHtmlTemplate(relPath: string, html: string): string {
   if (relPath === "visual/index.html") {
     return renderedWithSharedFlags;
   }
-  if (relPath === "login.html") {
+  if (relPath === "login.html" || relPath === "invitation.html") {
     return renderedWithSharedFlags.replaceAll(LOGIN_ASSET_VERSION_PLACEHOLDER, getLoginAssetVersion());
+  }
+  if (relPath === "family.html") {
+    return renderedWithSharedFlags.replaceAll("__FAMILY_ASSET_VERSION__", readAssetVersion(["common/dist/family.bundle.js", "common/dist/family.bundle.css"]));
   }
   return renderedWithSharedFlags;
 }

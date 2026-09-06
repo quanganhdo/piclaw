@@ -12,39 +12,19 @@
  * Run automatically at the end of `build:web`.
  */
 
-import { createHash } from "crypto";
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import { resolve } from "path";
 
+import { APP_ASSET_VERSION_REL_PATHS, computeAssetContentVersion } from "../src/utils/asset-content-version.js";
+
 const INDEX = resolve(import.meta.dir, "../web/static/classic/index.html");
-const CLASSIC_DIST = resolve(import.meta.dir, "../web/static/classic/dist");
-const COMMON_DIST = resolve(import.meta.dir, "../web/static/common/dist");
+const APP_VERSION_FILES = APP_ASSET_VERSION_REL_PATHS.map((relPath) => resolve(import.meta.dir, "../web/static", relPath));
 
-// Build a content hash from the main bundle files so the stamp is
-// deterministic and tied to actual content, not wall-clock time.
-function computeBundleContentHash(): string {
-  const bundleFiles = [
-    resolve(CLASSIC_DIST, "app.bundle.js"),
-    resolve(CLASSIC_DIST, "app.bundle.css"),
-    resolve(CLASSIC_DIST, "editor.bundle.js"),
-    resolve(COMMON_DIST, "login.bundle.js"),
-    resolve(COMMON_DIST, "login.bundle.css"),
-  ];
-  const hash = createHash("sha256");
-  for (const file of bundleFiles) {
-    try {
-      hash.update(readFileSync(file));
-    } catch (e) {
-      // File may not exist in minimal builds; skip but log if unexpected.
-      if (existsSync(file)) {
-        console.warn(`[cache-buster] failed to read ${file}: ${e instanceof Error ? e.message : e}`);
-      }
-    }
+const stamp = computeAssetContentVersion(APP_VERSION_FILES, (file, error) => {
+  if (existsSync(file)) {
+    console.warn(`[cache-buster] failed to read ${file}: ${error instanceof Error ? error.message : error}`);
   }
-  return hash.digest("hex").slice(0, 12);
-}
-
-const stamp = computeBundleContentHash();
+}) || "dev";
 
 const original = readFileSync(INDEX, "utf-8");
 let html = original;

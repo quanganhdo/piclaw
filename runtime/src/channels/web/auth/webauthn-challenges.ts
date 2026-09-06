@@ -12,7 +12,9 @@ export type PendingWebauthnChallenge = {
   /** Relying-party id associated with the challenge. */
   rpId: string;
   /** User id associated with the challenge. */
-  userId: string;
+  userId: string | null;
+  /** Expected origin captured at ceremony creation. */
+  origin?: string;
   /** Epoch timestamp (ms) when the challenge was created. */
   createdAt: number;
 };

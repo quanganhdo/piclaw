@@ -15,8 +15,8 @@ describe("provider/model pricing reference", () => {
     });
     expect(resolveProviderModelPricing("openrouter", "deepseek/deepseek-v4-flash")).toMatchObject({
       canonicalModel: "DeepSeek V4 Flash (OpenRouter)",
-      inputPerMTok: 0.09,
-      outputPerMTok: 0.18,
+      inputPerMTok: 0.08358,
+      outputPerMTok: 0.16716,
     });
   });
 
@@ -75,6 +75,20 @@ describe("provider/model pricing reference", () => {
       outputPerMTok: 15,
       cacheReadPerMTok: 0.3,
     });
+  });
+
+  test("prices Fable successors and Astra without treating missing cache meters as free", () => {
+    expect(resolveProviderModelPricing("anthropic", "claude-fable-5.1")).toMatchObject({ inputPerMTok: 10, outputPerMTok: 50, cacheReadPerMTok: 0.25, cacheWritePerMTok: 12.5 });
+    expect(resolveProviderModelPricing("openrouter", "anthropic/claude-fable-5").cacheReadPerMTok).toBe(1);
+    expect(resolveProviderModelPricing("github-copilot", "claude-fable-5.1").cacheReadPerMTok).toBe(0.25);
+    expect(resolveProviderModelPricing("openai-codex", "gpt-6-astra")).toMatchObject({ inputPerMTok: 10, outputPerMTok: 50, cacheReadPerMTok: 1, cacheWritePerMTok: 12.5 });
+    expect(resolveProviderModelPricing("openai", "gpt-5.4-pro").cacheReadPerMTok).toBe(30);
+  });
+
+  test("preserves the Sol route discount", () => {
+    expect(resolveProviderModelPricing("github-copilot", "gpt-5.6-sol").inputPerMTok).toBe(4);
+    expect(resolveProviderModelPricing("openrouter", "openai/gpt-5.6-sol").inputPerMTok).toBe(2);
+    expect(resolveProviderModelPricing("openai-codex", "gpt-5.6-sol").outputPerMTok).toBe(20);
   });
 
   test("prices local inference at zero metered API cost", () => {

@@ -1,0 +1,258 @@
+{
+  "priceDate": "2026-09-05",
+  "cacheShares": {
+    "input": 0.01469598338407527,
+    "read": 0.9445534406336595,
+    "write": 0.04075057598226524
+  },
+  "models": {
+    "anthropic/claude-fable-5.1": {
+      "provider": "anthropic",
+      "id": "claude-fable-5.1",
+      "name": "Claude Fable 5.1",
+      "input": 10,
+      "output": 50,
+      "cr": 0.25,
+      "cw": 12.5,
+      "cacheReadPolicy": "published",
+      "cacheWritePolicy": "published",
+      "currency": "USD",
+      "unit": "per 1M tokens",
+      "cw1h": 20,
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing.md",
+      "evidence": "public-first-party",
+      "restricted": false,
+      "retired": false
+    },
+    "anthropic/claude-fable-5": {
+      "provider": "anthropic",
+      "id": "claude-fable-5",
+      "name": "Claude Fable 5",
+      "input": 10,
+      "output": 50,
+      "cr": 1,
+      "cw": 12.5,
+      "cacheReadPolicy": "published",
+      "cacheWritePolicy": "published",
+      "currency": "USD",
+      "unit": "per 1M tokens",
+      "cw1h": 20,
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing.md",
+      "evidence": "public-first-party",
+      "restricted": false,
+      "retired": false
+    },
+    "openai-codex/gpt-6-astra": {
+      "provider": "openai-codex",
+      "id": "gpt-6-astra",
+      "name": "gpt-6-astra",
+      "input": 10,
+      "output": 50,
+      "cr": 1,
+      "cw": 12.5,
+      "cacheReadPolicy": "published",
+      "cacheWritePolicy": "published",
+      "currency": "USD",
+      "unit": "per 1M tokens",
+      "source": "https://developers.openai.com/api/docs/pricing.md",
+      "evidence": "public-API-equivalent",
+      "threshold": 272000,
+      "long": {
+        "input": 20,
+        "cr": 2,
+        "cw": 25,
+        "output": 75
+      },
+      "billing": "ChatGPT subscription; API-equivalent only, not an invoice",
+      "contextWindow": 1050000,
+      "contextSource": "https://developers.openai.com/api/docs/models/gpt-6-astra.md"
+    },
+    "openai/gpt-5.6-sol": {
+      "provider": "openai",
+      "id": "gpt-5.6-sol",
+      "name": "gpt-5.6-sol",
+      "input": 4,
+      "output": 20,
+      "cr": 0.4,
+      "cw": 5,
+      "cacheReadPolicy": "published",
+      "cacheWritePolicy": "published",
+      "currency": "USD",
+      "unit": "per 1M tokens",
+      "source": "https://developers.openai.com/api/docs/pricing.md",
+      "evidence": "public-first-party",
+      "threshold": 272000,
+      "long": {
+        "input": 8,
+        "cr": 0.8,
+        "cw": 10,
+        "output": 30
+      },
+      "contextWindow": 1050000,
+      "contextSource": "https://developers.openai.com/api/docs/models/gpt-5.6-sol.md"
+    },
+    "openrouter/openai/gpt-5.6-sol": {
+      "provider": "openrouter",
+      "id": "openai/gpt-5.6-sol",
+      "name": "OpenAI: GPT-5.6 Sol",
+      "input": 2,
+      "output": 10,
+      "cr": 0.19999999999999998,
+      "cw": 2.5,
+      "cacheReadPolicy": "published",
+      "cacheWritePolicy": "published",
+      "currency": "USD",
+      "unit": "per 1M tokens",
+      "source": "https://openrouter.ai/api/v1/models",
+      "evidence": "public-route",
+      "contextWindow": 1050000,
+      "huggingFaceId": null,
+      "description": "GPT-5.6 Sol is the flagship model in OpenAI's GPT-5.6 series. It is suited for complex reasoning, coding, and agentic workflows, and is particularly strong at command-line and multi-step coding tasks...",
+      "pricingOverrides": [
+        {
+          "min_prompt_tokens": 272000,
+          "prompt": "0.000004",
+          "completion": "0.000015",
+          "input_cache_read": "0.0000004",
+          "input_cache_write": "0.000005"
+        }
+      ],
+      "rawPricing": {
+        "prompt": "0.000002",
+        "completion": "0.00001",
+        "web_search": "0.01",
+        "input_cache_read": "0.0000002",
+        "input_cache_write": "0.0000025",
+        "overrides": [
+          {
+            "min_prompt_tokens": 272000,
+            "prompt": "0.000004",
+            "completion": "0.000015",
+            "input_cache_read": "0.0000004",
+            "input_cache_write": "0.000005"
+          }
+        ]
+      }
+    },
+    "openai/gpt-5.6-terra": {
+      "provider": "openai",
+      "id": "gpt-5.6-terra",
+      "name": "gpt-5.6-terra",
+      "input": 2,
+      "output": 12,
+      "cr": 0.2,
+      "cw": 2.5,
+      "cacheReadPolicy": "published",
+      "cacheWritePolicy": "published",
+      "currency": "USD",
+      "unit": "per 1M tokens",
+      "source": "https://developers.openai.com/api/docs/pricing.md",
+      "evidence": "public-first-party",
+      "threshold": 272000,
+      "long": {
+        "input": 4,
+        "cr": 0.4,
+        "cw": 5,
+        "output": 18
+      },
+      "contextWindow": 1050000,
+      "contextSource": "https://developers.openai.com/api/docs/models/gpt-5.6-terra.md"
+    },
+    "openrouter/deepseek/deepseek-v4-pro-0813": {
+      "provider": "openrouter",
+      "id": "deepseek/deepseek-v4-pro-0813",
+      "name": "DeepSeek: DeepSeek V4 Pro 0813",
+      "input": 0.57948,
+      "output": 1.73844,
+      "cr": 0.019316,
+      "cw": null,
+      "cacheReadPolicy": "published",
+      "cacheWritePolicy": "ordinary-input fallback",
+      "currency": "USD",
+      "unit": "per 1M tokens",
+      "source": "https://openrouter.ai/api/v1/models",
+      "evidence": "public-route",
+      "contextWindow": 1048576,
+      "huggingFaceId": "deepseek-ai/DeepSeek-V4-Pro-0813",
+      "description": "DeepSeek V4 Pro 0813 is a large-scale mixture-of-experts model from DeepSeek. This is the GA release of DeepSeek V4 Pro.",
+      "pricingOverrides": [],
+      "rawPricing": {
+        "prompt": "0.00000057948",
+        "completion": "0.00000173844",
+        "input_cache_read": "0.000000019316"
+      }
+    },
+    "openrouter/moonshotai/kimi-k3": {
+      "provider": "openrouter",
+      "id": "moonshotai/kimi-k3",
+      "name": "MoonshotAI: Kimi K3",
+      "input": 3,
+      "output": 15,
+      "cr": 0.3,
+      "cw": null,
+      "cacheReadPolicy": "published",
+      "cacheWritePolicy": "ordinary-input fallback",
+      "currency": "USD",
+      "unit": "per 1M tokens",
+      "source": "https://openrouter.ai/api/v1/models",
+      "evidence": "public-route",
+      "contextWindow": 1048576,
+      "huggingFaceId": "moonshotai/Kimi-K3",
+      "description": "Kimi K3 is a 2.8T parameter open-weight multimodal reasoning model from Moonshot AI. It is suited for complex coding, knowledge work, and long-horizon agentic workflows, and is particularly strong at...",
+      "pricingOverrides": [],
+      "rawPricing": {
+        "prompt": "0.000003",
+        "completion": "0.000015",
+        "input_cache_read": "0.0000003"
+      }
+    },
+    "openrouter/minimax/minimax-m3": {
+      "provider": "openrouter",
+      "id": "minimax/minimax-m3",
+      "name": "MiniMax: MiniMax M3",
+      "input": 0.3,
+      "output": 1.2,
+      "cr": 0.06,
+      "cw": null,
+      "cacheReadPolicy": "published",
+      "cacheWritePolicy": "ordinary-input fallback",
+      "currency": "USD",
+      "unit": "per 1M tokens",
+      "source": "https://openrouter.ai/api/v1/models",
+      "evidence": "public-route",
+      "contextWindow": 1048576,
+      "huggingFaceId": "MiniMaxAI/Minimax-M3",
+      "description": "MiniMax-M3 is a multimodal foundation model from MiniMax. It supports text, image, and video inputs with text output, a 1M-token context window, and is suited for long-horizon agentic work, coding,...",
+      "pricingOverrides": [],
+      "rawPricing": {
+        "prompt": "0.0000003",
+        "completion": "0.0000012",
+        "input_cache_read": "0.00000006"
+      }
+    },
+    "openrouter/deepseek/deepseek-v4-flash-0731": {
+      "provider": "openrouter",
+      "id": "deepseek/deepseek-v4-flash-0731",
+      "name": "DeepSeek: DeepSeek V4 Flash 0731",
+      "input": 0.065,
+      "output": 0.18,
+      "cr": 0.016,
+      "cw": null,
+      "cacheReadPolicy": "published",
+      "cacheWritePolicy": "ordinary-input fallback",
+      "currency": "USD",
+      "unit": "per 1M tokens",
+      "source": "https://openrouter.ai/api/v1/models",
+      "evidence": "public-route",
+      "contextWindow": 1310720,
+      "huggingFaceId": "deepseek-ai/DeepSeek-V4-Flash-0731",
+      "description": "DeepSeek V4 Flash 0731 is a sparse mixture-of-experts model from DeepSeek, with 13B active parameters out of 284B total. This re-post-trained revision is suited for coding, reasoning, and agent workflows....",
+      "pricingOverrides": [],
+      "rawPricing": {
+        "prompt": "0.000000065",
+        "completion": "0.00000018",
+        "input_cache_read": "0.000000016"
+      }
+    }
+  }
+}

@@ -23,6 +23,7 @@ import {
 } from "../agent/agent-peer-message-relay-service.js";
 import { ensureAvatarCache } from "../media/avatar-service.js";
 import { WebAuthGateway } from "../auth/auth-gateway.js";
+import { readAccessConfig } from "../../../core/config-access.js";
 import {
   createWebChannelEndpointContexts,
   createWebChannelIdentitySnapshot,
@@ -303,6 +304,7 @@ export function createWebChannelConstructorFactory(
 
   const authGateway = deps.createAuthGateway(
     {
+      accessMode: readAccessConfig().mode,
       passkeyMode: options.webRuntimeConfig.passkeyMode || "",
       totpSecret: options.webRuntimeConfig.totpSecret || "",
       internalSecret: options.webRuntimeConfig.internalSecret || "",

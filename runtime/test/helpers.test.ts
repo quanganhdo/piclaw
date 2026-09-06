@@ -17,5 +17,11 @@ describe("runtime test helpers", () => {
 
     cleanupSharedTestWorkspace();
     expect(existsSync(second.base)).toBe(false);
+
+    // Other files reuse the helper module and its environment in the same Bun process.
+    // Leave a live shared workspace for SDKs that require the stored cwd to exist.
+    const restored = getTestWorkspace();
+    expect(process.env.PICLAW_WORKSPACE).toBe(restored.workspace);
+    expect(existsSync(restored.workspace)).toBe(true);
   });
 });

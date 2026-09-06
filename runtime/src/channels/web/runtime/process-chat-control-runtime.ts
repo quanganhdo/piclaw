@@ -8,6 +8,7 @@
 
 import type { WebChannelLike } from "../core/web-channel-contracts.js";
 import { getIdentityConfig, getRoutingConfig } from "../../../core/config.js";
+import { readAccessConfig } from "../../../core/config-access.js";
 import { parseControlCommand } from "../../../agent-control/index.js";
 import type { AgentControlCommand, AgentControlResult } from "../../../agent-control/index.js";
 import {
@@ -424,6 +425,7 @@ function materializeQueuedFollowup(
 export async function materializeDeferredFollowups(
   options: MaterializeDeferredFollowupsOptions,
 ): Promise<MaterializeDeferredFollowupsResult> {
+  if (readAccessConfig().mode !== "single-user") return { status: "none" };
   const {
     channel,
     chatJid,

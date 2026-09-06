@@ -175,7 +175,8 @@ const fakeFactory: ContractSubjectFactory<ServiceOutboxContractSubject> = {
   },
 };
 describe("EF-S05 ServiceOutboxStore shared contract", () => {
-  test("isolated SQLite adapter", async () => {
+  // This aggregate runs 15 contract/recovery cases with repeated private-schema creation and fresh SQLite restores.
+  test("isolated SQLite adapter", { timeout: 15_000 }, async () => {
     const before = readdirSync(tmpdir())
       .filter((name) => name.startsWith("piclaw-s05-"))
       .sort();

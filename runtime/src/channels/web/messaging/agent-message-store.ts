@@ -13,6 +13,7 @@ import type { AttachmentInfo } from "../../../agent-pool/attachments.js";
 import type { AgentEventEmitter } from "../sse/agent-events.js";
 import { formatOutbound, type ChatChannel } from "../../../router.js";
 import { createLogger, debugSuppressedError } from "../../../utils/logger.js";
+import { readAccessConfig } from "../../../core/config-access.js";
 import { sendStoredAgentReplyWebPushNotification } from "../push/web-push-service.js";
 
 const log = createLogger("web.agent-message-store");
@@ -37,7 +38,7 @@ function dispatchStoredReplyWebPush(
   interaction: ReturnType<WebChannelLike["storeMessage"]>,
   dispatchWebPushNotification?: (interaction: ReturnType<WebChannelLike["storeMessage"]>) => Promise<unknown>,
 ): void {
-  if (!interaction) return;
+  if (!interaction || readAccessConfig().mode !== "single-user") return;
   void (dispatchWebPushNotification || sendStoredAgentReplyWebPushNotification)(interaction).catch((error) => {
     debugSuppressedError(log, "Failed to dispatch Web Push for stored agent reply.", error, {
       chatJid: interaction.chat_jid,

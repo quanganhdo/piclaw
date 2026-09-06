@@ -4,6 +4,7 @@ import type { ExtensionAPI, ExtensionFactory } from "@earendil-works/pi-coding-a
 
 import { getDataDir } from "../core/config.js";
 import { getChatJid } from "../core/chat-context.js";
+import { createDreamAccessGuard } from "../core/dream-access.js";
 import { createUuid } from "../utils/ids.js";
 
 function parseDreamArgs(args: string): { days: number } | { error: string } {
@@ -25,6 +26,7 @@ export const dreamMaintenance: ExtensionFactory = (pi: ExtensionAPI) => {
   pi.registerCommand("dream", {
     description: "Queue an out-of-band Dream cycle that updates notes/daily and notes/memory via a dedicated temporary dream channel.",
     handler: async (args: string) => {
+      createDreamAccessGuard();
       const parsed = parseDreamArgs(args);
       if ("error" in parsed) {
         pi.sendMessage({ customType: "dream", content: parsed.error, display: true });

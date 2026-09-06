@@ -12,6 +12,9 @@ import type { Message } from "@earendil-works/pi-ai";
 
 import {
   buildPreview,
+  canUseLegacyToolOutput,
+  createToolOutputAccessGuard,
+  ToolOutputAccessDenied,
   createBatchExecTool,
   createToolOutputSearchTool,
   getToolResultCompactionEnabled,
@@ -105,7 +108,8 @@ async function summarizeToolOutputSemantically(
   if (semanticSummarizerOverride) {
     try {
       return await semanticSummarizerOverride(request, extensionContext);
-    } catch {
+    } catch (error) {
+      if (error instanceof ToolOutputAccessDenied) throw error;
       return null;
     }
   }
@@ -158,7 +162,8 @@ async function summarizeToolOutputSemantically(
       clearTimeout(timeout);
       extensionContext.signal?.removeEventListener?.("abort", onAbort);
     }
-  } catch {
+  } catch (error) {
+    if (error instanceof ToolOutputAccessDenied) throw error;
     return null;
   }
 }
@@ -342,6 +347,7 @@ async function compactTextOutput(
     /** Provider-context cleanup must be deterministic and must never invoke a model. */
     allowSemanticSummary?: boolean;
   },
+  checkAccess: () => void,
 ): Promise<{ summaryText: string; saved: ReturnType<typeof saveToolOutput> } | null> {
   const fullOutput = options.fullOutput ?? text;
   if (!fullOutput.trim()) return null;
@@ -370,6 +376,8 @@ async function compactTextOutput(
       sizeBytes: Buffer.byteLength(fullOutput, "utf8"),
     }, options.extensionContext)
     : null;
+
+  checkAccess();
 
   const summaryForDisplay = semanticSummary || cachedEntry?.summary || preview;
   const semantic = Boolean(semanticSummary) || Boolean(cachedEntry?.semantic);
@@ -435,7 +443,8 @@ async function compactLegacyToolResultContent(
 
 async function compactNestedToolResultBlocks(
   content: unknown,
-  extensionContext?: RuntimeExtensionContext,
+  extensionContext: RuntimeExtensionContext | undefined,
+  mayContinue: () => boolean,
 ): Promise<{
   content: unknown;
   modified: boolean;
@@ -457,6 +466,7 @@ async function compactNestedToolResultBlocks(
         resolveToolNameFromUnknown(item),
         extensionContext,
       );
+      if (!mayContinue()) return { content, modified: false };
       if (compacted.modified) {
         modified = true;
         next.push({ ...item, content: compacted.content });
@@ -467,7 +477,8 @@ async function compactNestedToolResultBlocks(
     }
 
     if (Array.isArray(item.content)) {
-      const nested = await compactNestedToolResultBlocks(item.content, extensionContext);
+      const nested = await compactNestedToolResultBlocks(item.content, extensionContext, mayContinue);
+      if (!mayContinue()) return { content, modified: false };
       if (nested.modified) {
         modified = true;
         next.push({ ...item, content: nested.content });
@@ -489,6 +500,8 @@ export default function (pi: any) {
   pi.registerTool(createBatchExecTool(process.cwd()));
 
   pi.on("tool_result", async (event: any, ctx: RuntimeExtensionContext) => {
+    if (!canUseLegacyToolOutput()) return;
+    const checkAccess = createToolOutputAccessGuard();
     if (!getToolResultCompactionEnabled()) return;
     if (event?.isError) return;
     if (!isToolCompactionEnabledForTool(event?.toolName)) return;
@@ -511,7 +524,8 @@ export default function (pi: any) {
         toolName: event?.toolName,
         source: resolveOutputSource(event),
         extensionContext: ctx,
-      });
+      }, checkAccess);
+      checkAccess();
       if (!compacted) return;
 
       return {
@@ -533,6 +547,9 @@ export default function (pi: any) {
   // Optional provider-request-time compaction layer:
   // compact legacy oversized inline tool results in outbound context only.
   pi.on("context", async (event: any, ctx: RuntimeExtensionContext) => {
+    if (!canUseLegacyToolOutput()) return {};
+    let allowed = true;
+    const mayContinue = () => allowed && (allowed = canUseLegacyToolOutput());
     if (!getToolResultCompactionEnabled()) return {};
     if (!Array.isArray(event?.messages)) return {};
 
@@ -553,6 +570,7 @@ export default function (pi: any) {
           resolveToolNameFromUnknown(nextMessage),
           ctx,
         );
+        if (!mayContinue()) return {};
         if (compacted.modified) {
           modified = true;
           nextMessage = { ...nextMessage, content: compacted.content };
@@ -560,7 +578,8 @@ export default function (pi: any) {
       }
 
       if (Array.isArray(nextMessage.content)) {
-        const nested = await compactNestedToolResultBlocks(nextMessage.content, ctx);
+        const nested = await compactNestedToolResultBlocks(nextMessage.content, ctx, mayContinue);
+        if (!mayContinue()) return {};
         if (nested.modified) {
           modified = true;
           nextMessage = { ...nextMessage, content: nested.content };

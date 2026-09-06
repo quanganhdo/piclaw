@@ -6,6 +6,7 @@ import type { ExtensionFactory, ModelRegistry, ModelRuntime, SettingsManager } f
 
 import { getAttachmentRegistry } from "./attachments.js";
 import { getSshConfig } from "../db.js";
+import { readAccessConfig } from '../core/config-access.js';
 import { createChatSshCoreExtension, resolveSshCoreConfigFromChatConfig } from "../extensions/ssh-core.js";
 import { AgentBranchManager } from "./branch-manager.js";
 import { AgentRuntimeFacade } from "./runtime-facade.js";
@@ -54,6 +55,8 @@ export interface AgentPoolServices {
 }
 
 async function resolveSessionExtensionFactories(chatJid: string): Promise<ExtensionFactory[]> {
+  // Never load persisted legacy SSH credentials or connect a shared remote shell for family hydration.
+  if (readAccessConfig().mode !== 'single-user') return [];
   let sshConfig: ReturnType<typeof getSshConfig> | undefined;
   try {
     sshConfig = getSshConfig(chatJid);
@@ -117,6 +120,7 @@ export function createAgentPoolServices(options: AgentPoolServiceFactoryOptions)
     isActive: (chatJid) => runtimeFacade.isActive(chatJid),
     scheduleSessionWarmup: (chatJid) => sessionManager.prewarm(chatJid),
     cancelSessionWarmup: (chatJid) => sessionManager.cancelPrewarm(chatJid),
+    hasPendingSessionWork: (chatJid) => sessionManager.hasPendingSessionWork(chatJid),
     onWarn: options.onWarn,
   });
   sessionManager = new AgentSessionManager({

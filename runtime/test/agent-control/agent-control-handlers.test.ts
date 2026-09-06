@@ -108,8 +108,9 @@ test("agent control info and mode commands", async () => {
 
   const db = await import("../../src/db.js");
   db.initDatabase();
+  const statsChat = 'web:agent-control-stats-fixture';
   db.storeTokenUsage({
-    chat_jid: "web:default",
+    chat_jid: statsChat,
     run_at: new Date().toISOString(),
     input_tokens: 120,
     output_tokens: 30,
@@ -125,7 +126,7 @@ test("agent control info and mode commands", async () => {
     model: "gpt-test",
   });
 
-  const stats = await withChatContext("web:default", "web", () =>
+  const stats = await withChatContext(statsChat, "web", () =>
     applyControlCommand(runtime as any, registry, { type: "stats", raw: "/stats" })
   );
   expect(stats.message).toContain("**Session stats**");

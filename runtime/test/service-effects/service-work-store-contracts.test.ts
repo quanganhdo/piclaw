@@ -228,7 +228,8 @@ const fakeFactory: ContractSubjectFactory<ServiceWorkContractSubject> = {
 };
 
 describe("EF-S01 ServiceWorkStore shared contract", () => {
-  test("isolated SQLite adapter", async () => {
+  // This aggregate runs 18 contract/recovery cases with repeated private-schema creation and fresh SQLite restores.
+  test("isolated SQLite adapter", { timeout: 15_000 }, async () => {
     const before = readdirSync(tmpdir())
       .filter((name) => name.startsWith("piclaw-s01-"))
       .sort();

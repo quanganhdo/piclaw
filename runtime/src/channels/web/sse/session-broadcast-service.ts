@@ -14,6 +14,7 @@ import type { AgentPool } from "../../../agent-pool.js";
 import type { ProviderUsageRefreshEvent } from "../../../agent-pool/runtime-facade.js";
 import { bindWebUiSessionBinder } from "../agent/agent-pool-binder.js";
 import { SseHub } from "./sse-hub.js";
+import type { SseAuthorisation } from "./sse.js";
 import { UiBridge, type UiBridgeChannel } from "../theming/ui-bridge.js";
 import { recordSseEvent } from "../../../session-recordings/session-recordings.js";
 
@@ -45,8 +46,8 @@ export class WebSessionBroadcastService implements UiBridgeChannel {
     agentPool.setProviderUsageRefreshListener?.((event: ProviderUsageRefreshEvent) => this.broadcastEvent("model_changed", event));
   }
 
-  handleSse(req: Request): Response {
-    return this.sse.handleRequest(req);
+  handleSse(req: Request, authorisation?: SseAuthorisation): Response {
+    return this.sse.handleRequest(req, authorisation);
   }
 
   broadcastEvent(eventType: string, data: unknown): void {

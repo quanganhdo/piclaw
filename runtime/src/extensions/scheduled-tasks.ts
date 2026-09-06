@@ -3,6 +3,7 @@
  * scheduled_tasks tool surface for create/list/get/pause/resume/mute/unmute/delete.
  */
 import { Type } from "typebox";
+import { readAccessConfig } from "../core/config-access.js";
 import type { AgentToolResult, ExtensionAPI, ExtensionFactory } from "@earendil-works/pi-coding-agent";
 import { createTask, deleteTask, getTaskById, updateTask } from "../db.js";
 import {
@@ -568,6 +569,7 @@ function inspectScheduledTasks(params: ScheduledTaskToolParams): AgentToolResult
 }
 
 function executeScheduledTasks(params: ScheduledTaskToolParams): AgentToolResult<Record<string, unknown>> {
+  if (readAccessConfig().mode !== "single-user") return makeTextResult("Scheduling tools are disabled until owner-bound task and queue authority is integrated.", { error: "access_denied" });
   const action = params.action || "list";
   switch (action) {
     case "create":
@@ -592,6 +594,10 @@ function executeScheduledTasks(params: ScheduledTaskToolParams): AgentToolResult
 /** Extension factory that registers /tasks, /scheduled, and task-management tools. */
 export const scheduledTasks: ExtensionFactory = (pi: ExtensionAPI) => {
   const handler = async (args: string) => {
+    if (readAccessConfig().mode !== "single-user") {
+      pi.sendMessage({ customType: "scheduled-tasks", content: "Task listing is disabled until owner-bound scheduling is integrated.", display: true });
+      return;
+    }
     const token = (args || "").trim().toLowerCase();
     const filter = token === "all" || token === "" ? null : token;
 

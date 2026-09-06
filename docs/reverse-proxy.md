@@ -111,8 +111,11 @@ Cloudflare Tunnel will supply the external host/proto context. With `PICLAW_TRUS
 
 ### Notes for passkeys
 
-If WebAuthn/passkeys are enabled, the browser hostname used during enrolment/login must match the public hostname users actually visit.
-Enable proxy trust behind the tunnel.
+If WebAuthn/passkeys are enabled, the browser hostname used during enrolment/login must match the public hostname users actually visit. An account can have multiple credentials; keys registered for another RP ID do not satisfy the current hostname's factor checks. Enable proxy trust behind the tunnel.
+
+Only accept forwarded headers from your trusted proxy: restrict direct backend access and have the proxy overwrite client-supplied forwarding headers. Preserve browser Origin and Cookie headers. In the gated family APIs, account mutations/invitation redemption require a matching Origin, and enrolment cookies use Secure/HttpOnly/SameSite=Strict. Use HTTPS for browser ceremonies. Do not strip private/no-store response headers or cache account, invitation or auth responses.
+
+This is not a guide to deploying family mode; [multi-user startup is still disabled](multi-user/README.md).
 
 ## Caddy example
 

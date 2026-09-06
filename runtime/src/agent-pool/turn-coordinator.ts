@@ -30,6 +30,8 @@ export interface AgentTurnOutput {
   cause?: AgentTurnCause;
   /** The completed assistant message committed immediately before tool dispatch. */
   followedByToolUse?: boolean;
+  /** Positive evidence of a successful terminal assistant response, not merely a persisted checkpoint. */
+  terminal?: boolean;
 }
 
 /** Error state captured from an assistant message with stopReason "error". */
@@ -198,6 +200,11 @@ export class AgentTurnCoordinator {
           turnKind: options.turnKind,
           cause: options.cause,
           ...(options.followedByToolUse ? { followedByToolUse: true } : {}),
+          ...(options.cause === "completed_boundary"
+            && lastAssistantState?.stopReason === "stop"
+            && !lastAssistantState.hadToolCallContent
+            && currentTurnPhase !== "commentary"
+            ? { terminal: true } : {}),
         });
         turnCount += 1;
       }
@@ -331,8 +338,10 @@ export class AgentTurnCoordinator {
 
           messageHasDelta = false;
           messageComplete = true;
-          if (commentaryOnly && message.stopReason === "error") {
-            if (currentTurnText.trim() && onTurnComplete) {
+          // Failed output is still durable, regardless of provider phase. A
+          // later text_start must not promote an unphased failure to success.
+          if (onTurnComplete && (message.stopReason === "error" || message.stopReason === "aborted" || message.stopReason === "length")) {
+            if (currentTurnText.trim()) {
               flushTurn({ turnKind: "intermediate", cause: "failed_boundary" });
             } else {
               resetCurrentTurn();

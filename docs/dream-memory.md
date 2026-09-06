@@ -8,6 +8,10 @@ Dream and AutoDream keep the workspace memory layer coherent across sessions:
 Both run as **out-of-band agent turns** on a dedicated temporary `dream:` channel
 that is cleaned up after the run, so Dream work does not appear in normal chat history.
 
+## Access-mode scope
+
+This guide describes the existing single-user Dream pipeline. Gated family model execution selects `notes/users/<immutable-user-id>/MEMORY.md`, `preferences.md` and explicit `notes/family/MEMORY.md`; it does not substitute global personal memory. Dream/AutoDream collection, queue provenance and shared/personal writes still need owner-aware integration. Shared filesystem access is not restricted by prompt selection. See [Access modes](multi-user/README.md#model-identity-foundation).
+
 ## Flow
 
 Dream follows a four-phase model-driven flow:

@@ -26,6 +26,11 @@ function config(overrides: Partial<WebAuthRuntimeConfig> = {}): WebAuthRuntimeCo
 }
 
 describe("web auth runtime helpers", () => {
+  test("multi-user configuration never disables request authentication", () => {
+    for (const accessMode of ["family-shared", "isolated-containers"] as const) {
+      expect(isAuthEnabled(config({ accessMode, totpSecret: "", passkeyMode: "totp-only" }))).toBe(true);
+    }
+  });
   test("evaluates auth mode flags", () => {
     expect(isTotpEnabled(config())).toBe(true);
     expect(isPasskeyEnabled(config())).toBe(true);

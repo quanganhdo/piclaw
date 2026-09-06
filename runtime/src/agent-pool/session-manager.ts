@@ -17,7 +17,12 @@ import {
   restoreClaimedDeferredBranchSeed,
   seedSessionManagerFromDeferredBranchSeed,
 } from "./branch-seeding.js";
-import { getChatBranchByChatJid } from "../db.js";
+import { getChatBranchByChatJid, getDb } from "../db.js";
+import { readAccessConfig } from "../core/config-access.js";
+import { ChatAccessDenied } from "../db/session-ownership.js";
+import { readOwnedForkSeed, finishOwnedForkSeed } from "../db/owned-forks.js";
+import { requireOwnedSessionExecution } from "./owned-session-access.js";
+import { importAdoptedSession } from './adopted-session-import.js';
 import { createDefaultSession, createSessionInDir, ensureNamedSessionDir, ensureSessionDir, lightweightPrewarmSession } from "./session.js";
 import { forcePersistSessionFile, seedRotatedSession } from "../session-rotation.js";
 import { getSessionPersistencePort } from "./session-persistence.js";
@@ -107,6 +112,13 @@ export class AgentSessionManager {
     };
   }
 
+  /** Lifecycle callers must not archive while a run, hydration or disposal is in flight. */
+  hasPendingSessionWork(chatJid: string): boolean {
+    return this.createInFlight.has(chatJid) || this.createSideInFlight.has(chatJid)
+      || this.branchSeedRealizationInFlight.has(chatJid) || this.evictionProtectionCounts.has(chatJid)
+      || this.idleMainDisposalsInFlight.has(chatJid) || this.idleSideDisposalsInFlight.has(chatJid);
+  }
+
   private getEvictionProtectedChatJids(explicit: string[] = []): string[] {
     return [...new Set([...explicit, ...this.evictionProtectionCounts.keys()])];
   }
@@ -130,15 +142,19 @@ export class AgentSessionManager {
   }
 
   async refreshRuntime(chatJid: string, runtime: AgentSessionRuntime): Promise<void> {
+    requireOwnedSessionExecution(chatJid);
     const entry = this.options.pool.get(chatJid);
     if (entry) {
       entry.lastUsed = Date.now();
     }
     await this.options.bindSession(runtime, chatJid);
+    requireOwnedSessionExecution(chatJid);
     this.options.ensureBranchRegistration(chatJid, runtime.session);
   }
 
   async getOrCreate(chatJid: string): Promise<AgentSessionRuntime> {
+    const owner = requireOwnedSessionExecution(chatJid);
+    if (owner) readOwnedForkSeed(getDb(), owner, chatJid);
     if (this.isShuttingDown) {
       throw new Error("Session manager is shutting down.");
     }
@@ -147,6 +163,7 @@ export class AgentSessionManager {
       await pendingIdleDispose;
     }
 
+    requireOwnedSessionExecution(chatJid);
     const knownInvalidSeedError = this.getBlockingInvalidSeedError(chatJid);
     if (knownInvalidSeedError) {
       throw knownInvalidSeedError;
@@ -154,7 +171,9 @@ export class AgentSessionManager {
 
     const pendingCreate = this.createInFlight.get(chatJid);
     if (pendingCreate) {
-      return await pendingCreate;
+      const runtime = await pendingCreate;
+      requireOwnedSessionExecution(chatJid);
+      return runtime;
     }
 
     const existing = this.options.pool.get(chatJid);
@@ -162,6 +181,7 @@ export class AgentSessionManager {
       existing.lastUsed = Date.now();
       try {
         await this.realizeDeferredBranchSeed(chatJid, existing.runtime);
+        requireOwnedSessionExecution(chatJid);
         return existing.runtime;
       } catch (error) {
         await this.disposeMainRuntimeAfterError(chatJid, existing.runtime, "get_or_create.realize_existing_after_error");
@@ -178,6 +198,7 @@ export class AgentSessionManager {
       const chatSessionDir = ensureSessionDir(chatJid);
 
       const extensionFactories = await this.options.getSessionExtensionFactories?.(chatJid) ?? [];
+      requireOwnedSessionExecution(chatJid);
       const runtime = this.options.createSession
         ? await this.options.createSession(chatJid, chatSessionDir)
         : await createDefaultSession(chatJid, {
@@ -223,6 +244,8 @@ export class AgentSessionManager {
   }
 
   async getOrCreateSide(chatJid: string): Promise<AgentSessionRuntime> {
+    const owner = requireOwnedSessionExecution(chatJid);
+    if (owner) readOwnedForkSeed(getDb(), owner, chatJid);
     if (this.isShuttingDown) {
       throw new Error("Session manager is shutting down.");
     }
@@ -231,9 +254,12 @@ export class AgentSessionManager {
       await pendingIdleDispose;
     }
 
+    requireOwnedSessionExecution(chatJid);
     const pendingCreate = this.createSideInFlight.get(chatJid);
     if (pendingCreate) {
-      return await pendingCreate;
+      const runtime = await pendingCreate;
+      requireOwnedSessionExecution(chatJid);
+      return runtime;
     }
 
     const existing = this.options.sidePool.get(chatJid);
@@ -250,6 +276,7 @@ export class AgentSessionManager {
       const sideSessionDir = ensureNamedSessionDir(chatJid, "btw-side");
 
       const extensionFactories = await this.options.getSessionExtensionFactories?.(chatJid) ?? [];
+      requireOwnedSessionExecution(chatJid);
       const runtime = this.options.createSideSession
         ? await this.options.createSideSession(chatJid, sideSessionDir)
         : await createSessionInDir(sideSessionDir, {
@@ -268,6 +295,12 @@ export class AgentSessionManager {
         throw new Error("Session manager is shutting down.");
       }
 
+      try {
+        requireOwnedSessionExecution(chatJid);
+      } catch (error) {
+        await this.disposeRuntimeOnce(runtime, "Discarding unauthorised side session", { operation: "get_or_create_side.identity_denied", chatJid });
+        throw error;
+      }
       this.options.sidePool.set(chatJid, { runtime, lastUsed: Date.now() });
       return runtime;
     })().finally(() => {
@@ -359,6 +392,8 @@ export class AgentSessionManager {
   }
 
   prewarm(chatJid: string, options: { priority?: boolean; mode?: "full" | "lightweight" } = {}): boolean {
+    // Queue provenance must be durable before background multi-user hydration is enabled.
+    if (readAccessConfig().mode !== "single-user") return false;
     if (this.isShuttingDown) return false;
     const normalizedChatJid = String(chatJid || "").trim();
     if (!normalizedChatJid) return false;
@@ -607,9 +642,17 @@ export class AgentSessionManager {
     if (pending) return await pending;
 
     const task = (async () => {
+      const owner = requireOwnedSessionExecution(chatJid);
       let seed;
       try {
-        seed = claimDeferredBranchSeed(chatJid);
+        if (owner) {
+          const json = readOwnedForkSeed(getDb(), owner, chatJid);
+          if (hasDeferredBranchSeed(chatJid)) throw new ChatAccessDenied();
+          seed = json === null ? null : JSON.parse(json);
+          if (seed && (seed.version !== 1 || !["stable_branch", "rotated_context", "adopted_jsonl"].includes(seed.mode))) throw new ChatAccessDenied();
+        } else {
+          seed = claimDeferredBranchSeed(chatJid);
+        }
       } catch (error) {
         if (error instanceof Error && error.message.startsWith("Invalid deferred branch seed for ")) {
           this.invalidDeferredBranchSeedErrors.set(chatJid, {
@@ -622,9 +665,12 @@ export class AgentSessionManager {
       if (!seed) return false;
 
       try {
-        const result = await runtime.newSession({
+        const result = owner && seed.mode === 'adopted_jsonl'
+          ? (await importAdoptedSession(runtime,chatJid,seed), {cancelled:false})
+          : await runtime.newSession({
           ...(seed.parentSession ? { parentSession: seed.parentSession } : {}),
           setup: async (sessionManager) => {
+            requireOwnedSessionExecution(chatJid);
             await seedSessionManagerFromDeferredBranchSeed(sessionManager, seed);
           },
         });
@@ -632,6 +678,7 @@ export class AgentSessionManager {
           throw new Error("Deferred branch seed was cancelled.");
         }
 
+        requireOwnedSessionExecution(chatJid);
         const session = runtime.session;
         await this.applyResolvedModel(session, seed.model, "realize_deferred_branch_seed");
         try {
@@ -668,11 +715,18 @@ export class AgentSessionManager {
           const reopened = await runtime.switchSession(persistedSessionFile);
           if (reopened.cancelled) throw new Error("Deferred branch session could not be reopened after persistence.");
         }
-        finalizeClaimedDeferredBranchSeed(chatJid);
+        if (owner) {
+          if (!persistedSessionFile) throw new Error("Owned fork must be persisted before completing its seed.");
+          const current = requireOwnedSessionExecution(chatJid);
+          if (!current) throw new ChatAccessDenied();
+          finishOwnedForkSeed(getDb(), current, chatJid);
+        } else {
+          finalizeClaimedDeferredBranchSeed(chatJid);
+        }
         this.invalidDeferredBranchSeedErrors.delete(chatJid);
         return true;
       } catch (error) {
-        restoreClaimedDeferredBranchSeed(chatJid);
+        if (!owner) restoreClaimedDeferredBranchSeed(chatJid);
         throw error;
       }
     })().finally(() => {
@@ -721,6 +775,7 @@ export class AgentSessionManager {
           if (!next) continue;
           const { chatJid, mode } = next;
           this.queuedPrewarms.delete(chatJid);
+          if (readAccessConfig().mode !== "single-user") continue;
           if (this.isShuttingDown) continue;
           if (this.prewarmInFlight.has(chatJid)) continue;
           if (this.options.pool.has(chatJid) && !hasDeferredBranchSeed(chatJid)) continue;

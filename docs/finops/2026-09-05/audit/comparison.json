@@ -1,0 +1,1741 @@
+{
+  "groups": {
+    "GitHub Copilot": [
+      "github-copilot/gpt-6-astra",
+      "github-copilot/claude-fable-5.1",
+      "github-copilot/gpt-5.6-sol"
+    ],
+    "OpenAI Codex": [
+      "openai-codex/gpt-6-astra",
+      "openai-codex/gpt-5.6-sol",
+      "openai-codex/gpt-5.6-terra"
+    ],
+    "Anthropic public API": [
+      "anthropic/claude-fable-5.1",
+      "anthropic/claude-fable-5",
+      "anthropic/claude-opus-5"
+    ],
+    "OpenRouter premium/value shortlist": [
+      "openrouter/anthropic/claude-fable-5.1",
+      "openrouter/openai/gpt-6-astra",
+      "openrouter/deepseek/deepseek-v4-pro-0813"
+    ],
+    "Cerebras": [
+      "cerebras/gemma-4-31b",
+      "cerebras/gpt-oss-120b",
+      "cerebras/zai-glm-4.7"
+    ],
+    "Azure OpenAI (native reference only)": [
+      "azure-openai/gpt-5.4-pro",
+      "azure-openai/gpt-5.4",
+      "azure-openai/gpt-5.3-codex"
+    ],
+    "Azure Foundry (verification incomplete)": [
+      "azure-foundry/deepseek-v4-pro",
+      "azure-foundry/deepseek-v4-flash",
+      "azure-foundry/mistral-large-3"
+    ],
+    "Open-weight capability candidates via OpenRouter": [
+      "openrouter/deepseek/deepseek-v4-pro-0813",
+      "openrouter/moonshotai/kimi-k3",
+      "openrouter/minimax/minimax-m3"
+    ]
+  },
+  "results": [
+    {
+      "key": "github-copilot/gpt-6-astra",
+      "rate": {
+        "provider": "github-copilot",
+        "id": "gpt-6-astra",
+        "name": "gpt-6-astra",
+        "input": 10,
+        "output": 50,
+        "cr": 1,
+        "cw": 12.5,
+        "cacheReadPolicy": "published",
+        "cacheWritePolicy": "published",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "source": "https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing.md",
+        "evidence": "public-first-party",
+        "threshold": 272000,
+        "long": {
+          "input": 20,
+          "cr": 2,
+          "cw": 25,
+          "output": 75
+        },
+        "billing": "AI credit consumption; subscription allowance/budget not deducted",
+        "contextWindow": 1050000,
+        "contextSource": "https://developers.openai.com/api/docs/models/gpt-6-astra.md"
+      },
+      "contextWindow": 1050000,
+      "overContextRequests": 0,
+      "sevenDay": {
+        "usd": 6858.205977,
+        "perDay": 979.743711,
+        "longRequests": 3816
+      },
+      "baseOnly": {
+        "usd": 3603.399543000002,
+        "perDay": 514.7713632857145,
+        "longRequests": 0
+      },
+      "cold": {
+        "usd": 42256.77578500006,
+        "perDay": 6036.682255000009,
+        "longRequests": 3816
+      },
+      "oneHour": {
+        "usd": 6858.205977,
+        "perDay": 979.743711,
+        "longRequests": 3816
+      },
+      "last24h": {
+        "usd": 643.9813295000001,
+        "perDay": 643.9813295000001,
+        "longRequests": 306
+      }
+    },
+    {
+      "key": "github-copilot/claude-fable-5.1",
+      "rate": {
+        "provider": "github-copilot",
+        "id": "claude-fable-5.1",
+        "name": "Claude Fable 5.1",
+        "input": 10,
+        "output": 50,
+        "cr": 0.25,
+        "cw": 12.5,
+        "cacheReadPolicy": "published",
+        "cacheWritePolicy": "published",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "cw1h": 20,
+        "source": "https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing.md",
+        "evidence": "public-first-party",
+        "restricted": false,
+        "retired": false,
+        "billing": "AI credit consumption; subscription allowance/budget not deducted"
+      },
+      "contextWindow": null,
+      "overContextRequests": null,
+      "sevenDay": {
+        "usd": 2064.442155750001,
+        "perDay": 294.9203079642858,
+        "longRequests": 0
+      },
+      "baseOnly": {
+        "usd": 2064.442155750001,
+        "perDay": 294.9203079642858,
+        "longRequests": 0
+      },
+      "cold": {
+        "usd": 21849.572319999963,
+        "perDay": 3121.367474285709,
+        "longRequests": 0
+      },
+      "oneHour": {
+        "usd": 2728.3897657500133,
+        "perDay": 389.7699665357162,
+        "longRequests": 0
+      },
+      "last24h": {
+        "usd": 234.51820975000015,
+        "perDay": 234.51820975000015,
+        "longRequests": 0
+      }
+    },
+    {
+      "key": "github-copilot/gpt-5.6-sol",
+      "rate": {
+        "provider": "github-copilot",
+        "id": "gpt-5.6-sol",
+        "name": "gpt-5.6-sol",
+        "input": 4,
+        "output": 20,
+        "cr": 0.4,
+        "cw": 5,
+        "cacheReadPolicy": "published",
+        "cacheWritePolicy": "published",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "source": "https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing.md",
+        "evidence": "public-first-party",
+        "threshold": 272000,
+        "long": {
+          "input": 8,
+          "cr": 0.8,
+          "cw": 10,
+          "output": 30
+        },
+        "billing": "AI credit consumption; subscription allowance/budget not deducted",
+        "contextWindow": 1050000,
+        "contextSource": "https://developers.openai.com/api/docs/models/gpt-5.6-sol.md"
+      },
+      "contextWindow": 1050000,
+      "overContextRequests": 0,
+      "sevenDay": {
+        "usd": 2743.282390800002,
+        "perDay": 391.8974844000003,
+        "longRequests": 3816
+      },
+      "baseOnly": {
+        "usd": 1441.359817200002,
+        "perDay": 205.908545314286,
+        "longRequests": 0
+      },
+      "cold": {
+        "usd": 16902.710313999985,
+        "perDay": 2414.672901999998,
+        "longRequests": 3816
+      },
+      "oneHour": {
+        "usd": 2743.282390800002,
+        "perDay": 391.8974844000003,
+        "longRequests": 3816
+      },
+      "last24h": {
+        "usd": 257.59253179999996,
+        "perDay": 257.59253179999996,
+        "longRequests": 306
+      }
+    },
+    {
+      "key": "openai-codex/gpt-6-astra",
+      "rate": {
+        "provider": "openai-codex",
+        "id": "gpt-6-astra",
+        "name": "gpt-6-astra",
+        "input": 10,
+        "output": 50,
+        "cr": 1,
+        "cw": 12.5,
+        "cacheReadPolicy": "published",
+        "cacheWritePolicy": "published",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "source": "https://developers.openai.com/api/docs/pricing.md",
+        "evidence": "public-API-equivalent",
+        "threshold": 272000,
+        "long": {
+          "input": 20,
+          "cr": 2,
+          "cw": 25,
+          "output": 75
+        },
+        "billing": "ChatGPT subscription; API-equivalent only, not an invoice",
+        "contextWindow": 1050000,
+        "contextSource": "https://developers.openai.com/api/docs/models/gpt-6-astra.md"
+      },
+      "contextWindow": 1050000,
+      "overContextRequests": 0,
+      "sevenDay": {
+        "usd": 6858.205977,
+        "perDay": 979.743711,
+        "longRequests": 3816
+      },
+      "baseOnly": {
+        "usd": 3603.399543000002,
+        "perDay": 514.7713632857145,
+        "longRequests": 0
+      },
+      "cold": {
+        "usd": 42256.77578500006,
+        "perDay": 6036.682255000009,
+        "longRequests": 3816
+      },
+      "oneHour": {
+        "usd": 6858.205977,
+        "perDay": 979.743711,
+        "longRequests": 3816
+      },
+      "last24h": {
+        "usd": 643.9813295000001,
+        "perDay": 643.9813295000001,
+        "longRequests": 306
+      }
+    },
+    {
+      "key": "openai-codex/gpt-5.6-sol",
+      "rate": {
+        "provider": "openai-codex",
+        "id": "gpt-5.6-sol",
+        "name": "gpt-5.6-sol",
+        "input": 4,
+        "output": 20,
+        "cr": 0.4,
+        "cw": 5,
+        "cacheReadPolicy": "published",
+        "cacheWritePolicy": "published",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "source": "https://developers.openai.com/api/docs/pricing.md",
+        "evidence": "public-API-equivalent",
+        "threshold": 272000,
+        "long": {
+          "input": 8,
+          "cr": 0.8,
+          "cw": 10,
+          "output": 30
+        },
+        "billing": "ChatGPT subscription; API-equivalent only, not an invoice",
+        "contextWindow": 1050000,
+        "contextSource": "https://developers.openai.com/api/docs/models/gpt-5.6-sol.md"
+      },
+      "contextWindow": 1050000,
+      "overContextRequests": 0,
+      "sevenDay": {
+        "usd": 2743.282390800002,
+        "perDay": 391.8974844000003,
+        "longRequests": 3816
+      },
+      "baseOnly": {
+        "usd": 1441.359817200002,
+        "perDay": 205.908545314286,
+        "longRequests": 0
+      },
+      "cold": {
+        "usd": 16902.710313999985,
+        "perDay": 2414.672901999998,
+        "longRequests": 3816
+      },
+      "oneHour": {
+        "usd": 2743.282390800002,
+        "perDay": 391.8974844000003,
+        "longRequests": 3816
+      },
+      "last24h": {
+        "usd": 257.59253179999996,
+        "perDay": 257.59253179999996,
+        "longRequests": 306
+      }
+    },
+    {
+      "key": "openai-codex/gpt-5.6-terra",
+      "rate": {
+        "provider": "openai-codex",
+        "id": "gpt-5.6-terra",
+        "name": "gpt-5.6-terra",
+        "input": 2,
+        "output": 12,
+        "cr": 0.2,
+        "cw": 2.5,
+        "cacheReadPolicy": "published",
+        "cacheWritePolicy": "published",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "source": "https://developers.openai.com/api/docs/pricing.md",
+        "evidence": "public-API-equivalent",
+        "threshold": 272000,
+        "long": {
+          "input": 4,
+          "cr": 0.4,
+          "cw": 5,
+          "output": 18
+        },
+        "billing": "ChatGPT subscription; API-equivalent only, not an invoice",
+        "contextWindow": 1050000,
+        "contextSource": "https://developers.openai.com/api/docs/models/gpt-5.6-terra.md"
+      },
+      "contextWindow": 1050000,
+      "overContextRequests": 0,
+      "sevenDay": {
+        "usd": 1378.702554399999,
+        "perDay": 196.95750777142842,
+        "longRequests": 3816
+      },
+      "baseOnly": {
+        "usd": 725.704796600001,
+        "perDay": 103.67211380000015,
+        "longRequests": 0
+      },
+      "cold": {
+        "usd": 8458.416515999992,
+        "perDay": 1208.3452165714275,
+        "longRequests": 3816
+      },
+      "oneHour": {
+        "usd": 1378.702554399999,
+        "perDay": 196.95750777142842,
+        "longRequests": 3816
+      },
+      "last24h": {
+        "usd": 129.5452879,
+        "perDay": 129.5452879,
+        "longRequests": 306
+      }
+    },
+    {
+      "key": "anthropic/claude-fable-5.1",
+      "rate": {
+        "provider": "anthropic",
+        "id": "claude-fable-5.1",
+        "name": "Claude Fable 5.1",
+        "input": 10,
+        "output": 50,
+        "cr": 0.25,
+        "cw": 12.5,
+        "cacheReadPolicy": "published",
+        "cacheWritePolicy": "published",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "cw1h": 20,
+        "source": "https://platform.claude.com/docs/en/about-claude/pricing.md",
+        "evidence": "public-first-party",
+        "restricted": false,
+        "retired": false
+      },
+      "contextWindow": null,
+      "overContextRequests": null,
+      "sevenDay": {
+        "usd": 2064.442155750001,
+        "perDay": 294.9203079642858,
+        "longRequests": 0
+      },
+      "baseOnly": {
+        "usd": 2064.442155750001,
+        "perDay": 294.9203079642858,
+        "longRequests": 0
+      },
+      "cold": {
+        "usd": 21849.572319999963,
+        "perDay": 3121.367474285709,
+        "longRequests": 0
+      },
+      "oneHour": {
+        "usd": 2728.3897657500133,
+        "perDay": 389.7699665357162,
+        "longRequests": 0
+      },
+      "last24h": {
+        "usd": 234.51820975000015,
+        "perDay": 234.51820975000015,
+        "longRequests": 0
+      }
+    },
+    {
+      "key": "anthropic/claude-fable-5",
+      "rate": {
+        "provider": "anthropic",
+        "id": "claude-fable-5",
+        "name": "Claude Fable 5",
+        "input": 10,
+        "output": 50,
+        "cr": 1,
+        "cw": 12.5,
+        "cacheReadPolicy": "published",
+        "cacheWritePolicy": "published",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "cw1h": 20,
+        "source": "https://platform.claude.com/docs/en/about-claude/pricing.md",
+        "evidence": "public-first-party",
+        "restricted": false,
+        "retired": false
+      },
+      "contextWindow": 1000000,
+      "overContextRequests": 0,
+      "sevenDay": {
+        "usd": 3603.399543000002,
+        "perDay": 514.7713632857145,
+        "longRequests": 0
+      },
+      "baseOnly": {
+        "usd": 3603.399543000002,
+        "perDay": 514.7713632857145,
+        "longRequests": 0
+      },
+      "cold": {
+        "usd": 21849.572319999963,
+        "perDay": 3121.367474285709,
+        "longRequests": 0
+      },
+      "oneHour": {
+        "usd": 4267.347152999983,
+        "perDay": 609.6210218571405,
+        "longRequests": 0
+      },
+      "last24h": {
+        "usd": 362.0872540000001,
+        "perDay": 362.0872540000001,
+        "longRequests": 0
+      }
+    },
+    {
+      "key": "anthropic/claude-opus-5",
+      "rate": {
+        "provider": "anthropic",
+        "id": "claude-opus-5",
+        "name": "Claude Opus 5",
+        "input": 5,
+        "output": 25,
+        "cr": 0.5,
+        "cw": 6.25,
+        "cacheReadPolicy": "published",
+        "cacheWritePolicy": "published",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "cw1h": 10,
+        "source": "https://platform.claude.com/docs/en/about-claude/pricing.md",
+        "evidence": "public-first-party",
+        "restricted": false,
+        "retired": false
+      },
+      "contextWindow": 1000000,
+      "overContextRequests": 0,
+      "sevenDay": {
+        "usd": 1801.699771500001,
+        "perDay": 257.38568164285726,
+        "longRequests": 0
+      },
+      "baseOnly": {
+        "usd": 1801.699771500001,
+        "perDay": 257.38568164285726,
+        "longRequests": 0
+      },
+      "cold": {
+        "usd": 10924.786159999981,
+        "perDay": 1560.6837371428544,
+        "longRequests": 0
+      },
+      "oneHour": {
+        "usd": 2133.6735764999917,
+        "perDay": 304.81051092857024,
+        "longRequests": 0
+      },
+      "last24h": {
+        "usd": 181.04362700000004,
+        "perDay": 181.04362700000004,
+        "longRequests": 0
+      }
+    },
+    {
+      "key": "openrouter/anthropic/claude-fable-5.1",
+      "rate": {
+        "provider": "openrouter",
+        "id": "anthropic/claude-fable-5.1",
+        "name": "Anthropic: Claude Fable 5.1",
+        "input": 10,
+        "output": 50,
+        "cr": 0.25,
+        "cw": 12.5,
+        "cacheReadPolicy": "published",
+        "cacheWritePolicy": "published",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "source": "https://openrouter.ai/api/v1/models",
+        "evidence": "public-route",
+        "contextWindow": 1000000,
+        "huggingFaceId": null,
+        "description": "Claude Fable 5.1 improves on Claude Fable 5 across the board, with the biggest gains in agentic coding, long-running agentic workflows, and knowledge work: long code refactors, front-end and visual...",
+        "pricingOverrides": [],
+        "rawPricing": {
+          "prompt": "0.00001",
+          "completion": "0.00005",
+          "web_search": "0.01",
+          "input_cache_read": "0.00000025",
+          "input_cache_write": "0.0000125",
+          "input_cache_write_1h": "0.00002"
+        }
+      },
+      "contextWindow": 1000000,
+      "overContextRequests": 0,
+      "sevenDay": {
+        "usd": 2064.442155750001,
+        "perDay": 294.9203079642858,
+        "longRequests": 0
+      },
+      "baseOnly": {
+        "usd": 2064.442155750001,
+        "perDay": 294.9203079642858,
+        "longRequests": 0
+      },
+      "cold": {
+        "usd": 21849.572319999963,
+        "perDay": 3121.367474285709,
+        "longRequests": 0
+      },
+      "oneHour": {
+        "usd": 2064.442155750001,
+        "perDay": 294.9203079642858,
+        "longRequests": 0
+      },
+      "last24h": {
+        "usd": 234.51820975000015,
+        "perDay": 234.51820975000015,
+        "longRequests": 0
+      }
+    },
+    {
+      "key": "openrouter/openai/gpt-6-astra",
+      "rate": {
+        "provider": "openrouter",
+        "id": "openai/gpt-6-astra",
+        "name": "OpenAI: GPT-6 Astra",
+        "input": 10,
+        "output": 50,
+        "cr": 1,
+        "cw": 12.5,
+        "cacheReadPolicy": "published",
+        "cacheWritePolicy": "published",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "source": "https://openrouter.ai/api/v1/models",
+        "evidence": "public-route",
+        "contextWindow": 1050000,
+        "huggingFaceId": null,
+        "description": "GPT-6 Astra is OpenAI's flagship model for demanding end-to-end work. It is suited for advanced analysis, software engineering, deep research, scientific work, and document creation, with particular strengths in long-horizon...",
+        "pricingOverrides": [
+          {
+            "min_prompt_tokens": 272000,
+            "prompt": "0.00002",
+            "completion": "0.000075",
+            "input_cache_read": "0.000002",
+            "input_cache_write": "0.000025"
+          }
+        ],
+        "rawPricing": {
+          "prompt": "0.00001",
+          "completion": "0.00005",
+          "web_search": "0.01",
+          "input_cache_read": "0.000001",
+          "input_cache_write": "0.0000125",
+          "overrides": [
+            {
+              "min_prompt_tokens": 272000,
+              "prompt": "0.00002",
+              "completion": "0.000075",
+              "input_cache_read": "0.000002",
+              "input_cache_write": "0.000025"
+            }
+          ]
+        }
+      },
+      "contextWindow": 1050000,
+      "overContextRequests": 0,
+      "sevenDay": {
+        "usd": 6858.205977,
+        "perDay": 979.743711,
+        "longRequests": 3816
+      },
+      "baseOnly": {
+        "usd": 3603.399543000002,
+        "perDay": 514.7713632857145,
+        "longRequests": 0
+      },
+      "cold": {
+        "usd": 42256.77578500006,
+        "perDay": 6036.682255000009,
+        "longRequests": 3816
+      },
+      "oneHour": {
+        "usd": 6858.205977,
+        "perDay": 979.743711,
+        "longRequests": 3816
+      },
+      "last24h": {
+        "usd": 643.9813295000001,
+        "perDay": 643.9813295000001,
+        "longRequests": 306
+      }
+    },
+    {
+      "key": "openrouter/deepseek/deepseek-v4-pro-0813",
+      "rate": {
+        "provider": "openrouter",
+        "id": "deepseek/deepseek-v4-pro-0813",
+        "name": "DeepSeek: DeepSeek V4 Pro 0813",
+        "input": 0.57948,
+        "output": 1.73844,
+        "cr": 0.019316,
+        "cw": null,
+        "cacheReadPolicy": "published",
+        "cacheWritePolicy": "ordinary-input fallback",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "source": "https://openrouter.ai/api/v1/models",
+        "evidence": "public-route",
+        "contextWindow": 1048576,
+        "huggingFaceId": "deepseek-ai/DeepSeek-V4-Pro-0813",
+        "description": "DeepSeek V4 Pro 0813 is a large-scale mixture-of-experts model from DeepSeek. This is the GA release of DeepSeek V4 Pro.",
+        "pricingOverrides": [],
+        "rawPricing": {
+          "prompt": "0.00000057948",
+          "completion": "0.00000173844",
+          "input_cache_read": "0.000000019316"
+        }
+      },
+      "contextWindow": 1048576,
+      "overContextRequests": 0,
+      "sevenDay": {
+        "usd": 113.80249353910801,
+        "perDay": 16.25749907701543,
+        "longRequests": 0
+      },
+      "baseOnly": {
+        "usd": 113.80249353910801,
+        "perDay": 16.25749907701543,
+        "longRequests": 0
+      },
+      "cold": {
+        "usd": 1263.2271947011213,
+        "perDay": 180.4610278144459,
+        "longRequests": 0
+      },
+      "oneHour": {
+        "usd": 113.80249353910801,
+        "perDay": 16.25749907701543,
+        "longRequests": 0
+      },
+      "last24h": {
+        "usd": 13.245940606404005,
+        "perDay": 13.245940606404005,
+        "longRequests": 0
+      }
+    },
+    {
+      "key": "cerebras/gemma-4-31b",
+      "rate": {
+        "provider": "cerebras",
+        "id": "gemma-4-31b",
+        "name": "Gemma 4 31B IT",
+        "input": 0.99,
+        "output": 1.49,
+        "cr": null,
+        "cw": null,
+        "cacheReadPolicy": "ordinary-input fallback",
+        "cacheWritePolicy": "ordinary-input fallback",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "source": "installed:/opt/piclaw/current/app/node_modules/@earendil-works/pi-ai/dist/providers/data/cerebras.json",
+        "evidence": "catalogue-only",
+        "contextWindow": 131072
+      },
+      "contextWindow": 131072,
+      "overContextRequests": 4318,
+      "sevenDay": {
+        "usd": 2154.4146034400032,
+        "perDay": 307.7735147771433,
+        "longRequests": 0
+      },
+      "baseOnly": {
+        "usd": 2154.4146034400032,
+        "perDay": 307.7735147771433,
+        "longRequests": 0
+      },
+      "cold": {
+        "usd": 2154.4146034400032,
+        "perDay": 307.7735147771433,
+        "longRequests": 0
+      },
+      "oneHour": {
+        "usd": 2154.4146034400032,
+        "perDay": 307.7735147771433,
+        "longRequests": 0
+      },
+      "last24h": {
+        "usd": 184.99799646,
+        "perDay": 184.99799646,
+        "longRequests": 0
+      }
+    },
+    {
+      "key": "cerebras/gpt-oss-120b",
+      "rate": {
+        "provider": "cerebras",
+        "id": "gpt-oss-120b",
+        "name": "GPT OSS 120B",
+        "input": 0.35,
+        "output": 0.75,
+        "cr": null,
+        "cw": null,
+        "cacheReadPolicy": "ordinary-input fallback",
+        "cacheWritePolicy": "ordinary-input fallback",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "source": "https://inference-docs.cerebras.ai/models/openai-oss.md",
+        "evidence": "public-first-party",
+        "contextWindow": 131072
+      },
+      "contextWindow": 131072,
+      "overContextRequests": 4318,
+      "sevenDay": {
+        "usd": 762.2225872000017,
+        "perDay": 108.88894102857168,
+        "longRequests": 0
+      },
+      "baseOnly": {
+        "usd": 762.2225872000017,
+        "perDay": 108.88894102857168,
+        "longRequests": 0
+      },
+      "cold": {
+        "usd": 762.2225872000017,
+        "perDay": 108.88894102857168,
+        "longRequests": 0
+      },
+      "oneHour": {
+        "usd": 762.2225872000017,
+        "perDay": 108.88894102857168,
+        "longRequests": 0
+      },
+      "last24h": {
+        "usd": 65.4651498,
+        "perDay": 65.4651498,
+        "longRequests": 0
+      }
+    },
+    {
+      "key": "cerebras/zai-glm-4.7",
+      "rate": {
+        "provider": "cerebras",
+        "id": "zai-glm-4.7",
+        "name": "GLM 4.7",
+        "input": null,
+        "output": null,
+        "cr": null,
+        "cw": null,
+        "cacheReadPolicy": "ordinary-input fallback",
+        "cacheWritePolicy": "ordinary-input fallback",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "source": "Configured local model has zero placeholder cost; public rate not yet verified",
+        "evidence": "unpriced"
+      },
+      "contextWindow": null,
+      "overContextRequests": null,
+      "sevenDay": null,
+      "baseOnly": null,
+      "cold": null,
+      "oneHour": null,
+      "last24h": null
+    },
+    {
+      "key": "azure-openai/gpt-5.4-pro",
+      "rate": {
+        "provider": "azure-openai",
+        "id": "gpt-5.4-pro",
+        "name": "gpt-5.4-pro",
+        "input": 30,
+        "output": 180,
+        "cr": null,
+        "cw": null,
+        "cacheReadPolicy": "ordinary-input fallback",
+        "cacheWritePolicy": "ordinary-input fallback",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "source": "https://developers.openai.com/api/docs/pricing.md",
+        "evidence": "native-reference-only",
+        "threshold": 272000,
+        "long": {
+          "input": 60,
+          "cr": null,
+          "cw": null,
+          "output": 270
+        },
+        "billing": "Azure regional/contract quote not verified; shown as native reference, not an Azure tariff"
+      },
+      "contextWindow": null,
+      "overContextRequests": null,
+      "sevenDay": {
+        "usd": 126876.24773999986,
+        "perDay": 18125.17824857141,
+        "longRequests": 3816
+      },
+      "baseOnly": {
+        "usd": 65624.09027999992,
+        "perDay": 9374.870039999989,
+        "longRequests": 0
+      },
+      "cold": {
+        "usd": 126876.24773999986,
+        "perDay": 18125.17824857141,
+        "longRequests": 3816
+      },
+      "oneHour": {
+        "usd": 126876.24773999986,
+        "perDay": 18125.17824857141,
+        "longRequests": 3816
+      },
+      "last24h": {
+        "usd": 10162.420650000004,
+        "perDay": 10162.420650000004,
+        "longRequests": 306
+      }
+    },
+    {
+      "key": "azure-openai/gpt-5.4",
+      "rate": {
+        "provider": "azure-openai",
+        "id": "gpt-5.4",
+        "name": "gpt-5.4",
+        "input": 2.5,
+        "output": 15,
+        "cr": 0.25,
+        "cw": null,
+        "cacheReadPolicy": "published",
+        "cacheWritePolicy": "ordinary-input fallback",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "source": "https://developers.openai.com/api/docs/pricing.md",
+        "evidence": "native-reference-only",
+        "threshold": 272000,
+        "long": {
+          "input": 5,
+          "cr": 0.5,
+          "cw": null,
+          "output": 22.5
+        },
+        "billing": "Azure regional/contract quote not verified; shown as native reference, not an Azure tariff"
+      },
+      "contextWindow": null,
+      "overContextRequests": null,
+      "sevenDay": {
+        "usd": 1617.0468067500092,
+        "perDay": 231.00668667857275,
+        "longRequests": 3816
+      },
+      "baseOnly": {
+        "usd": 851.8020282500025,
+        "perDay": 121.68600403571465,
+        "longRequests": 0
+      },
+      "cold": {
+        "usd": 10573.02064499998,
+        "perDay": 1510.431520714283,
+        "longRequests": 3816
+      },
+      "oneHour": {
+        "usd": 1617.0468067500092,
+        "perDay": 231.00668667857275,
+        "longRequests": 3816
+      },
+      "last24h": {
+        "usd": 154.8161279999998,
+        "perDay": 154.8161279999998,
+        "longRequests": 306
+      }
+    },
+    {
+      "key": "azure-openai/gpt-5.3-codex",
+      "rate": {
+        "provider": "azure-openai",
+        "id": "gpt-5.3-codex",
+        "name": "GPT-5.3 Codex",
+        "input": 1.75,
+        "output": 14,
+        "cr": 0.175,
+        "cw": null,
+        "cacheReadPolicy": "published",
+        "cacheWritePolicy": "ordinary-input fallback",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "evidence": "native-reference-only",
+        "source": "https://developers.openai.com/api/docs/pricing.md",
+        "billing": "Not a verified Azure tariff"
+      },
+      "contextWindow": null,
+      "overContextRequests": null,
+      "sevenDay": {
+        "usd": 605.0549737749999,
+        "perDay": 86.43642482499999,
+        "longRequests": 0
+      },
+      "baseOnly": {
+        "usd": 605.0549737749999,
+        "perDay": 86.43642482499999,
+        "longRequests": 0
+      },
+      "cold": {
+        "usd": 3836.8654870000055,
+        "perDay": 548.1236410000008,
+        "longRequests": 0
+      },
+      "oneHour": {
+        "usd": 605.0549737749999,
+        "perDay": 86.43642482499999,
+        "longRequests": 0
+      },
+      "last24h": {
+        "usd": 62.26919632499999,
+        "perDay": 62.26919632499999,
+        "longRequests": 0
+      }
+    },
+    {
+      "key": "azure-foundry/deepseek-v4-pro",
+      "rate": {
+        "provider": "azure-foundry",
+        "id": "deepseek-v4-pro",
+        "name": "DeepSeek V4 Pro",
+        "input": null,
+        "output": null,
+        "cr": null,
+        "cw": null,
+        "cacheReadPolicy": "ordinary-input fallback",
+        "cacheWritePolicy": "ordinary-input fallback",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "source": "historical local pricing reference 2026-08-03; Azure live numeric verification incomplete",
+        "evidence": "historical-unverified"
+      },
+      "contextWindow": null,
+      "overContextRequests": null,
+      "sevenDay": null,
+      "baseOnly": null,
+      "cold": null,
+      "oneHour": null,
+      "last24h": null
+    },
+    {
+      "key": "azure-foundry/deepseek-v4-flash",
+      "rate": {
+        "provider": "azure-foundry",
+        "id": "deepseek-v4-flash",
+        "name": "DeepSeek V4 Flash",
+        "input": 0.19,
+        "output": 0.51,
+        "cr": null,
+        "cw": null,
+        "cacheReadPolicy": "ordinary-input fallback",
+        "cacheWritePolicy": "ordinary-input fallback",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "source": "historical local pricing reference 2026-08-03; Azure live numeric verification incomplete",
+        "evidence": "historical-unverified"
+      },
+      "contextWindow": null,
+      "overContextRequests": null,
+      "sevenDay": {
+        "usd": 414.0363987200001,
+        "perDay": 59.14805696000001,
+        "longRequests": 0
+      },
+      "baseOnly": {
+        "usd": 414.0363987200001,
+        "perDay": 59.14805696000001,
+        "longRequests": 0
+      },
+      "cold": {
+        "usd": 414.0363987200001,
+        "perDay": 59.14805696000001,
+        "longRequests": 0
+      },
+      "oneHour": {
+        "usd": 414.0363987200001,
+        "perDay": 59.14805696000001,
+        "longRequests": 0
+      },
+      "last24h": {
+        "usd": 35.566707479999984,
+        "perDay": 35.566707479999984,
+        "longRequests": 0
+      }
+    },
+    {
+      "key": "azure-foundry/mistral-large-3",
+      "rate": {
+        "provider": "azure-foundry",
+        "id": "mistral-large-3",
+        "name": "Mistral Large 3",
+        "input": 0.5,
+        "output": 1.5,
+        "cr": null,
+        "cw": null,
+        "cacheReadPolicy": "ordinary-input fallback",
+        "cacheWritePolicy": "ordinary-input fallback",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "source": "historical local pricing reference 2026-08-03; Azure live numeric verification incomplete",
+        "evidence": "historical-unverified"
+      },
+      "contextWindow": null,
+      "overContextRequests": null,
+      "sevenDay": {
+        "usd": 1089.9661720000026,
+        "perDay": 155.7094531428575,
+        "longRequests": 0
+      },
+      "baseOnly": {
+        "usd": 1089.9661720000026,
+        "perDay": 155.7094531428575,
+        "longRequests": 0
+      },
+      "cold": {
+        "usd": 1089.9661720000026,
+        "perDay": 155.7094531428575,
+        "longRequests": 0
+      },
+      "oneHour": {
+        "usd": 1089.9661720000026,
+        "perDay": 155.7094531428575,
+        "longRequests": 0
+      },
+      "last24h": {
+        "usd": 93.640323,
+        "perDay": 93.640323,
+        "longRequests": 0
+      }
+    },
+    {
+      "key": "openrouter/moonshotai/kimi-k3",
+      "rate": {
+        "provider": "openrouter",
+        "id": "moonshotai/kimi-k3",
+        "name": "MoonshotAI: Kimi K3",
+        "input": 3,
+        "output": 15,
+        "cr": 0.3,
+        "cw": null,
+        "cacheReadPolicy": "published",
+        "cacheWritePolicy": "ordinary-input fallback",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "source": "https://openrouter.ai/api/v1/models",
+        "evidence": "public-route",
+        "contextWindow": 1048576,
+        "huggingFaceId": "moonshotai/Kimi-K3",
+        "description": "Kimi K3 is a 2.8T parameter open-weight multimodal reasoning model from Moonshot AI. It is suited for complex coding, knowledge work, and long-horizon agentic workflows, and is particularly strong at...",
+        "pricingOverrides": [],
+        "rawPricing": {
+          "prompt": "0.000003",
+          "completion": "0.000015",
+          "input_cache_read": "0.0000003"
+        }
+      },
+      "contextWindow": 1048576,
+      "overContextRequests": 0,
+      "sevenDay": {
+        "usd": 1014.6251018999973,
+        "perDay": 144.94644312857105,
+        "longRequests": 0
+      },
+      "baseOnly": {
+        "usd": 1014.6251018999973,
+        "perDay": 144.94644312857105,
+        "longRequests": 0
+      },
+      "cold": {
+        "usd": 6554.871695999998,
+        "perDay": 936.410242285714,
+        "longRequests": 0
+      },
+      "oneHour": {
+        "usd": 1014.6251018999973,
+        "perDay": 144.94644312857105,
+        "longRequests": 0
+      },
+      "last24h": {
+        "usd": 104.25490470000005,
+        "perDay": 104.25490470000005,
+        "longRequests": 0
+      }
+    },
+    {
+      "key": "openrouter/minimax/minimax-m3",
+      "rate": {
+        "provider": "openrouter",
+        "id": "minimax/minimax-m3",
+        "name": "MiniMax: MiniMax M3",
+        "input": 0.3,
+        "output": 1.2,
+        "cr": 0.06,
+        "cw": null,
+        "cacheReadPolicy": "published",
+        "cacheWritePolicy": "ordinary-input fallback",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "source": "https://openrouter.ai/api/v1/models",
+        "evidence": "public-route",
+        "contextWindow": 1048576,
+        "huggingFaceId": "MiniMaxAI/Minimax-M3",
+        "description": "MiniMax-M3 is a multimodal foundation model from MiniMax. It supports text, image, and video inputs with text output, a 1M-token context window, and is suited for long-horizon agentic work, coding,...",
+        "pricingOverrides": [],
+        "rawPricing": {
+          "prompt": "0.0000003",
+          "completion": "0.0000012",
+          "input_cache_read": "0.00000006"
+        }
+      },
+      "contextWindow": 1048576,
+      "overContextRequests": 0,
+      "sevenDay": {
+        "usd": 162.26707248000037,
+        "perDay": 23.181010354285768,
+        "longRequests": 0
+      },
+      "baseOnly": {
+        "usd": 162.26707248000037,
+        "perDay": 23.181010354285768,
+        "longRequests": 0
+      },
+      "cold": {
+        "usd": 654.7334364000018,
+        "perDay": 93.53334805714312,
+        "longRequests": 0
+      },
+      "oneHour": {
+        "usd": 162.26707248000037,
+        "perDay": 23.181010354285768,
+        "longRequests": 0
+      },
+      "last24h": {
+        "usd": 15.44517593999999,
+        "perDay": 15.44517593999999,
+        "longRequests": 0
+      }
+    },
+    {
+      "key": "openrouter/openai/gpt-5.6-sol",
+      "rate": {
+        "provider": "openrouter",
+        "id": "openai/gpt-5.6-sol",
+        "name": "OpenAI: GPT-5.6 Sol",
+        "input": 2,
+        "output": 10,
+        "cr": 0.19999999999999998,
+        "cw": 2.5,
+        "cacheReadPolicy": "published",
+        "cacheWritePolicy": "published",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "source": "https://openrouter.ai/api/v1/models",
+        "evidence": "public-route",
+        "contextWindow": 1050000,
+        "huggingFaceId": null,
+        "description": "GPT-5.6 Sol is the flagship model in OpenAI's GPT-5.6 series. It is suited for complex reasoning, coding, and agentic workflows, and is particularly strong at command-line and multi-step coding tasks...",
+        "pricingOverrides": [
+          {
+            "min_prompt_tokens": 272000,
+            "prompt": "0.000004",
+            "completion": "0.000015",
+            "input_cache_read": "0.0000004",
+            "input_cache_write": "0.000005"
+          }
+        ],
+        "rawPricing": {
+          "prompt": "0.000002",
+          "completion": "0.00001",
+          "web_search": "0.01",
+          "input_cache_read": "0.0000002",
+          "input_cache_write": "0.0000025",
+          "overrides": [
+            {
+              "min_prompt_tokens": 272000,
+              "prompt": "0.000004",
+              "completion": "0.000015",
+              "input_cache_read": "0.0000004",
+              "input_cache_write": "0.000005"
+            }
+          ]
+        }
+      },
+      "contextWindow": 1050000,
+      "overContextRequests": 0,
+      "sevenDay": {
+        "usd": 1371.6411954000005,
+        "perDay": 195.94874220000005,
+        "longRequests": 3816
+      },
+      "baseOnly": {
+        "usd": 720.6799086000009,
+        "perDay": 102.95427265714298,
+        "longRequests": 0
+      },
+      "cold": {
+        "usd": 8451.355156999993,
+        "perDay": 1207.336450999999,
+        "longRequests": 3816
+      },
+      "oneHour": {
+        "usd": 1371.6411954000005,
+        "perDay": 195.94874220000005,
+        "longRequests": 3816
+      },
+      "last24h": {
+        "usd": 128.79626589999995,
+        "perDay": 128.79626589999995,
+        "longRequests": 306
+      }
+    },
+    {
+      "key": "openrouter/anthropic/claude-fable-5",
+      "rate": {
+        "provider": "openrouter",
+        "id": "anthropic/claude-fable-5",
+        "name": "Anthropic: Claude Fable 5",
+        "input": 10,
+        "output": 50,
+        "cr": 1,
+        "cw": 12.5,
+        "cacheReadPolicy": "published",
+        "cacheWritePolicy": "published",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "source": "https://openrouter.ai/api/v1/models",
+        "evidence": "public-route",
+        "contextWindow": 1000000,
+        "huggingFaceId": null,
+        "description": "Claude Fable 5 is a Mythos-class model from Anthropic, built for autonomous knowledge work and coding. It supports text, image, and file inputs with text output, with reasoning support and...",
+        "pricingOverrides": [],
+        "rawPricing": {
+          "prompt": "0.00001",
+          "completion": "0.00005",
+          "web_search": "0.01",
+          "input_cache_read": "0.000001",
+          "input_cache_write": "0.0000125",
+          "input_cache_write_1h": "0.00002"
+        }
+      },
+      "contextWindow": 1000000,
+      "overContextRequests": 0,
+      "sevenDay": {
+        "usd": 3603.399543000002,
+        "perDay": 514.7713632857145,
+        "longRequests": 0
+      },
+      "baseOnly": {
+        "usd": 3603.399543000002,
+        "perDay": 514.7713632857145,
+        "longRequests": 0
+      },
+      "cold": {
+        "usd": 21849.572319999963,
+        "perDay": 3121.367474285709,
+        "longRequests": 0
+      },
+      "oneHour": {
+        "usd": 3603.399543000002,
+        "perDay": 514.7713632857145,
+        "longRequests": 0
+      },
+      "last24h": {
+        "usd": 362.0872540000001,
+        "perDay": 362.0872540000001,
+        "longRequests": 0
+      }
+    },
+    {
+      "key": "openrouter/anthropic/claude-opus-5",
+      "rate": {
+        "provider": "openrouter",
+        "id": "anthropic/claude-opus-5",
+        "name": "Claude Opus 5",
+        "input": 5,
+        "output": 25,
+        "cr": 0.5,
+        "cw": 6.25,
+        "cacheReadPolicy": "published",
+        "cacheWritePolicy": "published",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "source": "https://openrouter.ai/api/v1/models",
+        "evidence": "public-route",
+        "contextWindow": 1000000,
+        "huggingFaceId": null,
+        "description": "Claude Opus 5 is Anthropic’s flagship model for demanding reasoning, coding, and long-horizon agentic work. It is particularly strong at end-to-end software tasks, code review and bug finding, visual analysis...",
+        "pricingOverrides": [],
+        "rawPricing": {
+          "prompt": "0.000005",
+          "completion": "0.000025",
+          "web_search": "0.01",
+          "input_cache_read": "0.0000005",
+          "input_cache_write": "0.00000625",
+          "input_cache_write_1h": "0.00001"
+        }
+      },
+      "contextWindow": 1000000,
+      "overContextRequests": 0,
+      "sevenDay": {
+        "usd": 1801.699771500001,
+        "perDay": 257.38568164285726,
+        "longRequests": 0
+      },
+      "baseOnly": {
+        "usd": 1801.699771500001,
+        "perDay": 257.38568164285726,
+        "longRequests": 0
+      },
+      "cold": {
+        "usd": 10924.786159999981,
+        "perDay": 1560.6837371428544,
+        "longRequests": 0
+      },
+      "oneHour": {
+        "usd": 1801.699771500001,
+        "perDay": 257.38568164285726,
+        "longRequests": 0
+      },
+      "last24h": {
+        "usd": 181.04362700000004,
+        "perDay": 181.04362700000004,
+        "longRequests": 0
+      }
+    },
+    {
+      "key": "openrouter/deepseek/deepseek-v4-flash-0731",
+      "rate": {
+        "provider": "openrouter",
+        "id": "deepseek/deepseek-v4-flash-0731",
+        "name": "DeepSeek: DeepSeek V4 Flash 0731",
+        "input": 0.065,
+        "output": 0.18,
+        "cr": 0.016,
+        "cw": null,
+        "cacheReadPolicy": "published",
+        "cacheWritePolicy": "ordinary-input fallback",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "source": "https://openrouter.ai/api/v1/models",
+        "evidence": "public-route",
+        "contextWindow": 1310720,
+        "huggingFaceId": "deepseek-ai/DeepSeek-V4-Flash-0731",
+        "description": "DeepSeek V4 Flash 0731 is a sparse mixture-of-experts model from DeepSeek, with 13B active parameters out of 284B total. This re-post-trained revision is suited for coding, reasoning, and agent workflows....",
+        "pricingOverrides": [],
+        "rawPricing": {
+          "prompt": "0.000000065",
+          "completion": "0.00000018",
+          "input_cache_read": "0.000000016"
+        }
+      },
+      "contextWindow": 1310720,
+      "overContextRequests": 0,
+      "sevenDay": {
+        "usd": 41.112699732999936,
+        "perDay": 5.873242818999991,
+        "longRequests": 0
+      },
+      "baseOnly": {
+        "usd": 41.112699732999936,
+        "perDay": 5.873242818999991,
+        "longRequests": 0
+      },
+      "cold": {
+        "usd": 141.65791570000042,
+        "perDay": 20.23684510000006,
+        "longRequests": 0
+      },
+      "oneHour": {
+        "usd": 41.112699732999936,
+        "perDay": 5.873242818999991,
+        "longRequests": 0
+      },
+      "last24h": {
+        "usd": 3.834577284000003,
+        "perDay": 3.834577284000003,
+        "longRequests": 0
+      }
+    },
+    {
+      "key": "openrouter/z-ai/glm-5.2",
+      "rate": {
+        "provider": "openrouter",
+        "id": "z-ai/glm-5.2",
+        "name": "Z.ai: GLM 5.2",
+        "input": 0.966,
+        "output": 3.036,
+        "cr": 0.1932,
+        "cw": null,
+        "cacheReadPolicy": "published",
+        "cacheWritePolicy": "ordinary-input fallback",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "source": "https://openrouter.ai/api/v1/models",
+        "evidence": "public-route",
+        "contextWindow": 1048576,
+        "huggingFaceId": "zai-org/GLM-5.2",
+        "description": "GLM 5.2 is a large-scale reasoning model from Z.ai. It supports text input and output with a 1M-token context window, and is suited for long-horizon agent workflows, project-level software engineering,...",
+        "pricingOverrides": [],
+        "rawPricing": {
+          "prompt": "0.000000966",
+          "completion": "0.000003036",
+          "input_cache_read": "0.0000001932"
+        }
+      },
+      "contextWindow": 1048576,
+      "overContextRequests": 0,
+      "sevenDay": {
+        "usd": 520.4196697536001,
+        "perDay": 74.34566710765716,
+        "longRequests": 0
+      },
+      "baseOnly": {
+        "usd": 520.4196697536001,
+        "perDay": 74.34566710765716,
+        "longRequests": 0
+      },
+      "cold": {
+        "usd": 2106.1613615760025,
+        "perDay": 300.8801945108575,
+        "longRequests": 0
+      },
+      "oneHour": {
+        "usd": 520.4196697536001,
+        "perDay": 74.34566710765716,
+        "longRequests": 0
+      },
+      "last24h": {
+        "usd": 49.50417593879999,
+        "perDay": 49.50417593879999,
+        "longRequests": 0
+      }
+    },
+    {
+      "key": "openai/gpt-5.5",
+      "rate": {
+        "provider": "openai",
+        "id": "gpt-5.5",
+        "name": "gpt-5.5",
+        "input": 5,
+        "output": 30,
+        "cr": 0.5,
+        "cw": null,
+        "cacheReadPolicy": "published",
+        "cacheWritePolicy": "ordinary-input fallback",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "source": "https://developers.openai.com/api/docs/pricing.md",
+        "evidence": "public-first-party",
+        "threshold": 272000,
+        "long": {
+          "input": 10,
+          "cr": 1,
+          "cw": null,
+          "output": 45
+        }
+      },
+      "contextWindow": 272000,
+      "overContextRequests": 3816,
+      "sevenDay": {
+        "usd": 3234.0936135000184,
+        "perDay": 462.0133733571455,
+        "longRequests": 3816
+      },
+      "baseOnly": {
+        "usd": 1703.604056500005,
+        "perDay": 243.3720080714293,
+        "longRequests": 0
+      },
+      "cold": {
+        "usd": 21146.04128999996,
+        "perDay": 3020.863041428566,
+        "longRequests": 3816
+      },
+      "oneHour": {
+        "usd": 3234.0936135000184,
+        "perDay": 462.0133733571455,
+        "longRequests": 3816
+      },
+      "last24h": {
+        "usd": 309.6322559999996,
+        "perDay": 309.6322559999996,
+        "longRequests": 306
+      }
+    },
+    {
+      "key": "openai/gpt-5.6-sol",
+      "rate": {
+        "provider": "openai",
+        "id": "gpt-5.6-sol",
+        "name": "gpt-5.6-sol",
+        "input": 4,
+        "output": 20,
+        "cr": 0.4,
+        "cw": 5,
+        "cacheReadPolicy": "published",
+        "cacheWritePolicy": "published",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "source": "https://developers.openai.com/api/docs/pricing.md",
+        "evidence": "public-first-party",
+        "threshold": 272000,
+        "long": {
+          "input": 8,
+          "cr": 0.8,
+          "cw": 10,
+          "output": 30
+        },
+        "contextWindow": 1050000,
+        "contextSource": "https://developers.openai.com/api/docs/models/gpt-5.6-sol.md"
+      },
+      "contextWindow": 1050000,
+      "overContextRequests": 0,
+      "sevenDay": {
+        "usd": 2743.282390800002,
+        "perDay": 391.8974844000003,
+        "longRequests": 3816
+      },
+      "baseOnly": {
+        "usd": 1441.359817200002,
+        "perDay": 205.908545314286,
+        "longRequests": 0
+      },
+      "cold": {
+        "usd": 16902.710313999985,
+        "perDay": 2414.672901999998,
+        "longRequests": 3816
+      },
+      "oneHour": {
+        "usd": 2743.282390800002,
+        "perDay": 391.8974844000003,
+        "longRequests": 3816
+      },
+      "last24h": {
+        "usd": 257.59253179999996,
+        "perDay": 257.59253179999996,
+        "longRequests": 306
+      }
+    },
+    {
+      "key": "openai/gpt-5.6-terra",
+      "rate": {
+        "provider": "openai",
+        "id": "gpt-5.6-terra",
+        "name": "gpt-5.6-terra",
+        "input": 2,
+        "output": 12,
+        "cr": 0.2,
+        "cw": 2.5,
+        "cacheReadPolicy": "published",
+        "cacheWritePolicy": "published",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "source": "https://developers.openai.com/api/docs/pricing.md",
+        "evidence": "public-first-party",
+        "threshold": 272000,
+        "long": {
+          "input": 4,
+          "cr": 0.4,
+          "cw": 5,
+          "output": 18
+        },
+        "contextWindow": 1050000,
+        "contextSource": "https://developers.openai.com/api/docs/models/gpt-5.6-terra.md"
+      },
+      "contextWindow": 1050000,
+      "overContextRequests": 0,
+      "sevenDay": {
+        "usd": 1378.702554399999,
+        "perDay": 196.95750777142842,
+        "longRequests": 3816
+      },
+      "baseOnly": {
+        "usd": 725.704796600001,
+        "perDay": 103.67211380000015,
+        "longRequests": 0
+      },
+      "cold": {
+        "usd": 8458.416515999992,
+        "perDay": 1208.3452165714275,
+        "longRequests": 3816
+      },
+      "oneHour": {
+        "usd": 1378.702554399999,
+        "perDay": 196.95750777142842,
+        "longRequests": 3816
+      },
+      "last24h": {
+        "usd": 129.5452879,
+        "perDay": 129.5452879,
+        "longRequests": 306
+      }
+    },
+    {
+      "key": "anthropic/claude-sonnet-5",
+      "rate": {
+        "provider": "anthropic",
+        "id": "claude-sonnet-5",
+        "name": "Claude Sonnet 5",
+        "input": 2,
+        "output": 10,
+        "cr": 0.2,
+        "cw": 2.5,
+        "cacheReadPolicy": "published",
+        "cacheWritePolicy": "published",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "cw1h": 4,
+        "source": "https://platform.claude.com/docs/en/about-claude/pricing.md",
+        "evidence": "public-first-party",
+        "restricted": false,
+        "retired": false
+      },
+      "contextWindow": 1000000,
+      "overContextRequests": 0,
+      "sevenDay": {
+        "usd": 720.679908600001,
+        "perDay": 102.954272657143,
+        "longRequests": 0
+      },
+      "baseOnly": {
+        "usd": 720.679908600001,
+        "perDay": 102.954272657143,
+        "longRequests": 0
+      },
+      "cold": {
+        "usd": 4369.914463999988,
+        "perDay": 624.2734948571411,
+        "longRequests": 0
+      },
+      "oneHour": {
+        "usd": 853.4694306000023,
+        "perDay": 121.9242043714289,
+        "longRequests": 0
+      },
+      "last24h": {
+        "usd": 72.41745080000003,
+        "perDay": 72.41745080000003,
+        "longRequests": 0
+      }
+    },
+    {
+      "key": "anthropic/claude-sonnet-4.6",
+      "rate": {
+        "provider": "anthropic",
+        "id": "claude-sonnet-4.6",
+        "name": "Claude Sonnet 4.6",
+        "input": 3,
+        "output": 15,
+        "cr": 0.3,
+        "cw": 3.75,
+        "cacheReadPolicy": "published",
+        "cacheWritePolicy": "published",
+        "currency": "USD",
+        "unit": "per 1M tokens",
+        "cw1h": 6,
+        "source": "https://platform.claude.com/docs/en/about-claude/pricing.md",
+        "evidence": "public-first-party",
+        "restricted": false,
+        "retired": false
+      },
+      "contextWindow": null,
+      "overContextRequests": null,
+      "sevenDay": {
+        "usd": 1081.0198628999979,
+        "perDay": 154.43140898571397,
+        "longRequests": 0
+      },
+      "baseOnly": {
+        "usd": 1081.0198628999979,
+        "perDay": 154.43140898571397,
+        "longRequests": 0
+      },
+      "cold": {
+        "usd": 6554.871695999998,
+        "perDay": 936.410242285714,
+        "longRequests": 0
+      },
+      "oneHour": {
+        "usd": 1280.2041458999988,
+        "perDay": 182.8863065571427,
+        "longRequests": 0
+      },
+      "last24h": {
+        "usd": 108.62617620000005,
+        "perDay": 108.62617620000005,
+        "longRequests": 0
+      }
+    }
+  ]
+}

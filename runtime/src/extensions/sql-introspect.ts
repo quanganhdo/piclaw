@@ -2,9 +2,10 @@
  * sql-introspect – registers a read-only SQL tool for database introspection.
  */
 import { Type } from "typebox";
-import type { ExtensionAPI, ExtensionFactory } from "@earendil-works/pi-coding-agent";
+import type { AgentToolResult, ExtensionAPI, ExtensionFactory } from "@earendil-works/pi-coding-agent";
 
 import { getDb } from "../db.js";
+import { readAccessConfig } from "../core/config-access.js";
 
 const SqlIntrospectSchema = Type.Object({
   query: Type.String({
@@ -74,7 +75,7 @@ const SQL_HINT = [
 /** Extension factory that registers introspect_sql. */
 export const sqlIntrospect: ExtensionFactory = (pi: ExtensionAPI) => {
   pi.on("before_agent_start", async (event) => ({
-    systemPrompt: `${event.systemPrompt}\n\n${SQL_HINT}`,
+    systemPrompt: `${event.systemPrompt}\n\n${readAccessConfig().mode === "single-user" ? SQL_HINT : "## Database Introspection\nRaw SQL introspection is disabled in this access mode. Use owner-scoped message reads instead."}`,
   }));
 
   pi.registerTool({
@@ -83,7 +84,11 @@ export const sqlIntrospect: ExtensionFactory = (pi: ExtensionAPI) => {
     description: "Run read-only SQL against the messages database for introspection.",
     promptSnippet: "introspect_sql: Run read-only SELECT/PRAGMA/WITH/EXPLAIN SQL queries against SQLite.",
     parameters: SqlIntrospectSchema,
-    async execute(_toolCallId, params) {
+    async execute(_toolCallId, params): Promise<AgentToolResult<Record<string, unknown>>> {
+      if (readAccessConfig().mode !== "single-user") return {
+        content: [{ type: "text", text: "Raw SQL introspection is disabled in this access mode." }],
+        details: { error: "access_denied", rows: [], count: 0, returned: 0, truncated: false },
+      };
       const query = normalizeQuery(params.query);
       const limit = clampLimit(params.limit, 200);
 

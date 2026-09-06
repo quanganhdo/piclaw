@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="1310" viewBox="0 0 1240 1310" role="img" aria-labelledby="title desc"><title id="title">Model rankings and costs by workload</title><desc id="desc">Monthly API cost: frontier $106.80, precursor $25.00, open weights $8.86, recommended mix $48.19. Five workloads each show two ranked model choices per class with task costs. Highlighted cells indicate recommended starting models. Estimates assume 2.5 hours daily and our cache ratios, not historical usage volume.</desc><style>text{font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}.background{fill:#f7f8fa}.text{fill:#263342}.muted{fill:#566475}.strong{font-weight:600}.numeric{font-variant-numeric:tabular-nums}.cell{fill:white;stroke:#d9e0e8}.selected{fill:#edf7f3;stroke:#378773;stroke-width:1.5}.accent{fill:#276857}.grid{fill:none;stroke:#dce2e9;stroke-width:1}@media(prefers-color-scheme:dark){.background{fill:#111923}.text{fill:#e6edf5}.muted{fill:#b0bdcc}.cell{fill:#192431;stroke:#354557}.selected{fill:#17382f;stroke:#6ec6ac}.accent{fill:#83d9bf}.grid{stroke:#354252}}</style><rect x="0" y="0" width="1240" height="1310" class="background"/>
+<text x="40" y="58" font-size="32" class="text strong" >Which model for which workload?</text>
+<text x="40" y="90" font-size="17" class="muted" >2–3 hours of moderate use per day · our caching ratio · prices as of 5 Sep 2026</text>
+<text x="40" y="133" font-size="14" class="muted strong" >MONTHLY API ESTIMATE</text>
+<text x="1200" y="133" font-size="14" class="muted" text-anchor="end">Baseline: 2.5h/day · 8 tasks/day · 30 days</text>
+<path d="M340 147V333" class="grid"/>
+<text x="340" y="356" font-size="13" class="muted" text-anchor="middle">$0</text>
+<path d="M490 147V333" class="grid"/>
+<text x="490" y="356" font-size="13" class="muted" text-anchor="middle">$25</text>
+<path d="M640 147V333" class="grid"/>
+<text x="640" y="356" font-size="13" class="muted" text-anchor="middle">$50</text>
+<path d="M790 147V333" class="grid"/>
+<text x="790" y="356" font-size="13" class="muted" text-anchor="middle">$75</text>
+<path d="M940 147V333" class="grid"/>
+<text x="940" y="356" font-size="13" class="muted" text-anchor="middle">$100</text>
+<path d="M1090 147V333" class="grid"/>
+<text x="1090" y="356" font-size="13" class="muted" text-anchor="middle">$125</text>
+<text x="40" y="179" font-size="18" class="text" >Frontier choices</text>
+<rect x="340" y="159" width="640.806847825887" height="28" rx="4" fill="#537eab"/>
+<text x="992.806847825887" y="179" font-size="18" class="text strong" >$106.80</text>
+<text x="40" y="223" font-size="18" class="text" >Precursor choices</text>
+<rect x="340" y="203" width="150.00372388286442" height="28" rx="4" fill="#ae7c3e"/>
+<text x="502.0037238828644" y="223" font-size="18" class="text strong" >$25.00</text>
+<text x="40" y="267" font-size="18" class="text" >Open-weight choices</text>
+<rect x="340" y="247" width="53.16824899982032" height="28" rx="4" fill="#378773"/>
+<text x="405.1682489998203" y="267" font-size="18" class="text strong" >$8.86</text>
+<text x="40" y="311" font-size="18" class="text strong" >Recommended mix</text>
+<rect x="340" y="291" width="289.1574326127705" height="28" rx="4" fill="#707a8b"/>
+<text x="641.1574326127704" y="311" font-size="18" class="text strong" >$48.19</text>
+<path d="M40 384H1200" class="grid"/>
+<text x="40" y="422" font-size="14" class="muted strong" >WORKLOAD RANKINGS</text>
+<text x="1200" y="422" font-size="14" class="muted" text-anchor="end">1 → 2: suggested trial order · prices are USD per task</text>
+<rect x="244" y="442" width="312" height="32" rx="5" fill="#537eab" fill-opacity=".13"/>
+<text x="258" y="464" font-size="15" class="text strong" >FRONTIER</text>
+<rect x="566" y="442" width="312" height="32" rx="5" fill="#ae7c3e" fill-opacity=".13"/>
+<text x="580" y="464" font-size="15" class="text strong" >PRECURSOR</text>
+<rect x="888" y="442" width="312" height="32" rx="5" fill="#378773" fill-opacity=".13"/>
+<text x="902" y="464" font-size="15" class="text strong" >OPEN WEIGHTS</text>
+<text x="40" y="518" font-size="18" class="text strong" >Difficult debugging</text>
+<text x="40" y="543" font-size="15" class="muted" >Multi-file refactors</text>
+<text x="40" y="572" font-size="13" class="muted" >1 task/day · 25 min each</text>
+<rect x="244" y="490" width="312" height="110" rx="7" class="selected"/>
+<text x="256" y="509" font-size="10" class="accent strong" >START HERE</text>
+<text x="256" y="536" font-size="15" class="text strong" >1 · Fable 5.1</text>
+<text x="544" y="536" font-size="15" class="text numeric" text-anchor="end">$1.018</text>
+<text x="256" y="572" font-size="15" class="muted" >2 · Astra</text>
+<text x="544" y="572" font-size="15" class="muted numeric" text-anchor="end">$1.230</text>
+<rect x="566" y="490" width="312" height="110" rx="7" class="cell"/>
+<text x="578" y="509" font-size="10" class="muted" >ALTERNATIVES</text>
+<text x="578" y="536" font-size="15" class="text strong" >1 · Sol</text>
+<text x="866" y="536" font-size="15" class="text numeric" text-anchor="end">$0.246</text>
+<text x="578" y="572" font-size="15" class="muted" >2 · Terra</text>
+<text x="866" y="572" font-size="15" class="muted numeric" text-anchor="end">$0.276</text>
+<rect x="888" y="490" width="312" height="110" rx="7" class="cell"/>
+<text x="900" y="509" font-size="10" class="muted" >ALTERNATIVES</text>
+<text x="900" y="536" font-size="15" class="text strong" >1 · DeepSeek Pro 0813</text>
+<text x="1188" y="536" font-size="15" class="text numeric" text-anchor="end">$0.041</text>
+<text x="900" y="572" font-size="15" class="muted" >2 · Kimi K3</text>
+<text x="1188" y="572" font-size="15" class="muted numeric" text-anchor="end">$0.360</text>
+<text x="40" y="646" font-size="18" class="text strong" >Routine coding</text>
+<text x="40" y="671" font-size="15" class="muted" >Tests &amp; reviews</text>
+<text x="40" y="700" font-size="13" class="muted" >3 tasks/day · 20 min each</text>
+<rect x="244" y="618" width="312" height="110" rx="7" class="cell"/>
+<text x="256" y="637" font-size="10" class="muted" >ALTERNATIVES</text>
+<text x="256" y="664" font-size="15" class="text strong" >1 · Fable 5.1</text>
+<text x="544" y="664" font-size="15" class="text numeric" text-anchor="end">$0.489</text>
+<text x="256" y="700" font-size="15" class="muted" >2 · Astra</text>
+<text x="544" y="700" font-size="15" class="muted numeric" text-anchor="end">$0.560</text>
+<rect x="566" y="618" width="312" height="110" rx="7" class="selected"/>
+<text x="578" y="637" font-size="10" class="accent strong" >START HERE</text>
+<text x="578" y="664" font-size="15" class="text strong" >1 · Sol</text>
+<text x="866" y="664" font-size="15" class="text numeric" text-anchor="end">$0.112</text>
+<text x="578" y="700" font-size="15" class="muted" >2 · Terra</text>
+<text x="866" y="700" font-size="15" class="muted numeric" text-anchor="end">$0.128</text>
+<rect x="888" y="618" width="312" height="110" rx="7" class="cell"/>
+<text x="900" y="637" font-size="10" class="muted" >ALTERNATIVES</text>
+<text x="900" y="664" font-size="15" class="text strong" >1 · MiniMax M3</text>
+<text x="1188" y="664" font-size="15" class="text numeric" text-anchor="end">$0.017</text>
+<text x="900" y="700" font-size="15" class="muted" >2 · DeepSeek Pro 0813</text>
+<text x="1188" y="700" font-size="15" class="muted numeric" text-anchor="end">$0.019</text>
+<text x="40" y="774" font-size="18" class="text strong" >Infrastructure</text>
+<text x="40" y="799" font-size="15" class="muted" >Diagnosis &amp; scripting</text>
+<text x="40" y="828" font-size="13" class="muted" >1 task/day · 15 min each</text>
+<rect x="244" y="746" width="312" height="110" rx="7" class="cell"/>
+<text x="256" y="765" font-size="10" class="muted" >ALTERNATIVES</text>
+<text x="256" y="792" font-size="15" class="text strong" >1 · Astra</text>
+<text x="544" y="792" font-size="15" class="text numeric" text-anchor="end">$0.296</text>
+<text x="256" y="828" font-size="15" class="muted" >2 · Fable 5.1</text>
+<text x="544" y="828" font-size="15" class="muted numeric" text-anchor="end">$0.254</text>
+<rect x="566" y="746" width="312" height="110" rx="7" class="selected"/>
+<text x="578" y="765" font-size="10" class="accent strong" >START HERE</text>
+<text x="578" y="792" font-size="15" class="text strong" >1 · Sol</text>
+<text x="866" y="792" font-size="15" class="text numeric" text-anchor="end">$0.059</text>
+<text x="578" y="828" font-size="15" class="muted" >2 · Terra</text>
+<text x="866" y="828" font-size="15" class="muted numeric" text-anchor="end">$0.067</text>
+<rect x="888" y="746" width="312" height="110" rx="7" class="cell"/>
+<text x="900" y="765" font-size="10" class="muted" >ALTERNATIVES</text>
+<text x="900" y="792" font-size="15" class="text strong" >1 · DeepSeek Pro 0813</text>
+<text x="1188" y="792" font-size="15" class="text numeric" text-anchor="end">$0.0100</text>
+<text x="900" y="828" font-size="15" class="muted" >2 · MiniMax M3</text>
+<text x="1188" y="828" font-size="15" class="muted numeric" text-anchor="end">$0.0092</text>
+<text x="40" y="902" font-size="18" class="text strong" >Research</text>
+<text x="40" y="927" font-size="15" class="muted" >Document synthesis</text>
+<text x="40" y="956" font-size="13" class="muted" >1 task/day · 30 min each</text>
+<rect x="244" y="874" width="312" height="110" rx="7" class="cell"/>
+<text x="256" y="893" font-size="10" class="muted" >ALTERNATIVES</text>
+<text x="256" y="920" font-size="15" class="text strong" >1 · Fable 5.1</text>
+<text x="544" y="920" font-size="15" class="text numeric" text-anchor="end">$0.543</text>
+<text x="256" y="956" font-size="15" class="muted" >2 · Astra</text>
+<text x="544" y="956" font-size="15" class="muted numeric" text-anchor="end">$0.656</text>
+<rect x="566" y="874" width="312" height="110" rx="7" class="cell"/>
+<text x="578" y="893" font-size="10" class="muted" >ALTERNATIVES</text>
+<text x="578" y="920" font-size="15" class="text strong" >1 · Sol</text>
+<text x="866" y="920" font-size="15" class="text numeric" text-anchor="end">$0.131</text>
+<text x="578" y="956" font-size="15" class="muted" >2 · Fable 5</text>
+<text x="866" y="956" font-size="15" class="muted numeric" text-anchor="end">$0.656</text>
+<rect x="888" y="874" width="312" height="110" rx="7" class="selected"/>
+<text x="900" y="893" font-size="10" class="accent strong" >START HERE</text>
+<text x="900" y="920" font-size="15" class="text strong" >1 · Kimi K3</text>
+<text x="1188" y="920" font-size="15" class="text numeric" text-anchor="end">$0.192</text>
+<text x="900" y="956" font-size="15" class="muted" >2 · DeepSeek Pro 0813</text>
+<text x="1188" y="956" font-size="15" class="muted numeric" text-anchor="end">$0.022</text>
+<text x="40" y="1030" font-size="18" class="text strong" >Small tasks</text>
+<text x="40" y="1055" font-size="15" class="muted" >Extraction &amp; summaries</text>
+<text x="40" y="1084" font-size="13" class="muted" >2 tasks/day · 10 min each</text>
+<rect x="244" y="1002" width="312" height="110" rx="7" class="cell"/>
+<text x="256" y="1021" font-size="10" class="muted" >ALTERNATIVES</text>
+<text x="256" y="1048" font-size="15" class="text strong" >1 · Fable 5.1</text>
+<text x="544" y="1048" font-size="15" class="text numeric" text-anchor="end">$0.118</text>
+<text x="256" y="1084" font-size="15" class="muted" >2 · Astra</text>
+<text x="544" y="1084" font-size="15" class="muted numeric" text-anchor="end">$0.132</text>
+<rect x="566" y="1002" width="312" height="110" rx="7" class="cell"/>
+<text x="578" y="1021" font-size="10" class="muted" >ALTERNATIVES</text>
+<text x="578" y="1048" font-size="15" class="text strong" >1 · Terra</text>
+<text x="866" y="1048" font-size="15" class="text numeric" text-anchor="end">$0.030</text>
+<text x="578" y="1084" font-size="15" class="muted" >2 · Sol</text>
+<text x="866" y="1084" font-size="15" class="muted numeric" text-anchor="end">$0.026</text>
+<rect x="888" y="1002" width="312" height="110" rx="7" class="selected"/>
+<text x="900" y="1021" font-size="10" class="accent strong" >START HERE</text>
+<text x="900" y="1048" font-size="15" class="text strong" >1 · DeepSeek Flash 0731</text>
+<text x="1188" y="1048" font-size="15" class="text numeric" text-anchor="end">$0.0007</text>
+<text x="900" y="1084" font-size="15" class="muted" >2 · MiniMax M3</text>
+<text x="1188" y="1084" font-size="15" class="muted numeric" text-anchor="end">$0.0039</text>
+<path d="M40 1150H1200" class="grid"/>
+<text x="40" y="1182" font-size="15" class="text" >Cache mix: 94.46% reads · 4.08% writes · 1.47% uncached prompt</text>
+<text x="40" y="1209" font-size="14" class="muted" >Rankings are editorial trial recommendations, not measured quality scores. Task sizes are assumptions, not ledger volumes.</text>
+<text x="40" y="1236" font-size="14" class="muted" >Sol: OpenRouter rates. Terra: native OpenAI. Open weights: OpenRouter. Fable/Astra: native-equivalent rates.</text>
+<text x="40" y="1263" font-size="14" class="muted" >No subscription allowances deducted. Excludes tax, funding/tool fees and retries; missing cache tariffs use ordinary input.</text>
+<text x="40" y="1290" font-size="13" class="muted" >Full assumptions, route prices and plan-fit caveats: workload-model-rankings.html</text></svg>

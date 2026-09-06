@@ -3,6 +3,9 @@ import { resolve } from "path";
 import type { ExtensionAPI, ExtensionFactory } from "@earendil-works/pi-coding-agent";
 
 import { WORKSPACE_DIR } from "../core/config.js";
+import { getExecutionIdentity, formatExecutionIdentity } from "../core/execution-context.js";
+import { getChatJid } from "../core/chat-context.js";
+import { formatAccountResponseGuidance } from '../core/account-preferences.js';
 
 const AGENT_MEMORY_PATH = resolve(WORKSPACE_DIR, "notes/memory/MEMORY.md");
 const NOTES_INDEX_PATH = resolve(WORKSPACE_DIR, "notes/index.md");
@@ -61,7 +64,19 @@ function buildWorkspaceMemoryBootstrap(): string {
 }
 
 export const workspaceMemoryBootstrap: ExtensionFactory = (pi: ExtensionAPI) => {
-  pi.on("before_agent_start", async (event) => ({
-    systemPrompt: `${event.systemPrompt}\n\n${buildWorkspaceMemoryBootstrap()}`,
-  }));
+  pi.on("before_agent_start", async (event) => {
+    const identity = getExecutionIdentity();
+    if (!identity) return { systemPrompt: `${event.systemPrompt}\n\n${buildWorkspaceMemoryBootstrap()}` };
+    if (identity.provenance.chatJid !== getChatJid()) throw new Error("Execution identity does not match the active chat.");
+    const owner = identity.provenance.ownerUserId;
+    if (!/^[a-zA-Z0-9_-]{1,128}$/.test(owner)) throw new Error("Invalid memory owner ID.");
+    const paths = [
+      resolve(WORKSPACE_DIR, "notes/users", owner, "MEMORY.md"),
+      resolve(WORKSPACE_DIR, "notes/users", owner, "preferences.md"),
+      resolve(WORKSPACE_DIR, "notes/family/MEMORY.md"),
+    ];
+    const memory = paths.map(path => `### ${path}\n${truncate(readOptional(path) ?? "(missing)", 8000)}`).join("\n\n");
+    const preferences = identity.preferences ? formatAccountResponseGuidance(identity.preferences) : '';
+    return { systemPrompt: `${event.systemPrompt}\n\n${formatExecutionIdentity(identity)}\n\n## User and shared family memory\n\n${memory}${preferences ? `\n\n${preferences}` : ''}` };
+  });
 };

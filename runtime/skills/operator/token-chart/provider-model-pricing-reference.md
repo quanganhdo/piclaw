@@ -1,8 +1,19 @@
 # Provider/model pricing reference
 
-_Reference tag: 2026-08-03_
+_Reference tag: 2026-09-05_
 
-This file records the sources and assumptions behind the token chart's **estimated API-equivalent** costs. The executable source of truth is `provider-model-pricing-reference.ts`.
+This file records the sources and assumptions behind the token chart's **estimated API-equivalent** costs. The executable resolver is `provider-model-pricing-reference.ts`. The route-specific `pricing-2026-09-05.json` snapshot takes precedence; older fallback rules retain their original source dates.
+
+## September 2026 refresh
+
+- Adds GPT-6 Astra, Claude Fable 5/5.1 and all publicly priced OpenRouter routes in the retrieved snapshot.
+- Fable 5.1 cache reads: $0.25/MTok; Fable 5: $1/MTok. Both use $10 input, $50 output and $12.50 5m cache writes.
+- Direct OpenAI/Copilot Sol: $4 input/$20 output; OpenRouter Sol: $2/$10 at retrieval. Route identity is preserved.
+- Astra: $10 input/$50 output/$1 cached input/$12.50 cache writes in the short-context tier. Long-context charges require request-level estimation outside this chart helper.
+- Unknown cache tariffs use ordinary input as a conservative estimate, never free-cache assumptions.
+- Copilot now documents token-based AI credits (1 credit = $0.01); allowances and budgets still affect the invoice. Codex uses ChatGPT subscription allowances, so API-equivalent costs are not its bill.
+- Sources: [OpenAI](https://developers.openai.com/api/docs/pricing.md), [Anthropic](https://platform.claude.com/docs/en/about-claude/pricing.md), [Copilot](https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing.md), [OpenRouter](https://openrouter.ai/api/v1/models).
+- The tables below remain historical documentation for fallback rows; consult the snapshot for refreshed routes. No historical ledger rows are rewritten.
 
 ## Source hierarchy
 

@@ -54,7 +54,7 @@ bun run test
 |----------|----------|---------|-------------|
 | `OPENCODE_API_KEY` | No | — | OpenCode API key (free models work without) |
 | `OPENCODE_BASE_URL` | No | `https://opencode.ai/zen/v1` | OpenCode ZEN API endpoint |
-| `OPENCODE_MODEL` | No | `laguna-s-2.1-free` | Model to use for tests |
+| `OPENCODE_MODEL` | No | `mimo-v2.5-free` | Model to use for tests |
 | `PICLAW_E2E_URL` | Yes (tests) | `http://localhost:3000` | PiClaw instance URL |
 | `PICLAW_INTERNAL_SECRET` | Yes (tests) | — | Instance internal secret for auth |
 | `PICLAW_PI_AGENT_DIR` | No | `~/.pi/agent` | Override where setup scripts write `auth.json`, `models.json`, and `settings.json` |
@@ -71,7 +71,7 @@ bun run setup/configure-test-instance.ts
 - Writes a placeholder `auth.json` credential so Pi's model registry marks the custom provider available
 - Defines `opencode-zen` in `models.json` with `baseUrl`, `api: "openai-completions"`, and a `models` array containing `OPENCODE_MODEL`
 - Works anywhere (local, CI, etc.)
-- Model: `laguna-s-2.1-free` — fast and available without credentials
+- Model: `mimo-v2.5-free` — fast and available without credentials
 - Free models return both `reasoning` and `content` fields
 
 ### Option B: GitHub Models (retired for CI inference)
@@ -94,8 +94,8 @@ GITHUB_TOKEN=ghp_... bun run setup/configure-github-models.ts
 
 | Environment | Use |
 |-------------|-----|
-| GitHub Actions CI | **OpenCode ZEN** (`laguna-s-2.1-free`, no credentials) |
-| Local development | **OpenCode ZEN** (`laguna-s-2.1-free`, no credentials) |
+| GitHub Actions CI | **OpenCode ZEN** (`mimo-v2.5-free`, no credentials) |
+| Local development | **OpenCode ZEN** (`mimo-v2.5-free`, no credentials) |
 | Microvm test | Either (both work) |
 
 ## CI Integration

@@ -6,6 +6,7 @@ import type { AgentSession, AgentSessionEvent, AgentSessionRuntime, ModelRuntime
 import { type AssistantMessageEvent, type Usage } from "@earendil-works/pi-ai";
 
 import { getAgentRuntimeConfig } from "../core/config.js";
+import { readAccessConfig } from "../core/config-access.js";
 import { detectChannel } from "../router.js";
 import { withChatContext } from "../core/chat-context.js";
 import { installSessionUsageRecorder, recordMessageUsage } from "./usage.js";
@@ -34,14 +35,16 @@ export interface SidePromptRunnerOptions {
   onWarn?: (message: string, details: Record<string, unknown>) => void;
 }
 
-/** Run a side prompt, either via streamSimple or a synchronized side session. */
+/** Single-user side prompt. Multi-user execution needs its own admission and tool-policy contract. */
 export async function runSidePrompt(
   chatJid: string,
   prompt: string,
   options: SidePromptOptions,
   deps: SidePromptRunnerOptions,
 ): Promise<SidePromptResult> {
+  if (readAccessConfig().mode !== "single-user") return { status: "error", result: null, thinking: null, error: "Side prompts are unavailable in multi-user mode.", model: null };
   const session = await deps.getOrCreate(chatJid);
+  if (readAccessConfig().mode !== "single-user") return { status: "error", result: null, thinking: null, error: "Side prompts are unavailable in multi-user mode.", model: null };
   const model = session.model;
   if (!model) {
     return { status: "error", result: null, thinking: null, error: "No active model selected.", model: null };
@@ -128,7 +131,9 @@ export async function runSidePrompt(
   }
 
   const sideRuntime = await deps.getOrCreateSideRuntime(chatJid);
+  if (readAccessConfig().mode !== "single-user") return { status: "error", result: null, thinking: null, error: "Side prompts are unavailable in multi-user mode.", model: null };
   await deps.syncSideSessionFromMain(session, sideRuntime);
+  if (readAccessConfig().mode !== "single-user") return { status: "error", result: null, thinking: null, error: "Side prompts are unavailable in multi-user mode.", model: null };
   const sideSession = sideRuntime.session;
   installSessionUsageRecorder(sideSession, chatJid, deps.onWarn);
 

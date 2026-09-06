@@ -1,6 +1,6 @@
 # Keychain
 
-Piclaw includes an encrypted SQLite-backed keychain for storing tokens and username/password pairs and injecting them into tool environment variables. All secrets live inside `messages.db` (no extra files).
+Piclaw includes an encrypted SQLite-backed keychain for tool credentials. Internal keychain entry ciphertext lives in `messages.db`; bootstrap key material, provider login files and external keychain backends have separate storage. Per-user TOTP seeds use dedicated auth tables and are never listed or injected through the generic keychain.
 
 ## How it works
 
@@ -107,7 +107,7 @@ Example:
 
 ## Automatic bash environment injection
 
-To align local and SSH bash flows, Piclaw now auto-injects keychain entries whose names are already valid shell env vars (for example `STRIPE_KEY` or `DATABASE_URL`) into every bash environment.
+Piclaw auto-injects eligible keychain entries into local and SSH bash environments after sanitising their names into environment-variable identifiers. See the mapping rules below.
 
 This applies to:
 
@@ -192,7 +192,8 @@ This is intended to steer the agent toward the `ssh` tool and addon-provided `pr
 ## Notes
 
 - Entry names can be hierarchical (`github/foo/bar`).
-- The keychain uses the current master key for all entries; rotating keys requires re-encrypting entries (not yet automated).
+- The keychain uses the current master key for all entries; rotating keys requires re-encrypting entries (not yet automated). The same bootstrap material also encrypts the separate user TOTP store. The [offline factor helper](multi-user/README.md#authentication-maintenance) rotates only confirmed TOTP ciphertext; it does not update generic keychain entries or configuration. Coordinate every dependent store and key backup before changing the key.
+- Family-shared mode intentionally shares tool/provider credentials and workspace access. Per-user factors are separate to avoid accidental exposure, not to confine hostile users with shell/filesystem access. Family mode remains startup-disabled.
 - Avoid logging secrets. The tool runner resolves keychain values only at execution time.
 
 ## External keychain providers

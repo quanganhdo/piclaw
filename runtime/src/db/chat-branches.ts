@@ -6,6 +6,7 @@
  */
 
 import { getDb } from "./connection.js";
+import { ChatAccessDenied } from "./session-ownership.js";
 import { attachMediaToMessage, deleteUnreferencedMedia } from "./media.js";
 import { deleteThinkingContentByChatJid } from "./thinking-cleanup.js";
 import type { ChatBranchRecord } from "./types.js";
@@ -69,7 +70,7 @@ function getUniqueAgentName(baseName: string, excludeBranchId?: string | null): 
   const row = db.prepare(
     `SELECT agent_name, branch_id
        FROM chat_branches
-      WHERE archived_at IS NULL
+      WHERE archived_at IS NULL AND handle_owner_id = ''
         AND (agent_name = ? OR agent_name GLOB ?)
       ORDER BY agent_name ASC`
   ).all(normalizedBase, `${normalizedBase}-*`) as Array<{ agent_name: string; branch_id: string }>;
@@ -118,7 +119,7 @@ export function getChatBranchByAgentName(agentName: string): ChatBranchRecord | 
   const row = db.prepare(
     `SELECT branch_id, chat_jid, root_chat_jid, parent_branch_id, agent_name, created_at, updated_at, archived_at
        FROM chat_branches
-      WHERE agent_name = ?
+      WHERE agent_name = ? AND handle_owner_id = ''
         AND archived_at IS NULL`
   ).get(normalized) as ChatBranchRow | undefined;
   return toRecord(row);
@@ -160,6 +161,12 @@ export function listChatBranches(
   return (rows as ChatBranchRow[]).map((row) => toRecord(row)!).filter(Boolean);
 }
 
+/** Legacy mutation paths cannot alter an explicitly migrated owner's namespace. */
+function requireLegacyHandleNamespace(chatJid: string): void {
+  const row = getDb().query("SELECT handle_owner_id FROM chat_branches WHERE chat_jid=?").get(chatJid) as { handle_owner_id: string } | null;
+  if (row?.handle_owner_id) throw new ChatAccessDenied();
+}
+
 export function ensureChatBranch(input: {
   chat_jid: string;
   root_chat_jid?: string | null;
@@ -174,6 +181,7 @@ export function ensureChatBranch(input: {
   const db = getDb();
 
   if (existing) {
+    requireLegacyHandleNamespace(chatJid);
     const rootChatJid = String(input.root_chat_jid || existing.root_chat_jid || chatJid).trim() || chatJid;
     const parentBranchId = input.parent_branch_id === undefined ? existing.parent_branch_id : (input.parent_branch_id || null);
     const requestedAgentName = input.agent_name ? normalizeBranchAgentName(input.agent_name) : existing.agent_name;
@@ -202,6 +210,7 @@ export function ensureChatBranch(input: {
   }
 
   const rootChatJid = String(input.root_chat_jid || chatJid).trim() || chatJid;
+  requireLegacyHandleNamespace(rootChatJid);
   const branchId = createUuid("branch");
   const agentName = getUniqueAgentName(input.agent_name || deriveBaseAgentName(chatJid));
   const parentBranchId = input.parent_branch_id ? String(input.parent_branch_id).trim() : null;
@@ -229,6 +238,7 @@ export function renameChatBranchIdentity(input: {
     throw new Error("Nothing to rename.");
   }
 
+  requireLegacyHandleNamespace(chatJid);
   const nextAgentName = requireUniqueAgentName(input.agent_name || "", existing.branch_id);
 
   if (nextAgentName === existing.agent_name) {
@@ -947,6 +957,7 @@ export function restoreChatBranchIdentity(input: {
   const existing = getChatBranchByChatJid(chatJid);
   if (!existing) throw new Error(`Unknown chat branch: ${chatJid}`);
 
+  requireLegacyHandleNamespace(chatJid);
   const requestedAgent = input.agent_name === undefined
     ? existing.agent_name
     : normalizeBranchAgentName(input.agent_name || "");

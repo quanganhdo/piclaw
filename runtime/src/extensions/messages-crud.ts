@@ -13,6 +13,24 @@ import {
   storeMessage,
 } from "../db.js";
 import { getChatJid } from "../core/chat-context.js";
+import { AsyncLocalStorage } from "node:async_hooks";
+import { readAccessConfig } from "../core/config-access.js";
+import { listCurrentOwnerSessions, requireOwnedSource } from "../agent-pool/owned-session-target.js";
+import { resolveAuthorisedChat, ChatAccessDenied } from "../db/session-ownership.js";
+import { requireFamilyToolAccess } from '../agent-pool/family-tool-access.js';
+
+// Internal query scope; browser/model fields cannot populate or clear it.
+const ownedReadScope = new AsyncLocalStorage<readonly string[] | null>();
+function appendOwnedReadScope(conditions: string[], values: (string | number)[], qualifier = ""): void {
+  const chats = ownedReadScope.getStore();
+  if (!chats) return;
+  if (!chats.length) { conditions.push("0 = 1"); return; }
+  conditions.push((qualifier ? qualifier + "." : "") + "chat_jid IN (" + chats.map(() => "?").join(",") + ")");
+  values.push(...chats);
+}
+function deniedMessages(): AgentToolResult<Record<string, unknown>> {
+  return { content: [{ type: "text", text: "Message access denied in this access mode." }], details: { error: "access_denied" } };
+}
 import { stripInternalTags } from "../router.js";
 import { createUuid } from "../utils/ids.js";
 import { extractFtsFallbackTerms, isFtsOperatorQuery, prepareFtsQuery } from "../utils/fts-query.js";
@@ -207,6 +225,7 @@ function appendSenderFilter(
   senderFilter: string | null,
   qualifier = "",
 ): void {
+  appendOwnedReadScope(conditions, params, qualifier);
   if (!senderFilter) return;
   const prefix = qualifier ? `${qualifier}.` : "";
   conditions.push(`(${prefix}sender = ? COLLATE NOCASE OR ${prefix}sender_name = ? COLLATE NOCASE)`);
@@ -1657,6 +1676,33 @@ function executeMove(params: MessagesParams, defaultChat: string): AgentToolResu
 export function runMessagesTool(
   params: MessagesParams,
   defaultChat: string = "web:default",
+  postFn?: MessagePostFn,
+): AgentToolResult<Record<string, unknown>> {
+  try {
+    requireFamilyToolAccess('messages');
+    if (readAccessConfig().mode === "single-user") return ownedReadScope.run(null, () => runMessagesToolUnscoped(params, defaultChat, postFn));
+    const actor = requireOwnedSource();
+    if (!["search", "get", "grep", "extract", "diff"].includes(params.action || "search")) return deniedMessages();
+    const chats = listCurrentOwnerSessions().map(branch => branch.chat_jid);
+    const requestedChat = params.chat_jid?.trim();
+    if (requestedChat !== undefined) {
+      if (!requestedChat) throw new ChatAccessDenied();
+      if (requestedChat !== "*" && requestedChat.toLowerCase() !== "all") {
+        const target = resolveAuthorisedChat(getDb(), actor, requestedChat, "session.read");
+        if (!chats.includes(target.chatJid)) throw new ChatAccessDenied();
+      }
+    }
+    // get without a chat may select owned IDs across roots; other actions default to active source.
+    return ownedReadScope.run(chats, () => runMessagesToolUnscoped(params, getChatJid(""), postFn));
+  } catch (error) {
+    if (error instanceof ChatAccessDenied) return deniedMessages();
+    throw error;
+  }
+}
+
+function runMessagesToolUnscoped(
+  params: MessagesParams,
+  defaultChat: string = "web:default",
   postFn?: (chatJid: string, content: string, isBot: boolean, mediaIds: number[], contentBlocks?: unknown[]) => number | null,
 ): AgentToolResult<Record<string, unknown>> {
   const action = params.action || "search";
@@ -1688,6 +1734,7 @@ export function postMessagesToolMessage(
   params: MessagesParams,
   defaultChat: string = "web:default",
 ): AgentToolResult<Record<string, unknown>> {
+  if (readAccessConfig().mode !== "single-user") return deniedMessages();
   return executePost(params, defaultChat, registeredPostFn);
 }
 
@@ -1728,7 +1775,7 @@ export function setMessagesPostFn(fn: MessagePostFn | undefined): void {
 
 export const messagesCrud: ExtensionFactory = (pi: ExtensionAPI) => {
   pi.on("before_agent_start", async (event) => ({
-    systemPrompt: `${event.systemPrompt}\n\n${MESSAGES_TOOL_HINT}`,
+    systemPrompt: `${event.systemPrompt}\n\n${readAccessConfig().mode === "single-user" ? MESSAGES_TOOL_HINT : "## Owner-scoped messages\nOnly search/get/grep/extract/diff are available. Wildcard/all means active owned sessions only; omitted targets use the current source, and get may select owned row IDs across roots. Add/post/delete/move are disabled."}`,
   }));
 
   pi.registerTool({

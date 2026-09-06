@@ -3455,6 +3455,33 @@ test("processChat persists orphan Responses output errors with visible session-r
   }));
 });
 
+test("processChat presents context pressure separately from session corruption", async () => {
+  const ws = createTempWorkspace("piclaw-web-channel-");
+  cleanupWorkspace = ws.cleanup;
+  restoreEnv = setEnv({ PICLAW_WORKSPACE: ws.workspace, PICLAW_STORE: ws.store, PICLAW_DATA: ws.data });
+  const db = await import("../../../src/db.js");
+  db.initDatabase();
+  db.getDb().exec("DELETE FROM message_media; DELETE FROM messages; DELETE FROM chats; DELETE FROM chat_cursors;");
+  db.storeChatMetadata("web:default", new Date().toISOString(), "Web");
+  db.storeMessage({ id: `msg-${Math.random()}`, chat_jid: "web:default", sender: "user", sender_name: "User",
+    content: "continue", timestamp: new Date().toISOString(), is_from_me: false, is_bot_message: false });
+  const { WebChannel } = await import("../../../src/channels/web.js");
+  const web = new (WebChannel as any)({ queue: { enqueue: () => {} }, agentPool: {
+    setSessionBinder: () => {}, getContextUsageForChat: async () => null,
+    runAgent: async () => ({ status: "error", result: null, error: "The operation was aborted.",
+      failureCategory: "context_pressure", abortCause: "context_pressure", abortOperation: "run_agent.mid_turn_context_pressure" }),
+  } });
+  await web.processChat("web:default", "default");
+  const messages = db.getTimeline("web:default", 10).filter((item: any) => item.data.type === "agent_response");
+  expect(messages).toHaveLength(1);
+  expect(messages[0].data.content).not.toContain("needs repair");
+  expect(messages[0].data.content_blocks).toContainEqual(expect.objectContaining({
+    type: "turn_outcome_marker", kind: "context", title: "Context limit reached", severity: "warning",
+    failure_category: "context_pressure", abort_cause: "context_pressure", abort_operation: "run_agent.mid_turn_context_pressure",
+    next_action: expect.stringContaining("continue"),
+  }));
+});
+
 test("processChat persists raw abort errors as visible outcome markers", async () => {
   const ws = createTempWorkspace("piclaw-web-channel-");
   cleanupWorkspace = ws.cleanup;

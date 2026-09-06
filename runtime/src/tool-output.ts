@@ -20,6 +20,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from "fs";
 import { basename, dirname, join, resolve } from "path";
 import { getDataDir } from "./core/config.js";
+import { canUseLegacyToolOutput, createToolOutputAccessGuard, ToolOutputAccessDenied } from "./core/tool-output-access.js";
 import { createUuid } from "./utils/ids.js";
 import { createLogger, debugSuppressedError } from "./utils/logger.js";
 import {
@@ -156,6 +157,7 @@ export function chunkText(text: string, chunkSize = DEFAULT_CHUNK_SIZE): string[
  * index content chunks in FTS5. Returns a summary result.
  */
 export function saveToolOutput(text: string, options: ToolOutputSaveOptions = {}): ToolOutputSaveResult {
+  createToolOutputAccessGuard();
   const id = options.id ?? createUuid("out");
   const createdAt = options.createdAt ?? new Date().toISOString();
   const path = buildToolOutputPath(id, createdAt);
@@ -189,11 +191,13 @@ export function saveToolOutput(text: string, options: ToolOutputSaveOptions = {}
 
 /** Retrieve a tool output record by its UUID handle. */
 export function getToolOutput(handle: string): ToolOutputRecord | undefined {
+  createToolOutputAccessGuard();
   return getToolOutputById(handle);
 }
 
 /** Search the FTS index for a tool output, returning snippet strings. */
 export function searchToolOutput(handle: string, query: string, limit = 5): string[] {
+  createToolOutputAccessGuard();
   const trimmed = query?.trim?.() ?? "";
   if (!trimmed) return [];
   return searchToolOutputSnippets(handle, trimmed, limit);
@@ -213,6 +217,7 @@ function listRegisteredToolOutputPaths(): Set<string> {
 
 /** Remove unreferenced tool-output log files older than the retention window. */
 export function pruneToolOutputFiles(maxAgeMs = DEFAULT_TOOL_OUTPUT_RETENTION_MS): number {
+  createToolOutputAccessGuard();
   const toolOutputDir = getToolOutputDir();
   if (!existsSync(toolOutputDir)) return 0;
   const retentionMs = clampLogRetentionMs(maxAgeMs, DEFAULT_TOOL_OUTPUT_RETENTION_MS);
@@ -271,6 +276,7 @@ export function pruneToolOutputFiles(maxAgeMs = DEFAULT_TOOL_OUTPUT_RETENTION_MS
  * Existing flat DB paths remain readable if migration cannot move a file.
  */
 export function migrateFlatToolOutputsToDateShards(): number {
+  createToolOutputAccessGuard();
   const toolOutputDir = getToolOutputDir();
   mkdirSync(toolOutputDir, { recursive: true });
   const root = resolve(toolOutputDir);
@@ -328,6 +334,7 @@ export function migrateFlatToolOutputsToDateShards(): number {
  * and the on-disk log files. Returns the number of records pruned.
  */
 export function pruneToolOutputs(maxAgeMs = DEFAULT_TOOL_OUTPUT_RETENTION_MS): number {
+  createToolOutputAccessGuard();
   const cutoff = buildToolOutputCutoff(maxAgeMs);
   const rows = deleteToolOutputsBefore(cutoff);
   for (const row of rows) {
@@ -349,7 +356,7 @@ export function pruneToolOutputs(maxAgeMs = DEFAULT_TOOL_OUTPUT_RETENTION_MS): n
 }
 
 /** Guard to ensure the cleanup interval is only started once. */
-let cleanupStarted = false;
+let cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
 /**
  * Start a periodic timer that prunes old tool outputs.
@@ -359,12 +366,28 @@ export function startToolOutputCleanup(
   maxAgeMs = DEFAULT_TOOL_OUTPUT_RETENTION_MS,
   intervalMs = DEFAULT_TOOL_OUTPUT_CLEANUP_INTERVAL_MS,
 ): void {
-  if (cleanupStarted) return;
-  cleanupStarted = true;
-  migrateFlatToolOutputsToDateShards();
-  // Run an initial prune immediately, then on a recurring interval.
-  pruneToolOutputs(maxAgeMs);
-  setInterval(() => pruneToolOutputs(maxAgeMs), intervalMs).unref();
+  if (!canUseLegacyToolOutput() || cleanupTimer) return;
+  try {
+    migrateFlatToolOutputsToDateShards();
+    // Run an initial prune immediately, then on a recurring interval.
+    pruneToolOutputs(maxAgeMs);
+  } catch (error) {
+    if (error instanceof ToolOutputAccessDenied) return;
+    throw error;
+  }
+  cleanupTimer = setInterval(() => {
+    if (!canUseLegacyToolOutput()) {
+      if (cleanupTimer) clearInterval(cleanupTimer);
+      cleanupTimer = null;
+      return;
+    }
+    try { pruneToolOutputs(maxAgeMs); } catch (error) {
+      if (!(error instanceof ToolOutputAccessDenied)) throw error;
+      if (cleanupTimer) clearInterval(cleanupTimer);
+      cleanupTimer = null;
+    }
+  }, intervalMs);
+  cleanupTimer.unref();
 }
 
 /**
@@ -372,6 +395,7 @@ export function startToolOutputCleanup(
  * Returns null if the file doesn't exist or is unreadable.
  */
 export function readToolOutputFile(path: string): string | null {
+  createToolOutputAccessGuard();
   try {
     return readFileSync(path, "utf8");
   } catch {

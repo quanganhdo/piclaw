@@ -96,6 +96,20 @@ test("AgentTurnCoordinator trusts finalized message_end text over streamed draft
   expect(tracker.getFinalText()).toBe("final replacement");
 });
 
+test("AgentTurnCoordinator preserves unphased provider-error text as a failed boundary", () => {
+  const completed: unknown[] = [];
+  const tracker = new AgentTurnCoordinator({ takeAttachments: () => [], touchSession: () => {} })
+    .createTracker("web:error-boundary", (turn) => completed.push(turn));
+  tracker.handleMessageUpdate({ type: "message_end", message: {
+    role: "assistant", stopReason: "error", errorMessage: "Connection closed",
+    content: [{ type: "text", text: "Reading gate summaries." }],
+  } } as any);
+  tracker.handleMessageUpdate({ type: "message_update", assistantMessageEvent: { type: "text_start" } } as any);
+  expect(completed).toEqual([{
+    text: "Reading gate summaries.", attachments: [], turnKind: "intermediate", cause: "failed_boundary",
+  }]);
+});
+
 test("AgentTurnCoordinator preserves raw provider stop reasons for diagnostics", () => {
   const coordinator = new AgentTurnCoordinator({
     takeAttachments: () => [],

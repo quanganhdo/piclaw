@@ -1,6 +1,8 @@
 import type { RunAgentOptions } from "./contracts.js";
 import { rememberActiveToolSubset } from "./active-tool-subset-memory.js";
 import { logToolStateTransition } from "./tool-state-transitions.js";
+import { getExecutionIdentity } from '../core/execution-context.js';
+import { isFamilyWebToolAllowed } from '../core/family-workspace-policy.js';
 
 export interface SessionWithToolControl {
   setActiveToolsByName?: (toolNames: string[]) => void;
@@ -54,9 +56,17 @@ export function createRunToolCeilingController(options: {
   return {
     apply(nextOwner) {
       release();
-      const ceilingFilter = options.runOptions.toolCeilingFilter;
+      const identity = getExecutionIdentity();
+      const family = identity?.mode === 'family-shared';
+      if (family && (!identity.toolPolicy || !Array.isArray(identity.toolPolicy.allowed))) throw new Error('Family tool policy snapshot is required.');
+      const requested = options.runOptions.toolCeilingFilter;
+      // A caller may narrow the family ceiling but cannot omit or widen it.
+      const ceilingFilter = family ? (name: string) => isFamilyWebToolAllowed(name) && identity.toolPolicy!.allowed.includes(name) && (!requested || requested(name)) : requested;
+      if (identity && identity.mode !== 'single-user' && !family) throw new Error('Isolated tool execution is unavailable.');
+      if (family && !nextOwner) throw new Error('Family execution requires active-tool controls.');
       if (!ceilingFilter || !nextOwner) return false;
       if (typeof nextOwner.getActiveToolNames !== "function" || typeof nextOwner.setActiveToolsByName !== "function") {
+        if (family) throw new Error('Family execution requires active-tool controls.');
         options.onWarn?.("Tool ceiling requested but session lacks active-tool controls; ceiling not enforced", {
           operation: "run_agent.tool_ceiling",
           chatJid: options.chatJid,

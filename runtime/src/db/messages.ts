@@ -37,6 +37,8 @@ import {
 } from "./thinking-cleanup.js";
 import { getSearchMatchMode } from "../core/config.js";
 import { extractFtsFallbackTerms, isFtsOperatorQuery, prepareFtsQuery } from "../utils/fts-query.js";
+import { readAccessConfig } from '../core/config-access.js';
+import { migrationDismissalFilter } from './migration-input-holds.js';
 
 /**
  * Internal representation of a raw row from the `messages` table.
@@ -691,7 +693,8 @@ export function getNewMessages(
       AND is_bot_message = 0 AND content NOT LIKE ?
       AND LTRIM(content) NOT LIKE '/%'
       AND COALESCE(is_steering_message, 0) = 0
-    ORDER BY timestamp
+      ${readAccessConfig().mode === 'family-shared' ? migrationDismissalFilter(db) : ''}
+    ORDER BY timestamp, rowid
   `;
 
   const rows = db.prepare(sql).all(lastTimestamp, ...jids, `${botPrefix}:%`) as NewMessage[];
@@ -721,7 +724,8 @@ export function getMessagesSince(
       AND is_bot_message = 0 AND content NOT LIKE ?
       AND LTRIM(content) NOT LIKE '/%'
       AND COALESCE(is_steering_message, 0) = 0
-    ORDER BY timestamp
+      ${readAccessConfig().mode === 'family-shared' ? migrationDismissalFilter(db) : ''}
+    ORDER BY timestamp, rowid
   `;
   const rows = db.prepare(sql).all(chatJid, sinceTimestamp, `${botPrefix}:%`) as Array<Omit<NewMessage, "content_blocks"> & { content_blocks?: string | null }>;
   return rows.map((row) => ({

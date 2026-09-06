@@ -73,8 +73,9 @@ removeLogSink(mySink);  // stop
 
 | Operation | Level | Key fields | Emitted when |
 |---|---|---|---|
-| `model.response.start` | info | `chatJid`, `turnId`, `model`, `sequence`, `phase?` | A model response segment starts |
-| `model.response.end` | info | `chatJid`, `turnId`, `model`, `sequence`, `durationMs`, `stopReason`, `usage` | A model response segment ends |
+| `model.call.start` | info | `chatJid`, `turnId`, `model`, `sequence` | A provider call starts, before context conversion/auth/request dispatch |
+| `model.response.start` | info | `chatJid`, `turnId`, `model`, `sequence`, `responseStartLatencyMs`, `phase?` | The provider response stream starts |
+| `model.response.end` | info | `chatJid`, `turnId`, `model`, `sequence`, timing fields, `stopReason`, `usage` | A model response segment ends |
 
 ### Tool calls
 
@@ -184,7 +185,7 @@ Ready-to-import/query artifacts in this repo:
 | Source | Output |
 |---|---|
 | `run_agent.prompt` → terminal record | `agent.turn` span |
-| `model.response.start/end` | `model.call` child spans |
+| `model.call.start` → `model.response.end` | `model.call` child spans (`model.response.start` is an old-core fallback) |
 | `tool.call.start/end` | `tool.call` child spans |
 | `run_agent.attempt_failed` | `provider.error` spans + recovery metrics |
 | `dream.complete` | `dream` span |
@@ -222,12 +223,30 @@ Any add-on can implement the same pattern:
 3. Match on `record.operation` to decide what to export
 4. Pair turns by `turnId` first, with `chatJid` as fallback
 5. Treat `chatJid` as the actor key for agent analytics
-6. Use `tool.call.*` and `model.response.*` for child spans
+6. Use `tool.call.*` and `model.call.start` → `model.response.end` for child spans
 
 Runtime guarantees:
 
 - Every `run_agent.prompt` will eventually be followed by `run_agent.complete` or `run_agent` (error) for the same turn unless the process crashes.
 - `tool.call.start` / `tool.call.end` pairs are emitted for every tool execution within a turn.
+- `model.call.start` is emitted once per provider call, including calls resumed after tool results.
 - `model.response.start` / `model.response.end` pairs are emitted for observable model segments.
+
+### Model timing fields
+
+`model.response.end` exposes monotonic wall-clock intervals in milliseconds:
+
+| Field | Meaning |
+|---|---|
+| `callDurationMs` | `turn_start` to assistant `message_end`; includes context conversion, auth, request dispatch and provider work |
+| `responseDurationMs` | Provider stream `start` to assistant `message_end` |
+| `durationMs` | Compatibility alias for `responseDurationMs` |
+| `responseStartLatencyMs` | `turn_start` to provider stream `start` |
+| `timeToFirstOutputMs` | `turn_start` to the first non-empty thinking/text/tool-call delta, or a tool-call start |
+| `timeToFirstTextMs` | `turn_start` to the first non-empty user-visible text delta |
+| `generationDurationMs` | First-to-last observed thinking/text/tool-call output interval |
+| `textGenerationDurationMs` | First-to-last non-empty text delta interval |
+
+These are client-observed timings. Providers with encrypted or hidden reasoning cannot expose the timestamp of their first internally generated token, so `timeToFirstOutputMs` must not be interpreted as universal provider TTFT.
 - `dream.complete` fires once per Dream maintenance pass.
 - All warn/error records with an `operation` field represent actionable events.

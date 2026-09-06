@@ -1,0 +1,381 @@
+{
+  "workload": {
+    "since": "2026-08-29T20:19:00.000Z",
+    "cutoff": "2026-09-05T20:19:00.000Z",
+    "scope": "Smith local ledger, all chats; seven-day primary and 24-hour sensitivity",
+    "sevenDays": {
+      "requests": 4719,
+      "input": 31925481,
+      "output": 2512444,
+      "cr": 2051943183,
+      "cw": 88526348,
+      "reasoning": 829803,
+      "total": 2174907456,
+      "cost": 1745.381895899996,
+      "accounted": 2174907456,
+      "longRequests": 3816,
+      "longAccounted": 2037665640,
+      "zeroCostRequests": 31,
+      "zeroCostTokens": 14062471
+    },
+    "last24h": {
+      "requests": 500,
+      "input": 10529462,
+      "output": 276921,
+      "cr": 170092059,
+      "cw": 5828362,
+      "reasoning": 95910,
+      "total": 186726804,
+      "cost": 116.84629149999996,
+      "accounted": 186726804,
+      "longRequests": 306,
+      "longAccounted": 150245586,
+      "zeroCostRequests": 31,
+      "zeroCostTokens": 14062471
+    },
+    "byModel": [
+      {
+        "key": "github-copilot/gpt-5.6-sol",
+        "requests": 3199,
+        "input": 13738847,
+        "output": 1691319,
+        "cr": 1465769916,
+        "cw": 74096204,
+        "reasoning": 567857,
+        "total": 1555296286,
+        "cost": 1003.3531455,
+        "accounted": 1555296286,
+        "longRequests": 2775,
+        "longAccounted": 1474564817,
+        "zeroCostRequests": 0,
+        "zeroCostTokens": 0
+      },
+      {
+        "key": "github-copilot/gpt-5.6-sol-fast",
+        "requests": 847,
+        "input": 2541,
+        "output": 471381,
+        "cr": 384098257,
+        "cw": 12594160,
+        "reasoning": 215435,
+        "total": 397166339,
+        "cost": 393.7224100000002,
+        "accounted": 397166339,
+        "longRequests": 715,
+        "longAccounted": 375474182,
+        "zeroCostRequests": 0,
+        "zeroCostTokens": 0
+      },
+      {
+        "key": "github-copilot/gpt-5.5",
+        "requests": 327,
+        "input": 15109206,
+        "output": 215538,
+        "cr": 160193536,
+        "cw": 0,
+        "reasoning": 39018,
+        "total": 175518280,
+        "cost": 318.58119400000015,
+        "accounted": 175518280,
+        "longRequests": 295,
+        "longAccounted": 173564170,
+        "zeroCostRequests": 0,
+        "zeroCostTokens": 0
+      },
+      {
+        "key": "openai-codex/gpt-5.6-sol",
+        "requests": 130,
+        "input": 1321515,
+        "output": 45224,
+        "cr": 14363264,
+        "cw": 0,
+        "reasoning": 0,
+        "total": 15730003,
+        "cost": 15.145926999999995,
+        "accounted": 15730003,
+        "longRequests": 0,
+        "longAccounted": 0,
+        "zeroCostRequests": 0,
+        "zeroCostTokens": 0
+      },
+      {
+        "key": "github-copilot/gpt-6-astra",
+        "requests": 31,
+        "input": 93,
+        "output": 24024,
+        "cr": 12202370,
+        "cw": 1835984,
+        "reasoning": 4991,
+        "total": 14062471,
+        "cost": 0,
+        "accounted": 14062471,
+        "longRequests": 31,
+        "longAccounted": 14062471,
+        "zeroCostRequests": 31,
+        "zeroCostTokens": 14062471
+      },
+      {
+        "key": "openai-codex/gpt-5.5",
+        "requests": 100,
+        "input": 959997,
+        "output": 36204,
+        "cr": 8746496,
+        "cw": 0,
+        "reasoning": 2502,
+        "total": 9742697,
+        "cost": 10.259353,
+        "accounted": 9742697,
+        "longRequests": 0,
+        "longAccounted": 0,
+        "zeroCostRequests": 0,
+        "zeroCostTokens": 0
+      },
+      {
+        "key": "openai-codex/gpt-5.6-terra",
+        "requests": 83,
+        "input": 672580,
+        "output": 28422,
+        "cr": 6449152,
+        "cw": 0,
+        "reasoning": 0,
+        "total": 7150154,
+        "cost": 2.9760544,
+        "accounted": 7150154,
+        "longRequests": 0,
+        "longAccounted": 0,
+        "zeroCostRequests": 0,
+        "zeroCostTokens": 0
+      },
+      {
+        "key": "openai-codex/gpt-6-astra",
+        "requests": 2,
+        "input": 120702,
+        "output": 332,
+        "cr": 120192,
+        "cw": 0,
+        "reasoning": 0,
+        "total": 241226,
+        "cost": 1.343812,
+        "accounted": 241226,
+        "longRequests": 0,
+        "longAccounted": 0,
+        "zeroCostRequests": 0,
+        "zeroCostTokens": 0
+      }
+    ],
+    "byPromptBand": {
+      "short": {
+        "requests": 903,
+        "input": 6389816,
+        "output": 475973,
+        "cr": 123453549,
+        "cw": 6922478,
+        "reasoning": 165768,
+        "total": 137241816,
+        "cost": 80.94911929999991,
+        "accounted": 137241816,
+        "longRequests": 0,
+        "longAccounted": 0,
+        "zeroCostRequests": 0,
+        "zeroCostTokens": 0
+      },
+      "long": {
+        "requests": 3816,
+        "input": 25535665,
+        "output": 2036471,
+        "cr": 1928489634,
+        "cw": 81603870,
+        "reasoning": 664035,
+        "total": 2037665640,
+        "cost": 1664.432776599998,
+        "accounted": 2037665640,
+        "longRequests": 3816,
+        "longAccounted": 2037665640,
+        "zeroCostRequests": 31,
+        "zeroCostTokens": 14062471
+      }
+    },
+    "bySource": [
+      {
+        "source": "assistant",
+        "requests": 4719,
+        "input": 31925481,
+        "output": 2512444,
+        "cr": 2051943183,
+        "cw": 88526348,
+        "reasoning": 829803,
+        "total": 2174907456,
+        "cost": 1745.381895899996,
+        "accounted": 2174907456,
+        "longRequests": 3816,
+        "longAccounted": 2037665640,
+        "zeroCostRequests": 31,
+        "zeroCostTokens": 14062471
+      }
+    ]
+  },
+  "rateCount": 1430,
+  "results": [
+    {
+      "key": "github-copilot/gpt-6-astra",
+      "cost": 6858.205977,
+      "cold": 42256.77578500006
+    },
+    {
+      "key": "github-copilot/claude-fable-5.1",
+      "cost": 2064.442155750001,
+      "cold": 21849.572319999963
+    },
+    {
+      "key": "github-copilot/gpt-5.6-sol",
+      "cost": 2743.282390800002,
+      "cold": 16902.710313999985
+    },
+    {
+      "key": "openai-codex/gpt-6-astra",
+      "cost": 6858.205977,
+      "cold": 42256.77578500006
+    },
+    {
+      "key": "openai-codex/gpt-5.6-sol",
+      "cost": 2743.282390800002,
+      "cold": 16902.710313999985
+    },
+    {
+      "key": "openai-codex/gpt-5.6-terra",
+      "cost": 1378.702554399999,
+      "cold": 8458.416515999992
+    },
+    {
+      "key": "anthropic/claude-fable-5.1",
+      "cost": 2064.442155750001,
+      "cold": 21849.572319999963
+    },
+    {
+      "key": "anthropic/claude-fable-5",
+      "cost": 3603.399543000002,
+      "cold": 21849.572319999963
+    },
+    {
+      "key": "anthropic/claude-opus-5",
+      "cost": 1801.699771500001,
+      "cold": 10924.786159999981
+    },
+    {
+      "key": "openrouter/anthropic/claude-fable-5.1",
+      "cost": 2064.442155750001,
+      "cold": 21849.572319999963
+    },
+    {
+      "key": "openrouter/openai/gpt-6-astra",
+      "cost": 6858.205977,
+      "cold": 42256.77578500006
+    },
+    {
+      "key": "openrouter/deepseek/deepseek-v4-pro-0813",
+      "cost": 113.80249353910801,
+      "cold": 1263.2271947011213
+    },
+    {
+      "key": "cerebras/gemma-4-31b",
+      "cost": 2154.4146034400032,
+      "cold": 2154.4146034400032
+    },
+    {
+      "key": "cerebras/gpt-oss-120b",
+      "cost": 762.2225872000017,
+      "cold": 762.2225872000017
+    },
+    {
+      "key": "cerebras/zai-glm-4.7"
+    },
+    {
+      "key": "azure-openai/gpt-5.4-pro",
+      "cost": 126876.24773999986,
+      "cold": 126876.24773999986
+    },
+    {
+      "key": "azure-openai/gpt-5.4",
+      "cost": 1617.0468067500092,
+      "cold": 10573.02064499998
+    },
+    {
+      "key": "azure-openai/gpt-5.3-codex",
+      "cost": 605.0549737749999,
+      "cold": 3836.8654870000055
+    },
+    {
+      "key": "azure-foundry/deepseek-v4-pro"
+    },
+    {
+      "key": "azure-foundry/deepseek-v4-flash",
+      "cost": 414.0363987200001,
+      "cold": 414.0363987200001
+    },
+    {
+      "key": "azure-foundry/mistral-large-3",
+      "cost": 1089.9661720000026,
+      "cold": 1089.9661720000026
+    },
+    {
+      "key": "openrouter/moonshotai/kimi-k3",
+      "cost": 1014.6251018999973,
+      "cold": 6554.871695999998
+    },
+    {
+      "key": "openrouter/minimax/minimax-m3",
+      "cost": 162.26707248000037,
+      "cold": 654.7334364000018
+    },
+    {
+      "key": "openrouter/openai/gpt-5.6-sol",
+      "cost": 1371.6411954000005,
+      "cold": 8451.355156999993
+    },
+    {
+      "key": "openrouter/anthropic/claude-fable-5",
+      "cost": 3603.399543000002,
+      "cold": 21849.572319999963
+    },
+    {
+      "key": "openrouter/anthropic/claude-opus-5",
+      "cost": 1801.699771500001,
+      "cold": 10924.786159999981
+    },
+    {
+      "key": "openrouter/deepseek/deepseek-v4-flash-0731",
+      "cost": 41.112699732999936,
+      "cold": 141.65791570000042
+    },
+    {
+      "key": "openrouter/z-ai/glm-5.2",
+      "cost": 520.4196697536001,
+      "cold": 2106.1613615760025
+    },
+    {
+      "key": "openai/gpt-5.5",
+      "cost": 3234.0936135000184,
+      "cold": 21146.04128999996
+    },
+    {
+      "key": "openai/gpt-5.6-sol",
+      "cost": 2743.282390800002,
+      "cold": 16902.710313999985
+    },
+    {
+      "key": "openai/gpt-5.6-terra",
+      "cost": 1378.702554399999,
+      "cold": 8458.416515999992
+    },
+    {
+      "key": "anthropic/claude-sonnet-5",
+      "cost": 720.679908600001,
+      "cold": 4369.914463999988
+    },
+    {
+      "key": "anthropic/claude-sonnet-4.6",
+      "cost": 1081.0198628999979,
+      "cold": 6554.871695999998
+    }
+  ]
+}

@@ -788,7 +788,8 @@
           "helperReaders": 0,
           "semanticReaders": 0,
           "files": [
-            ".github/workflows/publish.yml"
+            ".github/workflows/publish.yml",
+            "docs/release.md"
           ],
           "readerFiles": []
         }

@@ -10,7 +10,12 @@ function parseCookies(req: Request): Record<string, string> {
   return header.split(";").reduce((acc, part) => {
     const [rawKey, ...rest] = part.trim().split("=");
     if (!rawKey) return acc;
-    acc[rawKey] = decodeURIComponent(rest.join("=") || "");
+    try {
+      acc[rawKey] = decodeURIComponent(rest.join("=") || "");
+    } catch (error) {
+      void error;
+      acc[rawKey] = ""; // Invalid cookie encoding cannot establish an identity.
+    }
     return acc;
   }, {} as Record<string, string>);
 }

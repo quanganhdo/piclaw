@@ -63,5 +63,6 @@ Use `--source sessions` when DB-backed token usage is unavailable or when you wa
 ## Notes
 
 - Numbers are formatted with compact `K` / `M` labels.
-- The estimated cost mode uses `provider-model-pricing-reference.ts` and the human-readable note `provider-model-pricing-reference.md`.
+- The estimated cost mode uses `provider-model-pricing-reference.ts`, the route-specific `pricing-2026-09-05.json` snapshot, and the human-readable note `provider-model-pricing-reference.md`.
+- This chart resolver estimates base-tier API value. Request-level long-context tiers, subscription allowances and actual invoices require separate analysis.
 - Use this on demand unless you intentionally wire it into a scheduled task.

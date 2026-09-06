@@ -1,0 +1,229 @@
+{
+  "assumptions": {
+    "days": 30,
+    "rows": [
+      {
+        "id": "hard",
+        "name": "Difficult debugging / multi-file refactor",
+        "minutes": 25,
+        "tasks": 1,
+        "calls": 6,
+        "promptPerCall": 50000,
+        "outputPerTask": 15000,
+        "frontier": [
+          "fable",
+          "astra"
+        ],
+        "precursor": [
+          "sol",
+          "terra"
+        ],
+        "open": [
+          "deep",
+          "kimi"
+        ],
+        "default": "fable",
+        "why": "Start with Fable for sustained code changes; escalate to Astra for an independent reasoning pass. DeepSeek is a lower-cost trial when tests can judge success."
+      },
+      {
+        "id": "code",
+        "name": "Routine implementation, tests and review",
+        "minutes": 20,
+        "tasks": 3,
+        "calls": 4,
+        "promptPerCall": 25000,
+        "outputPerTask": 8000,
+        "frontier": [
+          "fable",
+          "astra"
+        ],
+        "precursor": [
+          "sol",
+          "terra"
+        ],
+        "open": [
+          "mini",
+          "deep"
+        ],
+        "default": "sol",
+        "why": "Sol is the practical default; use Terra or MiniMax for bounded changes with strong tests. Frontier pricing is usually unnecessary for this row."
+      },
+      {
+        "id": "ops",
+        "name": "Infrastructure diagnosis / scripting",
+        "minutes": 15,
+        "tasks": 1,
+        "calls": 3,
+        "promptPerCall": 20000,
+        "outputPerTask": 4000,
+        "frontier": [
+          "astra",
+          "fable"
+        ],
+        "precursor": [
+          "sol",
+          "terra"
+        ],
+        "open": [
+          "deep",
+          "mini"
+        ],
+        "default": "sol",
+        "why": "Prefer a proven tool workflow over a speculative capability win. Astra is an escalation option for ambiguous diagnosis; keep state-changing commands gated."
+      },
+      {
+        "id": "docs",
+        "name": "Research and long-document synthesis",
+        "minutes": 30,
+        "tasks": 1,
+        "calls": 4,
+        "promptPerCall": 40000,
+        "outputPerTask": 8000,
+        "frontier": [
+          "fable",
+          "astra"
+        ],
+        "precursor": [
+          "sol",
+          "old"
+        ],
+        "open": [
+          "kimi",
+          "deep"
+        ],
+        "default": "kimi",
+        "why": "Kimi is the open-weight trial for document-heavy work; Fable is the premium option. Require source checks on every route. Fable 5 is a compatibility fallback, not a good new purchase."
+      },
+      {
+        "id": "small",
+        "name": "Extraction, short summaries and transformations",
+        "minutes": 10,
+        "tasks": 2,
+        "calls": 2,
+        "promptPerCall": 10000,
+        "outputPerTask": 2000,
+        "frontier": [
+          "fable",
+          "astra"
+        ],
+        "precursor": [
+          "terra",
+          "sol"
+        ],
+        "open": [
+          "flash",
+          "mini"
+        ],
+        "default": "flash",
+        "why": "Use Flash first for well-specified, verifiable output. Escalate only on validation failures; a frontier model is poor value here."
+      }
+    ],
+    "cacheShares": {
+      "input": 0.01469598338407527,
+      "read": 0.9445534406336595,
+      "write": 0.04075057598226524
+    },
+    "rankings": "Editorial trial order, not benchmark results"
+  },
+  "profiles": {
+    "recommended": 48.192905435461746,
+    "frontierByWorkload": 106.8011413043145,
+    "precursorByWorkload": 25.00062064714407,
+    "openByWorkload": 8.861374833303387,
+    "allFable": 105.52599415945906,
+    "allAstra": 123.80310323572037,
+    "allSolRouter": 24.760620647144073,
+    "allSolNative": 49.521241294288146
+  },
+  "outputSensitivity": [
+    {
+      "multiplier": 0.5,
+      "usd": 30.932105435461757
+    },
+    {
+      "multiplier": 1,
+      "usd": 48.192905435461746
+    },
+    {
+      "multiplier": 2,
+      "usd": 82.71450543546176
+    }
+  ],
+  "costsPerTask": [
+    {
+      "workload": "Difficult debugging / multi-file refactor",
+      "usd": {
+        "fable": 1.017744118133245,
+        "astra": 1.2302686422758184,
+        "old": 1.2302686422758184,
+        "sol": 0.24605372845516366,
+        "solNative": 0.4921074569103273,
+        "terra": 0.2760537284551636,
+        "deep": 0.04118914994426603,
+        "kimi": 0.3599117130867358,
+        "mini": 0.03999215227437651,
+        "flash": 0.008315064422685205
+      }
+    },
+    {
+      "workload": "Routine implementation, tests and review",
+      "usd": {
+        "fable": 0.48924803937774825,
+        "astra": 0.5600895474252727,
+        "old": 0.5600895474252727,
+        "sol": 0.11201790948505455,
+        "solNative": 0.2240358189701091,
+        "terra": 0.12801790948505457,
+        "deep": 0.01894503664808868,
+        "kimi": 0.16497057102891194,
+        "mini": 0.01693071742479217,
+        "flash": 0.0033116881408950683
+      }
+    },
+    {
+      "workload": "Infrastructure diagnosis / scripting",
+      "usd": {
+        "fable": 0.253548823626649,
+        "astra": 0.29605372845516364,
+        "old": 0.29605372845516364,
+        "sol": 0.05921074569103273,
+        "solNative": 0.11842149138206547,
+        "terra": 0.06721074569103273,
+        "deep": 0.009976269988853205,
+        "kimi": 0.08698234261734716,
+        "mini": 0.009198430454875303,
+        "flash": 0.0018430128845370408
+      }
+    },
+    {
+      "workload": "Research and long-document synthesis",
+      "usd": {
+        "fable": 0.5427968630043972,
+        "astra": 0.6561432758804364,
+        "old": 0.6561432758804364,
+        "sol": 0.13122865517608728,
+        "solNative": 0.26245731035217457,
+        "terra": 0.14722865517608727,
+        "deep": 0.021967546636941886,
+        "kimi": 0.1919529136462591,
+        "mini": 0.021329147879667474,
+        "flash": 0.00443470102543211
+      }
+    },
+    {
+      "workload": "Extraction, short summaries and transformations",
+      "usd": {
+        "fable": 0.11784960787554966,
+        "astra": 0.13201790948505454,
+        "old": 0.13201790948505454,
+        "sol": 0.02640358189701091,
+        "solNative": 0.05280716379402182,
+        "terra": 0.03040358189701091,
+        "deep": 0.004484383329617736,
+        "kimi": 0.03899411420578239,
+        "mini": 0.0038661434849584344,
+        "flash": 0.0007343376281790136
+      }
+    }
+  ]
+}

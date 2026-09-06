@@ -121,13 +121,17 @@ export function getSearchResponse(
   scope: SearchScope = "current",
   rootChatJid?: string | null,
   filters?: { images?: boolean; attachments?: boolean } | null,
+  authorisedChatJids?: string[],
 ): { status: number; body: unknown } {
   if (!query) return { status: 400, body: { error: "Missing 'q' parameter" } };
 
   const effectiveRootChatJid = scope === "root" ? resolveSearchRootChatJid(chatJid, rootChatJid) : null;
 
   let results;
-  if (scope === "all") {
+  if (authorisedChatJids !== undefined) {
+    // Explicit empty scope must remain empty, never expand to all chats.
+    results = searchMessagesAcrossChats(authorisedChatJids, query, limit, offset);
+  } else if (scope === "all") {
     results = searchMessagesAcrossChats(null, query, limit, offset);
   } else if (scope === "root") {
     const branchChatJids = Array.from(new Set(listChatBranches(effectiveRootChatJid).map((branch) => branch.chat_jid)));

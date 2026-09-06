@@ -6,14 +6,24 @@
  */
 
 import { probePasskeyCapabilityBestEffort, readJsonBodyBestEffort, runPasskeyAttemptBestEffort } from './login-safety.js';
+import { parseLoginPolicy, buildTotpLoginBody, type LoginPolicy } from './login-policy.js';
 
-const form = document.getElementById("login-form");
-const codeInput = document.getElementById("code");
-const errorEl = document.getElementById("error");
-
-if (!form || !codeInput || !errorEl) {
-  throw new Error("Login form markup is missing required elements.");
+function element<T extends HTMLElement>(id: string): T {
+  const node = document.getElementById(id);
+  if (!node) throw new Error(`Login markup is missing ${id}.`);
+  return node as T;
 }
+const form = element<HTMLFormElement>("login-form");
+const codeInput = element<HTMLInputElement>("code");
+const usernameInput = element<HTMLInputElement>("username");
+const usernameField = element<HTMLDivElement>("username-field");
+const errorEl = element<HTMLDivElement>("error");
+const description = element<HTMLParagraphElement>("login-description");
+const passkeyButton = element<HTMLButtonElement>("passkey-button");
+const verifyButton = element<HTMLButtonElement>("verify-button");
+const retryButton = element<HTMLButtonElement>("retry-options");
+let policy: LoginPolicy | null = null;
+let submitting = false;
 
 const base64UrlToBuffer = (value: string): Uint8Array => {
   const pad = "=".repeat((4 - (value.length % 4)) % 4);
@@ -66,85 +76,114 @@ const parseLoginOptions = (options: LoginOptionsPayload) => ({
   })),
 });
 
-let passkeyInFlight = false;
+let passkeyRequest: { controller: AbortController; conditional: boolean; done: Promise<boolean> } | null = null;
 let passkeySucceeded = false;
 
 const attemptPasskey = async ({ conditional }: { conditional: boolean }) => {
-  if (!window.PublicKeyCredential || !navigator.credentials) return;
-  if (passkeyInFlight || passkeySucceeded) return;
-  passkeyInFlight = true;
-  const succeeded = await runPasskeyAttemptBestEffort(async () => {
-    const res = await fetch("/auth/webauthn/login/start", { method: "POST" });
-    if (!res.ok) {
-      passkeyInFlight = false;
-      return false;
-    }
+  if (!policy?.passkey) return;
+  if (!window.PublicKeyCredential || !navigator.credentials) {
+    if (!conditional) errorEl.textContent = "Passkeys are unavailable in this browser. Use a supported browser over HTTPS.";
+    return;
+  }
+  if (passkeySucceeded || submitting) return;
+  if (passkeyRequest) {
+    if (conditional || !passkeyRequest.conditional) return;
+    // Reserve the explicit request before waiting, so a second click cannot start another prompt.
+    passkeyRequest.conditional = false;
+    passkeyRequest.controller.abort();
+    await passkeyRequest.done;
+  }
+  if (submitting || passkeySucceeded || !policy?.passkey) return;
+  if (!conditional) errorEl.textContent = "";
+  const controller = new AbortController();
+  const done = runPasskeyAttemptBestEffort(async () => {
+    const res = await fetch("/auth/webauthn/login/start", { method: "POST", signal: controller.signal });
+    if (!res.ok) return false;
 
     const payload = await res.json();
     const publicKey = parseLoginOptions(payload.options);
     const cred = (await navigator.credentials.get({
       publicKey,
       mediation: conditional ? "conditional" : "required",
+      signal: controller.signal,
     })) as PublicKeyCredential | null;
 
-    if (!cred) {
-      passkeyInFlight = false;
-      return false;
-    }
+    if (!cred || controller.signal.aborted) return false;
 
     const finish = await fetch("/auth/webauthn/login/finish", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token: payload.token, credential: credentialToJSON(cred) }),
+      signal: controller.signal,
     });
 
-    if (finish.ok) {
+    if (finish.ok && !controller.signal.aborted) {
       passkeySucceeded = true;
       window.location.href = "/";
       return true;
     }
     return false;
   });
+  passkeyRequest = { controller, conditional, done };
+  const succeeded = await done;
+  if (passkeyRequest?.controller === controller) passkeyRequest = null;
   if (succeeded) return;
-  passkeyInFlight = false;
+  if (!conditional && !submitting && !controller.signal.aborted) errorEl.textContent = "Passkey sign-in was cancelled or failed. Try again or use an enabled alternative.";
 };
 
-if (window.PublicKeyCredential && typeof PublicKeyCredential.isConditionalMediationAvailable === "function") {
-  void probePasskeyCapabilityBestEffort(() => PublicKeyCredential.isConditionalMediationAvailable())
-    .then((available) => {
-      if (available) attemptPasskey({ conditional: true });
-    });
+async function loadPolicy(): Promise<void> {
+  policy = null;
+  form.hidden = true; passkeyButton.hidden = true; retryButton.hidden = true;
+  errorEl.textContent = ""; description.textContent = "Loading sign-in options…";
+  codeInput.disabled = true; usernameInput.disabled = true; verifyButton.disabled = true;
+  try {
+    const response = await fetch("/auth/options", { cache: "no-store" });
+    if (!response.ok) throw new Error("Cannot load sign-in options.");
+    policy = parseLoginPolicy(await response.json());
+    if (!policy.auth_enabled) { window.location.href = "/"; return; }
+    form.hidden = !policy.totp; passkeyButton.hidden = !policy.passkey;
+    usernameField.hidden = !policy.username_required; usernameInput.required = policy.username_required;
+    usernameInput.disabled = !policy.username_required; codeInput.disabled = !policy.totp; verifyButton.disabled = !policy.totp;
+    description.textContent = policy.totp
+      ? policy.username_required ? "Enter your account username and authenticator code." : "Use the six-digit code from your authenticator app."
+      : "Use a passkey registered for this site.";
+    if (policy.totp) (policy.username_required ? usernameInput : codeInput).focus();
+    if (policy.passkey && window.PublicKeyCredential && typeof PublicKeyCredential.isConditionalMediationAvailable === "function") {
+      const available = await probePasskeyCapabilityBestEffort(() => PublicKeyCredential.isConditionalMediationAvailable());
+      if (available) void attemptPasskey({ conditional: true });
+    }
+  } catch {
+    policy = null; form.hidden = true; passkeyButton.hidden = true;
+    description.textContent = "Sign-in options could not be loaded.";
+    errorEl.textContent = "Retry before entering credentials."; retryButton.hidden = false;
+  }
 }
-
-codeInput.addEventListener("focus", () => {
-  void attemptPasskey({ conditional: false });
-});
+passkeyButton.addEventListener("click", () => { void attemptPasskey({ conditional: false }); });
+retryButton.addEventListener("click", () => { void loadPolicy(); });
 
 const submitCode = async () => {
-  const code = (codeInput as HTMLInputElement).value?.trim() || "";
+  if (submitting || !policy?.totp) return;
   errorEl.textContent = "";
-
-  if (!code) {
-    errorEl.textContent = "Please enter your code.";
-    return;
+  let body;
+  try { body = buildTotpLoginBody(policy, usernameInput.value, codeInput.value); }
+  catch (error) { errorEl.textContent = (error as Error).message; return; }
+  submitting = true; verifyButton.disabled = true;
+  try {
+    if (passkeyRequest) { passkeyRequest.controller.abort(); await passkeyRequest.done; }
+    const res = await fetch("/auth/verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (res.ok) { window.location.href = "/"; return; }
+    const payload = await readJsonBodyBestEffort(res, {} as Record<string, unknown>);
+    errorEl.textContent = typeof payload.error === "string" ? payload.error : "Sign-in failed. Check your credentials and try again.";
+  } catch {
+    errorEl.textContent = "Could not reach the server. Try again.";
+  } finally {
+    submitting = false; verifyButton.disabled = false;
   }
-
-  const res = await fetch("/auth/verify", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ code }),
-  });
-
-  if (res.ok) {
-    window.location.href = "/";
-    return;
-  }
-
-  const payload = await readJsonBodyBestEffort(res, {} as Record<string, any>);
-  errorEl.textContent = payload.error || "Invalid code. Try again.";
 };
 
 form.addEventListener("submit", (e) => {
   e.preventDefault();
   void submitCode();
 });
+
+void loadPolicy();

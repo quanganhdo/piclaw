@@ -9,6 +9,12 @@
  */
 
 import type { WebChannelLike } from "../core/web-channel-contracts.js";
+import { readAccessConfig } from "../../../core/config-access.js";
+import { isFamilyWebToolAllowed } from '../../../core/family-workspace-policy.js';
+import { withExecutionIdentity, type ExecutionIdentity } from "../../../core/execution-context.js";
+import { withChatContext } from "../../../core/chat-context.js";
+import { ChatAccessDenied } from "../../../db/session-ownership.js";
+import { resolveFamilyMessageAuthority } from "../messaging/family-message-authority.js";
 import {
   getIdentityConfig,
   getRoutingConfig,
@@ -40,6 +46,8 @@ import { handleUiMetersCommand } from "../ui-meters-commands.js";
 import { getServerUiMetersConfig, setServerUiMetersConfig, setServerUiThemeConfig } from "../ui-state.js";
 import {
   getChatCursor,
+  getMessagesSince,
+  getFailedRun,
   getInflightMessageId,
   getMessageRowIdById,
   getDb,
@@ -314,7 +322,22 @@ function buildErrorOutcomeMarker(
       abortOperation: options.abortOperation,
     });
   }
-  if (category === "session_corruption" || category === "context_pressure") {
+  if (category === "context_pressure") {
+    return buildTurnOutcomeMarker({
+      ...common,
+      kind: "context",
+      label: "context",
+      title: "Context limit reached",
+      detail: options.abortCause === "context_pressure"
+        ? "Piclaw paused this turn at its context threshold. Automatic continuation did not complete; the session is preserved."
+        : detail,
+      severity: options.severity ?? "warning",
+      nextAction: options.nextAction || "Ask me to continue from the saved state; if context pressure persists, run /compact first.",
+      abortCause: options.abortCause,
+      abortOperation: options.abortOperation,
+    });
+  }
+  if (category === "session_corruption") {
     return buildTurnOutcomeMarker({
       ...common,
       kind: "context",
@@ -612,6 +635,7 @@ export async function handleAgentMessage(
   chatJid: string,
   defaultAgentId: string
 ): Promise<Response> {
+  if (readAccessConfig().mode !== "single-user") return channel.json({ error: "Use account-bound text message admission." }, 403);
   const agentId = pathname.split("/")[2] || defaultAgentId;
   const browserObservability = getBrowserObservabilityContext(req);
   const parsed = await parseAgentMessageRequest(req);
@@ -1438,6 +1462,28 @@ export async function processChat(
   threadRootId?: number,
   browserObservability?: BrowserObservabilityContext,
 ): Promise<void> {
+  const mode = readAccessConfig().mode;
+  if (mode === "single-user") return processAuthorisedChat(channel, chatJid, agentId, threadRootId, browserObservability);
+  if (mode !== "family-shared") throw new ChatAccessDenied();
+  const pending = getMessagesSince(chatJid, getChatCursor(chatJid), getIdentityConfig().assistantName);
+  if (!pending.length) return; // Never materialise unprovenanced legacy follow-ups in family mode.
+  const message = pending[0]!;
+  const identity = resolveFamilyMessageAuthority(chatJid, message.id);
+  // Family failures need an explicit owner-authorised retry/skip; never use legacy stale-failure skipping.
+  if (getFailedRun(chatJid)) throw new Error("Family message processing is held for an authorised recovery action.");
+  const rootId = message.thread_id ?? getMessageRowIdById(chatJid, message.id) ?? undefined;
+  return withExecutionIdentity(identity, () => withChatContext(chatJid, "web", () =>
+    processAuthorisedChat(channel, chatJid, agentId, rootId, { userId: identity.provenance.actorUserId }, identity)));
+}
+
+async function processAuthorisedChat(
+  channel: WebChannelLike,
+  chatJid: string,
+  agentId: string,
+  threadRootId?: number,
+  browserObservability?: BrowserObservabilityContext,
+  identity?: ExecutionIdentity,
+): Promise<void> {
   const prevCursor = getChatCursor(chatJid);
   const selection = selectProcessChatMessage({
     chatJid,
@@ -1568,7 +1614,7 @@ export async function processChat(
   const promptMessage = protectedRecoveryPrompt
     ? { ...currentMessage, content: protectedRecoveryPrompt }
     : currentMessage;
-  const prompt = formatMessages([promptMessage], channelName, chatJid);
+  const prompt = formatMessages([identity ? { ...promptMessage, sender_name: identity.displayName, sender: identity.provenance.actorUserId } : promptMessage], channelName, chatJid);
   const lastMessage = currentMessage;
   const runStartedAt = new Date().toISOString();
   const threadId = lastMessage.timestamp;
@@ -1589,7 +1635,7 @@ export async function processChat(
   const preflight = await runProcessChatPreflight({
     channel, chatJid, agentId, message: { id: lastMessage.id, timestamp: lastMessage.timestamp }, prevCursor, effectiveThreadRootId: effectiveThreadRootId ?? null, turnId, runStartedAt, browserObservability,
     streamingHandler: trackedStreamingHandler, compactionState: streamState,
-    skipPrePromptCompaction: protectedRecoveryHandoffContext?.reason === "unresolved_tool_execution",
+    skipPrePromptCompaction: Boolean(identity) || protectedRecoveryHandoffContext?.reason === "unresolved_tool_execution",
     enqueueResume: (root) => enqueueProcessChatAfterCompaction(channel, chatJid, agentId, lastMessage.id, root, browserObservability),
   });
   if (preflight === "deferred") return;
@@ -1747,14 +1793,19 @@ export async function processChat(
   });
 
   const output = await channel.agentPool.runAgent(prompt, chatJid, {
+    ...(identity ? {
+      executionProvenance: identity.provenance,
+      // Narrow initial family conversation tools; global mutators lack owner-scoped entry points.
+      toolCeilingFilter: isFamilyWebToolAllowed,
+    } : {}),
     timeoutMs,
     turnId,
     ...(browserObservability?.userId ? { userId: browserObservability.userId } : {}),
     ...(browserObservability?.sessionId ? { sessionId: browserObservability.sessionId } : {}),
     ...(browserObservability?.clientId ? { clientId: browserObservability.clientId } : {}),
     skipPrePromptCompaction: true,
-    scheduleIdleAutoCompaction: true,
-    deferToolEnabledContinuation: true,
+    scheduleIdleAutoCompaction: !identity,
+    deferToolEnabledContinuation: !identity,
     protectedRecoveryContinuation: Boolean(protectedRecoveryIntent),
     protectedRecoveryContinuationDepth: protectedRecoveryIntent?.handoff_depth,
     protectedRecoveryHandoffContext,
@@ -1902,7 +1953,7 @@ export async function processChat(
     const resolveContinuationThreadId = (): number | null => resolvedThreadRootId
       ?? getMessageRowIdById(chatJid, lastMessage.id ?? "");
     const queueToolBudgetContinuation = (): void => {
-      if (!output.toolBudgetExceeded || output.recovery?.exhausted) return;
+      if (identity || !output.toolBudgetExceeded || output.recovery?.exhausted) return;
       const continuationThreadId = resolveContinuationThreadId();
       if (!continuationThreadId) {
         log.warn("Could not resolve thread lineage for bounded tool-budget continuation", {
@@ -1956,7 +2007,7 @@ export async function processChat(
       created: boolean;
       terminalReason?: "limit" | "unprepared";
     } => {
-      if (!output.requiresToolEnabledContinuation) return { required: false, rowId: null, failed: false, created: false };
+      if (identity || !output.requiresToolEnabledContinuation) return { required: false, rowId: null, failed: false, created: false };
       if (output.protectedRecoveryHandoff?.reason === "unresolved_tool_execution") {
         return { required: false, rowId: null, failed: false, created: false, terminalReason: "unprepared" };
       }

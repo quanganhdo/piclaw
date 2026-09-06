@@ -17,6 +17,22 @@
  */
 
 import Database from "bun:sqlite";
+import { initializeAccessSchema } from "./access-state.js";
+import { initializeSessionOwnershipSchema } from "./session-ownership.js";
+import { initializeSessionHandleSchema } from "./session-handles.js";
+import { initializeOwnedForkSchema } from "./owned-forks.js";
+import { initializeMessageAuthoritySchema } from "./message-authority-schema.js";
+import { initializeAuthFactorSchema } from "./auth-factors-schema.js";
+import { initializeAuthLabelsSchema } from "./auth-labels-schema.js";
+import { initializeFamilyToolRestrictions } from './family-tool-restrictions.js';
+import { initializeAccountPreferences } from './account-preferences.js';
+import { initializeAccountAvatars } from './account-avatar.js';
+import { initializeAccountModelDefaults } from './account-model-defaults.js';
+import { initializeFamilyScheduledGrants } from './family-scheduled-grants-schema.js';
+import { initializeFamilyScheduledOccurrences } from './family-scheduled-occurrences-schema.js';
+import { initializeFamilyScheduledExecutions } from './family-scheduled-executions-schema.js';
+import { initializeFamilyScheduledDispatch } from './family-scheduled-dispatch-schema.js';
+import { initializeFamilyScheduledPublications } from './family-scheduled-publications-schema.js';
 import fs from "fs";
 import path from "path";
 
@@ -170,9 +186,6 @@ function createSchema(database: Database): void {
       archived_at TEXT,
       FOREIGN KEY (chat_jid) REFERENCES chats(jid)
     );
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_branches_agent_name_active_unique
-      ON chat_branches(agent_name)
-      WHERE archived_at IS NULL;
     CREATE INDEX IF NOT EXISTS idx_chat_branches_root_chat_jid ON chat_branches(root_chat_jid);
     CREATE INDEX IF NOT EXISTS idx_chat_branches_parent_branch_id ON chat_branches(parent_branch_id);
     CREATE INDEX IF NOT EXISTS idx_chat_branches_archived_at ON chat_branches(archived_at);
@@ -736,10 +749,8 @@ function ensureChatBranchConstraints(database: Database): void {
     })();
   }
 
+  initializeSessionHandleSchema(database);
   database.exec(`
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_branches_agent_name_active_unique
-      ON chat_branches(agent_name)
-      WHERE archived_at IS NULL;
     CREATE INDEX IF NOT EXISTS idx_chat_branches_root_chat_jid ON chat_branches(root_chat_jid);
     CREATE INDEX IF NOT EXISTS idx_chat_branches_parent_branch_id ON chat_branches(parent_branch_id);
     CREATE INDEX IF NOT EXISTS idx_chat_branches_archived_at ON chat_branches(archived_at);
@@ -935,6 +946,7 @@ export function initDatabase(): void {
   installScheduledRunCompositionSchema(db);
   migrateScheduledTaskAuthorities(db);
   ensureWebSessionColumns(db);
+  ensureWebSessionIdentity(db);
   ensureFts(db);
   ensureChatCursorColumns(db);
   migrateChatCursors(db);
@@ -942,6 +954,21 @@ export function initDatabase(): void {
   dropObsoleteRemoteInteropSchema(db);
   ensureMediaCompression(db);
   ensureThinkingContentDuration(db);
+  initializeAccessSchema(db);
+  initializeSessionOwnershipSchema(db);
+  initializeOwnedForkSchema(db);
+  initializeMessageAuthoritySchema(db);
+  initializeAuthFactorSchema(db);
+  initializeAuthLabelsSchema(db);
+  initializeFamilyToolRestrictions(db);
+  initializeAccountPreferences(db);
+  initializeAccountAvatars(db);
+  initializeAccountModelDefaults(db);
+  initializeFamilyScheduledGrants(db);
+  initializeFamilyScheduledOccurrences(db);
+  initializeFamilyScheduledExecutions(db);
+  initializeFamilyScheduledDispatch(db);
+  initializeFamilyScheduledPublications(db);
   // The legacy live store historically runs without global FK enforcement.
   // EF-S07 uses a dedicated FK-enabled scheduler connection in production;
   // restore the caller's prior setting so unrelated legacy write paths retain
@@ -950,6 +977,13 @@ export function initDatabase(): void {
   if (!useMemory) {
     ensureIncrementalAutoVacuum(db);
   }
+}
+
+/** Add a non-secret login identifier without rewriting existing bearer tokens. */
+function ensureWebSessionIdentity(database: Database): void {
+  const columns = database.prepare("PRAGMA table_info(web_sessions)").all() as Array<{ name: string }>;
+  if (!columns.some(column => column.name === "session_id")) database.exec("ALTER TABLE web_sessions ADD COLUMN session_id TEXT");
+  database.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_web_sessions_session_id ON web_sessions(session_id) WHERE session_id IS NOT NULL");
 }
 
 /** Add duration_ms column to thinking_content for databases created before it was introduced. */

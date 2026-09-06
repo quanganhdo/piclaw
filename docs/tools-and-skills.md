@@ -571,6 +571,10 @@ For web-facing extension work, prefer the following order of surfaces:
 
 See [extension-ui-contract.md](extension-ui-contract.md) and [web-pane-extensions.md](web-pane-extensions.md) for the current contract.
 
+## Access-mode scope
+
+The commands/tools below describe supported single-user operation. Gated family account APIs use separate principal-bound routes; legacy `/totp` and `/passkey` commands explicitly reject multi-user mode. Family `chat` supports owner-local discovery only (no sends or remote directory callbacks), and `session_control` supports only owner-local read-only inspection/assessment. Family `messages` allows SQL-scoped reads of active owned conversations only; writes and its direct post helper deny. Raw SQL introspection and scheduling tools/commands also deny until scoped implementations exist. `session_status` omits foreign activity and tool arguments and cannot certify instance restart safety. Other tool calls are not substitutes for account-bound APIs; write/delivery integration is unfinished. Owner propagation across all tool/transport entry points is unfinished, so family startup remains disabled. Multiple passkeys are supported per account in the [family backend](multi-user/README.md#multiple-passkeys-per-account).
+
 ## Slash commands
 
 Direct commands (no LLM round-trip):
@@ -582,7 +586,7 @@ Direct commands (no LLM round-trip):
 | `/thinking [level]` | Show or set thinking level |
 | `/cycle-thinking` | Cycle thinking level |
 | `/theme [name]` | Set UI theme (use `/theme list` to see options) |
-| `/tint [#hex|name|off]` | Tint the default light/dark UI (e.g. `/tint #3b82f6`, `/tint orange`) |
+| `/tint [#hex\|name\|off]` | Tint the default light/dark UI (e.g. `/tint #3b82f6`, `/tint orange`) |
 | `/state` | Show current session state |
 | `/stats` | Show session token and cost stats |
 | `/context` (alias `/ctx`) | Show context window usage |
@@ -615,8 +619,8 @@ Direct commands (no LLM round-trip):
 | `/user-avatar [url]` | Set or show your avatar URL |
 | `/user-github <url>` | Set your name/avatar from a GitHub profile |
 | `/export-html` | Export session to HTML |
-| `/passkey [enrol|list|delete]` | Manage passkeys (enrolment link, list, delete) |
-| `/totp` / `/totp reset <code>` | Open the single-card TOTP setup/secondary/reset flow; commit only after confirmation |
+| `/passkey [enrol\|list\|delete]` | Legacy single-user passkey management; not a family-account authorisation path |
+| `/totp` / `/totp reset <code>` | Single-user shared-secret setup, re-display or reset through one confirmation card (QR + manual code + confirmation input) |
 | `/qr <text>` | Generate a QR code for text or a URL |
 | `/search <query>` | Search notes and skills in the workspace |
 | `/login [provider]` | Login to an AI model provider (OAuth or API key) |

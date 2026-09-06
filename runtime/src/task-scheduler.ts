@@ -24,6 +24,8 @@ import { hostname } from "node:os";
 import Database from "bun:sqlite";
 
 import { WORKSPACE_DIR, getRuntimeTimingConfig } from "./core/config.js";
+import { readAccessConfig } from "./core/config-access.js";
+import { getExecutionIdentity } from "./core/execution-context.js";
 import { formatRecoverySummary } from "./agent-pool/automatic-recovery.js";
 import { DREAM_TASK_ID, parseDreamPromptToken, runDreamAgentTurn, runDreamMaintenance } from "./dream.js";
 import { computeNextRun } from "./task-scheduler-utils.js";
@@ -47,6 +49,22 @@ import { buildPiSessionEnv } from "./utils/pi-session-env.js";
 import { validateShellCommand, validateShellCwd } from "./utils/task-validation.js";
 
 const log = createLogger("scheduler");
+
+/** Legacy task records cannot authorise multi-user work. No caller identity can enable it. */
+function canRunLegacyScheduledWork(): boolean {
+  try {
+    const mode = readAccessConfig().mode;
+    const identity = getExecutionIdentity();
+    return mode === "single-user" && (!identity || identity.mode === "single-user");
+  } catch {
+    log.warn("Scheduled work denied because access configuration is invalid", { operation: "scheduler.access_denied" });
+    return false;
+  }
+}
+
+function unsupportedScheduledRun(): ScheduledTaskRunOutcome {
+  return { status: "skipped", result: null, error: "Scheduled work requires valid single-user configuration and context.", durationMs: 0, taskRunLogId: null };
+}
 
 /**
  * Dependency injection interface provided by runtime.ts.
@@ -146,10 +164,12 @@ async function switchTaskModel(task: ScheduledTask, deps: SchedulerDeps): Promis
 async function restoreOriginalModel(
   task: ScheduledTask,
   deps: SchedulerDeps,
-  savedModel: string | null
+  savedModel: string | null,
+  mayContinue: () => boolean,
 ): Promise<void> {
   if (!task.model || !savedModel || savedModel === task.model) return;
   const control = await applyModelLabel(deps.agentPool, task.chat_jid, savedModel);
+  if (!mayContinue()) return;
   if (control.status === "error") {
     log.error("Failed to restore model after scheduled task", {
       operation: "restore_original_model",
@@ -287,6 +307,19 @@ export async function runScheduledTask(
   deps: SchedulerDeps,
   options: { advanceTask?: boolean } = {},
 ): Promise<ScheduledTaskRunOutcome> {
+  return executeScheduledTask(task, deps, options);
+}
+
+async function executeScheduledTask(
+  task: ScheduledTask,
+  deps: SchedulerDeps,
+  options: { advanceTask?: boolean },
+  claimActive: () => boolean = () => true,
+): Promise<ScheduledTaskRunOutcome> {
+  if (!canRunLegacyScheduledWork()) return unsupportedScheduledRun();
+  // Once denied, finally/catch paths must not restore models or persist results.
+  let allowed = true;
+  const mayContinue = () => allowed && (allowed = claimActive() && canRunLegacyScheduledWork());
   // Re-check task status (may have been paused/cancelled while queued).
   const fresh = getTaskById(task.id);
   if (!fresh || fresh.status !== "active" || fresh.revision !== task.revision) {
@@ -319,12 +352,15 @@ export async function runScheduledTask(
     if (kind === "internal") {
       // Switch model if the internal task specifies one (e.g. Dream).
       const savedModel = task.model ? await deps.agentPool.getCurrentModelLabel(task.chat_jid) : null;
+      if (!mayContinue()) return unsupportedScheduledRun();
       if (task.model && (!savedModel || savedModel !== task.model)) {
         const switchErr = await switchTaskModel(task, deps);
+        if (!mayContinue()) return unsupportedScheduledRun();
         if (switchErr) { error = switchErr; }
       }
       if (!error) {
         const out = await runInternalTask(task, deps);
+        if (!mayContinue()) return unsupportedScheduledRun();
         if (out.error) {
           error = out.error;
         } else {
@@ -333,10 +369,11 @@ export async function runScheduledTask(
       }
       // Restore original model after internal task completes.
       if (task.model) {
-        await restoreOriginalModel(task, deps, savedModel);
+        await restoreOriginalModel(task, deps, savedModel, mayContinue);
       }
     } else if (kind === "shell") {
       const out = await runShellTask(task);
+      if (!mayContinue()) return unsupportedScheduledRun();
       if (out.error) {
         error = out.error;
       } else if (out.result) {
@@ -345,6 +382,7 @@ export async function runScheduledTask(
           const t = formatOutbound(result, detectChannel(task.chat_jid));
           if (t) {
             await deps.sendMessage(task.chat_jid, t, { forceRoot: true, source: "scheduled" });
+            if (!mayContinue()) return unsupportedScheduledRun();
             if (notifyOnComplete) await deps.sendNudge?.(t);
           }
         }
@@ -354,18 +392,22 @@ export async function runScheduledTask(
       // This isolates the task's prompt/response in a side branch of the session
       // tree, preventing context pollution of the user's conversation.
       const savedLeafId = await deps.agentPool.saveSessionPosition(task.chat_jid);
+      if (!mayContinue()) return unsupportedScheduledRun();
       const savedModel = await deps.agentPool.getCurrentModelLabel(task.chat_jid);
+      if (!mayContinue()) return unsupportedScheduledRun();
 
       try {
         // Switch model if task specifies one.
         if (task.model) {
           if (!savedModel || savedModel !== task.model) {
             error = await switchTaskModel(task, deps);
+            if (!mayContinue()) return unsupportedScheduledRun();
           }
         }
 
         if (!error) {
           const out = await deps.agentPool.runAgent(task.prompt, task.chat_jid);
+          if (!mayContinue()) return unsupportedScheduledRun();
           const recoverySummary = formatRecoverySummary(out.recovery);
           if (out.status === "error") {
             error = out.error || "Unknown";
@@ -377,6 +419,7 @@ export async function runScheduledTask(
               const t = formatOutbound(result, detectChannel(task.chat_jid));
               if (t) {
                 await deps.sendMessage(task.chat_jid, t, { forceRoot: true, source: "scheduled" });
+                if (!mayContinue()) return unsupportedScheduledRun();
                 if (notifyOnComplete) await deps.sendNudge?.(t);
               }
             }
@@ -385,16 +428,18 @@ export async function runScheduledTask(
       } finally {
         // Navigate back to the saved position — the task's prompt and response
         // stay in a side branch and won't pollute the user's conversation context.
-        await deps.agentPool.restoreSessionPosition(task.chat_jid, savedLeafId);
-
-        // Restore the original model if it was changed.
-        await restoreOriginalModel(task, deps, savedModel);
+        if (mayContinue()) {
+          await deps.agentPool.restoreSessionPosition(task.chat_jid, savedLeafId);
+          // Restore the original model only while the legacy path is still allowed.
+          if (mayContinue()) await restoreOriginalModel(task, deps, savedModel, mayContinue);
+        }
       }
     }
   } catch (e) {
     error = e instanceof Error ? e.message : String(e);
   }
 
+  if (!mayContinue()) return unsupportedScheduledRun();
   if (error) schedulerMetrics.taskRunsFailed += 1;
   else schedulerMetrics.taskRunsSucceeded += 1;
 
@@ -647,6 +692,11 @@ interface LeaseController {
 
 const liveLeaseControllers = new Set<LeaseController>();
 
+function mayContinueClaim(controller: LeaseController): boolean {
+  if (!canRunLegacyScheduledWork()) controller.stop();
+  return controller.valid;
+}
+
 function startLeaseController(store: ScheduledRunStore, initial: ScheduledRunLease): LeaseController {
   const controller: LeaseController = {
     lease: initial,
@@ -662,19 +712,27 @@ function startLeaseController(store: ScheduledRunStore, initial: ScheduledRunLea
   const schedule = () => {
     if (!controller.valid) return;
     controller.timer = setTimeout(async () => {
-      if (!controller.valid) return;
+      if (!mayContinueClaim(controller)) return;
       const now = new Date().toISOString();
       const leaseExpiresAt = addCanonicalDuration(now, SCHEDULED_LEASE_DURATION_MS);
       if (!leaseExpiresAt) { controller.stop(); return; }
-      const renewed = await store.renew({
-        runId: controller.lease.record.runId,
-        workerId: controller.lease.record.workerId,
-        expectedAttempt: controller.lease.record.attempt,
-        expectedTaskRevision: controller.lease.record.taskRevision,
-        leaseToken: controller.lease.leaseToken,
-        now,
-        leaseExpiresAt,
-      });
+      let renewed;
+      try {
+        renewed = await store.renew({
+          runId: controller.lease.record.runId,
+          workerId: controller.lease.record.workerId,
+          expectedAttempt: controller.lease.record.attempt,
+          expectedTaskRevision: controller.lease.record.taskRevision,
+          leaseToken: controller.lease.leaseToken,
+          now,
+          leaseExpiresAt,
+        });
+      } catch (error) {
+        controller.stop();
+        if (canRunLegacyScheduledWork()) log.warn("Scheduled run lease renewal threw", { operation: "renew_scheduled_run", err: error });
+        return;
+      }
+      if (!mayContinueClaim(controller)) return;
       if (!renewed.ok) {
         log.warn("Scheduled run lease renewal failed", {
           operation: "renew_scheduled_run",
@@ -703,7 +761,7 @@ async function abandonClaimedRun(
   reasonTag: string,
   source: ScheduledAgentSource | null = null,
 ): Promise<void> {
-  if (!controller.valid) return;
+  if (!mayContinueClaim(controller)) return;
   const lease = controller.lease;
   controller.stop();
   const now = new Date().toISOString();
@@ -721,6 +779,7 @@ async function abandonClaimedRun(
     retryAt: null,
   });
   const abandoned = await store.abandon(abandonRequest);
+  if (!canRunLegacyScheduledWork()) return;
   if (source) settleScheduledAgentSource(lease, source, "error", now);
   if (abandoned.ok) applyScheduledRunToTask(abandoned.value, `Skipped: ${reasonTag}`);
   else log.error("Failed to abandon scheduled run", { operation: "abandon_scheduled_run", runId: lease.record.runId, errorTag: abandoned.error._tag });
@@ -733,7 +792,7 @@ async function runClaimedScheduledTask(
 ): Promise<void> {
   let source: ScheduledAgentSource | null = null;
   try {
-    if (!controller.valid) return;
+    if (!mayContinueClaim(controller)) return;
     const lease = controller.lease;
     const task = getTaskById(lease.record.taskId);
     if (!task || task.status !== "active" || task.revision !== lease.record.taskRevision || task.next_run !== lease.record.scheduledFor) {
@@ -768,13 +827,16 @@ async function runClaimedScheduledTask(
         boundAt: acceptedAt,
       });
       const bound = await store.bindAcceptedSource(bindRequest);
+      if (!mayContinueClaim(controller)) return;
       if (!bound.ok) {
         await abandonClaimedRun(store, controller, "source_binding_failed", source);
         return;
       }
     }
 
-    const outcome = await runScheduledTask(task, deps, { advanceTask: false });
+    const outcome = await executeScheduledTask(task, deps, { advanceTask: false }, () => controller.valid);
+    if (outcome.status === "skipped" && outcome.error !== null) { controller.stop(); return; }
+    if (!mayContinueClaim(controller)) return;
     if (outcome.status === "skipped") {
       await abandonClaimedRun(store, controller, "task_inactive_before_execution", source);
       return;
@@ -805,6 +867,7 @@ async function runClaimedScheduledTask(
       outboxIntents: [],
     });
     const completed = await store.complete(completeRequest);
+    if (!canRunLegacyScheduledWork()) return;
     if (!completed.ok) {
       log.error("Failed to settle scheduled run", {
         operation: "complete_scheduled_run",
@@ -838,6 +901,7 @@ async function runClaimedScheduledTask(
       headDisposition: completed.value.headDisposition,
     });
   } catch (error) {
+    if (!canRunLegacyScheduledWork()) { controller.stop(); return; }
     log.error("Claimed scheduled run failed before settlement", {
       operation: "run_claimed_scheduled_task",
       runId: controller.lease.record.runId,
@@ -851,6 +915,7 @@ async function runClaimedScheduledTask(
 }
 
 export async function pollScheduledRunsOnce(deps: SchedulerDeps, store: ScheduledRunStore): Promise<void> {
+  if (!canRunLegacyScheduledWork()) return;
   schedulerMetrics.polls += 1;
   const now = new Date().toISOString();
   schedulerMetrics.lastPollAt = now;
@@ -864,8 +929,10 @@ export async function pollScheduledRunsOnce(deps: SchedulerDeps, store: Schedule
     leaseDurationMs: SCHEDULED_LEASE_DURATION_MS,
     reclaimAuthorities: scheduledReclaimAuthorities(now),
   });
+  if (!canRunLegacyScheduledWork()) return;
   if (!claimed.ok) throw new Error(`claimDue failed: ${claimed.error._tag}`);
   for (const lease of claimed.value) {
+    if (!canRunLegacyScheduledWork()) return;
     const controller = startLeaseController(store, lease);
     deps.queue.enqueueTask(
       lease.record.runId,
@@ -896,6 +963,7 @@ let schedulerTimer: ReturnType<typeof setTimeout> | null = null;
  * Called once by runtime.ts during startup.
  */
 export function startSchedulerLoop(deps: SchedulerDeps): () => void {
+  if (!canRunLegacyScheduledWork()) return () => {};
   if (started) return stopSchedulerLoop;
   started = true;
   const store = productionScheduledRunStore();
@@ -908,6 +976,10 @@ export function startSchedulerLoop(deps: SchedulerDeps): () => void {
         operation: "start_scheduler_loop.poll",
         err: e,
       });
+    }
+    if (!canRunLegacyScheduledWork()) {
+      stopSchedulerLoop();
+      return;
     }
     if (!started) return;
     schedulerTimer = setTimeout(loop, getRuntimeTimingConfig().schedulerPollIntervalMs);

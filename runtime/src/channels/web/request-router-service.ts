@@ -25,11 +25,15 @@
  */
 
 import { extname, resolve } from "path";
+import { readAccessConfig, type AccessMode } from "../../core/config-access.js";
+import { handleFamilyRequest } from "./http/family-authorisation.js";
 import { createUuid } from "../../utils/ids.js";
 import type { WebChannelLike } from "./core/web-channel-contracts.js";
 import { rememberWebOrigin } from "./auth/request-origin.js";
 import { handleAgentRoutes } from "./http/dispatch-agent.js";
 import { handleAuthRoutes } from "./http/dispatch-auth.js";
+import { principalResponse } from "./auth/principal.js";
+import { loginOptionsResponse } from "./auth/login-options.js";
 import { handleContentPrimaryRoutes, handleContentSecondaryRoutes } from "./http/dispatch-content.js";
 import { handleMediaRoutes } from "./http/dispatch-media.js";
 import { handleShellRoutes } from "./http/dispatch-shell.js";
@@ -62,7 +66,7 @@ import { isPathWithin } from "../../utils/path-safety.js";
 
 /** Business logic for handling compose-box submissions and agent runs. */
 export class RequestRouterService {
-  constructor(private channel: WebChannelLike) {}
+  constructor(private channel: WebChannelLike, private readonly accessMode: AccessMode = readAccessConfig().mode) {}
 
   private async serveStaticAsset(req: Request, relPath: string): Promise<Response> {
     const filePath = resolve(STATIC_DIR, relPath);
@@ -103,6 +107,10 @@ export class RequestRouterService {
     const isTls = req.url.startsWith("https://");
     const secured = withSecurityHeaders(response, isTls);
     secured.headers.set("x-request-id", requestId);
+    if (this.accessMode !== "single-user") {
+      secured.headers.set("Cache-Control", "private, no-store");
+      secured.headers.append("Vary", "Cookie");
+    }
     appendServerTiming(secured, {
       name: "app",
       durationMs,
@@ -118,6 +126,20 @@ export class RequestRouterService {
   private async route(req: Request): Promise<Response> {
     const url = new URL(req.url);
     const pathname = url.pathname;
+
+    if (pathname === "/auth/options") return loginOptionsResponse(req, this.accessMode, this.channel.authGateway);
+
+    // Terminal gate precedes every legacy/add-on dispatcher, including early routes.
+    if (this.accessMode === "family-shared") {
+      return handleFamilyRequest(this.channel, req, this.serveStaticAsset.bind(this));
+    }
+    if (this.accessMode !== "single-user") {
+      return this.channel.json({ error: "Isolated routing is unavailable." }, 503);
+    }
+
+    if (pathname === "/auth/me") {
+      return principalResponse(req, this.channel.authGateway.getPrincipal?.(req) ?? null);
+    }
 
     if (pathname.startsWith("/api/addons/")) {
       const response = await handleExternalAddonRoutes(req, pathname);

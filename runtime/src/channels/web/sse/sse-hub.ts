@@ -9,7 +9,7 @@
  */
 
 import { createLogger, debugSuppressedError } from "../../../utils/logger.js";
-import { broadcastEvent, handleSse, type PendingClient, type SseClientContainer } from "./sse.js";
+import { broadcastEvent, handleSse, type PendingClient, type SseClientContainer, type SseAuthorisation } from "./sse.js";
 
 const log = createLogger("web.sse-hub");
 
@@ -17,8 +17,8 @@ const log = createLogger("web.sse-hub");
 export class SseHub implements SseClientContainer {
   clients = new Set<PendingClient>();
 
-  handleRequest(req?: Request): Response {
-    return handleSse(this, req);
+  handleRequest(req?: Request, authorisation?: SseAuthorisation): Response {
+    return handleSse(this, req, authorisation);
   }
 
   broadcast(eventType: string, data: unknown): void {

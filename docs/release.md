@@ -7,7 +7,7 @@ Pushing a version tag triggers `.github/workflows/publish.yml`. Its first gate c
 - `ghcr.io/rcarmo/piclaw:<tag>`
 - `ghcr.io/rcarmo/piclaw:latest`
 
-The same workflow also builds deterministic source archives and portable YOLO upgrade artifacts and attaches them to the GitHub release:
+After the integration gate, the workflow also builds deterministic source archives and portable YOLO upgrade artifacts and attaches them to the GitHub release:
 
 - `piclaw-<version>-source.tar.gz`
 - `piclaw-<version>-source.zip`
@@ -23,7 +23,7 @@ The source archives contain tracked repository files at the release tag. They ex
 
 The portable artifacts bundle Bun, Piclaw, built web assets, `skel/`, vendored runtime assets, and production `node_modules` for the target OS/architecture. The `linux-x64-baseline` artifact uses Bun’s non-AVX baseline build.
 
-The workflow also publishes the experimental Electrobun desktop shell for each release runner with a `piclaw-desktop` prefix:
+When `PICLAW_BUILD_EXPERIMENTAL_DESKTOP` is enabled (disabled by default), the workflow also builds the experimental Electrobun desktop shell with a `piclaw-desktop` prefix:
 
 - `piclaw-desktop-<version>-linux-x64.tar.gz`
 - `piclaw-desktop-<version>-linux-arm64.tar.gz`
@@ -32,38 +32,30 @@ The workflow also publishes the experimental Electrobun desktop shell for each r
 
 ## Cutting a release
 
-The [cut-release skill](/workspace/.pi/skills/cut-release/SKILL.md) defines the full workflow:
+Follow the repository [AGENTS.md](../AGENTS.md#release-process) and workflow definitions. Release work uses a PR; do not commit directly to `main`. Merging source changes does not authorise installation or restart.
 
-- Gathering the delta and drafting release notes
-- Local rebuild and CI verification (`make build-piclaw && make ci-fast`)
-- Version bump, commit, tag, push
-- Remote CI monitoring after push
-- GitHub release publishing
-- Hotfix retag flow (moving a tag after post-release fixes)
-- Local install and restart
+### Phase 1: validate the release candidate
 
-### Quick path
+1. Review the release delta, update version/release notes on a feature branch, and run `bun run typecheck`, `make build-piclaw` and `make ci-fast`.
+2. Merge the release PR only after its exact-head checks pass and merge is approved.
+3. Create/push a `vX.Y.Z-ux` or `vX.Y.Z-prerelease` tag at the candidate commit. This runs E2E UX tests without publishing images.
+4. Wait for every UX stage to pass and inspect its report. If code changes, validate the new candidate before releasing.
 
-```bash
-make bump-patch    # or make bump-minor
-make push
-```
+### Phase 2: publish the verified candidate
 
-This bumps `VERSION` and `package.json`, commits, tags, and pushes. The CI workflow builds and publishes Docker images for AMD64 and ARM64.
+Create the final `vX.Y.Z` tag only after UX validation for the same source commit. Publishing runs the reusable integration gate against that immutable tag SHA before Docker/portable builds. Monitor the gate and publish jobs, then attach the UX report assets.
 
-### Full path (recommended)
+| Ref/event | CI | E2E UX | Publish |
+|---|---|---|---|
+| PR / push to `main` | Relevant path-filtered checks | Not automatic | No |
+| `v*-ux` / `v*-prerelease` | No ordinary main CI trigger | Yes | No |
+| Final `v*` tag | Integration gate called by publish | No automatic UX run | Only after integration passes |
 
-Always verify locally before pushing:
+The Makefile's `bump-*` targets create a final tag locally, and `make push` pushes the current branch with tags. They do not replace the UX prerequisite; do not use them as an unchecked shortcut. Do not move a published final tag to hide a failed release; use a separately verified corrective release.
 
-```bash
-make build-piclaw   # full rebuild
-make ci-fast        # must show 0 fail
-git add -A && git commit -m 'release: <Movie Name> vX.Y.Z'
-git tag -a vX.Y.Z -m 'PiClaw vX.Y.Z — <Movie Name>'
-git push origin main vX.Y.Z
-```
+### Access-mode release constraint
 
-Then monitor CI and publish the GitHub release via the API (see skill for details).
+The multi-user backend is incomplete. Passing ordinary CI does not enable `family-shared` or `isolated-containers`: preserve `validateAccessStartup` until [#1133](https://github.com/rcarmo/piclaw/issues/1133) migration, isolation and end-to-end gates pass. Release notes must distinguish code present from user-available functionality. Back up configuration, DB, sessions and key material together; never downgrade an activated store by deleting its access marker. See [Access modes](multi-user/README.md).
 
 Build a local source archive when you need to verify the release source payload:
 
@@ -127,7 +119,7 @@ Ownership boundary:
 
 ## Release naming
 
-Each release gets a cult/classic movie name. See the [cut-release skill](/workspace/.pi/skills/cut-release/SKILL.md) for the full convention and workflow.
+Each release gets a cult/classic movie name. Follow the repository release instructions and record the name in the release notes.
 
 ## Container runtime compatibility
 

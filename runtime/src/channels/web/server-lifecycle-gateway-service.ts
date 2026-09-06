@@ -1,5 +1,6 @@
 import { initTheme } from "@earendil-works/pi-coding-agent";
 import type { ServerWebSocket } from "bun";
+import { readAccessConfig } from "../../core/config-access.js";
 
 import { purgeExpiredLinkPreviewImageCache } from "../../db.js";
 import { createLogger } from "../../utils/logger.js";
@@ -242,6 +243,12 @@ export class WebServerLifecycleGatewayService {
     }
   }
 
+  private denyMultiUserUpgrade(): Response {
+    return new Response(JSON.stringify({ error: "Remote sessions are unavailable in this access mode." }), {
+      status: 403, headers: { "Content-Type": "application/json", "Cache-Control": "private, no-store", Vary: "Cookie" },
+    });
+  }
+
   async handleFetch(req: Request, server?: Bun.Server<WebSocketSessionData>): Promise<Response | undefined> {
     const pathname = new URL(req.url).pathname;
     if (pathname === "/terminal/ws") {
@@ -254,6 +261,7 @@ export class WebServerLifecycleGatewayService {
   }
 
   handleTerminalWebSocketUpgrade(req: Request, server?: Bun.Server<WebSocketSessionData>): Response | undefined {
+    if (readAccessConfig().mode !== "single-user") return this.denyMultiUserUpgrade();
     if (!this.deps.webRuntimeConfig.terminalEnabled) {
       return this.deps.json({ error: "Web terminal is disabled." }, 404);
     }
@@ -326,6 +334,7 @@ export class WebServerLifecycleGatewayService {
   }
 
   async handleVncWebSocketUpgrade(req: Request, server?: Bun.Server<WebSocketSessionData>): Promise<Response | undefined> {
+    if (readAccessConfig().mode !== "single-user") return this.denyMultiUserUpgrade();
     const url = new URL(req.url);
     const targetId = url.searchParams.get("target")?.trim() || "";
     const handoffToken = url.searchParams.get("handoff")?.trim() || "";

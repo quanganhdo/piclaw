@@ -67,7 +67,9 @@ Open `http://localhost:8080` and type `/login` to configure your LLM provider, i
 
 ## Web UI at a glance
 
-PiClaw is single-user, mobile-friendly, and streams updates over SSE.
+The supported deployment is single-user, mobile-friendly, and streams updates over SSE.
+
+Family accounts and isolated-container profiles are under development. Their backend code includes owned sessions, account administration and multiple passkeys per account, but **neither multi-user mode can start yet**. There is no supported family Settings/login UI or automatic migration. See [Access modes and implementation status](docs/multi-user/README.md) before using development APIs or changing access configuration.
 
 | Area | Highlights |
 |---|---|
@@ -132,7 +134,8 @@ See [docs/development.md](docs/development.md).
 
 | Area | Docs |
 |---|---|
-| Getting started | [Configuration](docs/configuration.md), [Web UI](docs/web-ui.md), [Install from repo](docs/install-from-repo.md) |
+| Getting started | [Configuration](docs/configuration.md), [Web UI](docs/web-ui.md), [Install from repo](docs/install-from-repo.md), [Access modes and implementation status](docs/multi-user/README.md) |
+| Family preview (startup gated) | [User guide](docs/multi-user/user-guide.md), [Administrator guide](docs/multi-user/administrator-guide.md), [Troubleshooting](docs/multi-user/troubleshooting.md), [Migration runbook](docs/multi-user/migration-copy.md), [Offline recovery](docs/multi-user/operator-recovery.md) |
 | Operations | [Azure VM deployment](docs/azure/README.md), [Azure OpenAI extension](docs/azure/azure-openai-extension.md), [Reverse proxy](docs/reverse-proxy.md), [Release process](docs/release.md) |
 | Runtime internals | [Architecture](docs/architecture.md), [Add-on runtime API](docs/addon-runtime-api.md), [Pipelined smart compaction](docs/pipelined-compaction.md), [Runtime flows](docs/runtime-flows.md), [Runtime stream sessions](docs/runtime-stream-sessions.md), [Storage model](docs/storage.md), [Observability](docs/observability.md) |
 | UI extension model | [Web pane extensions](docs/web-pane-extensions.md), [Extension UI contract](docs/extension-ui-contract.md), [Vendored widget libraries](docs/vendored-widget-libraries.md) |

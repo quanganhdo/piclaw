@@ -160,8 +160,8 @@ export class WebChannelHttpSurfaceService {
     return await this.channel.endpointFacade.handleInternalPost(req);
   }
 
-  handleSse(req: Request): Response {
-    return this.channel.sessionBroadcast.handleSse(req);
+  handleSse(req: Request, authorisation?: import("../sse/sse.js").SseAuthorisation): Response {
+    return this.channel.sessionBroadcast.handleSse(req, authorisation);
   }
 
   handleTerminalSession(req: Request): Response {
