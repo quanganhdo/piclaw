@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync, existsSync, readdirSync, readFileSync, rmSync
 import { join } from "path";
 
 import { importFresh, setEnv } from "./helpers.js";
+import { assertPathWithinTestFilesystemIsolation } from "../scripts/test-filesystem-isolation.js";
 
 const sentMessages: Array<{ jid: string; text: string }> = [];
 let db: typeof import("../src/db.js") | null = null;
@@ -30,6 +31,9 @@ afterEach(() => {
 test("internal Dream flows keep notes/memory/days model-owned and AutoDream stays out of band", async () => {
   const config = await import("../src/core/config.js");
 
+  for (const path of [join(config.WORKSPACE_DIR, "notes"), config.DATA_DIR]) {
+    assertPathWithinTestFilesystemIsolation(path, process.env, { allowRoot: false });
+  }
   rmSync(join(config.WORKSPACE_DIR, "notes"), { recursive: true, force: true });
   rmSync(join(config.DATA_DIR, "dream-backups"), { recursive: true, force: true });
   rmSync(join(config.DATA_DIR, "workspace-search"), { recursive: true, force: true });

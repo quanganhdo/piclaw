@@ -1,6 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 
-import { ComposeBox, QueuedFollowupStack } from '../../web/src/components/compose-box.js';
+import { QueuedFollowupStack } from '../../web/src/components/compose-box.js';
+import { ChatSurface } from '../../web/src/components/chat-surface.js';
 import {
   buildMainShellClassName,
   extractPostedUserMessageId,
@@ -282,7 +283,7 @@ function createMainShellRenderOptions(overrides: Record<string, unknown> = {}) {
   };
 }
 
-test('renderMainShell passes queue controls to ComposeBox and does not render a top-level queue stack', () => {
+test('renderMainShell passes queue controls through ChatSurface and does not render a top-level queue stack', () => {
   const followupQueueItems = [{ row_id: 7, content: 'queued item' }];
   const handleRemoveQueuedFollowup = mock(() => {});
 
@@ -291,18 +292,18 @@ test('renderMainShell passes queue controls to ComposeBox and does not render a 
     handleRemoveQueuedFollowup,
   }));
 
-  let composeVNode: any = null;
+  let chatSurfaceVNode: any = null;
   let topLevelQueueStackCount = 0;
 
   walkVNodes(tree, (node) => {
-    if (node.type === ComposeBox) composeVNode = node;
+    if (node.type === ChatSurface) chatSurfaceVNode = node;
     if (node.type === QueuedFollowupStack) topLevelQueueStackCount += 1;
   });
 
-  expect(composeVNode).toBeTruthy();
-  expect(composeVNode.props.followupQueueItems).toBe(followupQueueItems);
-  expect(composeVNode.props.onRemoveQueuedFollowup).toBe(handleRemoveQueuedFollowup);
-  expect(composeVNode.props.showQueueStack).toBeUndefined();
+  expect(chatSurfaceVNode).toBeTruthy();
+  expect(chatSurfaceVNode.props.composeProps.followupQueueItems).toBe(followupQueueItems);
+  expect(chatSurfaceVNode.props.composeProps.onRemoveQueuedFollowup).toBe(handleRemoveQueuedFollowup);
+  expect(chatSurfaceVNode.props.composeProps.showQueueStack).toBeUndefined();
   expect(topLevelQueueStackCount).toBe(0);
 });
 

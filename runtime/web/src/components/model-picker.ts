@@ -31,6 +31,9 @@ export function ClassicModelPicker({
     onClose,
     onCompact,
     onOpenSettings,
+    thinkingLevel = null,
+    thinkingLevels = [],
+    onSelectThinking,
     rootRef,
 }) {
     const [query, setQuery] = useState('');
@@ -203,6 +206,19 @@ export function ClassicModelPicker({
             </div>
             <div class="compose-model-catalogue-footer">
                 <div class="compose-model-catalogue-footer-start">
+                    ${thinkingLevels.length > 0 && html`
+                        <label class="compose-model-catalogue-thinking">
+                            <span>Thinking</span>
+                            <select
+                                aria-label="Thinking level"
+                                value=${thinkingLevel || thinkingLevels[0]?.id || ''}
+                                disabled=${switching || typeof onSelectThinking !== 'function'}
+                                onChange=${(event) => onSelectThinking?.(event.currentTarget.value)}
+                            >
+                                ${thinkingLevels.map((level) => html`<option key=${level.id} value=${level.id}>${level.label}</option>`)}
+                            </select>
+                        </label>
+                    `}
                     ${projection.blockedCount > 0 && html`
                         <button type="button" class="compose-model-popup-btn" onClick=${() => setShowBlocked((value) => !value)}>
                             ${showBlocked ? 'Hide' : 'Show'} incompatible (${projection.blockedCount})
@@ -210,7 +226,7 @@ export function ClassicModelPicker({
                     `}
                     ${onCompact && projection.blockedCount > 0 && html`<button type="button" class="compose-model-popup-btn" onClick=${onCompact}>Compact context</button>`}
                 </div>
-                <button type="button" class="compose-model-popup-btn primary" onClick=${onOpenSettings}>Open Models settings</button>
+                ${onOpenSettings && html`<button type="button" class="compose-model-popup-btn primary" onClick=${onOpenSettings}>Open Models settings</button>`}
             </div>
         </div>
     `;

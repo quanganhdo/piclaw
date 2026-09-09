@@ -223,16 +223,17 @@ async function main() {
   const baseUrl = `http://127.0.0.1:${hostPort}`;
 
   let browser: Browser | null = null;
+  let createdContainerId: string | null = null;
   let runFailed = false;
   const cleanup = async () => {
     try {
-      if (runFailed) {
-        const containerLogs = runCommand(['docker', 'logs', args.containerName], { allowFailure: true, quiet: true });
+      if (runFailed && createdContainerId) {
+        const containerLogs = runCommand(['docker', 'logs', createdContainerId], { allowFailure: true, quiet: true });
         if (containerLogs.stdout || containerLogs.stderr) {
           writeFileSync(join(artifactDir, `container-logs-${stamp}.txt`), [containerLogs.stdout, containerLogs.stderr].filter(Boolean).join('\n'));
         }
       }
-      runCommand(['docker', 'rm', '-f', args.containerName], { allowFailure: true, quiet: true });
+      if (createdContainerId) runCommand(['docker', 'rm', '-f', createdContainerId], { allowFailure: true, quiet: true });
     } catch (error) {
       log(`Cleanup failed while removing container ${args.containerName}`, error);
     }
@@ -258,10 +259,10 @@ async function main() {
     }
 
     log(`Starting local container ${args.containerName} on ${baseUrl} ...`);
-    runCommand([
+    const created = runCommand([
       'docker', 'run', '-d', '--rm',
       '--name', args.containerName,
-      '-p', `${hostPort}:8080`,
+      '-p', `127.0.0.1:${hostPort}:8080`,
       '-e', 'PICLAW_WEB_PORT=8080',
       '-e', 'PICLAW_AUTOSTART=1',
       '-v', `${harness.configDir}:/config`,
@@ -269,6 +270,8 @@ async function main() {
       '-v', `${currentWebDistDir}:${containerWebDistDir}:ro`,
       args.image,
     ], { quiet: true });
+    createdContainerId = created.stdout.trim();
+    if (!/^[a-f0-9]{12,64}$/.test(createdContainerId)) throw new Error('Docker did not return a created container ID; refusing name-based cleanup');
 
     await waitForHttp(`${baseUrl}/`, args.timeoutMs);
     browser = await chromium.launch({ headless: args.headless });

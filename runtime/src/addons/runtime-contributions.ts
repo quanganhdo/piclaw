@@ -2,6 +2,10 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, statSyn
 import { join, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { getDataDir, getWorkspaceDir as getConfiguredWorkspaceDir } from "../core/config.js";
+import { readAccessConfig } from "../core/config-access.js";
+import { createLogger } from "../utils/logger.js";
+import { getExecutionIdentity } from "../core/execution-context.js";
+import { registerPreShutdownHook } from "../runtime/shutdown-registry.js";
 import { createMedia, getMediaById } from "../db/media.js";
 import { postMessagesToolMessage } from "../extensions/messages-crud.js";
 import type { RuntimeAgentMessageRequest, RuntimeAgentMessageResult } from "../channels/web/core/web-channel-runtime-public-surface-service.js";
@@ -99,6 +103,11 @@ export interface PiclawRuntimeExternalRoutesApiV1 {
 }
 
 export interface PiclawRuntimeAddonApi {
+  lifecycle: {
+    version: 1;
+    /** Register process-scoped cleanup for sockets/timers opened by startup runtime entries. */
+    onShutdown(handler: () => void | Promise<void>): () => void;
+  };
   registerStatusPanelProvider: (provider: AddonStatusPanelProvider) => () => void;
   registerAdaptiveCardIntentHandler: (intent: string, handler: AddonAdaptiveCardIntentHandler) => () => void;
   enqueueAgentMessage: AddonAgentMessageEnqueuer;
@@ -125,14 +134,50 @@ type RuntimeGlobal = typeof globalThis & {
   __piclaw_autoresearch_runtime_registered__?: boolean;
 };
 
+const log = createLogger("addons.runtime-contributions");
 const statusPanelProviders = new Map<string, AddonStatusPanelProvider>();
 const adaptiveCardIntentHandlers = new Map<string, AddonAdaptiveCardIntentHandler>();
 const addonChatTransportUnregisters = new Set<() => void>();
+const addonRuntimeShutdownHandlers = new Set<() => void | Promise<void>>();
+const ADDON_RUNTIME_SHUTDOWN_TIMEOUT_MS = 4000;
 let runtimeApiInstalled = false;
 let lazyRuntimeEntriesLoadPromise: Promise<void> | null = null;
 let startupRuntimeEntriesLoadPromise: Promise<void> | null = null;
 let agentMessageEnqueuer: AddonAgentMessageEnqueuer | null = null;
 let messagingRuntimeHandlers: AddonMessagingRuntimeHandlers | null = null;
+let addonRuntimeShutdownHookRegistered = false;
+
+function registerAddonRuntimeShutdownHandler(handler: () => void | Promise<void>): () => void {
+  if (typeof handler !== "function") return () => {};
+  addonRuntimeShutdownHandlers.add(handler);
+  let active = true;
+  return () => {
+    if (!active) return;
+    active = false;
+    addonRuntimeShutdownHandlers.delete(handler);
+  };
+}
+
+async function shutdownAddonRuntimeContributions(): Promise<void> {
+  const handlers = [...addonRuntimeShutdownHandlers];
+  addonRuntimeShutdownHandlers.clear();
+  const timeout = Symbol("timeout");
+  const results = await Promise.all(handlers.map(async (handler, index) => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const result = await Promise.race([
+        Promise.resolve().then(handler).then(() => null),
+        new Promise<typeof timeout>((resolve) => { timer = setTimeout(() => resolve(timeout), ADDON_RUNTIME_SHUTDOWN_TIMEOUT_MS); }),
+      ]);
+      if (result === timeout) log.warn("Add-on runtime shutdown handler timed out", { operation: "runtime_addon_shutdown", handlerIndex: index, timeoutMs: ADDON_RUNTIME_SHUTDOWN_TIMEOUT_MS });
+    } catch (error) {
+      log.warn("Add-on runtime shutdown handler failed", { operation: "runtime_addon_shutdown", handlerIndex: index, err: error });
+    } finally {
+      clearTimeout(timer);
+    }
+  }));
+  void results;
+}
 
 function getWorkspaceDir(): string {
   return getConfiguredWorkspaceDir();
@@ -286,18 +331,30 @@ async function deliverPeerMessage(input: AddonPeerMessageDeliveryRequest): Promi
   return await messagingRuntimeHandlers.deliverPeerMessage(input);
 }
 
+function requireSingleUserAddonRuntime(action: string): void {
+  const mode = readAccessConfig().mode;
+  const identity = getExecutionIdentity();
+  if (mode !== "single-user" || (identity && identity.mode !== "single-user")) throw new Error(`${action} is unavailable in multi-user mode.`);
+}
+
 async function enqueueAgentMessageViaRuntime(request: RuntimeAgentMessageRequest): Promise<RuntimeAgentMessageResult> {
+  requireSingleUserAddonRuntime("Add-on agent-message enqueue");
   if (!agentMessageEnqueuer) throw new Error("Piclaw runtime agent-message enqueue API is not available yet.");
   return await agentMessageEnqueuer(request);
 }
 
 export function installAddonRuntimeApi(): PiclawRuntimeAddonApi {
+  if (!addonRuntimeShutdownHookRegistered) {
+    addonRuntimeShutdownHookRegistered = true;
+    registerPreShutdownHook(shutdownAddonRuntimeContributions);
+  }
   const runtimeGlobal = globalThis as RuntimeGlobal;
   if (runtimeApiInstalled && runtimeGlobal.__piclaw_runtime) {
     return runtimeGlobal.__piclaw_runtime;
   }
 
   const api: PiclawRuntimeAddonApi = {
+    lifecycle: { version: 1, onShutdown: registerAddonRuntimeShutdownHandler },
     registerStatusPanelProvider: registerAddonStatusPanelProvider,
     registerAdaptiveCardIntentHandler: registerAddonAdaptiveCardIntentHandler,
     enqueueAgentMessage: enqueueAgentMessageViaRuntime,
@@ -377,6 +434,7 @@ export async function ensureStartupAddonRuntimeEntriesLoaded(): Promise<void> {
 }
 
 export async function getAddonStatusPanelPayload(key: string, chatJid: string): Promise<unknown | null> {
+  requireSingleUserAddonRuntime("Add-on status panels");
   await ensureAddonRuntimeEntriesLoaded();
   const provider = statusPanelProviders.get(String(key || "").trim());
   if (!provider) return null;
@@ -388,6 +446,7 @@ export async function runAddonStatusPanelAction(
   action: string,
   payload: Record<string, unknown>,
 ): Promise<unknown | null> {
+  requireSingleUserAddonRuntime("Add-on status actions");
   await ensureAddonRuntimeEntriesLoaded();
   const provider = statusPanelProviders.get(String(key || "").trim());
   if (!provider?.runAction) return null;
@@ -398,6 +457,7 @@ export async function runAddonAdaptiveCardIntent(
   intent: string,
   context: AddonAdaptiveCardIntentContext,
 ): Promise<boolean> {
+  requireSingleUserAddonRuntime("Add-on Adaptive Card intents");
   await ensureAddonRuntimeEntriesLoaded();
   const handler = adaptiveCardIntentHandlers.get(String(intent || "").trim());
   if (!handler) return false;
@@ -405,11 +465,16 @@ export async function runAddonAdaptiveCardIntent(
   return true;
 }
 
+export async function shutdownAddonRuntimeContributionsForTests(): Promise<void> {
+  await shutdownAddonRuntimeContributions();
+}
+
 export function resetAddonRuntimeContributionsForTests(): void {
   statusPanelProviders.clear();
   adaptiveCardIntentHandlers.clear();
   for (const unregister of [...addonChatTransportUnregisters]) unregister();
   addonChatTransportUnregisters.clear();
+  addonRuntimeShutdownHandlers.clear();
   resetRuntimeStreamSessionsForTests();
   resetExternalAddonRoutesForTests();
   lazyRuntimeEntriesLoadPromise = null;

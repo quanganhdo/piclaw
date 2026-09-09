@@ -25,6 +25,26 @@ export interface StoredWebPushSubscription {
   updatedAt: string;
   userAgent: string | null;
   deviceId: string | null;
+  ownerUserId: string | null;
+  loginSessionId: string | null;
+}
+
+export interface WebPushSubscriptionScope {
+  ownerUserId: string;
+  loginSessionId?: string;
+  deviceId?: string;
+}
+
+const FAMILY_SUBSCRIPTION_CAP_PER_OWNER = 8;
+const mutationTails = new Map<string, Promise<void>>();
+
+function serialiseMutation<T>(baseDir: string, mutate: () => T): Promise<T> {
+  const key = resolvePushDir(baseDir), previous = mutationTails.get(key) ?? Promise.resolve();
+  const run = previous.then(mutate);
+  const tail = run.then(() => undefined, () => undefined);
+  mutationTails.set(key, tail);
+  void tail.finally(() => { if (mutationTails.get(key) === tail) mutationTails.delete(key); });
+  return run;
 }
 
 export interface StoredVapidKeys {
@@ -133,7 +153,7 @@ export function getStoredVapidPublicKey(baseDir = DEFAULT_PUSH_DIR): string {
 
 export function normalizeStoredWebPushSubscription(
   value: unknown,
-  options: { now?: string; userAgent?: string | null; deviceId?: string | null } = {}
+  options: { now?: string; userAgent?: string | null; deviceId?: string | null; ownerUserId?: string | null; loginSessionId?: string | null } = {}
 ): StoredWebPushSubscription | null {
   if (!value || typeof value !== "object") return null;
   const input = value as Record<string, any>;
@@ -147,26 +167,58 @@ export function normalizeStoredWebPushSubscription(
   const expirationTime = rawExpirationTime === null || rawExpirationTime === undefined
     ? null
     : Number(rawExpirationTime);
+  const ownerUserId = normalizeScopeValue(options.ownerUserId);
+  const loginSessionId = normalizeScopeValue(options.loginSessionId);
+  if (Boolean(ownerUserId) !== Boolean(loginSessionId)
+    || ((options.ownerUserId !== undefined || options.loginSessionId !== undefined) && (!ownerUserId || !loginSessionId))) return null;
+  const deviceId = typeof options.deviceId === "string" && options.deviceId.trim()
+    ? options.deviceId.trim()
+    : (typeof input.deviceId === "string" && input.deviceId.trim() ? input.deviceId.trim() : null);
+  const userAgent = typeof options.userAgent === "string" && options.userAgent.trim() ? options.userAgent.trim() : null;
+  if (endpoint.length > 4096 || p256dh.length > 1024 || auth.length > 1024 || (deviceId?.length ?? 0) > 256 || (userAgent?.length ?? 0) > 512) return null;
   return {
     endpoint,
     expirationTime: Number.isFinite(expirationTime) ? expirationTime : null,
     keys: { auth, p256dh },
     createdAt: now,
     updatedAt: now,
-    userAgent: typeof options.userAgent === "string" && options.userAgent.trim() ? options.userAgent.trim() : null,
-    deviceId: typeof options.deviceId === "string" && options.deviceId.trim() ? options.deviceId.trim() : (typeof input.deviceId === "string" && input.deviceId.trim() ? input.deviceId.trim() : null),
+    userAgent,
+    deviceId,
+    ownerUserId,
+    loginSessionId,
   };
 }
 
-export function listStoredWebPushSubscriptions(baseDir = DEFAULT_PUSH_DIR): StoredWebPushSubscription[] {
+function normalizeScopeValue(value: unknown): string | null {
+  const normalized = typeof value === "string" ? value.trim() : "";
+  if (!normalized || normalized.length > 256) return null;
+  for (const character of normalized) {
+    const code = character.codePointAt(0)!;
+    if (code <= 0x1f || code === 0x7f) return null;
+  }
+  return normalized;
+}
+
+export function listStoredWebPushSubscriptions(baseDir = DEFAULT_PUSH_DIR, scope?: WebPushSubscriptionScope): StoredWebPushSubscription[] {
   const path = resolveSubscriptionsPath(baseDir);
   const parsed = readJsonFile<StoredWebPushSubscription[]>(path);
   if (!Array.isArray(parsed)) return [];
-  return parsed.filter((entry) => normalizeStoredWebPushSubscription(entry, {
-    now: typeof entry?.updatedAt === "string" && entry.updatedAt.trim() ? entry.updatedAt : new Date().toISOString(),
-    userAgent: typeof entry?.userAgent === "string" ? entry.userAgent : null,
-    deviceId: typeof entry?.deviceId === "string" ? entry.deviceId : null,
-  }) !== null);
+  return parsed.flatMap((entry) => {
+    const updatedAt = typeof entry?.updatedAt === "string" && entry.updatedAt.trim() ? entry.updatedAt : new Date().toISOString();
+    const normalized = normalizeStoredWebPushSubscription(entry, {
+      now: updatedAt,
+      userAgent: typeof entry?.userAgent === "string" ? entry.userAgent : null,
+      deviceId: typeof entry?.deviceId === "string" ? entry.deviceId : null,
+      ...(typeof entry?.ownerUserId === "string" ? { ownerUserId: entry.ownerUserId } : {}),
+      ...(typeof entry?.loginSessionId === "string" ? { loginSessionId: entry.loginSessionId } : {}),
+    });
+    if (!normalized) return [];
+    normalized.createdAt = typeof entry?.createdAt === "string" && entry.createdAt.trim() ? entry.createdAt : normalized.createdAt;
+    if (scope && (normalized.ownerUserId !== scope.ownerUserId
+      || (scope.loginSessionId !== undefined && normalized.loginSessionId !== scope.loginSessionId)
+      || (scope.deviceId !== undefined && normalized.deviceId !== scope.deviceId))) return [];
+    return [normalized];
+  });
 }
 
 function writeStoredWebPushSubscriptions(entries: StoredWebPushSubscription[], baseDir = DEFAULT_PUSH_DIR): void {
@@ -192,14 +244,16 @@ function capStoredWebPushSubscriptions(entries: StoredWebPushSubscription[]): St
     .slice(0, maxEntries);
 }
 
-export function upsertStoredWebPushSubscription(
+function upsertStoredWebPushSubscriptionSync(
   value: unknown,
-  options: { baseDir?: string; userAgent?: string | null; now?: string; deviceId?: string | null } = {}
+  options: { baseDir?: string; userAgent?: string | null; now?: string; deviceId?: string | null; ownerUserId?: string | null; loginSessionId?: string | null; allowOwnerRebind?: boolean } = {}
 ): StoredWebPushSubscription {
   const normalized = normalizeStoredWebPushSubscription(value, {
     now: options.now,
     userAgent: options.userAgent,
     deviceId: options.deviceId,
+    ownerUserId: options.ownerUserId,
+    loginSessionId: options.loginSessionId,
   });
   if (!normalized) {
     throw new Error("Invalid push subscription.");
@@ -208,7 +262,12 @@ export function upsertStoredWebPushSubscription(
   const baseDir = options.baseDir || DEFAULT_PUSH_DIR;
   const entries = listStoredWebPushSubscriptions(baseDir);
   const endpointIndex = entries.findIndex((entry) => entry.endpoint === normalized.endpoint);
-  const deviceIndex = normalized.deviceId ? entries.findIndex((entry) => entry.deviceId === normalized.deviceId) : -1;
+  if (endpointIndex !== -1 && entries[endpointIndex]!.ownerUserId !== normalized.ownerUserId
+    && (!options.allowOwnerRebind || entries[endpointIndex]!.keys.auth !== normalized.keys.auth || entries[endpointIndex]!.keys.p256dh !== normalized.keys.p256dh)) {
+    throw new Error("Invalid push subscription.");
+  }
+  const deviceIndex = normalized.deviceId ? entries.findIndex((entry) => entry.deviceId === normalized.deviceId
+    && entry.ownerUserId === normalized.ownerUserId) : -1;
   const existingIndex = endpointIndex !== -1 ? endpointIndex : deviceIndex;
   if (existingIndex !== -1) {
     const existing = entries[existingIndex];
@@ -219,24 +278,62 @@ export function upsertStoredWebPushSubscription(
       keys: normalized.keys,
       updatedAt: normalized.updatedAt,
       userAgent: normalized.userAgent || existing.userAgent || null,
-      deviceId: normalized.deviceId || existing.deviceId || null,
+      deviceId: endpointIndex !== -1 ? (existing.deviceId || normalized.deviceId || null) : (normalized.deviceId || existing.deviceId || null),
+      ownerUserId: normalized.ownerUserId,
+      loginSessionId: normalized.loginSessionId,
+      createdAt: existing.ownerUserId === normalized.ownerUserId ? existing.createdAt : normalized.createdAt,
     };
     entries[existingIndex] = nextEntry;
-    writeStoredWebPushSubscriptions(capStoredWebPushSubscriptions(entries), baseDir);
+    writeStoredWebPushSubscriptions(capStoredWebPushSubscriptionsByOwner(entries, normalized.ownerUserId), baseDir);
     return nextEntry;
   }
 
   entries.push(normalized);
-  writeStoredWebPushSubscriptions(capStoredWebPushSubscriptions(entries), baseDir);
+  writeStoredWebPushSubscriptions(capStoredWebPushSubscriptionsByOwner(entries, normalized.ownerUserId), baseDir);
   return normalized;
 }
 
-export function removeStoredWebPushSubscription(endpoint: string, baseDir = DEFAULT_PUSH_DIR): boolean {
+/** Serialize read-modify-write updates so concurrent tabs cannot drop another account's record. */
+export function upsertStoredWebPushSubscriptionAtomic(
+  value: unknown,
+  options: Parameters<typeof upsertStoredWebPushSubscriptionSync>[1] & { validate?: () => void } = {},
+): Promise<StoredWebPushSubscription> {
+  return serialiseMutation(options.baseDir || DEFAULT_PUSH_DIR, () => { options.validate?.(); return upsertStoredWebPushSubscriptionSync(value, options); });
+}
+
+export const upsertStoredWebPushSubscription = upsertStoredWebPushSubscriptionSync;
+
+function capStoredWebPushSubscriptionsByOwner(entries: StoredWebPushSubscription[], ownerUserId: string | null): StoredWebPushSubscription[] {
+  if (ownerUserId === null) return capStoredWebPushSubscriptions(entries);
+  const sameOwner = entries.filter(entry => entry.ownerUserId === ownerUserId).sort((left, right) => {
+    const difference = (Date.parse(right.updatedAt) || 0) - (Date.parse(left.updatedAt) || 0);
+    return difference || left.endpoint.localeCompare(right.endpoint);
+  }).slice(0, FAMILY_SUBSCRIPTION_CAP_PER_OWNER);
+  return capStoredWebPushSubscriptions([...entries.filter(entry => entry.ownerUserId !== ownerUserId), ...sameOwner]);
+}
+
+function removeStoredWebPushSubscriptionSync(endpoint: string, baseDir = DEFAULT_PUSH_DIR, scope?: WebPushSubscriptionScope): boolean {
   const normalizedEndpoint = typeof endpoint === "string" ? endpoint.trim() : "";
   if (!normalizedEndpoint) return false;
   const entries = listStoredWebPushSubscriptions(baseDir);
-  const nextEntries = entries.filter((entry) => entry.endpoint !== normalizedEndpoint);
+  const nextEntries = entries.filter((entry) => entry.endpoint !== normalizedEndpoint || (scope !== undefined
+    && (entry.ownerUserId !== scope.ownerUserId || (scope.loginSessionId !== undefined && entry.loginSessionId !== scope.loginSessionId)
+      || (scope.deviceId !== undefined && entry.deviceId !== scope.deviceId))));
   if (nextEntries.length === entries.length) return false;
   writeStoredWebPushSubscriptions(nextEntries, baseDir);
   return true;
+}
+
+export function removeStoredWebPushSubscriptionAtomic(endpoint: string, baseDir = DEFAULT_PUSH_DIR, scope?: WebPushSubscriptionScope, validate?: () => void): Promise<boolean> {
+  return serialiseMutation(baseDir, () => { validate?.(); return removeStoredWebPushSubscriptionSync(endpoint, baseDir, scope); });
+}
+
+export const removeStoredWebPushSubscription = removeStoredWebPushSubscriptionSync;
+
+export function pruneStoredWebPushSubscriptions(predicate: (subscription: StoredWebPushSubscription) => boolean, baseDir = DEFAULT_PUSH_DIR): Promise<number> {
+  return serialiseMutation(baseDir, () => {
+    const entries = listStoredWebPushSubscriptions(baseDir), nextEntries = entries.filter(entry => !predicate(entry));
+    if (nextEntries.length !== entries.length) writeStoredWebPushSubscriptions(nextEntries, baseDir);
+    return entries.length - nextEntries.length;
+  });
 }

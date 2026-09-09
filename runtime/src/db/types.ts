@@ -114,6 +114,16 @@ export interface ToolOutputRecord {
   summary?: string | null;
   /** Filesystem path associated with the tool call (if applicable). */
   path?: string | null;
+  /** Null for legacy single-user rows; immutable account owner for family rows. */
+  owner_user_id?: string | null;
+  /** Stable root branch ID for family rows. */
+  root_branch_id?: string | null;
+  /** Stable source branch ID for family rows. */
+  source_branch_id?: string | null;
+  /** Exact source chat at creation time for family rows. */
+  chat_jid?: string | null;
+  /** Server-owned execution kind for family rows. */
+  execution_kind?: string | null;
   /** The full output content (may be null if only summary is stored). */
   content?: string | null;
 }

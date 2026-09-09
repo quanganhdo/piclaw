@@ -10,6 +10,7 @@ import {readAccessState} from '../../src/db/access-state.js';
 import {readAccessMigrationInventory,prepareAccessMigrationCopy,validateAccessMigrationPlan} from '../../src/db/access-migration-plan.js';
 import {readMigrationResourceInventory,RESOURCE_MIGRATION_POLICY} from '../../src/db/access-resource-migration.js';
 import {resolveRequestPrincipal} from '../../src/channels/web/auth/principal.js';
+import {insertToolOutputChunk,storeToolOutput} from '../../src/db/tool-outputs.js';
 
 let bob:string;
 beforeEach(()=>{closeDatabase();initDatabase();const db=getDb();bob=createUser(db,{username:'bob',displayName:'Bob'}).id;
@@ -46,6 +47,10 @@ test('version-three disposition revokes transient auth, pauses both scheduler he
   attachMediaToMessage(a,[unlinked]);expect(()=>authoriseOwnedMedia(db,actor,unlinked)).toThrow(); // Quarantine cannot be bypassed with a later link.
   expect(()=>readAccessState(db)).toThrow('Prepared migration copy');expect(JSON.parse((db.query('SELECT report_json FROM access_resource_migration').get() as any).report_json)).toMatchObject({paused_tasks:1,quarantined_media:3});
 });
+
+test('version-three disposition deletes unowned legacy tool-output metadata and FTS with a count-only receipt',()=>{const db=getDb();storeToolOutput({id:'legacy-output',created_at:'2026-09-06T00:00:00.000Z',source:'read',summary:'PRIVATE_SUMMARY',path:'/private/output'});insertToolOutputChunk('legacy-output','PRIVATE_FULL_OUTPUT');const p=plan();prepareAccessMigrationCopy(db,p);expect(db.query('SELECT * FROM tool_outputs').all()).toEqual([]);expect(db.query('SELECT * FROM tool_outputs_fts').all()).toEqual([]);const report=JSON.parse((db.query('SELECT report_json FROM access_resource_migration').get() as any).report_json);expect(report.revoked_legacy_tool_outputs).toBe(1);expect(JSON.stringify(report)).not.toContain('PRIVATE_');});
+
+test('scoped tool outputs cannot enter a legacy migration copy and output disposal rolls back on later failure',()=>{const db=getDb(),root=db.query("SELECT root_branch_id FROM session_roots WHERE owner_user_id='default'").get() as {root_branch_id:string}|null;expect(root).toBeNull();expect(()=>storeToolOutput({id:'scoped',created_at:'now',owner_user_id:'default',root_branch_id:'missing',chat_jid:'web:default',execution_kind:'interactive'})).toThrow();storeToolOutput({id:'legacy',created_at:'now',path:null});insertToolOutputChunk('legacy','private');task('failure');db.exec("CREATE TRIGGER fail_after_output_disposal BEFORE UPDATE OF status ON scheduled_tasks BEGIN SELECT RAISE(ABORT,'later failure'); END");const p=plan();expect(()=>prepareAccessMigrationCopy(db,p)).toThrow('later failure');expect(db.query('SELECT id FROM tool_outputs').all()).toEqual([{id:'legacy'}]);expect(db.query('SELECT output_id FROM tool_outputs_fts').all()).toEqual([{output_id:'legacy'}]);});
 
 test('pending runs/followups, bad thread links and mismatched scheduler authority block without changes',()=>{
   const db=getDb();task('task');message('web:default','a');

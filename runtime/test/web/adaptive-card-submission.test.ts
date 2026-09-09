@@ -17,7 +17,16 @@ describe("adaptive card submission helpers", () => {
     })).toBe(true);
   });
 
-  test("extracts submission blocks from mixed content blocks", () => {
+  test("rejects malformed identity, time, and action fields", () => {
+    for (const block of [
+      { type: "adaptive_card_submission", card_id: "", source_post_id: 42, submitted_at: "2026-03-15T12:00:00.000Z", action_type: "Action.Submit" },
+      { type: "adaptive_card_submission", card_id: "card", source_post_id: 1.5, submitted_at: "2026-03-15T12:00:00.000Z", action_type: "Action.Submit" },
+      { type: "adaptive_card_submission", card_id: "card", source_post_id: 42, submitted_at: "invalid", action_type: "Action.Submit" },
+      { type: "adaptive_card_submission", card_id: "card", source_post_id: 42, submitted_at: "2026-03-15T12:00:00.000Z", action_type: "Action.OpenUrl" },
+    ]) expect(isAdaptiveCardSubmissionBlock(block)).toBe(false);
+  });
+
+  test("extracts submission blocks and normalizes legacy missing action type", () => {
     const blocks = extractAdaptiveCardSubmissionBlocks([
       { type: "text", text: "hello" },
       {
@@ -27,9 +36,16 @@ describe("adaptive card submission helpers", () => {
         submitted_at: "2026-03-15T12:00:00.000Z",
         action_type: "Action.Submit",
       },
+      {
+        type: "adaptive_card_submission",
+        card_id: "legacy",
+        source_post_id: 41,
+        submitted_at: "2026-03-15T11:59:00.000Z",
+      },
     ]);
-    expect(blocks).toHaveLength(1);
+    expect(blocks).toHaveLength(2);
     expect(blocks[0]?.card_id).toBe("card-1");
+    expect(blocks[1]).toMatchObject({ card_id: "legacy", action_type: "Action.Submit" });
   });
 
   test("rebuilds the persisted fallback submission text", () => {

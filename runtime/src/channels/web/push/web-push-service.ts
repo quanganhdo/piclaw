@@ -5,12 +5,16 @@
 import { createPrivateKey } from "node:crypto";
 
 import { getWebRuntimeConfig } from "../../../core/config.js";
+import { readAccessConfig } from "../../../core/config-access.js";
 import type { InteractionRow } from "../../../db.js";
+import { getDb } from "../../../db/connection.js";
+import { getRootOwnership } from "../../../db/session-ownership.js";
 import { createLogger, debugSuppressedError } from "../../../utils/logger.js";
 import {
   ensureStoredVapidKeys,
   listStoredWebPushSubscriptions,
-  removeStoredWebPushSubscription,
+  pruneStoredWebPushSubscriptions,
+  removeStoredWebPushSubscriptionAtomic,
   type StoredWebPushSubscription,
 } from "./web-push-store.js";
 import {
@@ -161,6 +165,10 @@ function getActiveDeliveryBreaker(endpoint: string): WebPushBreakerState | null 
   return active;
 }
 
+function subscriptionFailureKey(subscription: StoredWebPushSubscription): string {
+  return `${subscription.ownerUserId || ""}\u0000${subscription.loginSessionId || ""}\u0000${subscription.endpoint}`;
+}
+
 function tripStoredWebPushSetupBreaker(error: unknown): void {
   const reason = error instanceof Error ? error : new Error(String(error || "Unknown web push setup failure"));
   if (getActiveBreaker(disabledStoredWebPushSetupState)) return;
@@ -177,8 +185,9 @@ function tripStoredWebPushSetupBreaker(error: unknown): void {
 
 function tripStoredWebPushDeliveryBreaker(subscription: StoredWebPushSubscription, error: unknown): void {
   const reason = error instanceof Error ? error : new Error(String(error || "Unknown web push delivery failure"));
-  if (getActiveDeliveryBreaker(subscription.endpoint)) return;
-  disabledStoredWebPushDeliveryStateByEndpoint.set(subscription.endpoint, {
+  const key = subscriptionFailureKey(subscription);
+  if (getActiveDeliveryBreaker(key)) return;
+  disabledStoredWebPushDeliveryStateByEndpoint.set(key, {
     reason,
     untilMs: Date.now() + DELIVERY_BREAKER_COOLDOWN_MS,
   });
@@ -186,7 +195,7 @@ function tripStoredWebPushDeliveryBreaker(subscription: StoredWebPushSubscriptio
     errorMessage: reason.message,
     err: reason,
     cooldownMs: DELIVERY_BREAKER_COOLDOWN_MS,
-    endpoint: subscription.endpoint,
+    subscriptionScope: subscription.ownerUserId ? "family" : "single-user",
   });
 }
 
@@ -263,12 +272,12 @@ function isPotentialSystemicDeliveryError(error: unknown): boolean {
 }
 
 function clearSubscriptionFailureState(subscription: StoredWebPushSubscription): void {
-  authFailureCountsByEndpoint.delete(subscription.endpoint);
+  authFailureCountsByEndpoint.delete(subscriptionFailureKey(subscription));
 }
 
 function shouldPruneSubscriptionAfterAuthFailure(subscription: StoredWebPushSubscription): boolean {
-  const nextCount = (authFailureCountsByEndpoint.get(subscription.endpoint) ?? 0) + 1;
-  authFailureCountsByEndpoint.set(subscription.endpoint, nextCount);
+  const key = subscriptionFailureKey(subscription), nextCount = (authFailureCountsByEndpoint.get(key) ?? 0) + 1;
+  authFailureCountsByEndpoint.set(key, nextCount);
   return nextCount >= AUTH_FAILURE_PRUNE_THRESHOLD;
 }
 
@@ -309,7 +318,40 @@ export async function sendStoredAgentReplyWebPushNotification(
   if (!payload) {
     return { attempted: 0, sent: 0, removed: 0, failed: 0 };
   }
-  return await sendStoredWebPushNotification(payload, {
+  const mode = readAccessConfig().mode;
+  if (mode !== "single-user") {
+    if (mode !== "family-shared") return { attempted: 0, sent: 0, removed: 0, failed: 0 };
+    try {
+      const chatJid = typeof interaction.chat_jid === "string" ? interaction.chat_jid.trim() : "";
+      if (!chatJid) return { attempted: 0, sent: 0, removed: 0, failed: 0 };
+      const database = getDb(), ownership = getRootOwnership(database, chatJid);
+      if (!ownership) return { attempted: 0, sent: 0, removed: 0, failed: 0 };
+      const ownerUserId = ownership.ownerUserId;
+      // A provider may deliver after this browser has switched accounts. Keep family
+      // payloads free of conversation text and identifiers; the app re-authorises on open.
+      const familyPayload = { title: "PiClaw reply", body: "You have a new reply.", url: "/", tag: "piclaw:reply", sourceLabel: "Web Push" };
+      return await sendStoredWebPushNotificationInternal(familyPayload, {
+        ...options,
+        chatJid,
+        targetOwnerUserId: ownerUserId,
+        validateRecipient: (subscription) => {
+          if (readAccessConfig().mode !== "family-shared" || getDb() !== database
+            || subscription.ownerUserId !== ownerUserId || !subscription.loginSessionId) return false;
+          if (getRootOwnership(database, chatJid)?.ownerUserId !== ownerUserId) return false;
+          const row = database.query(`SELECT 1 FROM web_sessions s JOIN users u ON u.id=s.user_id
+            WHERE s.session_id=? AND s.user_id=? AND u.enabled=1 AND julianday(s.expires_at)>julianday(?)`).get(subscription.loginSessionId, ownerUserId, new Date().toISOString());
+          return Boolean(row);
+        },
+      });
+    } catch (error) {
+      debugSuppressedError(log, "Family Web Push delivery was denied before provider dispatch.", error, {
+        operation: "web_push.family_recipient_denied",
+        chatJid: typeof interaction.chat_jid === "string" ? interaction.chat_jid : null,
+      });
+      return { attempted: 0, sent: 0, removed: 0, failed: 0 };
+    }
+  }
+  return await sendStoredWebPushNotificationInternal(payload, {
     ...options,
     chatJid: typeof interaction.chat_jid === "string" ? interaction.chat_jid.trim() : options.chatJid,
   });
@@ -319,7 +361,16 @@ export async function sendStoredWebPushNotification(
   payload: WebPushNotificationPayload,
   options: SendStoredWebPushNotificationOptions = {},
 ): Promise<StoredWebPushSendResult> {
-  const subscriptions = listStoredWebPushSubscriptions(options.baseDir);
+  if (readAccessConfig().mode !== "single-user") return { attempted: 0, sent: 0, removed: 0, failed: 0 };
+  return sendStoredWebPushNotificationInternal(payload, options);
+}
+
+async function sendStoredWebPushNotificationInternal(
+  payload: WebPushNotificationPayload,
+  options: SendStoredWebPushNotificationOptions & { targetOwnerUserId?: string; validateRecipient?: (subscription: StoredWebPushSubscription) => boolean },
+): Promise<StoredWebPushSendResult> {
+  const subscriptions = listStoredWebPushSubscriptions(options.baseDir, options.targetOwnerUserId ? { ownerUserId: options.targetOwnerUserId } : undefined)
+    .filter(subscription => options.targetOwnerUserId ? subscription.ownerUserId === options.targetOwnerUserId : subscription.ownerUserId === null);
   if (subscriptions.length === 0) {
     return { attempted: 0, sent: 0, removed: 0, failed: 0 };
   }
@@ -355,18 +406,26 @@ export async function sendStoredWebPushNotification(
   }
   const presenceService = options.presenceService || webNotificationPresenceService;
 
-  const eligibleSubscriptions = subscriptions.filter((subscription) => {
+  const eligibleSubscriptions: StoredWebPushSubscription[] = [], invalidSubscriptions = new Set<string>();
+  for (const subscription of subscriptions) {
     if (typeof options.targetDeviceId === "string" && options.targetDeviceId.trim() && subscription.deviceId !== options.targetDeviceId.trim()) {
-      return false;
+      continue;
     }
-    if (getActiveDeliveryBreaker(subscription.endpoint)) {
-      return false;
+    if (getActiveDeliveryBreaker(subscriptionFailureKey(subscription))) {
+      continue;
     }
-    return presenceService.shouldSendWebPush(subscription.deviceId, options.chatJid);
-  });
+    if (options.validateRecipient && !options.validateRecipient(subscription)) {
+      invalidSubscriptions.add(subscriptionFailureKey(subscription));
+      continue;
+    }
+    if (presenceService.shouldSendWebPush(subscription.deviceId, options.chatJid, undefined, subscription.ownerUserId && subscription.loginSessionId
+      ? { ownerUserId: subscription.ownerUserId, loginSessionId: subscription.loginSessionId } : undefined)) eligibleSubscriptions.push(subscription);
+  }
+  if (invalidSubscriptions.size > 0) await pruneStoredWebPushSubscriptions(subscription => invalidSubscriptions.has(subscriptionFailureKey(subscription)), options.baseDir);
 
   const outcomes = await Promise.all(eligibleSubscriptions.map(async (subscription) => {
     try {
+      if (options.validateRecipient && !options.validateRecipient(subscription)) return { attempted: 0, sent: 0, removed: 0, failed: 0, systemicError: null as Error | null };
       if (options.sendNotification) {
         await options.sendNotification(subscription, serializedPayload, requestOptions);
       } else if (generateRequestDetails) {
@@ -378,21 +437,23 @@ export async function sendStoredWebPushNotification(
     } catch (error) {
       if (isExpiredSubscriptionError(error)) {
         clearSubscriptionFailureState(subscription);
-        if (removeStoredWebPushSubscription(subscription.endpoint, options.baseDir)) {
+        if (await removeStoredWebPushSubscriptionAtomic(subscription.endpoint, options.baseDir, subscription.ownerUserId && subscription.loginSessionId
+          ? { ownerUserId: subscription.ownerUserId, loginSessionId: subscription.loginSessionId } : undefined)) {
           log.info("Removed expired web push subscription after delivery failure.", {
-            endpoint: subscription.endpoint,
+            subscriptionScope: subscription.ownerUserId ? "family" : "single-user",
             statusCode: (error as { statusCode?: unknown } | null)?.statusCode,
           });
           return { attempted: 1, sent: 0, removed: 1, failed: 0, systemicError: null as Error | null };
         }
       } else if (isAuthRejectedSubscriptionError(error) && shouldPruneSubscriptionAfterAuthFailure(subscription)) {
-        if (removeStoredWebPushSubscription(subscription.endpoint, options.baseDir)) {
+        if (await removeStoredWebPushSubscriptionAtomic(subscription.endpoint, options.baseDir, subscription.ownerUserId && subscription.loginSessionId
+          ? { ownerUserId: subscription.ownerUserId, loginSessionId: subscription.loginSessionId } : undefined)) {
           log.info("Removed rejected web push subscription after repeated auth failures.", {
-            endpoint: subscription.endpoint,
+            subscriptionScope: subscription.ownerUserId ? "family" : "single-user",
             statusCode: (error as { statusCode?: unknown } | null)?.statusCode,
             threshold: AUTH_FAILURE_PRUNE_THRESHOLD,
           });
-          authFailureCountsByEndpoint.delete(subscription.endpoint);
+          authFailureCountsByEndpoint.delete(subscriptionFailureKey(subscription));
           return { attempted: 1, sent: 0, removed: 1, failed: 0, systemicError: null as Error | null };
         }
       }
@@ -403,7 +464,7 @@ export async function sendStoredWebPushNotification(
             ? String((error as { message: string }).message)
             : "Web push delivery failed.");
       debugSuppressedError(log, "Web push delivery failed for a stored subscription.", error, {
-        endpoint: subscription.endpoint,
+        subscriptionScope: subscription.ownerUserId ? "family" : "single-user",
       });
       return {
         attempted: 1,

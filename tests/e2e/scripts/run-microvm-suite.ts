@@ -11,10 +11,13 @@
  * 4. Generates PDF report
  */
 
-import { execSync, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
+import { resolve } from "node:path";
+import { requireDisposableTestTarget } from '../../../runtime/scripts/test-target.js';
 
-const MICROVM_URL = process.env.PICLAW_E2E_URL || "http://192.168.1.78:8080";
+const MICROVM_URL = requireDisposableTestTarget(process.env.PICLAW_E2E_URL);
+const suiteDir = resolve(import.meta.dir, '..');
 const PROJECT = process.argv.includes("--project")
   ? process.argv[process.argv.indexOf("--project") + 1]
   : "desktop-chrome";
@@ -39,38 +42,9 @@ try {
   process.exit(1);
 }
 
-// 2. Get internal secret from the microVM config
+// 2. Use only an explicitly supplied test-instance secret; never SSH into an implicit host.
 console.log("2. Resolving auth...");
-let internalSecret = process.env.PICLAW_INTERNAL_SECRET || "";
-if (!internalSecret) {
-  // Try to read from microVM via SSH
-  try {
-    const result = spawnSync("ssh", [
-      "-o", "StrictHostKeyChecking=no",
-      "-i", "/tmp/microvm_key",
-      "root@192.168.1.78",
-      "cat /root/.piclaw/config.json 2>/dev/null || echo '{}'"
-    ], { timeout: 10000, encoding: "utf-8" });
-    if (result.stdout) {
-      const config = JSON.parse(result.stdout);
-      internalSecret = config.internalSecret || config.webInternalSecret || "";
-    }
-  } catch {}
-}
-
-if (!internalSecret) {
-  // Try env file
-  try {
-    const result = spawnSync("ssh", [
-      "-o", "StrictHostKeyChecking=no",
-      "-i", "/tmp/microvm_key",
-      "root@192.168.1.78",
-      "grep PICLAW_INTERNAL_SECRET /root/.piclaw/.env 2>/dev/null || grep PICLAW_WEB_INTERNAL_SECRET /root/.piclaw/.env 2>/dev/null || echo ''"
-    ], { timeout: 10000, encoding: "utf-8" });
-    const match = result.stdout?.match(/=(.+)/);
-    if (match) internalSecret = match[1].trim();
-  } catch {}
-}
+const internalSecret = process.env.PICLAW_E2E_INTERNAL_SECRET || "";
 
 if (internalSecret) {
   console.log("   ✓ Internal secret resolved");
@@ -84,19 +58,19 @@ console.log(`\n3. Running Playwright tests (project: ${PROJECT})...\n`);
 const env = {
   ...process.env,
   PICLAW_E2E_URL: MICROVM_URL,
-  PICLAW_INTERNAL_SECRET: internalSecret,
+  PICLAW_E2E_INTERNAL_SECRET: internalSecret,
   PICLAW_E2E_WORKERS: WORKERS,
   PLAYWRIGHT_BROWSERS_PATH: "/workspace/.cache/ms-playwright",
 };
 
-const testResult = spawnSync("bunx", [
-  "playwright", "test",
+const testResult = spawnSync(process.execPath, [
+  resolve(suiteDir, '../../runtime/scripts/local-test-priority.ts'), '--', 'bunx', 'playwright', 'test',
   "--project", PROJECT,
   "--workers", WORKERS,
   "--reporter", "json,list",
   "--output", "reports/results.json",
 ], {
-  cwd: "/workspace/piclaw/tests/e2e",
+  cwd: suiteDir,
   env,
   stdio: "inherit",
   timeout: Number.isFinite(RUN_TIMEOUT_MS) ? RUN_TIMEOUT_MS : 900000, // default 15 minutes
@@ -108,7 +82,7 @@ console.log(`\nPlaywright exit code: ${testResult.status}`);
 console.log("\n4. Generating report...");
 try {
   spawnSync("bun", ["run", "scripts/generate-report.ts"], {
-    cwd: "/workspace/piclaw/tests/e2e",
+    cwd: suiteDir,
     env,
     stdio: "inherit",
     timeout: 30000,
@@ -117,12 +91,12 @@ try {
   console.log(`   Report generation failed: ${(err as Error).message}`);
 }
 
-const pdfPath = "/workspace/piclaw/tests/e2e/reports/piclaw-e2e-report.pdf";
-const htmlPath = "/workspace/piclaw/tests/e2e/reports/piclaw-e2e-report.html";
+const pdfPath = resolve(suiteDir, 'reports/piclaw-e2e-report.pdf');
+const htmlPath = resolve(suiteDir, 'reports/piclaw-e2e-report.html');
 const reportPath = existsSync(pdfPath) ? pdfPath : existsSync(htmlPath) ? htmlPath : null;
 
 console.log(`\n=== Done ===`);
 console.log(`Exit code: ${testResult.status}`);
 if (reportPath) console.log(`Report: ${reportPath}`);
 
-process.exit(testResult.status || 0);
+process.exit(testResult.status ?? 1);

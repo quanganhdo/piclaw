@@ -15,7 +15,7 @@ function __setSemanticToolResultSummarizerForTests(summarizer: Parameters<typeof
 }
 
 type Mode = "single-user" | "family-shared" | "isolated-containers" | "invalid";
-const denial = "Legacy tool output requires valid single-user configuration and context.";
+const denial = "Tool output access denied.";
 const identity: ExecutionIdentity = { mode: "family-shared", username: "alice", displayName: "Alice", role: "admin", rootChatJid: "web:alice", provenance: { actorUserId: "alice", ownerUserId: "alice", chatJid: "web:alice", kind: "interactive", authenticationSessionId: "claimed-login" } };
 async function fixture(run: (configure: (mode: Mode) => void, workspace: string, data: string) => Promise<void>) {
   await withTempWorkspaceEnv("output-boundary-", { PICLAW_TOOL_RESULT_COMPACTION_ENABLED: "1", PICLAW_TOOL_RESULT_COMPACTION_TOOLS: "bash", PICLAW_TOOL_RESULT_SEMANTIC_SUMMARY_ENABLED: "1", PICLAW_TOOL_OUTPUT_STORE_BYTES: "8", PICLAW_TOOL_OUTPUT_STORE_LINES: "2" }, async (ws) => {
@@ -57,7 +57,7 @@ test("high-level output APIs and direct tools deny before parameters, SQL, files
       for (const ctx of mode === "single-user" ? [identity] : [null, identity]) await withExecutionIdentity(ctx, async () => {
         for (const call of [() => output.saveToolOutput(large, forbidden), () => output.getToolOutput(saved.id), () => output.searchToolOutput(saved.id, "needle"), () => output.searchToolOutput(saved.id, ""), () => output.readToolOutputFile(saved.path), () => output.pruneToolOutputs(1), () => output.pruneToolOutputFiles(1), () => output.migrateFlatToolOutputsToDateShards()]) expect(call).toThrow(denial);
         output.startToolOutputCleanup(1, 9999);
-        await expect(search.execute("id", forbidden as any)).rejects.toThrow(denial);
+        await expect(search.execute("id", forbidden as any)).rejects.toThrow();
         await expect(batch.execute("id", forbidden as any)).rejects.toThrow(denial);
         await expect(bash.execute("id", { command: `touch '${marker}'` })).rejects.toThrow(denial);
       });

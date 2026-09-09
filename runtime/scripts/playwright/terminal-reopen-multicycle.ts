@@ -1,6 +1,9 @@
 #!/usr/bin/env bun
 import { chromium } from 'playwright';
 import { bootstrapE2EStorageState } from './web-auth-bootstrap.ts';
+import { requireDisposableTestTarget } from '../test-target.js';
+
+const baseUrl = requireDisposableTestTarget(process.env.PICLAW_E2E_BASE_URL);
 
 function readDebug(page: any) {
   return page.evaluate(() => {
@@ -22,13 +25,13 @@ function readDebug(page: any) {
 
 const cycles = Number(process.env.PICLAW_MULTICYCLE_COUNT || '5');
 const storageState = await bootstrapE2EStorageState({
-  baseUrl: 'http://127.0.0.1:8080',
-  internalSecret: process.env.PICLAW_INTERNAL_SECRET || process.env.PICLAW_WEB_INTERNAL_SECRET,
+  baseUrl,
+  internalSecret: process.env.PICLAW_E2E_INTERNAL_SECRET,
 });
 const browser = await chromium.launch({ headless: true, executablePath: process.env.PICLAW_PLAYWRIGHT_EXECUTABLE_PATH });
 const context = await browser.newContext({ storageState });
 const page = await context.newPage();
-await page.goto('http://127.0.0.1:8080', { waitUntil: 'domcontentloaded' });
+await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
 await page.waitForTimeout(2000);
 
 for (let cycle = 1; cycle <= cycles; cycle += 1) {

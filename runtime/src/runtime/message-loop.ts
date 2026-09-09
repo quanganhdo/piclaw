@@ -18,6 +18,7 @@
 
 import type { AgentPool } from "../agent-pool.js";
 import { readAccessConfig } from "../core/config-access.js";
+import { getExecutionIdentity } from "../core/execution-context.js";
 import { formatRecoverySummary } from "../agent-pool/automatic-recovery.js";
 import { parseControlCommand, type AgentControlCommand } from "../agent-control/index.js";
 import { stripTrigger } from "../agent-control/parser-utils.js";
@@ -42,9 +43,15 @@ export interface MessageProcessingDeps {
   triggerPattern: RegExp;
 }
 
+function requireSingleUserMessageLoop(): void {
+  const mode = readAccessConfig().mode;
+  const identity = getExecutionIdentity();
+  if (mode !== "single-user" || (identity && identity.mode !== "single-user")) throw new Error("Owner-bound non-web message processing is not available.");
+}
+
 /** Process pending messages for a single chat: send to agent, deliver response. */
 export async function processMessages(chatJid: string, deps: MessageProcessingDeps): Promise<boolean> {
-  if (readAccessConfig().mode !== "single-user") throw new Error("Owner-bound non-web message processing is not available.");
+  requireSingleUserMessageLoop();
   const since = deps.state.lastAgentTimestamp[chatJid] || "";
   const messages = getMessagesSince(chatJid, since, deps.assistantName);
   if (messages.length === 0) return true;
@@ -166,11 +173,13 @@ export interface MessageLoopDeps {
 
 /** Start the polling loop that checks for new messages across all chats. */
 export async function runMessageLoop(deps: MessageLoopDeps): Promise<void> {
+  requireSingleUserMessageLoop();
   log.info("Starting runtime message loop", {
     operation: "run_message_loop.start",
     assistantName: deps.assistantName,
   });
   while (true) {
+    requireSingleUserMessageLoop();
     try {
       const jids = [...deps.state.chatJids];
       const { messages, newTimestamp } = getNewMessages(jids, deps.state.lastTimestamp, deps.assistantName);

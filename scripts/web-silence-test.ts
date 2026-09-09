@@ -7,8 +7,9 @@
  */
 
 import { chromium } from "playwright";
+import { requireDisposableTestTarget } from "../runtime/scripts/test-target.js";
 
-const url = "http://localhost:3000";
+const url = requireDisposableTestTarget(process.env.PICLAW_E2E_BASE_URL);
 
 const assert = (condition: boolean, message: string) => {
   if (!condition) throw new Error(message);

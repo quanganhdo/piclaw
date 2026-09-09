@@ -147,6 +147,26 @@ describe("runtime bootstrap", () => {
     ]);
   });
 
+  test("family mode starts only the web runtime and waits without legacy workers", async () => {
+    const events: string[] = [];
+    let release!: () => void;
+    const wait = new Promise<void>(resolve => { release = resolve; });
+    const deps = bootstrapDepsForFailure({
+      initializeRuntimeEnvironment: () => ({ effectiveMode: "family-shared" }),
+      hydrateMcpCredentials: async () => { events.push("mcp"); return []; },
+      createAgentPool: async () => { events.push("agent-pool"); return { shutdown: async () => {}, resolveModelInput: () => null } as RuntimeBootstrapAgentPool; },
+      startWebChannel: async () => { events.push("web"); return { stop: async () => {} } as RuntimeBootstrapWeb; },
+      startOptionalPushoverChannel: async () => { events.push("pushover"); return null; },
+      startBackgroundModelRefresh: () => events.push("model-refresh"),
+      startRuntimeWorkers: () => events.push("workers"),
+      startRuntimeLoop: async () => { events.push("loop"); },
+      waitForFamilyShutdown: () => wait,
+    });
+    const running = bootstrapRuntime(deps); await Bun.sleep(1);
+    expect(events).toEqual(["agent-pool", "web"]);
+    release(); await running;
+  });
+
   test("clears hydrated MCP credentials when AgentPool creation fails", async () => {
     const cleared: string[][] = [];
     const deps = bootstrapDepsForFailure({

@@ -75,7 +75,7 @@ export interface RuntimeBootstrapDeps {
   triggerPattern: RegExp;
   pollIntervalMs: number;
   signalRegistrar: RuntimeSignalRegistrar;
-  initializeRuntimeEnvironment(state: RuntimeBootstrapState): void;
+  initializeRuntimeEnvironment(state: RuntimeBootstrapState): { effectiveMode: "single-user" | "family-shared" } | void;
   hydrateMcpCredentials(): Promise<HydratedMcpCredential[]>;
   clearMcpCredentials(entries: HydratedMcpCredential[]): void;
   createAgentPool(): Promise<RuntimeBootstrapAgentPool>;
@@ -99,6 +99,7 @@ export interface RuntimeBootstrapDeps {
   ): void;
   queueStartupResumePendingIpc(): void;
   startRuntimeLoop(deps: StartRuntimeLoopDeps): Promise<void>;
+  waitForFamilyShutdown?(): Promise<void>;
   log(message: string): void;
   stopIpcWatcher(): Promise<void>;
   stopSchedulerLoop(): void;
@@ -163,6 +164,7 @@ export function createDefaultRuntimeBootstrapDeps(base: RuntimeBootstrapDefaultB
     startRuntimeWorkers,
     queueStartupResumePendingIpc,
     startRuntimeLoop,
+    waitForFamilyShutdown: () => new Promise<void>(() => {}),
     log: (message) => log.info(message, { operation: "bootstrap.banner" }),
     stopIpcWatcher,
     stopSchedulerLoop,
@@ -174,15 +176,16 @@ export function createDefaultRuntimeBootstrapDeps(base: RuntimeBootstrapDefaultB
 export async function bootstrapRuntime(deps: RuntimeBootstrapDeps): Promise<void> {
   const { queue, state } = deps.base;
 
-  deps.initializeRuntimeEnvironment(state);
-  const hydratedMcpCredentials = await deps.hydrateMcpCredentials();
+  const access = deps.initializeRuntimeEnvironment(state);
+  const familyMode = access?.effectiveMode === "family-shared";
+  const hydratedMcpCredentials = familyMode ? [] : await deps.hydrateMcpCredentials();
   try {
     const agentPool = await deps.createAgentPool();
     deps.log("=== Piclaw - Pi Coding Agent Assistant ===");
 
     const web = await deps.startWebChannel(queue, agentPool);
-    const pushover = await deps.startOptionalPushoverChannel();
-    deps.startBackgroundModelRefresh(agentPool);
+    const pushover = familyMode ? null : await deps.startOptionalPushoverChannel();
+    if (!familyMode) deps.startBackgroundModelRefresh(agentPool);
 
     const baseShutdown = deps.createShutdownHandler({
       queue,
@@ -204,6 +207,10 @@ export async function bootstrapRuntime(deps: RuntimeBootstrapDeps): Promise<void
     deps.registerRuntimeShutdownSignals(deps.signalRegistrar, shutdown);
 
     const senders = deps.createRuntimeSenders(web, pushover);
+    if (familyMode) {
+      await (deps.waitForFamilyShutdown?.() ?? new Promise<void>(() => {}));
+      return;
+    }
     deps.startRuntimeWorkers(queue, agentPool, web, senders);
 
     await deps.startRuntimeLoop({

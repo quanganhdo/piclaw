@@ -7,7 +7,7 @@ import {createTempWorkspace,setEnv} from './helpers.js';
 import {getDb,initDatabase,closeDatabase} from '../src/db/connection.js';
 import {handleAccessMigration} from '../src/cli-access-migration.js';
 import {handleCliOptions} from '../src/cli.js';
-import {readAccessState} from '../src/db/access-state.js';
+import {readAccessState,validateAccessStartup} from '../src/db/access-state.js';
 import {readAccessMigrationInventory} from '../src/db/access-migration-plan.js';
 import {adoptedJsonl} from './agent-pool/adopted-session-fixture.js';
 import {RESOURCE_MIGRATION_POLICY} from '../src/db/access-resource-migration.js';
@@ -91,8 +91,25 @@ test('version-four protected legacy proof import is copy-only, not logged, and r
   }finally{restoreKey();}
 });
 
-test('version-five copy records legacy holds without inventing admissions or changing source cursor/history',async()=>{
+test('version-five copy records legacy holds then promotes into a separate startable family database',async()=>{
   const sourceDb=new Database(source);sourceDb.exec("UPDATE messages SET timestamp='2026-09-06T00:00:00.000Z'");sourceDb.close();
   const inventory=await preview(),before=digest();writeFileSync(join(dir,'plan.json'),JSON.stringify({...inventory.plan,version:5,child_sessions:[],resource_policy:RESOURCE_MIGRATION_POLICY,factor_policy:{passkeys:'preserve-immutable-handles',legacy_totp:'none'},input_policy:MIGRATION_INPUT_POLICY}));await handleAccessMigration(args());expect(digest()).toBe(before);
-  const copy=new Database(join(dir,'prepared.sqlite'),{readonly:true});try{expect(copy.query('SELECT message_id,chat_jid,owner_user_id FROM migration_input_holds').get()).toEqual({message_id:'message',chat_jid:'web:default',owner_user_id:'default'});expect(copy.query('SELECT * FROM message_execution_authorities').all()).toEqual([]);expect(copy.query('SELECT * FROM migration_input_dismissals').all()).toEqual([]);expect(()=>readAccessState(copy)).toThrow();}finally{copy.close();}
+  const preparedPath=join(dir,'prepared.sqlite'),preparedBefore=createHash('sha256').update(readFileSync(preparedPath)).digest('hex');
+  const copy=new Database(preparedPath,{readonly:true});try{expect(copy.query('SELECT message_id,chat_jid,owner_user_id FROM migration_input_holds').get()).toEqual({message_id:'message',chat_jid:'web:default',owner_user_id:'default'});expect(copy.query('SELECT * FROM message_execution_authorities').all()).toEqual([]);expect(copy.query('SELECT * FROM migration_input_dismissals').all()).toEqual([]);expect(()=>readAccessState(copy)).toThrow();}finally{copy.close();}
+  writeFileSync(join(ws.workspace,'.piclaw/config.json'),JSON.stringify({domains:{access:{mode:'family-shared'}}}));const promotedPath=join(dir,'promoted.sqlite');
+  await handleAccessMigration(['promote-copy','--prepared',preparedPath,'--destination',promotedPath,'--source-snapshot',inventory.snapshot,'--writers-stopped','--backup-set-confirmed','--confirm','PROMOTE FAMILY COPY']);
+  expect(digest()).toBe(before);expect(createHash('sha256').update(readFileSync(preparedPath)).digest('hex')).toBe(preparedBefore);expect(statSync(promotedPath).mode&0o777).toBe(0o600);
+  const promoted=new Database(promotedPath,{readonly:true});try{expect(readAccessState(promoted).activatedMode).toBe('family-shared');expect(validateAccessStartup(promoted,join(ws.workspace,'.piclaw/config.json')).effectiveMode).toBe('family-shared');expect(promoted.query('SELECT source_snapshot,plan_version FROM access_migration_promotion').get()).toEqual({source_snapshot:inventory.snapshot,plan_version:5});}finally{promoted.close();}
+});
+
+test('promotion requires explicit family config reviewed snapshot confirmations and a fresh destination',async()=>{
+  const sourceDb=new Database(source);sourceDb.exec("UPDATE messages SET timestamp='2026-09-06T00:00:00.000Z'");sourceDb.close();
+  const inventory=await preview();writeFileSync(join(dir,'plan.json'),JSON.stringify({...inventory.plan,version:5,child_sessions:[],resource_policy:RESOURCE_MIGRATION_POLICY,factor_policy:{passkeys:'preserve-immutable-handles',legacy_totp:'none'},input_policy:MIGRATION_INPUT_POLICY}));await handleAccessMigration(args());
+  const prepared=join(dir,'prepared.sqlite'),target=join(dir,'promoted.sqlite'),base=['promote-copy','--prepared',prepared,'--destination',target,'--source-snapshot',inventory.snapshot,'--writers-stopped','--backup-set-confirmed','--confirm','PROMOTE FAMILY COPY'];
+  await expect(handleAccessMigration(base)).rejects.toThrow('explicit domains.access.mode');
+  writeFileSync(join(ws.workspace,'.piclaw/config.json'),JSON.stringify({domains:{access:{mode:'family-shared'}}}));
+  await expect(handleAccessMigration(base.filter(value=>value!=='--writers-stopped'))).rejects.toThrow();
+  await expect(handleAccessMigration(base.map(value=>value===inventory.snapshot?'0'.repeat(64):value))).rejects.toThrow('does not match');expect(existsSync(target)).toBe(false);
+  await expect(handleAccessMigration(base.map(value=>value===target?prepared:value))).rejects.toThrow();
+  writeFileSync(target,'existing');await expect(handleAccessMigration(base)).rejects.toThrow('already exists');expect(readFileSync(target,'utf8')).toBe('existing');
 });

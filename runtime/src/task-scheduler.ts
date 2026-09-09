@@ -30,7 +30,7 @@ import { formatRecoverySummary } from "./agent-pool/automatic-recovery.js";
 import { DREAM_TASK_ID, parseDreamPromptToken, runDreamAgentTurn, runDreamMaintenance } from "./dream.js";
 import { computeNextRun } from "./task-scheduler-utils.js";
 import type { AgentPool } from "./agent-pool.js";
-import { applyScheduledRunToTask, getDb, getTaskById, logTaskRun, updateTaskAfterRun } from "./db.js";
+import { applyScheduledRunToTask, getDb, getTaskById, logTaskRun, markBudgetDecisionNotified, updateTaskAfterRun } from "./db.js";
 import { AgentQueue } from "./queue.js";
 import { detectChannel, formatOutbound } from "./router.js";
 import { checkPendingShutdown } from "./runtime/shutdown-registry.js";
@@ -337,6 +337,7 @@ async function executeScheduledTask(
   };
 
   const start = Date.now();
+  const budgetWorkId = `scheduled:${task.id}:${start}`;
   schedulerMetrics.taskRunsStarted += 1;
   let result: string | null = null;
   let error: string | null = null;
@@ -406,12 +407,25 @@ async function executeScheduledTask(
         }
 
         if (!error) {
-          const out = await deps.agentPool.runAgent(task.prompt, task.chat_jid);
+          const out = await deps.agentPool.runAgent(task.prompt, task.chat_jid, {
+            budgetWorkId,
+            budgetExecutionKind: "scheduled",
+            budgetScheduledTaskId: task.id,
+          });
           if (!mayContinue()) return unsupportedScheduledRun();
           const recoverySummary = formatRecoverySummary(out.recovery);
           if (out.status === "error") {
             error = out.error || "Unknown";
             loggedError = appendRecoverySummary(error, recoverySummary);
+            if (out.failureCategory === "provider_budget") {
+              const notice = `Scheduled task ${task.id} stopped by budget policy.\n${error}`;
+              await deps.sendMessage("web:default", formatOutbound(notice, detectChannel("web:default")), { forceRoot: true, source: "scheduled" });
+              const pending = getDb().prepare(`SELECT id FROM budget_decisions
+                WHERE work_id=? AND notification_status='pending' ORDER BY created_at DESC,id DESC LIMIT 1`)
+                .get(budgetWorkId) as { id: string } | undefined;
+              if (pending) markBudgetDecisionNotified(pending.id);
+              if (!mayContinue()) return unsupportedScheduledRun();
+            }
           } else {
             loggedResult = appendRecoverySummary(out.result, recoverySummary);
             if (out.result) {

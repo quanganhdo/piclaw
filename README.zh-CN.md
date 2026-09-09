@@ -4,25 +4,29 @@
 
 语言：[English](README.md) · **简体中文** · [日本語](README.ja.md)
 
-PiClaw 将 [Pi Coding Agent](https://github.com/badlogic/pi-mono) 打包成一个自托管工作区，提供三语流式 Web UI、持久状态、多提供商 LLM 支持和内置工具。[可选插件](https://rcarmo.github.io/piclaw-addons/)可扩展运行时和 Web UI。
+PiClaw 是基于 [Pi Coding Agent](https://github.com/earendil-works/pi) 构建的自托管 AI 工作区，默认采用单用户模式。你可以在同一个浏览器窗口中与智能体协作、编辑文件、运行命令并查看结果。再次访问时，对话、文件和计划任务仍会保留；模型请求会发送到你配置的服务，包括兼容 OpenAI API 的本地服务器。
 
-它可以在本地或容器中运行，提供一个有状态的 agent 工作区。
-
-## 功能
+Web UI 支持英语、简体中文和日语，并提供桌面和移动端布局。使用容器、虚拟机或专用机器，限制智能体能够访问的文件和服务。
 
 ![演示动画](docs/demo.gif)
 
-| 功能 | 说明 |
-|---|---|
-| Web 工作区 | 在同一个 UI 中使用聊天、编辑器、终端、查看器、上传和自动化功能 |
-| 持久状态 | 基于 SQLite 的消息、媒体、任务、token 使用量、加密钥匙串和会话级 SSH 配置 |
-| 内置工具 | 代码编辑、CSV/PDF/图片/视频查看、VNC、浏览器自动化、图像处理、MCP，以及用于成对远端实例的可选跨实例 IPC |
-| Agent 工作流 | Steering、排队 follow-up、side prompt、计划任务和可视化 artifact 生成；可选的 autoresearch 插件提供实验循环 |
-| 分阶段加载工具 | 默认保持较小的常驻工具集，通过 `list_tools` 和 `list_scripts` 发现更多工具 |
-| 可选认证和通道 | Web UI 支持 passkey 或 TOTP，也可选接入 WhatsApp |
-| 可选插件 | 提供额外工具、技能、查看器、终端、设置面板、Draw.io、Office 文档渲染和工具、Windows 桌面自动化、Proxmox 与 Portainer |
+## 安装
 
-## 快速开始
+| 方式 | 用途 |
+|---|---|
+| [Docker](#使用-docker-快速开始) | 推荐的部署方式；包含 Bun、PiClaw 和配套命令行工具 |
+| [便携发行包](docs/getting-started.md#portable-releases) | 无需 Docker，可用于 Linux、Apple Silicon Mac，以及实验性的 Windows 部署；包含 Bun 和运行时依赖 |
+| [通过 Bun 从仓库安装](docs/install-from-repo.md) | 使用已有的 Bun 安装指定发布标签，属于实验性方式 |
+| [源码构建](docs/development.md) / [桌面壳](docs/desktop.md) | 开发和本地测试；桌面包装器处于实验阶段 |
+
+发行包可从 [GitHub Releases](https://github.com/rcarmo/piclaw/releases) 下载，容器镜像位于 [GHCR](https://github.com/rcarmo/piclaw/pkgs/container/piclaw)。固定发布标签可重复部署相同版本。
+
+### 使用 Docker 快速开始
+
+你需要 Docker，以及模型提供商的凭据或可访问的本地模型服务器。模型服务在启动后配置。
+
+> [!WARNING]
+> 新实例默认不要求 Web 登录。以下命令**仅向 localhost 发布端口**。配置认证期间，请保持实例不对外开放。任何能够访问未受保护实例的人，都可以使用智能体的文件和工具。
 
 ```bash
 mkdir -p ./home ./workspace
@@ -31,139 +35,72 @@ docker run -d \
   --init \
   --name piclaw \
   --restart unless-stopped \
-  -p 8080:8080 \
+  -p 127.0.0.1:8080:8080 \
   -e PICLAW_WEB_PORT=8080 \
   -v "$(pwd)/home:/config" \
   -v "$(pwd)/workspace:/workspace" \
   ghcr.io/rcarmo/piclaw:latest
 ```
 
-打开 `http://localhost:8080`，输入 `/login` 配置 LLM 提供商，包括自定义 OpenAI 兼容端点和本地 [llama.cpp router preset](docs/llama-cpp.md)。Web UI 内置英语、简体中文和日语文案，可在设置中切换语言。
+1. 在 Docker 主机上打开 [http://localhost:8080](http://localhost:8080)。
+2. 在聊天中发送 `/login`，配置**模型提供商**。这与浏览器登录是两回事。PiClaw 复用 Pi 的提供商凭据，无需在 Docker 命令中填写 API 密钥。
+3. 使用 `/model` 选择模型，然后试试：“在工作区创建一个 Markdown 检查清单，并向我展示文件。”
+4. 允许其他机器访问前，请[设置浏览器认证](docs/getting-started.md#secure-browser-access)和 HTTPS。
 
-> [!TIP]
-> 对 `docker run` / `podman run` 保持启用 `--init`，这样运行时会插入一个很小的 init 进程，用于转发信号和回收僵尸进程。随附的 `docker-compose.yml` 现在也设置了等效的 `init: true` 标志。
+`./home` 和 `./workspace` 都保存持久数据。替换容器时请保留这两个目录；**绝不要通过删除 `workspace/.piclaw/store/messages.db` 来重置或升级 PiClaw**。请参阅[首次运行检查、备份和升级](docs/getting-started.md)。
 
-| 挂载 | 容器路径 | 内容 |
-|---|---|---|
-| Home | `/config` | 持久化 Pi 状态（`.pi/`）和 Git 配置（`.gitconfig`） |
-| Workspace | `/workspace` | 项目、笔记和 piclaw 状态 |
+## 可以完成的任务
 
-> [!NOTE]
-> 在容器镜像中，`/home/agent/.pi` 由 `/config/.pi` 支撑。使用上面的 `docker run` 示例或随附的 [`docker-compose.yml`](docker-compose.yml) 时，Pi home 状态会持久保存在主机的 `./home/.pi/agent/` 下。
->
-> 这意味着 provider 登录状态和模型元数据如果存放在以下文件中，重建或重新创建容器后仍会保留：
->
-> - `./home/.pi/agent/auth.json`
-> - `./home/.pi/agent/models.json`
-
-> [!WARNING]
-> 绝不要删除 `/workspace/.piclaw/store/messages.db`。它是聊天历史、媒体、任务及运行日志、token 使用量、加密钥匙串、passkey、Web 会话和聊天分支的事实来源。
-
-> [!IMPORTANT]
-> 你**不需要**在 piclaw 环境变量里设置 provider API key。PiClaw 会复用 Pi Agent 设置中配置的 provider 凭据。
-
-> [!NOTE]
-> 工作区级 shell 环境覆盖可写入 `/workspace/.env.sh`。PiClaw 会在内置终端和运行时启动期间 source 该文件。它适合设置 `PATH`，或通过 `GH_CONFIG_DIR=/workspace/.config/gh` 指定持久化的 GitHub CLI 配置目录。无效内容可能破坏启动、shell 行为或工具解析。
-
-## Web UI 概览
-
-PiClaw 当前支持单用户部署，适配移动设备，并通过 SSE 流式更新。
-
-家庭账户和隔离容器模式仍在开发中。后端已包含会话归属、账户管理及每个账户的多个通行密钥，但这两种多用户模式目前都无法启动；家庭模式的设置/登录界面和自动迁移尚未完成。请参阅[访问模式与实现状态（英文）](docs/multi-user/README.md)，不要通过修改数据库绕过启动限制。
-
-| 区域 | 亮点 |
+| 任务 | 核心内置功能 |
 |---|---|
-| 聊天 | 思考/草稿面板、steering、排队 follow-up、Adaptive Cards、`/btw`、链接预览、线程化轮次、恢复/超时 chip |
-| 语言 | 英语、简体中文和日语 UI 文案，并带有设置内语言切换器 |
-| 状态 UX | 静默探测期间工具/意图状态保持可见，最近活动会恢复有用上下文，工具行可在 meta 行显示紧凑的 `x ago` 提示 |
-| 工作区 | 侧边栏浏览器、拖放上传、文件引用 pill、explorer 搜索/重建索引状态 |
-| 编辑器 | CodeMirror 6、搜索/替换、dirty 状态跟踪、语法高亮、延迟加载的本地 bundle |
-| 终端 | 内置 xterm.js Web 终端，可作为 dock 或 tab；支持可分离弹窗；Ghostty 作为可选插件单独提供 |
-| 查看器 | 内置 CSV/TSV、PDF、图片、视频、代码预览和 VNC pane；可选插件提供 Draw.io、Office 查看器后端和看板 |
-| 自动化 | 内置 `image_process`、`cdp_browser` 和 `mcp`；配置 Azure OpenAI/Foundry 后可用 `/image` 与 `/flux`；Microsoft 365 和 Windows 桌面自动化由可选插件提供 |
+| 与智能体协作 | 流式聊天、模型选择、运行中调整指令、排队追加消息、独立对话和 `/btw` 旁支提问 |
+| 处理文件 | 工作区文件浏览器、上传、CodeMirror 编辑器、shell 工具和可分离的 xterm.js 终端 |
+| 查看结果 | CSV/TSV 表格、PDF、图片、视频和代码查看器，以及 VNC 远程显示面板 |
+| 下次访问时继续工作 | 计划任务、可搜索的聊天历史和基于文件的 [Dream 记忆](docs/dream-memory.md) |
+| 扩展工作流 | 技能、[MCP 服务器](docs/mcp.md)、浏览器自动化、图像处理、Adaptive Cards 和交互式可视化内容 |
 
-完整功能导览见 [docs/web-ui.md](docs/web-ui.md)。
+[Web UI 指南](docs/web-ui.md#chat-and-status-surfaces)和[工具与技能参考](docs/tools-and-skills.md)介绍界面操作和命令。本地模型配置见 [llama.cpp](docs/llama-cpp.md)；Azure 图像生成需要[配置 Azure OpenAI/Foundry](docs/azure/azure-openai-extension.md)。
 
-> [!NOTE]
-> 内置 xterm.js 实现是默认终端渲染器。Ghostty/WASM 渲染器通过可选的 [`@rcarmo/piclaw-addon-ghostty-terminal`](https://rcarmo.github.io/piclaw-addons/addons/ghostty-terminal/) 插件单独提供。
+[可选插件](https://rcarmo.github.io/piclaw-addons/)提供 Draw.io、Office 文档渲染和工具、看板、其他终端渲染器、Windows 桌面自动化、Proxmox、Portainer、Microsoft 365 和配对实例间的消息传递。请通过[设置与插件](docs/settings-and-addons.md)单独安装。
 
-## 配置
+## 安全与限制
 
-常用环境变量：
-
-| 变量 | 默认值 | 用途 |
-|---|---|---|
-| `PICLAW_WEB_PORT` | `8080` | Web UI 端口 |
-| `PICLAW_WEB_TERMINAL_ENABLED` | Linux/macOS 为 `1`，Windows 为 `0` | 启用或禁用经过认证的内置 Web 终端 |
-| `PICLAW_WEB_VNC_ALLOW_DIRECT` | Linux/macOS/Windows 为 `1` | 允许或禁用运行时提供的直接 VNC 目标 |
-| `PICLAW_WEB_TOTP_SECRET` | _（空）_ | Base32 TOTP secret；启用登录门禁（也可用 `/totp` 初始化） |
-| `PICLAW_WEB_PASSKEY_MODE` | `totp-fallback` | `totp-fallback`、`passkey-only` 或 `totp-only` |
-| `PICLAW_ASSISTANT_NAME` | `PiClaw` | UI 中显示的名称 |
-| `PICLAW_KEYCHAIN_KEY` | _（空）_ | 加密 secret 存储的主密钥 |
-| `PICLAW_TRUST_PROXY` | `0` | 位于反向代理或隧道后方时启用 |
-
-完整列表、TOTP/passkey 设置、会话级 SSH-backed 远程工具、反向代理配置和工作区环境 hook，见 [docs/configuration.md](docs/configuration.md)。
-
-## 其他安装方式
-
-### 不使用 Docker 安装
-
-```bash
-bun add -g github:rcarmo/piclaw
-```
-
-实验性。支持 Linux/macOS/Windows。见 [docs/install-from-repo.md](docs/install-from-repo.md)。
-
-Windows 支持仍处于实验阶段。类 shell 子进程在 Windows 上以附加模式运行（`detached=false`），因此 stdout 和 stderr 仍可捕获。类 Unix 主机使用分离进程组，以便 abort 和 shutdown 终止完整进程树。
-
-### 实验性桌面壳
-
-PiClaw 还有一个可选的 Electrobun 桌面包装器，包裹现有本地 Web UI：
-
-```bash
-bun run build:desktop
-```
-
-桌面壳会在 `127.0.0.1` 上启动 Piclaw，使用从 `18080` 起的可用端口，打开原生窗口，并把默认工作区存储在平台应用数据目录下。设置 `PICLAW_DESKTOP_URL` 可包装一个已经运行的 Piclaw Web 服务器，而不是再启动一个。
-
-### 从源码构建
-
-见 [docs/development.md](docs/development.md)。
+- **默认采用单用户模式。** [实验性家庭模式](docs/multi-user/README.md)是面向小型用户组的可信多用户模式。已提升的 `family-shared` 部署提供各自拥有的对话，但共享同一个工作区和进程，不提供文件系统隔离。隔离容器模式不可用。另请参阅[家庭模式用户指南](docs/multi-user/user-guide.md)。
+- 智能体以运行进程的用户权限执行操作。原生安装可访问该用户的文件和命令；容器可访问挂载的文件及其网络配置允许访问的资源。请使用专用环境，只挂载你打算共享的内容。
+- 浏览器认证支持身份验证器验证码（TOTP）和通行密钥。保持后端不对外开放，远程访问使用 HTTPS，并且只信任已配置的[反向代理](docs/reverse-proxy.md)发送的转发头。
+- 自托管将应用状态保存在你的机器上。云端模型和外部工具仍会收到你发送给它们的数据。可选的[钥匙串](docs/keychain.md)需要主密钥，但不会加密整个工作区或聊天历史。
 
 ## 文档
 
-| 区域 | 文档 |
-|---|---|
-| 入门 | [配置](docs/configuration.md)、[Web UI](docs/web-ui.md)、[从仓库安装](docs/install-from-repo.md) |
-| 运维 | [Azure VM 部署](docs/azure/README.md)、[Azure OpenAI 扩展](docs/azure/azure-openai-extension.md)、[反向代理](docs/reverse-proxy.md)、[发布流程](docs/release.md) |
-| 运行时内部 | [架构](docs/architecture.md)、[插件运行时 API](docs/addon-runtime-api.md)、[流水线智能压缩](docs/pipelined-compaction.md)、[运行时流程](docs/runtime-flows.md)、[运行时流式会话](docs/runtime-stream-sessions.md)、[存储模型](docs/storage.md)、[可观测性](docs/observability.md) |
-| UI 扩展模型 | [Web pane 扩展](docs/web-pane-extensions.md)、[扩展 UI 契约](docs/extension-ui-contract.md)、[Vendored widget 库](docs/vendored-widget-libraries.md) |
-| Agent 能力 | [工具和技能](docs/tools-and-skills.md)、[可视化 artifact 生成器](docs/visual-artifact-generator.md)、[通过 pi-mcp-adapter 使用 MCP](docs/mcp.md)、[钥匙串](docs/keychain.md) |
-| 其他参考 | [Dream 记忆系统](docs/dream-memory.md)、[思考状态持久化](docs/thinking-persistence.md)、[Web 通知交付策略](docs/web-notification-delivery-policy.md)、[iOS PWA 参考](docs/PWA.md)、[WhatsApp](docs/whatsapp.md)、[Remote Peer 插件](https://rcarmo.github.io/piclaw-addons/addons/remote-peer/)、[Microsoft 365 插件](https://rcarmo.github.io/piclaw-addons/addons/m365/)、[开发](docs/development.md) |
-| 平台研究 | [Azure Functions 可行性研究](docs/azure/azure-functions-feasibility-study-2026-04-17.md) |
+以下详细文档为英文：
+
+- [入门指南](docs/getting-started.md) — 安装、首次聊天、认证、数据持久化和升级
+- [配置](docs/configuration.md) — 设置、路径、模型提供商、SSH 工具和环境覆盖
+- [Web UI](docs/web-ui.md#chat-and-status-surfaces) — 聊天、工作区、编辑器、终端和查看器
+- [文档索引](docs/README.md) — 运维、集成、开发和架构
 
 ## 贡献
 
-工作项和 bug 报告在 **[GitHub Issues](https://github.com/rcarmo/piclaw/issues)** 中跟踪。
+工作项和缺陷报告在 **[GitHub Issues](https://github.com/rcarmo/piclaw/issues)** 中跟踪。
 
-- [提交工作项或 bug 报告](https://github.com/rcarmo/piclaw/issues/new?template=workitem.md)
+- [提交工作项或缺陷报告](https://github.com/rcarmo/piclaw/issues/new?template=workitem.md)
 - [提问](https://github.com/rcarmo/piclaw/issues/new?template=question.md)
 - [查看项目看板](https://github.com/users/rcarmo/projects/13)
 
-看板泳道定义和分诊分类请以 issue 模板和项目看板标签为准。
+报告问题时请使用 issue 模板。修改代码前，请阅读[开发文档](docs/development.md)和[仓库工作流](AGENTS.md)，并通过拉取请求提交修改。
 
 ## 鸣谢
 
-- [pi.dev](http://pi.dev)，提供 PiClaw 使用的 Pi core
-- [rcarmo/agentbox](https://github.com/rcarmo/agentbox)
+- [pi.dev](http://pi.dev)，提供 PiClaw 使用的 Pi 核心
+- [rcarmo/vibes](https://github.com/rcarmo/vibes) — PiClaw 的原始 UX 设计
 - [qwibitai/nanoclaw](https://github.com/qwibitai/nanoclaw)
-- [badlogic/pi-mono](https://github.com/badlogic/pi-mono)
-- [davebcn87/pi-autoresearch](https://github.com/davebcn87/pi-autoresearch) — Tobi Lutke 和 David Cortés 的自主实验循环（现在由 `rcarmo/piclaw-addons` 中的 autoresearch 插件承载）
-- [nicobailon/visual-explainer](https://github.com/nicobailon/visual-explainer) — Nico Bailon 的可视化 artifact 生成技能理念、prompt 工作流和模板模式（已改编，非 vendored）
+- [earendil-works/pi](https://github.com/earendil-works/pi)
+- [davebcn87/pi-autoresearch](https://github.com/davebcn87/pi-autoresearch) — Tobi Lutke 和 David Cortés 开发的自主实验循环（现由 `rcarmo/piclaw-addons` 中的 autoresearch 插件提供）
+- [nicobailon/visual-explainer](https://github.com/nicobailon/visual-explainer) — Nico Bailon 的可视化内容生成技能理念、提示词工作流和模板模式（经过改编，未直接随包分发原项目）
 
 > [!NOTE]
-> piclaw 与 [pi.dev](https://pi.dev) **没有**直接关联。它是基于 Pi core 的衍生作品，并提供自己的运行时、工具和 UI。
+> PiClaw 与 [pi.dev](https://pi.dev) **没有直接隶属关系**。它是基于 Pi 核心的衍生作品，增加了自己的运行时、工具和 UI 层。
 
 ## 许可证
 
-MIT
+[MIT](LICENSE)

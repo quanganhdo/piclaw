@@ -9,6 +9,8 @@ const count = (db:Database,sql:string) => (db.query(sql).get() as {n:number}).n;
 /** Hash relation/state metadata without exporting messages, payloads, tokens, URLs or keys. */
 export function readMigrationResourceInventory(db:Database) {
   const hash=createHash('sha256');
+  const toolColumns=new Set((db.query('PRAGMA table_info(tool_outputs)').all() as {name:string}[]).map(row=>row.name));
+  const scopedTools=['owner_user_id','root_branch_id','source_branch_id','chat_jid','execution_kind'].every(name=>toolColumns.has(name));
   const queries=[
     'SELECT rowid,id,chat_jid,thread_id,timestamp,is_bot_message FROM messages ORDER BY rowid',
     'SELECT id FROM media ORDER BY id',
@@ -22,6 +24,7 @@ export function readMigrationResourceInventory(db:Database) {
     'SELECT user_id,expires_at FROM user_totp_registrations ORDER BY user_id',
     'SELECT user_id,expires_at FROM user_passkey_registrations ORDER BY user_id,expires_at',
     'SELECT user_id,expires_at FROM webauthn_enrollments ORDER BY user_id,expires_at',
+    scopedTools?'SELECT id,created_at,source,size_bytes,line_count,path,owner_user_id,root_branch_id,source_branch_id,chat_jid,execution_kind FROM tool_outputs ORDER BY id':'SELECT id,created_at,source,size_bytes,line_count,path,NULL owner_user_id,NULL root_branch_id,NULL source_branch_id,NULL chat_jid,NULL execution_kind FROM tool_outputs ORDER BY id',
   ];
   for(const sql of queries){hash.update(sql);for(const row of db.query(sql).iterate())hash.update(JSON.stringify(row));}
   const unresolved:Record<string,number>={
@@ -33,6 +36,7 @@ export function readMigrationResourceInventory(db:Database) {
     task_heads:count(db,`SELECT count(*) n FROM scheduled_tasks t LEFT JOIN service_effect_s07_tasks h ON h.task_id=t.id
       WHERE h.task_id IS NULL OR h.current_revision<>t.revision OR h.status<>t.status OR t.status NOT IN ('active','paused','completed')`),
     orphan_task_heads:count(db,"SELECT count(*) n FROM service_effect_s07_tasks h WHERE h.status<>'deleted' AND NOT EXISTS(SELECT 1 FROM scheduled_tasks t WHERE t.id=h.task_id)"),
+    scoped_tool_outputs:scopedTools?count(db,'SELECT count(*) n FROM tool_outputs WHERE owner_user_id IS NOT NULL OR root_branch_id IS NOT NULL OR source_branch_id IS NOT NULL OR chat_jid IS NOT NULL OR execution_kind IS NOT NULL'):0,
   };
   // Some service-effect tables are installed only with their active composition. Count all unfinished records when present.
   const present=new Set((db.query("SELECT name FROM sqlite_master WHERE type='table'").all() as {name:string}[]).map(row=>row.name));
@@ -54,7 +58,8 @@ export function readMigrationResourceInventory(db:Database) {
     unconsumed_user_messages:count(db,`SELECT count(*) n FROM messages m LEFT JOIN chat_cursors c ON c.chat_jid=m.chat_jid
       WHERE coalesce(m.is_bot_message,0)=0 AND coalesce(m.timestamp,'')>coalesce(c.cursor_ts,'')`),
     media:count(db,'SELECT count(*) n FROM media'),unlinked_media:count(db,'SELECT count(*) n FROM media a WHERE NOT EXISTS(SELECT 1 FROM message_media mm WHERE mm.media_id=a.id)'),unresolved,
-    excluded:['confirmed factors and legacy handles','shared keychain/provider credentials','filesystem push subscriptions and recordings','add-on state','unlinked tool outputs and thinking content']};
+    legacy_tool_outputs:count(db,'SELECT count(*) n FROM tool_outputs'),
+    excluded:['confirmed factors and legacy handles','shared keychain/provider credentials','filesystem push subscriptions and recordings','add-on state','thinking content']};
 }
 
 export function validateResourceMigration(db:Database,policy:unknown):void {
@@ -68,6 +73,7 @@ export function applyMigrationResourcePolicy(db:Database,snapshot:string) {
   validateResourceMigration(db,RESOURCE_MIGRATION_POLICY);
   const before=readMigrationResourceInventory(db),now=new Date().toISOString();
   for(const table of AUTH_TABLES)db.exec(`DELETE FROM ${table}`);
+  const legacyToolOutputs=before.legacy_tool_outputs;db.exec('DELETE FROM tool_outputs_fts; DELETE FROM tool_outputs;');
   const tasks=db.query("SELECT id FROM scheduled_tasks WHERE status='active' ORDER BY id").all() as {id:string}[];
   for(const task of tasks){setScheduledTaskAuthorityStatus(db,task.id,'paused',now);db.query("UPDATE scheduled_tasks SET status='paused' WHERE id=?").run(task.id);}
   db.exec(`CREATE TABLE migration_media_quarantine (
@@ -84,7 +90,7 @@ export function applyMigrationResourcePolicy(db:Database,snapshot:string) {
   db.exec(`CREATE TABLE access_resource_migration (
     id INTEGER PRIMARY KEY CHECK(id=1),policy TEXT NOT NULL,source_snapshot TEXT NOT NULL,report_json TEXT NOT NULL,prepared_at TEXT NOT NULL
   ) STRICT;`);
-  const report={revoked:before.auth,paused_tasks:tasks.length,quarantined_media:quarantined,excluded:before.excluded};
+  const report={revoked:before.auth,paused_tasks:tasks.length,quarantined_media:quarantined,revoked_legacy_tool_outputs:legacyToolOutputs,excluded:before.excluded};
   db.query('INSERT INTO access_resource_migration VALUES (1,?,?,?,?)').run(RESOURCE_MIGRATION_POLICY,snapshot,JSON.stringify(report),now);
   return report;
 }

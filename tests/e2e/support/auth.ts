@@ -1,4 +1,5 @@
 import type { APIRequestContext, Browser, BrowserContext, Page } from '@playwright/test';
+import { requireDisposableTestTarget } from '../../../runtime/scripts/test-target.js';
 
 export type E2eAuthBootstrapResult = {
   attempted: boolean;
@@ -9,17 +10,18 @@ export type E2eAuthBootstrapResult = {
 };
 
 function resolveInternalSecret(): string {
-  return (process.env.PICLAW_INTERNAL_SECRET || process.env.PICLAW_WEB_INTERNAL_SECRET || '').trim();
+  return (process.env.PICLAW_E2E_INTERNAL_SECRET || '').trim();
 }
 
 function normalizeBaseUrl(baseURL: string): string {
-  return String(baseURL || 'http://localhost:8080').replace(/\/+$/, '');
+  return requireDisposableTestTarget(baseURL);
 }
 
 export async function bootstrapE2eAuth(
   _request: APIRequestContext,
   baseURL: string,
 ): Promise<E2eAuthBootstrapResult> {
+  baseURL = normalizeBaseUrl(baseURL);
   const secret = resolveInternalSecret();
   if (!secret) return { attempted: false, authenticated: false };
 
@@ -29,6 +31,7 @@ export async function bootstrapE2eAuth(
     // after a successful Set-Cookie response on authenticated remote targets.
     const response = await fetch(`${normalizeBaseUrl(baseURL)}/auth/e2e/bootstrap`, {
       method: 'POST',
+      redirect: 'error',
       headers: {
         'Content-Type': 'application/json',
         'x-piclaw-internal-secret': secret,

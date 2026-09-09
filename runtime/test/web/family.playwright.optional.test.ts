@@ -18,11 +18,201 @@ async function fixture(page: Page) {
   await page.route('**/account/model-defaults', route => route.fulfill({ json: modelDefaultsSnapshot() }));
   await page.route('**/account/preferences', route => route.fulfill({ json: { user_id: state.identity.principal.userId, preferences: { revision: 0, theme: 'system', response_guidance: '' }, defaults: { theme: 'system', response_guidance: '' }, can_edit: true } }));
   await page.route("**/agent/message-recovery?**", route => route.fulfill({ json: { state: 'idle' } }));
-  await page.route("**/agent/branches", route => route.fulfill({ json: { branches: [{ chat_jid: "web:alice", root_chat_jid: "web:alice", agent_name: "home" }, { chat_jid: "web:alice-two", root_chat_jid: "web:alice-two", agent_name: "second" }] } }));
+  await page.route("**/agent/queue-state?**", route => route.fulfill({ json: { count: 0, items: [] } }));
+  await page.route("**/agent/commands?**", route => route.fulfill({ json: { commands: [
+    { name: '/abort', description: 'Abort the current response', source: 'core' },
+    { name: '/queue-all', description: 'Queue a follow-up message (batch all)', source: 'core' },
+    { name: '/steer', description: 'Steer the current response', source: 'core' },
+  ], mentions: [] } }));
+  await page.route("**/agent/status?**", route => route.fulfill({ json: { status: 'idle', state: 'idle', chat_jid: 'web:alice', data: null, extension_working: null } }));
+  await page.route("**/agent/context?**", route => route.fulfill({ json: { tokens: 1000, contextWindow: 200000, percent: 1, sessionGeneration: 'fixture', cacheUsage: null } }));
+  await page.route("**/agent/models?**", route => route.fulfill({ json: { current:'test/reasoning',model_options:[{label:'test/reasoning',provider:'test',id:'reasoning',name:'Reasoning model',context_window:200000,pricing:{input_per_million:1,output_per_million:2},reasoning:true,thinking_levels:['off','high'],thinking_level_labels:['Off','High']},{label:'openrouter/openai/gpt-5.4',provider:'openrouter',id:'openai/gpt-5.4',name:'GPT 5.4',context_window:400000,pricing:{input_per_million:2,output_per_million:4},reasoning:true,thinking_levels:['off','high'],thinking_level_labels:['Off','High']}],thinking_level:'high',thinking_level_label:'High',supports_thinking:true,available_thinking_levels:['off','high'],available_thinking_level_labels:['Off','High'],context_usage:{tokens:1000,contextWindow:200000,percent:1} } }));
+  await page.route(/\/agent\/branches(?:\?.*)?$/, route => route.fulfill({ json: { capabilities:{create_root:true},branches: [{ chat_jid: "web:alice", root_chat_jid: "web:alice", parent_branch_id:null, agent_name: "home", is_active:false, model:'test/reasoning',capabilities:{open:true,fork:true,rename:true,archive:false,restore:false} }, { chat_jid: "web:alice-two", root_chat_jid: "web:alice-two", parent_branch_id:null, agent_name: "second", is_active:false, model:'test/reasoning',capabilities:{open:true,fork:true,rename:true,archive:true,restore:false} }] } }));
   await page.route("**/timeline?**", route => { state.calls.push({ path: route.request().url(), headers: route.request().headers(), body: null }); return route.fulfill({ json: posts() }); });
   return state;
 }
+
+browserTest('family notification control uses pinned account headers and clears server subscription on disable',async()=>{
+  const page=await browser.newPage();
+  try{
+    await fixture(page);const calls:any[]=[];
+    await page.addInitScript(()=>{
+      Object.defineProperty(window,'isSecureContext',{value:true,configurable:true});
+      Object.defineProperty(window,'Notification',{value:{permission:'granted',requestPermission:async()=> 'granted'},configurable:true});
+      Object.defineProperty(window,'PushManager',{value:function(){},configurable:true});
+      const subscription={endpoint:'https://push.example.test/family',expirationTime:null,keys:{auth:'auth',p256dh:'key'},toJSON(){return{endpoint:this.endpoint,expirationTime:null,keys:this.keys}},unsubscribe:async()=>true};
+      const registration={pushManager:{getSubscription:async()=>subscription,subscribe:async()=>subscription}};
+      Object.defineProperty(navigator,'serviceWorker',{value:{controller:null,getRegistrations:async()=>[],register:async()=>registration,ready:Promise.resolve(registration)},configurable:true});
+    });
+    await page.route('**/agent/push/**',route=>{const path=new URL(route.request().url()).pathname,body=route.request().method()==='GET'?null:route.request().postDataJSON();calls.push({path,method:route.request().method(),headers:route.request().headers(),body});return route.fulfill({json:path.endsWith('vapid-public-key')?{publicKey:'AQID'}:path.endsWith('subscription')?{ok:true,device_id:'device-server'}:{ok:true}});});
+    await page.goto(base);await ready(page);await page.waitForFunction(()=>!(document.getElementById('toggle-notifications') as HTMLButtonElement).disabled);
+    expect(await page.locator('#toggle-notifications').textContent()).toBe('Disable notifications');await page.locator('#toggle-notifications').click();
+    await page.waitForFunction(()=>document.getElementById('toggle-notifications')?.textContent==='Enable notifications');
+    const mutation=calls.find(value=>value.path==='/agent/push/subscription'&&value.method==='DELETE');expect(mutation.headers).toMatchObject({'x-piclaw-account-id':'alice','x-piclaw-login-id':'login-a'});expect(mutation.body.subscription.endpoint).toBe('https://push.example.test/family');expect(mutation.body.device_id).toBe('device-server');
+  }finally{await page.close();}
+},20000);
 async function ready(page: Page) { await page.waitForFunction(() => document.getElementById("timeline")?.textContent?.includes("Alice private text")); }
+const composeInput = (page: Page) => page.getByTestId('compose-input');
+const composeSend = (page: Page) => page.getByTestId('send-button');
+async function currentChat(page: Page) { return await page.locator('#family-chat-root').getAttribute('data-chat-jid') ?? ''; }
+async function waitForFamilyIdle(page: Page) { await page.waitForFunction(() => document.getElementById('family-chat-root')?.getAttribute('aria-busy') === 'false'); }
+async function openSessionPicker(page: Page) { await page.getByTestId('session-switcher').click(); await page.waitForFunction(() => Boolean(document.querySelector('[data-testid="session-popup"]'))); }
+async function switchChat(page: Page, chatJid: string) { await openSessionPicker(page); await page.getByTestId('session-item').filter({ has: page.getByText(chatJid, { exact: true }) }).click(); await page.waitForFunction(expected => document.getElementById('family-chat-root')?.dataset.chatJid === expected, chatJid); }
+
+browserTest('owned session picker groups authorized roots and forks while allowing duplicate friendly names across roots', async () => {
+  const page = await browser.newPage({ viewport: { width: 375, height: 740 } });
+  try {
+    await fixture(page);
+    const branches = [
+      { chat_jid:'web:alpha',root_chat_jid:'web:alpha',parent_branch_id:null,agent_name:'home' },
+      { chat_jid:'web:alpha-research',root_chat_jid:'web:alpha',parent_branch_id:'alpha',agent_name:'research' },
+      { chat_jid:'web:alpha-nested',root_chat_jid:'web:alpha',parent_branch_id:'alpha-research',agent_name:'nested' },
+      { chat_jid:'web:beta',root_chat_jid:'web:beta',parent_branch_id:null,agent_name:'second' },
+      { chat_jid:'web:beta-research',root_chat_jid:'web:beta',parent_branch_id:'beta',agent_name:'research' },
+    ];
+    await page.route(/\/agent\/branches(?:\?.*)?$/, route => route.fulfill({ json: { branches } }));
+    await page.goto(`${base}?chat_jid=web:alpha`); await ready(page);
+    await openSessionPicker(page);
+    expect(await page.locator('.compose-session-section-heading').allTextContents()).toEqual(['Current', 'This session tree', 'Other sessions']);
+    expect(await page.getByTestId('session-item').evaluateAll(items => items.map(item => ({
+      jid: item.closest('[class*=compose-model-popup-item-row]')?.querySelector('.compose-session-row-jid')?.textContent,
+      label: item.querySelector('.compose-session-row-label')?.textContent,
+    })))).toEqual([
+      { jid:'web:alpha', label:'@home' }, { jid:'web:alpha-nested', label:'@nested' }, { jid:'web:alpha-research', label:'@research' },
+      { jid:'web:beta-research', label:'@research' }, { jid:'web:beta', label:'@second' },
+    ]);
+    expect(await page.locator('[data-testid="session-popup"]').textContent()).not.toContain('web:bob');
+    expect(await page.locator('[data-testid="session-popup"]').evaluate(node => node.getBoundingClientRect().right <= innerWidth)).toBe(true);
+    await page.getByRole('button',{name:'Close session picker'}).click();
+    await switchChat(page, 'web:beta-research'); await page.waitForFunction(() => new URLSearchParams(location.search).get('chat_jid') === 'web:beta-research');
+    expect(await currentChat(page)).toBe('web:beta-research');
+  } finally { await page.close(); }
+}, 20000);
+
+browserTest('curated model and owned session controls share standard UX without cross-account persistence', async () => {
+  for(const viewport of [{width:1200,height:900},{width:375,height:740}]){
+    const page=await browser.newPage({viewport});
+    try{
+      const state=await fixture(page),modelWrites:any[]=[],sessionWrites:any[]=[];let model='test/reasoning',thinking='high';
+      const branches:any[]=[
+        {branch_id:'alice-root',chat_jid:'web:alice',root_chat_jid:'web:alice',parent_branch_id:null,agent_name:'home',is_active:false,model:'test/reasoning',context_usage:{tokens:1000,contextWindow:200000,percent:1},capabilities:{open:true,fork:true,rename:true,archive:false,restore:false}},
+        {branch_id:'alice-child',chat_jid:'web:alice-child',root_chat_jid:'web:alice',parent_branch_id:'alice-root',agent_name:'child',is_active:false,model:'openrouter/openai/gpt-5.4',capabilities:{open:true,fork:true,rename:true,archive:true,restore:false}},
+        {branch_id:'alice-old',chat_jid:'web:alice-old',root_chat_jid:'web:alice',parent_branch_id:'alice-root',agent_name:'old',archived_at:'yesterday',is_active:false,model:null,capabilities:{open:false,fork:false,rename:false,archive:false,restore:true}},
+      ];
+      await page.route('**/agent/models?**',async route=>{const req=route.request();if(req.method()==='PATCH'){const body=req.postDataJSON();modelWrites.push({body,headers:req.headers(),url:req.url()});if(body.action==='model')model=body.value;else thinking=body.value;return route.fulfill({json:{command:{status:'success'},current:model,thinking_level:thinking,thinking_level_label:thinking,supports_thinking:true,context_usage:{tokens:1000,contextWindow:200000,percent:1}}});}return route.fulfill({json:{current:model,model_options:[{label:'test/reasoning',provider:'test',id:'reasoning',name:'Reasoning model',context_window:200000,pricing:{input_per_million:1,output_per_million:2},reasoning:true,thinking_levels:['off','high'],thinking_level_labels:['Off','High']},{label:'openrouter/openai/gpt-5.4',provider:'openrouter',id:'openai/gpt-5.4',name:'GPT 5.4',context_window:400000,pricing:{input_per_million:2,output_per_million:4},reasoning:true,thinking_levels:['off','high'],thinking_level_labels:['Off','High']}],thinking_level:thinking,thinking_level_label:thinking,supports_thinking:true,context_usage:{tokens:1000,contextWindow:200000,percent:1}}});});
+      await page.route(/\/agent\/branches(?:\?.*)?$/,route=>route.fulfill({json:{capabilities:{create_root:true},branches}}));
+      for(const path of ['/agent/branch-fork','/agent/root-session','/agent/branch-rename','/agent/branch-prune','/agent/branch-restore'])await page.route(`**${path}`,route=>{const body=route.request().postDataJSON();sessionWrites.push({path,body,headers:route.request().headers()});if(path.endsWith('branch-fork')){const branch={...branches[1],branch_id:'new-child',chat_jid:'web:new-child',agent_name:'child-2'};branches.push(branch);return route.fulfill({status:201,json:{branch}});}if(path.endsWith('root-session')){const branch={...branches[0],branch_id:'new-root',chat_jid:'web:new-root',root_chat_jid:'web:new-root',agent_name:body.agent_name};branches.push(branch);return route.fulfill({status:201,json:{branch}});}const branch=branches.find(item=>item.chat_jid===body.chat_jid);if(path.endsWith('rename'))branch.agent_name=body.agent_name;if(path.endsWith('prune')){branch.archived_at='now';branch.capabilities={open:false,fork:false,rename:false,archive:false,restore:true};}if(path.endsWith('restore')){branch.archived_at=null;branch.capabilities={open:true,fork:true,rename:true,archive:true,restore:false};}return route.fulfill({json:{branch}});});
+      await page.goto(base);await ready(page);
+      const modelButton=page.getByRole('button',{name:'Open model picker'});expect(await modelButton.textContent()).toContain('test/reasoning');await modelButton.click();
+      expect(await page.locator('.compose-model-catalogue-option-price').first().textContent()).toContain('/ 1M');expect(await page.locator('.compose-model-catalogue-badge').allTextContents()).toContain('200K context');
+      await page.locator('.compose-model-catalogue-search').fill('gpt 5.4');expect(await page.locator('.compose-model-catalogue-option').count()).toBe(1);await page.locator('.compose-model-catalogue-pin').click();expect(await page.locator('.compose-model-catalogue-pin').textContent()).toBe('★');
+      await page.locator('.compose-model-catalogue-option').click();await page.waitForFunction(()=>document.querySelector('.compose-model-hint')?.textContent?.includes('openrouter/openai/gpt-5.4'));
+      await modelButton.click();await page.locator('.compose-model-catalogue').getByLabel('Thinking level',{exact:true}).selectOption('off');await page.waitForFunction(()=>document.querySelector('.compose-model-hint')?.getAttribute('title')?.includes('(off)'));
+      expect(modelWrites.map(item=>item.body)).toEqual([{action:'model',value:'openrouter/openai/gpt-5.4'},{action:'thinking',value:'off'}]);expect(await page.locator('#default-model').inputValue()).toBe('');expect(modelWrites.every(item=>item.headers['x-piclaw-account-id']==='alice'&&item.headers['x-piclaw-login-id']==='login-a')).toBe(true);
+      await page.keyboard.press('Escape');await openSessionPicker(page);expect(await page.locator('.compose-session-section-heading').allTextContents()).toContain('Archived');expect(await page.locator('[data-testid="session-popup"]').textContent()).not.toContain('web:bob');expect(await page.getByText('Merge current w/ parent',{exact:true}).count()).toBe(0);expect(await page.getByText('Open Models settings',{exact:true}).count()).toBe(0);
+      const childRow=page.getByTestId('session-item').filter({has:page.getByText('web:alice-child',{exact:true})});await childRow.locator('xpath=..').locator('.compose-session-row-pin').click();expect(await childRow.locator('xpath=..').locator('.compose-session-row-pin').textContent()).toBe('★');
+      await page.getByRole('button',{name:'Close session picker'}).click();await page.evaluate(()=>{(window as any).prompt=()=> 'renamed';});await openSessionPicker(page);await page.getByRole('button',{name:'Rename current…',exact:true}).click();await page.waitForFunction(()=>document.body.textContent?.includes('@renamed'));
+      expect(sessionWrites[0]).toMatchObject({path:'/agent/branch-rename',body:{chat_jid:'web:alice',agent_name:'renamed'}});expect(sessionWrites.every(item=>item.headers['x-piclaw-account-id']==='alice'&&item.headers['x-piclaw-login-id']==='login-a')).toBe(true);
+      await waitForFamilyIdle(page);state.identity=principal('bob','login-b');await page.locator('#refresh').click();await page.waitForFunction(()=>!document.getElementById('family-chat-root')?.textContent);expect(await page.evaluate(()=>[localStorage.length,sessionStorage.length])).toEqual([0,0]);
+    }finally{await page.close();}
+  }
+},30000);
+
+browserTest('authenticated header exposes the read-only family mode and clears it with identity state', async () => {
+  const page = await browser.newPage({ viewport: { width: 375, height: 740 } });
+  try {
+    const state = await fixture(page); await page.goto(base); await ready(page);
+    expect(await page.locator('#deployment-mode').textContent()).toBe('Family shared');
+    expect(await page.locator('#deployment-mode').getAttribute('title')).toContain('family-shared mode');
+    expect(await page.locator('#deployment-mode').isVisible()).toBe(true);
+    expect(await page.locator('#deployment-mode').evaluate(node => node.getBoundingClientRect().right <= innerWidth)).toBe(true);
+    state.identity = { principal: { ...state.identity.principal, mode: 'single-user' }, capabilities: { manage_users: false } } as any;
+    await page.locator('#refresh').click(); await page.waitForFunction(() => document.getElementById('family-status')?.textContent?.includes('no longer bound'));
+    expect(await page.locator('#deployment-mode').isHidden()).toBe(true); expect(await page.locator('#deployment-mode').textContent()).toBe('');
+  } finally { await page.close(); }
+}, 20000);
+
+browserTest('switch account is distinct from session switching and sign out and clears private state before login navigation', async () => {
+  const page = await browser.newPage({ viewport: { width: 375, height: 740 } });
+  try {
+    const state = await fixture(page); let logouts = 0;
+    await page.route('**/auth/logout', route => { logouts++; return route.fulfill({ json: { logged_out: true } }); });
+    await page.goto(base); await ready(page);
+    expect(await page.locator('#switch-account').textContent()).toBe('Switch account');
+    expect(await page.locator('#switch-account').getAttribute('href')).toBe('/login');
+    expect(await page.locator('#switch-account').evaluate(node => node.closest('.family-actions') !== null)).toBe(true);
+    await composeInput(page).fill('UNSENT_PRIVATE_DRAFT');
+    await page.evaluate(() => document.getElementById('switch-account')?.addEventListener('click', event => event.preventDefault()));
+    await page.locator('#switch-account').click();
+    expect(logouts).toBe(0); expect(await composeInput(page).count()).toBe(0); expect(await page.locator('#family-chat-root').textContent()).toBe('');
+    expect(await page.locator('#account-name').textContent()).toBe(''); expect(await page.locator('#family-status').textContent()).toContain('no longer bound');
+    expect(state.calls.filter(call => call.path.includes('/auth/logout'))).toHaveLength(0);
+  } finally { await page.close(); }
+}, 20000);
+
+browserTest('settings navigation separates scopes from account actions and stays single-column without nested page scrolling on phones', async () => {
+  const page = await browser.newPage({ viewport: { width: 375, height: 740 } });
+  try {
+    await fixture(page); await page.goto(base); await ready(page);
+    expect(await page.locator('.family-header #open-account').count()).toBe(0);
+    expect(await page.locator('.family-actions').getByRole('button').allTextContents()).toEqual(['Enable notifications', 'Sign out']);
+    const groups = await page.locator('.settings-navigation > section').evaluateAll(sections => sections.map(section => ({
+      heading: section.querySelector('h2')?.textContent,
+      controls: Array.from(section.querySelectorAll('button')).filter(button => !button.hidden).map(button => button.textContent),
+    })));
+    expect(groups).toEqual([
+      { heading: 'Personal', controls: ['My account', 'My preferences'] },
+      { heading: 'Sessions and work', controls: ['My sessions', 'Scheduled results', 'Prepared tasks'] },
+      { heading: 'Shared family', controls: ['Family memory', 'Workspace and security'] },
+    ]);
+    const layout = await page.evaluate(() => {
+      const navigation = document.querySelector('.settings-navigation')!;
+      const shell = document.querySelector('.family-shell')!;
+      return {
+        columns: getComputedStyle(navigation).gridTemplateColumns.split(' ').length,
+        bodyOverflowX: getComputedStyle(document.body).overflowX,
+        pageFits: document.documentElement.scrollWidth <= innerWidth,
+        nestedOverflow: Array.from(shell.querySelectorAll('*')).filter(node => {
+          const style = getComputedStyle(node); return ['auto', 'scroll'].includes(style.overflowY) && node.scrollHeight > node.clientHeight;
+        }).map(node => (node as HTMLElement).id || node.className),
+      };
+    });
+    expect(layout.columns).toBe(1); expect(layout.bodyOverflowX).toBe('hidden'); expect(layout.pageFits).toBe(true); expect(layout.nestedOverflow).toEqual([]);
+    for (const id of ['open-account','open-preferences','open-sessions','open-results','open-tasks','open-memory','open-workspace-policy']) expect(await page.locator(`#${id}`).evaluate(element => Math.round(element.getBoundingClientRect().height))).toBeGreaterThanOrEqual(44);
+  } finally { await page.close(); }
+}, 20000);
+
+browserTest('settings navigation uses three stable scope columns at desktop width', async () => {
+  const page = await browser.newPage({ viewport: { width: 1200, height: 800 } });
+  try { await fixture(page); await page.goto(base); await ready(page);
+    expect(await page.locator('.settings-navigation > section').count()).toBe(3);
+    expect(await page.locator('.settings-navigation').evaluate(node => getComputedStyle(node).gridTemplateColumns.split(' ').length)).toBe(3);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  } finally { await page.close(); }
+}, 20000);
+
+browserTest('settings navigation keeps one panel open and clears the previous private draft', async () => {
+  const page = await browser.newPage({ viewport: { width: 375, height: 740 } });
+  try {
+    await fixture(page); await page.route('**/account', route => route.fulfill({ json: accountSnapshot() }));
+    await page.goto(base); await ready(page); await page.locator('#open-account').click();
+    await page.waitForFunction(() => !(document.getElementById('account-details') as HTMLElement).hidden);
+    await page.locator('#account-display-name').fill('UNSAVED_PRIVATE_NAME');
+    await page.locator('#open-preferences').click();
+    await page.waitForFunction(() => !(document.getElementById('preferences-form') as HTMLElement).hidden);
+    expect(await page.locator('#account-settings').isHidden()).toBe(true);
+    expect(await page.locator('#account-display-name').inputValue()).toBe('');
+    expect(await page.locator('#account-preferences').isVisible()).toBe(true);
+    expect(await page.locator('#account-settings:not([hidden]),#account-preferences:not([hidden]),#session-settings:not([hidden]),#scheduled-results:not([hidden]),#scheduled-tasks:not([hidden]),#family-memory:not([hidden]),#administration-settings:not([hidden]),#workspace-policy:not([hidden])').count()).toBe(1);
+    expect(await page.locator('#open-account').getAttribute('aria-expanded')).toBe('false');
+    expect(await page.locator('#open-preferences').getAttribute('aria-expanded')).toBe('true');
+    expect(await page.locator('#open-preferences').evaluate(node => getComputedStyle(node).boxShadow)).not.toBe('none');
+    await page.locator('#close-preferences').click();
+    expect(await page.locator('#open-preferences').getAttribute('aria-expanded')).toBe('false');
+    expect(await page.evaluate(() => document.activeElement?.id)).toBe('open-preferences');
+  } finally { await page.close(); }
+}, 20000);
+
 function resultList(items: any[] = [{execution_id:'execution-one',chat_jid:'web:alice-two',created_at:1780000000000,state:'settled',publication_recorded:false}]) {
   return {owner_user_id:'alice',window_size:50,items};
 }
@@ -35,13 +225,716 @@ beforeAll(async () => {
   server = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch(req) {
     const path = new URL(req.url).pathname;
     if (path === "/" || path === "/index.html") return new Response(Bun.file(join(import.meta.dir, "../../web/static/family.html")), { headers: { "Content-Type": "text/html" } });
-    if (["/static/common/dist/family.bundle.js", "/static/common/dist/family.bundle.css"].includes(path)) return new Response(Bun.file(join(import.meta.dir, "../../web/static", path.slice(8))));
+    if (["/static/common/dist/family.bundle.js", "/static/common/dist/family.bundle.css", "/static/classic/dist/app.bundle.css", "/static/common/js/marked.min.js", "/static/common/js/vendor/katex.min.js", "/static/common/js/vendor/beautiful-mermaid.js", "/static/common/js/vendor/adaptivecards.min.js"].includes(path)) return new Response(Bun.file(join(import.meta.dir, "../../web/static", path.slice(8))));
     if (path === "/login" || path === "/blank") return new Response("<!doctype html><p>Sign in</p>", { headers: { "Content-Type": "text/html" } });
     if (path === "/old-sw.js") return new Response("self.addEventListener('install',()=>self.skipWaiting());self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));", { headers: { "Content-Type": "text/javascript" } });
     return new Response("not found", { status: 404 });
   } }); base = `http://localhost:${server.port}`;
 });
 afterAll(async () => { await browser?.close(); server?.stop(true); });
+
+browserTest('standard family compose uploads and sends attachments with pinned account identity',async()=>{
+  const page=await browser.newPage({viewport:{width:1200,height:900}});const uploads:any[]=[],messages:any[]=[];
+  try{
+    await fixture(page);
+    await page.route('**/media/upload',async route=>{uploads.push({headers:route.request().headers(),body:route.request().postDataBuffer()});return route.fulfill({json:{id:41,filename:'family-note.txt',size:11,contentType:'text/plain'}});});
+    await page.route('**/agent/default/message?**',route=>{messages.push({headers:route.request().headers(),body:route.request().postDataJSON()});return route.fulfill({status:201,json:{user_message:{id:9,chat_jid:'web:alice',timestamp:'today',data:{content:route.request().postDataJSON().content,media_ids:route.request().postDataJSON().media_ids}},created:true,queued:'message'}});});
+    await page.goto(base);await ready(page);const file=page.locator('label[title="Attach file"] input[type="file"]');expect(await file.count()).toBe(1);
+    await file.setInputFiles({name:'family-note.txt',mimeType:'text/plain',buffer:Buffer.from('family note')});expect(await page.locator('.compose-file-pill').textContent()).toContain('family-note.txt');
+    await composeInput(page).fill('Review this attachment');await composeSend(page).click();await page.waitForFunction(()=>!(document.querySelector('[data-testid="compose-input"]') as HTMLTextAreaElement)?.value);
+    expect(uploads).toHaveLength(1);expect(uploads[0].headers).toMatchObject({'x-piclaw-account-id':'alice','x-piclaw-login-id':'login-a'});expect(uploads[0].body.byteLength).toBeGreaterThan(11);
+    expect(messages).toHaveLength(1);expect(messages[0].headers).toMatchObject({'x-piclaw-account-id':'alice','x-piclaw-login-id':'login-a'});expect(messages[0].body.media_ids).toEqual([41]);expect(messages[0].body.content).toContain('attachment:41 (family-note.txt)');
+  }finally{await page.close();}
+},20000);
+
+browserTest('owned rich timeline uses standard rendering and owner-authorized viewing actions', async () => {
+  const transparentPng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+7aIf9QAAAABJRU5ErkJggg==','base64');
+  const content = [
+    '# Render parity',
+    '',
+    '- list item',
+    '',
+    '> quoted text',
+    '',
+    '| A | B |',
+    '|---|---|',
+    '| 1 | 2 |',
+    '',
+    '[safe link](https://example.com)',
+    '',
+    '```ts',
+    'const answer: number = 42;',
+    '```',
+    '',
+    '#familytag',
+    '',
+    '$$',
+    'x^2',
+    '$$',
+    '',
+    '```mermaid',
+    'flowchart LR',
+    '  A --> B',
+    '```',
+    '',
+    '<strong>SAFE_HTML</strong><script>window.TIMELINE_XSS=true</script><img src="https://foreign.example/tracker.png" onerror="window.TIMELINE_XSS=true">',
+    '',
+    '![owned](/media/11)',
+    '![foreign](https://foreign.example/foreign.png)',
+    '',
+    'Files:',
+    '- /workspace/report.md',
+    '',
+    'Folders:',
+    '- /workspace/docs',
+    '',
+    'Referenced messages:',
+    '- message:1',
+    '',
+    'Attachments:',
+    '- attachment:11 (photo.png)',
+    '- attachment:12 (report.pdf)',
+  ].join('\n');
+  const blocks = [
+    { type:'text',annotations:{audience:['family'],priority:2,lastModified:'2026-09-08T00:00:00.000Z'} },
+    { type:'image',name:'photo.png',mime_type:'image/png',annotations:{audience:['family']} },
+    { type:'file',name:'report.pdf',mime_type:'application/pdf' },
+    { type:'adaptive_card',card_id:'card-one',schema_version:'1.5',state:'active',fallback_text:'Card fallback',payload:{type:'AdaptiveCard',version:'1.5',body:[{type:'TextBlock',text:'CARD_BODY [card link](https://foreign.example/card-link)'},{type:'Input.Text',id:'choice',label:'Choice'},{type:'Image',url:'https://foreign.example/card.png',altText:'Remote card image'},{type:'Image',url:'/media/11',altText:'Owned card image'}],actions:[{type:'Action.Submit',title:'Submit card',data:{kind:'choice'}}]} },
+    { type:'adaptive_card_submission',card_id:'card-one',source_post_id:2,submitted_at:'2026-09-08T00:00:00.000Z',action_type:'Action.Submit',title:'Submitted choices',data:{priority:'high'} },
+    { type:'generated_widget',widget_id:'widget-one',title:'READ_ONLY_WIDGET',description:'Widget description',artifact:{kind:'html',html:'<!doctype html><p>widget</p>'},auto_open:true,capabilities:['interactive'] },
+    { type:'resource_link',uri:'https://foreign.example/resource',title:'REMOTE_RESOURCE',description:'Remote resource' },
+    { type:'resource',uri:'memory://owned',text:'EMBEDDED_RESOURCE',data:'SGVsbG8=',mime_type:'text/plain' },
+    { type:'thinking_ref',lines:2,duration_ms:25 },
+    { type:'recovery_marker',recovered:true,attempts_used:2,classifier:'timeout' },
+    { type:'timeout_marker',timed_out:true,tool_action_summary:'read source',draft_recovered:true },
+    { type:'agent_timing',started_at:'2026-09-07T23:59:58.000Z',completed_at:'2026-09-08T00:00:00.000Z',duration_ms:2000,usage:{input_tokens:20,output_tokens:10,total_tokens:30} },
+    { type:'turn_outcome_marker',kind:'provider_error',severity:'warning',label:'Needs review',title:'Turn outcome',detail:'Bounded detail' },
+    { type:'unknown_future_block',payload:{html:'<script>window.TIMELINE_XSS=true</script>'} },
+    null,
+    ['malformed'],
+  ];
+  const richPosts = { posts:[
+    {id:2,timestamp:'2026-09-08T00:00:00.000Z',chat_jid:'web:alice',data:{type:'agent_response',content,content_blocks:blocks,media_ids:[11,12,-1,'bad'],link_previews:[{url:'https://example.com/docs',title:'LINK_PREVIEW',description:'Preview description',image:'https://foreign.example/preview.png'},null,'bad']}},
+    {id:3,timestamp:'2026-09-08T00:00:01.000Z',chat_jid:'web:alice',data:{type:'agent_response',content:'SURROUNDING_MESSAGE',content_blocks:[{type:'adaptive_card',card_id:'unsupported-card',schema_version:'99.0',state:'active',fallback_text:'UNSUPPORTED_CARD_FALLBACK',payload:{type:'AdaptiveCard',version:'99.0',body:[]}}],media_ids:[],link_previews:[]}},
+  ],has_more:false };
+  for (const context of [
+    { viewport:{width:1200,height:900},colorScheme:'light' as const },
+    { viewport:{width:375,height:740},colorScheme:'dark' as const },
+  ]) {
+    const page=await browser.newPage(context);const external:string[]=[],media:Array<{path:string,search:string,headers:Record<string,string>}>=[],thinkingHeaders:Record<string,string>[]=[],cardWrites:any[]=[],widgetWrites:any[]=[],annotationWrites:any[]=[];let cardSeen!:()=>void;const cardReceived=new Promise<void>(resolve=>cardSeen=resolve);
+    try{
+      await fixture(page);
+      await page.route('**/timeline?**',route=>route.fulfill({json:richPosts}));
+      await page.route('**/agent/thinking?**',route=>{thinkingHeaders.push(route.request().headers());return route.fulfill({json:{text:'PRIVATE_REASONING',lines:2,duration_ms:25,model:'test-model',truncated:false}});});
+      await page.route('**/agent/card-action',route=>{cardWrites.push({headers:route.request().headers(),body:route.request().postDataJSON()});cardSeen();return route.fulfill({status:201,json:{status:'ok',created:true}});});
+      await page.route('**/agent/default/message?**',route=>{widgetWrites.push({headers:route.request().headers(),body:route.request().postDataJSON()});return route.fulfill({status:201,json:{user_message:{id:90,data:{content:route.request().postDataJSON().content}},created:true}});});
+      await page.route('**/post/2/annotations?**',route=>{annotationWrites.push({headers:route.request().headers(),body:route.request().postDataJSON()});return route.fulfill({json:{status:'ok',annotations:route.request().postDataJSON().annotations}});});
+      await page.route('https://foreign.example/**',route=>{external.push(route.request().url());return route.abort();});
+      await page.route('**/media/**',route=>{const parsed=new URL(route.request().url()),path=parsed.pathname;if(parsed.origin!==new URL(base).origin||!/^\/media\/[1-9]\d*(?:\/(?:thumbnail|info))?$/.test(path)){external.push(route.request().url());return route.abort();}media.push({path,search:parsed.search,headers:route.request().headers()});if(path.endsWith('/info'))return route.fulfill({json:{id:Number(path.split('/')[2]),filename:path.includes('/11/')?'photo.png':'report.pdf',content_type:path.includes('/11/')?'image/png':'application/pdf',created_at:'2026-09-08T00:00:00.000Z'}});return route.fulfill({status:200,contentType:'image/png',body:transparentPng});});
+      await page.goto(base);await page.waitForFunction(()=>Boolean((window as any).marked&&(window as any).katex&&(window as any).beautifulMermaid));await page.locator('#refresh').click();
+      await page.waitForFunction(()=>Boolean(document.querySelector('.mermaid-container svg')&&document.querySelector('.adaptive-card-container')));
+      expect(await page.locator('.post-content h1').textContent()).toBe('Render parity');expect(await page.locator('.post-content table').count()).toBe(1);expect(await page.locator('.post-content blockquote').count()).toBe(1);expect(await page.locator('#post-2 .post-content a').filter({hasText:'safe link'}).getAttribute('href')).toBe('https://example.com/');
+      expect(await page.locator('.post-code-copy-btn').count()).toBe(1);expect(await page.locator('#post-2 .post-copy-btn').getAttribute('aria-label')).toBe('Copy message');expect(await page.locator('.hashtag').textContent()).toBe('#familytag');expect(await page.locator('.katex-display').count()).toBe(1);expect(await page.locator('.mermaid-container svg').count()).toBe(1);
+      expect(await page.locator('.post-msg-pill-link').getAttribute('href')).toBe('#msg-1');expect(await page.locator('.post-file-pill[title="/workspace/report.md"]').count()).toBe(1);expect(await page.locator('.post-file-pill[title="/workspace/docs"]').count()).toBe(1);
+      expect(await page.locator('.post-content script,[onerror]').count()).toBe(0);expect(await page.evaluate(()=>(window as any).TIMELINE_XSS===true)).toBe(false);expect(await page.locator('#post-2 .post-content').textContent()).toContain('SAFE_HTML');expect(await page.locator('.link-preview').getAttribute('href')).toBe('https://example.com/docs');expect(await page.locator('.link-preview').textContent()).toContain('LINK_PREVIEW');expect(await page.locator('.link-preview').evaluate(node=>getComputedStyle(node).backgroundImage)).toBe('none');
+      expect(await page.locator('.adaptive-card-container').first().textContent()).toContain('CARD_BODY');expect(await page.locator('.adaptive-card-container button:not(:disabled)').count()).toBe(1);expect(await page.locator('.adaptive-card-container input').count()).toBe(1);expect(await page.locator('.adaptive-card-container a[href]').count()).toBe(1);expect(await page.locator('.adaptive-card-container img[src$="/media/11"]').count()).toBe(1);expect(await page.locator('.adaptive-card-container img[src*="foreign.example"]').count()).toBe(0);expect(await page.locator('.adaptive-card-submission-receipt').textContent()).toContain('Submitted choices');expect(await page.locator('#post-3').textContent()).toContain('SURROUNDING_MESSAGE');expect(await page.locator('#post-3').textContent()).toContain('UNSUPPORTED_CARD_FALLBACK');
+      await page.locator('.adaptive-card-container input').fill('A');await page.getByRole('button',{name:'Submit card',exact:true}).click();await cardReceived;expect(cardWrites).toHaveLength(1);expect(cardWrites[0].headers).toMatchObject({'x-piclaw-account-id':'alice','x-piclaw-login-id':'login-a'});expect(cardWrites[0].body).toMatchObject({post_id:2,card_id:'card-one',chat_jid:'web:alice',action:{type:'Action.Submit'}});
+      expect(await page.locator('.generated-widget-launch-title').textContent()).toBe('READ_ONLY_WIDGET');expect(await page.locator('.generated-widget-launch-btn').isDisabled()).toBe(false);await page.locator('.generated-widget-launch-btn').click();expect(await page.locator('.floating-widget-pane').count()).toBe(1);const frame=page.frames().find(item=>item!==page.mainFrame()&&item.url()==='about:srcdoc')!;await frame.waitForFunction(()=>Boolean((window as any).piclawWidget));await frame.evaluate(()=>(window as any).piclawWidget.submit({text:'Widget choice',close:true}));await page.waitForFunction(()=>!document.querySelector('.floating-widget-pane'));expect(widgetWrites).toHaveLength(1);expect(widgetWrites[0].headers).toMatchObject({'x-piclaw-account-id':'alice','x-piclaw-login-id':'login-a'});expect(widgetWrites[0].body.content).toBe('Widget choice');
+      expect(await page.locator('.resource-link').getAttribute('href')).toBe('https://foreign.example/resource');expect(await page.locator('.resource-link').getAttribute('aria-disabled')).toBeNull();await page.locator('.resource-embed-toggle').click();expect(await page.locator('.resource-embed-content').textContent()).toBe('EMBEDDED_RESOURCE');expect(await page.locator('.resource-embed-blob-btn').isDisabled()).toBe(false);
+      expect(await page.locator('.file-attachment').filter({hasText:'report.pdf'}).locator('.file-attachment-main').getAttribute('href')).toBe('/media/12');expect(await page.locator('.file-attachment-preview').count()).toBe(1);expect(await page.locator('.attachment-pill-main').count()).toBe(2);expect(await page.locator('.content-annotation').filter({hasText:'Audience: family'}).count()).toBeGreaterThanOrEqual(1);expect(await page.locator('.post-recovery-chip').filter({hasText:'recovered'}).count()).toBe(1);expect(await page.locator('.post-timeout-chip').count()).toBe(1);expect(await page.locator('#post-2 .post-time').getAttribute('title')).toContain('Agent reply took 2.0s');expect(await page.locator('.post-outcome-chip').textContent()).toContain('Needs review');expect(await page.locator('.post-outcome-pill').textContent()).toContain('Turn outcome');
+      await page.locator('.post-thinking-visibility-header').click();await page.waitForFunction(()=>document.querySelector('.post-thinking-visibility-detail')?.textContent?.includes('PRIVATE_REASONING'));expect(await page.locator('.post-thinking-visibility-detail').textContent()).toContain('PRIVATE_REASONING');expect(thinkingHeaders).toHaveLength(1);expect(thinkingHeaders[0]).toMatchObject({'x-piclaw-account-id':'alice','x-piclaw-login-id':'login-a'});
+      await page.locator('.media-preview img').click();await page.waitForFunction(()=>Boolean(document.querySelector('.image-modal')));expect(await page.locator('.image-modal').count()).toBe(1);await page.keyboard.press('Escape');await page.locator('.file-attachment-preview').click();await page.waitForFunction(()=>Boolean(document.querySelector('.attachment-preview-modal')));expect(await page.locator('.attachment-preview-modal').count()).toBe(1);await page.keyboard.press('Escape');expect(external).toEqual([]);expect(media.some(item=>item.path==='/media/11/thumbnail')).toBe(true);
+      const info=media.filter(item=>item.path.endsWith('/info'));expect(info.length).toBeGreaterThanOrEqual(2);expect(info.every(item=>item.headers['x-piclaw-account-id']==='alice'&&item.headers['x-piclaw-login-id']==='login-a')).toBe(true);expect(media.every(item=>item.search==='')).toBe(true);
+      expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);expect(await page.evaluate(()=>matchMedia('(prefers-color-scheme: dark)').matches)).toBe(context.colorScheme==='dark');expect(await page.evaluate(()=>[localStorage.length,sessionStorage.length])).toEqual([0,0]);
+    }finally{await page.close();}
+  }
+},30000);
+
+async function memoryFixture(page:Page){
+  const state=await fixture(page),id='11111111-1111-4111-8111-111111111111',key='22222222-2222-4222-8222-222222222222',time='2026-09-06T00:00:00.000Z';
+  const source={chat_jid:'web:alice',message_rowid:1,message_id:'message-one'};
+  const preview={...source,source_hash:'a'.repeat(64),text:'Alice private text\n<img src=x onerror=alert(1)> SHARE\nprivate suffix'};
+  const detail={publication_id:id,request_id:key,published_at:time,publisher:{user_id:'alice',username:'alice',display_name:'Alice'},source_kind:'message-excerpt',text:'<img src=x onerror=alert(1)> SHARED_COPY',source:{...source,source_hash:preview.source_hash},withdrawn:false};
+  const own={owner_user_id:'alice',window_size:100,items:[{publication_id:id,request_id:key,published_at:time,withdrawn:false}]};
+  const sent:any[]=[],previews:any[]=[],withdrawals:any[]=[];
+  await page.route('**/timeline?**',r=>r.fulfill({json:{posts:[{id:1,data:{content:'Alice private text'},memory_source:source}],has_more:false}}));
+  await page.route('**/agent/family-memory/own',r=>r.fulfill({json:own}));
+  await page.route('**/agent/family-memory/shared',r=>r.fulfill({json:{window_size:20,items:[detail]}}));
+  await page.route('**/agent/family-memory/preview',r=>{previews.push(r.request().postDataJSON());return r.fulfill({json:preview});});
+  await page.route('**/agent/family-memory',r=>{sent.push({body:r.request().postDataJSON(),headers:r.request().headers()});return r.fulfill({json:{publication_id:id,request_id:r.request().postDataJSON().request_id,created:true}});});
+  await page.route(`**/agent/family-memory/${id}`,r=>r.fulfill({json:detail}));
+  await page.route(`**/agent/family-memory/${id}/withdraw`,r=>{withdrawals.push({body:r.request().postDataJSON(),headers:r.request().headers()});detail.withdrawn=true;return r.fulfill({json:{publication_id:id,withdrawn:true,created:true}});});
+  return {state,id,key,source,preview,detail,own,sent,previews,withdrawals};
+}
+async function memoryDraft(page:Page){await page.getByRole('button',{name:'Preview for family memory',exact:true}).click();await page.waitForFunction(()=>!document.getElementById('memory-form')?.hidden);await page.locator('#memory-excerpt').fill('SHARE');}
+async function inspectMemory(page:Page){await page.locator('#refresh-memory').click();await page.getByRole('button',{name:'Inspect memory',exact:true}).click();await page.waitForFunction(()=>!document.getElementById('memory-detail')?.hidden);}
+
+browserTest('timeline memory preview closes the previous settings panel and clears its draft', async () => {
+  const page = await browser.newPage({ viewport: { width: 375, height: 740 } });
+  try {
+    await memoryFixture(page); await page.goto(base); await ready(page);
+    await page.locator('#open-preferences').click(); await page.waitForFunction(() => !(document.getElementById('preferences-form') as HTMLElement).hidden);
+    await page.locator('#preferences-guidance').fill('UNSAVED_PRIVATE_GUIDANCE');
+    await page.getByRole('button', { name: 'Preview for family memory', exact: true }).click();
+    await page.waitForFunction(() => !(document.getElementById('memory-form') as HTMLElement).hidden);
+    expect(await page.locator('#account-preferences').isHidden()).toBe(true);
+    expect(await page.locator('#preferences-guidance').inputValue()).toBe('');
+    expect(await page.locator('#family-memory').isVisible()).toBe(true);
+    expect(await page.locator('#open-memory').getAttribute('aria-expanded')).toBe('true');
+    expect(await page.locator('#account-settings:not([hidden]),#account-preferences:not([hidden]),#session-settings:not([hidden]),#scheduled-results:not([hidden]),#scheduled-tasks:not([hidden]),#family-memory:not([hidden]),#administration-settings:not([hidden]),#workspace-policy:not([hidden])').count()).toBe(1);
+  } finally { await page.close(); }
+}, 20000);
+
+browserTest('standard working pane renders owner-polled status and usage without privileged actions', async () => {
+  for (const viewport of [{ width: 1200, height: 900 }, { width: 375, height: 740 }]) {
+    const page = await browser.newPage({ viewport });
+    try {
+      await fixture(page);
+      let status: any = {
+        status: 'active', state: 'active', chat_jid: 'web:alice',
+        data: {
+          type: 'tool_status', turn_id: 'turn-tools', tool_name: 'read',
+          tool_args: { path: '/workspace/notes/owned.md' }, status: 'Streaming output...',
+          output_preview: 'first output\nsecond output', output_total_lines: 2,
+          started_at: '2026-09-08T10:00:00.000Z', last_event_at: new Date().toISOString(),
+        },
+        thought: { text: 'Reasoning for the owned conversation', totalLines: 1 },
+        draft: { text: 'Draft response for the owner', totalLines: 1 }, extension_working: null,
+      };
+      const forbidden: string[] = [];
+      await page.route('**/agent/status?**', route => route.fulfill({ json: status }));
+      await page.route('**/agent/context?**', route => route.fulfill({ json: {
+        tokens: 5000, contextWindow: 200000, percent: 2.5, sessionGeneration: 'owned-generation',
+        cacheUsage: { latest: {
+          inputTokens: 1000, outputTokens: 300, reasoningTokens: 40, cacheReadTokens: 3000, cacheWriteTokens: 1000,
+          cacheReadReported: true, cacheWriteReported: true, totalTokens: 5300, costTotal: 0.012,
+          costProvenance: 'provider_reported', runs: 1, model: 'reasoning', provider: 'test',
+        }, totals: null },
+      } }));
+      for (const path of ['/workspace/branch', '/agent/respond', '/agent/whitelist']) {
+        await page.route(`**${path}**`, route => { forbidden.push(new URL(route.request().url()).pathname); return route.fulfill({ status: 500 }); });
+      }
+      await page.goto(base); await ready(page);
+      expect(await page.locator('.agent-thinking-title').allTextContents()).toEqual(expect.arrayContaining(['Draft', 'Thoughts', 'Output']));
+      expect(await page.locator('.agent-status-text').textContent()).toContain('read: /workspace/notes/owned.md');
+      expect((await page.locator('.agent-thinking-body').allTextContents()).map(value => value.trim())).toEqual(expect.arrayContaining([
+        'Draft response for the owner', 'Reasoning for the owned conversation', 'first output\nsecond output',
+      ]));
+      expect(await page.locator('.compose-model-usage-hint').textContent()).toContain('Last • 5K • CH60.0% • $0.01');
+      expect(await page.locator('.compose-context-pie').count()).toBe(1);
+      expect(await page.locator('.compose-context-pie').isDisabled()).toBe(true);
+      expect(await page.getByRole('button', { name: /Stop response/ }).count()).toBe(1);
+      expect(forbidden).toEqual([]);
+
+      status = {
+        status: 'active', state: 'active', chat_jid: 'web:alice', data: {
+          type: 'intent', intent_key: 'compaction', title: 'Compacting context', detail: 'Preparing a smaller context.',
+          turn_id: 'turn-compaction', started_at: new Date(Date.now() - 2000).toISOString(),
+        }, extension_working: null,
+      };
+      await page.reload(); await ready(page);
+      await page.waitForFunction(() => Boolean(document.querySelector('.compose-context-pie-timer')?.textContent));
+      expect(await page.locator('.compose-context-pie').getAttribute('aria-label')).toContain('Compacting context');
+      expect(await page.locator('.compose-context-pie').isDisabled()).toBe(true);
+
+      status = {
+        status: 'active', state: 'active', chat_jid: 'web:alice', data: {
+          type: 'intent', intent_key: 'summarization_retry', title: 'Retrying summary', detail: 'The previous summary attempt failed.',
+          turn_id: 'turn-retry', retry_at: new Date(Date.now() + 3000).toISOString(),
+        }, extension_working: null,
+      };
+      await page.reload(); await ready(page);
+      await page.waitForFunction(() => document.body.textContent?.includes('Retrying summary'));
+      expect(await page.locator('.agent-status-elapsed').textContent()).toContain('retry in');
+
+      status = {
+        status: 'idle', state: 'failed', chat_jid: 'web:alice', data: {
+          type: 'error', title: 'Agent error', detail: 'Owned turn failed safely.', turn_id: 'turn-error',
+        }, extension_working: null,
+      };
+      await page.reload(); await ready(page);
+      await page.waitForFunction(() => document.querySelector('.agent-status-error')?.textContent?.includes('Agent error'));
+      expect(await page.locator('.agent-status-error').textContent()).not.toContain('web:bob');
+      expect(await page.locator('.agent-status-panel').evaluate(node => node.getBoundingClientRect().right <= innerWidth)).toBe(true);
+      expect(forbidden).toEqual([]);
+    } finally { await page.close(); }
+  }
+}, 30000);
+
+browserTest('memory publication previews exact source, requires verbatim confirmed excerpt and renders reference text safely',async()=>{
+  const page=await browser.newPage({viewport:{width:375,height:800}});
+  try{const f=await memoryFixture(page);await page.goto(base);await ready(page);expect(f.sent).toHaveLength(0);await memoryDraft(page);
+    expect(f.previews).toEqual([f.source]);expect(await page.locator('#memory-source-text').textContent()).toContain('<img');expect(await page.locator('#family-memory img').count()).toBe(0);
+    expect(await page.locator('#publish-memory').isDisabled()).toBe(true);await page.locator('#confirm-memory-publication').check();await page.locator('#memory-excerpt').fill('generated summary');expect(await page.locator('#publish-memory').isDisabled()).toBe(true);
+    await page.locator('#confirm-memory-publication').check();await page.locator('#publish-memory').click();expect(f.sent).toHaveLength(0);expect(await page.locator('#memory-status').textContent()).toContain('verbatim');
+    await page.locator('#memory-excerpt').fill('SHARE');await page.locator('#confirm-memory-publication').check();await page.locator('#publish-memory').click();await page.waitForFunction(()=>document.getElementById('memory-status')?.textContent?.includes('Memory published'));
+    expect(f.sent).toHaveLength(1);expect(f.sent[0].body).toEqual({...f.source,source_hash:f.preview.source_hash,text:'SHARE',request_id:expect.any(String),confirm:true});expect(f.sent[0].headers).toMatchObject({'content-type':'application/json','x-piclaw-account-id':'alice','x-piclaw-login-id':'login-a'});
+    expect(await page.locator('#memory-excerpt').inputValue()).toBe('');expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);expect(await page.evaluate(()=>[localStorage.length,sessionStorage.length])).toEqual([0,0]);
+  }finally{await page.close();}
+},20000);
+
+browserTest('memory uncertain retries retain exact identity, lock excerpt and require fresh manual confirmation',async()=>{
+  const page=await browser.newPage();try{await memoryFixture(page);const sent:any[]=[];await page.route('**/agent/family-memory',r=>{const p=r.request().postDataJSON();sent.push(p);return r.fulfill(sent.length===1?{status:500,json:{}}:sent.length===2?{json:{request_id:'wrong',publication_id:'wrong',created:true}}:{json:{request_id:p.request_id,publication_id:'11111111-1111-4111-8111-111111111111',created:false}});});
+    await page.goto(base);await ready(page);await memoryDraft(page);
+    for(let i=1;i<=3;i++){await page.locator('#confirm-memory-publication').check();await page.locator('#publish-memory').click();await waitForFamilyIdle(page);expect(sent).toHaveLength(i);expect(await page.locator('#publish-memory').isDisabled()).toBe(true);
+      if(i<3){expect(await page.locator('#memory-excerpt').isDisabled()).toBe(true);expect(await page.locator('#publish-memory').textContent()).toBe('Retry same memory publication');await page.locator('#open-memory').click();}}
+    expect(sent[0]).toEqual(sent[1]);expect(sent[1]).toEqual(sent[2]);expect(await page.locator('#memory-status').textContent()).toContain('Publication verified');
+  }finally{await page.close();}
+},20000);
+
+browserTest('memory receipt and shared copy views are separate and withdrawal is explicit and owner-correlated',async()=>{
+  const page=await browser.newPage();try{const f=await memoryFixture(page);await page.goto(base);await ready(page);await page.locator('#open-memory').click();await inspectMemory(page);
+    expect(await page.locator('#withdraw-memory').isDisabled()).toBe(true);expect(await page.locator('#memory-detail-text').textContent()).toContain('SHARED_COPY');expect(await page.locator('#family-memory img').count()).toBe(0);
+    await page.locator('#confirm-memory-withdrawal').check();await page.locator('#withdraw-memory').click();await page.waitForFunction(()=>document.getElementById('memory-status')?.textContent?.includes('withdrawal verified'));expect(f.withdrawals).toHaveLength(1);expect(f.withdrawals[0].body).toEqual({confirm:true});
+    await inspectMemory(page);expect(await page.locator('#confirm-memory-withdrawal').isDisabled()).toBe(true);await page.locator('#shared-memory').click();await page.waitForFunction(()=>document.getElementById('memory-status')?.textContent?.includes('Newest 20'));
+    expect(await page.locator('#memory-list').textContent()).toContain('Published by Alice');expect(await page.locator('#memory-list').textContent()).not.toContain('message-one');expect(await page.locator('#memory-form').isVisible()).toBe(false);expect(await page.locator('#memory-detail').isVisible()).toBe(false);expect(f.sent).toHaveLength(0);
+  }finally{await page.close();}
+},20000);
+
+browserTest('memory drafts confirmations and retry keys clear on discard refresh sharedview inspection close blur session switch and navigation',async()=>{
+  const page=await browser.newPage();try{await memoryFixture(page);const sent:any[]=[];await page.route('**/agent/family-memory',r=>{sent.push(r.request().postDataJSON());return r.fulfill({status:500,json:{}});});await page.goto(base);await ready(page);
+    for(const action of ['discard','refresh','shared','inspect','close','blur','session','navigation']){
+      if(action==='session')await switchChat(page, 'web:alice');await memoryDraft(page);await page.locator('#confirm-memory-publication').check();await page.locator('#publish-memory').click();await waitForFamilyIdle(page);
+      if(action==='discard')await page.locator('#discard-memory').click();if(action==='refresh')await page.locator('#refresh-memory').click();if(action==='shared')await page.locator('#shared-memory').click();if(action==='inspect')await inspectMemory(page);
+      if(action==='close'){await page.locator('#close-memory').click();await page.locator('#open-memory').click();}
+      if(action==='blur'){await page.evaluate(()=>dispatchEvent(new Event('blur')));expect(await page.locator('#memory-excerpt').inputValue()).toBe('');await page.evaluate(()=>dispatchEvent(new Event('focus')));await ready(page);}
+      if(action==='session'){await switchChat(page, 'web:alice-two');await ready(page);await switchChat(page, 'web:alice');await ready(page);}
+      if(action==='navigation')await page.evaluate(()=>dispatchEvent(new PageTransitionEvent('pagehide')));
+      expect(await page.locator('#memory-excerpt').inputValue()).toBe('');expect(await page.locator('#confirm-memory-publication').isChecked()).toBe(false);expect(await page.locator('#publish-memory').textContent()).toBe('Publish memory');
+    }expect(new Set(sent.map(v=>v.request_id)).size).toBe(sent.length);
+  }finally{await page.close();}
+},30000);
+
+browserTest('memory rejects mismatched source/history/receipt responses and clears stale account data',async()=>{
+  const page=await browser.newPage();try{const f=await memoryFixture(page);await page.goto(base);await ready(page);f.preview.message_id='wrong';await page.getByRole('button',{name:'Preview for family memory',exact:true}).click();await page.waitForFunction(()=>document.getElementById('memory-status')?.textContent==='Invalid memory source response.');expect(await page.locator('#memory-form').isVisible()).toBe(false);
+    f.own.owner_user_id='bob';await page.locator('#refresh-memory').click();await page.waitForFunction(()=>document.getElementById('memory-status')?.textContent==='Invalid memory list.');expect(await page.locator('#memory-list').textContent()).toBe('');
+    f.own.owner_user_id='alice';f.detail.publisher.user_id='bob';await page.locator('#refresh-memory').click();await page.getByRole('button',{name:'Inspect memory',exact:true}).click();await page.waitForFunction(()=>document.getElementById('memory-status')?.textContent==='Invalid memory receipt.');expect(await page.locator('#withdraw-memory').isDisabled()).toBe(true);
+    f.preview.message_id='message-one';await memoryDraft(page);f.state.identity=principal('bob','login-b');await page.locator('#confirm-memory-publication').check();await page.locator('#publish-memory').click();await page.waitForFunction(()=>document.getElementById('family-status')?.textContent?.includes('no longer bound'));expect(await page.locator('#family-memory').isVisible()).toBe(false);expect(await page.locator('#memory-excerpt').inputValue()).toBe('');
+  }finally{await page.close();}
+},20000);
+
+browserTest('memory pending publication is single-flight and late response cannot restore a closed panel',async()=>{
+  const page=await browser.newPage();let release=()=>{};try{const f=await memoryFixture(page);let entered!:()=>void;const waiting=new Promise<void>(r=>entered=r),held=new Promise<void>(r=>release=r);let sends=0;
+    await page.route('**/agent/family-memory',async r=>{sends++;entered();await held;await r.fulfill({json:{publication_id:f.id,request_id:r.request().postDataJSON().request_id,created:true}});});await page.goto(base);await ready(page);await memoryDraft(page);await page.locator('#confirm-memory-publication').check();await page.locator('#publish-memory').click();await waiting;
+    expect(await composeSend(page).isDisabled()).toBe(true);await page.locator('#refresh-memory').click();expect(sends).toBe(1);await page.locator('#close-memory').click();release();await waitForFamilyIdle(page);expect(await page.locator('#family-memory').isVisible()).toBe(false);expect(await page.locator('#memory-source-text').textContent()).toBe('');
+  }finally{release();await page.close();}
+},20000);
+
+browserTest('memory withdrawal remains reachable after blur during a held send without releasing its lock',async()=>{
+  const page=await browser.newPage();let release=()=>{};try{const f=await memoryFixture(page);let entered!:()=>void;const waiting=new Promise<void>(r=>entered=r),held=new Promise<void>(r=>release=r);
+    await page.route('**/agent/default/message?**',async r=>{entered();await held;await r.fulfill({json:{ok:true}});});await page.goto(base);await ready(page);await page.locator('#open-memory').click();await inspectMemory(page);
+    await composeInput(page).fill('held message');await composeSend(page).click();await waiting;await page.evaluate(()=>dispatchEvent(new Event('blur')));await page.evaluate(()=>dispatchEvent(new Event('focus')));await page.waitForFunction(()=>!document.getElementById('family-memory')?.hidden);
+    expect(await page.locator('#memory-detail-text').textContent()).toBe('');await inspectMemory(page);await page.locator('#confirm-memory-withdrawal').check();await page.locator('#withdraw-memory').click();await page.waitForFunction(()=>document.getElementById('memory-status')?.textContent?.includes('withdrawal verified'));expect(f.withdrawals).toHaveLength(1);expect(await composeSend(page).isDisabled()).toBe(true);release();await waitForFamilyIdle(page);
+  }finally{release();await page.close();}
+},20000);
+
+browserTest('memory rejects oversized preview or excerpts and duplicate shared/history identities without partial rendering',async()=>{
+  const page=await browser.newPage();try{const f=await memoryFixture(page);await page.goto(base);await ready(page);f.preview.text='x'.repeat(102401);await page.getByRole('button',{name:'Preview for family memory',exact:true}).click();await page.waitForFunction(()=>document.getElementById('memory-status')?.textContent==='Invalid memory source response.');
+    f.preview.text='é'.repeat(8193);await memoryDraft(page);await page.locator('#memory-excerpt').fill(f.preview.text);await page.locator('#confirm-memory-publication').check();await page.locator('#publish-memory').click();expect(f.sent).toHaveLength(0);expect(await page.locator('#memory-status').textContent()).toContain('16 KiB');
+    f.own.items.push({...f.own.items[0]!});await page.locator('#refresh-memory').click();await page.waitForFunction(()=>document.getElementById('memory-status')?.textContent==='Invalid memory metadata.');expect(await page.locator('#memory-list').textContent()).toBe('');
+    await page.route('**/agent/family-memory/shared',r=>r.fulfill({json:{window_size:20,items:[f.detail,{...f.detail}]}}));await page.locator('#shared-memory').click();await page.waitForFunction(()=>document.getElementById('memory-status')?.textContent==='Invalid memory metadata.');expect(await page.locator('#memory-list').textContent()).toBe('');
+  }finally{await page.close();}
+},20000);
+
+browserTest('memory armed publication is disarmed by unrelated send and does not become enabled until reconfirmed',async()=>{
+  const page=await browser.newPage();let release=()=>{};try{const f=await memoryFixture(page);let entered!:()=>void;const waiting=new Promise<void>(r=>entered=r),held=new Promise<void>(r=>release=r);
+    await page.route('**/agent/default/message?**',async r=>{entered();await held;await r.fulfill({json:{ok:true}});});await page.goto(base);await ready(page);await memoryDraft(page);await page.locator('#confirm-memory-publication').check();
+    await composeInput(page).fill('held');await composeSend(page).click();await waiting;expect(await page.locator('#confirm-memory-publication').isChecked()).toBe(false);expect(await page.locator('#confirm-memory-publication').isDisabled()).toBe(true);expect(f.sent).toHaveLength(0);release();await waitForFamilyIdle(page);
+    expect(await page.locator('#publish-memory').isDisabled()).toBe(true);expect(await page.locator('#confirm-memory-publication').isDisabled()).toBe(false);expect(f.sent).toHaveLength(0);
+  }finally{release();await page.close();}
+},20000);
+
+async function taskFixture(page:Page) {
+  const state=await fixture(page),requests:Array<{body:any;headers:Record<string,string>}>=[];
+  const item={grant_id:'grant-one',task_id:'task-one',chat_jid:'web:alice-two',created_at:'2026-09-06T00:00:00.000Z',revoked:false};
+  const directory={owner_user_id:'alice',window_size:50,activation_available:false,items:[item]};
+  const detail={...item,activation_available:false,preparation:{prompt:'<img src=x onerror=alert(1)> PRIVATE_TASK',scheduled_for:'2026-09-07T12:00:00.000Z',allowed_tools:['read'],state:'paused'}};
+  await page.route('**/agent/scheduled-tasks',r=>{if(r.request().method()==='POST'){requests.push({body:r.request().postDataJSON(),headers:r.request().headers()});return r.fulfill({json:{request_id:r.request().postDataJSON().request_id,task_id:'task-new',grant_id:'grant-new',created:true,state:'paused'}});}return r.fulfill({json:directory});});
+  await page.route('**/agent/scheduled-tasks/grant-one',r=>r.fulfill({json:detail}));
+  await page.route('**/account/workspace',r=>r.fulfill({json:{user_id:'alice',tools:{policy:'fixed-family-web-preview',allowed:['read','messages']}}}));
+  return {state,requests,directory,detail};
+}
+async function openTasks(page:Page){await page.goto(base);await ready(page);await page.locator('#open-tasks').click();await page.waitForFunction(()=>!document.getElementById('prepare-task-form')?.hidden);}
+async function taskDraft(page:Page){await page.locator('#task-target').selectOption('web:alice-two');await page.locator('#task-prompt').fill('Exact task prompt\nline two ');const due=new Date(Date.now()+86400000).toISOString().slice(0,16);await page.locator('#task-due').fill(due);return due;}
+
+async function runFixture(page:Page){
+  const f=await taskFixture(page),runs:any[]=[];f.detail.preparation.scheduled_for=new Date(Date.now()-60000).toISOString();
+  await page.route('**/agent/scheduled-tasks/grant-one/run',r=>{const body=r.request().postDataJSON();runs.push({body,headers:r.request().headers()});return r.fulfill({json:{grant_id:'grant-one',execution_id:'execution-one',request_id:body.request_id,state:'admitted',created:true}});});
+  return {...f,runs};
+}
+async function inspectRun(page:Page){await page.getByRole('button',{name:'Inspect task',exact:true}).click();await page.waitForFunction(()=>!document.getElementById('scheduled-task-detail')?.hidden);}
+
+browserTest('due task run requires separate confirmation, exact pinned request and displays admission without success claim',async()=>{
+  const page=await browser.newPage({viewport:{width:375,height:740}});
+  try{const f=await runFixture(page);await openTasks(page);expect(f.runs).toHaveLength(0);expect(await page.locator('#scheduled-task-run').isVisible()).toBe(false);
+    await inspectRun(page);expect(await page.locator('#run-task').isDisabled()).toBe(true);expect(await page.locator('#confirm-task-run').isChecked()).toBe(false);expect(await page.locator('#scheduled-task-text').textContent()).toContain('PRIVATE_TASK');
+    await page.locator('#confirm-task-run').check();await page.locator('#run-task').click();await page.waitForFunction(()=>document.getElementById('scheduled-tasks-status')?.textContent?.includes('Execution admitted: execution-one'));
+    expect(f.runs).toHaveLength(1);expect(Object.keys(f.runs[0].body).sort()).toEqual(['confirm','request_id']);expect(f.runs[0].body.confirm).toBe(true);expect(f.runs[0].headers).toMatchObject({'x-piclaw-account-id':'alice','x-piclaw-login-id':'login-a','content-type':'application/json'});
+    expect(await page.locator('#scheduled-tasks-status').textContent()).toContain('does not confirm model start or success');expect(await page.locator('#confirm-task-run').isDisabled()).toBe(true);expect(await page.locator('#run-task').isDisabled()).toBe(true);
+    expect(await currentChat(page)).toBe('web:alice');expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);expect(await page.evaluate(()=>[localStorage.length,sessionStorage.length])).toEqual([0,0]);
+  }finally{await page.close();}
+},20000);
+
+browserTest('not-due, revoked, malformed and wrong-target details cannot authorise a run',async()=>{
+  const page=await browser.newPage();
+  try{const f=await runFixture(page);f.detail.preparation.scheduled_for=new Date(Date.now()+86400000).toISOString();await openTasks(page);await inspectRun(page);expect(await page.locator('#scheduled-task-run').isVisible()).toBe(false);
+    f.detail.preparation.scheduled_for='invalid';await page.getByRole('button',{name:'Inspect task',exact:true}).click();await page.waitForFunction(()=>document.getElementById('scheduled-tasks-status')?.textContent==='Invalid task detail.');expect(await page.locator('#run-task').isDisabled()).toBe(true);
+    f.detail.preparation.scheduled_for=new Date(Date.now()-60000).toISOString();f.detail.chat_jid='web:bob';await page.getByRole('button',{name:'Inspect task',exact:true}).click();await page.waitForFunction(()=>document.getElementById('scheduled-tasks-status')?.textContent==='Invalid task detail.');
+    f.detail.chat_jid='web:alice-two';f.detail.revoked=true;f.detail.preparation=null as any;await inspectRun(page);expect(await page.locator('#confirm-task-run').isDisabled()).toBe(true);expect(f.runs).toHaveLength(0);
+  }finally{await page.close();}
+},20000);
+
+browserTest('uncertain and mismatched run receipts preserve exact retry ID and require manual reconfirmation',async()=>{
+  const page=await browser.newPage();
+  try{await runFixture(page);const sent:any[]=[];
+    await page.route('**/agent/scheduled-tasks/grant-one/run',r=>{const body=r.request().postDataJSON();sent.push(body);return r.fulfill(sent.length===1?{status:500,json:{}}:sent.length===2?{json:{request_id:'different',grant_id:'grant-one',execution_id:'execution-one',created:true,state:'admitted'}}:{json:{request_id:body.request_id,grant_id:'grant-one',execution_id:'execution-one',created:false,state:'admitted'}});});
+    await openTasks(page);await inspectRun(page);
+    for(let i=1;i<=3;i++){
+      await page.locator('#confirm-task-run').check();await page.locator('#run-task').click();await waitForFamilyIdle(page);
+      expect(sent).toHaveLength(i);expect(await page.locator('#run-task').isDisabled()).toBe(true);
+      if(i<3){expect(await page.locator('#run-task').textContent()).toBe('Retry same run request');expect(await page.locator('#scheduled-tasks-status').textContent()).toContain('Admission may have completed');await page.locator('#open-tasks').click();}
+    }
+    expect(sent[1]).toEqual(sent[0]);expect(sent[2]).toEqual(sent[0]);expect(await page.locator('#scheduled-tasks-status').textContent()).toContain('Admission verified: execution-one');
+  }finally{await page.close();}
+},20000);
+
+browserTest('run confirmation and retry clear on inspection, refresh, close, blur, session change and navigation',async()=>{
+  const page=await browser.newPage();
+  try{await runFixture(page);const sent:any[]=[];await page.route('**/agent/scheduled-tasks/grant-one/run',r=>{sent.push(r.request().postDataJSON());return r.fulfill({status:500,json:{}});});await openTasks(page);await inspectRun(page);
+    for(const action of ['inspect','refresh','close','blur','session','navigation']){
+      await page.locator('#confirm-task-run').check();await page.locator('#run-task').click();await page.waitForFunction(()=>document.getElementById('run-task')?.textContent==='Retry same run request');await waitForFamilyIdle(page);
+      if(action==='inspect')await inspectRun(page);
+      if(action==='refresh'){await page.locator('#refresh-tasks').click();await inspectRun(page);}
+      if(action==='close'){await page.locator('#close-tasks').click();await page.locator('#open-tasks').click();await inspectRun(page);}
+      if(action==='blur'){await page.evaluate(()=>dispatchEvent(new Event('blur')));await page.evaluate(()=>dispatchEvent(new Event('focus')));await ready(page);await inspectRun(page);}
+      if(action==='session'){await switchChat(page, 'web:alice-two');await ready(page);await inspectRun(page);}
+      if(action==='navigation')await page.evaluate(()=>dispatchEvent(new PageTransitionEvent('pagehide')));
+      expect(await page.locator('#confirm-task-run').isChecked()).toBe(false);expect(await page.locator('#run-task').isDisabled()).toBe(true);expect(await page.locator('#run-task').textContent()).toBe('Run once');
+    }
+    expect(new Set(sent.map(x=>x.request_id)).size).toBe(sent.length);
+  }finally{await page.close();}
+},20000);
+
+browserTest('pending run is single-flight, respects shell lock and late response cannot restore a closed panel',async()=>{
+  const page=await browser.newPage();let release:()=>void=()=>{};
+  try{const f=await runFixture(page);let entered!:()=>void;const held=new Promise<void>(r=>release=r),waiting=new Promise<void>(r=>entered=r);let sends=0;
+    await page.route('**/agent/scheduled-tasks/grant-one/run',async r=>{sends++;entered();await held;await r.fulfill({json:{request_id:r.request().postDataJSON().request_id,grant_id:'grant-one',execution_id:'execution-one',created:true,state:'admitted'}});});
+    await openTasks(page);await inspectRun(page);await page.locator('#confirm-task-run').check();await page.locator('#run-task').click();await waiting;
+    expect(await composeSend(page).isDisabled()).toBe(true);expect(await page.locator('#confirm-task-run').isDisabled()).toBe(true);await page.locator('#refresh-tasks').click();expect(sends).toBe(1);await page.locator('#close-tasks').click();release();
+    await waitForFamilyIdle(page);expect(await page.locator('#scheduled-tasks').isVisible()).toBe(false);await page.locator('#open-tasks').click();await inspectRun(page);expect(await page.locator('#confirm-task-run').isChecked()).toBe(false);expect(sends).toBe(1);expect(f.runs).toHaveLength(0);
+  }finally{release();await page.close();}
+},20000);
+
+browserTest('changed login during run admission invalidates draft/detail and never displays a receipt',async()=>{
+  const page=await browser.newPage();let release:()=>void=()=>{};
+  try{const f=await runFixture(page);let entered!:()=>void;const held=new Promise<void>(r=>release=r),waiting=new Promise<void>(r=>entered=r);
+    await page.route('**/agent/scheduled-tasks/grant-one/run',async r=>{entered();await held;await r.fulfill({json:{request_id:r.request().postDataJSON().request_id,grant_id:'grant-one',execution_id:'private-execution',created:true,state:'admitted'}});});
+    await openTasks(page);await inspectRun(page);await page.locator('#confirm-task-run').check();await page.locator('#run-task').click();await waiting;f.state.identity=principal('bob','login-b');release();
+    await page.waitForFunction(()=>document.getElementById('family-status')?.textContent?.includes('no longer bound'));expect(await page.locator('#scheduled-task-text').textContent()).toBe('');expect(await page.locator('#scheduled-tasks-status').textContent()).not.toContain('private-execution');expect(await page.locator('#run-task').isDisabled()).toBe(true);
+  }finally{release();await page.close();}
+},20000);
+
+browserTest('held send disables and disarms run; cancellation also clears an armed run without acquiring the shell lock',async()=>{
+  const page=await browser.newPage();let release:()=>void=()=>{};
+  try{const f=await runFixture(page);let entered!:()=>void;const held=new Promise<void>(r=>release=r),waiting=new Promise<void>(r=>entered=r);
+    await page.route('**/agent/default/message?**',async r=>{entered();await held;await r.fulfill({json:{ok:true}});});
+    await page.route('**/agent/scheduled-results',r=>r.fulfill({json:resultList([{execution_id:'other-execution',chat_jid:'web:alice-two',created_at:1780000000000,state:'unsettled',publication_recorded:false}])}));
+    await page.route('**/agent/scheduled-results/other-execution',r=>r.fulfill({json:{...resultDetail('other-execution'),state:'unsettled',result:null}}));
+    await page.route('**/agent/scheduled-results/other-execution/cancel',r=>r.fulfill({json:{execution_id:'other-execution',cancelled:true,created:true}}));
+    await openTasks(page);await inspectRun(page);await page.locator('#confirm-task-run').check();await composeInput(page).fill('held');await composeSend(page).click();await waiting;
+    expect(await page.locator('#confirm-task-run').isChecked()).toBe(false);expect(await page.locator('#confirm-task-run').isDisabled()).toBe(true);expect(await page.locator('#run-task').isDisabled()).toBe(true);
+    release();await waitForFamilyIdle(page);await page.locator('#confirm-task-run').check();await page.locator('#open-results').click();await page.getByRole('button',{name:'Inspect result',exact:true}).click();await page.locator('#confirm-execution-cancellation').check();await page.locator('#cancel-execution').click();
+    await page.waitForFunction(()=>document.getElementById('scheduled-results-status')?.textContent?.includes('Execution authority cancelled'));expect(await page.locator('#confirm-task-run').isChecked()).toBe(false);expect(await page.locator('#run-task').isDisabled()).toBe(true);expect(f.runs).toHaveLength(0);
+  }finally{release();await page.close();}
+},20000);
+
+async function cancelFixture(page:Page) {
+  const state=await fixture(page),detail={...resultDetail(),state:'unsettled',result:null as any},calls:any[]=[];
+  await page.route('**/agent/scheduled-results',r=>r.fulfill({json:resultList([{execution_id:'execution-one',chat_jid:'web:alice-two',created_at:1780000000000,state:'unsettled',publication_recorded:false}])}));
+  await page.route('**/agent/scheduled-results/execution-one',r=>r.fulfill({json:detail}));
+  await page.route('**/agent/scheduled-results/execution-one/cancel',r=>{calls.push({body:r.request().postDataJSON(),headers:r.request().headers()});detail.state='cancelled';return r.fulfill({json:{execution_id:'execution-one',cancelled:true,created:true}});});
+  return {state,detail,calls};
+}
+async function inspectCancellation(page:Page){await page.getByRole('button',{name:'Inspect result',exact:true}).click();await page.waitForFunction(()=>!document.getElementById('scheduled-result-detail')?.hidden);}
+async function openCancellation(page:Page){await page.goto(base);await ready(page);await page.locator('#open-results').click();await inspectCancellation(page);}
+
+browserTest('cancellation panel requires fresh detail and explicit confirmation and sends only pinned exact confirmation',async()=>{
+  const page=await browser.newPage({viewport:{width:375,height:740}});
+  try{const f=await cancelFixture(page);await openCancellation(page);expect(await page.locator('#cancel-execution').isDisabled()).toBe(true);expect(f.calls).toHaveLength(0);
+    expect(await page.locator('#scheduled-result-target').textContent()).toContain('web:alice-two');expect(await page.locator('#scheduled-execution-cancellation').textContent()).toContain('cannot undo earlier effects');
+    await page.locator('#confirm-execution-cancellation').check();await page.locator('#cancel-execution').click();await page.waitForFunction(()=>document.getElementById('scheduled-results-status')?.textContent?.includes('Execution authority cancelled'));
+    expect(f.calls).toHaveLength(1);expect(f.calls[0].body).toEqual({confirm:true});expect(f.calls[0].headers).toMatchObject({'x-piclaw-account-id':'alice','x-piclaw-login-id':'login-a','content-type':'application/json'});
+    expect(await currentChat(page)).toBe('web:alice');expect(await page.locator('#confirm-execution-cancellation').isChecked()).toBe(false);
+    await page.locator('#refresh-results').click();await inspectCancellation(page);expect(await page.locator('#scheduled-execution-cancellation').isVisible()).toBe(false);expect(await page.locator('#publish-result').isDisabled()).toBe(true);
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);expect(await page.evaluate(()=>[localStorage.length,sessionStorage.length])).toEqual([0,0]);
+  }finally{await page.close();}
+},20000);
+
+browserTest('terminal and forged result details never enable cancellation',async()=>{
+  const page=await browser.newPage();
+  try{const f=await cancelFixture(page);await openCancellation(page);
+    for(const state of ['settled','expired-unsettled','expired','interrupted','cancelled']){
+      f.detail.state=state;f.detail.result=state==='settled'?resultDetail().result:null;await inspectCancellation(page);expect(await page.locator('#cancel-execution').isDisabled()).toBe(true);expect(await page.locator('#scheduled-execution-cancellation').isVisible()).toBe(false);
+    }
+    f.detail.state='unsettled';f.detail.result=null;f.detail.chat_jid='web:bob';await page.getByRole('button',{name:'Inspect result',exact:true}).click();await page.waitForFunction(()=>document.getElementById('scheduled-results-status')?.textContent?.includes('Invalid result response'));
+    expect(await page.locator('#confirm-execution-cancellation').isDisabled()).toBe(true);expect(f.calls).toHaveLength(0);
+  }finally{await page.close();}
+},20000);
+
+browserTest('uncertain, denied and mismatched cancellations clear confirmation and never replay automatically',async()=>{
+  const page=await browser.newPage();
+  try{await cancelFixture(page);let sends=0;await page.route('**/agent/scheduled-results/execution-one/cancel',r=>{sends++;return r.fulfill(sends===1?{status:500,json:{}}:sends===2?{status:403,json:{}}:sends===3?{json:{execution_id:'another',cancelled:true,created:true}}:{json:{execution_id:'execution-one',cancelled:true,created:false}});});
+    await openCancellation(page);
+    for(let i=1;i<=4;i++){
+      await page.locator('#confirm-execution-cancellation').check();await page.locator('#cancel-execution').click();await page.waitForFunction(()=>document.getElementById('scheduled-result-detail')?.hidden);
+      expect(sends).toBe(i);expect(await page.locator('#confirm-execution-cancellation').isChecked()).toBe(false);expect(await page.locator('#cancel-execution').isDisabled()).toBe(true);
+      expect(await page.locator('#scheduled-results-status').textContent()).toContain(i===4?'Cancellation verified':'Cancellation may have completed');
+      if(i<4){await page.locator('#refresh-results').click();await inspectCancellation(page);expect(await page.locator('#cancel-execution').isDisabled()).toBe(true);}
+    }
+  }finally{await page.close();}
+},20000);
+
+browserTest('cancellation clears on close, refresh, blur, hidden tab, session switch and navigation',async()=>{
+  const page=await browser.newPage();
+  try{await cancelFixture(page);await openCancellation(page);
+    for(const action of ['refresh','close','blur','hidden','session','navigation']){
+      await page.locator('#confirm-execution-cancellation').check();
+      if(action==='refresh')await page.locator('#refresh-results').click();
+      if(action==='close'){await page.locator('#close-results').click();await page.locator('#open-results').click();}
+      if(action==='blur'){await page.evaluate(()=>dispatchEvent(new Event('blur')));await page.evaluate(()=>dispatchEvent(new Event('focus')));await ready(page);}
+      if(action==='hidden'){await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));});await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:false});document.dispatchEvent(new Event('visibilitychange'));});await ready(page);}
+      if(action==='session'){await switchChat(page, 'web:alice-two');await ready(page);}
+      if(action==='navigation')await page.evaluate(()=>dispatchEvent(new PageTransitionEvent('pagehide')));
+      expect(await page.locator('#confirm-execution-cancellation').isChecked()).toBe(false);expect(await page.locator('#cancel-execution').isDisabled()).toBe(true);
+      if(action!=='navigation')await inspectCancellation(page);
+    }
+  }finally{await page.close();}
+},20000);
+
+browserTest('cancellation can run while a send is pending and cannot release the send lock',async()=>{
+  const page=await browser.newPage();let release:()=>void=()=>{};
+  try{const f=await cancelFixture(page);let entered!:()=>void;const held=new Promise<void>(r=>release=r),waiting=new Promise<void>(r=>entered=r);
+    await page.route('**/agent/default/message?**',async r=>{entered();await held;await r.fulfill({json:{ok:true}});});
+    await openCancellation(page);await composeInput(page).fill('held send');await composeSend(page).click();await waiting;
+    expect(await composeSend(page).isDisabled()).toBe(true);await page.locator('#confirm-execution-cancellation').check();await page.locator('#cancel-execution').click();await page.waitForFunction(()=>document.getElementById('scheduled-results-status')?.textContent?.includes('Execution authority cancelled'));
+    expect(f.calls).toHaveLength(1);expect(await composeSend(page).isDisabled()).toBe(true);expect(await page.locator('#family-chat-root').getAttribute('aria-busy')).toBe('true');
+    release();await waitForFamilyIdle(page);
+  }finally{release();await page.close();}
+},20000);
+
+browserTest('pending cancellation is single-flight and lifecycle return never restores the old confirmation',async()=>{
+  for(const action of ['close','blur']){
+    const page=await browser.newPage();let release:()=>void=()=>{};
+    try{await cancelFixture(page);let sends=0,entered!:()=>void;const held=new Promise<void>(r=>release=r),waiting=new Promise<void>(r=>entered=r);
+      await page.route('**/agent/scheduled-results/execution-one/cancel',async r=>{sends++;entered();await held;await r.fulfill({json:{execution_id:'execution-one',cancelled:true,created:true}});});
+      await openCancellation(page);await page.locator('#confirm-execution-cancellation').check();await page.locator('#cancel-execution').click();await waiting;
+      await page.locator('#refresh-results').click();expect(await page.locator('#cancel-execution').isDisabled()).toBe(true);expect(sends).toBe(1);
+      if(action==='close')await page.locator('#close-results').click();else{await page.evaluate(()=>dispatchEvent(new Event('blur')));await page.evaluate(()=>dispatchEvent(new Event('focus')));}
+      release();await page.waitForFunction(()=>!(document.getElementById('open-results') as HTMLButtonElement).disabled);
+      if(action==='close'){expect(await page.locator('#scheduled-results').isVisible()).toBe(false);await page.locator('#open-results').click();}
+      await inspectCancellation(page);expect(await page.locator('#confirm-execution-cancellation').isChecked()).toBe(false);expect(sends).toBe(1);
+    }finally{release();await page.close();}
+  }
+},20000);
+
+browserTest('focus and visibility return during held send independently reverify identity and restore cancellation only',async()=>{
+  for(const action of ['blur','hidden']){
+    const page=await browser.newPage();let release:()=>void=()=>{};
+    try{const f=await cancelFixture(page);let entered!:()=>void;const held=new Promise<void>(r=>release=r),waiting=new Promise<void>(r=>entered=r);
+      await page.route('**/agent/default/message?**',async r=>{entered();await held;await r.fulfill({json:{ok:true}});});
+      await openCancellation(page);await composeInput(page).fill('held send');await composeSend(page).click();await waiting;
+      await page.evaluate(action=>{if(action==='hidden'){Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));}else dispatchEvent(new Event('blur'));},action);
+      expect(await page.locator('#scheduled-result-target').textContent()).toBe('');
+      await page.evaluate(action=>{if(action==='hidden'){Object.defineProperty(document,'hidden',{configurable:true,value:false});document.dispatchEvent(new Event('visibilitychange'));}else dispatchEvent(new Event('focus'));},action);
+      await page.waitForFunction(()=>!(document.getElementById('open-results') as HTMLButtonElement).disabled);await inspectCancellation(page);
+      expect(await page.locator('#timeline').textContent()).toBe('No messages yet. Start a conversation!');expect(await composeSend(page).isDisabled()).toBe(true);expect(await page.locator('#open-tasks').isDisabled()).toBe(true);
+      await page.locator('#confirm-execution-cancellation').check();await page.locator('#cancel-execution').click();await page.waitForFunction(()=>document.getElementById('scheduled-results-status')?.textContent?.includes('Execution authority cancelled'));
+      expect(f.calls).toHaveLength(1);expect(await composeSend(page).isDisabled()).toBe(true);release();await ready(page);
+    }finally{release();await page.close();}
+  }
+},20000);
+
+browserTest('stale independent focus verification cannot unmask results after another blur or login change',async()=>{
+  const page=await browser.newPage();let releaseSend:()=>void=()=>{},releaseIdentity:()=>void=()=>{};
+  try{const f=await cancelFixture(page);let sent!:()=>void,checking!:()=>void;const sendHeld=new Promise<void>(r=>releaseSend=r),sentWait=new Promise<void>(r=>sent=r),identityHeld=new Promise<void>(r=>releaseIdentity=r),checkWait=new Promise<void>(r=>checking=r);
+    await page.route('**/agent/default/message?**',async r=>{sent();await sendHeld;await r.fulfill({json:{ok:true}});});
+    await openCancellation(page);await composeInput(page).fill('held');await composeSend(page).click();await sentWait;
+    await page.route('**/auth/me',async r=>{checking();await identityHeld;await r.fulfill({json:f.state.identity});});
+    await page.evaluate(()=>{dispatchEvent(new Event('blur'));dispatchEvent(new Event('focus'));});await checkWait;await page.evaluate(()=>dispatchEvent(new Event('blur')));releaseIdentity();
+    await page.waitForTimeout(60);expect(await page.locator('#open-results').isDisabled()).toBe(true);expect(await page.locator('#scheduled-results').isVisible()).toBe(false);
+    f.state.identity=principal('bob','login-b');await page.evaluate(()=>dispatchEvent(new Event('focus')));await page.waitForFunction(()=>document.getElementById('family-status')?.textContent?.includes('no longer bound'));
+    expect(await page.locator('#cancel-execution').isDisabled()).toBe(true);expect(f.calls).toHaveLength(0);
+  }finally{releaseIdentity();releaseSend();await page.close();}
+},20000);
+
+browserTest('invalid result timestamps fail closed before list actions render',async()=>{
+  const page=await browser.newPage();
+  try{await cancelFixture(page);await page.route('**/agent/scheduled-results',r=>r.fulfill({json:resultList([{execution_id:'execution-one',chat_jid:'web:alice-two',created_at:Number.MAX_SAFE_INTEGER,state:'unsettled',publication_recorded:false}])}));
+    await page.goto(base);await ready(page);await page.locator('#open-results').click();await page.waitForFunction(()=>document.getElementById('scheduled-results-status')?.textContent==='Invalid result metadata.');expect(await page.getByRole('button',{name:'Inspect result',exact:true}).count()).toBe(0);expect(await page.locator('#cancel-execution').isDisabled()).toBe(true);
+  }finally{await page.close();}
+},20000);
+
+browserTest('changed login during cancellation response invalidates private UI without restoring controls',async()=>{
+  const page=await browser.newPage();let release:()=>void=()=>{};
+  try{const f=await cancelFixture(page);let entered!:()=>void;const held=new Promise<void>(r=>release=r),waiting=new Promise<void>(r=>entered=r);
+    await page.route('**/agent/scheduled-results/execution-one/cancel',async r=>{entered();await held;await r.fulfill({json:{execution_id:'execution-one',cancelled:true,created:true}});});
+    await openCancellation(page);await page.locator('#confirm-execution-cancellation').check();await page.locator('#cancel-execution').click();await waiting;f.state.identity=principal('bob','login-b');release();
+    await page.waitForFunction(()=>document.getElementById('family-status')?.textContent?.includes('no longer bound'));expect(await page.locator('#scheduled-result-target').textContent()).toBe('');expect(await page.locator('#cancel-execution').isDisabled()).toBe(true);expect(await page.locator('#scheduled-results').isVisible()).toBe(false);
+  }finally{release();await page.close();}
+},20000);
+
+browserTest('terminal cancelled scheduled result renders without text or publication controls',async()=>{
+  const page=await browser.newPage();
+  try{await fixture(page);await page.route('**/agent/scheduled-results',r=>r.fulfill({json:resultList([{execution_id:'execution-one',chat_jid:'web:alice-two',created_at:1780000000000,state:'cancelled',publication_recorded:false}])}));
+    await page.route('**/agent/scheduled-results/execution-one',r=>r.fulfill({json:{...resultDetail(),state:'cancelled',result:null}}));
+    await page.goto(base);await ready(page);await page.locator('#open-results').click();await page.getByRole('button',{name:'Inspect result',exact:true}).click();
+    await page.waitForFunction(()=>document.getElementById('scheduled-result-state')?.textContent==='cancelled');expect(await page.locator('#scheduled-result-text').textContent()).toBe('');expect(await page.locator('#publish-result').isDisabled()).toBe(true);expect(await page.locator('#confirm-result-publication').isDisabled()).toBe(true);
+  }finally{await page.close();}
+},20000);
+
+browserTest('terminal interrupted scheduled result renders without text or publication controls',async()=>{
+  const page=await browser.newPage();
+  try{await fixture(page);await page.route('**/agent/scheduled-results',r=>r.fulfill({json:resultList([{execution_id:'execution-one',chat_jid:'web:alice-two',created_at:1780000000000,state:'interrupted',publication_recorded:false}])}));
+    await page.route('**/agent/scheduled-results/execution-one',r=>r.fulfill({json:{...resultDetail(),state:'interrupted',result:null}}));
+    await page.goto(base);await ready(page);await page.locator('#open-results').click();await page.getByRole('button',{name:'Inspect result',exact:true}).click();
+    await page.waitForFunction(()=>document.getElementById('scheduled-result-state')?.textContent==='interrupted');expect(await page.locator('#scheduled-result-text').textContent()).toBe('');expect(await page.locator('#publish-result').isDisabled()).toBe(true);expect(await page.locator('#confirm-result-publication').isDisabled()).toBe(true);
+  }finally{await page.close();}
+},20000);
+
+browserTest('terminal expired scheduled result renders without text or publication controls',async()=>{
+  const page=await browser.newPage();
+  try{await fixture(page);await page.route('**/agent/scheduled-results',r=>r.fulfill({json:resultList([{execution_id:'execution-one',chat_jid:'web:alice-two',created_at:1780000000000,state:'expired',publication_recorded:false}])}));
+    await page.route('**/agent/scheduled-results/execution-one',r=>r.fulfill({json:{...resultDetail(),state:'expired',result:null}}));
+    await page.goto(base);await ready(page);await page.locator('#open-results').click();await page.getByRole('button',{name:'Inspect result',exact:true}).click();
+    await page.waitForFunction(()=>document.getElementById('scheduled-result-state')?.textContent==='expired');expect(await page.locator('#scheduled-result-text').textContent()).toBe('');expect(await page.locator('#publish-result').isDisabled()).toBe(true);expect(await page.locator('#confirm-result-publication').isDisabled()).toBe(true);
+  }finally{await page.close();}
+},20000);
+
+browserTest('prepared task editor uses UTC, explicit target and selected tools with pinned paused-only request',async()=>{
+  const page=await browser.newPage({viewport:{width:375,height:740},timezoneId:'America/New_York'});
+  try{const f=await taskFixture(page);await openTasks(page);expect(await page.locator('#task-target').inputValue()).toBe('');expect(await page.locator('#task-tools input:checked').count()).toBe(0);
+    const due=await taskDraft(page);await page.locator('#task-tools input[value=read]').check();expect(await page.locator('#prepare-task').isDisabled()).toBe(true);
+    await page.locator('#confirm-task-preparation').check();await page.locator('#prepare-task').click();await page.waitForFunction(()=>document.getElementById('scheduled-tasks-status')?.textContent?.includes('Prepared paused task'));
+    expect(f.requests).toHaveLength(1);expect(f.requests[0].body).toMatchObject({chat_jid:'web:alice-two',prompt:'Exact task prompt\nline two ',scheduled_for:due+':00.000Z',allowed_tools:['read'],confirm:true});expect(Object.keys(f.requests[0].body).sort()).toEqual(['allowed_tools','chat_jid','confirm','prompt','request_id','scheduled_for']);expect(f.requests[0].headers['x-piclaw-login-id']).toBe('login-a');
+    expect(await currentChat(page)).toBe('web:alice');expect(await page.locator('#task-prompt').inputValue()).toBe('');expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);expect(await page.evaluate(()=>[localStorage.length,sessionStorage.length])).toEqual([0,0]);
+  }finally{await page.close();}
+},20000);
+
+browserTest('uncertain preparation locks payload and reuses exact request ID only after manual confirmation',async()=>{
+  const page=await browser.newPage();
+  try{await taskFixture(page);const sent:any[]=[];await page.route('**/agent/scheduled-tasks',r=>{if(r.request().method()==='GET')return r.fulfill({json:{owner_user_id:'alice',window_size:50,activation_available:false,items:[]}});sent.push(r.request().postDataJSON());return r.fulfill(sent.length===1?{status:500,json:{}}:{json:{request_id:r.request().postDataJSON().request_id,task_id:'task-new',grant_id:'grant-new',state:'paused',created:false}});});
+    await openTasks(page);await taskDraft(page);await page.locator('#confirm-task-preparation').check();await page.locator('#prepare-task').click();await page.waitForFunction(()=>document.getElementById('scheduled-tasks-status')?.textContent?.includes('may have been prepared'));
+    expect(sent).toHaveLength(1);expect(await page.locator('#task-prompt').isDisabled()).toBe(true);expect(await page.locator('#task-due').isDisabled()).toBe(true);expect(await page.locator('#prepare-task').isDisabled()).toBe(true);
+    await page.locator('#open-tasks').click();expect(await page.locator('#task-prompt').inputValue()).toBe('Exact task prompt\nline two ');expect(await page.locator('#task-prompt').isDisabled()).toBe(true);
+    await page.locator('#confirm-task-preparation').check();await page.locator('#prepare-task').click();await page.waitForFunction(()=>document.getElementById('scheduled-tasks-status')?.textContent?.includes('Preparation verified'));expect(sent).toHaveLength(2);expect(sent[1]).toEqual(sent[0]);
+    await taskDraft(page);await page.locator('#confirm-task-preparation').check();await page.locator('#task-prompt').fill('Edited');expect(await page.locator('#confirm-task-preparation').isChecked()).toBe(false);
+    await page.locator('#reset-task-draft').click();expect(await page.locator('#task-prompt').inputValue()).toBe('');
+  }finally{await page.close();}
+},20000);
+
+browserTest('task preparation rejects mismatched receipt IDs and retries only the original payload',async()=>{
+  const page=await browser.newPage();
+  try{await taskFixture(page);const sent:any[]=[];
+    await page.route('**/agent/scheduled-tasks',r=>{if(r.request().method()==='GET')return r.fulfill({json:{owner_user_id:'alice',window_size:50,activation_available:false,items:[]}});const body=r.request().postDataJSON();sent.push(body);return r.fulfill({json:{request_id:sent.length===1?'another-request':body.request_id,task_id:'task-one',grant_id:'grant-one',state:'paused',created:false}});});
+    await openTasks(page);await taskDraft(page);await page.locator('#confirm-task-preparation').check();await page.locator('#prepare-task').click();
+    await page.waitForFunction(()=>document.getElementById('scheduled-tasks-status')?.textContent?.includes('Invalid task preparation response'));
+    expect(await page.locator('#task-prompt').isDisabled()).toBe(true);expect(sent).toHaveLength(1);
+    await page.locator('#confirm-task-preparation').check();await page.locator('#prepare-task').click();await page.waitForFunction(()=>document.getElementById('scheduled-tasks-status')?.textContent?.includes('Preparation verified'));
+    expect(sent).toHaveLength(2);expect(sent[1]).toEqual(sent[0]);
+  }finally{await page.close();}
+},20000);
+
+browserTest('task request size counts JSON escaping separately from UTF-8 prompt bytes before sending',async()=>{
+  const page=await browser.newPage();
+  try{const f=await taskFixture(page);await openTasks(page);await taskDraft(page);
+    for(const [prompt,error] of [['é'.repeat(51201),'100 KiB'],['"'.repeat(70000),'encoded request exceeds 128 KiB']]){
+      await page.locator('#task-prompt').fill(prompt);await page.locator('#confirm-task-preparation').check();await page.locator('#prepare-task').click();
+      await page.waitForFunction(text=>document.getElementById('scheduled-tasks-status')?.textContent?.includes(text),error);expect(f.requests).toHaveLength(0);expect(await page.locator('#task-prompt').isDisabled()).toBe(false);
+    }
+    await page.locator('#task-prompt').fill('é'.repeat(51200));await page.locator('#confirm-task-preparation').check();await page.locator('#prepare-task').click();await page.waitForFunction(()=>document.getElementById('scheduled-tasks-status')?.textContent?.includes('Prepared paused task'));expect(f.requests).toHaveLength(1);
+  }finally{await page.close();}
+},20000);
+
+browserTest('task mutation keeps one request and locks cross-panel navigation until settlement',async()=>{
+  const page=await browser.newPage();let release:()=>void=()=>{};
+  try{const f=await taskFixture(page);let entered!:()=>void;const held=new Promise<void>(r=>release=r),waiting=new Promise<void>(r=>entered=r);let sends=0,publishes=0;
+    await page.route('**/agent/scheduled-results',r=>r.fulfill({json:resultList()}));await page.route('**/agent/scheduled-results/execution-one',r=>r.fulfill({json:resultDetail()}));
+    await page.route('**/agent/scheduled-results/execution-one/publish',r=>{publishes++;return r.fulfill({json:{execution_id:'execution-one',chat_jid:'web:alice-two',message_rowid:99,created:true}});});
+    await page.route('**/agent/scheduled-tasks',async r=>{if(r.request().method()==='GET')return r.fulfill({json:f.directory});sends++;entered();await held;await r.fulfill({status:500,json:{}});});
+    await openTasks(page);await taskDraft(page);await page.locator('#confirm-task-preparation').check();await page.locator('#prepare-task').click();await waiting;
+    expect(await page.locator('.settings-navigation').getAttribute('aria-busy')).toBe('true');await page.locator('#open-results').evaluate((button:HTMLButtonElement)=>button.click());
+    expect(await page.locator('#scheduled-tasks').isVisible()).toBe(true);expect(await page.locator('#scheduled-results').isHidden()).toBe(true);
+    expect(await page.locator('#task-prompt').inputValue()).toBe('Exact task prompt\nline two ');expect(await page.locator('#task-prompt').isDisabled()).toBe(true);expect(sends).toBe(1);expect(publishes).toBe(0);
+    release();await page.waitForFunction(()=>document.getElementById('scheduled-tasks-status')?.textContent?.includes('may have been prepared'));await waitForFamilyIdle(page);
+    expect(await page.locator('.settings-navigation').getAttribute('aria-busy')).toBe('false');await page.locator('#open-results').click();await page.getByRole('button',{name:'Inspect result',exact:true}).click();await page.locator('#confirm-result-publication').check();await page.locator('#publish-result').click();
+    await page.waitForFunction(()=>document.getElementById('scheduled-results-status')?.textContent?.includes('Published'));expect(publishes).toBe(1);expect(sends).toBe(1);expect(await page.locator('#scheduled-tasks').isHidden()).toBe(true);
+  }finally{release();await page.close();}
+},20000);
+
+browserTest('hidden or blurred pending preparation clears private state and re-enables panel after identity check',async()=>{
+  for(const hidden of [false,true]){
+    const page=await browser.newPage();let release:()=>void=()=>{};
+    try{const f=await taskFixture(page);let entered!:()=>void;const held=new Promise<void>(r=>release=r),waiting=new Promise<void>(r=>entered=r);let sends=0;
+      await page.route('**/agent/scheduled-tasks',async r=>{if(r.request().method()==='GET')return r.fulfill({json:f.directory});sends++;entered();await held;await r.fulfill({json:{request_id:r.request().postDataJSON().request_id,task_id:'late-task',grant_id:'late-grant',created:true,state:'paused'}});});
+      await openTasks(page);await taskDraft(page);await page.locator('#confirm-task-preparation').check();await page.locator('#prepare-task').click();await waiting;
+      await page.evaluate(hidden=>{if(hidden){Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));}else dispatchEvent(new Event('blur'));},hidden);
+      expect(await page.locator('#task-prompt').inputValue()).toBe('');expect(await page.locator('#scheduled-tasks').isVisible()).toBe(false);expect(await page.locator('#open-tasks').isDisabled()).toBe(true);
+      // Return immediately, before the pending server reply: no retry or new task is sent.
+      await page.evaluate(hidden=>{if(hidden){Object.defineProperty(document,'hidden',{configurable:true,value:false});document.dispatchEvent(new Event('visibilitychange'));}else dispatchEvent(new Event('focus'));},hidden);
+      release();await page.waitForFunction(()=>!(document.getElementById('open-tasks') as HTMLButtonElement)?.disabled&&!document.getElementById('prepare-task-form')?.hidden);
+      expect(await page.locator('#task-prompt').inputValue()).toBe('');expect(await page.locator('#prepare-task').textContent()).toBe('Prepare paused task');expect(sends).toBe(1);
+      await page.locator('#close-tasks').click();await page.locator('#open-tasks').click();await page.waitForFunction(()=>!document.getElementById('prepare-task-form')?.hidden);
+    }finally{release();await page.close();}
+  }
+},20000);
+
+browserTest('uncertain and interrupted revocation require fresh inspection and never replay automatically',async()=>{
+  const page=await browser.newPage();let release:()=>void=()=>{};
+  try{await taskFixture(page);let sends=0,entered!:()=>void;const held=new Promise<void>(r=>release=r),waiting=new Promise<void>(r=>entered=r);
+    await page.route('**/agent/scheduled-tasks/grant-one/revoke',async r=>{sends++;if(sends===1)return r.fulfill({status:500,json:{}});entered();await held;await r.fulfill({json:{grant_id:'grant-one',revoked:true}});});
+    await openTasks(page);const inspect=async()=>{await page.getByRole('button',{name:'Inspect task',exact:true}).click();await page.locator('#confirm-task-revocation').check();await page.locator('#revoke-task').click();};
+    await inspect();await page.waitForFunction(()=>document.getElementById('scheduled-tasks-status')?.textContent?.includes('Revocation may have completed'));expect(await page.locator('#scheduled-task-text').textContent()).toBe('');expect(await page.locator('#revoke-task').isDisabled()).toBe(true);expect(sends).toBe(1);
+    await page.locator('#refresh-tasks').click();await inspect();await waiting;await page.evaluate(()=>dispatchEvent(new Event('blur')));await page.evaluate(()=>dispatchEvent(new Event('focus')));release();
+    await page.waitForFunction(()=>!(document.getElementById('open-tasks') as HTMLButtonElement)?.disabled&&!document.getElementById('prepare-task-form')?.hidden);expect(await page.locator('#scheduled-task-text').textContent()).toBe('');expect(await page.locator('#revoke-task').isDisabled()).toBe(true);expect(sends).toBe(2);
+  }finally{release();await page.close();}
+},20000);
+
+browserTest('task inspection renders plain text and revocation is explicit, pinned and clears details',async()=>{
+  const page=await browser.newPage();
+  try{const f=await taskFixture(page);const calls:any[]=[];await page.route('**/agent/scheduled-tasks/grant-one/revoke',r=>{calls.push({body:r.request().postDataJSON(),headers:r.request().headers()});return r.fulfill({json:{grant_id:'grant-one',revoked:true}});});
+    await openTasks(page);await page.getByRole('button',{name:'Inspect task',exact:true}).click();await page.waitForFunction(()=>document.getElementById('scheduled-task-text')?.textContent?.includes('PRIVATE_TASK'));expect(await page.locator('#scheduled-task-text img').count()).toBe(0);expect(await page.locator('#revoke-task').isDisabled()).toBe(true);
+    await page.locator('#confirm-task-revocation').check();await page.locator('#revoke-task').click();await page.waitForFunction(()=>document.getElementById('scheduled-tasks-status')?.textContent?.includes('grant revoked'));expect(calls[0].body).toEqual({confirm:true});expect(calls[0].headers['x-piclaw-account-id']).toBe('alice');expect(await page.locator('#scheduled-task-text').textContent()).toBe('');
+    f.detail.revoked=true;f.detail.preparation=null as any;await page.getByRole('button',{name:'Inspect task',exact:true}).click();await page.waitForFunction(()=>document.getElementById('scheduled-task-state')?.textContent?.includes('Grant revoked'));expect(await page.locator('#confirm-task-revocation').isDisabled()).toBe(true);
+  }finally{await page.close();}
+},20000);
+
+browserTest('task draft and inspection clear on refresh, close, blur, session switch and navigation',async()=>{
+  const page=await browser.newPage();
+  try{await taskFixture(page);await openTasks(page);const fill=async()=>{await taskDraft(page);await page.getByRole('button',{name:'Inspect task',exact:true}).click();await page.waitForFunction(()=>document.getElementById('scheduled-task-text')?.textContent?.includes('PRIVATE_TASK'));await page.locator('#confirm-task-preparation').check();};
+    await fill();await page.locator('#refresh-tasks').click();await page.waitForFunction(()=>!document.getElementById('prepare-task-form')?.hidden);expect(await page.locator('#task-prompt').inputValue()).toBe('');expect(await page.locator('#scheduled-task-text').textContent()).toBe('');
+    await fill();await page.locator('#close-tasks').click();expect(await page.locator('#task-prompt').inputValue()).toBe('');await page.locator('#open-tasks').click();await page.waitForFunction(()=>!document.getElementById('prepare-task-form')?.hidden);
+    await fill();await page.evaluate(()=>dispatchEvent(new Event('blur')));expect(await page.locator('#scheduled-task-text').textContent()).toBe('');await page.evaluate(()=>dispatchEvent(new Event('focus')));await page.waitForFunction(()=>!document.getElementById('prepare-task-form')?.hidden);
+    await fill();await switchChat(page, 'web:alice-two');await page.waitForFunction(()=>!document.getElementById('prepare-task-form')?.hidden);expect(await page.locator('#task-prompt').inputValue()).toBe('');
+    await fill();await page.evaluate(()=>dispatchEvent(new PageTransitionEvent('pagehide')));expect(await page.locator('#scheduled-task-text').textContent()).toBe('');expect(await page.locator('#task-prompt').inputValue()).toBe('');
+  }finally{await page.close();}
+},20000);
+
+browserTest('late preparation response cannot restore closed panel, draft or retry and releases shell lock',async()=>{
+  const page=await browser.newPage();
+  try{await taskFixture(page);let release!:()=>void,entered!:()=>void;const held=new Promise<void>(r=>release=r),waiting=new Promise<void>(r=>entered=r);
+    await page.route('**/agent/scheduled-tasks',async r=>{if(r.request().method()==='GET')return r.fulfill({json:{owner_user_id:'alice',window_size:50,activation_available:false,items:[]}});entered();await held;await r.fulfill({json:{request_id:r.request().postDataJSON().request_id,task_id:'task-late',grant_id:'grant-late',created:true,state:'paused'}});});
+    await openTasks(page);await taskDraft(page);await page.locator('#confirm-task-preparation').check();await page.locator('#prepare-task').click();await waiting;expect(await composeSend(page).isDisabled()).toBe(true);await page.locator('#close-tasks').click();release();await waitForFamilyIdle(page);
+    expect(await page.locator('#scheduled-tasks').isVisible()).toBe(false);await page.locator('#open-tasks').click();await page.waitForFunction(()=>!document.getElementById('prepare-task-form')?.hidden);expect(await page.locator('#task-prompt').inputValue()).toBe('');expect(await page.locator('#prepare-task').textContent()).toBe('Prepare paused task');
+  }finally{await page.close();}
+},20000);
+
+browserTest('account changes and target substitution fail closed before task content or controls render',async()=>{
+  const page=await browser.newPage();
+  try{const f=await taskFixture(page);await openTasks(page);f.detail.chat_jid='web:bob';await page.getByRole('button',{name:'Inspect task',exact:true}).click();await page.waitForFunction(()=>document.getElementById('scheduled-tasks-status')?.textContent?.includes('Invalid task detail'));expect(await page.locator('#scheduled-task-text').textContent()).toBe('');
+    f.detail.chat_jid='web:alice-two';let release!:()=>void,entered!:()=>void;const held=new Promise<void>(r=>release=r),waiting=new Promise<void>(r=>entered=r);
+    await page.route('**/agent/scheduled-tasks/grant-one',async r=>{entered();await held;await r.fulfill({json:f.detail});});await page.getByRole('button',{name:'Inspect task',exact:true}).click();await waiting;f.state.identity=principal('bob','login-b');release();await page.waitForFunction(()=>document.getElementById('family-status')?.textContent?.includes('no longer bound'));expect(await page.locator('#scheduled-task-text').textContent()).toBe('');expect(await page.locator('#task-prompt').inputValue()).toBe('');
+  }finally{await page.close();}
+},20000);
 
 browserTest('scheduled results load on explicit open, inspect as text and publish once with original target pins',async()=>{
   const page=await browser.newPage({viewport:{width:375,height:740}});
@@ -57,7 +950,7 @@ browserTest('scheduled results load on explicit open, inspect as text and publis
     await page.locator('#confirm-result-publication').check();await page.locator('#publish-result').click();
     await page.waitForFunction(()=>document.getElementById('scheduled-results-status')?.textContent?.includes('Published as message 99'));
     expect(publications).toHaveLength(1);expect(publications[0].body).toEqual({confirm:true});expect(publications[0].headers['x-piclaw-account-id']).toBe('alice');expect(publications[0].headers['x-piclaw-login-id']).toBe('login-a');
-    expect(await page.locator('#session-select').inputValue()).toBe('web:alice');expect(await page.locator('#scheduled-result-text').textContent()).toBe('');
+    expect(await currentChat(page)).toBe('web:alice');expect(await page.locator('#scheduled-result-text').textContent()).toBe('');
   }finally{await page.close();}
 },20000);
 
@@ -70,7 +963,7 @@ browserTest('result detail and confirmation clear on refresh, close, blur, sessi
     await inspect();await page.locator('#refresh-results').click();expect(await page.locator('#scheduled-result-text').textContent()).toBe('');expect(await page.locator('#confirm-result-publication').isChecked()).toBe(false);
     await inspect();await page.locator('#close-results').click();expect(await page.locator('#scheduled-result-text').textContent()).toBe('');await page.locator('#open-results').click();
     await inspect();await page.evaluate(()=>dispatchEvent(new Event('blur')));expect(await page.locator('#scheduled-result-text').textContent()).toBe('');await page.evaluate(()=>dispatchEvent(new Event('focus')));await ready(page);
-    await inspect();await page.locator('#session-select').selectOption('web:alice-two');await ready(page);expect(await page.locator('#scheduled-result-text').textContent()).toBe('');
+    await inspect();await switchChat(page, 'web:alice-two');await ready(page);expect(await page.locator('#scheduled-result-text').textContent()).toBe('');
     await inspect();await page.evaluate(()=>dispatchEvent(new PageTransitionEvent('pagehide')));expect(await page.locator('#scheduled-result-text').textContent()).toBe('');expect(await page.locator('#publish-result').isDisabled()).toBe(true);
   }finally{await page.close();}
 },20000);
@@ -116,8 +1009,8 @@ browserTest('closing during publication clears detail and late success cannot re
     let release!:()=>void,entered!:()=>void;const held=new Promise<void>(r=>release=r),waiting=new Promise<void>(r=>entered=r);let sends=0;
     await page.route('**/agent/scheduled-results/execution-one/publish',async r=>{sends++;entered();await held;await r.fulfill({json:{execution_id:'execution-one',chat_jid:'web:alice-two',message_rowid:99,created:true}});});
     await page.goto(base);await ready(page);await page.locator('#open-results').click();await page.getByRole('button',{name:'Inspect result',exact:true}).click();await page.locator('#confirm-result-publication').check();await page.locator('#publish-result').click();await waiting;
-    expect(await page.locator('#send-message').isDisabled()).toBe(true);await page.locator('#close-results').click();release();
-    await page.waitForFunction(()=>!(document.getElementById('send-message') as HTMLButtonElement)?.disabled);
+    expect(await composeSend(page).isDisabled()).toBe(true);await page.locator('#close-results').click();release();
+    await waitForFamilyIdle(page);
     expect(await page.locator('#scheduled-results').isVisible()).toBe(false);expect(await page.locator('#scheduled-result-text').textContent()).toBe('');expect(sends).toBe(1);
     await page.locator('#open-results').click();expect(await page.locator('#confirm-result-publication').isChecked()).toBe(false);
   }finally{await page.close();}
@@ -149,9 +1042,9 @@ browserTest("fresh login ignores legacy browser state, uses home and sends pinne
     expect(state.calls[0]!.path).toContain("chat_jid=web%3Aalice"); expect(state.calls[0]!.headers["x-piclaw-login-id"]).toBe("login-a");
     expect(await page.locator("body").textContent()).not.toContain("FOREIGN_SECRET");
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.locator("#message-text").fill("hello"); await page.locator("#send-message").click();
+    await composeInput(page).fill("hello"); await composeSend(page).click();
     await page.waitForFunction(() => document.getElementById("family-error")?.textContent?.includes("Resend unchanged"));
-    await page.locator("#send-message").click(); await page.waitForFunction(() => (document.getElementById("message-text") as HTMLTextAreaElement)?.value === "");
+    await composeSend(page).click(); await page.waitForFunction(() => (document.querySelector('[data-testid=\"compose-input\"]') as HTMLTextAreaElement)?.value === "");
     expect(sends).toHaveLength(2); expect(sends[0].body.request_id).toBe(sends[1].body.request_id);
     expect(sends[0].headers["x-piclaw-account-id"]).toBe("alice"); expect(sends[1].body.content).toBe("hello");
     expect(await page.evaluate(() => [localStorage.length, sessionStorage.length])).toEqual([2, 0]);
@@ -165,7 +1058,7 @@ browserTest("foreign explicit URL does not fall back silently; Go home recovers"
     await page.route("**/timeline?**", route => route.fulfill(route.request().url().includes("web%3Abob") ? { status: 403, json: {} } : { json: posts() }));
     await page.goto(base + "/?chat_jid=web:bob");
     await page.waitForFunction(() => document.getElementById("family-error")?.textContent?.includes("Access denied"));
-    expect(page.url()).toContain("web:bob"); expect(await page.locator("#send-message").isDisabled()).toBe(true);
+    expect(page.url()).toContain("web:bob"); expect(await composeSend(page).isDisabled()).toBe(true);
     await page.locator("#go-home").click(); await ready(page); expect(page.url()).toContain("web%3Aalice");
   } finally { await page.close(); }
 }, 20000);
@@ -174,15 +1067,15 @@ browserTest("account/login change during a delayed response clears conversation 
   const page = await browser.newPage();
   try {
     const state = await fixture(page); await page.goto(base); await ready(page);
-    await page.locator("#message-text").fill("unsent private draft");
-    let release!: () => void, admitted!: () => void;
+    await composeInput(page).fill("unsent private draft");
+    let release!: () => void, admitted!: () => void, heldOnce = false;
     const held = new Promise<void>(resolve => release = resolve), entered = new Promise<void>(resolve => admitted = resolve);
-    await page.route("**/timeline?**", async route => { admitted(); await held; await route.fulfill({ json: posts("STALE_SECRET") }); });
+    await page.route("**/timeline?**", async route => { if (!heldOnce) { heldOnce = true; admitted(); await held; } await route.fulfill({ json: posts("STALE_SECRET") }); });
     await page.locator("#refresh").click(); await entered;
     state.identity = principal("bob", "login-b"); release();
     await page.waitForFunction(() => document.getElementById("family-status")?.textContent?.includes("no longer bound"));
-    expect(await page.locator("#timeline").textContent()).toBe(""); expect(await page.locator("#message-text").inputValue()).toBe("");
-    expect(await page.locator("#send-message").isDisabled()).toBe(true);
+    expect(await page.locator('#family-chat-root').textContent()).toBe(""); expect(await composeInput(page).count()).toBe(0);
+    expect(await composeSend(page).count()).toBe(0);
   } finally { await page.close(); }
 }, 20000);
 
@@ -196,26 +1089,31 @@ browserTest("in-flight old session cannot overwrite newly selected session", asy
       if (route.request().url().includes("alice-two")) return route.fulfill({ json: posts("SECOND_SESSION") });
       entered(); await held; return route.fulfill({ json: posts("STALE_SESSION") });
     });
+    await page.route('**/agent/status?**', route => route.fulfill({ json: route.request().url().includes('alice-two')
+      ? { status: 'active', state: 'active', chat_jid: 'web:alice-two', data: { type: 'thinking', title: 'SECOND_STATUS', turn_id: 'turn-second' } }
+      : { status: 'active', state: 'active', chat_jid: 'web:alice', data: { type: 'thinking', title: 'STALE_STATUS', turn_id: 'turn-stale' } } }));
     await page.locator("#refresh").click(); await waiting;
-    await page.locator("#session-select").selectOption("web:alice-two");
+    await switchChat(page, "web:alice-two");
     await page.waitForFunction(() => document.getElementById("timeline")?.textContent?.includes("SECOND_SESSION")); release();
     await page.waitForTimeout(100);
     expect(await page.locator("#timeline").textContent()).not.toContain("STALE_SESSION");
+    expect(await page.locator('#family-chat-root').textContent()).toContain('SECOND_STATUS');
+    expect(await page.locator('#family-chat-root').textContent()).not.toContain('STALE_STATUS');
   } finally { await page.close(); }
 }, 20000);
 
 browserTest("blur masks private UI, changed login on focus invalidates, pagehide erases drafts", async () => {
   const page = await browser.newPage();
   try {
-    const state = await fixture(page); await page.goto(base); await ready(page); await page.locator("#message-text").fill("private");
+    const state = await fixture(page); await page.goto(base); await ready(page); await composeInput(page).fill("private");
     await page.evaluate(() => dispatchEvent(new Event("blur")));
-    expect(await page.locator("#timeline").textContent()).toBe(""); expect(await page.locator("#compose-form").isVisible()).toBe(false);
+    expect(await page.locator("#timeline").textContent()).toBe("No messages yet. Start a conversation!"); expect(await page.locator("#family-chat-root").getAttribute('aria-busy')).toBe('true');
     state.identity = principal("alice", "new-login"); await page.evaluate(() => dispatchEvent(new Event("focus")));
     await page.waitForFunction(() => document.getElementById("family-status")?.textContent?.includes("no longer bound"));
-    expect(await page.locator("#message-text").inputValue()).toBe("");
-    state.identity = principal(); await page.reload(); await ready(page); await page.locator("#message-text").fill("private");
+    expect(await composeInput(page).count()).toBe(0);
+    state.identity = principal(); await page.reload(); await ready(page); await composeInput(page).fill("private");
     await page.evaluate(() => dispatchEvent(new PageTransitionEvent("pagehide")));
-    expect(await page.locator("#message-text").inputValue()).toBe(""); expect(await page.locator("#timeline").textContent()).toBe("");
+    expect(await composeInput(page).count()).toBe(0); expect(await page.locator('#family-chat-root').textContent()).toBe("");
   } finally { await page.close(); }
 }, 20000);
 
@@ -297,7 +1195,7 @@ browserTest('legacy-held input offers only confirmed dismissal, preserves retry 
     await page.goto(base);await ready(page);expect(await page.locator('#retry-message').isVisible()).toBe(false);expect(await page.locator('#skip-message').isDisabled()).toBe(true);expect(await page.locator('#recovery-warning').textContent()).toContain('send a new plain-text prompt');
     await page.locator('#confirm-skip').check();await page.locator('#skip-message').click();await page.waitForFunction(()=>document.getElementById('family-error')?.textContent?.includes('same action'));
     expect(writes).toHaveLength(1);expect(writes[0].body.action).toBe('dismiss-legacy');expect(writes[0].body.message_rowid).toBe(71);expect(writes[0].headers['x-piclaw-account-id']).toBe('alice');
-    await page.locator('#skip-message').click();await page.waitForFunction(()=>(document.getElementById('message-recovery') as HTMLElement)?.hidden);expect(writes).toHaveLength(2);expect(writes[1].body.request_id).toBe(writes[0].body.request_id);expect(await page.locator('#message-text').inputValue()).toBe('');
+    await page.locator('#skip-message').click();await page.waitForFunction(()=>(document.getElementById('message-recovery') as HTMLElement)?.hidden);expect(writes).toHaveLength(2);expect(writes[1].body.request_id).toBe(writes[0].body.request_id);expect(await composeInput(page).inputValue()).toBe('');
   }finally{await page.close();}
 },20000);
 
@@ -308,7 +1206,7 @@ browserTest('legacy hold confirmation clears on blur and replacement login canno
     await page.goto(base);await ready(page);await page.locator('#confirm-skip').check();await page.evaluate(()=>dispatchEvent(new Event('blur')));expect(await page.locator('#confirm-skip').isChecked()).toBe(false);expect(await page.locator('#recovery-status').textContent()).toBe('');
     await page.evaluate(()=>dispatchEvent(new Event('focus')));await ready(page);expect(await page.locator('#skip-message').isDisabled()).toBe(true);
     let release!:()=>void,entered!:()=>void;const held=new Promise<void>(r=>release=r),waiting=new Promise<void>(r=>entered=r);await page.route('**/agent/message-recovery',async route=>{entered();await held;await route.fulfill({json:{recovered:true}});});
-    await page.locator('#confirm-skip').check();await page.locator('#skip-message').click();await waiting;state.identity=principal('bob','login-b');release();await page.waitForFunction(()=>document.getElementById('family-status')?.textContent?.includes('no longer bound'));expect(await page.locator('#message-recovery').isVisible()).toBe(false);expect(await page.locator('#message-text').inputValue()).toBe('');
+    await page.locator('#confirm-skip').check();await page.locator('#skip-message').click();await waiting;state.identity=principal('bob','login-b');release();await page.waitForFunction(()=>document.getElementById('family-status')?.textContent?.includes('no longer bound'));expect(await page.locator('#message-recovery').isVisible()).toBe(false);expect(await composeInput(page).count()).toBe(0);
   }finally{await page.close();}
 },20000);
 async function openAccount(page: Page) {
@@ -522,7 +1420,7 @@ browserTest('a different account starts with its own appearance and cannot inher
     await page.goto(base); await ready(page); await page.locator('#open-preferences').click(); await page.waitForFunction(() => !(document.getElementById('preferences-form') as HTMLElement)?.hidden);
     expect(await page.locator('#preferences-guidance').inputValue()).toBe('ALICE_ONLY');
     state.identity = principal('bob', 'login-b');
-    await page.route('**/agent/branches', route => route.fulfill({ json: { branches: [{ chat_jid: 'web:bob', root_chat_jid: 'web:bob', agent_name: 'home' }] } }));
+    await page.route(/\/agent\/branches(?:\?.*)?$/, route => route.fulfill({ json: { branches: [{ chat_jid: 'web:bob', root_chat_jid: 'web:bob', agent_name: 'home' }] } }));
     await page.reload(); await ready(page); await page.locator('#open-preferences').click(); await page.waitForFunction(() => !(document.getElementById('preferences-form') as HTMLElement)?.hidden);
     expect(await page.locator('html').getAttribute('data-account-theme')).toBe('light'); expect(await page.locator('#preferences-guidance').inputValue()).toBe('BOB_ONLY');
     expect(await page.locator('#preferences-guidance').inputValue()).not.toContain('ALICE_ONLY');
@@ -531,7 +1429,7 @@ browserTest('a different account starts with its own appearance and cannot inher
 
 function workspacePolicyFixture(): FamilyWorkspacePolicy {
   return {
-    user_id: 'alice', deployment: { routing_mode: 'family-shared', configured_mode: 'family-shared', activated_mode: 'single-user', supported_startup_mode: 'single-user', activation_allowed: false, container_isolation: false },
+    user_id: 'alice', deployment: { routing_mode: 'family-shared', configured_mode: 'family-shared', activated_mode: 'family-shared', supported_startup_mode: 'family-shared', activation_allowed: false, container_isolation: false },
     tools: { policy: 'fixed-family-web-preview', configurable: false, allowed: [...FAMILY_WEB_TOOLS], denied: [], revision: 0, scope: 'Fixed ceiling, not configurable user grants.' },
     resources: [{ name: 'Workspace files', scope: 'shared', detail: 'Shared filesystem, not private volumes.' }],
     operations: [{ name: 'Shell', state: 'denied', detail: 'Not enabled for admitted web turns.' }],
@@ -544,14 +1442,14 @@ async function openWorkspacePolicy(page: Page) {
   await page.waitForFunction(() => Boolean(document.getElementById('workspace-policy-details')?.textContent));
 }
 
-browserTest('workspace policy distinguishes gated modes, shared resources and tool ceiling without offering writes', async () => {
+browserTest('workspace policy distinguishes promoted family mode, shared resources and tool ceiling without offering writes', async () => {
   const page = await browser.newPage({ viewport: { width: 375, height: 740 } });
   try {
     await fixture(page); const calls: any[] = [];
     await page.route('**/account/workspace', route => { calls.push({ method: route.request().method(), headers: route.request().headers() }); return route.fulfill({ json: workspacePolicyFixture() }); });
     await openWorkspacePolicy(page);
     const text = await page.locator('#workspace-policy-details').textContent();
-    expect(text).toContain('configured mode: family-shared'); expect(text).toContain('stored activation marker: single-user'); expect(text).toContain('not container isolation');
+    expect(text).toContain('configured mode: family-shared'); expect(text).toContain('stored activation marker: family-shared'); expect(text).toContain('not container isolation');
     expect(text).toContain('read, ls, find, grep'); expect(text).toContain('notes/users/alice/MEMORY.md'); expect(text).toContain('Shell — denied');
     expect(await page.locator('#workspace-policy-details input, #workspace-policy-details button, #workspace-policy-details a').count()).toBe(0);
     expect(calls.every(c => c.method === 'GET' && c.headers['x-piclaw-account-id'] === 'alice' && c.headers['x-piclaw-login-id'] === 'login-a')).toBe(true);
@@ -764,7 +1662,7 @@ browserTest('admin tool restrictions edit only the supplied ceiling with exact c
       return route.fulfill({ json: { user: { id: 'bob', username: 'bob' }, ceiling: [...FAMILY_WEB_TOOLS], policy: { revision, denied, allowed: FAMILY_WEB_TOOLS.filter(name => !denied.includes(name)) } } });
     });
     await openAdministration(page); const open = () => page.locator('#administration-users li').nth(1).getByRole('button', { name: 'Tool restrictions', exact: true }).click();
-    await open(); await page.waitForFunction(() => document.querySelectorAll('#administration-tools-list input').length === 8);
+    await open(); await page.waitForFunction(expected => document.querySelectorAll('#administration-tools-list input').length === expected, FAMILY_WEB_TOOLS.length);
     expect(await page.getByLabel('Deny read', { exact: true }).isChecked()).toBe(true);
     expect(await page.locator('#administration-tools-list').textContent()).not.toContain('bash');
     await page.getByLabel('Deny messages', { exact: true }).check(); await page.locator('#administration-tools-confirm').check();
@@ -772,7 +1670,7 @@ browserTest('admin tool restrictions edit only the supplied ceiling with exact c
     await page.locator('#administration-tools-username').fill('bob'); await page.locator('#save-administration-tools').click();
     await page.waitForFunction(() => document.getElementById('administration-status')?.textContent === 'Account change saved.');
     expect(writes[0].body).toEqual({ confirm_username: 'bob', expected_revision: 1, denied_tools: ['read', 'messages'] });
-    expect(writes[0].headers['x-piclaw-account-id']).toBe('alice'); expect(await page.locator('#session-select').inputValue()).toBe('web:alice');
+    expect(writes[0].headers['x-piclaw-account-id']).toBe('alice'); expect(await currentChat(page)).toBe('web:alice');
     await open(); await page.waitForFunction(() => document.getElementById('administration-tools-title')?.textContent?.includes('revision 2'));
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.evaluate(() => dispatchEvent(new Event('blur'))); expect(await page.locator('#administration-tools-list').textContent()).toBe('');
@@ -821,7 +1719,7 @@ browserTest('admin home uses eligible server roots and exact confirmation withou
     expect(await page.locator('#administration-action-warning').textContent()).toContain('active runs');
     await confirmAdministration(page, 'bob'); await page.waitForFunction(() => document.getElementById('administration-status')?.textContent === 'Account change saved.');
     expect(writes[0].body).toEqual({ branch_id: 'bob-second', confirm_username: 'bob' }); expect(writes[0].headers['x-piclaw-account-id']).toBe('alice');
-    expect(await page.locator('#session-select').inputValue()).toBe('web:alice');
+    expect(await currentChat(page)).toBe('web:alice');
     await open(); await page.waitForFunction(() => document.querySelectorAll('#administration-home-roots li').length === 2);
     expect(await page.locator('#administration-home-roots button').nth(1).isDisabled()).toBe(true);
     await page.locator('#close-administration-home').click(); expect(await page.locator('#administration-home-roots').textContent()).toBe('');
@@ -856,7 +1754,7 @@ browserTest('admin home empty eligibility and write denial do not cause fallback
     empty = false; await open(); await page.waitForFunction(() => document.querySelectorAll('#administration-home-roots button').length === 2);
     await page.locator('#administration-home-roots button').nth(1).click(); await confirmAdministration(page, 'bob');
     await page.waitForFunction(() => document.getElementById('administration-status')?.textContent?.includes('No automatic retry'));
-    expect(writes).toBe(1); expect(await page.locator('#session-select').inputValue()).toBe('web:alice');
+    expect(writes).toBe(1); expect(await currentChat(page)).toBe('web:alice');
   } finally { await page.close(); }
 }, 20000);
 
@@ -880,7 +1778,7 @@ browserTest('admin security view confirms exact target revocation without changi
     await page.waitForFunction(() => document.getElementById('administration-status')?.textContent === 'Account change saved.');
     expect(writes[1].body).toEqual({ kind: 'passkey', item_id: 'bob-key', confirm_username: 'bob' });
     expect(writes.every(w => w.headers['x-piclaw-account-id'] === 'alice')).toBe(true);
-    expect(await page.locator('#session-select').inputValue()).toBe('web:alice'); expect(await page.locator('#administration-security').isVisible()).toBe(false);
+    expect(await currentChat(page)).toBe('web:alice'); expect(await page.locator('#administration-security').isVisible()).toBe(false);
   } finally { await page.close(); }
 }, 20000);
 
@@ -943,7 +1841,7 @@ browserTest('administration creates disabled accounts and confirms disable/react
     }
     expect(mutations.slice(1).map(m => m.body)).toEqual([{ enabled: false }, { enabled: true }, { role: 'admin' }]);
     expect(mutations.every(m => m.headers['x-piclaw-account-id'] === 'alice' && m.headers['x-piclaw-login-id'] === 'login-a')).toBe(true);
-    expect(await page.locator('#session-select').inputValue()).toBe('web:alice');
+    expect(await currentChat(page)).toBe('web:alice');
     expect(await page.locator('#administration-users a').count()).toBe(0);
   } finally { await page.close(); }
 }, 20000);
@@ -1034,7 +1932,7 @@ browserTest('successful reset returns a restricted invitation without impersonat
     await page.waitForFunction(() => Boolean((document.getElementById('administration-invitation-link') as HTMLInputElement)?.value));
     expect(mutations[0]!.body).toEqual({ confirm_username: 'bob' });
     expect(await page.locator('#administration-users li').nth(1).textContent()).toContain('Disabled');
-    expect(await page.locator('#session-select').inputValue()).toBe('web:alice');
+    expect(await currentChat(page)).toBe('web:alice');
     expect(await page.locator('#account-name').textContent()).toContain('alice');
     await page.evaluate(() => dispatchEvent(new PageTransitionEvent('pagehide')));
     expect(await page.locator('#administration-invitation-link').inputValue()).toBe('');
@@ -1067,7 +1965,7 @@ async function treeFixture(page: Page) {
   const snapshot: SessionSettings = { home_chat_jid: 'web:alice', capabilities: { create_root: true }, branches: [branch('alice', 'home'), branch('alice-two', 'second')] };
   const actions: { path: string; body: any; headers: Record<string, string> }[] = [];
   await page.route('**/account/trees', route => route.fulfill({ json: snapshot }));
-  await page.route('**/agent/branches', route => route.fulfill({ json: { branches: snapshot.branches.filter(b => b.capabilities.open) } }));
+  await page.route(/\/agent\/branches(?:\?.*)?$/, route => route.fulfill({ json: { branches: snapshot.branches.filter(b => b.capabilities.open) } }));
   await page.route('**/timeline?**', route => {
     const jid = new URL(route.request().url()).searchParams.get('chat_jid');
     return route.fulfill(snapshot.branches.some(b => b.chat_jid === jid && b.capabilities.open) ? { json: posts() } : { status: 403, json: {} });
@@ -1119,7 +2017,7 @@ browserTest('archived transcript prepares pinned ordered pages, explicitly downl
     expect(await page.locator('#transcript-status').textContent()).toContain('Prepared 4 messages (1 truncated)');expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
     const download=page.waitForEvent('download');await page.locator('#save-transcript').click();const file=await download;expect(file.suggestedFilename()).toBe('piclaw-transcript-alice-two.txt');
     const text=readFileSync((await file.path())!,'utf8');expect(text).toContain('not a full backup');expect(text).toContain('[Message truncated by export]');expect(text.indexOf('TEXT_1')).toBeLessThan(text.indexOf('TEXT_2'));expect(text.indexOf('TEXT_2')).toBeLessThan(text.indexOf('TEXT_3'));expect(text.indexOf('TEXT_3')).toBeLessThan(text.indexOf('TEXT_4'));
-    expect(await page.locator('#session-select').inputValue()).toBe('web:alice');expect(await page.evaluate(()=>[localStorage.length,sessionStorage.length])).toEqual([0,0]);
+    expect(await currentChat(page)).toBe('web:alice');expect(await page.evaluate(()=>[localStorage.length,sessionStorage.length])).toEqual([0,0]);
     await page.locator('#cancel-transcript').click();expect(await page.evaluate(()=>(window as any).revoked.length)).toBe(1);expect(await page.locator('#transcript-status').textContent()).toBe('');await file.delete();
   }finally{await page.close();}
 },20000);
@@ -1203,7 +2101,7 @@ browserTest('prepared transcript is discarded by focus loss, session refresh, na
       await startTranscript(page);await page.waitForFunction(()=>!(document.getElementById('save-transcript') as HTMLButtonElement)?.disabled);
       if(action==='blur')await page.evaluate(()=>dispatchEvent(new Event('blur')));
       else if(action==='refresh')await page.locator('#refresh-sessions').click();
-      else if(action==='switch')await page.locator('#session-select').selectOption('web:alice-third');
+      else if(action==='switch')await switchChat(page, 'web:alice-third');
       else if(action==='close')await page.locator('#close-sessions').click();
       else if(action==='navigate')await page.goto(base+'/blank');
       else await page.locator('#owned-tree-list li').nth(1).getByRole('button',{name:'Download transcript',exact:true}).click();
@@ -1238,7 +2136,7 @@ browserTest('owned session Settings creates, renames, selects home, archives and
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.locator('#root-name').fill('research'); await page.locator('#create-root').click();
     await page.waitForFunction(() => document.getElementById('session-settings-status')?.textContent?.includes('change saved'));
-    expect(actions[0]!.body).toEqual({ agent_name: 'research' }); expect(await page.locator('#session-select').inputValue()).toBe('web:alice');
+    expect(actions[0]!.body).toEqual({ agent_name: 'research' }); expect(await currentChat(page)).toBe('web:alice');
     await row('research').getByRole('button', { name: 'Rename', exact: true }).click(); await page.locator('#session-action-name').fill('renamed'); await page.locator('#submit-session-action').click();
     await page.waitForFunction(() => document.getElementById('owned-tree-list')?.textContent?.includes('@renamed'));
     expect(actions[1]!.body).toEqual({ chat_jid: 'web:new-1', agent_name: 'renamed' });
@@ -1246,16 +2144,16 @@ browserTest('owned session Settings creates, renames, selects home, archives and
     expect(await page.locator('#submit-session-action').isDisabled()).toBe(true);
     await page.locator('#session-action-confirm').check(); await page.locator('#submit-session-action').click();
     await page.waitForFunction(() => document.getElementById('session-home')?.textContent === 'Home: web:alice-two');
-    expect(await page.locator('#session-select').inputValue()).toBe('web:alice');
+    expect(await currentChat(page)).toBe('web:alice');
     await row('home').getByRole('button', { name: 'Archive', exact: true }).click();
     await page.locator('#session-action-confirm').check(); await page.locator('#submit-session-action').click();
     await page.waitForFunction(() => document.getElementById('family-error')?.textContent?.includes('Access denied'));
-    expect(await page.locator('#send-message').isDisabled()).toBe(true); expect(await page.locator('#session-select').inputValue()).toBe('');
+    expect(await composeSend(page).isDisabled()).toBe(true); expect(await currentChat(page)).toBe('web:alice');
     await page.evaluate(() => dispatchEvent(new Event('blur'))); await page.evaluate(() => dispatchEvent(new Event('focus')));
     await page.waitForFunction(() => document.querySelectorAll('#owned-tree-list li').length === 3);
     await row('home').getByRole('button', { name: 'Restore', exact: true }).click(); await page.locator('#session-action-name').fill('restored'); await page.locator('#submit-session-action').click();
     await page.waitForFunction(() => document.getElementById('owned-tree-list')?.textContent?.includes('@restored')); await ready(page);
-    await page.locator('#go-home').click(); await page.waitForFunction(() => (document.getElementById('session-select') as HTMLSelectElement)?.value === 'web:alice-two');
+    await page.locator('#go-home').click(); await page.waitForFunction(() => document.getElementById('family-chat-root')?.dataset.chatJid === 'web:alice-two');
     expect(actions.every(a => a.headers['x-piclaw-account-id'] === 'alice' && a.headers['x-piclaw-login-id'] === 'login-a')).toBe(true);
   } finally { await page.close(); }
 }, 20000);
@@ -1303,7 +2201,7 @@ browserTest('failed restore preserves selection, and backgrounded mutations cann
     await page.locator('#session-action-name').fill('collision'); await page.locator('#submit-session-action').click();
     await page.waitForFunction(() => document.getElementById('session-settings-status')?.textContent?.includes('No automatic retry'));
     expect(attempts).toBe(1); expect(await page.locator('#session-action-name').inputValue()).toBe('collision');
-    expect(await page.locator('#session-select').inputValue()).toBe('web:alice');
+    expect(await currentChat(page)).toBe('web:alice');
     let release!: () => void, entered!: () => void;
     const held = new Promise<void>(r => release = r), waiting = new Promise<void>(r => entered = r);
     await page.route('**/agent/branch-restore', async route => { entered(); await held; await route.fulfill({ status: 400, json: {} }); });
@@ -1311,7 +2209,7 @@ browserTest('failed restore preserves selection, and backgrounded mutations cann
     await page.evaluate(() => dispatchEvent(new Event('blur'))); release();
     await page.waitForTimeout(80);
     expect(await page.locator('#session-settings').isVisible()).toBe(false);
-    expect(await page.locator('#send-message').isDisabled()).toBe(true); expect(await page.locator('#session-action-name').inputValue()).toBe('');
+    expect(await composeSend(page).isDisabled()).toBe(true); expect(await page.locator('#session-action-name').inputValue()).toBe('');
     await page.evaluate(() => dispatchEvent(new Event('focus'))); await ready(page);
     await page.waitForFunction(() => document.querySelectorAll('#owned-tree-list li').length === 2);
     expect(await page.locator('#session-action-form').isVisible()).toBe(false);
@@ -1328,9 +2226,9 @@ browserTest('closing a pending session mutation keeps panel closed and refreshes
     await page.locator('#owned-tree-list li').nth(1).getByRole('button', { name: 'Rename', exact: true }).click();
     await page.locator('#session-action-name').fill('renamed'); await page.locator('#submit-session-action').click(); await waiting;
     await page.locator('#close-sessions').click(); release();
-    await page.waitForFunction(() => document.getElementById('session-select')?.textContent?.includes('renamed'));
+    await openSessionPicker(page); await page.waitForFunction(() => document.querySelector('[data-testid="session-popup"]')?.textContent?.includes('@renamed')); await page.getByRole('button',{name:'Close session picker'}).click();
     expect(await page.locator('#session-settings').isVisible()).toBe(false);
-    expect(await page.locator('#session-select').inputValue()).toBe('web:alice');
+    expect(await currentChat(page)).toBe('web:alice');
     await page.locator('#open-sessions').click(); await page.waitForFunction(() => document.querySelectorAll('#owned-tree-list li').length === 2);
     expect(await page.locator('#refresh-sessions').isDisabled()).toBe(false);
   } finally { await page.close(); }
@@ -1457,6 +2355,96 @@ browserTest("passkey creation uses native registration twice without replacement
     expect(finishes[0].credential.response.attestationObject.length).toBeGreaterThan(0);
     expect(await page.evaluate(() => [localStorage.length, sessionStorage.length])).toEqual([0, 0]);
   } finally { await cdp.detach(); await page.close(); }
+}, 20000);
+
+browserTest('two accounts drive isolated realtime status queue steer and stale-event behavior through the shared chat surface',async()=>{
+  const pages=await Promise.all(['alice','bob'].map(()=>browser.newPage({viewport:{width:900,height:800}})));
+  try{
+    for(const page of pages)await page.addInitScript(()=>{
+      class ControlledEventSource{
+        static instances:any[]=[];listeners=new Map<string,any[]>();onopen:any=null;onerror:any=null;closed=false;
+        constructor(public url:string){ControlledEventSource.instances.push(this);setTimeout(()=>this.onopen?.(),0);}
+        addEventListener(type:string,listener:any){this.listeners.set(type,[...(this.listeners.get(type)||[]),listener]);}
+        emit(type:string,data:any){for(const listener of this.listeners.get(type)||[])listener({data:JSON.stringify(data)});}
+        close(){this.closed=true;}
+      }
+      Object.defineProperty(window,'EventSource',{value:ControlledEventSource,configurable:true});(window as any).emitFamily=(type:string,data:any,index=-1)=>{const instances=(ControlledEventSource as any).instances;instances.at(index)?.emit(type,data);};
+    });
+    const states=[await fixture(pages[0]),await fixture(pages[1])];states[1].identity=principal('bob','login-b');
+    const controls=[[] as any[],[] as any[]];
+    for(let i=0;i<2;i++){
+      const page=pages[i],name=i?'bob':'alice',items=[{row_id:10+i*10,content:`${name} first`,timestamp:'now'},{row_id:11+i*10,content:`${name} second`,timestamp:'now'}];
+      await page.route('**/timeline?**',r=>r.fulfill({json:posts(`${name} private text`)}));await page.route('**/agent/status?**',r=>r.fulfill({json:{status:'idle',state:'idle',chat_jid:`web:${name}`,data:null,extension_working:null}}));await page.route('**/agent/queue-state?**',r=>r.fulfill({json:{count:items.length,items}}));
+      for(const action of ['queue-remove','queue-reorder','queue-steer'])await page.route(`**/agent/${action}`,r=>{controls[i].push({action,headers:r.request().headers(),body:r.request().postDataJSON()});return r.fulfill({json:{status:'ok',removed:true,reordered:true,queued:'steer',count:Math.max(0,items.length-1)}});});
+      await page.route('**/agent/default/message?**',r=>{controls[i].push({action:'message',headers:r.request().headers(),body:r.request().postDataJSON()});return r.fulfill({status:201,json:{queued:'followup',row_id:99}});});
+      await page.goto(`${base}?chat_jid=web:${name}`);await page.waitForFunction(expected=>document.getElementById('timeline')?.textContent?.includes(expected),`${name} private text`);
+      await page.waitForFunction(()=>Boolean(document.querySelector('[data-testid="queue-item"]')));
+    }
+    for(let i=0;i<2;i++){
+      const page=pages[i],name=i?'bob':'alice',turn=`turn-${name}`;
+      await page.evaluate(({name,turn})=>(window as any).emitFamily('agent_status',{chat_jid:`web:${name}`,type:'thinking',title:`Thinking for ${name}`,turn_id:turn}),{name,turn});
+      await page.evaluate(({name,turn})=>(window as any).emitFamily('agent_draft_delta',{chat_jid:`web:${name}`,turn_id:turn,delta:`Draft ${name}`,total_lines:1}),{name,turn});
+      await page.evaluate(({name,turn})=>(window as any).emitFamily('agent_thought_delta',{chat_jid:`web:${name}`,turn_id:turn,delta:`Thought ${name}`,total_lines:1}),{name,turn});
+      await page.waitForFunction(expected=>document.body.textContent?.includes(expected),`Thinking for ${name}`);expect((await page.locator('.agent-thinking-body').allTextContents()).map(value=>value.trim())).toEqual(expect.arrayContaining([`Draft ${name}`,`Thought ${name}`]));
+      expect(await page.locator('[data-testid="queue-item"]').count()).toBe(2);await page.locator('[data-testid="queue-item"]').nth(1).locator('[data-action="move-up"]').click();await page.locator('[data-testid="queue-item"]').first().locator('[data-action="remove"]').click();
+      await composeInput(page).fill('/steer direct guidance');await composeInput(page).press('Enter');await page.waitForTimeout(80);
+      expect(controls[i].every(item=>item.headers['x-piclaw-account-id']===name&&item.headers['x-piclaw-login-id']===(i?'login-b':'login-a'))).toBe(true);expect(controls[i].some(item=>item.action==='queue-reorder')).toBe(true);expect(controls[i].some(item=>item.action==='queue-remove')).toBe(true);expect(controls[i].some(item=>item.action==='message'&&item.body.mode==='steer')).toBe(true);
+      expect(await pages[1-i].locator('body').textContent()).not.toContain(`Thinking for ${name}`);
+    }
+    states[0].identity=principal('replacement','login-new');await pages[0].locator('#refresh').click();await pages[0].waitForFunction(()=>document.getElementById('family-status')?.textContent?.includes('no longer bound'));await pages[0].evaluate(()=>(window as any).emitFamily('agent_status',{chat_jid:'web:alice',type:'thinking',title:'STALE_ALICE'}));expect(await pages[0].locator('body').textContent()).not.toContain('STALE_ALICE');expect(await pages[1].locator('body').textContent()).not.toContain('STALE_ALICE');expect(await pages[1].locator('#account-name').textContent()).toContain('@bob');
+  }finally{for(const page of pages)await page.close();}
+},30000);
+
+browserTest('standard compose keeps drafts by owned session and exposes permitted command, mention, speech and keyboard behavior', async () => {
+  const page = await browser.newPage({ viewport: { width: 900, height: 800 } });
+  try {
+    await fixture(page);
+    await page.route('**/agent/commands?**', route => route.fulfill({ json: { commands: [
+      { name: '/abort', description: 'Abort the current response', source: 'core' },
+      { name: '/queue-all', description: 'Queue a follow-up message (batch all)', source: 'core' },
+      { name: '/steer', description: 'Steer the current response', source: 'core' },
+    ], mentions: [{ chat_jid: 'web:alice-two', root_chat_jid: 'web:alice-two', parent_branch_id: null, agent_name: 'second', archived_at: null }] } }));
+    await page.addInitScript(() => {
+      class Recognition {
+        continuous = false; interimResults = false; maxAlternatives = 1; lang = '';
+        start() { setTimeout(() => (this as any).onstart?.(), 0); }
+        stop() { (this as any).onend?.(); }
+        abort() { (this as any).onend?.(); }
+      }
+      Object.defineProperty(window, 'SpeechRecognition', { value: Recognition, configurable: true });
+      (window as any).speechCtor = Recognition;
+    });
+    const sent: any[] = [];
+    await page.route('**/agent/default/message?**', route => {
+      sent.push(route.request().postDataJSON());
+      return route.fulfill({ status: 201, json: { queued: 'message', user_message: { id: 99, chat_jid: 'web:alice', data: { content: route.request().postDataJSON().content } } } });
+    });
+    await page.goto(base); await ready(page);
+
+    await composeInput(page).fill('/que');
+    await page.waitForFunction(() => document.body.textContent?.includes('/queue-all'));
+    expect(await page.getByText('/queue-all', { exact: true }).count()).toBeGreaterThan(0);
+    await composeInput(page).fill('@sec');
+    await page.waitForFunction(() => document.body.textContent?.includes('@second'));
+    expect(await page.getByText('@second', { exact: true }).count()).toBeGreaterThan(0);
+    expect(await page.getByRole('button', { name: /voice input/i }).count()).toBe(1);
+    await page.getByRole('button', { name: /voice input/i }).click();
+    await page.waitForFunction(() => document.body.textContent?.includes('Listening'));
+    const constructor = await page.evaluate(() => typeof (window as any).speechCtor);
+    expect(constructor).toBe('function');
+
+    await composeInput(page).fill('draft for alice');
+    await switchChat(page, 'web:alice-two');
+    expect(await composeInput(page).inputValue()).toBe('');
+    await composeInput(page).fill('draft for second');
+    await switchChat(page, 'web:alice');
+    expect(await composeInput(page).inputValue()).toBe('draft for alice');
+
+    await composeInput(page).fill('keyboard send');
+    await composeInput(page).press('Enter');
+    await page.waitForFunction(() => (document.getElementById('message-text') as HTMLTextAreaElement)?.value === '');
+    expect(sent.at(-1)).toMatchObject({ content: 'keyboard send', mode: 'send' });
+  } finally { await page.close(); }
 }, 20000);
 
 browserTest("closing or changing login during native registration never submits a late credential", async () => {

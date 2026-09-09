@@ -6,7 +6,7 @@ import { closeDatabase,getDb,initDatabase } from "../../src/db/connection.js";
 import { createWebSession } from "../../src/db/web-sessions.js";
 import { createFamilyScheduledTask,revokeFamilyScheduledGrant } from "../../src/db/family-scheduled-grants.js";
 import { claimFamilyScheduledOccurrence } from "../../src/db/family-scheduled-occurrences.js";
-import { beginFamilyScheduledExecution,readOwnFamilyScheduledResult } from "../../src/db/family-scheduled-executions.js";
+import { beginFamilyScheduledExecution,readOwnFamilyScheduledResult,recoverExpiredFamilyScheduledExecutions,cancelOwnFamilyScheduledExecution } from "../../src/db/family-scheduled-executions.js";
 import { dispatchFamilyScheduledExecution as dispatch } from "../../src/agent-pool/scheduled-dispatch.js";
 import { authoriseExecutionIdentity } from "../../src/agent-pool/execution-identity.js";
 import { runAgentPrompt,type RunAgentOrchestratorOptions } from "../../src/agent-pool/run-agent-orchestrator.js";
@@ -21,6 +21,7 @@ import { getUser } from "../../src/db/users.js";
 import { updateAdminToolPolicy } from "../../src/db/family-tool-restrictions.js";
 import { AgentPool } from "../../src/agent-pool.js";
 import type { AuthenticatedPrincipal } from "../../src/core/access-types.js";
+import { handleFamilyScheduledTasks } from '../../src/channels/web/http/family-scheduled-tasks.js';
 
 let ws:ReturnType<typeof createTempWorkspace>,restore:()=>void,alice:AuthenticatedPrincipal,bob:AuthenticatedPrincipal,admin:AuthenticatedPrincipal;
 function actor(id:string):AuthenticatedPrincipal{const user=getUser(getDb(),id)!,login=createWebSession(`token-${id}`,id,3600,"passkey");return {kind:"user",mode:"family-shared",userId:id,username:user.username,displayName:user.display_name,role:user.role,homeChatJid:user.home_chat_jid,authentication:{method:"passkey",sessionId:login.session_id!,expiresAt:login.expires_at}};}
@@ -34,6 +35,17 @@ async function handoff(owner=alice){const real=Date.now,at=Date.now()+5;let resu
   try{Date.now=()=>at-5;const grant=createFamilyScheduledTask(getDb(),owner,owner.homeChatJid!,{prompt:`prompt for ${owner.username}`,scheduled_for:new Date(at).toISOString(),allowed_tools:["read","messages"]});Date.now=()=>at;result={...beginFamilyScheduledExecution(getDb(),claimFamilyScheduledOccurrence(getDb(),grant.grant_id,"worker")),grantId:grant.grant_id};}finally{Date.now=real;}await Bun.sleep(6);return result!;}
 const proof=(h:Awaited<ReturnType<typeof handoff>>)=>({execution_id:h.execution_id,token:h.token});
 const failureOf=(p:Promise<unknown>)=>p.then(()=>null,error=>error);
+
+test('owner cancellation fences queued and in-flight scheduled work without early lane release or result',async()=>{
+  const cap=await handoff(),h=harness();const queued=failureOf(dispatch(proof(cap),h.deps));cancelOwnFamilyScheduledExecution(getDb(),alice,cap.execution_id);await h.queued[0].run();expect(await queued).toBeInstanceOf(Error);expect(h.prompts).toBe(0);
+  const next=await handoff(),release=Promise.withResolvers<void>();let entered=false,done=false;
+  const other=harness(async()=>{entered=true;await release.promise;expect(()=>requireFamilyToolAccess('read')).toThrow();});
+  const pending=failureOf(dispatch(proof(next),other.deps)),lane=other.queued[0].run().then(()=>{done=true;});
+  try{await waitFor(()=>entered);expect(cancelOwnFamilyScheduledExecution(getDb(),alice,next.execution_id).created).toBe(true);expect(done).toBe(false);
+    expect(readOwnFamilyScheduledResult(getDb(),alice,next.execution_id).state).toBe('cancelled');release.resolve();await lane;expect(await pending).toBeInstanceOf(Error);expect(done).toBe(true);
+    expect(getDb().query('SELECT count(*) n FROM family_scheduled_results').get()).toEqual({n:0});expect(getDb().query('SELECT count(*) n FROM family_scheduled_interruptions').get()).toEqual({n:0});
+  }finally{release.resolve();await lane;}
+});
 function harness(onPrompt?:(session:any,prompt:string)=>Promise<void>|void,onHydrate?:()=>Promise<void>|void){
   const observed:{identity:ExecutionIdentity|null;prompt:string;system:string;tools:string[]}[]=[],queued:{run:()=>Promise<void>;lane:string}[]=[];
   let memory:any;workspaceMemoryBootstrap({on:(name:string,fn:any)=>{if(name==="before_agent_start")memory=fn;}} as any);
@@ -58,12 +70,31 @@ test("dispatcher uses exact owner prompt/system context/tool ceiling and settles
   await expect(dispatch(proof(cap),h.deps)).rejects.toThrow();
 });
 
+test('scheduled bootstrap loads only admitted owner memory and shared reference after logout',async()=>{
+  for(const owner of [alice,bob]){const dir=join(ws.workspace,'notes/users',owner.userId);mkdirSync(dir,{recursive:true});writeFileSync(join(dir,'MEMORY.md'),`${owner.username}_MEMORY_ONLY`);}
+  mkdirSync(join(ws.workspace,'notes/family'),{recursive:true});writeFileSync(join(ws.workspace,'notes/family/MEMORY.md'),'SHARED_MEMORY_REFERENCE');
+  const cap=await handoff(),h=harness();getDb().query('DELETE FROM web_sessions WHERE user_id=?').run(alice.userId);
+  const pending=dispatch(proof(cap),h.deps);await h.queued[0].run();await pending;
+  expect(h.observed[0].system).toContain('alice_MEMORY_ONLY');expect(h.observed[0].system).toContain('SHARED_MEMORY_REFERENCE');expect(h.observed[0].system).not.toContain('bob_MEMORY_ONLY');
+});
+
+test('confirmed owner HTTP admission reaches real one-shot prompt with exact identity and retry never requeues',async()=>{
+  const real=Date.now,at=real()+5;let ids:ReturnType<typeof createFamilyScheduledTask>;
+  try{Date.now=()=>at-5;ids=createFamilyScheduledTask(getDb(),alice,alice.homeChatJid!,{prompt:'owner approved exact prompt',scheduled_for:new Date(at).toISOString(),allowed_tools:['read','messages']});}finally{Date.now=real;}
+  await Bun.sleep(6);const h=harness(),channel={...h.deps,json:(value:unknown,status=200)=>Response.json(value,{status})} as any;
+  const request=()=>new Request(`https://family.local/agent/scheduled-tasks/${ids.grant_id}/run`,{method:'POST',headers:{origin:'https://family.local','content-type':'application/json','x-piclaw-account-id':alice.userId,'x-piclaw-login-id':alice.authentication.sessionId!},body:JSON.stringify({request_id:'owner-run',confirm:true})});
+  const response=await handleFamilyScheduledTasks(channel,request(),alice);expect(response.status).toBe(202);const receipt=await response.json();expect(h.queued).toHaveLength(1);expect(h.prompts).toBe(0);
+  await h.queued[0].run();expect(h.prompts).toBe(1);expect(h.observed[0].prompt).toBe('owner approved exact prompt');expect(h.observed[0].identity?.provenance.ownerUserId).toBe(alice.userId);expect(h.observed[0].tools).toEqual(['read','messages']);
+  expect(readOwnFamilyScheduledResult(getDb(),alice,receipt.execution_id).state).toBe('settled');expect((await handleFamilyScheduledTasks(channel,request(),alice)).status).toBe(200);expect(h.queued).toHaveLength(1);expect(h.prompts).toBe(1);
+});
+
 test("raw scheduled provenance and wrong prompt cannot borrow dispatcher admission",async()=>{
   const cap=await handoff(),h=harness();
   expect(()=>authoriseExecutionIdentity(getDb(),"family-shared",alice.homeChatJid!,{kind:"scheduled",actorUserId:alice.userId,ownerUserId:alice.userId,chatJid:alice.homeChatJid!,executionId:cap.execution_id})).toThrow();
   h.deps.agentPool.runAgent=(_p,c,o)=>runAgentPrompt("injected prompt",c,o,h.options);
   const caught=failureOf(dispatch(proof(cap),h.deps));await h.queued[0].run();expect(await caught).toBeInstanceOf(Error);expect(h.hydrations).toBe(0);
-  const denied=failureOf(dispatch(proof(cap),h.deps));await h.queued[1].run();expect(await denied).toBeInstanceOf(Error);expect(h.prompts).toBe(0);
+  const denied=failureOf(dispatch(proof(cap),h.deps));expect(await denied).toBeInstanceOf(Error);expect(h.queued).toHaveLength(1);expect(h.prompts).toBe(0);
+  expect(readOwnFamilyScheduledResult(getDb(),alice,cap.execution_id).state).toBe('interrupted');
 });
 
 test("revocation at queue and hydration boundaries prevents prompt and settlement",async()=>{
@@ -75,7 +106,7 @@ test("revocation at queue and hydration boundaries prevents prompt and settlemen
 test("logout survives but disable or policy removal during prompt fences tools and output",async()=>{
   const cap=await handoff(),h=harness(()=>{getDb().query("DELETE FROM web_sessions WHERE user_id=?").run(alice.userId);requireFamilyToolAccess("read");});const p=dispatch(proof(cap),h.deps);await h.queued[0].run();await p;
   alice=actor(alice.userId);const next=await handoff(),other=harness(()=>{updateAdminToolPolicy(getDb(),admin,alice.userId,{confirm_username:"alice",expected_revision:0,denied_tools:["read"]});expect(()=>requireFamilyToolAccess("read")).toThrow();});
-  const fail=failureOf(dispatch(proof(next),other.deps));await other.queued[0].run();expect(await fail).toBeInstanceOf(Error);expect(readOwnFamilyScheduledResult(getDb(),alice,next.execution_id).state).toBe("unsettled");
+  const fail=failureOf(dispatch(proof(next),other.deps));await other.queued[0].run();expect(await fail).toBeInstanceOf(Error);expect(readOwnFamilyScheduledResult(getDb(),alice,next.execution_id).state).toBe("interrupted");
 });
 
 test("duplicate queue delivery starts at most once and mismatched target is denied before hydration",async()=>{
@@ -143,10 +174,14 @@ test("queue expiry prevents late admission; timeout closes scope and holds lane 
   const original=globalThis.setTimeout;const spy=spyOn(globalThis,"setTimeout").mockImplementation(((fn:any,ms:number,...args:any[])=>{if(ms===30000){expireQueue=fn;return {unref(){}} as any;}if(ms===60000){expireRun??=fn;return {unref(){}} as any;}return original(fn,ms,...args);}) as any);
   try{
     const failure=failureOf(dispatch(proof(cap),h.deps));expireQueue!();expect(String(await failure)).toContain("queue wait expired");await h.queued[0].run();expect(h.prompts).toBe(0);
+    expect(getDb().query('SELECT count(*) n FROM family_scheduled_interruptions').get()).toEqual({n:0});
     const release=Promise.withResolvers<void>();let entered=false;
     const other=harness(async()=>{entered=true;await release.promise;expect(()=>requireFamilyToolAccess("read")).toThrow();});
     const denied=failureOf(dispatch(proof(cap),other.deps));let done=false;
-    const lane=other.queued[0].run().then(()=>{done=true;});await waitFor(()=>entered);expireRun!();expect(String(await denied)).toContain("deadline expired");expect(done).toBe(false);release.resolve();await lane;expect(done).toBe(true);
+    const lane=other.queued[0].run().then(()=>{done=true;});await waitFor(()=>entered);expireRun!();expect(String(await denied)).toContain("deadline expired");expect(done).toBe(false);
+    expect(readOwnFamilyScheduledResult(getDb(),alice,cap.execution_id).state).toBe('interrupted');
+    await expect(dispatch(proof(cap),other.deps)).rejects.toThrow();expect(other.queued).toHaveLength(1);
+    release.resolve();await lane;expect(done).toBe(true);
     expect(getDb().query("SELECT count(*) n FROM family_scheduled_results").get()).toEqual({n:0});
   }finally{spy.mockRestore();}
 });
@@ -157,6 +192,20 @@ test("real AgentPool runAgent wrapper uses the same one-shot prompt path",async(
     attachments:{clear:()=>{},take:()=>[]},logsDir:join(ws.workspace,"logs"),activeForkBaseLeafByChat:new Map(),recoveryStats:{attemptsTotal:0,recoveredRuns:0,exhaustedRuns:0}};
   h.deps.agentPool.runAgent=(p,c,o)=>AgentPool.prototype.runAgent.call(pool as any,p,c,o);
   const pending=dispatch(proof(cap),h.deps);await h.queued[0].run();await pending;expect(h.prompts).toBe(1);expect(released).toBe(1);
+});
+
+test('inner prompt timeout firing first does not release lane before underlying prompt settles',async()=>{
+  const cap=await handoff(),release=Promise.withResolvers<void>();let entered=false,abortCalled=false,done=false;
+  const h=harness(async()=>{entered=true;await release.promise;expect(()=>requireFamilyToolAccess('read')).toThrow();});h.session.abort=async()=>{abortCalled=true;};
+  const timers:Array<()=>void>=[],original=globalThis.setTimeout;
+  const spy=spyOn(globalThis,'setTimeout').mockImplementation(((fn:any,ms:number,...args:any[])=>{if(ms===60000){timers.push(fn);return {unref(){}} as any;}return original(fn,ms,...args);}) as any);
+  let lane:Promise<void>|undefined;
+  try{
+    const pending=failureOf(dispatch(proof(cap),h.deps));lane=h.queued[0].run().then(()=>{done=true;});await waitFor(()=>entered);expect(timers).toHaveLength(2);
+    timers[1]!();await waitFor(()=>abortCalled);expect(done).toBe(false);expect(readOwnFamilyScheduledResult(getDb(),alice,cap.execution_id).state).toBe('unsettled');
+    timers[0]!();expect(String(await pending)).toContain('deadline expired');expect(done).toBe(false);expect(readOwnFamilyScheduledResult(getDb(),alice,cap.execution_id).state).toBe('interrupted');
+    release.resolve();await lane;expect(done).toBe(true);expect(getDb().query('SELECT count(*) n FROM family_scheduled_results').get()).toEqual({n:0});
+  }finally{release.resolve();await lane;spy.mockRestore();}
 });
 
 test("admission insertion failure rolls back without hydration; completed or forged capabilities never queue",async()=>{
@@ -180,4 +229,24 @@ test("disabled owner while model waits loses tool and settlement authority",asyn
   const cap=await handoff(),h=harness(()=>{getDb().query('UPDATE users SET enabled=0 WHERE id=?').run(alice.userId);expect(()=>requireFamilyToolAccess('read')).toThrow();});
   const denied=failureOf(dispatch(proof(cap),h.deps));await h.queued[0].run();expect(await denied).toBeInstanceOf(Error);
   expect(getDb().query('SELECT count(*) n FROM family_scheduled_results').get()).toEqual({n:0});
+  expect(getDb().query('SELECT execution_id FROM family_scheduled_interruptions').get()).toEqual({execution_id:cap.execution_id});
+});
+
+test('admitted raw throw is recorded without error text while failed admission leaves no interruption',async()=>{
+  const cap=await handoff(),h=harness(),original=Error(`private provider text ${cap.token}`);
+  h.deps.agentPool.runAgent=async()=>{throw original;};
+  const failed=failureOf(dispatch(proof(cap),h.deps));await h.queued[0].run();expect(await failed).toBe(original);
+  const records=JSON.stringify(getDb().query('SELECT * FROM family_scheduled_interruptions').all());expect(records).not.toContain(cap.token);expect(records).not.toContain('private');
+  expect(readOwnFamilyScheduledResult(getDb(),alice,cap.execution_id)).toMatchObject({state:'interrupted',result:null});
+  const other=await handoff(),second=harness();revokeFamilyScheduledGrant(getDb(),alice,other.grantId);
+  await expect(dispatch(proof(other),second.deps)).rejects.toThrow();expect(second.queued).toHaveLength(0);expect(getDb().query('SELECT count(*) n FROM family_scheduled_interruptions').get()).toEqual({n:1});
+});
+
+test('interruption storage failure preserves original error and expiry recovery can close the handoff later',async()=>{
+  const cap=await handoff(),h=harness(),original=Error('original failure');h.deps.agentPool.runAgent=async()=>{throw original;};
+  getDb().exec("CREATE TRIGGER fail_interruption BEFORE INSERT ON family_scheduled_interruptions BEGIN SELECT RAISE(ABORT,'internal database failure'); END");
+  const failed=failureOf(dispatch(proof(cap),h.deps));await h.queued[0].run();expect(await failed).toBe(original);
+  expect(readOwnFamilyScheduledResult(getDb(),alice,cap.execution_id).state).toBe('unsettled');expect(getDb().query('SELECT count(*) n FROM family_scheduled_interruptions').get()).toEqual({n:0});
+  getDb().exec('DROP TRIGGER fail_interruption');const real=Date.now;
+  try{const at=real()+900000;Date.now=()=>at;expect(recoverExpiredFamilyScheduledExecutions(getDb())).toEqual({recorded:1});expect(readOwnFamilyScheduledResult(getDb(),alice,cap.execution_id).state).toBe('expired');}finally{Date.now=real;}
 });

@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
-import "../../helpers.js";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { withTempWorkspaceEnv } from "../../helpers.js";
 import { initDatabase, getDb, closeDatabase } from "../../../src/db/connection.js";
 import { createUser, getUser, updateUser } from "../../../src/db/users.js";
 import { ensureChatBranch } from "../../../src/db/chat-branches.js";
@@ -15,10 +17,16 @@ import { WebSessionBroadcastService } from "../../../src/channels/web/sse/sessio
 import { SseHub } from "../../../src/channels/web/sse/sse-hub.js";
 import { revalidateSseClient } from "../../../src/channels/web/sse/sse.js";
 import { getSearchResponse } from "../../../src/channels/web/timeline-service.js";
+import { listStoredWebPushSubscriptions } from "../../../src/channels/web/push/web-push-store.js";
+import { WebNotificationPresenceService } from "../../../src/channels/web/push/web-notification-presence-service.js";
+import { handleFamilyWebPush } from "../../../src/channels/web/push/web-push-routes.js";
+import { renameOwnedSessionHandle } from "../../../src/db/session-handles.js";
 
 const json = (value: unknown, status = 200) => Response.json(value, { status });
 let alice: string, bob: string, gateway: WebAuthGateway, router: RequestRouterService, hub: SseHub;
 let channel: any;
+let statusByChat: Map<string, Record<string, unknown>>;
+let revokeDuringStatusRead: boolean;
 function request(path: string, token: string | null = "alice-token", method = "GET") {
   return new Request(`https://family.local${path}`, { method, headers: {
     ...(token ? { cookie: `piclaw_session=${token}` } : {}),
@@ -51,13 +59,32 @@ beforeEach(() => {
     json, challenges: new WebauthnChallengeTracker(), failureTracker: new TotpFailureTracker(),
   });
   hub = new SseHub();
+  statusByChat = new Map(); revokeDuringStatusRead = false;
   channel = {
     authGateway: gateway, json,
     clampInt: (v: string | null, fallback: number, min: number, max: number) => v && Number.isFinite(Number(v)) ? Math.max(min, Math.min(max, Math.trunc(Number(v)))) : fallback,
     parseOptionalInt: (v: string | null) => v && Number.isSafeInteger(Number(v)) ? Number(v) : null,
     handleSse: (req: Request, authority: any) => hub.handleRequest(req, authority),
     serveStatic: async (path: string) => new Response(`static:${path}`),
-    endpointContexts: { auth: () => ({ serveStatic: async (path: string) => new Response(`auth:${path}`) }) },
+    endpointContexts: {
+      auth: () => ({ serveStatic: async (path: string) => new Response(`auth:${path}`) }),
+      agentStatus: () => ({
+        defaultChatJid: 'web:default', json,
+        getAgentStatus: (chatJid: string) => statusByChat.get(chatJid) ?? null,
+        getExtensionWorkingState: () => ({ message: 'private extension state' }),
+        recoverStaleInflightRun: () => { throw new Error('family status read must not mutate recovery state'); },
+        getBuffer: (_turnId: string, panel: 'thought' | 'draft') => {
+          if (revokeDuringStatusRead) revokeUserWebSessions(alice);
+          return { text: `${panel} preview`, totalLines: panel === 'thought' ? 2 : 1, updatedAt: 1 };
+        },
+        getContextUsageForChat: async () => ({ tokens: 1200, contextWindow: 120000, percent: 1, sessionGeneration: 'session-owned' }),
+        getTokenUsageForChat: () => ({
+          latest: { input_tokens: 100, output_tokens: 20, reasoning_tokens: 5, cache_read_tokens: 50, cache_write_tokens: 0, total_tokens: 175, cost_total: 0.01, runs: 1, model: 'model', provider: 'test' },
+          totals: { input_tokens: 100, output_tokens: 20, reasoning_tokens: 5, cache_read_tokens: 50, cache_write_tokens: 0, total_tokens: 175, cost_total: 0.01, runs: 1 },
+        }),
+        getAvailableModels: async () => ({ models: [] }), getProviderReadyCompletedForInstance: () => false,
+      }),
+    },
     handleTimeline: () => { throw Error("legacy fallback entered"); },
   };
   router = new RequestRouterService(channel, "family-shared");
@@ -122,7 +149,7 @@ test("thread ID cannot select a foreign message even with an owned chat", async 
 });
 
 test("terminal gate denies early add-ons, widget state, indirect resources, controls and new routes", async () => {
-  const paths = ["/api/addons/test", "/api/state", "/api/state/events", "/agent/addons/api/test/read", "/agent/models", "/agent/active-chats", "/agent/keychain", "/workspace/raw", "/export/timeline", "/internal/export/timeline", "/terminal/session", "/vnc/session", "/recordings", "/avatar/user", "/avatar/agent", "/manifest.json", "/sw.js", "/docs/configuration.md", "/future-route"];
+  const paths = ["/api/addons/test", "/api/state", "/api/state/events", "/agent/addons/api/test/read", "/agent/active-chats", "/agent/keychain", "/workspace/raw", "/export/timeline", "/internal/export/timeline", "/terminal/session", "/vnc/session", "/recordings", "/avatar/user", "/avatar/agent", "/manifest.json", "/docs/configuration.md", "/future-route"];
   for (const path of paths) {
     expect((await router.handle(request(path))).status).toBe(403);
     const anonymous = await router.handle(request(path, null));
@@ -134,6 +161,66 @@ test("terminal gate denies early add-ons, widget state, indirect resources, cont
     for (const method of ["POST", "PUT", "DELETE", "PATCH"]) expect((await router.handle(request(path, "alice-token", method))).status).toBe(403);
   }
   expect((await router.handle(request("/timeline", "alice-token", "HEAD"))).status).toBe(403);
+});
+
+test('family status/context expose only an owned standard-pane snapshot and revalidate after reads', async () => {
+  statusByChat.set('web:alice', {
+    type: 'tool_status', turn_id: 'turn-owned', tool_name: 'read', tool_args: { path: '/workspace/owned.txt' },
+    status: 'Working...', output_preview: 'line one\nline two', output_total_lines: 2,
+    started_at: '2026-09-08T10:00:00.000Z', retry_at: '2026-09-08T10:00:05.000Z', runtime_generation: 'internal',
+    status_hints: [{ key: 'extension', icon_svg: '<svg>extension</svg>', label: 'extension callback' }],
+  });
+  statusByChat.set('web:bob', { type: 'tool_call', turn_id: 'turn-foreign', title: 'FOREIGN_STATUS' });
+
+  const statusResponse = await router.handle(request('/agent/status?chat_jid=web:alice'));
+  expect(statusResponse.status).toBe(200);
+  expect(statusResponse.headers.get('cache-control')).toBe('private, no-store');
+  const status = await statusResponse.json();
+  expect(status).toMatchObject({
+    status: 'active', state: 'active', chat_jid: 'web:alice',
+    data: { type: 'tool_status', turn_id: 'turn-owned', tool_name: 'read', output_total_lines: 2 },
+    thought: { text: 'thought preview', totalLines: 2 },
+    draft: { text: 'draft preview', totalLines: 1 },
+    extension_working: null,
+  });
+  const statusText = JSON.stringify(status);
+  for (const omitted of ['runtime_generation', 'status_hints', 'extension callback', 'addon_api', 'mcp_startup', 'private extension state', 'FOREIGN_STATUS']) {
+    expect(statusText).not.toContain(omitted);
+  }
+
+  const contextResponse = await router.handle(request('/agent/context?chat_jid=web:alice'));
+  expect(contextResponse.status).toBe(200);
+  expect(await contextResponse.json()).toMatchObject({
+    tokens: 1200, contextWindow: 120000, percent: 1, sessionGeneration: 'session-owned',
+    cacheUsage: { latest: { totalTokens: 175, reasoningTokens: 5, provider: 'test' }, totals: { totalTokens: 175, runs: 1 } },
+  });
+
+  for (const path of [
+    '/agent/status?chat_jid=web:bob', '/agent/context?chat_jid=web:bob',
+    '/agent/status?chat_jid=', '/agent/status?chat_jid=web:alice&chat_jid=web:bob',
+    '/agent/context?chat_jid=web:alice&owner_user_id=' + bob,
+  ]) expect((await router.handle(request(path))).status).toBe(403);
+  for (const path of ['/agent/status?chat_jid=web:alice', '/agent/context?chat_jid=web:alice']) {
+    expect((await router.handle(request(path, 'alice-token', 'POST'))).status).toBe(403);
+  }
+
+  revokeDuringStatusRead = true;
+  expect((await router.handle(request('/agent/status?chat_jid=web:alice'))).status).toBe(403);
+});
+
+test("family compose catalogue exposes only permitted controls and owner-scoped mentions", async () => {
+  const fork = registerChat("web:alice-compose-fork", "web:alice", (getDb().query("SELECT branch_id FROM chat_branches WHERE chat_jid='web:alice'").get() as any).branch_id);
+  getDb().query("UPDATE chat_branches SET handle_owner_id=? WHERE branch_id=?").run(alice, fork.branch_id);
+  renameOwnedSessionHandle(getDb(), gateway.getPrincipal(request("/auth/me"))!, "web:alice-compose-fork", "compose-helper");
+  const response = await router.handle(request("/agent/commands?chat_jid=web:alice"));
+  expect(response.status).toBe(200);
+  const payload = await response.json();
+  expect(payload.commands.map((entry: any) => entry.name).sort()).toEqual(["/abort", "/model", "/queue", "/queue-all", "/steer", "/thinking"]);
+  expect(payload.mentions).toEqual([expect.objectContaining({ chat_jid: "web:alice-compose-fork", agent_name: "compose-helper" })]);
+  expect(JSON.stringify(payload)).not.toContain("web:bob");
+  expect((await router.handle(request("/agent/commands?chat_jid=web:bob"))).status).toBe(403);
+  expect((await router.handle(request("/agent/commands?chat_jid=web:alice&owner_user_id=" + bob))).status).toBe(403);
+  expect((await router.handle(request("/agent/commands?chat_jid=web:alice", "alice-token", "POST"))).status).toBe(403);
 });
 
 test("public assets are narrow and anonymous APIs use JSON 401, not redirects", async () => {
@@ -234,4 +321,76 @@ test("stream revalidation closes on expiry, role/account change and invalidated 
     expect((await reader.read()).done).toBe(true); expect(hub.clients.size).toBe(0);
   }
   expect(getUser(getDb(), bob)?.enabled).toBe(true);
+});
+
+test("family push routes bind subscription and presence to the live owner/login and owned chat", async () => {
+  const pushDir = `${process.env.PICLAW_DATA}/family-push-test`, presence = new WebNotificationPresenceService();
+  const originalHandle = channel.authGateway.getPrincipal.bind(channel.authGateway);
+  const subscription = { endpoint: "https://push.example.test/alice", expirationTime: null, keys: { auth: "auth", p256dh: "key" } };
+  const post = new Request("https://family.local/agent/push/subscription", { method: "POST", headers: {
+    cookie: "piclaw_session=alice-token", origin: "https://family.local", "content-type": "application/json",
+    "x-piclaw-account-id": alice, "x-piclaw-login-id": originalHandle(request("/auth/me"))!.authentication.sessionId!,
+  }, body: JSON.stringify({ device_id: "device", subscription }) });
+  const options = { baseDir: pushDir, database: getDb(), presenceService: presence, readMode: () => "family-shared" };
+  const keyRequest = new Request("https://family.local/agent/push/vapid-public-key", { headers: post.headers });
+  expect((await handleFamilyWebPush(channel, keyRequest, originalHandle(keyRequest)!, options)).status).toBe(200);
+  expect((await handleFamilyWebPush(channel, post, originalHandle(post)!, options)).status).toBe(200);
+  const stored = listStoredWebPushSubscriptions(pushDir, { ownerUserId: alice });
+  expect(stored).toHaveLength(1); expect(stored[0]?.loginSessionId).toBe(originalHandle(post)!.authentication.sessionId);
+  const foreignPresence = new Request("https://family.local/agent/push/presence", { method: "POST", headers: post.headers,
+    body: JSON.stringify({ device_id: "device", client_id: "tab", chat_jid: "web:bob", visibility_state: "visible", has_focus: true }) });
+  expect((await handleFamilyWebPush(channel, foreignPresence, originalHandle(foreignPresence)!, options)).status).toBe(403);
+  const ownPresence = new Request("https://family.local/agent/push/presence", { method: "POST", headers: post.headers,
+    body: JSON.stringify({ device_id: "device", client_id: "tab", chat_jid: "web:alice", visibility_state: "visible", has_focus: true }) });
+  expect((await handleFamilyWebPush(channel, ownPresence, originalHandle(ownPresence)!, options)).status).toBe(200);
+  expect(presence.list()[0]).toMatchObject({ ownerUserId: alice, chatJid: "web:alice" });
+  const foreignDelete = new Request("https://family.local/agent/push/subscription", { method: "DELETE", headers: {
+    ...Object.fromEntries(post.headers), cookie: "piclaw_session=bob-token", "x-piclaw-account-id": bob,
+    "x-piclaw-login-id": originalHandle(request("/auth/me", "bob-token"))!.authentication.sessionId!,
+  }, body: JSON.stringify({ device_id: "device", subscription }) });
+  expect(await (await handleFamilyWebPush(channel, foreignDelete, originalHandle(foreignDelete)!, options)).json()).toEqual({ ok: true, removed: false });
+  expect(listStoredWebPushSubscriptions(pushDir, { ownerUserId: alice })).toHaveLength(1);
+  revokeUserWebSessions(alice);
+  const staleDelete = new Request("https://family.local/agent/push/subscription", { method: "DELETE", headers: post.headers, body: JSON.stringify({ subscription }) });
+  expect((await handleFamilyWebPush(channel, staleDelete, originalHandle(post)!, options)).status).toBe(403);
+});
+
+test("family push routes reject missing pins, selectors, methods and authority loss during a streamed body", async () => {
+  const pushDir = `${process.env.PICLAW_DATA}/family-push-negative`, presence = new WebNotificationPresenceService(), actor = gateway.getPrincipal(request("/auth/me"))!;
+  const options = { baseDir: pushDir, database: getDb(), presenceService: presence, readMode: () => "family-shared" };
+  const payload = JSON.stringify({ device_id: "device", subscription: { endpoint: "https://push.example.test/a", keys: { auth: "auth", p256dh: "key" } } });
+  const req = (path: string, method: string, body = payload, headers: Record<string, string> = {}) => new Request(`https://family.local${path}`, { method, headers: {
+    cookie: "piclaw_session=alice-token", origin: "https://family.local", "content-type": "application/json",
+    "x-piclaw-account-id": alice, "x-piclaw-login-id": actor.authentication.sessionId!, ...headers,
+  }, ...(method === "GET" || method === "HEAD" ? {} : { body }) });
+  for (const candidate of [req("/agent/push/subscription?owner=bob", "POST"), req("/agent/push/subscription", "PUT"),
+    req("/agent/push/subscription", "POST", payload, { "x-piclaw-account-id": bob }),
+    req("/agent/push/presence", "POST", JSON.stringify({ device_id: "device", client_id: "tab", chat_jid: "web:bob", visibility_state: "visible", has_focus: true }))]) {
+    expect((await handleFamilyWebPush(channel, candidate, actor, options)).status).toBe(403);
+  }
+  const stream = new ReadableStream<Uint8Array>({ start(controller) {
+    controller.enqueue(new TextEncoder().encode(payload.slice(0, 10)));
+    getDb().query("DELETE FROM web_sessions WHERE session_id=?").run(actor.authentication.sessionId);
+    controller.enqueue(new TextEncoder().encode(payload.slice(10))); controller.close();
+  } });
+  const raced = new Request("https://family.local/agent/push/subscription", { method: "POST", headers: req("/", "POST").headers, body: stream, duplex: "half" } as RequestInit);
+  expect((await handleFamilyWebPush(channel, raced, actor, options)).status).toBe(403);
+  expect(listStoredWebPushSubscriptions(pushDir)).toEqual([]); expect(presence.list()).toEqual([]);
+});
+
+test("family dispatcher serves pinned push routes and a public notification worker", async () => {
+  await withTempWorkspaceEnv("family-push-router-", {}, async workspace => {
+    mkdirSync(join(workspace.workspace, ".piclaw"), { recursive: true });
+    writeFileSync(join(workspace.workspace, ".piclaw", "config.json"), JSON.stringify({ domains: { access: { mode: "family-shared" } } }));
+    const identity = gateway.getPrincipal(request("/auth/me"))!, pins = {
+      "x-piclaw-account-id": alice, "x-piclaw-login-id": identity.authentication.sessionId!,
+    };
+    const direct = (path: string, token: string | null, headers: Record<string, string> = {}) => new Request(`https://family.local${path}`, { headers: {
+      ...(token ? { cookie: `piclaw_session=${token}` } : {}), origin: "https://family.local", ...headers,
+    } });
+    expect((await router.handle(direct("/agent/push/vapid-public-key", "alice-token", pins))).status).toBe(200);
+    expect((await router.handle(direct("/agent/push/vapid-public-key", "bob-token", pins))).status).toBe(409);
+    expect((await router.handle(direct("/agent/push/vapid-public-key", null, pins))).status).toBe(401);
+    expect((await router.handle(direct("/family-sw.js", null))).status).toBe(200);
+  });
 });

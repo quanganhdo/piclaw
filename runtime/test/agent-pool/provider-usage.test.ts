@@ -314,6 +314,39 @@ describe("provider usage", () => {
     }
   });
 
+  test("never reuses subscription telemetry across account changes", async () => {
+    const firstRuntime = createAuthStorage({
+      "openai-codex": { type: "oauth", access: "first-token", accountId: "acct_first", expires: Date.now() + 60_000 },
+    });
+    const secondRuntime = createAuthStorage({
+      "openai-codex": { type: "oauth", access: "second-token", accountId: "acct_second", expires: Date.now() + 60_000 },
+    });
+    const previousFetch = globalThis.fetch;
+    const fetchMock = mock(async (_url: string, init?: RequestInit) => {
+      const authorization = (init?.headers as Record<string, string> | undefined)?.Authorization;
+      const usedPercent = authorization === "Bearer first-token" ? 10 : 20;
+      return new Response(JSON.stringify({
+        rate_limit: {
+          primary_window: {
+            used_percent: usedPercent,
+            reset_at: Math.floor(Date.now() / 1000) + 3600,
+            limit_window_seconds: 18000,
+          },
+        },
+      }));
+    });
+    globalThis.fetch = fetchMock as any;
+
+    try {
+      expect((await getProviderUsage(firstRuntime, "openai-codex"))?.primary?.used_percent).toBe(10);
+      expect(await peekProviderUsageForRuntime(secondRuntime, "openai-codex", { allowStale: true })).toBeNull();
+      expect((await getProviderUsage(secondRuntime, "openai-codex"))?.primary?.used_percent).toBe(20);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
+  });
+
   test("keeps stale OpenRouter key telemetry when refresh temporarily fails", async () => {
     const previousFetch = globalThis.fetch;
     const previousNow = Date.now;
@@ -589,7 +622,7 @@ describe("provider usage", () => {
       );
 
       expect(peekProviderUsage("openai-codex", { allowStale: true })).toBeNull();
-      await Promise.resolve();
+      await Bun.sleep(0);
       expect(fetchMock).toHaveBeenCalledTimes(1);
 
       release();

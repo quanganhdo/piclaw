@@ -4,12 +4,21 @@
 :root[data-account-theme=dark] { color-scheme: dark; --bg: #101318; --surface: #191e26; --text: #e8edf3; --muted: #a9b5c5; --border: #394252; --accent: #91bafa; --error: #ff9caa; }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
-.family-shell { max-width: 920px; margin: auto; padding: 20px; }
-header { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; overflow-x: hidden; }
+.family-shell { width: min(100%, 1120px); margin: auto; padding: 20px; }
+.family-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.family-shell > section > header { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.family-identity, .family-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; min-width: 0; }
+.mode-badge { color: var(--muted); background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 3px 9px; font-size: 13px; font-weight: 650; white-space: nowrap; }
 h1 { font-size: 24px; margin: 0; }
-header a { margin-left: auto; }
+.family-actions a { padding: 8px 0; }
 a { color: var(--accent); }
+.settings-navigation { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 18px 0; }
+.settings-navigation section { min-width: 0; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); padding: 12px; }
+.settings-navigation h2 { margin: 0 0 8px; color: var(--muted); font-size: 13px; font-weight: 650; letter-spacing: .02em; text-transform: uppercase; }
+.settings-links { display: flex; flex-direction: column; gap: 8px; }
+.settings-links button { width: 100%; min-height: 44px; text-align: left; }
+.settings-links button[aria-expanded=true] { border-color: var(--accent); box-shadow: inset 3px 0 var(--accent); }
 .notice { font-size: 14px; color: var(--muted); border-left: 3px solid var(--border); padding-left: 12px; }
 .session-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 select { min-width: 0; max-width: 100%; flex: 1 1 180px; }
@@ -19,13 +28,12 @@ button:disabled, input:disabled, textarea:disabled, select:disabled { opacity: .
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 #family-status { color: var(--muted); font-size: 14px; }
 #family-error { color: var(--error); min-height: 24px; overflow-wrap: anywhere; }
-#timeline { min-height: 100px; }
-.post { border: 1px solid var(--border); background: var(--surface); border-radius: 10px; padding: 14px; margin: 12px 0; }
-.post-meta { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
-.post-text { white-space: pre-wrap; overflow-wrap: anywhere; }
-#compose-form { display: flex; flex-direction: column; gap: 8px; margin-top: 22px; }
+.family-chat-surface { display: flex; flex-direction: column; height: min(72dvh, 900px); min-height: 520px; margin-top: 18px; overflow: hidden; border: 1px solid var(--border-color); border-radius: var(--chat-surface-radius); background: var(--bg-primary); }
+.family-chat-surface .timeline { min-height: 0; }
+.family-chat-surface .compose-box { position: relative; }
+.family-chat-surface[aria-busy="true"] .compose-box { opacity: .65; }
+.memory-preview { margin-top: var(--spacing-sm); }
 textarea { resize: vertical; width: 100%; }
-#send-message { align-self: flex-end; }
 #account-settings { border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin: 16px 0; }
 #account-settings h2, #account-settings h3 { margin: 8px 0; }
 #account-status { color: var(--muted); overflow-wrap: anywhere; }
@@ -84,7 +92,28 @@ textarea { resize: vertical; width: 100%; }
 #scheduled-results button, #open-results { min-height: 44px; }
 #scheduled-result-text { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; max-height: 28rem; overflow-y: auto; }
 #scheduled-result-detail label { display: block; padding: 12px 0; }
+#scheduled-tasks { border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin: 16px 0; overflow-wrap: anywhere; }
+#prepare-task-form { display: grid; gap: 8px; }
+#task-due { width: 100%; min-width: 0; }
+#scheduled-tasks button, #open-tasks { min-height: 44px; }
+#task-tools label, #scheduled-task-detail label { display: block; padding: 10px 0; }
+#scheduled-task-text { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 28rem; overflow-y: auto; font: inherit; }
 #account-preferences button, #account-preferences select, #open-preferences { min-height: 44px; }
 #administration-tools-list { border: 1px solid var(--border); margin: 12px 0; }
 #administration-tools-list label, #administration-tools-form > label { display: block; min-height: 44px; padding: 10px 0; }
-@media (max-width: 480px) { .family-shell { padding: 12px; } .session-controls label { flex-basis: 100%; } }
+#family-memory { border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin: 16px 0; overflow-wrap: anywhere; }
+#family-memory button, #open-memory, .memory-preview { min-height: 44px; }
+#memory-form { display: grid; gap: 8px; }
+#memory-source-text, #memory-detail-text { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 24rem; overflow-y: auto; font: inherit; }
+#memory-detail label { display: block; padding: 12px 0; }
+@media (max-width: 760px) { .settings-navigation { grid-template-columns: 1fr; } }
+@media (max-width: 480px) {
+  .family-shell { padding: 12px; }
+  .family-header, .family-actions { align-items: stretch; }
+  .family-identity, .family-actions { width: 100%; }
+  .family-actions > * { flex: 1 1 auto; text-align: center; }
+  .settings-navigation { gap: 8px; margin: 12px 0; }
+  .settings-navigation section { padding: 10px; }
+  .session-controls label { flex-basis: 100%; }
+  .family-chat-surface { height: 76dvh; min-height: 480px; }
+}

@@ -167,6 +167,12 @@ const groupDefinitions: GroupDefinition[] = [
     match: (relativePath) => relativePath.startsWith("agent-memory/"),
   },
   {
+    id: "budget-limits",
+    label: "budget limits",
+    notes: "Opt-in cap accounting, provider evidence, admission, persistence, and status coverage.",
+    match: (relativePath) => relativePath.startsWith("budget/"),
+  },
+  {
     id: "channels-web-agent-flow",
     label: "channels web agent flow",
     notes: "Agent dispatch, queueing, streaming, recovery, timeline, and chat-flow behavior in the web channel.",
@@ -240,6 +246,7 @@ const groupDefinitions: GroupDefinition[] = [
       basenameIsOneOf(relativePath, [
         "auth-endpoints.test.ts",
         "auth-gateway.test.ts",
+        "alternate-ingress-guards.test.ts",
         "content-block-safety.test.ts",
         "auth-runtime.test.ts",
         "auth.test.ts",
@@ -256,6 +263,19 @@ const groupDefinitions: GroupDefinition[] = [
         "webauthn-auth.test.ts",
         "webauthn-challenges.test.ts",
         "webauthn-enrol-page.test.ts",
+        "family-api.test.ts",
+        "family-shell.test.ts",
+        "invitation-page.test.ts",
+        "login-options.test.ts",
+        "principal-route.test.ts",
+        "principal.test.ts",
+        "totp-user-login.test.ts",
+        "webauthn-user-login.test.ts",
+        "family-authorisation.test.ts",
+        "family-memory-http.test.ts",
+        "family-message-provenance.test.ts",
+        "family-message-recovery.test.ts",
+        "legacy-input-holds.test.ts",
       ]),
   },
   {
@@ -442,6 +462,7 @@ const groupDefinitions: GroupDefinition[] = [
           "settings-save-state.test.ts",
           "notification-delivery-coordinator.test.ts",
           "notification-focus.test.ts",
+          "family-notifications.test.ts",
           "oobe-state.test.ts",
           "timeline-quick-actions.test.ts",
           "timeline-menu-dropdown.test.ts",
@@ -563,6 +584,7 @@ const groupDefinitions: GroupDefinition[] = [
           "timeline-render-boundary.test.ts",
           "visual-telemetry.test.ts",
           "visual-agent-status-utils.test.ts",
+          "family-chat-surface-imports.test.ts",
         ])
         || isAppRenderingPaneTest(relativePath)
       ),

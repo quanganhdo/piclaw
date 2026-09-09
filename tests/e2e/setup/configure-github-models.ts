@@ -15,21 +15,21 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { homedir } from "node:os";
+import { requireFixturePaths } from './fixture-paths.js';
+const fixture = requireFixturePaths();
+if (process.env.PICLAW_PROVIDER_TEST_LIVE !== '1') throw new Error('GitHub provider test requires explicit PICLAW_PROVIDER_TEST_LIVE=1.');
 
 const GITHUB_MODELS_BASE_URL = "https://models.inference.ai.azure.com";
 const GITHUB_MODEL = process.env.GITHUB_MODEL || "gpt-4o-mini";
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN || process.env.GITHUB_PICLAW_BOT_PAT || "";
+const GITHUB_TOKEN = process.env.PICLAW_PROVIDER_TEST_TOKEN || "";
 const PROVIDER_ID = "github-models";
 
-const PI_AGENT_DIR = process.env.PICLAW_PI_AGENT_DIR?.trim() || join(homedir(), ".pi", "agent");
+const PI_AGENT_DIR = fixture.profile;
 
 // --- Validation ---
 
 if (!GITHUB_TOKEN) {
-  console.error("ERROR: No GITHUB_TOKEN found.");
-  console.error("  In GitHub Actions, this is automatic.");
-  console.error("  Locally, set GITHUB_TOKEN=ghp_... or use the piclaw-bot PAT.");
+  console.error("ERROR: Set PICLAW_PROVIDER_TEST_TOKEN explicitly for the disposable provider test.");
   process.exit(1);
 }
 

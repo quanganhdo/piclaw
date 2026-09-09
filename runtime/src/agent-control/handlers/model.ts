@@ -80,18 +80,25 @@ function compactionGuard(session: AgentSession): AgentControlResult | null {
 }
 
 /** Handle /model: switch model, list models, or show current model. */
-export async function handleModel(session: AgentSession, modelRegistry: ModelRegistry, command: ModelCommand): Promise<AgentControlResult> {
+export async function handleModel(
+  session: AgentSession,
+  modelRegistry: ModelRegistry,
+  command: ModelCommand,
+  options: { refreshRegistry?: boolean; allowCompaction?: boolean } = {},
+): Promise<AgentControlResult> {
   const blocked = compactionGuard(session);
   if (blocked) return blocked;
 
   const registry = ((session as AgentSession & { modelRegistry?: ModelRegistry }).modelRegistry ?? modelRegistry);
-  try {
-    await registry.refresh();
-  } catch (error) {
-    log.warn("Model refresh failed; continuing with the cached catalog", {
-      operation: "agent_control.model.refresh_failed",
-      error: error instanceof Error ? error.message : String(error),
-    });
+  if (options.refreshRegistry !== false) {
+    try {
+      await registry.refresh();
+    } catch (error) {
+      log.warn("Model refresh failed; continuing with the cached catalog", {
+        operation: "agent_control.model.refresh_failed",
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   if (!command.modelId) {
@@ -170,6 +177,7 @@ export async function handleModel(session: AgentSession, modelRegistry: ModelReg
   const contextFitError = getContextFitError(session, selected);
   let compactedBeforeSwitch = false;
   if (contextFitError) {
+    if (options.allowCompaction === false) return { status: "error", message: contextFitError };
     const targetContextWindow = getModelContextWindow(selected) ?? getUnknownModelContextWindow();
     const currentContextWindow = getModelContextWindow(session.model) ?? getUnknownModelContextWindow();
     const isModelDownshift = currentContextWindow > targetContextWindow;

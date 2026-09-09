@@ -9,6 +9,8 @@ import {
   normalizeAdaptiveCardAction,
   describeAdaptiveCardState,
   hydrateAdaptiveCardPayloadWithSubmission,
+  sanitizeAdaptiveCardPayloadForReadOnly,
+  sanitizeAdaptiveCardRenderedResources,
   processAdaptiveCardMarkdown,
   createAdaptiveCardMarkdownProcessor,
 } from "../../web/src/ui/adaptive-card-renderer.js";
@@ -48,10 +50,13 @@ describe("isAdaptiveCardBlock", () => {
     })).toBe(false);
   });
 
-  test("rejects non-object", () => {
+  test("rejects malformed state, identity, and payload shapes", () => {
     expect(isAdaptiveCardBlock("string")).toBe(false);
     expect(isAdaptiveCardBlock(null)).toBe(false);
     expect(isAdaptiveCardBlock(undefined)).toBe(false);
+    expect(isAdaptiveCardBlock({ type: "adaptive_card", card_id: "", schema_version: "1.5", state: "active", payload: {} })).toBe(false);
+    expect(isAdaptiveCardBlock({ type: "adaptive_card", card_id: "card", schema_version: "1.5", state: "unknown", payload: {} })).toBe(false);
+    expect(isAdaptiveCardBlock({ type: "adaptive_card", card_id: "card", schema_version: "1.5", state: "active", payload: [] })).toBe(false);
   });
 });
 
@@ -71,7 +76,7 @@ describe("isSupportedVersion", () => {
 });
 
 describe("extractCardBlocks", () => {
-  test("extracts card blocks from mixed content_blocks", () => {
+  test("extracts card blocks from mixed content_blocks and normalizes legacy missing state", () => {
     const blocks = [
       { type: "text", text: "hello" },
       {
@@ -81,6 +86,7 @@ describe("extractCardBlocks", () => {
         state: "active",
         payload: { type: "AdaptiveCard", version: "1.5", body: [] },
       },
+      { type: "adaptive_card", card_id: "legacy", schema_version: "1.5", payload: { type: "AdaptiveCard", version: "1.5", body: [] } },
       { type: "image" },
       {
         type: "adaptive_card",
@@ -91,9 +97,10 @@ describe("extractCardBlocks", () => {
       },
     ];
     const cards = extractCardBlocks(blocks);
-    expect(cards).toHaveLength(2);
+    expect(cards).toHaveLength(3);
     expect(cards[0].card_id).toBe("card-1");
-    expect(cards[1].card_id).toBe("card-2");
+    expect(cards[1]).toMatchObject({ card_id: "legacy", state: "active" });
+    expect(cards[2].card_id).toBe("card-2");
   });
 
   test("returns empty for no card blocks", () => {
@@ -150,6 +157,43 @@ describe("pickHighestContrastColor", () => {
   test("chooses the strongest candidate against the accent background", () => {
     expect(pickHighestContrastColor("#111111", ["#ffffff", "#222222"], "#ffffff")).toBe("#ffffff");
     expect(pickHighestContrastColor("#f4f4f4", ["#ffffff", "#111111"], "#ffffff")).toBe("#111111");
+  });
+});
+
+describe("read-only Adaptive Card payloads", () => {
+  test("remove indirect URLs and actions without dropping surrounding content", () => {
+    expect(sanitizeAdaptiveCardPayloadForReadOnly({
+      type: "AdaptiveCard",
+      backgroundImage: "https://foreign.example/background.png",
+      body: [{
+        type: "Container",
+        selectAction: { type: "Action.OpenUrl", url: "https://foreign.example/open" },
+        items: [
+          { type: "Image", url: "https://foreign.example/image.png", altText: "Remote chart" },
+          { type: "Image", url: "/media/7", altText: "Owned chart" },
+          { type: "TextBlock", text: "Remote ![pixel](https://foreign.example/pixel.png) owned ![plot](/media/8)" },
+          { type: "Input.Text", id: "query", inlineAction: { type: "Action.Submit", title: "Go" } },
+        ],
+      }],
+      actions: [{ type: "Action.Submit", title: "Submit" }],
+    }, (value) => /^\/media\/[1-9]\d*$/.test(value) ? value : "")).toEqual({
+      type: "AdaptiveCard",
+      body: [{ type: "Container", items: [
+        { type: "Image", altText: "Remote chart" },
+        { type: "Image", url: "/media/7", altText: "Owned chart" },
+        { type: "TextBlock", text: "Remote pixel owned plot" },
+        { type: "TextBlock", text: "Input unavailable", wrap: true, isSubtle: true },
+      ] }],
+    });
+  });
+
+  test("remove SDK-rendered indirect resources while preserving owned media", () => {
+    if (typeof document === "undefined") return;
+    const root = document.createElement("div");
+    root.innerHTML = '<img src="https://foreign.example/a.png" srcset="https://foreign.example/a2.png 2x"><img src="/media/7"><svg><image href="https://foreign.example/b.png"></image></svg><div style="background:url(https://foreign.example/c.png)"></div>';
+    sanitizeAdaptiveCardRenderedResources(root, (value) => /^\/media\/[1-9]\d*$/.test(value) ? value : "");
+    expect(root.innerHTML).not.toContain("foreign.example");
+    expect(root.querySelector('img[src="/media/7"]')).not.toBeNull();
   });
 });
 

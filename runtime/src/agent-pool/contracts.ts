@@ -122,12 +122,25 @@ export interface SidePromptOptions {
   onEvent?: (event: AssistantMessageEvent | AgentSessionEvent) => void;
   onTextDelta?: (delta: string) => void;
   onThinkingDelta?: (delta: string) => void;
+  /** Optional stable identity for a retried side prompt. */
+  budgetWorkId?: string;
+  budgetParentWorkId?: string | null;
 }
 
 /** Options for AgentPool.runAgent(): chatJid, messages, callbacks. */
 export interface RunAgentOptions {
   /** Server-owned execution provenance; never accept directly from browser/model payloads. */
   executionProvenance?: import("../core/execution-context.js").ExecutionProvenance;
+  /** Server-owned budget work identity. Nested retries/continuations retain it. */
+  budgetWorkId?: string;
+  /** Parent budget work for delegated/nested execution. */
+  budgetParentWorkId?: string | null;
+  /** Explicit execution class when provenance alone is insufficient. */
+  budgetExecutionKind?: import("../budget/types.js").BudgetExecutionKind;
+  /** Scheduled task definition that owns this run. */
+  budgetScheduledTaskId?: string | null;
+  /** Internal server-owned admission hook. Never populate from client payloads. */
+  budgetBeforeModelCall?: (boundary: string, prompt: string, providerId?: string) => Promise<string | null>;
   onEvent?: (event: AgentSessionEvent) => void;
   /** Called when a completed assistant message can be committed, including before tool dispatch. */
   onTurnComplete?: (turn: TurnOutput) => void;

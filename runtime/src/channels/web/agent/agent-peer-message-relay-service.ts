@@ -8,6 +8,8 @@
 
 import type { AgentPool } from "../../../agent-pool.js";
 import { getChatBranchByChatJid } from "../../../db.js";
+import { readAccessConfig } from "../../../core/config-access.js";
+import { getExecutionIdentity } from "../../../core/execution-context.js";
 import { handleAgentMessage as handleAgentMessageRequest } from "../handlers/agent.js";
 import { parseJsonObjectRequest } from "../json-body.js";
 import type { WebChannelLike } from "../core/web-channel-contracts.js";
@@ -79,6 +81,9 @@ export class WebAgentPeerMessageRelayService {
   constructor(private readonly options: WebAgentPeerMessageRelayServiceOptions) {}
 
   async handleAgentPeerMessage(req: Request): Promise<Response> {
+    const accessMode = readAccessConfig().mode;
+    const identity = getExecutionIdentity();
+    if (accessMode !== "single-user" || (identity && identity.mode !== "single-user")) return this.options.json({ error: "Peer-message relay is unavailable in multi-user mode." }, 403);
     const parsed = await parseJsonObjectRequest(req);
     if (!parsed.ok) return this.options.json({ error: parsed.error }, 400);
 

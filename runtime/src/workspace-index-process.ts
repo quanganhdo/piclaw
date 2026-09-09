@@ -9,6 +9,8 @@ import {
   type WorkspaceIndexProcessParams,
 } from "./workspace-index-core.js";
 import { createLogger, debugSuppressedError } from "./utils/logger.js";
+import { workspaceIndexAccess,WorkspaceIndexAccessDenied } from './core/workspace-index-access.js';
+import { getStoreDir,getDataDir } from './core/config-context.js';
 
 const log = createLogger("workspace-index-process");
 const INDEXING_STALE_MS = 5 * 60 * 1000;
@@ -92,6 +94,7 @@ function parseArgs(args: string[]): WorkspaceIndexProcessParams {
 }
 
 export function shouldLaunchWorkspaceIndexProcess(params: WorkspaceIndexProcessParams = {}): boolean {
+  workspaceIndexAccess();
   if (process.env[DISABLE_BACKGROUND_WORKSPACE_INDEX_ENV] === "1") return false;
   if (isChildStillActive(activeWorkspaceIndexChild)) return false;
 
@@ -102,14 +105,14 @@ export function shouldLaunchWorkspaceIndexProcess(params: WorkspaceIndexProcessP
 }
 
 export function launchWorkspaceIndexProcess(params: WorkspaceIndexProcessParams = {}): boolean {
+  const access=workspaceIndexAccess();
   if (!shouldLaunchWorkspaceIndexProcess(params)) return false;
-
-  const child = spawnWorkspaceIndexProcessImpl(process.execPath, buildArgs(params), {
+  const args=[...buildArgs(params),'--expected-mode',access.mode],env={...process.env,[AGGRESSIVE_WORKSPACE_INDEX_MEMORY_ENV]:"1",
+    PICLAW_WORKSPACE:access.workspace,PICLAW_STORE:getStoreDir(),PICLAW_DATA:getDataDir()};
+  access.validate();
+  const child = spawnWorkspaceIndexProcessImpl(process.execPath, args, {
     cwd: process.cwd(),
-    env: {
-      ...process.env,
-      [AGGRESSIVE_WORKSPACE_INDEX_MEMORY_ENV]: "1",
-    },
+    env,
     stdio: "ignore",
   });
 
@@ -140,9 +143,14 @@ export function launchWorkspaceIndexProcess(params: WorkspaceIndexProcessParams 
 }
 
 export async function runWorkspaceIndexProcessFromArgs(args = process.argv.slice(2)): Promise<void> {
+  const access=workspaceIndexAccess();
+  const expectedIndex=args.indexOf('--expected-mode');
+  if(expectedIndex<0||args.lastIndexOf('--expected-mode')!==expectedIndex||args[expectedIndex+1]!==access.mode||args.some(arg=>arg.startsWith('--expected-mode=')))throw new WorkspaceIndexAccessDenied();
   const params = parseArgs(args);
+  access.validate();
   initDatabase();
   try {
+    access.validate();
     await refreshWorkspaceIndex({ scope: params.scope, max_kb: params.max_kb });
   } finally {
     await finalizeWorkspaceIndexProcessImpl();

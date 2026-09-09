@@ -35,6 +35,7 @@ import type { AssistantMessageEventStream, Context, Model, Provider, SimpleStrea
 import { type AgentControlCommand, type AgentControlResult } from "./agent-control/index.js";
 import { getPiclawAgentDir } from "./core/agent-dir.js";
 import { SESSIONS_DIR, WORKSPACE_DIR, getAgentLogConfig, getSessionPoolConfig } from "./core/config.js";
+import { readAccessConfig } from "./core/config-access.js";
 import { getChatChannel, getChatJid } from "./core/chat-context.js";
 import { registerChannelDetector } from "./router.js";
 import { createTrackedBashOperations } from "./tools/tracked-bash.js";
@@ -67,6 +68,10 @@ import {
   deleteSshConfig,
   getDb,
   getSshConfig,
+  ensureBudgetWork,
+  getActiveBudgetWorkForChat,
+  getBudgetWork,
+  setBudgetWorkStatus,
   listRecentChatJids,
   pruneOldTokenUsage,
   reclaimFreelistPages,
@@ -88,6 +93,9 @@ import { applyLiveSshConfig, clearLiveSshConfig, hasLiveChatSshConnection, hasLi
 import { getKeychainEntry } from "./secure/keychain.js";
 import { addLogSink, createLogger, debugSuppressedError, removeLogSink } from "./utils/logger.js";
 import { startAgentLogCleanup } from "./agent-pool/logging.js";
+import { createUuid } from "./utils/ids.js";
+import { getBudgetWorkContext, withBudgetWorkContext } from "./budget/context.js";
+import { admitBudgetBoundary } from "./budget/admission.js";
 
 const log = createLogger("agent-pool");
 
@@ -430,6 +438,42 @@ export class AgentPool {
     // returns but before AgentSession flips isStreaming at prompt start.
     const releaseEvictionProtection = this.sessionManager.acquireEvictionProtection(chatJid);
     try {
+      const resumedWork = !options.budgetWorkId && !options.executionProvenance?.executionId
+        ? getActiveBudgetWorkForChat(chatJid)
+        : null;
+      const budgetWorkId = options.budgetWorkId?.trim()
+        || options.executionProvenance?.executionId?.trim()
+        || (resumedWork?.last_boundary === "resume_pending" ? resumedWork.id : null)
+        || options.turnId?.trim()
+        || createUuid("work");
+      const budgetExecutionKind = options.budgetExecutionKind
+        ?? (resumedWork?.id === budgetWorkId ? resumedWork.execution_kind : undefined)
+        ?? (options.executionProvenance?.kind === "scheduled" ? "scheduled" : "interactive");
+      const budgetOptions: RunAgentOptions = {
+        ...options,
+        budgetWorkId,
+        budgetExecutionKind,
+        budgetBeforeModelCall: async (boundary, boundaryPrompt, providerId) => {
+          const admitted = await admitBudgetBoundary({
+            workId: budgetWorkId,
+            boundary,
+            prompt: boundaryPrompt,
+            modelRuntime: this.modelRuntime,
+            providerId,
+          });
+          return admitted.message;
+        },
+      };
+      ensureBudgetWork({
+        id: budgetWorkId,
+        chatJid,
+        executionKind: budgetExecutionKind,
+        parentWorkId: budgetOptions.budgetParentWorkId ?? null,
+        scheduledTaskId: budgetOptions.budgetScheduledTaskId ?? null,
+      });
+      if (resumedWork?.id === budgetWorkId) {
+        setBudgetWorkStatus(budgetWorkId, "active", { boundary: "resumed" });
+      }
       const observedOutputs: AgentOutput[] = [];
       const runPrompt = (nextPrompt: string, nextOptions: RunAgentOptions) => runAgentPrompt(nextPrompt, chatJid, nextOptions, {
         getOrCreateRuntime: (nextChatJid) => this.getOrCreateRuntime(nextChatJid),
@@ -446,9 +490,14 @@ export class AgentPool {
         onError: (message, details) => log.error(message, details),
       });
 
-      const output = await runWithProtectedRecoveryHandoff(prompt, options, runPrompt, (observed) => {
+      const output = await withBudgetWorkContext({
+        workId: budgetWorkId,
+        chatJid,
+        kind: budgetExecutionKind,
+        parentWorkId: budgetOptions.budgetParentWorkId ?? null,
+      }, async () => await runWithProtectedRecoveryHandoff(prompt, budgetOptions, runPrompt, (observed) => {
         observedOutputs.push(observed);
-      });
+      }));
       const recoveries = observedOutputs.map((observed) => observed.recovery).filter(Boolean);
       this.recoveryStats.attemptsTotal += recoveries.reduce(
         (sum, recovery) => sum + Math.max(0, recovery?.attemptsUsed || 0),
@@ -460,6 +509,9 @@ export class AgentPool {
       }
       if (!handedOff && output.status === "error" && output.recovery?.exhausted) {
         this.recoveryStats.exhaustedRuns += 1;
+      }
+      if (!handedOff && getBudgetWork(budgetWorkId)?.status === "active") {
+        setBudgetWorkStatus(budgetWorkId, "completed");
       }
       return output;
     } finally {
@@ -493,19 +545,54 @@ export class AgentPool {
     return this.runtimeFacade.applyControlCommand(chatJid, command);
   }
 
+  async applyOwnedModelControl(chatJid: string, command: Extract<AgentControlCommand, { type: "model" | "thinking" }>): Promise<AgentControlResult> {
+    return this.runtimeFacade.applyOwnedModelControl(chatJid, command);
+  }
+
+  async queueOwnedStreamingMessage(chatJid: string, text: string, behavior: "steer"): Promise<{ queued: boolean; error?: string }> {
+    return this.runtimeFacade.queueOwnedStreamingMessage(chatJid, text, behavior);
+  }
+
+  async abortOwnedRun(chatJid: string): Promise<AgentControlResult> {
+    return this.runtimeFacade.abortOwnedRun(chatJid);
+  }
+
   async getCurrentModelLabel(chatJid: string): Promise<string | null> {
     return this.runtimeFacade.getCurrentModelLabel(chatJid);
   }
 
   async runSidePrompt(chatJid: string, prompt: string, options: SidePromptOptions = {}): Promise<SidePromptResult> {
-    return runSidePromptInternal(chatJid, prompt, options, {
+    // Preserve the family-mode boundary before budget bookkeeping or session
+    // hydration. Side prompts remain single-user-only regardless of which
+    // admission controls are installed around them.
+    if (readAccessConfig().mode !== "single-user") {
+      return { status: "error", result: null, thinking: null, error: "Side prompts are unavailable in multi-user mode.", model: null };
+    }
+    const parent = getBudgetWorkContext();
+    const budgetWorkId = options.budgetWorkId?.trim() || createUuid("side-prompt");
+    const parentWorkId = options.budgetParentWorkId ?? parent?.workId ?? null;
+    ensureBudgetWork({ id: budgetWorkId, chatJid, executionKind: "side_prompt", parentWorkId });
+    const mainSession = await this.getOrCreate(chatJid);
+    const admission = await admitBudgetBoundary({
+      workId: budgetWorkId,
+      boundary: "side_prompt",
+      prompt,
+      modelRuntime: this.modelRuntime,
+      providerId: mainSession.model?.provider,
+    });
+    if (admission.message) {
+      return { status: "error", result: null, thinking: null, error: admission.message, model: mainSession.model ? `${mainSession.model.provider}/${mainSession.model.id}` : null };
+    }
+    const result = await withBudgetWorkContext({ workId: budgetWorkId, chatJid, kind: "side_prompt", parentWorkId }, () => runSidePromptInternal(chatJid, prompt, options, {
       getOrCreate: (nextChatJid) => this.getOrCreate(nextChatJid),
       getOrCreateSideRuntime: (nextChatJid) => this.getOrCreateSideRuntime(nextChatJid),
       syncSideSessionFromMain: (mainSession, sideRuntime) => this.syncSideSessionFromMain(mainSession, sideRuntime),
       modelRuntime: this.modelRuntime,
       sideStreamSimple: this.sideStreamSimple,
       onWarn: (message, details) => log.warn(message, details),
-    });
+    }));
+    if (getBudgetWork(budgetWorkId)?.status === "active") setBudgetWorkStatus(budgetWorkId, "completed");
+    return result;
   }
 
   async probeCompactionModel(modelLabel: string) {
@@ -513,8 +600,8 @@ export class AgentPool {
   }
 
   /** Return available model labels and current model for a chat session. */
-  async getAvailableModels(chatJid: string): Promise<AvailableModelsResult> {
-    return this.runtimeFacade.getAvailableModels(chatJid);
+  async getAvailableModels(chatJid: string, options: { includeProviderUsage?: boolean; includeProviderDiagnostics?: boolean } = {}): Promise<AvailableModelsResult> {
+    return this.runtimeFacade.getAvailableModels(chatJid, options);
   }
 
   accountModelDefaults(actor: import('./core/access-types.js').AuthenticatedPrincipal, input?: unknown) {

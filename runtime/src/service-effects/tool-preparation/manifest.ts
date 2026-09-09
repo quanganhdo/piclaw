@@ -22,6 +22,7 @@ const source = {
   activation: "runtime/src/extensions/tool-activation.ts",
   attachments: "runtime/src/extensions/file-attachments.ts",
   models: "runtime/src/extensions/model-control.ts",
+  budget: "runtime/src/extensions/budget-limits.ts",
   scheduling: "runtime/src/extensions/scheduled-tasks.ts",
   workspace: "runtime/src/extensions/workspace-search.ts",
   contextPrune: "runtime/src/extensions/context-prune.ts; runtime/src/extensions/context-prune/query-tool.ts",
@@ -203,6 +204,15 @@ export const TOOL_PREPARATION_MANIFEST: readonly ToolPreparationSpec[] = Object.
     abortExpectation: "may_finish_late",
     protectedFields: [],
   }),
+  ...rows(["budget_status"], {
+    currentSource: source.budget,
+    effectClass: "query",
+    replay: "safe",
+    contextFields: ["chatJid"],
+    serviceEffector: null,
+    abortExpectation: "may_finish_late",
+    protectedFields: ["params.work_id", "result.content", "result.details"],
+  }),
   ...rows(["introspect_sql"], {
     currentSource: "runtime/src/extensions/sql-introspect.ts",
     effectClass: "query",
@@ -219,7 +229,7 @@ export const TOOL_PREPARATION_MANIFEST: readonly ToolPreparationSpec[] = Object.
     contextFields: ["chatJid", "operationId"],
     serviceEffector: "EF-S07",
     abortExpectation: "may_finish_late",
-    protectedFields: ["params.chat_jid", "params.prompt", "params.command", "params.cwd", "result.content", "result.details"],
+    protectedFields: ["params.chat_jid", "params.prompt", "params.command", "params.cwd", "params.budget_usd", "result.content", "result.details"],
   }),
   ...rows(["scheduled_tasks"], {
     currentSource: source.scheduling,
@@ -228,7 +238,7 @@ export const TOOL_PREPARATION_MANIFEST: readonly ToolPreparationSpec[] = Object.
     contextFields: ["chatJid", "operationId"],
     serviceEffector: "EF-S07",
     abortExpectation: "may_finish_late",
-    protectedFields: ["params.id", "params.chat_jid", "params.prompt", "params.command", "params.cwd", "result.content", "result.details"],
+    protectedFields: ["params.id", "params.chat_jid", "params.prompt", "params.command", "params.cwd", "params.budget_usd", "result.content", "result.details"],
   }),
   ...rows(["search_workspace"], {
     currentSource: source.workspace,

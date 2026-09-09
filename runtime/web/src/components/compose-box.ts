@@ -136,8 +136,8 @@ function clampComposeManualHeight(height) {
     return Math.min(Math.max(Math.round(Number(height) || min), min), max);
 }
 
-function readStoredComposeHeight() {
-    const raw = getLocalStorageItem(COMPOSE_HEIGHT_STORAGE_KEY);
+export function readStoredComposeHeight(storage = null, storageKey = COMPOSE_HEIGHT_STORAGE_KEY) {
+    const raw = storage?.getItem?.(storageKey) ?? getLocalStorageItem(storageKey);
     if (!raw) return null;
     const parsed = parseInt(raw, 10);
     return Number.isFinite(parsed) ? clampComposeManualHeight(parsed) : null;
@@ -355,7 +355,8 @@ function ContextPie({ usage, onCompact, compactionLabel = '', compactionTitle = 
     const pct = Math.min(100, Math.max(0, usage.percent || 0));
     const tokens = usage.tokens;
     const window = usage.contextWindow;
-    const compactLabel = `Compact context`;
+    const canCompact = typeof onCompact === 'function';
+    const compactLabel = canCompact ? 'Compact context' : 'Context usage';
     const label = tokens != null
         ? `Context: ${formatK(tokens)} / ${formatK(window)} tokens (${pct.toFixed(0)}%)`
         : `Context: ${pct.toFixed(0)}%`;
@@ -382,10 +383,11 @@ function ContextPie({ usage, onCompact, compactionLabel = '', compactionTitle = 
             title=${title}
             data-tooltip=${title}
             aria-label=${title}
+            disabled=${!canCompact}
             onClick=${(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                onCompact?.();
+                if (canCompact) onCompact();
             }}
         >
             <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
@@ -599,8 +601,8 @@ export function formatModelPickerPricing(pricing) {
     return rates.length > 0 ? `${rates.join(' / ')} per 1M` : '';
 }
 
-function normaliseComposeModelCatalogue(payload, contextUsage) {
-    const preferences = readModelCataloguePreferences();
+function normaliseComposeModelCatalogue(payload, contextUsage, preferenceRuntime) {
+    const preferences = readModelCataloguePreferences(preferenceRuntime);
     return normaliseModelCatalogue(payload, {
         contextUsage,
         ...toModelCatalogueNormalisePreferences(preferences),
@@ -1201,9 +1203,42 @@ export function ComposeBox({
     statusNotice = null,
     extensionWorkingState = null,
     prefillRequest = null,
+    draftValue = undefined,
+    services = null,
+    capabilities = null,
+    storageNamespace = '',
+    preferenceRuntime = undefined,
+    onContentChange,
+    onSubmissionStateChange,
+    disabled = false,
+    inputId,
+    sendButtonId,
 }) {
-    const [content, setContent] = useState('');
+    const [content, setContent] = useState(() => typeof draftValue === 'string' ? draftValue : '');
     const { t } = useTranslation();
+    const composeServices = services && typeof services === 'object' ? services : {};
+    const composeCapabilities = capabilities && typeof capabilities === 'object' ? capabilities : {};
+    const sendMessage = composeServices.sendAgentMessage ?? sendAgentMessage;
+    const loadModels = composeServices.getAgentModels ?? getAgentModels;
+    const uploadOne = composeServices.uploadMedia ?? uploadMedia;
+    const fetchCommands = composeServices.fetchCommands ?? ((chatJid) => fetch(`/agent/commands?chat_jid=${encodeURIComponent(chatJid)}`).then(r => r.ok ? r.json() : null));
+    const composeStorage = composeServices.browserStorage && typeof composeServices.browserStorage === 'object'
+        ? composeServices.browserStorage
+        : { getItem: getLocalStorageItem, setItem: setLocalStorageItem };
+    const persistBrowserState = composeCapabilities.persistBrowserState !== false;
+    const modelPreferenceRuntime = preferenceRuntime === undefined ? (typeof window !== 'undefined' ? window : null) : preferenceRuntime;
+    const sessionPreferenceRuntime = modelPreferenceRuntime;
+    const allowCommands = composeCapabilities.commands !== false;
+    const allowMentions = composeCapabilities.mentions !== false;
+    const allowMedia = composeCapabilities.media !== false;
+    const allowSearch = composeCapabilities.search !== false;
+    const allowLocation = composeCapabilities.location !== false;
+    const allowSpeech = composeCapabilities.speech !== false;
+    const allowNotifications = composeCapabilities.notifications !== false;
+    const allowModelPicker = composeCapabilities.modelPicker !== false;
+    const allowModelSettings = composeCapabilities.modelSettings !== false;
+    const allowModelCompaction = composeCapabilities.modelCompaction !== false;
+    const allowSessionRollup = composeCapabilities.sessionRollup !== false;
     const [searchText, setSearchText] = useState('');
     const [searchFilterImages, setSearchFilterImages] = useState(false);
     const [searchFilterAttachments, setSearchFilterAttachments] = useState(false);
@@ -1223,7 +1258,7 @@ export function ComposeBox({
     const [showModelPopup, setShowModelPopup] = useState(false);
     const [showSessionPopup, setShowSessionPopup] = useState(false);
     const [sessionPopupQuery, setSessionPopupQuery] = useState('');
-    const [pinnedSessionChatJids, setPinnedSessionChatJids] = useState(() => readSessionPickerPreferences().pinnedChatJids);
+    const [pinnedSessionChatJids, setPinnedSessionChatJids] = useState(() => readSessionPickerPreferences(sessionPreferenceRuntime).pinnedChatJids);
     const [pendingPurgeChatJid, setPendingPurgeChatJid] = useState(null);
     const [pendingPruneChatJid, setPendingPruneChatJid] = useState(null);
     const [hiddenSessionChatJids, setHiddenSessionChatJids] = useState(() => new Set());
@@ -1235,7 +1270,7 @@ export function ComposeBox({
     const [modelOptions, setModelOptions] = useState([]);
     useEffect(() => {
         const applyPreferences = () => {
-            const preferences = readModelCataloguePreferences();
+            const preferences = readModelCataloguePreferences(modelPreferenceRuntime);
             const pinned = new Set(preferences.pinnedKeys);
             setModelOptions((current) => current.map((entry) => ({
                 ...entry,
@@ -1243,24 +1278,24 @@ export function ComposeBox({
                 lastUsedAt: preferences.recentByKey[entry.key] ?? null,
             })));
         };
-        window.addEventListener(MODEL_CATALOGUE_PREFERENCES_EVENT, applyPreferences);
-        window.addEventListener('storage', applyPreferences);
+        modelPreferenceRuntime?.addEventListener?.(MODEL_CATALOGUE_PREFERENCES_EVENT, applyPreferences);
+        if (typeof window !== 'undefined' && modelPreferenceRuntime === window) window.addEventListener('storage', applyPreferences);
         return () => {
-            window.removeEventListener(MODEL_CATALOGUE_PREFERENCES_EVENT, applyPreferences);
-            window.removeEventListener('storage', applyPreferences);
+            modelPreferenceRuntime?.removeEventListener?.(MODEL_CATALOGUE_PREFERENCES_EVENT, applyPreferences);
+            if (typeof window !== 'undefined' && modelPreferenceRuntime === window) window.removeEventListener('storage', applyPreferences);
         };
-    }, [agentModelsPayload, contextUsage]);
+    }, [agentModelsPayload, contextUsage, modelPreferenceRuntime]);
     useEffect(() => {
         const applySessionPreferences = () => {
-            setPinnedSessionChatJids(readSessionPickerPreferences().pinnedChatJids);
+            setPinnedSessionChatJids(readSessionPickerPreferences(sessionPreferenceRuntime).pinnedChatJids);
         };
-        window.addEventListener(SESSION_PICKER_PREFERENCES_EVENT, applySessionPreferences);
-        window.addEventListener('storage', applySessionPreferences);
+        sessionPreferenceRuntime?.addEventListener?.(SESSION_PICKER_PREFERENCES_EVENT, applySessionPreferences);
+        if (typeof window !== 'undefined' && sessionPreferenceRuntime === window) window.addEventListener('storage', applySessionPreferences);
         return () => {
-            window.removeEventListener(SESSION_PICKER_PREFERENCES_EVENT, applySessionPreferences);
-            window.removeEventListener('storage', applySessionPreferences);
+            sessionPreferenceRuntime?.removeEventListener?.(SESSION_PICKER_PREFERENCES_EVENT, applySessionPreferences);
+            if (typeof window !== 'undefined' && sessionPreferenceRuntime === window) window.removeEventListener('storage', applySessionPreferences);
         };
-    }, []);
+    }, [sessionPreferenceRuntime]);
     useEffect(() => {
         const applyConfirmedModelState = (event) => {
             const detail = event?.detail;
@@ -1269,7 +1304,7 @@ export function ComposeBox({
             const payload = detail?.payload;
             if (!payload || typeof payload !== 'object') return;
             const modelLabel = payload.model ?? payload.current;
-            setModelOptions(normaliseComposeModelCatalogue(payload, contextUsage));
+            setModelOptions(normaliseComposeModelCatalogue(payload, contextUsage, modelPreferenceRuntime));
             onModelStateChange?.({ ...payload, model: modelLabel ?? null });
             if (modelLabel) onModelChange?.(modelLabel);
         };
@@ -1289,12 +1324,13 @@ export function ComposeBox({
     const [footerWidth, setFooterWidth] = useState(0);
     const [submitError, setSubmitError] = useState(null);
     const [submitNotice, setSubmitNotice] = useState(null);
-    const [speechSupport, setSpeechSupport] = useState(() => getSpeechInputSupport());
+    const [speechSupport, setSpeechSupport] = useState(() => allowSpeech ? getSpeechInputSupport() : { showButton: false, canStart: false });
     const [speechUiState, setSpeechUiState] = useState({ kind: 'idle', title: '', detail: '' });
     const [statusNoticeNowMs, setStatusNoticeNowMs] = useState(() => Date.now());
     const [extensionWorkingFrameIndex, setExtensionWorkingFrameIndex] = useState(0);
     const textareaRef = useRef(null);
-    const manualTextareaHeightRef = useRef(readStoredComposeHeight());
+    const composeHeightStorageKey = storageNamespace ? `${storageNamespace}:${COMPOSE_HEIGHT_STORAGE_KEY}` : COMPOSE_HEIGHT_STORAGE_KEY;
+    const manualTextareaHeightRef = useRef(persistBrowserState ? readStoredComposeHeight(composeStorage, composeHeightStorageKey) : null);
     const slashRef = useRef(null);
     const mentionRef = useRef(null);
     const modelPopupRef = useRef(null);
@@ -1322,7 +1358,9 @@ export function ComposeBox({
     const dragCounterRef = useRef(0);
     const renameSessionInProgressRef = useRef(false);
     const historyMax = 200;
-    const historyStorageKey = getComposeHistoryStorageKey(currentChatJid);
+    const historyStorageKey = persistBrowserState
+        ? `${storageNamespace ? `${storageNamespace}:` : ''}${getComposeHistoryStorageKey(currentChatJid)}`
+        : '';
     const normaliseHistory = (items) => {
         const seen = new Set();
         const cleaned = [];
@@ -1336,7 +1374,8 @@ export function ComposeBox({
         return cleaned;
     };
     const loadHistory = (storageKey = historyStorageKey) => {
-        const raw = getLocalStorageItem(storageKey);
+        if (!persistBrowserState || !storageKey) return [];
+        const raw = composeStorage.getItem?.(storageKey) ?? null;
         if (!raw) return [];
         try {
             const parsed = JSON.parse(raw);
@@ -1347,7 +1386,8 @@ export function ComposeBox({
         }
     };
     const saveHistory = (history, storageKey = historyStorageKey) => {
-        setLocalStorageItem(storageKey, JSON.stringify(history));
+        if (!persistBrowserState || !storageKey) return;
+        composeStorage.setItem?.(storageKey, JSON.stringify(history));
     };
     const historyRef = useRef(loadHistory(historyStorageKey));
     const historyIndexRef = useRef(-1);
@@ -1359,6 +1399,16 @@ export function ComposeBox({
         historyIndexRef.current = -1;
         historyDraftRef.current = '';
     }, [historyStorageKey]);
+
+    useEffect(() => {
+        if (typeof draftValue !== 'string' || draftValue === content) return;
+        setContent(draftValue);
+        requestAnimationFrame(() => resizeTextarea());
+    }, [draftValue]);
+
+    useEffect(() => {
+        onContentChange?.(content);
+    }, [content]);
 
     // Fetch search match mode when entering search mode
     useEffect(() => {
@@ -1373,9 +1423,9 @@ export function ComposeBox({
     // Fetch dynamic commands from the server for autocomplete
     useEffect(() => {
         let cancelled = false;
+        if (!allowCommands) { dynamicCommandsRef.current = []; return () => { cancelled = true; }; }
         const chatJid = currentChatJid || 'web:default';
-        fetch(`/agent/commands?chat_jid=${encodeURIComponent(chatJid)}`)
-            .then(r => r.ok ? r.json() : null)
+        Promise.resolve(fetchCommands(chatJid))
             .then(data => {
                 if (cancelled || !data?.commands) return;
                 dynamicCommandsRef.current = data.commands.map(c => ({
@@ -1388,7 +1438,7 @@ export function ComposeBox({
                 console.debug("[compose] failed to fetch dynamic commands", e);
             });
         return () => { cancelled = true; };
-    }, [currentChatJid]);
+    }, [currentChatJid, allowCommands]);
 
     useEffect(() => {
         const resolved = resolveComposePrefillRequest(prefillRequest, lastPrefillTokenRef.current, searchMode);
@@ -1412,25 +1462,25 @@ export function ComposeBox({
         });
     }, [prefillRequest, searchMode]);
     useEffect(() => {
-        setSpeechSupport(getSpeechInputSupport());
-    }, []);
+        setSpeechSupport(allowSpeech ? getSpeechInputSupport() : { showButton: false, canStart: false });
+    }, [allowSpeech]);
 
-    const canSend = content.trim() || mediaFiles.length > 0 || fileRefs.length > 0 || folderRefs.length > 0 || messageRefs.length > 0;
+    const canSend = !disabled && (content.trim() || mediaFiles.length > 0 || fileRefs.length > 0 || folderRefs.length > 0 || messageRefs.length > 0);
     const speechUiVisible = speechUiState.kind !== 'idle';
     const speechUiPulsing = speechUiState.kind === 'requesting_permission' || speechUiState.kind === 'listening';
-    const speechButtonVisible = !searchMode && Boolean(speechSupport?.showButton);
+    const speechButtonVisible = allowSpeech && !searchMode && Boolean(speechSupport?.showButton);
     const speechButtonActive = speechUiState.kind === 'requesting_permission' || speechUiState.kind === 'listening';
     const speechButtonTitle = speechButtonActive
         ? 'Stop voice input'
         : (speechSupport?.title || 'Voice input');
-    const canShareLocation = typeof window !== 'undefined'
+    const canShareLocation = allowLocation && typeof window !== 'undefined'
         && typeof navigator !== 'undefined'
         && Boolean(navigator.geolocation)
         && Boolean(window.isSecureContext);
     const notificationsSupported = typeof window !== 'undefined' && typeof Notification !== 'undefined';
     const notificationsSecure = typeof window !== 'undefined' ? Boolean(window.isSecureContext) : false;
     const notificationDenied = notificationPermission === 'denied';
-    const notificationsAvailable = notificationsSupported && notificationsSecure && !notificationDenied;
+    const notificationsAvailable = allowNotifications && notificationsSupported && notificationsSecure && !notificationDenied;
     const notificationActive = notificationPermission === 'granted' && notificationsEnabled;
     const statusNoticeIsCompaction = isCompactionStatus(statusNotice);
     const statusNoticeTitle = resolveStatusPanelTitle(statusNotice);
@@ -1502,14 +1552,14 @@ export function ComposeBox({
     const canSwitchSession = hasSwitchableChatAgents && typeof onSwitchChat === 'function';
     const canRestoreSession = hasSwitchableChatAgents && typeof onRestoreSession === 'function';
     const renameInProgress = Boolean(isRenameSessionInProgress || renameSessionInProgressRef.current);
-    const canRenameSession = !searchMode && typeof onRenameSession === 'function' && !renameInProgress;
-    const canCreateSession = !searchMode && typeof onCreateSession === 'function';
+    const canRenameSession = !searchMode && typeof onRenameSession === 'function' && currentSessionAgent?.capabilities?.rename !== false && !renameInProgress;
+    const canCreateSession = !searchMode && typeof onCreateSession === 'function' && currentSessionAgent?.capabilities?.fork !== false;
     const canCreateRootSession = !searchMode && typeof onCreateRootSession === 'function';
-    const canRollupSession = !searchMode && !isAgentActive && !rollingUpSession && Boolean(currentRollupParent?.chat_jid);
-    const canDeleteSession = !searchMode && typeof onDeleteSession === 'function' && !isCurrentDefaultRootSession;
+    const canRollupSession = allowSessionRollup && !searchMode && !isAgentActive && !rollingUpSession && Boolean(currentRollupParent?.chat_jid);
+    const canDeleteSession = !searchMode && typeof onDeleteSession === 'function' && currentSessionAgent?.capabilities?.archive !== false && !isCurrentDefaultRootSession;
     const canPurgeArchivedSession = !searchMode && typeof onPurgeArchivedSession === 'function';
     const showSessionSwitcherButton = !searchMode && (canSwitchSession || canRestoreSession || canRenameSession || canCreateSession || canCreateRootSession || canRollupSession || canDeleteSession || canPurgeArchivedSession);
-    const modelPickerState = resolveComposeModelPickerState(activeModel, agentModelsPayload);
+    const modelPickerState = allowModelPicker ? resolveComposeModelPickerState(activeModel, agentModelsPayload) : { showPicker: false, label: '', hasAvailableModels: false };
     const showModelPickerHint = modelPickerState.showPicker;
     const modelHintLabel = modelPickerState.label;
     const modelHintSuffix = supportsThinking && thinkingLevel ? ` (${thinkingLevel})` : '';
@@ -1845,7 +1895,7 @@ export function ComposeBox({
                 key: `session:${chatJid}`,
                 label: `@${agentName} — ${chatJid}${chat?.is_active ? ' active' : ''}${archived ? ' archived' : ''}`,
                 chat,
-                disabled: archived ? !canRestoreSession : !canSwitchSession,
+                disabled: archived ? (!canRestoreSession || chat?.capabilities?.restore === false) : (!canSwitchSession || chat?.capabilities?.open === false),
             });
         }
         if (!sessionPopupQuery && canCreateSession) {
@@ -1880,7 +1930,7 @@ export function ComposeBox({
     }, [sessionPopupEntries.length, sessionPopupIndex]);
 
     const toggleSessionPin = useCallback((chatJid) => {
-        const preferences = togglePinnedSessionChatJid(chatJid);
+        const preferences = togglePinnedSessionChatJid(chatJid, sessionPreferenceRuntime);
         setPinnedSessionChatJids(preferences.pinnedChatJids);
         const currentEntries = sessionPopupEntriesRef.current;
         const currentChats = currentEntries
@@ -1958,7 +2008,7 @@ export function ComposeBox({
         setSubmitNotice(null);
         setRollingUpSession(true);
         try {
-            const response = await sendAgentMessage('default', '/rollup', null, [], null, currentChatJid);
+            const response = await sendMessage('default', '/rollup', null, [], null, currentChatJid);
             onMessageResponse?.(response);
             onPost?.(response);
             const command = response?.command;
@@ -2023,7 +2073,7 @@ export function ComposeBox({
             handle.classList.remove('dragging');
             document.body.style.cursor = '';
             document.body.style.userSelect = '';
-            setLocalStorageItem(COMPOSE_HEIGHT_STORAGE_KEY, String(Math.round(nextHeight)));
+            if (persistBrowserState) composeStorage.setItem?.(composeHeightStorageKey, String(Math.round(nextHeight)));
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', stop);
             document.removeEventListener('touchmove', onTouchMove);
@@ -2058,8 +2108,10 @@ export function ComposeBox({
             setSearchText(value);
         } else {
             setContent(value);
-            updateSlashAutocomplete(value);
-            updateMentionAutocomplete(value);
+            if (allowCommands) updateSlashAutocomplete(value);
+            else { setShowSlash(false); setSlashMatches([]); }
+            if (allowMentions) updateMentionAutocomplete(value);
+            else { setShowMention(false); setMentionMatches([]); }
         }
         requestAnimationFrame(() => resizeTextarea());
     };
@@ -2249,26 +2301,26 @@ export function ComposeBox({
         setSubmitNotice(null);
         setSwitchingModel(true);
         try {
-            const response = await sendAgentMessage('default', commandText, null, [], null, targetChatJid);
+            const response = await sendMessage('default', commandText, null, [], null, targetChatJid);
             if (generation !== modelCommandGenerationRef.current || targetChatJid !== currentChatJidRef.current) return false;
             if (response?.error || response?.command === false || response?.command?.status === 'error') {
                 throw new Error(response?.error || response?.command?.message || 'Model switch failed.');
             }
             let confirmedModel = null;
-            const refreshed = await refreshAgentModelStateBestEffort(getAgentModels, targetChatJid, (latest) => {
+            const refreshed = await refreshAgentModelStateBestEffort(loadModels, targetChatJid, (latest) => {
                 if (generation === modelCommandGenerationRef.current && targetChatJid === currentChatJidRef.current) emitModelState(latest);
             }, (latest) => {
                 if (generation !== modelCommandGenerationRef.current || targetChatJid !== currentChatJidRef.current) return;
                 confirmedModel = normaliseModelCatalogue(latest).find((entry) => entry.current)?.key
                     ?? normalizeModelCataloguePreferenceKey(latest?.current ?? latest?.model)
                     ?? null;
-                setModelOptions(normaliseComposeModelCatalogue(latest, contextUsage));
+                setModelOptions(normaliseComposeModelCatalogue(latest, contextUsage, modelPreferenceRuntime));
             });
             if (generation !== modelCommandGenerationRef.current || targetChatJid !== currentChatJidRef.current) return false;
             if (!refreshed || (expectedModel && confirmedModel !== expectedModel)) {
                 throw new Error('The server did not confirm the model switch.');
             }
-            if (expectedModel) recordRecentModelKey(expectedModel);
+            if (expectedModel) recordRecentModelKey(expectedModel, new Date().toISOString(), modelPreferenceRuntime);
             setSubmitNotice(resolveUiOnlyCommandNotice(commandText, response));
             onPost?.(response);
             return true;
@@ -2312,6 +2364,12 @@ export function ComposeBox({
             return;
         }
         handleSpeechToggle();
+    };
+
+    const handleSelectThinking = async (level) => {
+        const requested = typeof level === 'string' ? level.trim() : '';
+        if (!requested || switchingModel) return;
+        await runModelCommand(`/thinking ${requested}`);
     };
 
     const handleSelectModel = async (modelOption) => {
@@ -2381,7 +2439,7 @@ export function ComposeBox({
         setShowSessionPopup(false);
         setShowModelPopup((previous) => {
             if (!previous) {
-                setModelOptions(normaliseComposeModelCatalogue(agentModelsPayload, contextUsage));
+                setModelOptions(normaliseComposeModelCatalogue(agentModelsPayload, contextUsage, modelPreferenceRuntime));
             }
             return !previous;
         });
@@ -2410,13 +2468,13 @@ export function ComposeBox({
     const handleSubmit = async (overrideContent, submitMode, submitOptions = {}) => {
         // Client-side interception for UI-only shortcuts.
         const rawInput = typeof overrideContent === 'string' ? overrideContent : content;
-        if (/^\/settings\s*$/i.test(rawInput.trim())) {
+        if (allowModelSettings && /^\/settings\s*$/i.test(rawInput.trim())) {
             setContent('');
             requestAnimationFrame(() => resizeTextarea());
             requestOpenSettingsDialog();
             return;
         }
-        if (/^\/help\s*$/i.test(rawInput.trim())) {
+        if (allowModelSettings && /^\/help\s*$/i.test(rawInput.trim())) {
             setContent('');
             requestAnimationFrame(() => resizeTextarea());
             requestOpenSettingsDialog({ section: 'keyboard' });
@@ -2453,6 +2511,7 @@ export function ComposeBox({
         if (trackSubmission) {
             submittingRef.current = true;
             setIsSubmitting(true);
+            onSubmissionStateChange?.(true);
         }
 
         if (speechRecognitionRef.current) {
@@ -2539,8 +2598,8 @@ export function ComposeBox({
                 // Upload media files first. Keep each result paired with its source
                 // file so mixed attachment/reference messages cannot drift by index.
                 const uploadedMedia = await uploadFileBatch(
-                    capturedMediaFiles,
-                    (file, onProgress) => uploadMedia(file, { onProgress }),
+                    allowMedia ? capturedMediaFiles : [],
+                    (file, onProgress) => uploadOne(file, { onProgress }),
                     {
                         onProgress: setUploadProgress,
                     },
@@ -2567,19 +2626,19 @@ export function ComposeBox({
                 // The transfer status belongs only to attachment uploads. Message
                 // submission is a separate compose action with its own button state.
                 setUploadProgress(null);
-                const response = await sendAgentMessage('default', message, null, mediaIds, resolveSubmitMode(submitMode), submissionChatJid);
+                const response = await sendMessage('default', message, null, mediaIds, resolveSubmitMode(submitMode), submissionChatJid);
                 onMessageResponse?.(response);
 
                 if (response?.command && response.command.status !== 'error') {
                     const recordsModelRecency = /^\/(?:model\s+\S+|cycle-model)\s*$/i.test(baseContent.trim());
-                    await refreshAgentModelStateBestEffort(getAgentModels, submissionChatJid, (latest) => {
+                    await refreshAgentModelStateBestEffort(loadModels, submissionChatJid, (latest) => {
                         if (submissionModelGeneration === modelCommandGenerationRef.current && submissionChatJid === currentChatJidRef.current) emitModelState(latest);
                     }, (latest) => {
                         if (submissionModelGeneration !== modelCommandGenerationRef.current || submissionChatJid !== currentChatJidRef.current) return;
                         const confirmedModel = normaliseModelCatalogue(latest).find((entry) => entry.current)?.key
                             ?? normalizeModelCataloguePreferenceKey(latest?.current ?? latest?.model)
                             ?? null;
-                        if (recordsModelRecency && confirmedModel) recordRecentModelKey(confirmedModel);
+                        if (recordsModelRecency && confirmedModel) recordRecentModelKey(confirmedModel, new Date().toISOString(), modelPreferenceRuntime);
                     });
                 }
 
@@ -2598,6 +2657,7 @@ export function ComposeBox({
                     setUploadProgress(null);
                     setIsSubmitting(false);
                     submittingRef.current = false;
+                    onSubmissionStateChange?.(false);
                 }
             }
         })();
@@ -2890,6 +2950,7 @@ export function ComposeBox({
     };
 
     const addMediaFiles = (files) => {
+        if (!allowMedia) return;
         const list = Array.from(files || []).filter((file) => file instanceof File && !String(file.name || '').startsWith('.DS_Store'));
         if (!list.length) return;
         setMediaFiles((current) => [...current, ...list]);
@@ -2921,7 +2982,7 @@ export function ComposeBox({
     };
 
     const handleDragEnter = (e) => {
-        if (searchMode) return;
+        if (searchMode || !allowMedia) return;
         e.preventDefault();
         e.stopPropagation();
         dragCounterRef.current += 1;
@@ -2937,7 +2998,7 @@ export function ComposeBox({
     };
 
     const handleDragOver = (e) => {
-        if (searchMode) return;
+        if (searchMode || !allowMedia) return;
         e.preventDefault();
         e.stopPropagation();
         if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
@@ -2945,7 +3006,7 @@ export function ComposeBox({
     };
 
     const handleDrop = (e) => {
-        if (searchMode) return;
+        if (searchMode || !allowMedia) return;
         e.preventDefault();
         e.stopPropagation();
         dragCounterRef.current = 0;
@@ -2954,7 +3015,7 @@ export function ComposeBox({
     };
 
     const handlePaste = (e) => {
-        if (searchMode) return;
+        if (searchMode || !allowMedia) return;
         const items = e.clipboardData?.items;
         if (!items || !items.length) return;
         const files = [];
@@ -3011,10 +3072,10 @@ export function ComposeBox({
         const generation = ++modelListGenerationRef.current;
         popupTypeaheadRef.current = { value: '', updatedAt: 0 };
         setLoadingModels(true);
-        getAgentModels(targetChatJid)
+        Promise.resolve(loadModels(targetChatJid))
             .then((payload) => {
                 if (generation !== modelListGenerationRef.current || targetChatJid !== currentChatJidRef.current) return;
-                setModelOptions(normaliseComposeModelCatalogue(payload, contextUsage));
+                setModelOptions(normaliseComposeModelCatalogue(payload, contextUsage, modelPreferenceRuntime));
                 emitModelState(payload);
             })
             .catch((error) => {
@@ -3240,7 +3301,7 @@ export function ComposeBox({
             if (manualTextareaHeightRef.current != null) {
                 const clamped = clampComposeManualHeight(manualTextareaHeightRef.current);
                 manualTextareaHeightRef.current = clamped;
-                setLocalStorageItem(COMPOSE_HEIGHT_STORAGE_KEY, String(clamped));
+                if (persistBrowserState) composeStorage.setItem?.(composeHeightStorageKey, String(clamped));
             }
             requestAnimationFrame(() => resizeTextarea());
         };
@@ -3298,12 +3359,12 @@ export function ComposeBox({
     }, [extensionWorkingIndicator]);
 
     useEffect(() => {
-        if (searchMode) return;
+        if (searchMode || !allowMentions) return;
         updateMentionAutocomplete(content);
-    }, [mentionAgents, currentChatJid, content, searchMode]);
+    }, [allowMentions, mentionAgents, currentChatJid, content, searchMode]);
 
     return html`
-        <div class="compose-box" data-testid="compose-box">
+        <div class="compose-box" data-testid="compose-box" aria-disabled=${disabled ? 'true' : 'false'}>
             <div
                 class="compose-resize-handle"
                 role="separator"
@@ -3487,6 +3548,7 @@ export function ComposeBox({
                         </div>
                     `}
                     <textarea
+                        id=${inputId}
                         ref=${textareaRef}
                         data-testid="compose-input"
                         placeholder=${searchMode ? t('compose.searchPlaceholder') : t('compose.placeholder')}
@@ -3498,6 +3560,7 @@ export function ComposeBox({
                         onFocus=${onFocus}
                         onClick=${onFocus}
                         rows="1"
+                        disabled=${disabled}
                     />
                     ${showMention && mentionMatches.length > 0 && html`
                         <div class="slash-autocomplete" ref=${mentionRef}>
@@ -3535,16 +3598,19 @@ export function ComposeBox({
                             loading=${loadingModels}
                             switching=${switchingModel}
                             onSelect=${(entry) => { void handleSelectModel(entry); }}
-                            onTogglePin=${(entry) => togglePinnedModelKey(entry.key)}
+                            onTogglePin=${(entry) => togglePinnedModelKey(entry.key, modelPreferenceRuntime)}
                             onClose=${closeModelPopup}
-                            onCompact=${() => {
+                            onCompact=${allowModelCompaction ? () => {
                                 closeModelPopup();
                                 void handleContextCompact();
-                            }}
-                            onOpenSettings=${() => {
+                            } : undefined}
+                            onOpenSettings=${allowModelSettings ? () => {
                                 setShowModelPopup(false);
                                 requestOpenSettingsDialog({ section: 'models' });
-                            }}
+                            } : undefined}
+                            thinkingLevel=${thinkingLevel}
+                            thinkingLevels=${modelOptions.find((entry) => entry.current)?.thinkingLevels ?? []}
+                            onSelectThinking=${(level) => { void handleSelectThinking(level); }}
                             rootRef=${modelPopupRef}
                         />
                     `}
@@ -3573,7 +3639,7 @@ export function ComposeBox({
                                         key: `session:${chat.chat_jid}`,
                                         label: `@${chat.agent_name} — ${chat.chat_jid}${chat.is_active ? ' active' : ''}${chat.archived_at ? ' archived' : ''}`,
                                         chat,
-                                        disabled: chat.archived_at ? !canRestoreSession : !canSwitchSession,
+                                        disabled: chat.archived_at ? (!canRestoreSession || chat?.capabilities?.restore === false) : (!canSwitchSession || chat?.capabilities?.open === false),
                                     }));
                                     const initialIndex = resolveSessionPickerSearchInitialIndex(nextOrderedChats, query);
                                     sessionPopupIndexRef.current = initialIndex;
@@ -3600,7 +3666,7 @@ export function ComposeBox({
                                     const archived = Boolean(chat.archived_at);
                                     const pinned = !archived && pinnedSessionChatJidSet.has(chat.chat_jid);
                                     const isRoot = chat.chat_jid === (chat.root_chat_jid || chat.chat_jid);
-                                    const canPrune = !isRoot && !chat.is_active && !archived && typeof onDeleteSession === 'function';
+                                    const canPrune = !isRoot && !chat.is_active && !archived && typeof onDeleteSession === 'function' && chat?.capabilities?.archive !== false;
                                     const canPurgeArchived = archived && canPurgeArchivedSession;
                                     const purgeConfirming = canPurgeArchived && pendingPurgeChatJid === chat.chat_jid;
                                     const pruneConfirming = canPrune && pendingPruneChatJid === chat.chat_jid;
@@ -3644,7 +3710,7 @@ export function ComposeBox({
                                                     }
                                                     handleSessionSwitch(chat.chat_jid);
                                                 }}
-                                                disabled=${archived ? !canRestoreSession : !canSwitchSession}
+                                                disabled=${archived ? (!canRestoreSession || chat?.capabilities?.restore === false) : (!canSwitchSession || chat?.capabilities?.open === false)}
                                                 title=${archived ? `Restore archived ${label}` : `Switch to ${label}`}
                                             >
                                                 <span class="compose-session-row-content" style=${isSessionPopupChatEmphasized(chat) ? 'font-weight:700' : ''}>
@@ -3845,7 +3911,7 @@ export function ComposeBox({
                         ${!searchMode && contextUsage && contextUsage.percent != null && html`
                             <${ContextPie}
                                 usage=${contextUsage}
-                                onCompact=${handleContextCompact}
+                                onCompact=${allowModelCompaction ? handleContextCompact : undefined}
                                 compactionLabel=${statusNoticeIsCompaction ? statusNoticeElapsedLabel || '0:00' : ''}
                                 compactionTitle=${statusNoticeIsCompaction ? (statusNoticeTitle || 'Smart compaction') : ''}
                             />
@@ -3891,22 +3957,16 @@ export function ComposeBox({
                             ${searchMatchMode === 'or' ? 'OR' : 'AND'}
                         </button>
                     `}
+                    ${allowSearch && html`
                     <button
                         class="icon-btn search-toggle"
                         onClick=${searchMode ? onExitSearch : onEnterSearch}
                         title=${searchMode ? t('compose.closeSearch') : t('compose.search')}
+                        disabled=${searchMode ? typeof onExitSearch !== 'function' : typeof onEnterSearch !== 'function'}
                     >
-                        ${searchMode ? html`
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M18 6L6 18M6 6l12 12"/>
-                            </svg>
-                        ` : html`
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="11" cy="11" r="8"/>
-                                <path d="M21 21l-4.35-4.35"/>
-                            </svg>
-                        `}
+                        ${searchMode ? html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>` : html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>`}
                     </button>
+                    `}
                     ${canShareLocation && !searchMode && html`
                         <button
                             class="icon-btn location-btn"
@@ -3966,15 +4026,16 @@ export function ComposeBox({
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
                             </button>
                         `}
-                        <label class="icon-btn" title=${t('compose.attachFile')}>
+                        ${allowMedia && html`<label class="icon-btn" title=${t('compose.attachFile')}>
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                             <input type="file" multiple hidden onChange=${handleFileChange} disabled=${isSubmitting} />
-                        </label>
+                        </label>`}
                     `}
                     ${!searchMode && html`
                         <div class="compose-send-stack">
                                 <button
                                     class=${submitButtonState.className}
+                                    id=${sendButtonId}
                                     data-testid="send-button"
                                     type="button"
                                     onClick=${() => {

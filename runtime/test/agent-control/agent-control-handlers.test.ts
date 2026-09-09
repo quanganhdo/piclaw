@@ -13,7 +13,7 @@ import { withChatContext } from "../../src/core/chat-context.js";
 import { clearProviderUsageCache, warmProviderUsage } from "../../src/agent-pool/provider-usage.js";
 import { listTrackedProcesses, registerProcess } from "../../src/utils/process-tracker.js";
 import { getTestWorkspace, setEnv } from "../helpers.js";
-import { DEFAULT_TEST_MODEL, TestAgentControlSession, cleanupRotatedSessionArtifacts, createTestAuthStorage, createTestModelRegistry, createTestSessionRuntime } from "./session-fixture.js";
+import { DEFAULT_TEST_MODEL, TestAgentControlSession, cleanupRotatedSessionArtifacts, createTestModelRegistry, createTestSessionRuntime } from "./session-fixture.js";
 
 let restoreEnv: (() => void) | null = null;
 let restoreIdentityState: (() => void) | null = null;
@@ -139,8 +139,7 @@ test("agent control info and mode commands", async () => {
   const coldQuota = await applyControlCommand(runtime as any, registry, { type: "quota", raw: "/quota" });
   expect(coldQuota.message).toBe("openai/gpt-test\nNo quota data available.");
 
-  const authStorage = createTestAuthStorage();
-  authStorage.set("zai", { type: "api_key", key: "test-key" });
+  registry.authStorage.set("zai", { type: "api_key", key: "test-key" });
   const previousFetch = globalThis.fetch;
   const previousNow = Date.now;
   const now = new Date("2026-06-25T12:00:00.000Z").getTime();
@@ -156,7 +155,7 @@ test("agent control info and mode commands", async () => {
   })));
   globalThis.fetch = fetchMock as any;
   try {
-    await warmProviderUsage({ getAuth: async () => ({ auth: { apiKey: "test-key" } }) } as any, "zai");
+    await warmProviderUsage(session.modelRuntime, "zai");
     session.model = { provider: "zai", id: "glm-4.6", reasoning: true } as any;
     const warmQuota = await applyControlCommand(runtime as any, registry, { type: "quota", raw: "/quota" });
     expect(warmQuota.message).toBe("zai/glm-4.6\nPlan: Pro • 5h 62% • tools 41% • resets in ~1h 30m • resets in ~2d 0h");
@@ -186,6 +185,7 @@ test("agent control info and mode commands", async () => {
     expect(openRouterQuota.message).toContain("| BYOK included in limit | yes |");
     expect(openRouterQuota.message).not.toContain("openrouter-test-key");
   } finally {
+    registry.authStorage.set("zai", undefined);
     registry.authStorage.set("openrouter", undefined);
     globalThis.fetch = previousFetch;
     Date.now = previousNow;

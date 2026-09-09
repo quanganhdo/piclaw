@@ -188,7 +188,8 @@ export function isSanitizedHtmlAttributeAllowed(tagName, attrName) {
         return true;
     }
     // SVG elements use many presentation attributes (viewBox, fill, stroke, d, cx, etc.)
-    // Allow all non-event attributes on SVG tags — they cannot execute scripts.
+    // Allow all non-event attributes here; scoped indirect-reference filtering
+    // is applied by sanitizeHtml when an image rewrite policy is supplied.
     if (SVG_TAGS.has(normalizedTag)) return true;
     const allowedAttrs = TAG_ALLOWED_ATTRS[normalizedTag] || new Set();
     return allowedAttrs.has(normalizedAttr) || GLOBAL_ALLOWED_ATTRS.has(normalizedAttr);
@@ -263,8 +264,19 @@ function sanitizeHtml(html, options: MarkdownOptions = {}) {
                 continue;
             }
             if (isSanitizedHtmlAttributeAllowed(tag, name)) {
-                if (name === 'href') {
-                    const safe = sanitizeUrl(value);
+                if (SVG_TAGS.has(tag) && typeof options.rewriteImageSrc === 'function') {
+                    const references = Array.from(value.matchAll(/url\(\s*(['"]?)(.*?)\1\s*\)/gi), (match) => match[2]?.trim() || '');
+                    const hasExternalReference = /(?:https?:|data:|blob:|\/\/)/i.test(value);
+                    if (hasExternalReference || references.some((reference) => !/^#[A-Za-z_][A-Za-z0-9_.:-]*$/.test(reference))) {
+                        el.removeAttribute(attr.name);
+                        continue;
+                    }
+                }
+                if (name === 'href' || name === 'xlink:href') {
+                    const rewritten = typeof options.rewriteImageSrc === 'function' && SVG_TAGS.has(tag)
+                        ? (/^#[A-Za-z_][A-Za-z0-9_.:-]*$/.test(value.trim()) ? value.trim() : options.rewriteImageSrc(value))
+                        : value;
+                    const safe = sanitizeUrl(rewritten);
                     if (!safe) {
                         el.removeAttribute(attr.name);
                     } else {
@@ -280,10 +292,10 @@ function sanitizeHtml(html, options: MarkdownOptions = {}) {
                         }
                     }
                 } else if (name === 'src') {
-                    const rewritten = tag === 'img' && typeof options.rewriteImageSrc === 'function'
+                    const rewritten = typeof options.rewriteImageSrc === 'function' && (tag === 'img' || tag === 'image')
                         ? options.rewriteImageSrc(value)
                         : value;
-                    const safe = sanitizeUrl(rewritten, { allowDataImage: tag === 'img' });
+                    const safe = sanitizeUrl(rewritten, { allowDataImage: tag === 'img' && typeof options.rewriteImageSrc !== 'function' });
                     if (!safe) {
                         el.removeAttribute(attr.name);
                     } else {
@@ -814,8 +826,15 @@ function roundPolylineCorners(svgString, radius = 6) {
     );
 }
 
+export function isMermaidSourceAllowedForScopedRendering(source: string): boolean {
+    const value = typeof source === 'string' ? source : '';
+    if (/(?:https?:\/\/|data:|blob:|\/\/)/i.test(value)) return false;
+    const references = Array.from(value.matchAll(/url\(\s*(['"]?)(.*?)\1\s*\)/gi), (match) => match[2]?.trim() || '');
+    return references.every((reference) => /^#[A-Za-z_][A-Za-z0-9_.:-]*$/.test(reference));
+}
+
 /** Find mermaid code blocks in a container and render them as SVG diagrams. */
-export async function renderMermaidDiagrams(container) {
+export async function renderMermaidDiagrams(container, options: MarkdownOptions = {}) {
     if (!window.beautifulMermaid) return;
 
     const { renderMermaid, THEMES } = window.beautifulMermaid;
@@ -828,9 +847,14 @@ export async function renderMermaidDiagrams(container) {
             const encoded = el.dataset.mermaid;
             const raw = fromBase64(encoded || '');
             const code = decodeEntitiesDeep(raw, 2);
+            if (typeof options.rewriteImageSrc === 'function' && !isMermaidSourceAllowedForScopedRendering(code)) {
+                throw new Error('External Mermaid resources are unavailable in this view.');
+            }
             let svg = await renderMermaid(code, { ...theme, transparent: true });
             svg = roundPolylineCorners(svg);
-            el.innerHTML = svg;
+            el.innerHTML = typeof options.rewriteImageSrc === 'function'
+                ? sanitizeHtml(svg, options)
+                : svg;
             el.removeAttribute('data-mermaid');
         } catch (e) {
             console.error('Mermaid render error:', e);

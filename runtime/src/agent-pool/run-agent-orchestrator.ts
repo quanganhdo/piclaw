@@ -848,6 +848,8 @@ async function runPromptAttempt(
     heartbeatTrackedPhase(chatJid, "prompt", { eventType: "prompt_start" });
     attemptContext.publishContextUsageUpdate("prompt_start", true);
     if(hasScheduledDispatch())beforeScheduledPrompt(prompt,chatJid,runOptions.executionProvenance);
+    const budgetBlock = await runOptions.budgetBeforeModelCall?.("model_call", prompt, session.model?.provider);
+    if (budgetBlock) throw new Error(`PICLAW-BUDGET-BLOCKED: ${budgetBlock}`);
     await session.prompt(prompt);
     if(hasScheduledDispatch())authoriseScheduledDispatch(chatJid,runOptions.executionProvenance);
     finishPromptTimeout();
@@ -1005,6 +1007,10 @@ async function runAgentPromptWithIdentity(
     }
 
     const runtime = await options.getOrCreateRuntime(chatJid);
+    const preflightBudgetBlock = await runOptions.budgetBeforeModelCall?.("preprompt_compaction", prompt, runtime.session.model?.provider);
+    if (preflightBudgetBlock) {
+      return { status: "error", result: null, failureCategory: "provider_budget", error: preflightBudgetBlock };
+    }
     if(hasScheduledDispatch())authoriseScheduledDispatch(chatJid,runOptions.executionProvenance);
     let session = runtime.session;
     if(hasScheduledDispatch()&&(session.isStreaming||session.isCompacting||session.isRetrying))throw new Error("Scheduled target is busy.");

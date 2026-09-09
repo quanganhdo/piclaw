@@ -132,7 +132,8 @@ type HarnessReport = {
   };
 };
 
-const SETTINGS_PATH = "/home/agent/.pi/agent/settings.json";
+// Provider harnesses intentionally make paid calls; never discover live credentials implicitly.
+const SETTINGS_PATH = process.env.PICLAW_PROVIDER_TEST_SETTINGS || "";
 const HARNESS_EXTENSION_PATH = resolve(import.meta.dir, "../extensions/experimental/azure-openai.harness.ts");
 const DEFAULT_OUT_DIR = "/workspace/tmp";
 const BUNDLED_HARNESS_EXTENSION_PATH = resolve(import.meta.dir, "../../.tmp/azure-openai.harness.bundle.mjs");
@@ -1193,6 +1194,9 @@ function summarize(results: RunResult[]): HarnessReport["summary"] {
 }
 
 async function main(): Promise<void> {
+  if (process.env.PICLAW_PROVIDER_TEST_LIVE !== "1" || !SETTINGS_PATH) {
+    throw new Error("Provider tests require PICLAW_PROVIDER_TEST_LIVE=1 and an explicit PICLAW_PROVIDER_TEST_SETTINGS file. Use a disposable provider account/profile.");
+  }
   const args = parseArgs(process.argv.slice(2));
   const settings = readAgentSettings();
   const extension = await loadHarnessExtension();

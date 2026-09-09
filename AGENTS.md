@@ -24,6 +24,7 @@
 - `bun run test:local --cwd runtime -- bun test <path>` — direct focused Bun test form when staging is not wanted
 - Local repository-owned test processes use minimum effective niceness `10`; override with `PICLAW_LOCAL_TEST_NICE=0..19`. The launcher never raises priority, and hosted CI bypasses niceness.
 - Do not add raw `bun test`/Playwright test entry points outside the central launcher or its documented nested-runner allowlist.
+- Test filesystem isolation is mandatory, including in CI: preserve the Bun preloads and launcher bootstrap. Use owned temporary fixtures, never cached live `/workspace` paths, for mutation/cleanup. An in-memory DB does not protect files. Do not run older worktrees without the isolation harness on a live workspace host.
 - `make ci-fast` — full CI gate
 
 ## Release process

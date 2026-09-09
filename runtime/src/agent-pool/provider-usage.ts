@@ -382,9 +382,7 @@ function readCachedProviderUsage(
 
 export function peekProviderUsage(providerId: string, options: { allowStale?: boolean } = {}): ProviderUsageSnapshot | null {
   if (!isSupportedProviderId(providerId)) return null;
-  const credentialFingerprint = providerId === "openrouter"
-    ? activeCredentialFingerprints.get(providerId) ?? null
-    : null;
+  const credentialFingerprint = activeCredentialFingerprints.get(providerId) ?? null;
   return readCachedProviderUsage(providerId, options, credentialFingerprint);
 }
 
@@ -395,23 +393,40 @@ export async function peekProviderUsageForRuntime(
   options: { allowStale?: boolean } = {},
 ): Promise<ProviderUsageSnapshot | null> {
   if (!isSupportedProviderId(providerId)) return null;
-  if (providerId !== "openrouter") return readCachedProviderUsage(providerId, options, null);
-  const auth = await resolveOpenRouterAuth(modelRuntime);
-  activeCredentialFingerprints.set(providerId, auth.fingerprint);
-  return readCachedProviderUsage(providerId, options, auth.fingerprint);
+  const fingerprint = await resolveProviderUsageAccountRef(modelRuntime, providerId) ?? "missing";
+  activeCredentialFingerprints.set(providerId, fingerprint);
+  return readCachedProviderUsage(providerId, options, fingerprint);
 }
 
 function resolveUsageAuthPath(modelRuntime: UsageModelRuntime, authPath?: string): string {
   return authPath ?? (modelRuntime as UsageModelRuntime & { authPath?: string }).authPath ?? join(getPiclawAgentDir(), "auth.json");
 }
 
+/** Return a non-secret identity for binding cached quota evidence to the active credential/account. */
+export async function resolveProviderUsageAccountRef(
+  modelRuntime: UsageModelRuntime,
+  providerId: string,
+  authPath?: string,
+): Promise<string | null> {
+  if (!isSupportedProviderId(providerId)) return null;
+  try {
+    const path = resolveUsageAuthPath(modelRuntime, authPath);
+    const stored = readStoredCredential(providerId, path) as Record<string, unknown> | undefined;
+    let identity: string | null = null;
+    if (providerId === "openai-codex" && typeof stored?.accountId === "string") identity = stored.accountId;
+    else if (providerId === "github-copilot" && typeof stored?.refresh === "string") identity = stored.refresh;
+    else identity = (await modelRuntime.getAuth(providerId))?.auth.apiKey ?? null;
+    return identity ? `${providerId}:sha256:${createHash("sha256").update(identity).digest("hex")}` : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function warmProviderUsage(modelRuntime: UsageModelRuntime, providerId: string, authPath?: string): Promise<ProviderUsageSnapshot | null> {
   if (!isSupportedProviderId(providerId)) return null;
   const openRouterAuth = providerId === "openrouter" ? await resolveOpenRouterAuth(modelRuntime) : undefined;
-  const credentialFingerprint = openRouterAuth?.fingerprint ?? null;
-  if (providerId === "openrouter" && credentialFingerprint) {
-    activeCredentialFingerprints.set(providerId, credentialFingerprint);
-  }
+  const credentialFingerprint = await resolveProviderUsageAccountRef(modelRuntime, providerId, authPath) ?? "missing";
+  activeCredentialFingerprints.set(providerId, credentialFingerprint);
   const cachedCandidate = usageCache.get(providerId);
   const cached = cachedCandidate?.credentialFingerprint === credentialFingerprint
     ? cachedCandidate
@@ -441,7 +456,7 @@ export async function warmProviderUsage(modelRuntime: UsageModelRuntime, provide
         ? { ...cached.value, stale: true, refresh_failure: "temporary_failure" }
         : null;
     }
-    if (providerId !== "openrouter" || activeCredentialFingerprints.get(providerId) === credentialFingerprint) {
+    if (activeCredentialFingerprints.get(providerId) === credentialFingerprint) {
       usageCache.set(providerId, {
         expiresAt: Date.now() + USAGE_CACHE_TTL_MS,
         value,
@@ -459,9 +474,7 @@ export async function warmProviderUsage(modelRuntime: UsageModelRuntime, provide
 
 export async function getProviderUsage(modelRuntime: UsageModelRuntime, providerId: string, authPath?: string): Promise<ProviderUsageSnapshot | null> {
   if (!isSupportedProviderId(providerId)) return null;
-  if (providerId === "openrouter") return warmProviderUsage(modelRuntime, providerId, authPath);
-  const cached = usageCache.get(providerId);
-  return cached && cached.expiresAt > Date.now() ? cached.value : warmProviderUsage(modelRuntime, providerId, authPath);
+  return warmProviderUsage(modelRuntime, providerId, authPath);
 }
 
 export function clearProviderUsageCache(): void {

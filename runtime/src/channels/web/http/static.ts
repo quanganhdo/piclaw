@@ -115,7 +115,15 @@ function renderHtmlTemplate(relPath: string, html: string): string {
     return renderedWithSharedFlags.replaceAll(LOGIN_ASSET_VERSION_PLACEHOLDER, getLoginAssetVersion());
   }
   if (relPath === "family.html") {
-    return renderedWithSharedFlags.replaceAll("__FAMILY_ASSET_VERSION__", readAssetVersion(["common/dist/family.bundle.js", "common/dist/family.bundle.css"]));
+    return renderedWithSharedFlags.replaceAll("__FAMILY_ASSET_VERSION__", readAssetVersion([
+      "common/dist/family.bundle.js",
+      "common/dist/family.bundle.css",
+      "classic/dist/app.bundle.css",
+      "common/js/marked.min.js",
+      "common/js/vendor/katex.min.js",
+      "common/js/vendor/beautiful-mermaid.js",
+      "common/js/vendor/adaptivecards.min.js",
+    ]));
   }
   return renderedWithSharedFlags;
 }

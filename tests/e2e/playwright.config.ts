@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { requireDisposableTestTarget } from '../../runtime/scripts/test-target.js';
 
 const workers = Math.max(1, Number.parseInt(process.env.PICLAW_E2E_WORKERS || '1', 10) || 1);
 const timeout = Math.max(10_000, Number.parseInt(process.env.PICLAW_E2E_TEST_TIMEOUT_MS || '30000', 10) || 30_000);
@@ -16,7 +17,7 @@ export default defineConfig({
     ['json', { outputFile: './reports/results.json' }],
   ],
   use: {
-    baseURL: process.env.PICLAW_E2E_URL || 'http://localhost:3000',
+    baseURL: requireDisposableTestTarget(process.env.PICLAW_E2E_URL),
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
     trace: 'retain-on-failure',

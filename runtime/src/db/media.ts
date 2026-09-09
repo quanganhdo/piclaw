@@ -170,9 +170,8 @@ export function getMediaById(id: number): MediaRecord | undefined {
  * Used by agent-pool/attachments.ts to describe files in the agent prompt
  * without loading potentially large blobs into memory.
  */
-export function getMediaInfoById(id: number): Omit<MediaRecord, "data" | "thumbnail"> | undefined {
-  const db = getDb();
-  const row = db
+export function getMediaInfoByIdFromDatabase(database: Database, id: number): Omit<MediaRecord, "data" | "thumbnail"> | undefined {
+  const row = database
     .prepare("SELECT id, filename, content_type, metadata, created_at FROM media WHERE id = ?")
     .get(id) as {
       id: number;
@@ -189,6 +188,10 @@ export function getMediaInfoById(id: number): Omit<MediaRecord, "data" | "thumbn
     metadata: parseMediaMetadata(row.metadata),
     created_at: row.created_at,
   };
+}
+
+export function getMediaInfoById(id: number): Omit<MediaRecord, "data" | "thumbnail"> | undefined {
+  return getMediaInfoByIdFromDatabase(getDb(), id);
 }
 
 // ── FTS text extraction for media ────────────────────────────────────────

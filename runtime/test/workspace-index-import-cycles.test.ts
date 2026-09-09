@@ -12,4 +12,6 @@ test("workspace search and index process share core contracts without importing 
   expect(file(src("workspace-search.ts"))).toContain("./workspace-index-core.js");
   expect(file(src("workspace-index-process.ts"))).toContain("./workspace-index-core.js");
   expect(file(src("workspace-index-process.ts"))).not.toMatch(/from ["']\.\/workspace-search\.js["']/);
+  expect(file(src('family-workspace-index.ts'))).not.toMatch(/from ["']\.\/workspace-(?:search|index-core)\.js["']/);
+  expect(file(src('core/workspace-index-types.ts'))).not.toMatch(/\bimport\s/);
 });

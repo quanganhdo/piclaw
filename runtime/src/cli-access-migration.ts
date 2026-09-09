@@ -6,6 +6,7 @@ import { readAccessConfig } from './core/config-access.js';
 import { acquireRuntimeLock } from './runtime/single-instance.js';
 import { createVerifiedSqliteBackup, verifySqliteBackup } from './db/backup.js';
 import { prepareAccessMigrationCopy, readAccessMigrationInventory, validateAccessMigrationPlan } from './db/access-migration-plan.js';
+import { inspectPreparedFamilyDatabase, promotePreparedFamilyDatabase } from './db/access-migration-promotion.js';
 import { captureChildAdoptions } from './db/access-child-adoption.js';
 import { prepareLegacyTotpFile } from './secure/legacy-totp-migration-file.js';
 
@@ -17,18 +18,43 @@ function destination(path:string,source:string):string {
   throw new Error('Destination already exists.');
 }
 
-/** Offline metadata preview and copy-only preparation; never writes source ownership or activation. */
+async function promoteCopy(values:Map<string,string>):Promise<void> {
+  const configured=readAccessConfig();
+  if(configured.mode!=='family-shared'||!configured.modeExplicit)throw new Error('Promotion requires explicit domains.access.mode=family-shared configuration.');
+  const preparedInput=resolve(values.get('--prepared')!);
+  const stat=lstatSync(preparedInput),parent=lstatSync(dirname(preparedInput));
+  if(!stat.isFile()||stat.isSymbolicLink()||(stat.mode&0o077)!==0||(process.getuid&&stat.uid!==process.getuid())
+    ||!parent.isDirectory()||(parent.mode&0o077)!==0||(process.getuid&&parent.uid!==process.getuid()))throw new Error('Prepared copy and parent must be owner-only regular state.');
+  const prepared=realpathSync(preparedInput),target=destination(values.get('--destination')!,prepared);
+  if(target===resolve(getStoreDir(),'messages.db'))throw new Error('Promotion destination cannot be the configured live database.');
+  if(!/^[0-9a-f]{64}$/.test(values.get('--source-snapshot')!))throw new Error('Reviewed source snapshot must be lowercase SHA-256.');
+  const lock=acquireRuntimeLock({lockPath:join(getStoreDir(),'runtime.lock'),disabled:false,maintenance:true});let source:Database|undefined,promoted:Database|undefined,created=false,success=false;
+  try {
+    source=new Database(prepared,{readonly:true,strict:true});source.exec('PRAGMA busy_timeout=0');
+    const inspected=inspectPreparedFamilyDatabase(source);if(inspected.source_snapshot!==values.get('--source-snapshot'))throw new Error('Reviewed source snapshot does not match the prepared copy.');
+    createVerifiedSqliteBackup(source,prepared,target);created=true;chmodSync(target,0o600);source.close();source=undefined;
+    promoted=new Database(target,{readwrite:true,create:false,strict:true});promoted.exec('PRAGMA journal_mode=DELETE; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=0;');
+    const result=promotePreparedFamilyDatabase(promoted);promoted.close();promoted=undefined;verifySqliteBackup(target);success=true;
+    console.log(JSON.stringify({...result,destination:target,warning:'Install this promoted database only with explicit family-shared configuration. Keep the prepared copy and original backup for rollback.'}));
+  } finally {try{promoted?.close();source?.close();}finally{try{if(created&&!success)rmSync(target,{force:true});}finally{lock.release();}}}
+}
+
+/** Offline metadata preview, copy preparation and reviewed-copy promotion. */
 export async function handleAccessMigration(args:string[]):Promise<void> {
   const [action,...flags]=args;
-  if (!['preview','prepare-copy'].includes(action??'')) throw new Error('Use access-migration preview|prepare-copy.');
-  const allowed=action==='preview'?['--output']:['--plan','--destination','--writers-stopped','--backup-set-confirmed','--confirm','--legacy-totp-file'];
+  if (!['preview','prepare-copy','promote-copy'].includes(action??'')) throw new Error('Use access-migration preview|prepare-copy|promote-copy.');
+  const allowed=action==='preview'?['--output']:action==='prepare-copy'?['--plan','--destination','--writers-stopped','--backup-set-confirmed','--confirm','--legacy-totp-file']
+    :['--prepared','--destination','--source-snapshot','--writers-stopped','--backup-set-confirmed','--confirm'];
   const values=new Map<string,string>();
   for(let i=0;i<flags.length;i++) {
     const flag=flags[i]!;if(!allowed.includes(flag)||values.has(flag)) throw new Error('Unknown or duplicate migration option.');
     const value=['--writers-stopped','--backup-set-confirmed'].includes(flag)?'yes':flags[++i];
     if(!value||value.startsWith('--')) throw new Error('Missing migration option value.');values.set(flag,value);
   }
-  if(action==='preview' ? !values.has('--output') : !values.has('--plan')||!values.has('--destination')||!values.has('--writers-stopped')||!values.has('--backup-set-confirmed')||values.get('--confirm')!=='PREPARE OWNERSHIP COPY') throw new Error('Missing migration output, plan or explicit confirmations.');
+  if(action==='preview' ? !values.has('--output') : action==='prepare-copy'
+    ? !values.has('--plan')||!values.has('--destination')||!values.has('--writers-stopped')||!values.has('--backup-set-confirmed')||values.get('--confirm')!=='PREPARE OWNERSHIP COPY'
+    : !values.has('--prepared')||!values.has('--destination')||!values.has('--source-snapshot')||!values.has('--writers-stopped')||!values.has('--backup-set-confirmed')||values.get('--confirm')!=='PROMOTE FAMILY COPY') throw new Error('Missing migration output, plan or explicit confirmations.');
+  if(action==='promote-copy') return await promoteCopy(values);
   if(readAccessConfig().mode!=='single-user') throw new Error('Copy preparation requires single-user configuration; no mode transitions are supported.');
   const path=join(getStoreDir(),'messages.db');if(!lstatSync(path).isFile()) throw new Error('Existing regular non-symlink source database required.');
   const source=realpathSync(path),lock=acquireRuntimeLock({lockPath:join(dirname(source),'runtime.lock'),disabled:false,maintenance:true});
@@ -49,7 +75,7 @@ export async function handleAccessMigration(args:string[]):Promise<void> {
     const {inventory}=validateAccessMigrationPlan(db,plan);
     const factorPlan=plan as {version:number;factor_policy?:{legacy_totp:string}};
     const importsTotp=factorPlan.version>=4&&factorPlan.factor_policy?.legacy_totp==='import-default';
-    if(importsTotp!==values.has('--legacy-totp-file'))throw new Error('Protected TOTP input must match an explicit version-four import-default plan.');
+    if(importsTotp!==values.has('--legacy-totp-file'))throw new Error('Protected TOTP input must match an explicit version-four or version-five import-default plan.');
     const legacyTotp=importsTotp?await prepareLegacyTotpFile(db,values.get('--legacy-totp-file')!):undefined;
     if(readAccessMigrationInventory(db).snapshot!==inventory.snapshot)throw new Error('Source changed during factor preparation. Review a fresh preview.');
     const children=(plan as {child_sessions?:unknown}).child_sessions ?? [];
@@ -61,7 +87,7 @@ export async function handleAccessMigration(args:string[]):Promise<void> {
     const rechecked=captureChildAdoptions(db,children,getWorkspaceDir(),join(getDataDir(),'sessions'));
     if(JSON.stringify(rechecked)!==JSON.stringify(adoptions)) throw new Error('Child snapshots changed during copy preparation.');
     const result=prepareAccessMigrationCopy(copy,plan,adoptions,legacyTotp);copy.close();copy=undefined;verifySqliteBackup(target);
-    success=true;console.log(JSON.stringify({...result,destination:target,warning:'Prepared copy cannot start. Source unchanged; activation, factor migration and unverified children remain gated.'}));
+    success=true;console.log(JSON.stringify({...result,destination:target,warning:'Prepared copy cannot start. Source unchanged; review this version-five copy before separate promotion.'}));
   } finally {
     try{copy?.close();db?.close();}finally{try{if(created&&!success)rmSync(created,{force:true});}finally{lock.release();}}
   }

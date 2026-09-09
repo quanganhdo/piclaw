@@ -12,9 +12,10 @@ import type { Message } from "@earendil-works/pi-ai";
 
 import {
   buildPreview,
-  canUseLegacyToolOutput,
+  canUseToolOutput,
   createToolOutputAccessGuard,
   ToolOutputAccessDenied,
+  type ToolOutputAccessGuard,
   createBatchExecTool,
   createToolOutputSearchTool,
   getToolResultCompactionEnabled,
@@ -347,7 +348,7 @@ async function compactTextOutput(
     /** Provider-context cleanup must be deterministic and must never invoke a model. */
     allowSemanticSummary?: boolean;
   },
-  checkAccess: () => void,
+  checkAccess: ToolOutputAccessGuard,
 ): Promise<{ summaryText: string; saved: ReturnType<typeof saveToolOutput> } | null> {
   const fullOutput = options.fullOutput ?? text;
   if (!fullOutput.trim()) return null;
@@ -356,8 +357,9 @@ async function compactTextOutput(
   const lineCount = fullOutput ? fullOutput.replace(/\r\n/g, "\n").split("\n").length : 0;
   if (!shouldStoreOutput(fullOutput, lineCount, options.toolName)) return null;
 
-  const digest = computeOutputDigest(fullOutput, options.source);
-  const cachedEntry = getCachedStoredOutput(digest);
+  const digest = computeOutputDigest(fullOutput, `${checkAccess.cacheKey}\0${options.source}`);
+  let cachedEntry = getCachedStoredOutput(digest);
+  if(cachedEntry&&!readToolOutputFile(cachedEntry.saved.path)){storedOutputByDigest.delete(digest);cachedEntry=null;}
   const allowSemanticSummary = options.allowSemanticSummary !== false;
   if (cachedEntry && (cachedEntry.semantic || !allowSemanticSummary)) {
     return {
@@ -500,7 +502,7 @@ export default function (pi: any) {
   pi.registerTool(createBatchExecTool(process.cwd()));
 
   pi.on("tool_result", async (event: any, ctx: RuntimeExtensionContext) => {
-    if (!canUseLegacyToolOutput()) return;
+    if (!canUseToolOutput()) return;
     const checkAccess = createToolOutputAccessGuard();
     if (!getToolResultCompactionEnabled()) return;
     if (event?.isError) return;
@@ -532,7 +534,7 @@ export default function (pi: any) {
         content: [{ type: "text", text: compacted.summaryText }],
         details: {
           storedOutputId: compacted.saved.id,
-          storedOutputPath: compacted.saved.path,
+          ...(checkAccess.scope?{}:{storedOutputPath: compacted.saved.path}),
           storedOutputLines: compacted.saved.lineCount,
           storedOutputBytes: compacted.saved.sizeBytes,
           storedOutputSource: resolveOutputSource(event),
@@ -547,9 +549,9 @@ export default function (pi: any) {
   // Optional provider-request-time compaction layer:
   // compact legacy oversized inline tool results in outbound context only.
   pi.on("context", async (event: any, ctx: RuntimeExtensionContext) => {
-    if (!canUseLegacyToolOutput()) return {};
+    if (!canUseToolOutput()) return {};
     let allowed = true;
-    const mayContinue = () => allowed && (allowed = canUseLegacyToolOutput());
+    const mayContinue = () => allowed && (allowed = canUseToolOutput());
     if (!getToolResultCompactionEnabled()) return {};
     if (!Array.isArray(event?.messages)) return {};
 

@@ -36,6 +36,7 @@ PICLAW_CONTAINER_PORT="${PICLAW_CONTAINER_PORT:-8080}"
 STATIC_OUTPUT="$(mktemp)"
 CONTAINER_BASENAME="piclaw-smoke-${PLATFORM//\//-}-${GITHUB_RUN_ID:-local}"
 CONTAINER_NAME=""
+CONTAINER_ID=""
 WORKSPACE_TMP_DIR=""
 CONFIG_TMP_DIR=""
 WORKSPACE_VOLUME=""
@@ -52,8 +53,8 @@ print_container_logs() {
 }
 
 cleanup_runtime_artifacts() {
-  if [ -n "$CONTAINER_NAME" ] && docker inspect "$CONTAINER_NAME" >/dev/null 2>&1; then
-    docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
+  if [ -n "$CONTAINER_ID" ] && docker inspect "$CONTAINER_ID" >/dev/null 2>&1; then
+    docker rm -f "$CONTAINER_ID" >/dev/null 2>&1 || true
   fi
   if [ -n "$WORKSPACE_TMP_DIR" ] && [ -d "$WORKSPACE_TMP_DIR" ]; then
     rm -rf "$WORKSPACE_TMP_DIR"
@@ -65,6 +66,7 @@ cleanup_runtime_artifacts() {
     docker volume rm -f "$WORKSPACE_VOLUME" >/dev/null 2>&1 || true
   fi
   CONTAINER_NAME=""
+  CONTAINER_ID=""
   WORKSPACE_TMP_DIR=""
   CONFIG_TMP_DIR=""
   WORKSPACE_VOLUME=""
@@ -122,8 +124,7 @@ start_runtime() {
     WORKSPACE_TMP_DIR="$(mktemp -d)"
     docker_args+=( -v "$WORKSPACE_TMP_DIR:/workspace" )
   elif [ "$workspace_mode" = "named-volume" ]; then
-    WORKSPACE_VOLUME="${CONTAINER_BASENAME}-workspace-${RANDOM}"
-    docker volume create "$WORKSPACE_VOLUME" >/dev/null
+    WORKSPACE_VOLUME="$(docker volume create)"
     docker_args+=( -v "$WORKSPACE_VOLUME:/workspace" )
   else
     echo "[smoke] unsupported workspace mode: $workspace_mode" >&2
@@ -131,7 +132,7 @@ start_runtime() {
   fi
 
   docker_args+=( "$IMAGE_REF" )
-  "${docker_args[@]}" >/dev/null
+  CONTAINER_ID="$("${docker_args[@]}")"
 }
 
 wait_for_runtime() {

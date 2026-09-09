@@ -1,6 +1,7 @@
 import type Database from "bun:sqlite";
 import type { AuthenticatedPrincipal } from "../../../core/access-types.js";
 import { getDb } from "../../../db/connection.js";
+import { getMessageByRowIdFromDatabase, getThinkingContentForChat, updateMessageAnnotationsInDatabase } from "../../../db/messages.js";
 import { ChatAccessDenied, resolveAuthorisedChat } from "../../../db/session-ownership.js";
 import type { WebChannelLike } from "../core/web-channel-contracts.js";
 import { principalResponse } from "../auth/principal.js";
@@ -17,14 +18,27 @@ import { handleFamilyInvitationRoutes } from "./family-invitations.js";
 import { handleFamilyMessageIngress } from "./family-message-ingress.js";
 import { handleFamilyMessageRecovery } from "./family-message-recovery.js";
 import { handleFamilyScheduledResults } from "./family-scheduled-results.js";
+import { handleFamilyScheduledTasks } from "./family-scheduled-tasks.js";
+import { handleFamilyMemory } from "./family-memory.js";
 import { checkCsrfOrigin } from "./security.js";
+import { isRateLimited } from "./rate-limit.js";
+import { handleFamilyModelControl } from "./family-model-control.js";
 import { authoriseExecutionIdentity } from "../../../agent-pool/execution-identity.js";
 import { withExecutionIdentity } from "../../../core/execution-context.js";
-import { createOwnedRoot, listOwnedLifecycleSessions } from "../../../db/owned-session-lifecycle.js";
+import { createOwnedRoot, readOwnedSessionSettings } from "../../../db/owned-session-lifecycle.js";
 import { authoriseOwnedMedia, readOwnedMediaInfo, exportOwnedArchivedTranscript } from "../../../db/owned-resource-reads.js";
 import { handleMedia } from "../handlers/media.js";
+import { MediaService } from "../media/media-service.js";
+import { claimFamilyMediaUpload } from "../../../db/family-media-uploads.js";
 import { buildContentDisposition } from "./content-disposition.js";
 import { requireAccountActor } from "../../../db/account-administration.js";
+import { handleFamilyWebPush } from "../push/web-push-routes.js";
+import { handleFamilyAgentStatus } from "./family-agent-status.js";
+import { handleFamilyTurnControl } from "./family-turn-control.js";
+import { handleFamilyCardAction } from "./family-card-action.js";
+import { projectFamilySseEvent } from "../sse/family-event-projector.js";
+import { CONTROL_COMMAND_DEFINITIONS } from "../../../agent-control/command-registry.js";
+import { listOwnedSessionHandles } from "../../../db/session-handles.js";
 
 /** Absent selects the live home; explicit empty/duplicate selectors never fall back. */
 function selector(url: URL, key: string): string | undefined {
@@ -46,6 +60,7 @@ export function createSseAuthorisation(database: Database, principal: Authentica
       const current = resolveAuthorisedChat(database, principal, target.chatJid, "session.read");
       return current.rootBranchId === target.rootBranchId;
     },
+    project: projectFamilySseEvent,
   });
 }
 
@@ -81,6 +96,7 @@ export async function handleFamilyRequest(channel: WebChannelLike, req: Request,
     return principalResponse(req, principal?.mode === "family-shared" ? principal : null);
   }
 
+  if (flags.isGetOrHead && path === "/family-sw.js") return channel.serveStatic("sw.js", req);
   const publicAsset = flags.isGetOrHead && ["/static/common/dist/login.bundle.js", "/static/common/dist/login.bundle.css", "/static/common/dist/invitation.bundle.js"].includes(path);
   const login = flags.isLoginPage || flags.isAuthVerify || flags.isWebauthnLoginStart || flags.isWebauthnLoginFinish;
   if (login || publicAsset || (!principal && flags.isIndex)) {
@@ -113,20 +129,99 @@ export async function handleFamilyRequest(channel: WebChannelLike, req: Request,
     return channel.json({ logged_out: true });
   }
   if (path === "/agent/message-recovery") return handleFamilyMessageRecovery(channel, req, principal);
+  if (path === "/agent/card-action") return handleFamilyCardAction(channel,req,principal);
+  if (path === "/agent/models") return handleFamilyModelControl(channel, req, principal);
+  if (path === "/agent/status" || path === "/agent/context") return handleFamilyAgentStatus(channel, req, principal);
+  if (path === "/agent/commands") {
+    if (req.method !== "GET") return deny();
+    try {
+      const url = new URL(req.url);
+      if ([...url.searchParams.keys()].some(key => key !== "chat_jid")) throw new ChatAccessDenied();
+      const target = resolveAuthorisedChat(getDb(), principal, selector(url, "chat_jid"), "session.read");
+      const commands = CONTROL_COMMAND_DEFINITIONS
+        .filter(command => ["/model", "/thinking", "/queue", "/queue-all", "/steer", "/abort"].includes(command.name))
+        .map(command => ({ name: command.name, description: command.description, source: "core" as const }));
+      return channel.json({ commands, mentions: listOwnedSessionHandles(getDb(), principal).filter(entry => entry.chat_jid !== target.chatJid) });
+    } catch (error) {
+      if (error instanceof ChatAccessDenied) return deny();
+      throw error;
+    }
+  }
+  if (["/agent/queue-state", "/agent/queue-remove", "/agent/queue-reorder", "/agent/queue-steer", "/agent/runs/abort"].includes(path)) {
+    const response = await handleFamilyTurnControl(channel, req, principal);
+    if (req.signal.aborted) return deny();
+    try { requireAccountActor(getDb(), principal); }
+    catch (error) { if (error instanceof ChatAccessDenied) return deny(); throw error; }
+    return response;
+  }
   if (path === "/agent/scheduled-results" || path.startsWith("/agent/scheduled-results/")) return handleFamilyScheduledResults(channel, req, principal);
+  if (path === "/agent/scheduled-tasks" || path.startsWith("/agent/scheduled-tasks/")) return handleFamilyScheduledTasks(channel, req, principal);
+  if (path === "/agent/family-memory" || path.startsWith("/agent/family-memory/")) return handleFamilyMemory(channel, req, principal);
+  if (path.startsWith("/agent/push/")) return handleFamilyWebPush(channel, req, principal);
   if (/^\/agent\/[^/]+\/message$/.test(path)) return handleFamilyMessageIngress(channel, req, principal);
   const accountResponse = await handleFamilyAccountRoutes(channel, req, principal);
   if (accountResponse) return accountResponse;
-  // The family shell never loads the legacy app, add-ons, panes, vendor scripts or maps.
+  // The family shell loads the shared standard chat CSS/components, but never the single-user app entrypoint, add-ons, terminal panes or source maps.
   if (flags.isIndex) {
     const response = await channel.serveStatic("family.html", req);
     if (req.method === "HEAD") { await response.body?.cancel(); return new Response(null, { status: response.status, headers: response.headers }); }
     return response;
   }
-  if (flags.isGetOrHead && ["/static/common/dist/family.bundle.js", "/static/common/dist/family.bundle.css"].includes(path)) {
+  if (flags.isGetOrHead && [
+    "/static/common/dist/family.bundle.js",
+    "/static/common/dist/family.bundle.css",
+    "/static/classic/dist/app.bundle.css",
+    "/static/common/js/marked.min.js",
+    "/static/common/js/vendor/katex.min.js",
+    "/static/common/js/vendor/beautiful-mermaid.js",
+    "/static/common/js/vendor/adaptivecards.min.js",
+  ].includes(path)) {
     const response = await handleShellRoutes(channel, req, path, flags, serveStaticAsset) ?? deny();
     if (req.method === "HEAD") { await response.body?.cancel(); return new Response(null, { status: response.status, headers: response.headers }); }
     return response;
+  }
+  const annotations = path.match(/^\/post\/([1-9]\d*)\/annotations$/);
+  if (req.method === "PATCH" && annotations) {
+    if (!req.headers.get("origin") || !checkCsrfOrigin(req)) return deny();
+    try {
+      const body = await req.json();
+      if (!body || typeof body !== "object" || Array.isArray(body) || Object.keys(body).some(key => key !== "annotations")
+        || !Array.isArray(body.annotations) || body.annotations.length > 200 || new TextEncoder().encode(JSON.stringify(body.annotations)).byteLength > 128*1024) return channel.json({ error:"Invalid annotations." },400);
+      const messageId=Number(annotations[1]),database=getDb(),target=resolveAuthorisedChat(database,principal,selector(url,"chat_jid"),"session.write");
+      const result=database.transaction(()=>{requireAccountActor(database,principal);if(!updateMessageAnnotationsInDatabase(database,target.chatJid,messageId,body.annotations.length?body.annotations:null))throw new ChatAccessDenied();requireAccountActor(database,principal);const interaction=getMessageByRowIdFromDatabase(database,target.chatJid,messageId);if(!interaction)throw new ChatAccessDenied();return {annotations:body.annotations,interaction};}).immediate();
+      channel.broadcastEvent("interaction_updated",result.interaction);
+      return channel.json({status:"ok",ok:true,id:messageId,annotations:result.annotations});
+    } catch(error){if(error instanceof ChatAccessDenied)return deny();return channel.json({error:"Annotation update failed."},400);}
+  }
+  if (req.method === "POST" && path === "/media/upload") {
+    if (!req.headers.get("origin") || !checkCsrfOrigin(req)) return deny();
+    if (isRateLimited(req, `data/family_media_upload/${principal.userId}`, 60_000, 30)) return channel.json({ error: "Too many media uploads. Slow down." }, 429);
+    try {
+      const form = await req.formData();
+      const files = form.getAll("file");
+      const file = files[0];
+      if (files.length !== 1 || !(file instanceof File) || [...form.keys()].some(key => key !== "file")) return channel.json({ error: "Invalid media upload." }, 400);
+      const database = getDb();
+      requireAccountActor(database, principal);
+      const result = await new MediaService().createFromFile(file, database, mediaId => claimFamilyMediaUpload(database, principal, mediaId));
+      requireAccountActor(database, principal);
+      return channel.json(result.body, result.status);
+    } catch (error) {
+      if (error instanceof ChatAccessDenied) return deny();
+      return channel.json({ error: "Media upload failed." }, 400);
+    }
+  }
+  if (req.method === "GET" && path === "/agent/thinking") {
+    try {
+      const messageId = selector(url, "message_id");
+      const requestedChat = selector(url, "chat_jid");
+      if (messageId === undefined || requestedChat === undefined || !/^[1-9]\d*$/.test(messageId)) throw new ChatAccessDenied();
+      const target = resolveAuthorisedChat(getDb(), principal, requestedChat, "session.read");
+      const result = getThinkingContentForChat(target.chatJid, messageId);
+      if (!result || typeof result.text !== "string" || new TextEncoder().encode(result.text).byteLength > 100_000
+        || !Number.isSafeInteger(result.lines) || result.lines < 0 || !Number.isSafeInteger(result.duration_ms) || result.duration_ms < 0) return deny();
+      return channel.json(result);
+    } catch (error) { if (error instanceof ChatAccessDenied) return deny(); throw error; }
   }
   const media = path.match(/^\/media\/([1-9]\d*)(?:\/(thumbnail|info))?$/);
   if (req.method === "GET" && media) {
@@ -161,8 +256,24 @@ export async function handleFamilyRequest(channel: WebChannelLike, req: Request,
       if (requested !== undefined) resolveAuthorisedChat(getDb(), principal, requested, "session.read");
       const archiveFlag = selector(url, "include_archived");
       if (archiveFlag !== undefined && !["true", "false", "1", "0"].includes(archiveFlag)) throw new ChatAccessDenied();
-      const branches = listOwnedLifecycleSessions(getDb(), principal, root, archiveFlag === "true" || archiveFlag === "1");
-      return channel.json({ branches });
+      const settings = readOwnedSessionSettings(getDb(), principal);
+      const selectedRoot = root === undefined ? null : settings.branches.find(branch => branch.chat_jid === root
+        && branch.root_chat_jid === branch.chat_jid && branch.parent_branch_id === null);
+      if (root !== undefined && !selectedRoot) throw new ChatAccessDenied();
+      const selected = selectedRoot ? settings.branches.filter(branch => branch.root_chat_jid === selectedRoot.chat_jid) : settings.branches;
+      const includeArchived = archiveFlag === "true" || archiveFlag === "1";
+      const pool = channel.agentPool as Partial<typeof channel.agentPool>;
+      const branches = await Promise.all(selected.filter(branch => includeArchived || !branch.archived_at).map(async branch => {
+        if (branch.archived_at) return { ...branch, is_active: false, model: null, context_usage: null };
+        const isActive = typeof pool.isActive === "function" ? pool.isActive(branch.chat_jid) : false;
+        const models = typeof pool.getAvailableModels === "function"
+          ? await pool.getAvailableModels(branch.chat_jid, { includeProviderUsage: false, includeProviderDiagnostics: false })
+          : null;
+        const context = typeof pool.getContextUsageForChat === "function" ? await pool.getContextUsageForChat(branch.chat_jid) : null;
+        return { ...branch, is_active: isActive, model: models?.current ?? null, context_usage: context };
+      }));
+      requireAccountActor(getDb(), principal);
+      return channel.json({ home_chat_jid: settings.home_chat_jid, capabilities: settings.capabilities, branches });
     } catch (error) { if (error instanceof ChatAccessDenied) return deny(); throw error; }
   }
   if (req.method === "POST" && ["/agent/root-session", "/agent/branch-prune", "/agent/branch-restore"].includes(path)) {
@@ -204,7 +315,8 @@ export async function handleFamilyRequest(channel: WebChannelLike, req: Request,
     } catch { return channel.json({ error: "Invalid JSON object" }, 400); }
     try {
       const keys = path.endsWith("-fork") ? ["chat_jid", "agent_name", "request_id"] : ["chat_jid", "agent_name"];
-      if (Object.keys(body).some(key => !keys.includes(key)) || (body.chat_jid !== undefined && typeof body.chat_jid !== "string") || typeof body.agent_name !== "string") return channel.json({ error: "Invalid branch request" }, 400);
+      if (Object.keys(body).some(key => !keys.includes(key)) || (body.chat_jid !== undefined && typeof body.chat_jid !== "string")
+        || (body.agent_name !== undefined && typeof body.agent_name !== "string") || (!path.endsWith("-fork") && typeof body.agent_name !== "string")) return channel.json({ error: "Invalid branch request" }, 400);
       const target = resolveAuthorisedChat(getDb(), principal, body.chat_jid as string | undefined, path.endsWith("-fork") ? "session.fork" : "session.rename");
       if (path.endsWith("-fork") && (typeof body.request_id !== "string" || !/^[a-zA-Z0-9_-]{1,128}$/.test(body.request_id))) return channel.json({ error: "Valid request_id required" }, 400);
       const identity = authoriseExecutionIdentity(getDb(), "family-shared", target.chatJid, {
@@ -212,7 +324,7 @@ export async function handleFamilyRequest(channel: WebChannelLike, req: Request,
       });
       if (!identity) throw new ChatAccessDenied();
       const branch = await withExecutionIdentity(identity, () => path.endsWith("-fork")
-        ? channel.agentPool.createForkedChatBranch(target.chatJid, { agentName: body.agent_name as string, requestId: body.request_id as string })
+        ? channel.agentPool.createForkedChatBranch(target.chatJid, { agentName: body.agent_name as string | undefined, requestId: body.request_id as string })
         : channel.agentPool.renameChatBranch(target.chatJid, { agentName: body.agent_name as string }));
       return channel.json({ branch }, path.endsWith("-fork") ? 201 : 200);
     } catch (error) {
@@ -239,6 +351,14 @@ export async function handleFamilyRequest(channel: WebChannelLike, req: Request,
     let result: { status: number; body: unknown };
     if (path === "/timeline") {
       result = getTimelineResponse(target.chatJid, limit, channel.parseOptionalInt(url.searchParams.get("before")) ?? undefined, { user_name: principal.displayName });
+      // Only the already-authorised family timeline gets stable IDs for explicit memory preview.
+      const body = result.body as { posts: { id: number }[] };
+      const source = database.query(`SELECT id FROM messages WHERE rowid=? AND chat_jid=?
+        AND length(CAST(content AS BLOB)) BETWEEN 1 AND 102400`);
+      result.body = { ...body, posts: body.posts.map(post => {
+        const row = source.get(post.id, target.chatJid) as { id: string } | null;
+        return row ? { ...post, memory_source: { chat_jid: target.chatJid, message_rowid: post.id, message_id: row.id } } : post;
+      }) };
     } else if (path === "/search") {
       const scope = selector(url, "scope") ?? "current";
       if (scope !== "current" && scope !== "root" && scope !== "all") throw new ChatAccessDenied();

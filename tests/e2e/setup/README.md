@@ -1,5 +1,9 @@
 # E2E Test Environment Setup
 
+Setup scripts mutate provider files and require an explicit disposable fixture. Create a fresh root beneath `/tmp`, put `piclaw disposable e2e` in `.piclaw-e2e-fixture`, and set `PICLAW_E2E_FIXTURE_ROOT`, `PICLAW_WORKSPACE` and `PICLAW_PI_AGENT_DIR` to root-contained directories, plus `PICLAW_E2E_DISPOSABLE=1`. Never point these variables at a live profile. CI creates this fixture before configuring the local provider stub.
+
+Set `OPENCODE_BASE_URL` explicitly; no external service is selected by default. GitHub provider smoke setup requires `PICLAW_PROVIDER_TEST_LIVE=1` and a dedicated `PICLAW_PROVIDER_TEST_TOKEN`, not the inherited bot token. Browser tests use `PICLAW_E2E_INTERNAL_SECRET` for the disposable instance.
+
 ## Prerequisites
 
 1. A running PiClaw instance (local or microvm)

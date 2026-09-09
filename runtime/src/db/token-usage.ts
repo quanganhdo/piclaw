@@ -12,6 +12,7 @@
  */
 
 import { getDb } from "./connection.js";
+import { insertBudgetUsageEvent } from "./budget-limits.js";
 
 /** Overall token/cost totals for a chat across all runs. */
 export interface TokenUsageTotalsSummary {
@@ -132,13 +133,33 @@ export interface TokenUsageRecord {
   usage_source?: TokenUsageSource | string | null;
   /** Number of conversational turns in the run. */
   turns?: number | null;
+  /** Owning request/goal/scheduled-run identity for budget attribution. */
+  work_id?: string | null;
+  /** Billable provider invocation identity when available. */
+  invocation_id?: string | null;
+  /** Stable event identity used to make recovery replay idempotent. */
+  usage_event_id?: string | null;
+  /** API-equivalent catalogue valuation in millionths of one US dollar. */
+  api_equivalent_cost_microusd?: number | null;
+  /** Whether the API-equivalent valuation is complete, including documented zero. */
+  api_equivalent_cost_known?: boolean | null;
+  valuation_provenance?: "catalogue_estimate" | "documented_free" | "unavailable" | null;
+  api_equivalent_known_subtotal_microusd?: number | null;
+  api_equivalent_unknown_categories?: string | null;
+  pricing_currency?: string | null;
+  pricing_source?: string | null;
+  pricing_version?: string | null;
+  pricing_context_tier?: string | null;
+  pricing_cache_fallbacks?: string | null;
+  execution_kind?: import("../budget/types.js").BudgetExecutionKind | null;
 }
 
 /** Insert a token-usage record for a completed agent run. */
 export function storeTokenUsage(record: TokenUsageRecord): void {
   const db = getDb();
-  db.prepare(
-    `INSERT INTO token_usage (
+  db.transaction(() => {
+    const result = db.prepare(
+    `INSERT OR IGNORE INTO token_usage (
       chat_jid,
       run_at,
       input_tokens,
@@ -162,8 +183,21 @@ export function storeTokenUsage(record: TokenUsageRecord): void {
       provider,
       api,
       usage_source,
-      turns
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      turns,
+      work_id,
+      invocation_id,
+      usage_event_id,
+      api_equivalent_cost_microusd,
+      api_equivalent_cost_known,
+      valuation_provenance,
+      api_equivalent_known_subtotal_microusd,
+      api_equivalent_unknown_categories,
+      pricing_currency,
+      pricing_source,
+      pricing_version,
+      pricing_context_tier,
+      pricing_cache_fallbacks
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     record.chat_jid,
     record.run_at,
@@ -188,8 +222,36 @@ export function storeTokenUsage(record: TokenUsageRecord): void {
     record.provider ?? null,
     record.api ?? null,
     record.usage_source ?? "assistant",
-    record.turns ?? null
+    record.turns ?? null,
+    record.work_id ?? null,
+    record.invocation_id ?? null,
+    record.usage_event_id ?? null,
+    record.api_equivalent_cost_microusd ?? null,
+    record.api_equivalent_cost_known == null ? null : Number(record.api_equivalent_cost_known),
+    record.valuation_provenance ?? null,
+    record.api_equivalent_known_subtotal_microusd ?? null,
+    record.api_equivalent_unknown_categories ?? null,
+    record.pricing_currency ?? null,
+    record.pricing_source ?? null,
+    record.pricing_version ?? null,
+    record.pricing_context_tier ?? null,
+    record.pricing_cache_fallbacks ?? null,
   );
+    if (result.changes !== 1 || !record.usage_event_id) return;
+    insertBudgetUsageEvent({
+      workId: record.work_id ?? null,
+      invocationId: record.invocation_id ?? null,
+      usageEventId: record.usage_event_id,
+      executionKind: record.execution_kind ?? null,
+      tokenUsageId: Number(result.lastInsertRowid),
+      chatJid: record.chat_jid,
+      accountedAt: record.run_at,
+      apiUsdMicros: record.api_equivalent_cost_microusd ?? null,
+      apiUsdKnown: record.api_equivalent_cost_known === true,
+      valuationProvenance: record.valuation_provenance ?? "unavailable",
+      usageSource: record.usage_source ?? "assistant",
+    }, db);
+  }).immediate();
 }
 
 function normalizeLimit(limit: number): number {
@@ -377,6 +439,7 @@ export function getLatestTokenUsageModel(chatJid: string): LatestTokenUsageModel
 export function pruneOldTokenUsage(retentionDays = 90): number {
   const db = getDb();
   const cutoff = new Date(Date.now() - retentionDays * 86_400_000).toISOString();
-  const result = db.prepare(`DELETE FROM token_usage WHERE run_at < ?`).run(cutoff);
+  const result = db.prepare(`DELETE FROM token_usage
+    WHERE run_at < ? AND id NOT IN (SELECT token_usage_id FROM budget_usage_events)`).run(cutoff);
   return result.changes;
 }

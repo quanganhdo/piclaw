@@ -17,6 +17,8 @@ export interface WebNotificationPresenceRecord {
   hasFocus: boolean;
   updatedAtMs: number;
   userAgent: string | null;
+  ownerUserId?: string;
+  loginSessionId?: string;
 }
 
 export interface WebNotificationPresenceState {
@@ -41,7 +43,7 @@ function isLikelyIosWebKitClient(userAgent: string | null | undefined): boolean 
 
 export function normalizeWebNotificationPresence(
   value: unknown,
-  options: { nowMs?: number; userAgent?: string | null } = {},
+  options: { nowMs?: number; userAgent?: string | null; ownerUserId?: string | null; loginSessionId?: string | null } = {},
 ): WebNotificationPresenceRecord | null {
   if (!value || typeof value !== "object") return null;
   const input = value as Record<string, unknown>;
@@ -54,6 +56,11 @@ export function normalizeWebNotificationPresence(
   const visibilityState = rawVisibility === "hidden" ? "hidden" : "visible";
   const hasFocus = Boolean(input.has_focus ?? input.hasFocus);
   const updatedAtMs = options.nowMs ?? Date.now();
+  const ownerUserId = normalizeTrimmedString(options.ownerUserId);
+  const loginSessionId = normalizeTrimmedString(options.loginSessionId);
+  if (Boolean(ownerUserId) !== Boolean(loginSessionId)) return null;
+  if (deviceId.length > 256 || clientId.length > 256 || chatJid.length > 512
+    || ownerUserId.length > 256 || loginSessionId.length > 256) return null;
 
   return {
     deviceId,
@@ -63,6 +70,7 @@ export function normalizeWebNotificationPresence(
     hasFocus,
     updatedAtMs,
     userAgent: typeof options.userAgent === "string" && options.userAgent.trim() ? options.userAgent.trim() : null,
+    ...(ownerUserId ? { ownerUserId, loginSessionId } : {}),
   };
 }
 
@@ -76,8 +84,8 @@ export class WebNotificationPresenceService {
     this.now = typeof options.now === "function" ? options.now : () => Date.now();
   }
 
-  private buildKey(deviceId: string, clientId: string): string {
-    return `${deviceId}::${clientId}`;
+  private buildKey(deviceId: string, clientId: string, ownerUserId?: string | null, chatJid?: string | null): string {
+    return `${ownerUserId || ""}::${deviceId}::${clientId}::${chatJid || ""}`;
   }
 
   private isLive(record: WebNotificationPresenceRecord, nowMs = this.now()): boolean {
@@ -91,28 +99,35 @@ export class WebNotificationPresenceService {
     }
   }
 
-  upsert(value: unknown, options: { nowMs?: number; userAgent?: string | null } = {}): WebNotificationPresenceRecord {
+  upsert(value: unknown, options: { nowMs?: number; userAgent?: string | null; ownerUserId?: string | null; loginSessionId?: string | null } = {}): WebNotificationPresenceRecord {
     const nowMs = options.nowMs ?? this.now();
     const normalized = normalizeWebNotificationPresence(value, {
       nowMs,
       userAgent: options.userAgent,
+      ownerUserId: options.ownerUserId,
+      loginSessionId: options.loginSessionId,
     });
     if (!normalized) {
       throw new Error("Invalid web notification presence payload.");
     }
     this.prune(nowMs);
-    this.records.set(this.buildKey(normalized.deviceId, normalized.clientId), normalized);
+    this.records.set(this.buildKey(normalized.deviceId, normalized.clientId, normalized.ownerUserId, normalized.chatJid), normalized);
     return normalized;
   }
 
-  remove(value: { device_id?: unknown; deviceId?: unknown; client_id?: unknown; clientId?: unknown }): boolean {
+  remove(value: { device_id?: unknown; deviceId?: unknown; client_id?: unknown; clientId?: unknown }, scope?: { ownerUserId: string; loginSessionId: string }): boolean {
     const deviceId = normalizeTrimmedString(value?.device_id ?? value?.deviceId);
     const clientId = normalizeTrimmedString(value?.client_id ?? value?.clientId);
     if (!deviceId || !clientId) return false;
-    return this.records.delete(this.buildKey(deviceId, clientId));
+    const chatJid = normalizeTrimmedString((value as { chat_jid?: unknown; chatJid?: unknown })?.chat_jid
+      ?? (value as { chat_jid?: unknown; chatJid?: unknown })?.chatJid);
+    if (!chatJid) return false;
+    const key = this.buildKey(deviceId, clientId, scope?.ownerUserId, chatJid), current = this.records.get(key);
+    if (scope && current?.loginSessionId !== scope.loginSessionId) return false;
+    return this.records.delete(key);
   }
 
-  getDeviceChatState(deviceId: string, chatJid: string, nowMs = this.now()): WebNotificationPresenceState {
+  getDeviceChatState(deviceId: string, chatJid: string, nowMs = this.now(), scope?: { ownerUserId: string; loginSessionId?: string }): WebNotificationPresenceState {
     const normalizedDeviceId = normalizeTrimmedString(deviceId);
     const normalizedChatJid = normalizeTrimmedString(chatJid);
     if (!normalizedDeviceId || !normalizedChatJid) {
@@ -121,7 +136,8 @@ export class WebNotificationPresenceService {
 
     this.prune(nowMs);
     const clients = Array.from(this.records.values())
-      .filter((record) => record.deviceId === normalizedDeviceId && record.chatJid === normalizedChatJid && this.isLive(record, nowMs))
+      .filter((record) => record.deviceId === normalizedDeviceId && record.chatJid === normalizedChatJid && this.isLive(record, nowMs)
+        && (!scope || (record.ownerUserId === scope.ownerUserId && (scope.loginSessionId === undefined || record.loginSessionId === scope.loginSessionId))))
       .sort((left, right) => left.clientId.localeCompare(right.clientId));
 
     return {
@@ -131,11 +147,11 @@ export class WebNotificationPresenceService {
     };
   }
 
-  shouldSendWebPush(deviceId: string | null | undefined, chatJid: string | null | undefined, nowMs = this.now()): boolean {
+  shouldSendWebPush(deviceId: string | null | undefined, chatJid: string | null | undefined, nowMs = this.now(), scope?: { ownerUserId: string; loginSessionId?: string }): boolean {
     const normalizedDeviceId = normalizeTrimmedString(deviceId);
     const normalizedChatJid = normalizeTrimmedString(chatJid);
     if (!normalizedDeviceId || !normalizedChatJid) return true;
-    const state = this.getDeviceChatState(normalizedDeviceId, normalizedChatJid, nowMs);
+    const state = this.getDeviceChatState(normalizedDeviceId, normalizedChatJid, nowMs, scope);
     if (!state.hasLiveClient) return true;
     if (state.hasVisibleClient) return false;
 

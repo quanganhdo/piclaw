@@ -78,7 +78,7 @@ test('SDK tool-call/user-bash hooks deny unknown and restricted calls and allow 
   const handlers = new Map<string, any>(); createFamilyToolCallGuard(alice.homeChatJid!)({ on: (name: string, fn: any) => handlers.set(name, fn) } as any);
   const first = identity();
   expect(await run(first, () => handlers.get('tool_call')({ toolName: 'read' }))).toBeUndefined();
-  for (const toolName of ['write', 'bash', 'powershell', 'local_bash', 'mcp', 'unknown-addon']) expect((await run(first, () => handlers.get('tool_call')({ toolName }))).block).toBe(true);
+  for (const toolName of ['write', 'bash', 'powershell', 'local_bash', 'mcp', 'delegate', 'unknown-addon']) expect((await run(first, () => handlers.get('tool_call')({ toolName }))).block).toBe(true);
   expect(handlers.get('user_bash')().result.exitCode).toBe(1);
   expect((await run(identity(bob), () => handlers.get('tool_call')({ toolName: 'read' }))).block).toBe(true);
   revokeUserWebSessions(alice.userId); expect((await run(first, () => handlers.get('tool_call')({ toolName: 'read' }))).block).toBe(true);
@@ -126,7 +126,7 @@ test('production session creation installs guarded definitions and blocks SDK-ro
     expect(JSON.stringify(await run(identity(), () => read.execute('call', { path: join(ws.workspace, 'sample.txt') })))).toContain('shared test content');
     const write = runtime.session.agent.state.tools.find(tool => tool.name === 'write')!;
     await expect(run(identity(), () => write.execute('call', { path: join(ws.workspace, 'forbidden'), content: 'x' }))).rejects.toThrow('Session access denied');
-    expect((await run(identity(), () => runtime.session.extensionRunner!.emitToolCall({ type: 'tool_call', toolName: 'unknown-addon', toolCallId: 'call', input: {} } as any)))?.block).toBe(true);
+    for (const toolName of ['delegate', 'unknown-addon']) expect((await run(identity(), () => runtime.session.extensionRunner!.emitToolCall({ type: 'tool_call', toolName, toolCallId: 'call', input: {} } as any)))?.block).toBe(true);
     expect(bypass).toBe(0); expect(existsSync(join(ws.workspace, 'forbidden'))).toBe(false);
   } finally { await runtime.dispose(); }
 }, 20000);

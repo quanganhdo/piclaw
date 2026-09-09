@@ -85,6 +85,7 @@ describe("scheduled-tasks extension", () => {
     initDatabase();
     getDb().query("DELETE FROM task_run_logs").run();
     getDb().query("DELETE FROM scheduled_tasks").run();
+    getDb().exec("DELETE FROM budget_cap_windows; DELETE FROM budget_caps;");
     fake = createFakeApi();
     scheduledTasks(fake.api);
   });
@@ -230,6 +231,46 @@ describe("scheduled-tasks extension", () => {
     const tasks = getDb().query("SELECT * FROM scheduled_tasks WHERE prompt = ?").all("Quiet scheduled check") as any[];
     expect(tasks).toHaveLength(1);
     expect(tasks[0].notify_on_complete).toBe(0);
+  });
+
+  test("scheduled_tasks creates and retires an opt-in per-run budget", async () => {
+    const tool = fake.tools.get("scheduled_tasks");
+    const created = await tool.execute("call-create-budget", {
+      action: "create",
+      chat_jid: "web:test",
+      prompt: "Capped agent check",
+      budget_usd: 0.25,
+      schedule_type: "once",
+      schedule_value: new Date(Date.now() + 60_000).toISOString(),
+    });
+    const taskId = created.details.id as string;
+    expect(getDb().query("SELECT scope,metric,amount,scheduled_task_id,enabled FROM budget_caps WHERE id=?")
+      .get(`scheduled-cap:${taskId}`)).toEqual({
+      scope: "scheduled_run",
+      metric: "api_usd_micros",
+      amount: 250_000,
+      scheduled_task_id: taskId,
+      enabled: 1,
+    });
+
+    await tool.execute("call-delete-budget", { action: "delete", id: taskId });
+    expect(getDb().query("SELECT enabled FROM budget_caps WHERE id=?").get(`scheduled-cap:${taskId}`))
+      .toEqual({ enabled: 0 });
+  });
+
+  test("scheduled task budgets reject shell tasks without creating work", async () => {
+    const tool = fake.tools.get("schedule_task");
+    const result = await tool.execute("call-shell-budget", {
+      chat_jid: "web:test",
+      task_kind: "shell",
+      command: "echo hi",
+      budget_usd: 1,
+      schedule_type: "once",
+      schedule_value: new Date(Date.now() + 60_000).toISOString(),
+    });
+    expect(result.content?.[0]?.text).toContain("applies only to scheduled agent tasks");
+    expect(getDb().query("SELECT COUNT(*) AS count FROM scheduled_tasks WHERE chat_jid='web:test'").get())
+      .toEqual({ count: 0 });
   });
 
   test("scheduled_tasks tool gets latest run summary", async () => {

@@ -824,6 +824,15 @@ export class AgentBranchManager {
   }
 
   getAgentHandleForChat(chatJid: string): string {
+    const mode = readAccessConfig().mode;
+    const identity = getExecutionIdentity();
+    if (mode !== "single-user" || (identity && identity.mode !== "single-user")) {
+      if (mode !== "family-shared" || identity?.mode !== mode) throw new ChatAccessDenied();
+      const sourceChatJid = identity.provenance.chatJid;
+      const owner = requireOwnedSessionExecution(sourceChatJid);
+      if (!owner) throw new ChatAccessDenied();
+      return resolveOwnedLifecycleSession(getDb(), owner, chatJid).agent_name;
+    }
     try {
       return getChatBranchByChatJid(chatJid)?.agent_name ?? deriveAgentHandle(chatJid);
     } catch (err) {

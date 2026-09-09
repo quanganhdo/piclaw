@@ -29,7 +29,7 @@ export class FamilyWorkspace {
   private render(value: FamilyWorkspacePolicy): void {
     if (value?.user_id !== this.api.identity.userId || value.deployment?.routing_mode !== 'family-shared'
       || value.deployment.activation_allowed !== false || value.deployment.container_isolation !== false
-      || value.deployment.supported_startup_mode !== 'single-user'
+      || value.deployment.supported_startup_mode !== 'family-shared'
       || !['single-user', 'family-shared', 'isolated-containers'].includes(value.deployment.configured_mode)
       || !['single-user', 'family-shared', 'isolated-containers'].includes(value.deployment.activated_mode)
       || value.tools?.policy !== 'fixed-family-web-preview' || value.tools.configurable !== false
@@ -44,9 +44,9 @@ export class FamilyWorkspace {
       group.append(heading, list); this.details.append(group);
     };
     const deployment = value.deployment;
-    section('Deployment (not enabled for release)', [
+    section('Deployment', [
       `Request routing: ${deployment.routing_mode}; configured mode: ${deployment.configured_mode}; stored activation marker: ${deployment.activated_mode}.`,
-      `Supported startup mode: ${deployment.supported_startup_mode}. Family/isolated activation is blocked; no mode change or restart is available here.`,
+      `Supported startup mode: ${deployment.supported_startup_mode}. This panel cannot change modes or restart the service; isolated-container mode remains unavailable.`,
       'Family mode uses a shared process and filesystem. Conversation ownership is application filtering, not container isolation. An OS-privileged user or installed extension remains trusted.',
     ]);
     section('Family workspace', value.resources.map(row => `${row.name} — ${row.scope}: ${row.detail}`));

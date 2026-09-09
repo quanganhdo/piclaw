@@ -6,7 +6,9 @@ import { getAttachmentRegistry } from "../../src/agent-pool/attachments.js";
 import { AgentTurnCoordinator } from "../../src/agent-pool/turn-coordinator.js";
 import { initDatabase } from "../../src/db.js";
 import { runAgentPrompt } from "../../src/agent-pool/run-agent-orchestrator.js";
-import { setEnv } from "../helpers.js";
+import { getTestWorkspace, setEnv } from "../helpers.js";
+import { join } from 'node:path';
+const logsDir = join(getTestWorkspace().data, 'logs');
 
 function createRuntime(session: any, retrySettings?: { enabled?: boolean; maxRetries?: number; baseDelayMs?: number; maxDelayMs?: number }): AgentSessionRuntime {
   return {
@@ -92,7 +94,7 @@ test("runAgentPrompt retries a blank user-only session delta and returns the rec
       turnCoordinator,
       clearAttachments: (chatJid) => attachments.clear(chatJid),
       takeAttachments: (chatJid) => attachments.take(chatJid),
-      logsDir: "/workspace/logs",
+      logsDir,
       setActiveForkBaseLeaf: () => {},
       clearActiveForkBaseLeaf: () => {},
     });
@@ -168,7 +170,7 @@ test("runAgentPrompt retries a blank turn below the configured context threshold
       turnCoordinator: new AgentTurnCoordinator({ takeAttachments: () => [], touchSession: () => {}, recordMessageUsage: () => {} }),
       clearAttachments: () => {},
       takeAttachments: () => [],
-      logsDir: "/workspace/logs",
+      logsDir,
       setActiveForkBaseLeaf: () => {},
       clearActiveForkBaseLeaf: () => {},
     });
@@ -240,7 +242,7 @@ test("runAgentPrompt treats terminal UI side-effect tools as successful even aft
       turnCoordinator,
       clearAttachments: () => {},
       takeAttachments: () => [],
-      logsDir: "/workspace/logs",
+      logsDir,
       setActiveForkBaseLeaf: () => {},
       clearActiveForkBaseLeaf: () => {},
     });
@@ -301,7 +303,7 @@ test("runAgentPrompt exhausts recovery when repeated blank user-only deltas pers
       turnCoordinator,
       clearAttachments: () => {},
       takeAttachments: () => [],
-      logsDir: "/workspace/logs",
+      logsDir,
       setActiveForkBaseLeaf: () => {},
       clearActiveForkBaseLeaf: () => {},
     });

@@ -18,6 +18,10 @@ export function captureMigrationInputHolds(db:Database,snapshot:string,policy:un
     if(db.query('SELECT 1 FROM message_execution_authorities WHERE message_rowid=?').get(row.rowid))throw new Error('Existing execution authority requires separate reconciliation.');
     db.query('INSERT INTO migration_input_holds VALUES (?,?,?,?,?,?,?,?)').run(row.rowid,row.id,row.chat_jid,row.owner_user_id,row.timestamp,migrationInputHash(row.content),snapshot,new Date().toISOString());
   }
+  db.exec(`CREATE TABLE access_input_migration (
+    id INTEGER PRIMARY KEY CHECK(id=1),source_snapshot TEXT NOT NULL,policy TEXT NOT NULL,held_inputs INTEGER NOT NULL,prepared_at TEXT NOT NULL
+  ) STRICT;`);
+  db.query('INSERT INTO access_input_migration VALUES (1,?,?,?,?)').run(snapshot,policy,rows.length,new Date().toISOString());
   return rows.length;
 }
 

@@ -39,13 +39,20 @@ export function isAdaptiveCardSubmissionBlock(block: unknown): block is Adaptive
   const candidate = block as Record<string, unknown>;
   return candidate.type === "adaptive_card_submission"
     && typeof candidate.card_id === "string"
-    && typeof candidate.source_post_id === "number"
-    && typeof candidate.submitted_at === "string";
+    && candidate.card_id.trim().length > 0
+    && candidate.card_id.length <= 256
+    && Number.isSafeInteger(candidate.source_post_id)
+    && Number(candidate.source_post_id) > 0
+    && typeof candidate.submitted_at === "string"
+    && Number.isFinite(Date.parse(candidate.submitted_at))
+    && (candidate.action_type === undefined || candidate.action_type === "Action.Submit");
 }
 
 export function extractAdaptiveCardSubmissionBlocks(contentBlocks: unknown): AdaptiveCardSubmissionBlock[] {
   if (!Array.isArray(contentBlocks)) return [];
-  return contentBlocks.filter(isAdaptiveCardSubmissionBlock);
+  return contentBlocks
+    .filter(isAdaptiveCardSubmissionBlock)
+    .map((block) => block.action_type === undefined ? { ...block, action_type: "Action.Submit" } : block);
 }
 
 export function buildAdaptiveCardSubmissionFallbackText(block: AdaptiveCardSubmissionBlock): string {

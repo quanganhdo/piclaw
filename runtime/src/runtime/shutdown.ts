@@ -52,12 +52,14 @@ export function createShutdownHandler(deps: ShutdownDeps): (signal: string) => P
     shuttingDown = true;
 
     log.info("Shutdown signal received", { operation: "handle_signal", signal });
-    await runPreShutdownHooksOnce();
+    // Arm the process-wide backstop before extensible pre-shutdown hooks. A
+    // broken add-on must not prevent the fallback from ever being scheduled.
     const forceExit = setTimeout(() => {
       log.warn("Forcing shutdown after timeout", { operation: "force_exit", timeoutMs: 15000 });
       process.exit(0);
     }, 15000);
 
+    await withTimeout(runPreShutdownHooksOnce(), 5000, "pre-shutdown hooks");
     await withTimeout(deps.stopIpcWatcher(), 4000, "ipc watcher stop");
     deps.stopSchedulerLoop();
     deps.stopOptionalProviders();

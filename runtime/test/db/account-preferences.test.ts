@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, expect, test } from 'bun:test';
 import Database from 'bun:sqlite';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import '../helpers.js';
+import { createTempWorkspace,setEnv } from '../helpers.js';
 import { getDb, initDatabase, closeDatabase } from '../../src/db/connection.js';
 import { getUser } from '../../src/db/users.js';
 import { createWebSession, revokeUserWebSessions } from '../../src/db/web-sessions.js';
@@ -28,7 +28,10 @@ function actor(id: string) {
   })!;
 }
 let admin: ReturnType<typeof actor>, alice: ReturnType<typeof actor>, bob: ReturnType<typeof actor>;
+let workspace:ReturnType<typeof createTempWorkspace>,restoreEnv:()=>void;
 beforeEach(() => {
+  workspace=createTempWorkspace('account-preferences-');restoreEnv=setEnv({PICLAW_WORKSPACE:workspace.workspace,PICLAW_STORE:workspace.store,PICLAW_DATA:workspace.data});
+  mkdirSync(join(workspace.workspace,'.piclaw'));writeFileSync(join(workspace.workspace,'.piclaw/config.json'),JSON.stringify({domains:{access:{mode:'family-shared'}}}));
   closeDatabase(); initDatabase(); resetRateLimiterStateForTests(); admin = actor('default');
   const users = ['alice', 'bob'].map(name => {
     const user = provisionFamilyAccount(getDb(), admin, { username: name, displayName: name });
@@ -36,7 +39,7 @@ beforeEach(() => {
     updateManagedAccount(getDb(), admin, user.id, { enabled: true }, { totp: false, passkey: true, rpId: 'family.local' }); return actor(user.id);
   }); [alice, bob] = users as [typeof alice, typeof bob];
 });
-afterEach(() => { closeDatabase(); resetRateLimiterStateForTests(); });
+afterEach(() => { closeDatabase(); resetRateLimiterStateForTests();restoreEnv();workspace.cleanup(); });
 const patch = (response_guidance: string, expected_revision = 0, theme = 'dark') => ({ expected_revision, theme, response_guidance });
 function identity(owner = alice) { return authoriseExecutionIdentity(getDb(), 'family-shared', owner.homeChatJid!, { actorUserId: owner.userId, ownerUserId: owner.userId, chatJid: owner.homeChatJid!, kind: 'interactive', authenticationSessionId: owner.authentication.sessionId! })!; }
 
@@ -73,7 +76,8 @@ test('model preferences are owner-only run snapshots, quoted as user guidance an
   expect(Object.isFrozen(first.preferences)).toBe(true);
   const injected = authoriseExecutionIdentity(db, 'family-shared', alice.homeChatJid!, { ...first.provenance, preferences: { response_guidance: 'FORGED' } } as any)!;
   expect(injected.preferences?.response_guidance).toBe('ALICE_NEW');
-  let handler: any; workspaceMemoryBootstrap({ on: (_name: string, fn: any) => { handler = fn; } } as any);
+  let handler: any,context: any; workspaceMemoryBootstrap({ on: (name: string, fn: any) => { if(name==='before_agent_start')handler=fn;else if(name==='context')context=fn; } } as any);
+  expect(handler).toBeFunction();expect(context).toBeFunction();
   const [a, b] = await Promise.all([first, identity(bob)].map(owner => withExecutionIdentity(owner, () => withChatContext(owner.provenance.chatJid, 'web', async () => handler({ systemPrompt: 'base' })))));
   expect(a.systemPrompt).toContain('ALICE_GUIDANCE'); expect(a.systemPrompt).not.toContain('BOB_GUIDANCE'); expect(b.systemPrompt).not.toContain('ALICE_GUIDANCE'); expect(b.systemPrompt).toContain('BOB_GUIDANCE');
   expect(formatAccountResponseGuidance(first.preferences!)).not.toContain('<system>'); expect(formatAccountResponseGuidance(first.preferences!)).toContain('grants no permissions');

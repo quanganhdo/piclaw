@@ -57,29 +57,39 @@ export function buildHighlightFromSelectionSnapshot(
 
 // ── Read highlights from post data ──────────────────────────────
 
+const SAVED_HIGHLIGHT_COLORS = new Set(HIGHLIGHT_COLORS.map(({ value }) => value));
+
 export function extractHighlightsFromAnnotations(annotations: unknown[] | undefined | null): PostHighlight[] {
   if (!Array.isArray(annotations)) return [];
-  return annotations.filter(
+  return annotations.slice(0, 500).filter(
     (a): a is PostHighlight =>
       a != null &&
       typeof a === 'object' &&
       (a as any).type === 'highlight' &&
       typeof (a as any).text === 'string' &&
-      typeof (a as any).textOffset === 'number' &&
-      typeof (a as any).color === 'string',
+      (a as any).text.length > 0 &&
+      (a as any).text.length <= 32_000 &&
+      Number.isSafeInteger((a as any).textOffset) &&
+      (a as any).textOffset >= 0 &&
+      SAVED_HIGHLIGHT_COLORS.has((a as any).color),
   );
 }
 
 export function extractAsidesFromAnnotations(annotations: unknown[] | undefined | null): PostAside[] {
   if (!Array.isArray(annotations)) return [];
-  return annotations.filter(
+  return annotations.slice(0, 500).filter(
     (a): a is PostAside =>
       a != null &&
       typeof a === 'object' &&
       (a as any).type === 'aside' &&
       typeof (a as any).text === 'string' &&
-      typeof (a as any).textOffset === 'number' &&
-      typeof (a as any).note === 'string',
+      (a as any).text.length > 0 &&
+      (a as any).text.length <= 32_000 &&
+      Number.isSafeInteger((a as any).textOffset) &&
+      (a as any).textOffset >= 0 &&
+      typeof (a as any).note === 'string' &&
+      (a as any).note.length > 0 &&
+      (a as any).note.length <= 32_000,
   );
 }
 
@@ -90,6 +100,7 @@ export async function persistHighlight(
   chatJid: string,
   existingAnnotations: unknown[] | undefined | null,
   highlight: PostHighlight,
+  save: typeof savePostAnnotations = savePostAnnotations,
 ): Promise<unknown[]> {
   const current = Array.isArray(existingAnnotations) ? [...existingAnnotations] : [];
   // Dedupe
@@ -100,7 +111,7 @@ export async function persistHighlight(
       a?.textOffset === highlight.textOffset,
   );
   if (!exists) current.push(highlight);
-  await savePostAnnotations(postId, current, chatJid);
+  await save(postId, current, chatJid);
   return current;
 }
 
@@ -109,6 +120,7 @@ export async function persistAside(
   chatJid: string,
   existingAnnotations: unknown[] | undefined | null,
   aside: PostAside,
+  save: typeof savePostAnnotations = savePostAnnotations,
 ): Promise<unknown[]> {
   const current = Array.isArray(existingAnnotations) ? [...existingAnnotations] : [];
   const exists = current.some(
@@ -118,7 +130,7 @@ export async function persistAside(
       a?.textOffset === aside.textOffset,
   );
   if (!exists) current.push(aside);
-  await savePostAnnotations(postId, current, chatJid);
+  await save(postId, current, chatJid);
   return current;
 }
 
@@ -130,11 +142,12 @@ export async function removeAnnotationAtIndex(
   chatJid: string,
   existingAnnotations: unknown[] | undefined | null,
   index: number,
+  save: typeof savePostAnnotations = savePostAnnotations,
 ): Promise<unknown[]> {
   const current = Array.isArray(existingAnnotations) ? [...existingAnnotations] : [];
   if (index < 0 || index >= current.length) return current;
   current.splice(index, 1);
-  await savePostAnnotations(postId, current, chatJid);
+  await save(postId, current, chatJid);
   return current;
 }
 

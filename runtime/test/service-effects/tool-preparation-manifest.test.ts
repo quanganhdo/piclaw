@@ -110,14 +110,14 @@ describe("WP-3C production-root coverage oracle", () => {
       service: inventory.compositionRoots.filter((root) => root === "src/agent-pool/service-factory.ts"),
     };
     expect(Object.fromEntries(Object.entries(compositionCategories).map(([category, roots]) => [category, roots.length]))).toEqual({
-      builtin: 31,
+      builtin: 32,
       optional: 8,
       service: 1,
     });
     expect(inventory.compositionRoots).toHaveLength(Object.values(compositionCategories).flat().length);
 
     const manifestByName = new Map(TOOL_PREPARATION_MANIFEST.map((row) => [row.toolName, row]));
-    expect(Object.keys(inventory.registrationSites)).toHaveLength(40);
+    expect(Object.keys(inventory.registrationSites)).toHaveLength(41);
     for (const [toolName, sites] of Object.entries(inventory.registrationSites)) {
       const currentSource = manifestByName.get(toolName)?.currentSource;
       expect(currentSource).toBeDefined();
@@ -238,7 +238,7 @@ describe("WP-3C closed manifest policy and hostile-safe normalization", () => {
       rejectUnexpectedExactTools: true,
     });
     expect(result.issues).toEqual([]);
-    expect(result.specs).toHaveLength(46);
+    expect(result.specs).toHaveLength(47);
     expect(Object.isFrozen(result.specs)).toBeTrue();
     for (const row of result.specs) {
       expect(Object.keys(row).sort()).toEqual(SPEC_FIELDS);
@@ -248,9 +248,9 @@ describe("WP-3C closed manifest policy and hostile-safe normalization", () => {
     }
   });
 
-  test("has closed rationale evidence for all 44 repository rows", () => {
+  test("has closed rationale evidence for all 45 repository rows", () => {
     const policies = listToolPreparationPolicies();
-    expect(policies).toHaveLength(44);
+    expect(policies).toHaveLength(45);
     expect(policies.map((policy) => policy.toolName).sort()).toEqual(TOOL_PREPARATION_MANIFEST.map((row) => row.toolName).sort());
     for (const row of TOOL_PREPARATION_MANIFEST) {
       const policy = getToolPreparationPolicy(row.toolName)!;

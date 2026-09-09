@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 
+import { createTempWorkspace, setEnv } from "../../../helpers.js";
+import { withExecutionIdentity, type ExecutionIdentity } from "../../../../src/core/execution-context.js";
 import { WebAgentPeerMessageRelayService } from "../../../../src/channels/web/agent/agent-peer-message-relay-service.js";
 
 function jsonResponse(payload: unknown, status = 200): Response {
@@ -26,7 +30,50 @@ function createService(
   });
 }
 
+const familyIdentity: ExecutionIdentity = {
+  mode: "family-shared", username: "alice", displayName: "Alice", role: "member", rootChatJid: "web:alice",
+  provenance: { actorUserId: "alice", ownerUserId: "alice", chatJid: "web:alice", kind: "interactive", authenticationSessionId: "login-a" },
+};
+
+async function withAccessMode(mode: "single-user" | "family-shared", callback: (configPath: string) => Promise<void>): Promise<void> {
+  const workspace = createTempWorkspace("peer-relay-boundary-");
+  const restore = setEnv({ PICLAW_WORKSPACE: workspace.workspace, PICLAW_STORE: workspace.store, PICLAW_DATA: workspace.data });
+  mkdirSync(join(workspace.workspace, ".piclaw")); const path = join(workspace.workspace, ".piclaw", "config.json");
+  writeFileSync(path, JSON.stringify({ domains: { access: { mode } } }));
+  try { await callback(path); } finally { restore(); workspace.cleanup(); }
+}
+
 describe("WebAgentPeerMessageRelayService", () => {
+  test("denies family direct calls before body parsing or identity/target callbacks", async () => {
+    await withAccessMode("family-shared", async () => {
+      let callbacks = 0;
+      const service = createService({
+        json: (payload, status = 200) => { callbacks++; return jsonResponse(payload, status); },
+        agentPool: { listActiveChats: () => { callbacks++; return []; }, findActiveChatByAgentName: () => { callbacks++; return null; }, getAgentHandleForChat: () => { callbacks++; return "source"; } },
+        getChatBranchByChatJid: () => { callbacks++; return null; },
+        forwardAgentMessageRequest: async () => { callbacks++; return jsonResponse({}); },
+      });
+      for (const identity of [null, familyIdentity]) {
+        const request = new Request("https://example.com/agent/peer-message", { method: "POST", body: "{" });
+        const response = await withExecutionIdentity(identity, () => service.handleAgentPeerMessage(request));
+        expect(response.status).toBe(403); expect(request.bodyUsed).toBe(false);
+      }
+      // JSON response construction is the only callback permitted on denial.
+      expect(callbacks).toBe(2);
+    });
+  });
+
+  test("retained family context and malformed config deny before peer callbacks", async () => {
+    await withAccessMode("single-user", async configPath => {
+      let callbacks = 0;
+      const service = createService({ agentPool: { listActiveChats: () => { callbacks++; return []; }, findActiveChatByAgentName: () => { callbacks++; return null; }, getAgentHandleForChat: () => { callbacks++; return "source"; } } });
+      const request = () => new Request("https://example.com/agent/peer-message", { method: "POST", body: "{}" });
+      expect((await withExecutionIdentity(familyIdentity, () => service.handleAgentPeerMessage(request()))).status).toBe(403);
+      writeFileSync(configPath, "{");
+      await expect(service.handleAgentPeerMessage(request())).rejects.toThrow("access configuration cannot default safely");
+      expect(callbacks).toBe(0);
+    });
+  });
   test("rejects malformed peer-message payloads with the existing 400 errors", async () => {
     const service = createService();
 

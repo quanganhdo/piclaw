@@ -46,8 +46,8 @@ test('visual Settings scopes model fetches and commands to the active chat', () 
 
 test('recency is recorded only inside server-confirmed model switch branches', () => {
   expect(composeSource).toContain("if (!refreshed || (expectedModel && confirmedModel !== expectedModel))");
-  expect(composeSource).toContain('if (expectedModel) recordRecentModelKey(expectedModel)');
-  expect(composeSource).toContain('if (recordsModelRecency && confirmedModel) recordRecentModelKey(confirmedModel)');
+  expect(composeSource).toContain('if (expectedModel) recordRecentModelKey(expectedModel, new Date().toISOString(), modelPreferenceRuntime)');
+  expect(composeSource).toContain('if (recordsModelRecency && confirmedModel) recordRecentModelKey(confirmedModel, new Date().toISOString(), modelPreferenceRuntime)');
   expect(visualPickerSource).toContain('if (confirmedCurrent !== id)');
   expect(visualPickerSource.indexOf('if (confirmedCurrent !== id)')).toBeLessThan(visualPickerSource.indexOf('recordRecentModelKey(id)'));
   for (const source of [classicSource, visualSource]) {

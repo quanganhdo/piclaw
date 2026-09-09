@@ -101,16 +101,19 @@ export function registerPreShutdownHook(hook: PreShutdownHook): void {
 export async function runPreShutdownHooksOnce(): Promise<void> {
   if (preShutdownHooksRan) return;
   preShutdownHooksRan = true;
-  for (const hook of preShutdownHooks) {
+  // Start every independent cleanup before awaiting any of them. A stuck hook
+  // is bounded by shutdown.ts and must not prevent later hooks from starting.
+  await Promise.all([...preShutdownHooks].map(async (hook, index) => {
     try {
       await hook();
     } catch (error) {
       log.warn("Pre-shutdown hook failed", {
         operation: "pre_shutdown_hook",
+        hookIndex: index,
         err: error,
       });
     }
-  }
+  }));
 }
 
 /**
@@ -126,13 +129,17 @@ export function requestGracefulShutdown(reason: string, delayMs = 800): void {
     return;
   }
 
-  void runPreShutdownHooksOnce().finally(() => {
-    if (registeredShutdown) {
-      log.info("Graceful shutdown requested", { operation: "request", reason });
-      void registeredShutdown(`exit_process: ${reason}`);
-      return;
-    }
+  if (registeredShutdown) {
+    // The registered shutdown handler owns the process-wide deadline and runs
+    // pre-shutdown hooks inside that deadline. Waiting here first would let a
+    // stuck extensible hook prevent the backstop from ever being armed.
+    log.info("Graceful shutdown requested", { operation: "request", reason });
+    void registeredShutdown(`exit_process: ${reason}`);
+    return;
+  }
 
+  const hookTimeout = new Promise<void>((resolve) => setTimeout(resolve, 5000));
+  void Promise.race([runPreShutdownHooksOnce(), hookTimeout]).finally(() => {
     log.info("No runtime handler registered; scheduling process exit", {
       operation: "request_fallback",
       reason,

@@ -1,6 +1,9 @@
 #!/usr/bin/env bun
 import { chromium } from 'playwright';
 import { bootstrapE2EStorageState } from './web-auth-bootstrap.ts';
+import { requireDisposableTestTarget } from '../test-target.js';
+
+const baseUrl = requireDisposableTestTarget(process.env.PICLAW_E2E_BASE_URL);
 
 const cycles = Number(process.env.PICLAW_RACE_CYCLES || '12');
 const reopenWaitMs = Number(process.env.PICLAW_RACE_REOPEN_WAIT_MS || '40');
@@ -37,8 +40,8 @@ async function readState(page: any) {
 }
 
 const storageState = await bootstrapE2EStorageState({
-  baseUrl: 'http://127.0.0.1:8080',
-  internalSecret: process.env.PICLAW_INTERNAL_SECRET || process.env.PICLAW_WEB_INTERNAL_SECRET,
+  baseUrl,
+  internalSecret: process.env.PICLAW_E2E_INTERNAL_SECRET,
 });
 const browser = await chromium.launch({ headless: true, executablePath: process.env.PICLAW_PLAYWRIGHT_EXECUTABLE_PATH });
 const context = await browser.newContext({ storageState, viewport: { width: 1280, height: 900 } });
@@ -47,7 +50,7 @@ const events: any[] = [];
 page.on('console', (msg) => events.push({ kind: 'console', type: msg.type(), text: msg.text(), ts: Date.now() }));
 page.on('pageerror', (err) => events.push({ kind: 'pageerror', text: String(err), ts: Date.now() }));
 
-await page.goto('http://127.0.0.1:8080', { waitUntil: 'domcontentloaded' });
+await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
 await page.waitForTimeout(2000);
 
 for (let cycle = 1; cycle <= cycles; cycle += 1) {

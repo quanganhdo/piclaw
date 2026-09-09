@@ -10,6 +10,8 @@ import { getDb } from "./db.js";
 import { getSearchMatchMode } from "./core/config.js";
 import { extractFtsFallbackTerms, isFtsOperatorQuery, prepareFtsQuery } from "./utils/fts-query.js";
 import { createLogger, debugSuppressedError } from "./utils/logger.js";
+import { workspaceIndexAccess,WorkspaceIndexAccessDenied } from './core/workspace-index-access.js';
+import { familyWorkspaceScope,searchFamilyWorkspaceIndex } from './family-workspace-index.js';
 import {
   getWorkspaceIndexStatus,
   markWorkspaceIndexCoreStale,
@@ -47,29 +49,14 @@ export type WorkspaceSearchParams = {
   max_kb?: number;
 };
 
-/** A single search result row with snippet and file metadata. */
-export type WorkspaceSearchRow = {
-  /** Relative path from workspace root. */
-  path: string;
-  /** FTS5-highlighted snippet around matching terms. */
-  snippet: string;
-  /** File size in bytes. */
-  size_bytes: number;
-  /** File modification time in epoch milliseconds. */
-  mtime_ms: number;
-};
-
-/** Return value from searchWorkspace(). */
-export type WorkspaceSearchResult = {
-  rows: WorkspaceSearchRow[];
-  limit: number;
-  offset: number;
-  error?: string;
-};
+import type { WorkspaceSearchRow,WorkspaceSearchResult } from './core/workspace-index-types.js';
+export type { WorkspaceSearchRow,WorkspaceSearchResult } from './core/workspace-index-types.js';
 
 let requestBackgroundWorkspaceIndexRefreshImpl = (params: WorkspaceIndexBackgroundRefreshParams = {}): void => {
+  const access=workspaceIndexAccess();
   void import("./workspace-index-process.js")
     .then((mod) => {
+      access.validate();
       mod.launchWorkspaceIndexProcess({ scope: params.scope, max_kb: params.max_kb });
     })
     .catch((error) => {
@@ -89,6 +76,7 @@ const clampNumber = (value: number | undefined, fallback: number, min: number, m
 };
 
 export function requestBackgroundWorkspaceIndexRefresh(params?: WorkspaceIndexBackgroundRefreshParams): void {
+  workspaceIndexAccess();
   requestBackgroundWorkspaceIndexRefreshImpl(params || {});
 }
 
@@ -96,8 +84,10 @@ export function setBackgroundWorkspaceIndexRefreshRequesterForTests(
   requester: ((params?: WorkspaceIndexBackgroundRefreshParams) => void) | null,
 ): void {
   requestBackgroundWorkspaceIndexRefreshImpl = requester ?? ((params: WorkspaceIndexBackgroundRefreshParams = {}) => {
+    const access=workspaceIndexAccess();
     void import("./workspace-index-process.js")
       .then((mod) => {
+        access.validate();
         mod.launchWorkspaceIndexProcess({ scope: params.scope, max_kb: params.max_kb });
       })
       .catch((error) => {
@@ -118,11 +108,12 @@ export function markWorkspaceIndexStale(params?: { scope?: WorkspaceSearchScope 
 
 /** Full-text search across indexed workspace files. */
 export async function searchWorkspace(params: WorkspaceSearchParams): Promise<WorkspaceSearchResult> {
+  const access=workspaceIndexAccess();
   const query = params.query.trim();
   const limit = clampNumber(params.limit, 10, 1, 50);
   const offset = clampNumber(params.offset, 0, 0, 1_000_000);
   const refresh = params.refresh === true;
-  const scope = normalizeWorkspaceSearchScope(params.scope);
+  const scope = access.mode==='family-shared'?familyWorkspaceScope(params.scope):normalizeWorkspaceSearchScope(params.scope);
 
   if (!query) {
     return { rows: [], limit, offset, error: "Provide a query." };
@@ -136,6 +127,9 @@ export async function searchWorkspace(params: WorkspaceSearchParams): Promise<Wo
       requestBackgroundWorkspaceIndexRefresh({ scope, max_kb: params.max_kb });
     }
   }
+
+  access.validate();
+  if(access.mode==='family-shared')return searchFamilyWorkspaceIndex(query,scope,limit,offset);
 
   const operatorQuery = isFtsOperatorQuery(query);
   const ftsQuery = prepareFtsQuery(query, getSearchMatchMode());
@@ -155,8 +149,9 @@ export async function searchWorkspace(params: WorkspaceSearchParams): Promise<Wo
       ? (db.prepare(stmt).all(ftsQuery, prefix, limit, offset) as WorkspaceSearchRow[])
       : (db.prepare(stmt).all(ftsQuery, limit, offset) as WorkspaceSearchRow[]);
 
-    return { rows, limit, offset };
-  } catch {
+    access.validate();return { rows, limit, offset };
+  } catch (error) {
+    access.validate();if(error instanceof WorkspaceIndexAccessDenied)throw error;
     // FTS query failed even after sanitization — fall back to LIKE.
     try {
       const prefix = scope === "notes" ? "notes/%" : scope === "skills" ? ".pi/skills/%" : null;
@@ -169,8 +164,9 @@ export async function searchWorkspace(params: WorkspaceSearchParams): Promise<Wo
 
       const sql = `SELECT workspace_files.path AS path, workspace_files.size_bytes AS size_bytes, workspace_files.mtime_ms AS mtime_ms, substr(workspace_fts.content, 1, 200) as snippet FROM workspace_files JOIN workspace_fts ON workspace_fts.path = workspace_files.path WHERE ${conditions} LIMIT ? OFFSET ?`;
       const rows = db.prepare(sql).all(...params_arr, limit, offset) as WorkspaceSearchRow[];
-      return { rows, limit, offset };
-    } catch {
+      access.validate();return { rows, limit, offset };
+    } catch (error) {
+      access.validate();if(error instanceof WorkspaceIndexAccessDenied)throw error;
       return { rows: [], limit, offset, error: "Workspace search failed (invalid query?)." };
     }
   }

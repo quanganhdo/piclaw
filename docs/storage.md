@@ -16,19 +16,32 @@
 | `scheduled_tasks` | Task definitions |
 | `family_scheduled_grants` | Immutable owner/initiating-user/service, exact task revision/payload and branch binding, issued tool ceiling and non-secret login correlation; prepared tasks stay paused |
 | `family_scheduled_grant_revocations` | Append-only owner/account/task revocation; disable/role changes, task edits and deletion cannot resurrect prior grants |
+| `family_task_admissions` | Immutable owner-local preparation request key/hash, grant reference and original non-secret login correlation; no replay into a second task |
+| `family_execution_admissions` | Immutable owner-confirmed run request key, unique grant/execution binding, original approving login and time; retries acknowledge history without requeue or capability recovery |
 | `family_scheduled_occurrences` | One internal reservation per grant, due-time/worker/attempt/version fence and hashed expiring lease; consumed reservations cannot replay |
 | `family_scheduled_occurrence_events` | Append-only claim/reclaim/renew/consume audit without prompts or lease tokens |
 | `family_scheduled_executions` | Immutable consumed-occurrence handoff, owner/service/target and label snapshot, prompt hash, tool ceiling and hashed 15-minute settlement capability |
 | `family_scheduled_results` | One immutable bounded text result per execution; exact retries acknowledge the same record |
 | `family_scheduled_execution_events` | Append-only begin/settle audit, committed with the corresponding state |
 | `family_scheduled_dispatches` | Immutable one-start-per-handoff admission receipt; no capability token and no automatic retry |
+| `family_scheduled_expiries` | Immutable terminal expiry receipt for a handoff without a result; explicit bounded recovery only, mutually exclusive with settlement |
+| `family_scheduled_interruptions` | Immutable admitted execution/start/recording-time receipt; no error payload, no replay and no result publication |
+| `family_scheduled_cancellations` | Immutable owner-confirmed execution cancellation, original approving login and time; revokes remaining authority without erasing history or proving provider termination |
 | `family_scheduled_publications` | Immutable owner-confirmed publication receipt binding execution, original chat and exact message row/hash; prevents replay or recreation |
+| `family_memory_publications` | Immutable explicit message-excerpt copies with publisher attribution and owner-private source/login/request provenance; no automatic file or prompt projection |
+| `family_memory_withdrawals` | Append-only publisher withdrawal receipts; exclude copies from future shared ledger reads without erasing publication history |
 | `task_run_logs` | Task run history |
 | `token_usage` | Per‑assistant‑message token + cost usage (includes model/provider/api for per‑model tracking) |
-| `tool_outputs` | Stored tool output summaries |
-| `tool_outputs_fts` | Full‑text index for tool output |
+| `budget_caps`, `budget_cap_windows` | Opt-in cap definitions, revisions and persisted calendar windows |
+| `budget_work`, `budget_usage_events` | Durable work lineage and immutable idempotent usage attribution |
+| `budget_allowances`, `budget_overrides`, `budget_decisions` | Bounded approvals, work-scoped warnings-only state and admission audit |
+| `budget_provider_evidence` | Non-secret, account-bound provider quota observations and freshness state |
+| `tool_outputs` | Stored tool output summaries; family rows bind owner, stable root/source branch, creation-time chat JID and execution kind; legacy null-scope rows stay single-user-only |
+| `tool_outputs_fts` | Full‑text chunks keyed by opaque output ID; family reads first prove the matching scoped metadata row |
 | `workspace_files` | Indexed workspace files (path, size, mtime) |
 | `workspace_fts` | Full‑text index for workspace content |
+| `family_workspace_files`, `family_workspace_fts` | Separate shared-family file metadata and FTS; only explicit family notes and shared skills, never legacy index rows |
+| `family_workspace_index_status`, `family_workspace_index_generation` | Family scope freshness and transactional generation fence against source-change/refresh races |
 | `chat_cursors` | Per‑chat cursor + inflight/failed run tracking + deferred follow‑up queue |
 | `router_state` | Misc router state (auto‑compaction + web status) |
 | `keychain_entries` | Encrypted secrets for tool env injection |
@@ -283,7 +296,7 @@ erDiagram
 - `chats(last_message_time)` for recent chat ordering
 - `scheduled_tasks(next_run)`, `scheduled_tasks(status)`, `scheduled_tasks(created_at)`, and `scheduled_tasks(last_run)` for the scheduler
 - `task_run_logs(task_id, run_at)` for audit history
-- `tool_outputs(created_at)` for recent tool output
+- `tool_outputs(created_at)` and `tool_outputs(owner_user_id, created_at)` for legacy and owner-scoped retention
 - `media(created_at)` for attachment timelines
 - `message_media(message_rowid)` and `message_media(media_id)` for joins
 - `messages_fts`, `tool_outputs_fts`, and `workspace_fts` for full-text search

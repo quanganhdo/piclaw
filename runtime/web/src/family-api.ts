@@ -36,12 +36,17 @@ export async function fetchFamilyIdentity(signal?: AbortSignal, headers?: Header
 export async function prepareFamilyBrowser(): Promise<void> {
   if ("serviceWorker" in navigator) {
     const registrations = await navigator.serviceWorker.getRegistrations();
-    await Promise.all(registrations.map(registration => registration.unregister()));
+    await Promise.all(registrations.map(registration => {
+      const scripts = [registration.active, registration.waiting, registration.installing]
+        .filter(Boolean).map(worker => new URL(worker!.scriptURL, location.origin).pathname);
+      return scripts.length > 0 && scripts.every(path => path === '/family-sw.js') ? Promise.resolve(true) : registration.unregister();
+    }));
   }
   if ("caches" in window) {
     await Promise.all((await caches.keys()).map(key => caches.delete(key)));
   }
-  if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+  if ("serviceWorker" in navigator && navigator.serviceWorker.controller
+    && new URL(navigator.serviceWorker.controller.scriptURL, location.origin).pathname !== '/family-sw.js') {
     throw new Error("The previous service worker has been removed. Close other PiClaw tabs and reload before opening family conversations.");
   }
 }
@@ -53,6 +58,9 @@ export class FamilyApi {
   stop(): void { this.controller.abort(); }
   private headers(): Record<string, string> {
     return { "x-piclaw-account-id": this.identity.userId, "x-piclaw-login-id": this.identity.loginId };
+  }
+  sseUrl(chatJid: string): string {
+    return `/sse/stream?chat_jid=${encodeURIComponent(chatJid)}`;
   }
   private signal(signal?: AbortSignal): AbortSignal { return AbortSignal.any([this.controller.signal, AbortSignal.timeout(15_000), ...(signal ? [signal] : [])]); }
   private invalidate(): never {
@@ -87,6 +95,11 @@ export class FamilyApi {
     // A response admitted under the old cookie must not render after a different login took over.
     await this.verifyIdentity(signal);
     return value;
+  }
+  /** Best-effort lifecycle update. Server-side cookie and immutable pins remain authoritative. */
+  sendNotificationPresence(body: unknown): void {
+    void fetch('/agent/push/presence', { method: 'POST', cache: 'no-store', credentials: 'same-origin', keepalive: true,
+      headers: { ...this.headers(), 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(error => console.debug('[family-api] Notification presence teardown failed.', error));
   }
   async avatarImage(): Promise<Blob> {
     const response = await this.response('/account/avatar/image', 'GET');

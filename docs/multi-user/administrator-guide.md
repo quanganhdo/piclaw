@@ -1,6 +1,6 @@
-# Family preview administrator guide
+# Family administrator guide
 
-Piclaw supports **single-user deployments only**; family startup is disabled. These instructions are for controlled preview testing. Do not activate a deployment or promote a migration copy to follow them.
+Piclaw supports promoted **family-shared** deployments for trusted households. Single-user remains the default. Operators—not web administrators—prepare, promote, install, restart and roll back a family deployment through the offline [migration runbook](migration-copy.md). The web UI has no mode selector or restart control.
 
 For ordinary account use, read the [user guide](user-guide.md). For service, filesystem and backup work, use the [migration runbook](migration-copy.md) and [offline recovery runbook](operator-recovery.md). See [troubleshooting](troubleshooting.md) when an operation fails.
 
@@ -68,7 +68,7 @@ Reset removes **all** of another account's current factors, signs out every devi
 4. Choose **Confirm account change** and privately deliver the new invitation.
 5. Have the recipient complete enrolment and sign in again. Old credentials no longer work.
 
-Each reset action requires its corresponding sign-in method to be enabled. Reset to passkey works under passkey-only policy without TOTP. Self-reset is denied, and normal reset cannot remove the last enabled administrator. If no other administrator can help, contact the host operator. The [offline command](operator-recovery.md) can prepare a grant. Piclaw's recovery-only startup is not implemented, so the recipient cannot redeem it in a supported deployment. Do not disable startup guards.
+Each reset action requires its corresponding sign-in method to be enabled. Reset to passkey works under passkey-only policy without TOTP. Self-reset is denied, and normal reset cannot remove the last enabled administrator. If no other administrator can help, contact the host operator. The [offline recovery flow](operator-recovery.md) can prepare a grant and run a separate TLS-only recovery-only startup listener while the normal service remains stopped. Do not disable ordinary startup guards.
 
 If the server cannot write the replacement invitation or audit record, it rolls back the reset. If the response is lost, the browser cannot tell whether the reset committed. Refresh the account and inspect its security items before retrying. Revoke and reissue any invitation whose status is uncertain.
 
@@ -100,4 +100,4 @@ The database records security revocations, home changes, tool restrictions and r
 
 Account administration does not expose access-mode activation, container destination assignment, backup promotion, key rotation, arbitrary provider credentials, filesystem permissions, notification recipient migration or general add-on configuration.
 
-Before deployment, the operator must complete the [migration procedure](migration-copy.md), back up the state and keys together, and verify that every runtime and transport rejects unauthorised access to another account's conversations. Physical devices, browser caches and recovery-only startup also need testing. The [release gates](README.md#activation-and-recovery) track this work. Prepared copies cannot start. Do not edit markers, transfer credential user IDs or use single-user controls to bypass family checks.
+Before deployment, the operator must complete the [migration and promotion procedure](migration-copy.md), back up state and keys together, and verify the supported browser/account flows. Prepared copies cannot start; only the separately promoted database is eligible. Do not edit markers, transfer credential user IDs or use single-user controls to bypass family checks. Physical-device and recovery testing remain operator responsibilities.

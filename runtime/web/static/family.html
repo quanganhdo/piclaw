@@ -5,22 +5,67 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="referrer" content="no-referrer" />
   <title>PiClaw family workspace</title>
+  <link rel="stylesheet" href="/static/classic/dist/app.bundle.css?v=__FAMILY_ASSET_VERSION__" />
   <link rel="stylesheet" href="/static/common/dist/family.bundle.css?v=__FAMILY_ASSET_VERSION__" />
+  <script src="/static/common/js/marked.min.js?v=__FAMILY_ASSET_VERSION__" defer></script>
+  <script src="/static/common/js/vendor/katex.min.js?v=__FAMILY_ASSET_VERSION__" defer></script>
+  <script src="/static/common/js/vendor/beautiful-mermaid.js?v=__FAMILY_ASSET_VERSION__" defer></script>
 </head>
 <body>
   <main class="family-shell">
-    <header>
-      <h1>PiClaw</h1><span id="account-name">Checking account…</span>
-      <button id="open-account" type="button" disabled>My account</button>
-      <button id="open-preferences" type="button" disabled>My preferences</button>
-      <button id="open-sessions" type="button" disabled>My sessions</button>
-      <button id="open-results" type="button" disabled>Scheduled results</button>
-      <button id="open-administration" type="button" hidden disabled>Family administration</button>
-      <button id="open-workspace-policy" type="button" disabled>Workspace and security</button>
-      <button id="sign-out" type="button" disabled>Sign out</button>
-      <a href="/login">Sign in</a>
+    <header class="family-header">
+      <div class="family-identity"><h1>PiClaw</h1><span id="account-name">Checking account…</span><span id="deployment-mode" class="mode-badge" hidden></span></div>
+      <div class="family-actions" aria-label="Account actions">
+        <button id="toggle-notifications" type="button" disabled>Enable notifications</button>
+        <button id="sign-out" type="button" disabled>Sign out</button>
+        <a id="switch-account" href="/login">Switch account</a>
+      </div>
     </header>
-    <p class="notice">Family preview: text conversations only. Shared workspace files are not private between tool-capable users.</p>
+    <nav class="settings-navigation" aria-label="Workspace settings">
+      <section aria-labelledby="personal-settings-heading">
+        <h2 id="personal-settings-heading">Personal</h2>
+        <div class="settings-links">
+          <button id="open-account" type="button" disabled>My account</button>
+          <button id="open-preferences" type="button" disabled>My preferences</button>
+        </div>
+      </section>
+      <section aria-labelledby="session-work-heading">
+        <h2 id="session-work-heading">Sessions and work</h2>
+        <div class="settings-links">
+          <button id="open-sessions" type="button" disabled>My sessions</button>
+          <button id="open-results" type="button" disabled>Scheduled results</button>
+          <button id="open-tasks" type="button" disabled>Prepared tasks</button>
+        </div>
+      </section>
+      <section aria-labelledby="family-settings-heading">
+        <h2 id="family-settings-heading">Shared family</h2>
+        <div class="settings-links">
+          <button id="open-memory" type="button" disabled>Family memory</button>
+          <button id="open-administration" type="button" hidden disabled>Family administration</button>
+          <button id="open-workspace-policy" type="button" disabled>Workspace and security</button>
+        </div>
+      </section>
+    </nav>
+    <p class="notice">Family mode uses the standard chat components with owner-scoped messages, uploads, rich content and live turn controls. Shared workspace files are not private between tool-capable users; shell, terminal, VNC and global provider/add-on controls remain unavailable.</p>
+    <section id="family-memory" aria-labelledby="memory-heading" hidden>
+      <header><h2 id="memory-heading" tabindex="-1">Family memory</h2><button id="close-memory" type="button">Close memory</button></header>
+      <p class="notice">Publishing copies your chosen text for every family account. Private source identifiers stay in your receipt. Publisher attribution does not prove authorship or truth. No Dream, file or prompt projection is enabled.</p>
+      <p>Drafts, inspected text and retry keys clear on refresh, close, focus loss, session change or navigation. A sent request may finish. Inspect history before creating another publication after an uncertain response.</p>
+      <button id="refresh-memory" type="button">Refresh memory history</button><button id="shared-memory" type="button">View shared memory</button>
+      <p id="memory-status" role="status" aria-live="polite"></p><ul id="memory-list" class="account-list"></ul>
+      <form id="memory-form" class="account-section" hidden>
+        <h3>Publish an excerpt</h3><p id="memory-source-target"></p><pre id="memory-source-text"></pre>
+        <label for="memory-excerpt">Exact excerpt to share (up to 16 KiB UTF-8)</label><textarea id="memory-excerpt" rows="4" autocomplete="off" spellcheck="false"></textarea>
+        <p>Only a verbatim excerpt is accepted. Preview and publication require a sign-in within five minutes. Retained limits: 100 publications per owner and 1,000 globally, including withdrawn copies.</p>
+        <label><input id="confirm-memory-publication" type="checkbox" disabled /> I reviewed this exact excerpt and want to share it with every family account</label>
+        <button id="publish-memory" type="submit" disabled>Publish memory</button><button id="discard-memory" type="button">Discard memory draft</button>
+      </form>
+      <section id="memory-detail" class="account-section" aria-labelledby="memory-detail-heading" hidden>
+        <h3 id="memory-detail-heading" tabindex="-1">Owned memory receipt</h3><p id="memory-detail-meta"></p><pre id="memory-detail-text"></pre>
+        <p>Withdrawal excludes this copy from future shared reads. It cannot retract earlier copies or provider context, erase history or free a retained-history slot. A sign-in within five minutes is required.</p>
+        <label><input id="confirm-memory-withdrawal" type="checkbox" disabled /> I confirm withdrawal of this exact publication</label><button id="withdraw-memory" type="button" disabled>Withdraw memory</button>
+      </section>
+    </section>
     <section id="account-settings" aria-labelledby="account-heading" hidden>
       <header><h2 id="account-heading" tabindex="-1">My account</h2><button id="close-account" type="button">Close account settings</button></header>
       <p class="notice">Personal profile and sign-in security. Workspace files, skills, providers and add-ons are shared; these controls do not change them.</p>
@@ -103,6 +148,35 @@
       </section>
       <p class="notice">Eligibility is checked again on every write. Archive/restore require an idle session; forks require a stable turn boundary. Merge, purge and full archive backup are not available.</p>
     </section>
+    <section id="scheduled-tasks" aria-labelledby="scheduled-tasks-heading" hidden>
+      <header><h2 id="scheduled-tasks-heading" tabindex="-1">Prepared tasks</h2><button id="close-tasks" type="button">Close tasks</button></header>
+      <p class="notice">Development preview: preparing leaves tasks paused. An inspected due task can request one run with separate confirmation. Automatic scheduling and deletion are unavailable. Writes require a sign-in within five minutes.</p>
+      <p>Drafts, retry payloads and inspected text clear on close, refresh, blur, session switch or navigation. A request already sent may finish. Inspect the task list before recreating an uncertain request.</p>
+      <button id="refresh-tasks" type="button">Refresh tasks</button><p id="scheduled-tasks-status" role="status" aria-live="polite"></p>
+      <form id="prepare-task-form" class="account-section" hidden>
+        <label for="task-target">Original conversation</label><select id="task-target" required></select>
+        <label for="task-prompt">Task prompt (up to 100 KiB UTF-8)</label><textarea id="task-prompt" rows="4" maxlength="102400" required></textarea>
+        <p>The complete encoded request must fit within 128 KiB, including JSON escaping.</p>
+        <label for="task-due">Due date and time (UTC, not local time)</label><input id="task-due" type="datetime-local" step="60" required />
+        <fieldset><legend>Allowed tools (none selected by default)</legend><div id="task-tools"></div></fieldset>
+        <p>No model override, shell commands, recurrence or notifications. At most 100 unrevoked grants can be prepared per account.</p>
+        <label><input id="confirm-task-preparation" type="checkbox" /> I confirm this task will remain paused and will not run</label>
+        <button id="prepare-task" type="submit" disabled>Prepare paused task</button><button id="reset-task-draft" type="button">Discard task draft</button>
+      </form>
+      <ul id="scheduled-task-list" class="account-list"></ul>
+      <section id="scheduled-task-detail" class="account-section" hidden>
+        <h3 id="scheduled-task-detail-heading" tabindex="-1">Inspect prepared task</h3><p id="scheduled-task-target"></p><p id="scheduled-task-state"></p><pre id="scheduled-task-text"></pre>
+        <section id="scheduled-task-run" class="account-section" aria-labelledby="task-run-heading" hidden>
+          <h4 id="task-run-heading">Request one execution attempt</h4>
+          <p>Review the original conversation, exact prompt, UTC due time and allowed tools above. Run once may call the model and permitted tools. Each grant can have only one admitted execution; check Scheduled results before requesting an already-admitted task.</p>
+          <label><input id="confirm-task-run" type="checkbox" disabled /> I approve one execution attempt with the inspected prompt, target and allowed tools</label>
+          <button id="run-task" type="button" disabled>Run once</button>
+          <p>An admission receipt does not prove the model started or succeeded. Nothing is published automatically. Close, refresh, reinspection, focus loss or navigation clears this confirmation and retry key, but cannot undo a sent request. Use Scheduled results to inspect or cancel remaining authority.</p>
+        </section>
+        <p>Revocation permanently removes this grant's future authority. It cannot undo work already performed, delete history or recreate the same preparation request.</p>
+        <label><input id="confirm-task-revocation" type="checkbox" disabled /> I confirm permanent revocation of this task grant</label><button id="revoke-task" type="button" disabled>Revoke task grant</button>
+      </section>
+    </section>
     <section id="scheduled-results" aria-labelledby="scheduled-results-heading" hidden>
       <header><h2 id="scheduled-results-heading" tabindex="-1">Scheduled results</h2><button id="close-results" type="button">Close results</button></header>
       <p class="notice">Development results only. Scheduling and automatic execution are not enabled. This panel does not create or run tasks.</p>
@@ -112,6 +186,13 @@
       <section id="scheduled-result-detail" class="account-section" hidden>
         <h3 id="scheduled-result-detail-heading" tabindex="-1">Inspect scheduled result</h3>
         <p id="scheduled-result-target"></p><p id="scheduled-result-state"></p><pre id="scheduled-result-text"></pre>
+        <section id="scheduled-execution-cancellation" class="account-section" aria-labelledby="cancel-execution-heading" hidden>
+          <h4 id="cancel-execution-heading">Cancel remaining execution authority</h4>
+          <p>Check the original conversation and execution ID above. Cancellation is permanent and requires a sign-in within five minutes. It prevents future guarded work and result settlement, but cannot undo earlier effects or guarantee that a provider request or tool has stopped. It does not delete the task or its history.</p>
+          <label><input id="confirm-execution-cancellation" type="checkbox" disabled /> I confirm permanent cancellation of this execution's remaining authority</label>
+          <button id="cancel-execution" type="button" disabled>Cancel execution authority</button>
+          <p>Closing, refreshing, losing focus or changing sessions clears this confirmation. A request already sent may finish. Refresh and inspect after an uncertain response; cancellation is never retried automatically.</p>
+        </section>
         <p>Publishing adds one service-labelled message to the original conversation. It does not switch conversations, run an agent or send notifications. A sign-in within five minutes is required. A sent request may finish after you close this panel; refresh before retrying.</p>
         <label><input id="confirm-result-publication" type="checkbox" disabled /> I confirm publication to the original conversation</label>
         <button id="publish-result" type="button" disabled>Publish result</button>
@@ -192,15 +273,12 @@
         </form>
       </section>
     </section>
-    <section class="session-controls" aria-label="Session navigation">
-      <label for="session-select">Owned session</label>
-      <select id="session-select" disabled></select>
+    <section class="session-controls" aria-label="Conversation controls">
       <button id="go-home" type="button" disabled>Go home</button>
       <button id="refresh" type="button" disabled>Refresh</button>
     </section>
     <p id="family-status" role="status">Loading…</p>
     <p id="family-error" role="alert" aria-live="polite"></p>
-    <section id="timeline" aria-label="Conversation"></section>
     <section id="message-recovery" aria-label="Held message recovery" hidden>
       <p id="recovery-status" role="status"></p>
       <div id="recovery-actions" hidden>
@@ -210,11 +288,7 @@
         <button id="skip-message" type="button" disabled>Skip held message</button>
       </div>
     </section>
-    <form id="compose-form">
-      <label for="message-text">Message</label>
-      <textarea id="message-text" rows="4" maxlength="102400" placeholder="Write a message (commands, attachments and steering are not yet available)" disabled required></textarea>
-      <button id="send-message" type="submit" disabled>Send</button>
-    </form>
+    <section id="family-chat-root" class="family-chat-surface" aria-label="Conversation" aria-busy="true"></section>
   </main>
   <script type="module" src="/static/common/dist/family.bundle.js?v=__FAMILY_ASSET_VERSION__"></script>
 </body>

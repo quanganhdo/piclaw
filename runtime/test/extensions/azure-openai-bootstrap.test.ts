@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
-import azureOpenAiExtension, { runAzureTokenRefresh, startAzureProviderBootstrap, writeAzureTokenCacheFile } from "../../extensions/integrations/azure-openai.ts";
+import azureOpenAiExtension, { createAzureTokenRefreshCoalescer, startAzureProviderBootstrap, writeAzureTokenCacheFile } from "../../extensions/integrations/azure-openai.ts";
 
 function fakeApi() {
   const handlers: Array<{ event: string; handler: (...args: any[]) => any }> = [];
@@ -55,22 +55,26 @@ describe("azure-openai bootstrap lifecycle", () => {
   test("managed identity token refresh coalesces concurrent callers and releases after settlement", async () => {
     let calls = 0;
     let release!: () => void;
+    let entered!: () => void;
     const blocker = new Promise<void>((resolve) => { release = resolve; });
+    const started = new Promise<void>((resolve) => { entered = resolve; });
     const refresh = async () => {
       calls += 1;
+      entered();
       await blocker;
       return { accessToken: `token-${calls}`, expiresOnEpoch: calls };
     };
 
-    const first = runAzureTokenRefresh(refresh);
-    const second = runAzureTokenRefresh(refresh);
+    const coalescer = createAzureTokenRefreshCoalescer();
+    const first = coalescer.run(refresh);
+    const second = coalescer.run(refresh);
     expect(first).toBe(second);
-    await Bun.sleep(1);
+    await started;
     expect(calls).toBe(1);
     release();
     expect((await first).accessToken).toBe("token-1");
 
-    expect((await runAzureTokenRefresh(refresh)).accessToken).toBe("token-2");
+    expect((await coalescer.run(refresh)).accessToken).toBe("token-2");
     expect(calls).toBe(2);
   });
 

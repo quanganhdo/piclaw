@@ -27,7 +27,7 @@ export interface UploadError extends Error {
   payload?: unknown;
 }
 
-interface UploadRequestOptions {
+export interface UploadRequestOptions {
   headers?: Record<string, string | number | null | undefined>;
   onProgress?: (progress: UploadProgress) => void;
 }
@@ -172,7 +172,7 @@ export async function uploadFileBatch<TResult>(
 }
 
 /** Upload one compose/media attachment with byte progress. */
-export async function uploadMedia(file: File, options: Pick<UploadRequestOptions, "onProgress"> = {}): Promise<{ id: number; [key: string]: unknown }> {
+export async function uploadMedia(file: File, options: UploadRequestOptions = {}): Promise<{ id: number; [key: string]: unknown }> {
   const formData = new FormData();
   formData.append("file", file);
   const payload = await uploadJson("/media/upload", formData, options);

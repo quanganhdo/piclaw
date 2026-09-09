@@ -1,14 +1,9 @@
 import { html } from '../vendor/preact-htm.js';
-import { ComposeBox } from '../components/compose-box.js';
 import { OobePanel } from '../components/oobe-panel.js';
-import { BtwPanel } from '../components/btw-panel.js';
-import { FloatingWidgetPane } from '../components/floating-widget-pane.js';
-import { AttachmentPreviewModal } from '../components/attachment-preview-modal.js';
 import { SettingsDialogLoader } from '../components/settings-dialog-loader.js';
+import { ChatSurface } from '../components/chat-surface.js';
 import { TimelineQuickActions } from '../components/timeline-quick-actions.js';
 import { TimelineMenu } from '../components/timeline-menu.js';
-import { AgentRequestModal, AgentStatus } from '../components/status.js';
-import { Timeline } from '../components/timeline.js';
 import { WorkspaceExplorer } from '../components/workspace-explorer.js';
 import { TabStrip } from '../components/tab-strip.js';
 import { MarkdownPreview } from '../components/markdown-preview.js';
@@ -495,7 +490,8 @@ export function renderMainShell(options: MainShellRenderOptions): any {
             onDismiss=${oobePanelState.kind === 'provider-missing' ? handleDismissProviderMissingOobe : handleCompleteProviderReadyOobe}
           />
         `}
-        <${Timeline}
+        <${SettingsDialogLoader} />
+        <${ChatSurface}
           posts=${posts}
           hasMore=${isMainTimelineView ? hasMore : false}
           onLoadMore=${isMainTimelineView ? loadMore : undefined}
@@ -504,7 +500,6 @@ export function renderMainShell(options: MainShellRenderOptions): any {
           onMessageRef=${addMessageRef}
           onScrollToMessage=${scrollToMessage}
           onFileRef=${openTimelineFileFromPill || openFileFromPill}
-          onPostClick=${undefined}
           onDeletePost=${handleDeletePost}
           onOpenWidget=${handleOpenFloatingWidget}
           onOpenAttachmentPreview=${setAttachmentPreview}
@@ -514,116 +509,89 @@ export function renderMainShell(options: MainShellRenderOptions): any {
           reverse=${isMainTimelineView}
           removingPostIds=${removingPostIds}
           searchQuery=${searchQuery}
-        />
-        <${AgentStatus}
-          status=${isCompactionStatus(agentStatus) ? null : agentStatus}
-          draft=${agentDraft}
-          plan=${agentPlan}
-          thought=${agentThought}
+          agentStatus=${agentStatus}
+          isCompactionStatus=${isCompactionStatus}
+          agentDraft=${agentDraft}
+          agentPlan=${agentPlan}
+          agentThought=${agentThought}
           pendingRequest=${pendingRequest}
           intent=${intentToast}
-          turnId=${currentTurnId}
+          currentTurnId=${currentTurnId}
           steerQueued=${steerQueued}
           onPanelToggle=${handlePanelToggle}
-          showExtensionPanels=${false}
-        />
-        <${BtwPanel}
-          session=${btwSession}
-          onClose=${closeBtwPanel}
-          onRetry=${handleBtwRetry}
-          onInject=${handleBtwInject}
-        />
-        <${FloatingWidgetPane}
-          widget=${floatingWidget}
-          onClose=${handleCloseFloatingWidget}
-          onWidgetEvent=${handleFloatingWidgetEvent}
-        />
-        ${attachmentPreview && html`
-          <${AttachmentPreviewModal}
-            mediaId=${attachmentPreview.mediaId}
-            info=${attachmentPreview.info}
-            onClose=${() => setAttachmentPreview(null)}
-          />
-        `}
-        <${SettingsDialogLoader} />
-        <${AgentStatus}
-          extensionPanels=${Array.from(extensionStatusPanels.values())}
-          pendingPanelActions=${pendingExtensionPanelActions}
+          extensionPanels=${extensionStatusPanels.values()}
+          pendingExtensionPanelActions=${pendingExtensionPanelActions}
           onExtensionPanelAction=${handleExtensionPanelAction}
-          turnId=${currentTurnId}
-          steerQueued=${steerQueued}
-          onPanelToggle=${handlePanelToggle}
-          showCorePanels=${false}
-        />
-        <${ComposeBox}
-          onPost=${(response) => {
-            handleComposePost({
-              response,
-              viewStateRef,
-              scrollToBottom,
-            });
+          btwSession=${btwSession}
+          onCloseBtw=${closeBtwPanel}
+          onRetryBtw=${handleBtwRetry}
+          onInjectBtw=${handleBtwInject}
+          floatingWidget=${floatingWidget}
+          onCloseWidget=${handleCloseFloatingWidget}
+          onWidgetEvent=${handleFloatingWidgetEvent}
+          attachmentPreview=${attachmentPreview}
+          onCloseAttachmentPreview=${() => setAttachmentPreview(null)}
+          composeProps=${{
+            onPost: (response) => handleComposePost({ response, viewStateRef, scrollToBottom }),
+            onFocus: handleComposeFocus,
+            searchMode: searchOpen,
+            searchScope,
+            onSearch: handleSearch,
+            onSearchScopeChange: handleSearchScopeChange || setSearchScope,
+            onEnterSearch: enterSearchMode,
+            onExitSearch: exitSearchMode,
+            fileRefs,
+            onRemoveFileRef: removeFileRef,
+            onClearFileRefs: clearFileRefs,
+            onSetFileRefs: setFileRefsFromCompose,
+            folderRefs,
+            onRemoveFolderRef: removeFolderRef,
+            onClearFolderRefs: clearFolderRefs,
+            onSetFolderRefs: setFolderRefsFromCompose,
+            messageRefs,
+            onRemoveMessageRef: removeMessageRef,
+            onClearMessageRefs: clearMessageRefs,
+            onSetMessageRefs: setMessageRefsFromCompose,
+            onSwitchChat: handleBranchPickerChange,
+            onRenameSession: handleRenameCurrentBranch,
+            isRenameSessionInProgress: isRenamingBranch,
+            onCreateSession: handleCreateSessionFromCompose,
+            onCreateRootSession: handleCreateRootSessionFromCompose,
+            onDeleteSession: handlePruneCurrentBranch,
+            onPurgeArchivedSession: handlePurgeArchivedBranch,
+            onRestoreSession: handleRestoreBranch,
+            activeEditorPath: chatOnlyMode ? null : tabStripActiveId,
+            onAttachEditorFile: chatOnlyMode ? undefined : attachActiveEditorFile,
+            onOpenFilePill: openFileFromPill,
+            followupQueueCount,
+            followupQueueItems,
+            onInjectQueuedFollowup: handleInjectQueuedFollowup,
+            onRemoveQueuedFollowup: handleRemoveQueuedFollowup,
+            onMoveQueuedFollowup: handleMoveQueuedFollowup,
+            onSubmitIntercept: handleBtwIntercept,
+            onMessageResponse: handleMessageResponse,
+            onSubmitError: handleComposeSubmitError,
+            isAgentActive: isComposeBoxAgentActive,
+            activeChatAgents,
+            currentChatJid,
+            connectionStatus,
+            stateAccessFailed,
+            activeModel,
+            agentModelsPayload,
+            modelUsage: activeModelUsage,
+            thinkingLevel: activeThinkingLevel,
+            supportsThinking,
+            contextUsage,
+            notificationsEnabled,
+            notificationPermission,
+            onToggleNotifications: handleToggleNotifications,
+            onModelChange: setActiveModel,
+            onModelStateChange: applyModelState,
+            statusNotice: isCompactionStatus(agentStatus) ? agentStatus : null,
+            extensionWorkingState,
+            prefillRequest: composePrefillRequest,
           }}
-          onFocus=${handleComposeFocus}
-          searchMode=${searchOpen}
-          searchScope=${searchScope}
-          onSearch=${handleSearch}
-          onSearchScopeChange=${handleSearchScopeChange || setSearchScope}
-          onEnterSearch=${enterSearchMode}
-          onExitSearch=${exitSearchMode}
-          fileRefs=${fileRefs}
-          onRemoveFileRef=${removeFileRef}
-          onClearFileRefs=${clearFileRefs}
-          onSetFileRefs=${setFileRefsFromCompose}
-          folderRefs=${folderRefs}
-          onRemoveFolderRef=${removeFolderRef}
-          onClearFolderRefs=${clearFolderRefs}
-          onSetFolderRefs=${setFolderRefsFromCompose}
-          messageRefs=${messageRefs}
-          onRemoveMessageRef=${removeMessageRef}
-          onClearMessageRefs=${clearMessageRefs}
-          onSetMessageRefs=${setMessageRefsFromCompose}
-          onSwitchChat=${handleBranchPickerChange}
-          onRenameSession=${handleRenameCurrentBranch}
-          isRenameSessionInProgress=${isRenamingBranch}
-          onCreateSession=${handleCreateSessionFromCompose}
-          onCreateRootSession=${handleCreateRootSessionFromCompose}
-          onDeleteSession=${handlePruneCurrentBranch}
-          onPurgeArchivedSession=${handlePurgeArchivedBranch}
-          onRestoreSession=${handleRestoreBranch}
-          activeEditorPath=${chatOnlyMode ? null : tabStripActiveId}
-          onAttachEditorFile=${chatOnlyMode ? undefined : attachActiveEditorFile}
-          onOpenFilePill=${openFileFromPill}
-          followupQueueCount=${followupQueueCount}
-          followupQueueItems=${followupQueueItems}
-          onInjectQueuedFollowup=${handleInjectQueuedFollowup}
-          onRemoveQueuedFollowup=${handleRemoveQueuedFollowup}
-          onMoveQueuedFollowup=${handleMoveQueuedFollowup}
-          onSubmitIntercept=${handleBtwIntercept}
-          onMessageResponse=${handleMessageResponse}
-          onSubmitError=${handleComposeSubmitError}
-          isAgentActive=${isComposeBoxAgentActive}
-          activeChatAgents=${activeChatAgents}
-          currentChatJid=${currentChatJid}
-          connectionStatus=${connectionStatus}
-          stateAccessFailed=${stateAccessFailed}
-          activeModel=${activeModel}
-          agentModelsPayload=${agentModelsPayload}
-          modelUsage=${activeModelUsage}
-          thinkingLevel=${activeThinkingLevel}
-          supportsThinking=${supportsThinking}
-          contextUsage=${contextUsage}
-          notificationsEnabled=${notificationsEnabled}
-          notificationPermission=${notificationPermission}
-          onToggleNotifications=${handleToggleNotifications}
-          onModelChange=${setActiveModel}
-          onModelStateChange=${applyModelState}
-          statusNotice=${isCompactionStatus(agentStatus) ? agentStatus : null}
-          extensionWorkingState=${extensionWorkingState}
-          prefillRequest=${composePrefillRequest}
-        />
-        <${AgentRequestModal}
-          request=${pendingRequest}
-          onRespond=${() => {
+          onPendingRequestRespond=${() => {
             setPendingRequest(null);
             pendingRequestRef.current = null;
           }}

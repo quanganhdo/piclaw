@@ -159,7 +159,7 @@ function bootstrapWorkspaceFromSkel(): void {
 }
 
 /** Initialize directories, database, and persisted runtime state. */
-export function initializeRuntimeEnvironment(state: RuntimeState): void {
+export function initializeRuntimeEnvironment(state: RuntimeState): ReturnType<typeof validateAccessStartup> {
   patchConsoleTimestamps();
   mkdirSync(STORE_DIR, { recursive: true });
   mkdirSync(DATA_DIR, { recursive: true });
@@ -167,9 +167,9 @@ export function initializeRuntimeEnvironment(state: RuntimeState): void {
   bootstrapWorkspaceFromSkel();
 
   initDatabase();
-  validateAccessStartup(getDb());
+  const access = validateAccessStartup(getDb());
   startAuthMaintenance();
-  installAddonRuntimeApi();
+  if (access.effectiveMode === "single-user") installAddonRuntimeApi();
   applyEnvironmentOverrides();
   const watchdogWarning = getProgressWatchdogSafetyWarning();
   if (watchdogWarning) {
@@ -190,6 +190,7 @@ export function initializeRuntimeEnvironment(state: RuntimeState): void {
   startToolOutputCleanup(toolOutputConfig.retentionMs, toolOutputConfig.cleanupIntervalMs);
   state.loadTimestamps();
   state.loadChats();
+  return access;
 }
 
 export function resolveStartupSessionWarmupOptions(env: NodeJS.ProcessEnv = process.env): {
@@ -557,6 +558,11 @@ export async function startWebChannel(queue: AgentQueue, agentPool: AgentPool): 
   // Do not freeze extension routes here: workspace/add-on extension factories
   // register their HTTP routes during the first session resource reload.
   // createSessionInDir() freezes the registry after that initial load pass.
+
+  if (readAccessConfig().mode === "family-shared") {
+    registerSessionControlHandler(agentPool, web);
+    return web;
+  }
 
   // Wire the first-class add-on runtime API to the web channel's in-process
   // message storage/queue/run path. Add-ons should use this instead of

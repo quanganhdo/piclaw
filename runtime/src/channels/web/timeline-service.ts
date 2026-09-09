@@ -22,6 +22,8 @@ import {
 } from "../../db.js";
 
 import type { InteractionRow } from "../../db/types.js";
+import { readAccessConfig } from "../../core/config-access.js";
+import { isFamilyTurnHidden } from "../../db/family-turn-queue.js";
 
 const QUEUE_PLACEHOLDER_MARKER = "\u2063";
 const LEGACY_QUEUE_STATUS = "Queued as a follow-up (one-at-a-time).";
@@ -177,6 +179,7 @@ export function getSearchResponse(
 /** Build a single thread's messages for GET /thread/:id. */
 export function getThreadResponse(chatJid: string, id: number | null): { status: number; body: unknown } {
   if (!id) return { status: 404, body: { error: "Thread not found" } };
+  if (readAccessConfig().mode === "family-shared" && isFamilyTurnHidden(chatJid, id)) return { status: 404, body: { error: "Thread not found" } };
   const thread = getMessageByRowId(chatJid, id);
   if (!thread) return { status: 404, body: { error: "Thread not found" } };
   return { status: 200, body: { thread: [thread] } };

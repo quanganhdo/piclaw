@@ -10,7 +10,7 @@ export {
   createToolOutputSearchTool,
 } from "../tools/context-tools.js";
 
-export { canUseLegacyToolOutput, createToolOutputAccessGuard, ToolOutputAccessDenied } from "../core/tool-output-access.js";
+export { canUseToolOutput, canUseLegacyToolOutput, createToolOutputAccessGuard, ToolOutputAccessDenied, type ToolOutputAccessGuard } from "../core/tool-output-access.js";
 
 export {
   buildPreview,

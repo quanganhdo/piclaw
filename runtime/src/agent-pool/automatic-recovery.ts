@@ -172,6 +172,7 @@ export function isNonRecoverableFailure(errorText: string | null | undefined): b
 export function classifyOpaqueAgentFailure(errorText: string | null | undefined): AgentFailureCategory {
   const value = String(errorText || "").trim();
   if (!value) return "unknown";
+  if (value.startsWith("PICLAW-BUDGET-BLOCKED:")) return "provider_budget";
   if (/stale-progress watchdog/i.test(value)) return "stalled_work";
   if (isOrphanFunctionCallOutputError(value)) return "session_corruption";
   // A 5xx response reached the provider and failed transiently; even during

@@ -131,7 +131,7 @@ Relevant SSE events are `agent_status`, `agent_thought`, `agent_thought_delta`, 
 
 Protected recovery uses a `control_intent` block with intent `protected_recovery_continuation`. Its type, schema version and source/thread lineage grant authority; its label is presentation-only. `RunAgentOptions.protectedRecoveryContinuation` marks the generated ordinary continuation as one-shot. Matching the continuation prompt text or label does not grant control authority. A generic tools-disabled retry may request this handoff, but only the ordinary tool-enabled continuation or a structurally eligible `finalize` attempt may close tool-dependent work.
 
-Terminal failures use these `failureCategory` values: `rate_limit`, `auth_config`, `network`, `aborted`, `timeout`, `tool_budget`, `context_pressure`, `output_limit`, `provider`, `no_terminal_output`, `stalled_work`, `session_corruption`, `non_recoverable`, `already_processing`, `provider_unavailable` and `unknown`. Recovery diagnostics retain the category, classifier, strategy, tool counts and context-pressure snapshot. Status and outcome-marker code consume those fields instead of reparsing titles, details or assistant output.
+Terminal failures use these `failureCategory` values: `rate_limit`, `auth_config`, `network`, `aborted`, `timeout`, `tool_budget`, `provider_budget`, `context_pressure`, `output_limit`, `provider`, `no_terminal_output`, `stalled_work`, `session_corruption`, `non_recoverable`, `already_processing`, `provider_unavailable` and `unknown`. Recovery diagnostics retain the category, classifier, strategy, tool counts and context-pressure snapshot. Status and outcome-marker code consume those fields instead of reparsing titles, details or assistant output.
 
 #### Provider and transport limits
 

@@ -5,7 +5,7 @@
 import { Type } from "typebox";
 import { readAccessConfig } from "../core/config-access.js";
 import type { AgentToolResult, ExtensionAPI, ExtensionFactory } from "@earendil-works/pi-coding-agent";
-import { createTask, deleteTask, getTaskById, updateTask } from "../db.js";
+import { createTask, deleteTask, getBudgetCap, getDb, getTaskById, saveBudgetCap, setBudgetCapEnabled, updateTask } from "../db.js";
 import {
   getScheduledTaskInspection,
   listScheduledTasks,
@@ -40,6 +40,8 @@ type ScheduledTaskToolParams = {
   command?: string;
   cwd?: string;
   timeout_sec?: number;
+  /** Optional API-equivalent USD cap for each agent invocation. */
+  budget_usd?: number;
 };
 
 function computeInitialRun(scheduleType: ScheduleType, scheduleValue: string): string | null {
@@ -131,6 +133,7 @@ const ScheduleTaskSchema = Type.Object({
   command: Type.Optional(Type.String({ description: "Shell command to execute using the host shell (bash/sh on POSIX, PowerShell/cmd on Windows)." })),
   cwd: Type.Optional(Type.String({ description: "Working directory for shell tasks (relative to workspace)." })),
   timeout_sec: Type.Optional(Type.Integer({ description: "Shell timeout in seconds.", minimum: 1, maximum: 3600 })),
+  budget_usd: Type.Optional(Type.Number({ description: "Optional API-equivalent USD cap for each scheduled agent run.", minimum: 0 })),
   notify: Type.Optional(Type.Boolean({ description: "Whether successful task output should trigger a Pushover nudge. Defaults true." })),
   muted: Type.Optional(Type.Boolean({ description: "Set true to suppress Pushover nudges for this task." })),
   no_nudge: Type.Optional(Type.Boolean({ description: "Compatibility alias for muted=true." })),
@@ -168,6 +171,7 @@ const ScheduledTaskToolSchema = Type.Object({
   command: Type.Optional(Type.String({ description: "Shell command for action=create and task_kind=shell." })),
   cwd: Type.Optional(Type.String({ description: "Working directory for shell tasks (relative to workspace)." })),
   timeout_sec: Type.Optional(Type.Integer({ description: "Shell timeout in seconds.", minimum: 1, maximum: 3600 })),
+  budget_usd: Type.Optional(Type.Number({ description: "Optional API-equivalent USD cap for each scheduled agent run.", minimum: 0 })),
 });
 
 function formatTaskDetail(row: ScheduledTaskInspectionRecord): string {
@@ -251,24 +255,39 @@ function createScheduledTask(params: ScheduledTaskToolParams): AgentToolResult<R
     if (!nextRun) {
       return makeTextResult("Invalid schedule value.", failureDetails("create", { chat_jid: chatJid }));
     }
+    const budgetMicros = params.budget_usd === undefined ? null : Math.round(params.budget_usd * 1_000_000);
+    if (budgetMicros !== null && (!Number.isSafeInteger(budgetMicros) || budgetMicros < 0)) {
+      return makeTextResult("Scheduled budget_usd must be a non-negative amount in the supported range.", failureDetails("create", { chat_jid: chatJid }));
+    }
 
     const taskId = createUuid("task");
-    createTask({
-      id: taskId,
-      chat_jid: chatJid,
-      prompt,
-      model: typeof params.model === "string" && params.model.trim() ? params.model.trim() : null,
-      task_kind: "agent",
-      command: null,
-      cwd: null,
-      timeout_sec: null,
-      notify_on_complete: normalizeNotifyOnComplete(params),
-      schedule_type: scheduleType,
-      schedule_value: scheduleValue,
-      next_run: nextRun,
-      status: "active",
-      created_at: new Date().toISOString(),
-    });
+    getDb().transaction(() => {
+      createTask({
+        id: taskId,
+        chat_jid: chatJid,
+        prompt,
+        model: typeof params.model === "string" && params.model.trim() ? params.model.trim() : null,
+        task_kind: "agent",
+        command: null,
+        cwd: null,
+        timeout_sec: null,
+        notify_on_complete: normalizeNotifyOnComplete(params),
+        schedule_type: scheduleType,
+        schedule_value: scheduleValue,
+        next_run: nextRun,
+        status: "active",
+        created_at: new Date().toISOString(),
+      });
+      if (budgetMicros !== null) {
+        saveBudgetCap({
+          id: `scheduled-cap:${taskId}`,
+          scope: "scheduled_run",
+          metric: "api_usd_micros",
+          amount: budgetMicros,
+          scheduledTaskId: taskId,
+        });
+      }
+    }).immediate();
 
     return makeTextResult(
       `Scheduled agent task for ${chatJid}.`,
@@ -278,6 +297,7 @@ function createScheduledTask(params: ScheduledTaskToolParams): AgentToolResult<R
         next_run: nextRun,
         chat_jid: chatJid,
         notify_on_complete: normalizeNotifyOnComplete(params),
+        budget_usd: params.budget_usd ?? null,
       }),
     );
   }
@@ -289,6 +309,12 @@ function createScheduledTask(params: ScheduledTaskToolParams): AgentToolResult<R
   if (params.model) {
     return makeTextResult(
       "Model overrides are not supported for shell tasks.",
+      failureDetails("create", { chat_jid: chatJid, task_kind: "shell" }),
+    );
+  }
+  if (params.budget_usd !== undefined) {
+    return makeTextResult(
+      "budget_usd applies only to scheduled agent tasks; shell tasks do not invent model spend.",
       failureDetails("create", { chat_jid: chatJid, task_kind: "shell" }),
     );
   }
@@ -498,7 +524,11 @@ function deleteScheduledTask(params: ScheduledTaskToolParams): AgentToolResult<R
   if ("content" in loaded) return loaded;
 
   const { task, id } = loaded;
-  deleteTask(id);
+  getDb().transaction(() => {
+    const capId = `scheduled-cap:${id}`;
+    if (getBudgetCap(capId)?.enabled) setBudgetCapEnabled(capId, false);
+    deleteTask(id);
+  }).immediate();
   return makeTextResult(
     `Deleted task ${id}.`,
     successDetails("delete", {

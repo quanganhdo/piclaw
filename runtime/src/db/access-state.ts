@@ -2,13 +2,14 @@ import type { Database } from "bun:sqlite";
 
 import { readAccessConfig, type AccessMode } from "../core/config-access.js";
 import { initializeUserSchema } from "./users.js";
+import { validatePromotedFamilyDatabase } from "./access-migration-promotion.js";
 
 export interface AccessState {
   activatedMode: AccessMode;
   schemaVersion: number;
 }
 
-/** Additive foundation only. No multi-user activation writer is exposed. */
+/** Initialise the access marker for a fresh single-user store. */
 export function initializeAccessSchema(database: Database, legacyDisplayName = "User"): void {
   database.transaction(() => {
     const hasState = database.query("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'access_state'").get();
@@ -33,7 +34,7 @@ export function initializeAccessSchema(database: Database, legacyDisplayName = "
 
 export function readAccessState(database: Database): AccessState {
   if (database.query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='access_migration_preparation'").get()) {
-    throw new Error('Prepared migration copy cannot start. Ownership preparation is incomplete; restore the untouched source or use a future integrated migration release.');
+    throw new Error('Prepared migration copy cannot start. Keep the untouched source and promote an eligible reviewed version-five copy into a separate database.');
   }
   const row = database.query("SELECT activated_mode, schema_version FROM access_state WHERE id = 1").get() as
     { activated_mode: AccessMode; schema_version: number } | null;
@@ -44,17 +45,22 @@ export function readAccessState(database: Database): AccessState {
 }
 
 /** Called before listeners, workers, model sessions or add-on execution can start. */
-export function validateAccessStartup(database: Database, configPath?: string): { configuredMode: AccessMode; effectiveMode: "single-user"; modeExplicit: boolean } {
+export function validateAccessStartup(database: Database, configPath?: string): { configuredMode: AccessMode; effectiveMode: "single-user" | "family-shared"; modeExplicit: boolean } {
   const config = readAccessConfig(configPath);
   const state = readAccessState(database);
   if (state.activatedMode !== config.mode) {
     throw new Error(`Access mode mismatch: store=${state.activatedMode}, config=${config.mode}. Mode transitions require explicit reviewed migration; no automatic downgrade is allowed.`);
   }
-  if (config.mode !== "single-user") {
-    throw new Error(`Access mode ${config.mode} is unavailable until its integrated multi-user release gate passes. Existing multi-user data must be opened with a compatible release.`);
+  if (config.mode === "isolated-containers") {
+    throw new Error("Access mode isolated-containers is unavailable until its separate integrated release gate passes.");
   }
   const admin = database.query("SELECT 1 FROM users WHERE role = 'admin' AND enabled = 1 LIMIT 1").get();
   if (!admin) throw new Error("Access state has no enabled administrator; restore a compatible backup.");
+  if (config.mode === "family-shared") {
+    if (!config.modeExplicit) throw new Error("Family-shared startup requires explicit access configuration.");
+    validatePromotedFamilyDatabase(database);
+    return { configuredMode: config.mode, effectiveMode: "family-shared", modeExplicit: true };
+  }
   return { configuredMode: config.mode, effectiveMode: "single-user", modeExplicit: config.modeExplicit };
 }
 

@@ -6,8 +6,8 @@ import { chromium, type Browser } from 'playwright';
 
 import { cleanupVncHarnessReport, probeHarnessHealth } from './vnc-harness-report-helpers.ts';
 
-const DEFAULT_TARGET = '192.168.1.10:5917';
-const DEFAULT_PASSWORD = 'cd8a99cd';
+const DEFAULT_TARGET = "";
+const DEFAULT_PASSWORD = "";
 const DEFAULT_HOST = '127.0.0.1';
 const DEFAULT_PORT = 8791;
 const DEFAULT_LIVE_WAIT_MS = 15000;
@@ -223,6 +223,8 @@ ${consoleLines.slice(-40).join('\n')}
 
 async function main() {
     const args = parseArgs(process.argv.slice(2));
+    if (process.env.PICLAW_E2E_DISPOSABLE !== '1' || !args.target) throw new Error('VNC tests require an explicit disposable target and PICLAW_E2E_DISPOSABLE=1.');
+    if (!['127.0.0.1', 'localhost', '::1'].includes(args.host)) throw new Error('VNC test harness must bind loopback.');
     const baseUrl = `http://${args.host}:${args.port}`;
     const startedAt = new Date().toISOString();
 
@@ -237,8 +239,8 @@ async function main() {
             '--host', args.host,
             '--port', String(args.port),
             '--target', args.target,
-            '--password', args.password,
         ],
+        env: { ...process.env, VNC_HARNESS_PASSWORD: args.password },
         stdout: 'pipe',
         stderr: 'pipe',
         cwd: repoRoot,
@@ -265,7 +267,6 @@ async function main() {
 
         const params = new URLSearchParams();
         params.set('target', args.target);
-        params.set('password', args.password);
         params.set('autoconnect', '0');
         if (args.encodings) params.set('encodings', args.encodings);
         const pageUrl = `${baseUrl}/?${params.toString()}`;

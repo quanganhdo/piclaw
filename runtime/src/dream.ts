@@ -580,6 +580,8 @@ export async function runDreamAgentTurn(options: { chatJid: string; days?: numbe
       }
     }
     const out = await options.agentPool.runAgent(buildDreamPrompt({ mode, days }), dreamChatJid, {
+      budgetWorkId: `background:${dreamChatJid}`,
+      budgetExecutionKind: "background",
       timeoutMs: getDreamAgentTimeoutMs(),
       toolCeilingFilter: isDreamToolAllowed,
     });

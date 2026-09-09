@@ -64,6 +64,7 @@ const MAX_SSE_CLIENTS = 50;
 export interface SseAuthorisation {
   readonly chatJid: string;
   readonly isAuthorised: () => boolean;
+  readonly project?: (eventType: string, data: unknown) => unknown | null;
 }
 
 function isAuthorised(authorisation?: SseAuthorisation): boolean {
@@ -151,6 +152,12 @@ export function revalidateSseClient(channel: SseClientContainer, client: Pending
 }
 
 /** Encode and send an SSE event to all connected clients. */
+function projectFamilyEvent(authorisation: SseAuthorisation, eventType: string, data: unknown): unknown | null {
+  if (typeof authorisation.project !== "function") return data;
+  try { return authorisation.project(eventType, data); }
+  catch { return null; }
+}
+
 export function broadcastEvent(channel: SseClientContainer, eventType: string, data: unknown): void {
   const eventChatJid = data && typeof data === "object" && typeof (data as Record<string, unknown>).chat_jid === "string"
     ? String((data as Record<string, unknown>).chat_jid || "").trim() || null
@@ -164,8 +171,6 @@ export function broadcastEvent(channel: SseClientContainer, eventType: string, d
     return;
   }
 
-  const payload = `event: ${eventType}\ndata: ${JSON.stringify(data)}\n\n`;
-  const bytes = encoder.encode(payload);
   for (const client of channel.clients) {
     if (!revalidateSseClient(channel, client)) continue;
     // No global broadcast payloads or unknown event types are approved for family clients.
@@ -173,6 +178,9 @@ export function broadcastEvent(channel: SseClientContainer, eventType: string, d
     if (eventChatJid && client.chatJid !== eventChatJid) {
       continue;
     }
+    const projected = client.authorisation ? projectFamilyEvent(client.authorisation, eventType, data) : data;
+    if (projected === null) continue;
+    const bytes = encoder.encode(`event: ${eventType}\ndata: ${JSON.stringify(projected)}\n\n`);
     try {
       client.controller.enqueue(bytes);
     } catch {

@@ -5,6 +5,7 @@ import type { FamilyWorkspacePolicy } from '../core/family-workspace-policy.js';
 import { requireAccountActor } from './account-administration.js';
 import { readAccessState } from './access-state.js';
 import { readFamilyToolPolicy } from './family-tool-restrictions.js';
+import { readFamilySkillProvenance } from '../core/family-skill-provenance.js';
 
 /** Own identity + non-secret policy metadata only; no file, provider, add-on or keychain enumeration. */
 export function readFamilyWorkspacePolicy(database: Database, actor: AuthenticatedPrincipal): FamilyWorkspacePolicy {
@@ -15,13 +16,13 @@ export function readFamilyWorkspacePolicy(database: Database, actor: Authenticat
     return {
       user_id: user.id,
       deployment: { routing_mode: 'family-shared', configured_mode: configured.mode, activated_mode: state.activatedMode,
-        supported_startup_mode: 'single-user', activation_allowed: false, container_isolation: false },
+        supported_startup_mode: 'family-shared', activation_allowed: false, container_isolation: false },
       tools: { policy: 'fixed-family-web-preview', configurable: false, allowed: [...tools.allowed], denied: [...tools.denied], revision: tools.revision,
         scope: 'Administrator restrictions narrow the fixed preview ceiling for new runs. A running turn retains its policy snapshot, including recovery replacement. Active tools may be fewer. Direct tools, queues, add-ons and transports still require integrated release verification.' },
       resources: [
         { name: 'Workspace files', scope: 'shared', detail: 'One workspace and OS identity. File reads are shared; application ownership checks do not confine filesystem access.' },
         { name: 'Skills and add-ons', scope: 'shared', detail: 'Installed skills, add-ons and their global configuration are shared. Per-user installation and arbitrary add-on APIs are unavailable in this preview.' },
-        { name: 'Workspace search index', scope: 'shared', detail: 'One workspace index; it is not a private conversation index. The family browser does not expose workspace search.' },
+        { name: 'Workspace search index', scope: 'shared', detail: 'Separate shared-family index of notes/family and .pi/skills only. Personal notes/users, legacy notes and configured extra roots are excluded. No family browser or model search capability is enabled; explicit file access remains shared.' },
         { name: 'Providers and tool credentials', scope: 'shared', detail: 'Provider credentials/configuration and permitted integrations belong to the instance. The preview exposes no provider login, generic keychain or environment editor.' },
         { name: 'Conversation trees', scope: 'account-private', detail: 'HTTP/store-tool reads are checked against active root ownership. Administrators manage metadata, not another owner’s transcript.' },
         { name: 'Authentication factors', scope: 'account-private', detail: 'TOTP ciphertext and enrolment grants use dedicated authentication tables, outside generic keychain listing/injection. Shared-machine privileged processes remain trusted.' },
@@ -36,7 +37,8 @@ export function readFamilyWorkspacePolicy(database: Database, actor: Authenticat
         { name: 'Shell and file mutation', state: 'denied', detail: 'Shell, exec, scripts, write and edit tools are outside the admitted web-turn ceiling. This is not a sandbox against an OS-level process or installed extension.' },
         { name: 'Keychain, SQL and environment editing', state: 'denied', detail: 'No generic keychain, raw SQL or environment tools in admitted web turns; raw SQL also denies at its multi-user tool boundary.' },
         { name: 'Add-on management and external automation', state: 'denied', detail: 'Family browser add-on APIs and installed panes are disabled; unknown tools are outside the fixed ceiling.' },
-        { name: 'Scheduling, Dream and notifications', state: 'denied', detail: 'Family scheduling and automatic Dream/push flows need durable owner provenance and recipient binding. They are not enabled by account creation.' },
+        { name: 'Scheduling and Dream', state: 'denied', detail: 'Automatic family scheduling and Dream remain disabled. Explicit task preparation/run controls and internal owner Dream admission have separate gates.' },
+        { name: 'Browser notifications', state: 'owner-scoped', detail: 'Web Push subscriptions bind the immutable account and current login. Reply delivery resolves the conversation owner and rechecks the recipient before sending.' },
       ],
       settings: [
         { name: 'Account names, factors and device labels', scope: 'user', availability: 'Explicit own-account APIs; administrator operations are separate and confirmed.' },
@@ -47,12 +49,14 @@ export function readFamilyWorkspacePolicy(database: Database, actor: Authenticat
         { name: 'Model/thinking defaults and compaction', scope: 'personal empty-root defaults; existing session state; shared compaction', availability: 'Own model-defaults editor selects from the available scoped catalogue for empty owned roots. Resumed/fork selections win; no shared Settings, credentials, live model switch or compaction editor.' },
         { name: 'Tool activation and capability profile', scope: 'fixed ceiling plus per-account denials', availability: 'Recent administrators can deny/restore only tools inside the preview ceiling. Changes affect new runs; broader grants and role profiles remain unavailable.' },
         { name: 'Provider login/OAuth, environment and generic keychain', scope: 'shared instance / operator', availability: 'No family Settings editor or slash-command bridge.' },
-        { name: 'Skills, workspace search and add-on panes', scope: 'shared-family / operator', availability: 'Installed inventory and configuration are not enumerated here; pane-by-pane scope classification remains a release prerequisite.' },
-        { name: 'Recordings, Dream and notifications', scope: 'owner-scoped integration required', availability: 'Family entry points are unavailable until source and recipient ownership are integrated.' },
+        { name: 'Skills, workspace search and add-on panes', scope: 'shared-family / operator', availability: 'Bounded skill provenance metadata is listed below. Skill bodies, add-on inventory/configuration and pane access are not exposed; pane-by-pane classification remains a release prerequisite.' },
+        { name: 'Recordings and Dream', scope: 'owner-scoped integration required', availability: 'Family recording entry points and automatic Dream remain unavailable until their source ownership and release gates pass.' },
+        { name: 'Browser notifications', scope: 'user + login + owned conversation', availability: 'Explicit Web Push enable/disable and presence routes. Logout, login revocation or account disablement suppresses future delivery.' },
         { name: 'Account administration', scope: 'admin metadata', availability: 'Explicit APIs and confirmations; role is not content authority.' },
         { name: 'Access mode and container destinations', scope: 'deployment / operator', availability: 'Read-only preview; migration and isolated-container gates must pass before any activation or managed restart.' },
       ],
       memory: { personal: [`notes/users/${user.id}/MEMORY.md`, `notes/users/${user.id}/preferences.md`], family: 'notes/family/MEMORY.md' },
+      skills: { precedence: 'packaged-first', entries: configured.mode === 'family-shared' ? readFamilySkillProvenance() : [] },
     };
   })();
 }

@@ -11,6 +11,8 @@ import type {
 import type { RuntimeAgentMessageRequest, RuntimeAgentMessageResult } from "../channels/web/core/web-channel-runtime-public-surface-service.js";
 import { createHash } from "node:crypto";
 import { createMedia, deleteUnreferencedMedia } from "../db.js";
+import { readAccessConfig } from "../core/config-access.js";
+import { getExecutionIdentity } from "../core/execution-context.js";
 
 const MAX_PEER_MESSAGE_BYTES = 32 * 1024;
 const MAX_PEER_ATTACHMENTS = 4;
@@ -30,6 +32,12 @@ export interface AddonMessagingRuntimeOptions {
   listKnownChats(): KnownChat[];
   findChatByAgentName(agentName: string): { chat_jid: string; agent_name: string } | null;
   enqueueAgentMessage(request: RuntimeAgentMessageRequest): Promise<RuntimeAgentMessageResult>;
+}
+
+function requireSingleUserAddonMessaging(): void {
+  const mode = readAccessConfig().mode;
+  const identity = getExecutionIdentity();
+  if (mode !== "single-user" || (identity && identity.mode !== "single-user")) throw new Error("Add-on runtime messaging is unavailable in multi-user mode.");
 }
 
 function normalizeAgentName(value: unknown): string {
@@ -207,6 +215,7 @@ function buildForwardedContent(source: AddonAuthenticatedPeerSource, target: Kno
 export function createAddonMessagingRuntimeHandlers(options: AddonMessagingRuntimeOptions): AddonMessagingRuntimeHandlers {
   return {
     listAdvertisableAgents(): AddonAdvertisableAgent[] {
+      requireSingleUserAddonMessaging();
       return uniqueKnownWebChats(options).map((chat) => ({
         agent_name: chat.agent_name,
         active: Boolean(chat.is_active),
@@ -214,10 +223,12 @@ export function createAddonMessagingRuntimeHandlers(options: AddonMessagingRunti
     },
 
     resolveLocalTarget(input): AddonMessagingTargetResolution {
+      requireSingleUserAddonMessaging();
       return resolveTarget(options, input).resolution;
     },
 
     async deliverPeerMessage(input: AddonPeerMessageDeliveryRequest): Promise<RuntimeAgentMessageResult> {
+      requireSingleUserAddonMessaging();
       const attachments = normalizePeerAttachments(input?.attachments);
       const body = messageContent(input?.content, attachments.length > 0);
       const resolved = resolveTarget(options, input);

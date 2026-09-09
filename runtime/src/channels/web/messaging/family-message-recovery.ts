@@ -6,14 +6,19 @@ import { getChatCursor, getFailedRun, clearFailedRun, setChatCursor } from "../.
 import { getIdentityConfig } from "../../../core/config.js";
 import { readFamilyMessageAdmission, resolveFamilyMessageAuthority } from "./family-message-authority.js";
 import { migrationDismissalFilter, migrationInputHash } from '../../../db/migration-input-holds.js';
+import { skipFamilyTurn } from '../../../db/family-turn-queue.js';
 
 export interface MessageRecoveryInput { chatJid: string; messageRowId: number; requestId: string; action: "retry" | "skip" }
 
 /** Match normal dequeue exclusions, but read one metadata row rather than loading the whole queue. */
 function oldestPendingInput(chatJid: string) {
-  return getDb().query(`SELECT rowid,id,timestamp FROM messages WHERE chat_jid=? AND timestamp>?
+  return getDb().query(`SELECT messages.rowid,messages.id,messages.timestamp FROM messages WHERE chat_jid=?
+    AND (EXISTS (SELECT 1 FROM family_turn_queue fq WHERE fq.message_rowid=messages.rowid AND fq.state='ready')
+      OR (timestamp>? AND NOT EXISTS (SELECT 1 FROM family_turn_queue fq WHERE fq.message_rowid=messages.rowid)))
     AND is_bot_message=0 AND content NOT LIKE ? AND ltrim(content) NOT LIKE '/%'
-    AND COALESCE(is_steering_message,0)=0 ${migrationDismissalFilter(getDb())} ORDER BY timestamp ASC,rowid ASC LIMIT 1`)
+    AND COALESCE(is_steering_message,0)=0 ${migrationDismissalFilter(getDb())}
+    ORDER BY CASE WHEN EXISTS (SELECT 1 FROM family_turn_queue fq WHERE fq.message_rowid=messages.rowid AND fq.state='ready') THEN 0 ELSE 1 END,
+      COALESCE((SELECT queue_position FROM family_turn_queue fq WHERE fq.message_rowid=messages.rowid),messages.rowid),messages.timestamp,messages.rowid LIMIT 1`)
     .get(chatJid, getChatCursor(chatJid), `${getIdentityConfig().assistantName}:%`) as { rowid:number; id: string; timestamp: string } | null;
 }
 
@@ -92,8 +97,10 @@ export function recoverFamilyMessage(actor: AuthenticatedPrincipal, input: Messa
     const now = new Date().toISOString();
     const inserted = db.query("INSERT INTO message_recovery_authorities(message_rowid,owner_user_id,login_session_id,request_id,action,failure_created_at,created_at) VALUES (?,?,?,?,?,?,?)")
       .run(row.message_rowid, actor.userId, actor.authentication.sessionId!, input.requestId, input.action, failed?.createdAt ?? null, now);
-    if (input.action === "skip") setChatCursor(input.chatJid, head.timestamp);
-    clearFailedRun(input.chatJid);
+    if (input.action === "skip") {
+      setChatCursor(input.chatJid, head.timestamp);
+      skipFamilyTurn(db, input.chatJid, row.message_rowid);
+    } else clearFailedRun(input.chatJid);
     return { created: true, recovery_id: Number(inserted.lastInsertRowid), action: input.action, message_rowid: input.messageRowId };
   }).immediate();
 }

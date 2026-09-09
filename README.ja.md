@@ -4,25 +4,29 @@
 
 言語：[English](README.md) · [简体中文](README.zh-CN.md) · **日本語**
 
-PiClaw は [Pi Coding Agent](https://github.com/badlogic/pi-mono) を、三言語対応のストリーミング Web UI、永続状態、複数プロバイダーの LLM 対応、組み込みツールを備えたセルフホスト型ワークスペースとしてまとめます。[任意のアドオン](https://rcarmo.github.io/piclaw-addons/)でランタイムと Web UI を拡張できます。
+PiClaw は [Pi Coding Agent](https://github.com/earendil-works/pi) を基にした、デフォルトではシングルユーザーのセルフホスト型 AI ワークスペースです。同じブラウザーウィンドウでエージェントと作業し、ファイルの編集、コマンドの実行、結果の確認ができます。会話、ファイル、スケジュールタスクは次回のアクセス時にも残ります。モデルへのリクエストは、OpenAI 互換のローカルサーバーを含め、設定したプロバイダーに送信されます。
 
-ローカルまたはコンテナーで、状態を保持する 1 つの agent ワークスペースとして実行できます。
-
-## 機能
+Web UI は英語、簡体字中国語、日本語に対応し、デスクトップとモバイル向けのレイアウトを備えています。コンテナー、仮想マシン、専用マシンを使い、エージェントがアクセスできるファイルとサービスを制限してください。
 
 ![デモアニメーション](docs/demo.gif)
 
-| 機能 | 詳細 |
-|---|---|
-| Web ワークスペース | チャット、エディター、ターミナル、ビューアー、アップロード、自動化を同じ UI で利用 |
-| 永続状態 | SQLite ベースのメッセージ、メディア、タスク、トークン使用量、暗号化キー管理、セッション単位の SSH プロファイル |
-| 組み込みツール | コード編集、CSV/PDF/画像/動画ビューアー、VNC、ブラウザー自動化、画像処理、MCP、ペアリングしたリモート peer 向けの任意のクロスインスタンス IPC |
-| Agent ワークフロー | Steering、キュー付き follow-up、side prompt、スケジュールタスク、視覚的 artifact 生成。任意の autoresearch アドオンは実験ループを提供 |
-| 段階的なツール読み込み | 常時有効なツールを小さく保ち、`list_tools` と `list_scripts` で追加ツールを発見 |
-| 任意の認証とチャネル | Web UI の passkey または TOTP、および任意の WhatsApp 連携 |
-| 任意のアドオン | 追加ツール、スキル、ビューアー、ターミナル、設定ペイン、Draw.io、Office 文書の描画とツール、Windows デスクトップ自動化、Proxmox、Portainer |
+## インストール
 
-## クイックスタート
+| 方法 | 用途 |
+|---|---|
+| [Docker](#docker-でクイックスタート) | 推奨するデプロイ方法。Bun、PiClaw、コマンドラインツールを同梱 |
+| [ポータブル版](docs/getting-started.md#portable-releases) | Docker を使わず Linux、Apple Silicon Mac、実験的な Windows 環境で利用。Bun とランタイムの依存関係を同梱 |
+| [Bun でリポジトリからインストール](docs/install-from-repo.md) | インストール済みの Bun を使い、リリースタグを指定する実験的な方法 |
+| [ソースビルド](docs/development.md) / [デスクトップシェル](docs/desktop.md) | 開発とローカルテスト向け。デスクトップラッパーは実験段階 |
+
+配布ファイルは [GitHub Releases](https://github.com/rcarmo/piclaw/releases)、コンテナーイメージは [GHCR](https://github.com/rcarmo/piclaw/pkgs/container/piclaw) にあります。同じバージョンを再デプロイできるよう、リリースタグを固定してください。
+
+### Docker でクイックスタート
+
+Docker に加え、モデルプロバイダーの認証情報、または接続可能なローカルモデルサーバーが必要です。プロバイダーは起動後に設定します。
+
+> [!WARNING]
+> 新しいインスタンスでは、初期状態で Web ログインが不要です。以下のコマンドはポートを **localhost のみに公開**します。認証の設定中は外部に公開しないでください。保護されていないインスタンスにアクセスできる人は、エージェントのファイルやツールを利用できます。
 
 ```bash
 mkdir -p ./home ./workspace
@@ -31,116 +35,49 @@ docker run -d \
   --init \
   --name piclaw \
   --restart unless-stopped \
-  -p 8080:8080 \
+  -p 127.0.0.1:8080:8080 \
   -e PICLAW_WEB_PORT=8080 \
   -v "$(pwd)/home:/config" \
   -v "$(pwd)/workspace:/workspace" \
   ghcr.io/rcarmo/piclaw:latest
 ```
 
-`http://localhost:8080` を開き、`/login` と入力して LLM プロバイダーを設定します。OpenAI 互換のカスタムエンドポイントと、ローカルの [llama.cpp router preset](docs/llama-cpp.md) も設定できます。Web UI には英語、簡体字中国語、日本語の文字列が同梱され、設定で言語を切り替えられます。
+1. Docker ホストで [http://localhost:8080](http://localhost:8080) を開きます。
+2. チャットで `/login` を送信し、**モデルプロバイダー**を設定します。ブラウザーへのログインとは別の操作です。PiClaw は Pi のプロバイダー認証情報を再利用するため、Docker コマンドに API キーを含める必要はありません。
+3. `/model` でモデルを選択し、「ワークスペースに Markdown のチェックリストを作成し、ファイルを見せて」と依頼してみてください。
+4. 他のマシンからのアクセスを許可する前に、[ブラウザー認証](docs/getting-started.md#secure-browser-access)と HTTPS を設定してください。
 
-> [!TIP]
-> `docker run` / `podman run` では `--init` を有効にしたままにしてください。ランタイムが小さな init プロセスを挿入し、シグナル転送とゾンビプロセスの回収を行います。同梱の `docker-compose.yml` も同等の `init: true` フラグを設定しています。
+`./home` と `./workspace` はどちらも永続データを保存します。コンテナーの入れ替え時にも両方を残してください。**リセットやアップグレードのために `workspace/.piclaw/store/messages.db` を削除しないでください。** 詳細は[初回起動の確認、バックアップ、アップグレード](docs/getting-started.md)を参照してください。
 
-| マウント | コンテナーパス | 内容 |
-|---|---|---|
-| Home | `/config` | 永続化された Pi 状態（`.pi/`）と Git 設定（`.gitconfig`） |
-| Workspace | `/workspace` | プロジェクト、ノート、piclaw 状態 |
+## できること
 
-> [!NOTE]
-> コンテナーイメージでは、`/home/agent/.pi` は `/config/.pi` によって支えられています。上記の `docker run` 例または同梱の [`docker-compose.yml`](docker-compose.yml) を使う場合、Pi home の状態はホスト側の `./home/.pi/agent/` 以下に永続化されます。
->
-> つまり、プロバイダーログイン状態やモデルメタデータを次のようなファイルに保存しておけば、再ビルドや再作成後も残るはずです。
->
-> - `./home/.pi/agent/auth.json`
-> - `./home/.pi/agent/models.json`
-
-> [!WARNING]
-> `/workspace/.piclaw/store/messages.db` は絶対に削除しないでください。これはチャット履歴、メディア、タスクと実行ログ、トークン使用量、暗号化キー、passkey、Web セッション、チャットブランチの信頼できる保存元です。
-
-> [!IMPORTANT]
-> piclaw の環境変数に provider API key を設定する必要は**ありません**。PiClaw は Pi Agent 設定で構成された provider 認証情報を再利用します。
-
-> [!NOTE]
-> ワークスペース単位の shell 環境上書きは `/workspace/.env.sh` に置けます。PiClaw は組み込みターミナルとランタイム起動時にこのファイルを source します。`PATH` の調整や、`GH_CONFIG_DIR=/workspace/.config/gh` による永続的な GitHub CLI 設定に使用できます。無効な内容は起動、shell 動作、ツール解決を壊す可能性があります。
-
-## Web UI 概要
-
-現在サポートされる PiClaw の構成はシングルユーザー向けで、モバイルに対応し、SSE で更新を配信します。
-
-家族アカウントと隔離コンテナーのモードは開発中です。バックエンドにはセッション所有権、アカウント管理、アカウントごとの複数パスキーが実装されていますが、どちらのマルチユーザーモードもまだ起動できません。家族向けの設定・ログイン UI と自動移行は未完成です。[アクセスモードと実装状況（英語）](docs/multi-user/README.md)を確認し、データベースを変更して起動制限を回避しないでください。
-
-| 領域 | ハイライト |
+| 作業 | コアに含まれる機能 |
 |---|---|
-| チャット | 思考/ドラフトパネル、steering、キュー付き follow-up、Adaptive Cards、`/btw`、リンクプレビュー、スレッド化された turn、復旧/タイムアウト chip |
-| 言語 | 英語、簡体字中国語、日本語の UI 文字列と、設定内の言語スイッチャー |
-| ステータス UX | 無音のプローブ中もツール/意図ステータスを表示し、最近のアクティビティから有用な文脈を復元。ツール行は meta 行にコンパクトな `x ago` ヒントを表示可能 |
-| ワークスペース | サイドバーのブラウザー、ドラッグ＆ドロップアップロード、ファイル参照 pill、explorer 検索/再インデックス状態 |
-| エディター | CodeMirror 6、検索/置換、dirty 状態追跡、シンタックスハイライト、遅延読み込みのローカル bundle |
-| ターミナル | dock または tab として使える組み込み xterm.js Web ターミナル、切り離し可能なポップアウト、Ghostty は任意アドオンとして別途提供 |
-| ビューアー | 組み込みの CSV/TSV、PDF、画像、動画、コードプレビュー、VNC pane。任意のアドオンは Draw.io、Office ビューアーバックエンド、kanban を提供 |
-| 自動化 | 組み込みの `image_process`、`cdp_browser`、`mcp`。Azure OpenAI/Foundry 設定時の `/image` と `/flux`。Microsoft 365 と Windows デスクトップ自動化は任意のアドオンが提供 |
+| エージェントと作業 | ストリーミングチャット、モデル選択、実行中の指示変更、追加メッセージのキュー、独立した会話、`/btw` による別の質問 |
+| ファイルの操作 | ワークスペースのファイルブラウザー、アップロード、CodeMirror エディター、シェルツール、切り離し可能な xterm.js ターミナル |
+| 結果の確認 | CSV/TSV テーブル、PDF、画像、動画、コードのビューアー、VNC リモート画面ペイン |
+| 次回も作業を継続 | スケジュールタスク、検索可能なチャット履歴、ファイルベースの [Dream メモリー](docs/dream-memory.md) |
+| ワークフローの拡張 | スキル、[MCP サーバー](docs/mcp.md)、ブラウザー自動化、画像処理、Adaptive Cards、対話型の図表や成果物 |
 
-完全な機能ツアーは [docs/web-ui.md](docs/web-ui.md) を参照してください。
+[Web UI ガイド](docs/web-ui.md#chat-and-status-surfaces)と[ツール・スキルのリファレンス](docs/tools-and-skills.md)に操作方法とコマンドを記載しています。ローカルモデルの設定は [llama.cpp](docs/llama-cpp.md) を参照してください。Azure での画像生成には [Azure OpenAI/Foundry の設定](docs/azure/azure-openai-extension.md)が必要です。
 
-> [!NOTE]
-> 組み込みの xterm.js 実装がデフォルトのターミナルレンダラーです。Ghostty/WASM レンダラーは任意の [`@rcarmo/piclaw-addon-ghostty-terminal`](https://rcarmo.github.io/piclaw-addons/addons/ghostty-terminal/) アドオンとして別途提供されます。
+[任意のアドオン](https://rcarmo.github.io/piclaw-addons/)で Draw.io、Office 文書の表示とツール、カンバン、別のターミナルレンダラー、Windows デスクトップ自動化、Proxmox、Portainer、Microsoft 365、ペアリングしたインスタンス間のメッセージ送信を利用できます。[設定とアドオン](docs/settings-and-addons.md)から個別にインストールしてください。
 
-## 設定
+## セキュリティと制限
 
-一般的な環境変数：
-
-| 変数 | 既定値 | 目的 |
-|---|---|---|
-| `PICLAW_WEB_PORT` | `8080` | Web UI ポート |
-| `PICLAW_WEB_TERMINAL_ENABLED` | Linux/macOS は `1`、Windows は `0` | 認証付き組み込み Web ターミナルの有効/無効 |
-| `PICLAW_WEB_VNC_ALLOW_DIRECT` | Linux/macOS/Windows で `1` | 実行時に指定される直接 VNC ターゲットの許可/禁止 |
-| `PICLAW_WEB_TOTP_SECRET` | _（空）_ | Base32 TOTP secret。ログインゲートを有効化（または `/totp` で初期化） |
-| `PICLAW_WEB_PASSKEY_MODE` | `totp-fallback` | `totp-fallback`、`passkey-only`、`totp-only` |
-| `PICLAW_ASSISTANT_NAME` | `PiClaw` | UI に表示される名前 |
-| `PICLAW_KEYCHAIN_KEY` | _（空）_ | 暗号化 secret 保存用の master key |
-| `PICLAW_TRUST_PROXY` | `0` | リバースプロキシまたはトンネルの背後にある場合に有効化 |
-
-完全な一覧、TOTP/passkey 設定、セッション単位の SSH-backed リモートツール、リバースプロキシ設定、ワークスペース環境 hook については [docs/configuration.md](docs/configuration.md) を参照してください。
-
-## その他のインストール方法
-
-### Docker なしでインストール
-
-```bash
-bun add -g github:rcarmo/piclaw
-```
-
-実験的です。Linux/macOS/Windows 対応。詳細は [docs/install-from-repo.md](docs/install-from-repo.md) を参照してください。
-
-Windows 対応は実験的です。shell 風の子プロセスは Windows では attached（`detached=false`）で実行されるため、stdout と stderr を捕捉できます。Unix 系ホストでは分離プロセスグループを使い、abort と shutdown でプロセスツリー全体を終了できます。
-
-### 実験的なデスクトップシェル
-
-PiClaw には、既存のローカル Web UI を包む任意の Electrobun デスクトップラッパーもあります。
-
-```bash
-bun run build:desktop
-```
-
-デスクトップシェルは `127.0.0.1` 上で Piclaw を起動し、`18080` から始まる空きポートを使ってネイティブウィンドウを開き、既定のワークスペースを各プラットフォームのアプリケーションデータディレクトリに保存します。すでに動作中の Piclaw Web サーバーを包みたい場合は、`PICLAW_DESKTOP_URL` を設定してください。
-
-### ソースからビルド
-
-[docs/development.md](docs/development.md) を参照してください。
+- **デフォルトはシングルユーザーです。** [実験的な家族モード](docs/multi-user/README.md)は、少人数のグループ向けの、互いを信頼するユーザーによるマルチユーザーモードです。昇格済みの `family-shared` デプロイでは、所有者ごとの会話を利用できますが、ワークスペースとプロセスは共有され、ファイルシステムは隔離されません。隔離コンテナーモードは利用できません。[家族モードのユーザーガイド](docs/multi-user/user-guide.md)も参照してください。
+- エージェントは、プロセスを実行するユーザーの権限で動作します。ネイティブインストールではそのユーザーのファイルとコマンド、コンテナーではマウントしたファイルと設定上アクセス可能なネットワークを利用できます。専用環境を使い、共有するつもりのファイルだけをマウントしてください。
+- ブラウザー認証は認証アプリのコード（TOTP）とパスキーに対応しています。バックエンドは非公開にし、リモートアクセスには HTTPS を使い、設定した[リバースプロキシ](docs/reverse-proxy.md)からの転送ヘッダーのみを信頼してください。
+- セルフホストではアプリケーションの状態を自分のマシンに保存します。クラウドモデルや外部ツールには、送信したデータが渡ります。任意の[キー管理機能](docs/keychain.md)にはマスターキーが必要で、ワークスペース全体やチャット履歴は暗号化されません。
 
 ## ドキュメント
 
-| 領域 | ドキュメント |
-|---|---|
-| はじめに | [設定](docs/configuration.md)、[Web UI](docs/web-ui.md)、[リポジトリからインストール](docs/install-from-repo.md) |
-| 運用 | [Azure VM デプロイ](docs/azure/README.md)、[Azure OpenAI 拡張](docs/azure/azure-openai-extension.md)、[リバースプロキシ](docs/reverse-proxy.md)、[リリース手順](docs/release.md) |
-| ランタイム内部 | [アーキテクチャ](docs/architecture.md)、[アドオンランタイム API](docs/addon-runtime-api.md)、[パイプライン化スマート圧縮](docs/pipelined-compaction.md)、[ランタイムフロー](docs/runtime-flows.md)、[ランタイムストリームセッション](docs/runtime-stream-sessions.md)、[ストレージモデル](docs/storage.md)、[可観測性](docs/observability.md) |
-| UI 拡張モデル | [Web pane extensions](docs/web-pane-extensions.md)、[Extension UI contract](docs/extension-ui-contract.md)、[Vendored widget libraries](docs/vendored-widget-libraries.md) |
-| Agent 機能 | [ツールとスキル](docs/tools-and-skills.md)、[Visual artifact generator](docs/visual-artifact-generator.md)、[pi-mcp-adapter 経由の MCP](docs/mcp.md)、[キー管理](docs/keychain.md) |
-| その他のリファレンス | [Dream memory system](docs/dream-memory.md)、[Thinking persistence](docs/thinking-persistence.md)、[Web notification delivery policy](docs/web-notification-delivery-policy.md)、[iOS PWA reference](docs/PWA.md)、[WhatsApp](docs/whatsapp.md)、[Remote Peer アドオン](https://rcarmo.github.io/piclaw-addons/addons/remote-peer/)、[Microsoft 365 アドオン](https://rcarmo.github.io/piclaw-addons/addons/m365/)、[開発](docs/development.md) |
-| プラットフォーム調査 | [Azure Functions feasibility study](docs/azure/azure-functions-feasibility-study-2026-04-17.md) |
+以下の詳細ドキュメントは英語です。
+
+- [使い始める](docs/getting-started.md) — インストール、最初のチャット、認証、永続化、アップグレード
+- [設定](docs/configuration.md) — 設定項目、パス、プロバイダー、SSH ツール、環境の上書き
+- [Web UI](docs/web-ui.md#chat-and-status-surfaces) — チャット、ワークスペース、エディター、ターミナル、ビューアー
+- [ドキュメント索引](docs/README.md) — 運用、連携、開発、アーキテクチャ
 
 ## コントリビューション
 
@@ -150,20 +87,20 @@ bun run build:desktop
 - [質問する](https://github.com/rcarmo/piclaw/issues/new?template=question.md)
 - [プロジェクトボードを見る](https://github.com/users/rcarmo/projects/13)
 
-ボードの lane 定義と triage taxonomy については、issue template と project board の label を基準にしてください。
+問題の報告には issue テンプレートを使ってください。コードを変更する場合は[開発ガイド](docs/development.md)と[リポジトリの作業手順](AGENTS.md)を読み、プルリクエストで提出してください。
 
 ## クレジット
 
-- [pi.dev](http://pi.dev) — PiClaw が使用する Pi core の提供
-- [rcarmo/agentbox](https://github.com/rcarmo/agentbox)
+- [pi.dev](http://pi.dev) — PiClaw が使用する Pi コアの提供
+- [rcarmo/vibes](https://github.com/rcarmo/vibes) — PiClaw のオリジナル UX デザイン
 - [qwibitai/nanoclaw](https://github.com/qwibitai/nanoclaw)
-- [badlogic/pi-mono](https://github.com/badlogic/pi-mono)
+- [earendil-works/pi](https://github.com/earendil-works/pi)
 - [davebcn87/pi-autoresearch](https://github.com/davebcn87/pi-autoresearch) — Tobi Lutke と David Cortés による自律実験ループ（現在は `rcarmo/piclaw-addons` の autoresearch アドオンが担っています）
-- [nicobailon/visual-explainer](https://github.com/nicobailon/visual-explainer) — Nico Bailon による視覚的 artifact 生成スキルの思想、prompt ワークフロー、テンプレートパターン（adapted、vendored ではありません）
+- [nicobailon/visual-explainer](https://github.com/nicobailon/visual-explainer) — Nico Bailon による視覚的な成果物の生成スキルの考え方、プロンプトのワークフロー、テンプレートパターン（改変して利用。元のプロジェクトは同梱していません）
 
 > [!NOTE]
-> piclaw は [pi.dev](https://pi.dev) と直接の提携関係には**ありません**。Pi core を基に、独自のランタイム、ツール、UI を提供する派生作品です。
+> PiClaw は [pi.dev](https://pi.dev) と**直接の提携関係にはありません**。Pi コアを基に、独自のランタイム、ツール、UI 層を追加した派生作品です。
 
 ## ライセンス
 
-MIT
+[MIT](LICENSE)

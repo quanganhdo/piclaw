@@ -1,5 +1,8 @@
 import { afterEach, expect, test } from "bun:test";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 
+import { createTempWorkspace, setEnv } from "../helpers.js";
 import { createFakeExtensionApi } from "./fake-extension-api.ts";
 import { setSshToolHandlers, sshTool } from "../../src/extensions/ssh.js";
 
@@ -97,4 +100,26 @@ test("ssh get reports missing config for the current session", async () => {
   expect(result.details.live_redirection_active).toBe(false);
   expect(result.content[0].text).toContain("No SSH config stored");
   expect(result.content[0].text).toContain("Live SSH tool redirection is inactive");
+});
+
+test("single-user ssh calls retain legacy handler behavior", async () => {
+  const workspace = createTempWorkspace("ssh-single-user-");
+  const restore = setEnv({ PICLAW_WORKSPACE: workspace.workspace, PICLAW_STORE: workspace.store, PICLAW_DATA: workspace.data });
+  mkdirSync(join(workspace.workspace, ".piclaw"));
+  writeFileSync(join(workspace.workspace, ".piclaw", "config.json"), JSON.stringify({ domains: { access: { mode: "single-user" } } }));
+  try {
+    let calls = 0;
+    setSshToolHandlers({
+      get: () => { calls++; return null; },
+      async set() { calls++; throw new Error("unexpected"); },
+      async clear() { calls++; return { deleted: false, apply_timing: "next_session" }; },
+    });
+    const fake = createFakeExtensionApi();
+    sshTool(fake.api);
+    const result = await fake.tools.get("ssh").execute("tool-3", { action: "get" });
+    expect(result.details.configured).toBe(false);
+    expect(calls).toBe(1);
+  } finally {
+    restore(); workspace.cleanup();
+  }
 });

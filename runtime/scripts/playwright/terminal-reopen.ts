@@ -6,7 +6,7 @@ import { chromium, type Browser, type BrowserContext, type Page } from 'playwrig
 
 import { bootstrapE2EStorageState } from './web-auth-bootstrap.ts';
 
-const DEFAULT_BASE_URL = process.env.PICLAW_E2E_BASE_URL || 'http://127.0.0.1:8080';
+const DEFAULT_BASE_URL = process.env.PICLAW_E2E_BASE_URL || '';
 const DEFAULT_HEADLESS = process.env.PICLAW_E2E_HEADLESS !== '0';
 const DEFAULT_SLOW_MO = Number(process.env.PICLAW_E2E_SLOW_MO || 0);
 const DEFAULT_WAIT_MS = Number(process.env.PICLAW_E2E_WAIT_MS || 250);
@@ -41,7 +41,7 @@ function parseArgs(argv: string[]) {
     headless: DEFAULT_HEADLESS,
     slowMo: DEFAULT_SLOW_MO,
     waitMs: DEFAULT_WAIT_MS,
-    internalSecret: process.env.PICLAW_INTERNAL_SECRET || process.env.PICLAW_WEB_INTERNAL_SECRET || '',
+    internalSecret: process.env.PICLAW_E2E_INTERNAL_SECRET || '',
     executablePath: DEFAULT_EXECUTABLE_PATH,
     label: 'terminal-reopen',
   };

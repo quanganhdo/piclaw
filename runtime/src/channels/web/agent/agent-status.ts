@@ -166,83 +166,112 @@ function deriveAgentState(status: Record<string, unknown>): string {
   return "active";
 }
 
-/** Return active/idle agent status plus streamed thought/draft buffers when available. */
-export function handleAgentStatusRequest(req: Request, ctx: AgentStatusContext): Response {
-  const { result, durationMs } = measureSync(() => {
-    const chatJid = resolveChatJid(req, ctx.defaultChatJid);
-    const status = ctx.getAgentStatus(chatJid);
-    if (!status) {
+export interface AgentStatusSnapshotOptions {
+  includeDiagnostics?: boolean;
+  includeExtensionWorking?: boolean;
+  recoverStaleInflight?: boolean;
+}
+
+/** Build the shared status payload independently of HTTP routing authority. */
+export function buildAgentStatusSnapshot(
+  chatJid: string,
+  ctx: AgentStatusContext,
+  options: AgentStatusSnapshotOptions = {},
+): Record<string, unknown> {
+  const includeDiagnostics = options.includeDiagnostics !== false;
+  const includeExtensionWorking = options.includeExtensionWorking !== false;
+  const diagnostics = includeDiagnostics
+    ? { addon_api: getAddonApiHealthSnapshot(), mcp_startup: getMcpStartupStatus() }
+    : {};
+  const extensionWorking = includeExtensionWorking ? ctx.getExtensionWorkingState(chatJid) : null;
+  const status = ctx.getAgentStatus(chatJid);
+  if (!status) {
+    if (options.recoverStaleInflight !== false) {
       ctx.recoverStaleInflightRun(chatJid, { hasActiveStatus: false });
-      return ctx.json({ status: "idle", state: "idle", chat_jid: chatJid, data: null, extension_working: ctx.getExtensionWorkingState(chatJid), addon_api: getAddonApiHealthSnapshot(), mcp_startup: getMcpStartupStatus() });
     }
-    // The status store retains terminal command events briefly so polling
-    // clients cannot miss completion between requests. Retained terminal
-    // payloads are observable history, not active work.
-    if (status.type === "done" || status.type === "error") {
-      const classifier = readTrimmedString(
-        status.classifier
-          ?? status.recovery_classifier
-          ?? status.recoveryClassifier
-          ?? status.failure_classifier
-          ?? status.failure_category
-          ?? status.failureCategory,
-      ) || null;
-      return ctx.json({
-        status: "idle",
-        state: status.type === "done" ? "idle" : deriveAgentState(status),
-        chat_jid: chatJid,
-        provider: readTrimmedString(status.provider) || null,
-        model: readTrimmedString(status.model) || null,
-        classifier,
-        last_error: status.type === "error"
-          ? readTrimmedString(status.detail) || readTrimmedString(status.title) || null
-          : null,
-        recovery_strategy: readTrimmedString(status.recovery_strategy ?? status.recoveryStrategy ?? status.strategy) || null,
-        recovery_suppressed_reason: readTrimmedString(status.recovery_suppressed_reason ?? status.recoverySuppressedReason) || null,
-        data: status,
-        extension_working: ctx.getExtensionWorkingState(chatJid),
-        addon_api: getAddonApiHealthSnapshot(),
-        mcp_startup: getMcpStartupStatus(),
-      });
-    }
+    return {
+      status: "idle",
+      state: "idle",
+      chat_jid: chatJid,
+      data: null,
+      extension_working: extensionWorking,
+      ...diagnostics,
+    };
+  }
 
-    const turnId = (status.turn_id || status.turnId) as string | undefined;
-    let thought: { text: string; totalLines: number } | undefined;
-    let draft: { text: string; totalLines: number } | undefined;
-    if (turnId) {
-      const tb = ctx.getBuffer(turnId, "thought");
-      if (tb) thought = { text: tb.text, totalLines: tb.totalLines };
-      const db = ctx.getBuffer(turnId, "draft");
-      if (db) draft = { text: db.text, totalLines: db.totalLines };
-    }
-
-    const state = deriveAgentState(status);
+  // The status store retains terminal command events briefly so polling
+  // clients cannot miss completion between requests. Retained terminal
+  // payloads are observable history, not active work.
+  if (status.type === "done" || status.type === "error") {
     const classifier = readTrimmedString(
       status.classifier
+        ?? status.recovery_classifier
+        ?? status.recoveryClassifier
+        ?? status.failure_classifier
+        ?? status.failure_category
+        ?? status.failureCategory,
+    ) || null;
+    return {
+      status: "idle",
+      state: status.type === "done" ? "idle" : deriveAgentState(status),
+      chat_jid: chatJid,
+      provider: readTrimmedString(status.provider) || null,
+      model: readTrimmedString(status.model) || null,
+      classifier,
+      last_error: status.type === "error"
+        ? readTrimmedString(status.detail) || readTrimmedString(status.title) || null
+        : null,
+      recovery_strategy: readTrimmedString(status.recovery_strategy ?? status.recoveryStrategy ?? status.strategy) || null,
+      recovery_suppressed_reason: readTrimmedString(status.recovery_suppressed_reason ?? status.recoverySuppressedReason) || null,
+      data: status,
+      extension_working: extensionWorking,
+      ...diagnostics,
+    };
+  }
+
+  const turnId = (status.turn_id || status.turnId) as string | undefined;
+  let thought: { text: string; totalLines: number } | undefined;
+  let draft: { text: string; totalLines: number } | undefined;
+  if (turnId) {
+    const thoughtBuffer = ctx.getBuffer(turnId, "thought");
+    if (thoughtBuffer) thought = { text: thoughtBuffer.text, totalLines: thoughtBuffer.totalLines };
+    const draftBuffer = ctx.getBuffer(turnId, "draft");
+    if (draftBuffer) draft = { text: draftBuffer.text, totalLines: draftBuffer.totalLines };
+  }
+
+  const state = deriveAgentState(status);
+  const classifier = readTrimmedString(
+    status.classifier
       ?? status.recovery_classifier
       ?? status.recoveryClassifier
       ?? status.failure_classifier
       ?? status.failure_category
       ?? status.failureCategory,
-    ) || null;
+  ) || null;
 
-    return ctx.json({
-      status: "active",
-      state,
-      chat_jid: chatJid,
-      provider: readTrimmedString(status.provider) || null,
-      model: readTrimmedString(status.model) || null,
-      classifier,
-      last_error: readTrimmedString(status.detail) || readTrimmedString(status.title) || null,
-      recovery_strategy: readTrimmedString(status.recovery_strategy ?? status.recoveryStrategy ?? status.strategy) || null,
-      recovery_suppressed_reason: readTrimmedString(status.recovery_suppressed_reason ?? status.recoverySuppressedReason) || null,
-      data: status,
-      thought,
-      draft,
-      extension_working: ctx.getExtensionWorkingState(chatJid),
-      addon_api: getAddonApiHealthSnapshot(),
-      mcp_startup: getMcpStartupStatus(),
-    });
+  return {
+    status: "active",
+    state,
+    chat_jid: chatJid,
+    provider: readTrimmedString(status.provider) || null,
+    model: readTrimmedString(status.model) || null,
+    classifier,
+    last_error: readTrimmedString(status.detail) || readTrimmedString(status.title) || null,
+    recovery_strategy: readTrimmedString(status.recovery_strategy ?? status.recoveryStrategy ?? status.strategy) || null,
+    recovery_suppressed_reason: readTrimmedString(status.recovery_suppressed_reason ?? status.recoverySuppressedReason) || null,
+    data: status,
+    thought,
+    draft,
+    extension_working: extensionWorking,
+    ...diagnostics,
+  };
+}
+
+/** Return active/idle agent status plus streamed thought/draft buffers when available. */
+export function handleAgentStatusRequest(req: Request, ctx: AgentStatusContext): Response {
+  const { result, durationMs } = measureSync(() => {
+    const chatJid = resolveChatJid(req, ctx.defaultChatJid);
+    return ctx.json(buildAgentStatusSnapshot(chatJid, ctx));
   });
   return appendServerTiming(result, {
     name: "agent_status",
@@ -250,23 +279,27 @@ export function handleAgentStatusRequest(req: Request, ctx: AgentStatusContext):
   });
 }
 
+/** Build shared context and latest-run usage metadata for an authorised chat. */
+export async function buildAgentContextSnapshot(chatJid: string, ctx: AgentStatusContext): Promise<Record<string, unknown>> {
+  const cacheUsage = formatTokenUsageContext(ctx.getTokenUsageForChat(chatJid));
+  const usage = await ctx.getContextUsageForChat(chatJid);
+  if (!usage) {
+    return { tokens: null, contextWindow: null, percent: null, sessionGeneration: null, cacheUsage };
+  }
+  return {
+    tokens: usage.tokens,
+    contextWindow: usage.contextWindow,
+    percent: usage.percent,
+    sessionGeneration: usage.sessionGeneration ?? null,
+    cacheUsage,
+  };
+}
+
 /** Return context window usage metrics for the requested/default chat. */
 export async function handleAgentContextRequest(req: Request, ctx: AgentStatusContext): Promise<Response> {
   const { result, durationMs } = await measureAsync(async () => {
     const chatJid = resolveChatJid(req, ctx.defaultChatJid);
-    const cacheUsage = formatTokenUsageContext(ctx.getTokenUsageForChat(chatJid));
-    const usage = await ctx.getContextUsageForChat(chatJid);
-    if (!usage) {
-      return ctx.json({ tokens: null, contextWindow: null, percent: null, sessionGeneration: null, cacheUsage });
-    }
-
-    return ctx.json({
-      tokens: usage.tokens,
-      contextWindow: usage.contextWindow,
-      percent: usage.percent,
-      sessionGeneration: usage.sessionGeneration ?? null,
-      cacheUsage,
-    });
+    return ctx.json(await buildAgentContextSnapshot(chatJid, ctx));
   });
   return appendServerTiming(result, {
     name: "agent_context",

@@ -58,6 +58,35 @@ function request(path:string,who=alice,method="GET",body?:BodyInit,headers:Recor
   return new Request("https://family.local"+path,{method,headers:{cookie:`piclaw_session=token-${who.userId}`,origin:"https://family.local","x-piclaw-account-id":who.userId,"x-piclaw-login-id":who.authentication.sessionId!,...headers},body,signal});
 }
 
+test('HTTP cancellation pins owner, recent auth, Origin and exact JSON confirmation without publication or tokens',async()=>{
+  const source=await ready('',alice.homeChatJid!,'success',false),r=router(),path=`/agent/scheduled-results/${source.execution_id}/cancel`;
+  const post=(body='{"confirm":true}',who=alice,headers:Record<string,string>={})=>r.handle(request(path,who,'POST',body,{'content-type':'application/json',...headers}));
+  expect((await post('{"confirm":true}',bob)).status).toBe(403);expect((await post('{"confirm":true}',admin)).status).toBe(403);
+  for(const body of ['{}','{"confirm":false}','{"confirm":true,"token":"forged"}',' '.repeat(1025),'bad'])expect((await post(body)).status).toBe(403);
+  for(const headers of [{'content-type':'text/plain'},{origin:'https://foreign.local'},{origin:''}])expect((await post('{"confirm":true}',alice,headers)).status).toBe(403);
+  const unpinned=request(path,alice,'POST','{"confirm":true}',{'content-type':'application/json'});unpinned.headers.delete('x-piclaw-account-id');expect((await r.handle(unpinned)).status).toBe(409);
+  unpinned.headers.delete('x-piclaw-login-id');expect((await r.handle(unpinned)).status).toBe(403);
+  expect((await r.handle(request(path))).status).toBe(403);expect((await r.handle(request(path+'?x=1',alice,'POST','{"confirm":true}',{'content-type':'application/json'}))).status).toBe(403);
+  const first=await post();expect(first.status).toBe(201);expect(await first.json()).toEqual({execution_id:source.execution_id,cancelled:true,created:true});expect((await post()).status).toBe(200);
+  const detail=await r.handle(request(path.replace('/cancel','')));expect(await detail.json()).toMatchObject({state:'cancelled',result:null});
+  expect((await r.handle(request(path.replace('/cancel','/publish'),alice,'POST','{"confirm":true}'))).status).toBe(403);expect(getDb().query('SELECT count(*) n FROM messages').get()).toEqual({n:0});
+});
+
+test('HTTP cancellation revalidates after body waits, times out, respects rate limits and leaves rollback retryable',async()=>{
+  const source=await ready('',alice.homeChatJid!,'success',false),r=router(),path=`/agent/scheduled-results/${source.execution_id}/cancel`,headers={'content-type':'application/json'};
+  const abort=new AbortController();abort.abort();expect((await r.handle(request(path,alice,'POST','{"confirm":true}',headers,abort.signal))).status).toBe(403);
+  const original=globalThis.setTimeout;let expire:(()=>void)|undefined,cancelled=false;
+  const timer=spyOn(globalThis,'setTimeout').mockImplementation(((fn:any,ms:number,...args:any[])=>{if(ms===10000){expire=fn;return {unref(){}} as any;}return original(fn,ms,...args);}) as any);
+  try{const pending=r.handle(request(path,alice,'POST',new ReadableStream({cancel(){cancelled=true;}}),headers));await waitFor(()=>!!expire);expire!();expect((await pending).status).toBe(403);expect(cancelled).toBe(true);}finally{timer.mockRestore();}
+  let stream!:ReadableStreamDefaultController;const pending=r.handle(request(path,alice,'POST',new ReadableStream({start(c){stream=c;}}),headers));
+  await Bun.sleep(5);getDb().query('DELETE FROM web_sessions WHERE session_id=?').run(alice.authentication.sessionId!);stream.enqueue(new TextEncoder().encode('{"confirm":true}'));stream.close();expect((await pending).status).toBe(403);
+  alice=actor(alice.userId);resetRateLimiterStateForTests();
+  getDb().exec("CREATE TRIGGER fail_cancel_http BEFORE INSERT ON family_scheduled_cancellations BEGIN SELECT RAISE(ABORT,'private storage failure'); END");
+  const failed=await r.handle(request(path,alice,'POST','{"confirm":true}',headers));expect(failed.status).toBe(500);expect(await failed.text()).not.toContain('private');expect(getDb().query('SELECT count(*) n FROM family_scheduled_cancellations').get()).toEqual({n:0});getDb().exec('DROP TRIGGER fail_cancel_http');
+  resetRateLimiterStateForTests();for(let i=0;i<20;i++)expect([200,201]).toContain((await r.handle(request(path,alice,'POST','{"confirm":true}',headers))).status);
+  expect((await r.handle(request(path,alice,'POST','{"confirm":true}',headers))).status).toBe(429);
+});
+
 test("publication is one service-labelled bot message, atomic receipt, immutable attribution and no input/cursor effects",async()=>{
   const db=getDb(),source=await ready(),beforeCursors=db.query("SELECT * FROM chat_cursors").all();
   const first=publish(db,alice,source.execution_id),before=snapshot();

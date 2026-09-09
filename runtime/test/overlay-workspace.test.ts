@@ -6,6 +6,9 @@ import { tmpdir } from "os";
 import { isOverlayAvailable, createOverlayWorkspace, withOverlayWorkspace } from "./overlay-workspace";
 
 describe("overlay-workspace", () => {
+  test("rejects a live workspace lower layer before probing mounts", () => {
+    expect(() => createOverlayWorkspace("/workspace")).toThrow("outside isolated root");
+  });
   test("isOverlayAvailable returns a boolean", { timeout: 30000 }, () => {
     const result = isOverlayAvailable();
     expect(typeof result).toBe("boolean");

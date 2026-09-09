@@ -9,6 +9,7 @@ import {
   formatModelPickerPricing,
   formatOpenRouterKeyUsageTitle,
   getComposeHistoryStorageKey,
+  readStoredComposeHeight,
   getModelPickerContextLimit,
   getModelPickerOptionSearchLabel,
   normalizeModelPickerOptions,
@@ -42,6 +43,19 @@ test('getComposeHistoryStorageKey keeps the legacy default key for the default c
 test('getComposeHistoryStorageKey namespaces compose history by chat/agent', () => {
   expect(getComposeHistoryStorageKey('web:agent-alpha')).toBe('piclaw_compose_history:web%3Aagent-alpha');
   expect(getComposeHistoryStorageKey('whatsapp:+12345')).toBe('piclaw_compose_history:whatsapp%3A%2B12345');
+});
+
+test('family-disabled model settings do not intercept /settings or /help in the shared submit path', () => {
+  const source = readFileSync(join(import.meta.dir, '../../web/src/components/compose-box.ts'), 'utf8');
+  expect(source).toContain("if (allowModelSettings && /^\\/settings\\s*$/i.test(rawInput.trim()))");
+  expect(source).toContain("if (allowModelSettings && /^\\/help\\s*$/i.test(rawInput.trim()))");
+});
+
+test('readStoredComposeHeight uses an injected account-scoped storage adapter', () => {
+  const values = new Map([['family:alice:piclaw_compose_height', '144']]);
+  const storage = { getItem: (key: string) => values.get(key) ?? null };
+  expect(readStoredComposeHeight(storage, 'family:alice:piclaw_compose_height')).toBe(144);
+  expect(readStoredComposeHeight(storage, 'family:bob:piclaw_compose_height')).toBeNull();
 });
 
 test('normalizeModelPickerOptions prefers structured model metadata and sorts by provider/id label', () => {

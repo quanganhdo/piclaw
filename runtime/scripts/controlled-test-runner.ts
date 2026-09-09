@@ -3,7 +3,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 
-import { findProjectPackageDir } from "./vendor-workflow.js";
+import { assertTestWorkspaceArguments, ensureTestFilesystemIsolation } from "./test-filesystem-isolation.js";
 
 type RunnerOptions = {
   stageSize: number;
@@ -321,6 +321,9 @@ async function runStage(
 }
 
 async function main(): Promise<void> {
+  const isolation = ensureTestFilesystemIsolation();
+  assertTestWorkspaceArguments(process.argv.slice(2));
+  const { findProjectPackageDir } = await import("./vendor-workflow.js");
   const options = parseArgs();
   const packageDir = findProjectPackageDir(process.cwd());
   if (!packageDir) {
@@ -341,7 +344,7 @@ async function main(): Promise<void> {
   const stages = chunkFiles(discoveredFiles, options.stageSize);
   const env = {
     ...process.env,
-    ...(options.useInMemoryDb && !process.env.PICLAW_DB_IN_MEMORY ? { PICLAW_DB_IN_MEMORY: "1" } : {}),
+    ...(options.useInMemoryDb ? { PICLAW_DB_IN_MEMORY: "1" } : { PICLAW_DB_IN_MEMORY: undefined }),
   };
 
   console.log(`[controlled-test] package=${packageDir}`);
@@ -402,6 +405,7 @@ async function main(): Promise<void> {
     ? `[controlled-test] report=${relative(packageDir, options.reportPath) || options.reportPath}`
     : "[controlled-test] report=disabled (pass --report PATH to write JSON)");
 
+  if (isolation.createdRoot) isolation.cleanup();
   process.exit(report.exit_code);
 }
 

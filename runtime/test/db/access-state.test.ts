@@ -28,14 +28,14 @@ test("additive schema and marker initialisation are idempotent", () => {
   expect(validateAccessStartup(db, config())).toEqual({ configuredMode: "single-user", effectiveMode: "single-user", modeExplicit: false });
 });
 
-test("foundation rejects activation and never rewrites a multi-user marker", () => {
+test("startup rejects unpromoted family markers and never rewrites them", () => {
   const db = database(); initializeAccessSchema(db);
   expect(() => validateAccessStartup(db, config("family-shared"))).toThrow("Mode transitions");
   db.query("UPDATE access_state SET activated_mode = 'family-shared'").run();
   initializeAccessSchema(db);
   expect(() => validateAccessStartup(db, config())).toThrow("no automatic downgrade");
   expect(() => validateAccessStartup(db, config("single-user"))).toThrow("no automatic downgrade");
-  expect(() => validateAccessStartup(db, config("family-shared"))).toThrow("unavailable");
+  expect(() => validateAccessStartup(db, config("family-shared"))).toThrow("not promoted");
   expect(readAccessState(db).activatedMode).toBe("family-shared");
 });
 

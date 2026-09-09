@@ -1136,6 +1136,22 @@
     cursor: zoom-in;
 }
 
+.post-media-readonly .post-content img,
+.post-media-readonly .media-preview img {
+    cursor: default;
+}
+
+.post-media-readonly .media-preview img:active {
+    transform: none;
+}
+
+@media (hover: hover) {
+    .post-media-readonly .media-preview img:hover {
+        transform: none;
+        box-shadow: none;
+    }
+}
+
 /* Adaptive Cards */
 .post-adaptive-cards {
     margin-top: 8px;

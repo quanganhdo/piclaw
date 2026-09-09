@@ -100,11 +100,18 @@ export function prepareAccessMigrationCopy(database: Database, plan: unknown, ad
     else if(legacyTotp)throw new Error('Legacy factor requires a version-four plan.');
     if((plan as AccessMigrationPlan).version===5)captureMigrationInputHolds(database,inventory.snapshot,(plan as AccessMigrationPlan).input_policy);
     // A separate preparation marker blocks startup even though activation remains single-user.
+    const childrenPending=inventory.branches.filter(branch=>branch.parent_branch_id).length-adoptions.length;
     database.exec(`CREATE TABLE access_migration_preparation (
       id INTEGER PRIMARY KEY CHECK(id=1), source_snapshot TEXT NOT NULL,
-      prepared_at TEXT NOT NULL, state TEXT NOT NULL CHECK(state='ownership-only')
+      plan_version INTEGER NOT NULL, prepared_at TEXT NOT NULL, state TEXT NOT NULL CHECK(state='ownership-only'),
+      children_pending INTEGER NOT NULL, children_adopted INTEGER NOT NULL,
+      resource_policy TEXT, factor_policy_json TEXT, input_policy TEXT
     ) STRICT;`);
-    database.query("INSERT INTO access_migration_preparation VALUES (1,?,?,'ownership-only')").run(inventory.snapshot,new Date().toISOString());
-    return {roots:assignments.length,branches:inventory.branches.length,children_pending:inventory.branches.filter(branch=>branch.parent_branch_id).length-adoptions.length,children_adopted:adoptions.length,snapshot:inventory.snapshot};
+    const reviewed=plan as AccessMigrationPlan;
+    database.query("INSERT INTO access_migration_preparation VALUES (1,?,?,?,'ownership-only',?,?,?,?,?)").run(
+      inventory.snapshot,reviewed.version,new Date().toISOString(),childrenPending,adoptions.length,
+      reviewed.resource_policy??null,reviewed.factor_policy?JSON.stringify(reviewed.factor_policy):null,reviewed.input_policy??null,
+    );
+    return {roots:assignments.length,branches:inventory.branches.length,children_pending:childrenPending,children_adopted:adoptions.length,snapshot:inventory.snapshot};
   }).immediate();
 }

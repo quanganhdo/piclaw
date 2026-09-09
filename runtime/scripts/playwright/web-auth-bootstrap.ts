@@ -1,14 +1,14 @@
 #!/usr/bin/env bun
+import { requireDisposableTestTarget } from "../test-target.js";
 
 export function resolveInternalSecret(explicitSecret?: string): string {
   const value = String(
     explicitSecret ||
-    process.env.PICLAW_INTERNAL_SECRET ||
-    process.env.PICLAW_WEB_INTERNAL_SECRET ||
+    process.env.PICLAW_E2E_INTERNAL_SECRET ||
     ''
   ).trim();
   if (!value) {
-    throw new Error('Missing internal secret. Pass --internal-secret or set PICLAW_INTERNAL_SECRET / PICLAW_WEB_INTERNAL_SECRET.');
+    throw new Error('Missing test-instance secret. Pass --internal-secret or set PICLAW_E2E_INTERNAL_SECRET.');
   }
   return value;
 }
@@ -22,7 +22,7 @@ function parseSetCookie(setCookieHeader: string | null, baseUrl: string) {
   const [nameValue, ...attrs] = parts;
   const eq = nameValue.indexOf('=');
   if (eq <= 0) {
-    throw new Error(`Invalid Set-Cookie header: ${setCookieHeader}`);
+    throw new Error('Invalid Set-Cookie header from test instance.');
   }
 
   const name = nameValue.slice(0, eq).trim();
@@ -64,11 +64,12 @@ export async function bootstrapE2EStorageState(options: {
   baseUrl: string;
   internalSecret?: string;
 }) {
-  const baseUrl = String(options.baseUrl || '').trim().replace(/\/$/, '');
+  const baseUrl = requireDisposableTestTarget(options.baseUrl);
   if (!baseUrl) throw new Error('bootstrapE2EStorageState requires a baseUrl.');
 
   const response = await fetch(`${baseUrl}/auth/e2e/bootstrap`, {
     method: 'POST',
+    redirect: 'error',
     headers: {
       'x-piclaw-internal-secret': resolveInternalSecret(options.internalSecret),
     },

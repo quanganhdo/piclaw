@@ -3,7 +3,7 @@ import "../../../helpers.js";
 import { initDatabase, getDb, closeDatabase } from "../../../../src/db/connection.js";
 import { createUser, updateUser } from "../../../../src/db/users.js";
 import { ensureChatBranch } from "../../../../src/db/chat-branches.js";
-import { storeChatMetadata } from "../../../../src/db/messages.js";
+import { storeChatMetadata, storeMessage, storeThinkingContent } from "../../../../src/db/messages.js";
 import { provisionUserHome } from "../../../../src/db/session-ownership.js";
 import { createWebSession, getWebSession } from "../../../../src/db/web-sessions.js";
 import { WebAuthGateway } from "../../../../src/channels/web/auth/auth-gateway.js";
@@ -41,23 +41,58 @@ test("family gets a separate no-store shell, versioned private bundles, no legac
   for (const path of ["/", "/index.html"]) {
     const response = await router.handle(request(path)); expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("private, no-store"); expect(response.headers.get("vary")).toContain("Cookie");
-    const html = await response.text(); expect(html).toContain("family.bundle.js?v="); expect(html).not.toContain("__FAMILY_ASSET_VERSION__");
-    expect(html).not.toContain("app.bundle"); expect(html).not.toContain("localStorage");
+    const html = await response.text(); expect(html).toContain("family.bundle.js?v="); expect(html).toContain("classic/dist/app.bundle.css?v="); expect(html).toContain("common/js/marked.min.js"); expect(html).toContain("common/js/vendor/katex.min.js"); expect(html).toContain("common/js/vendor/beautiful-mermaid.js"); expect(html).not.toContain("__FAMILY_ASSET_VERSION__");
+    expect(html).not.toContain("app.bundle.js"); expect(html).not.toContain("localStorage");
     expect(await (await router.handle(request(path, { method: "HEAD" }))).text()).toBe("");
     expect((await router.handle(request(path, { method: "POST" }))).status).toBe(403);
   }
-  for (const path of ["/static/common/dist/family.bundle.js", "/static/common/dist/family.bundle.css"]) {
-    expect((await router.handle(request(path))).status).toBe(200);
+  for (const path of ["/static/common/dist/family.bundle.js", "/static/common/dist/family.bundle.css", "/static/classic/dist/app.bundle.css", "/static/common/js/marked.min.js", "/static/common/js/vendor/katex.min.js", "/static/common/js/vendor/beautiful-mermaid.js", "/static/common/js/vendor/adaptivecards.min.js"]) {
+    const asset = await router.handle(request(path));
+    expect(asset.status).toBe(200);
+    expect(asset.headers.get("cache-control")).toBe("private, no-store");
+    expect(asset.headers.get("vary")).toContain("Cookie");
     expect(await (await router.handle(request(path, { method: "HEAD" }))).text()).toBe("");
     expect((await router.handle(request(path, { token: "invalid" }))).status).toBe(401);
   }
-  for (const path of ["/static/classic/index.html", "/static/classic/dist/app.bundle.js", "/static/common/dist/family.bundle.js.map", "/static/common/js/marked.min.js", "/static/sw.js", "/sw.js"]) {
+  for (const path of ["/static/classic/index.html", "/static/classic/dist/app.bundle.js", "/static/common/dist/family.bundle.js.map", "/static/sw.js"]) {
     expect((await router.handle(request(path))).status).toBe(403);
   }
+  const worker = await router.handle(request("/family-sw.js", { token: "invalid" }));
+  expect(worker.status).toBe(200); expect(await worker.text()).toContain("addEventListener('push'");
+});
+
+test("persisted thinking requires the live owner, exact chat, and browser pins", async () => {
+  const rowId = storeMessage({
+    id: "alice-thinking",
+    chat_jid: "web:alice",
+    sender: "agent",
+    sender_name: "Agent",
+    content: "Answer",
+    timestamp: new Date().toISOString(),
+    is_bot_message: true,
+    content_blocks: [{ type: "thinking_ref", lines: 2, duration_ms: 25 }],
+  });
+  storeThinkingContent(String(rowId), "private reasoning", 2, 25, "test-model");
+
+  const own = await router.handle(request(`/agent/thinking?message_id=${rowId}&chat_jid=web%3Aalice`, { headers: binding() }));
+  expect(own.status).toBe(200);
+  expect(await own.json()).toMatchObject({ text: "private reasoning", lines: 2, duration_ms: 25 });
+
+  for (const path of [
+    `/agent/thinking?message_id=${rowId}&chat_jid=web%3Abob`,
+    `/agent/thinking?message_id=${rowId}&chat_jid=web%3Aalice&chat_jid=web%3Abob`,
+    `/agent/thinking?message_id=alice-thinking&chat_jid=web%3Aalice`,
+  ]) {
+    expect((await router.handle(request(path, { headers: binding() }))).status).toBe(403);
+  }
+  expect((await router.handle(request(`/agent/thinking?message_id=${rowId}&chat_jid=web%3Aalice`, { token: "bob-token" }))).status).toBe(403);
+  expect((await router.handle(request(`/agent/thinking?message_id=${rowId}&chat_jid=web%3Aalice`, { headers: { "x-piclaw-account-id": bob } }))).status).toBe(409);
+  getDb().query("UPDATE thinking_content SET text=? WHERE message_id=?").run("x".repeat(100_001), String(rowId));
+  expect((await router.handle(request(`/agent/thinking?message_id=${rowId}&chat_jid=web%3Aalice`, { headers: binding() }))).status).toBe(403);
 });
 
 test("pin mismatch denies before reads, message admission, account mutations and logout", async () => {
-  for (const [path, method] of [["/auth/me", "GET"], ["/agent/branches", "GET"], ["/agent/default/message", "POST"], ["/account", "PATCH"], ["/auth/logout", "POST"]]) {
+  for (const [path, method] of [["/auth/me", "GET"], ["/agent/branches", "GET"], ["/agent/push/vapid-public-key", "GET"], ["/agent/default/message", "POST"], ["/account", "PATCH"], ["/auth/logout", "POST"]]) {
     for (const headers of [binding(), { "x-piclaw-account-id": bob }, { "x-piclaw-login-id": login }]) {
       const response = await router.handle(request(path!, { token: "bob-token", method, headers }));
       expect(response.status).toBe(409); expect((await response.json()).code).toBe("account_changed");

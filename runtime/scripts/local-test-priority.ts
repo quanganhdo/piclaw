@@ -2,6 +2,7 @@
 
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { assertTestWorkspaceArguments, ensureTestFilesystemIsolation } from "./test-filesystem-isolation.js";
 
 export const LOCAL_TEST_NICE_ENV = "PICLAW_LOCAL_TEST_NICE";
 export const LOCAL_TEST_PRIORITY_ACTIVE_ENV = "PICLAW_LOCAL_TEST_PRIORITY_ACTIVE";
@@ -80,7 +81,15 @@ export async function runLocalTestCommand(
   options: { readonly cwd?: string; readonly env?: Record<string, string | undefined> } = {},
 ): Promise<never> {
   const env = { ...process.env, ...(options.env ?? {}) };
-  const plan = planLocalTestCommand(argv, env);
+  const isolation = ensureTestFilesystemIsolation(env);
+  let plan: LocalTestPriorityPlan;
+  try {
+    assertTestWorkspaceArguments(argv, env);
+    plan = planLocalTestCommand(argv, env);
+  } catch (error) {
+    if (isolation.createdRoot) isolation.cleanup();
+    throw error;
+  }
   const spawnCommand = plan.applied
     ? ["setsid", "--wait", ...plan.command]
     : [...plan.command];
@@ -97,6 +106,7 @@ export async function runLocalTestCommand(
       detached: false,
     });
   } catch (error) {
+    if (isolation.createdRoot) isolation.cleanup();
     process.stderr.write(`[local-test-priority] failed to start test command: ${error instanceof Error ? error.message : String(error)}\n`);
     process.exit(127);
   }
@@ -117,6 +127,7 @@ export async function runLocalTestCommand(
   if (plan.applied) {
     spawnSync("kill", ["-KILL", `-${child.pid}`], { stdio: "ignore" });
   }
+  if (isolation.createdRoot) isolation.cleanup();
   process.exit(exitCode);
 }
 

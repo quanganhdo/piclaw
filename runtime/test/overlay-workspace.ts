@@ -12,13 +12,17 @@ import { spawnSync } from "child_process";
 import { mkdtempSync, mkdirSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
+import { assertNoTestMounts, assertPathWithinTestFilesystemIsolation } from "../scripts/test-filesystem-isolation.js";
 
 /** Remove a directory tree, using sudo if needed (overlay upper dirs may be root-owned). */
 function sudoRm(dir: string): void {
+  assertPathWithinTestFilesystemIsolation(dir, process.env, { allowRoot: false });
+  assertNoTestMounts(dir);
   try {
     rmSync(dir, { recursive: true, force: true });
   } catch {
-    try { spawnSync("sudo", ["rm", "-rf", dir], { timeout: 10000, stdio: "pipe" }); } catch {}
+    const result = spawnSync("sudo", ["-n", "rm", "-rf", "--", dir], { timeout: 10000, stdio: "pipe" });
+    if (result.status !== 0) throw new Error(`Failed to remove isolated overlay fixture: ${dir}`);
   }
 }
 
@@ -41,18 +45,20 @@ export function isOverlayAvailable(): boolean {
   if (process.platform !== "linux") { _overlayAvailable = false; return false; }
 
   const probe = mkdtempSync(join(tmpdir(), "overlay-probe-"));
+  assertPathWithinTestFilesystemIsolation(probe, process.env, { allowRoot: false });
   try {
     mkdirSync(join(probe, "lower"));
     mkdirSync(join(probe, "upper"));
     mkdirSync(join(probe, "work"));
     mkdirSync(join(probe, "merged"));
     const result = spawnSync("sudo", [
-      "mount", "-t", "overlay", "overlay",
+      "-n", "mount", "-t", "overlay", "overlay",
       "-o", `lowerdir=${join(probe, "lower")},upperdir=${join(probe, "upper")},workdir=${join(probe, "work")}`,
       join(probe, "merged"),
     ], { timeout: 5000, stdio: "pipe" });
     if (result.status === 0) {
-      spawnSync("sudo", ["umount", join(probe, "merged")], { timeout: 5000, stdio: "pipe" });
+      const unmount = spawnSync("sudo", ["-n", "umount", join(probe, "merged")], { timeout: 5000, stdio: "pipe" });
+      if (unmount.status !== 0) throw new Error("Overlay probe unmount failed; fixture retained");
       _overlayAvailable = true;
     } else {
       _overlayAvailable = false;
@@ -76,7 +82,9 @@ export function createOverlayWorkspace(
   baseDir: string,
   prefix = "piclaw-overlay-",
 ): OverlayWorkspace {
+  assertPathWithinTestFilesystemIsolation(baseDir, process.env, { allowRoot: false });
   const tmpBase = mkdtempSync(join(tmpdir(), prefix));
+  assertPathWithinTestFilesystemIsolation(tmpBase, process.env, { allowRoot: false });
 
   if (isOverlayAvailable()) {
     const upper = join(tmpBase, "upper");
@@ -87,7 +95,7 @@ export function createOverlayWorkspace(
     mkdirSync(merged);
 
     const result = spawnSync("sudo", [
-      "mount", "-t", "overlay", "overlay",
+      "-n", "mount", "-t", "overlay", "overlay",
       "-o", `lowerdir=${baseDir},upperdir=${upper},workdir=${work}`,
       merged,
     ], { timeout: 10000, stdio: "pipe" });
@@ -98,7 +106,8 @@ export function createOverlayWorkspace(
         isOverlay: true,
         upperDir: upper,
         cleanup: () => {
-          try { spawnSync("sudo", ["umount", "-l", merged], { timeout: 5000, stdio: "pipe" }); } catch (e) { void e; }
+          const unmount = spawnSync("sudo", ["-n", "umount", merged], { timeout: 5000, stdio: "pipe" });
+          if (unmount.status !== 0) throw new Error(`Overlay unmount failed; fixture retained: ${tmpBase}`);
           sudoRm(tmpBase);
         },
       };
@@ -115,7 +124,7 @@ export function createOverlayWorkspace(
     isOverlay: false,
     upperDir: null,
     cleanup: () => {
-      rmSync(tmpBase, { recursive: true, force: true });
+      sudoRm(tmpBase);
     },
   };
 }

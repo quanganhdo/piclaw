@@ -1,9 +1,12 @@
 import { expect, mock, spyOn } from "bun:test";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { assertPathWithinTestFilesystemIsolation } from "../../scripts/test-filesystem-isolation.js";
 
 const workspace = process.env.PICLAW_WORKSPACE!;
 const data = process.env.PICLAW_DATA!;
+assertPathWithinTestFilesystemIsolation(workspace, process.env, { allowRoot: false });
+assertPathWithinTestFilesystemIsolation(data, process.env, { allowRoot: false });
 const configPath = join(workspace, ".piclaw/config.json");
 mkdirSync(join(workspace, ".piclaw"), { recursive: true });
 type Mode = "single-user" | "family-shared" | "isolated-containers" | "invalid";
@@ -34,7 +37,10 @@ const { dreamMaintenance } = await import("../../src/extensions/dream-maintenanc
 
 function reset() {
   configure("single-user"); db.closeDatabase(); db.initDatabase(); indexCalls = 0; duringIndex = () => {};
-  for (const dir of [join(workspace, "notes"), join(data, "sessions"), join(data, "dream-backups"), join(data, "ipc")]) rmSync(dir, { recursive: true, force: true });
+  for (const dir of [join(workspace, "notes"), join(data, "sessions"), join(data, "dream-backups"), join(data, "ipc")]) {
+    assertPathWithinTestFilesystemIsolation(dir, process.env, { allowRoot: false });
+    rmSync(dir, { recursive: true, force: true });
+  }
   mkdirSync(join(workspace, "notes/memory"), { recursive: true });
   writeFileSync(join(workspace, "notes/memory/user-file.md"), "preserve shared note");
 }

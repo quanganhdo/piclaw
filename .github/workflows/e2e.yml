@@ -15,6 +15,8 @@ jobs:
     name: E2E UX regression tests / ${{ matrix.stage }}
     runs-on: ubuntu-latest
     timeout-minutes: 18
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.cache/ms-playwright
     strategy:
       fail-fast: false
       matrix:
@@ -77,8 +79,43 @@ jobs:
         run: bunx playwright install chromium
         working-directory: tests/e2e
 
+      - name: Start deterministic E2E LLM stub
+        run: |
+          bun run setup/local-openai-compatible-stub.ts > /tmp/piclaw-e2e-llm-stub.log 2>&1 &
+          STUB_PID=$!
+          echo "E2E_LLM_STUB_PID=$STUB_PID" >> "$GITHUB_ENV"
+          echo "OPENCODE_BASE_URL=http://127.0.0.1:34567/v1" >> "$GITHUB_ENV"
+          echo "OPENCODE_MODEL=piclaw-e2e-stub" >> "$GITHUB_ENV"
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:34567/v1/models > /dev/null 2>&1; then
+              echo "LLM stub ready after ${i}s"
+              exit 0
+            fi
+            if ! kill -0 "$STUB_PID" 2>/dev/null; then
+              echo "LLM stub exited before becoming ready" >&2
+              cat /tmp/piclaw-e2e-llm-stub.log >&2 || true
+              exit 1
+            fi
+            sleep 1
+          done
+          echo "Timed out waiting for LLM stub" >&2
+          cat /tmp/piclaw-e2e-llm-stub.log >&2 || true
+          exit 1
+        working-directory: tests/e2e
+
       - name: Configure deterministic E2E LLM provider
-        run: bun run setup/configure-test-instance.ts
+        run: |
+          export PICLAW_E2E_FIXTURE_ROOT=$(mktemp -d /tmp/piclaw-e2e-fixture.XXXXXX)
+          printf 'piclaw disposable e2e\n' > "$PICLAW_E2E_FIXTURE_ROOT/.piclaw-e2e-fixture"
+          export PICLAW_WORKSPACE="$PICLAW_E2E_FIXTURE_ROOT/workspace"
+          export PICLAW_PI_AGENT_DIR="$PICLAW_E2E_FIXTURE_ROOT/profile"
+          export PICLAW_E2E_DISPOSABLE=1
+          mkdir -p "$PICLAW_PI_AGENT_DIR" "$PICLAW_WORKSPACE"
+          echo "PICLAW_E2E_FIXTURE_ROOT=$PICLAW_E2E_FIXTURE_ROOT" >> $GITHUB_ENV
+          echo "PICLAW_WORKSPACE=$PICLAW_WORKSPACE" >> $GITHUB_ENV
+          echo "PICLAW_PI_AGENT_DIR=$PICLAW_PI_AGENT_DIR" >> $GITHUB_ENV
+          echo "PICLAW_E2E_DISPOSABLE=1" >> $GITHUB_ENV
+          bun run setup/configure-test-instance.ts
         working-directory: tests/e2e
 
       - name: Start PiClaw instance
@@ -88,8 +125,6 @@ jobs:
           echo "PICLAW_INTERNAL_SECRET=$PICLAW_INTERNAL_SECRET" >> $GITHUB_ENV
 
           # Start piclaw in background with test config
-          export PICLAW_WORKSPACE=$(mktemp -d)
-          echo "PICLAW_WORKSPACE=$PICLAW_WORKSPACE" >> $GITHUB_ENV
           mkdir -p "$PICLAW_WORKSPACE/.piclaw"
 
           # Write minimal config and seed one known root file for workspace/editor UX tests.
@@ -122,12 +157,14 @@ jobs:
         env:
           PICLAW_E2E_URL: http://localhost:3000
           PICLAW_INTERNAL_SECRET: ${{ env.PICLAW_INTERNAL_SECRET }}
+          PICLAW_E2E_INTERNAL_SECRET: ${{ env.PICLAW_INTERNAL_SECRET }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run E2E tests (${{ matrix.stage }})
         run: bun run test -- ${{ matrix.specs }} --project=desktop-chrome
         working-directory: tests/e2e
         env:
+          PICLAW_E2E_DISPOSABLE: '1'
           PICLAW_E2E_URL: http://localhost:3000
           PICLAW_INTERNAL_SECRET: ${{ env.PICLAW_INTERNAL_SECRET }}
           PICLAW_E2E_INTERNAL_SECRET: ${{ env.PICLAW_INTERNAL_SECRET }}
@@ -159,4 +196,6 @@ jobs:
 
       - name: Stop server
         if: always()
-        run: kill $SERVER_PID 2>/dev/null || true
+        run: |
+          kill $SERVER_PID 2>/dev/null || true
+          kill $E2E_LLM_STUB_PID 2>/dev/null || true

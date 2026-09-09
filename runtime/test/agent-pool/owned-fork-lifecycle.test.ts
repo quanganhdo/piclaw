@@ -158,11 +158,18 @@ test("runtime handle lookup and active/known lists have no global active-session
   run("web:alice", () => {
     expect(manager.findChatByAgentName("@RESEARCH")?.chat_jid).toBe("web:alice");
     expect(manager.findChatByAgentName("bob")).toBeNull();
+    expect(manager.getAgentHandleForChat("web:alice")).toBe("research");
+    expect(() => manager.getAgentHandleForChat("web:bob")).toThrow();
+    expect(() => manager.getAgentHandleForChat("web:missing")).toThrow();
     expect(manager.listActiveChats().map(row => row.chat_jid)).toEqual(["web:alice"]);
     expect(manager.listKnownChats().map(row => row.chat_jid)).toEqual(["web:alice"]);
     expect(() => manager.listKnownChats("web:bob")).toThrow();
   });
   expect(getChatBranchByChatJid("web:bob")?.agent_name).toBe("research");
+  expect(() => manager.getAgentHandleForChat("web:alice")).toThrow();
+  const snapshot = identity();
+  writeFileSync(join(workspace.workspace, ".piclaw/config.json"), JSON.stringify({ domains: { access: { mode: "single-user" } } }));
+  expect(() => withExecutionIdentity(snapshot, () => manager.getAgentHandleForChat("web:bob"))).toThrow();
 });
 
 test("family HTTP fork/rename/picker use cookie owner, require CSRF and preserve IDs", async () => {

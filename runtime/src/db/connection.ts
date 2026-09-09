@@ -22,6 +22,7 @@ import { initializeSessionOwnershipSchema } from "./session-ownership.js";
 import { initializeSessionHandleSchema } from "./session-handles.js";
 import { initializeOwnedForkSchema } from "./owned-forks.js";
 import { initializeMessageAuthoritySchema } from "./message-authority-schema.js";
+import { initializeFamilyMediaUploads } from "./family-media-uploads.js";
 import { initializeAuthFactorSchema } from "./auth-factors-schema.js";
 import { initializeAuthLabelsSchema } from "./auth-labels-schema.js";
 import { initializeFamilyToolRestrictions } from './family-tool-restrictions.js';
@@ -29,10 +30,19 @@ import { initializeAccountPreferences } from './account-preferences.js';
 import { initializeAccountAvatars } from './account-avatar.js';
 import { initializeAccountModelDefaults } from './account-model-defaults.js';
 import { initializeFamilyScheduledGrants } from './family-scheduled-grants-schema.js';
+import { initializeFamilyTaskAdmission } from './family-task-admission-schema.js';
 import { initializeFamilyScheduledOccurrences } from './family-scheduled-occurrences-schema.js';
 import { initializeFamilyScheduledExecutions } from './family-scheduled-executions-schema.js';
 import { initializeFamilyScheduledDispatch } from './family-scheduled-dispatch-schema.js';
+import { initializeFamilyScheduledExpiry } from './family-scheduled-expiry-schema.js';
+import { initializeFamilyScheduledInterruptions } from './family-scheduled-interruptions-schema.js';
+import { initializeFamilyScheduledCancellations } from './family-scheduled-cancellations-schema.js';
+import { initializeFamilyExecutionAdmission } from './family-execution-admission-schema.js';
+import { initializeFamilyWorkspaceIndex } from './family-workspace-index-schema.js';
+import { initializeFamilyMemory } from './family-memory-schema.js';
 import { initializeFamilyScheduledPublications } from './family-scheduled-publications-schema.js';
+import { initializeToolOutputOwnership } from './tool-output-ownership-schema.js';
+import { initializeBudgetLimitsSchema } from './budget-limits-schema.js';
 import fs from "fs";
 import path from "path";
 
@@ -306,7 +316,12 @@ function createSchema(database: Database): void {
       size_bytes INTEGER,
       line_count INTEGER,
       summary TEXT,
-      path TEXT
+      path TEXT,
+      owner_user_id TEXT,
+      root_branch_id TEXT,
+      source_branch_id TEXT,
+      chat_jid TEXT,
+      execution_kind TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_tool_outputs_created_at ON tool_outputs(created_at);
 
@@ -477,7 +492,20 @@ function createSchema(database: Database): void {
       provider TEXT,
       api TEXT,
       usage_source TEXT DEFAULT 'assistant',
-      turns INTEGER DEFAULT 0
+      turns INTEGER DEFAULT 0,
+      work_id TEXT,
+      invocation_id TEXT,
+      usage_event_id TEXT,
+      api_equivalent_cost_microusd INTEGER,
+      api_equivalent_cost_known INTEGER,
+      valuation_provenance TEXT,
+      api_equivalent_known_subtotal_microusd INTEGER,
+      api_equivalent_unknown_categories TEXT,
+      pricing_currency TEXT,
+      pricing_source TEXT,
+      pricing_version TEXT,
+      pricing_context_tier TEXT,
+      pricing_cache_fallbacks TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_token_usage_chat_jid ON token_usage(chat_jid);
     CREATE INDEX IF NOT EXISTS idx_token_usage_run_at ON token_usage(run_at);
@@ -675,6 +703,20 @@ function ensureTokenUsageColumns(database: Database): void {
   ensureColumn("provider_cost_total", "REAL");
   ensureColumn("catalogue_cost_total", "REAL");
   ensureColumn("cost_provenance", "TEXT");
+  ensureColumn("work_id", "TEXT");
+  ensureColumn("invocation_id", "TEXT");
+  ensureColumn("usage_event_id", "TEXT");
+  ensureColumn("api_equivalent_cost_microusd", "INTEGER");
+  ensureColumn("api_equivalent_cost_known", "INTEGER");
+  ensureColumn("valuation_provenance", "TEXT");
+  ensureColumn("api_equivalent_known_subtotal_microusd", "INTEGER");
+  ensureColumn("api_equivalent_unknown_categories", "TEXT");
+  ensureColumn("pricing_currency", "TEXT");
+  ensureColumn("pricing_source", "TEXT");
+  ensureColumn("pricing_version", "TEXT");
+  ensureColumn("pricing_context_tier", "TEXT");
+  ensureColumn("pricing_cache_fallbacks", "TEXT");
+  database.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_token_usage_usage_event_id ON token_usage(usage_event_id) WHERE usage_event_id IS NOT NULL");
 }
 
 function ensureScheduledTaskColumns(database: Database): void {
@@ -942,6 +984,7 @@ export function initDatabase(): void {
   ensureMessageColumns(db);
   ensureKeychainNoteColumns(db);
   ensureTokenUsageColumns(db);
+  initializeBudgetLimitsSchema(db);
   ensureScheduledTaskColumns(db);
   installScheduledRunCompositionSchema(db);
   migrateScheduledTaskAuthorities(db);
@@ -956,8 +999,10 @@ export function initDatabase(): void {
   ensureThinkingContentDuration(db);
   initializeAccessSchema(db);
   initializeSessionOwnershipSchema(db);
+  initializeToolOutputOwnership(db);
   initializeOwnedForkSchema(db);
   initializeMessageAuthoritySchema(db);
+  initializeFamilyMediaUploads(db);
   initializeAuthFactorSchema(db);
   initializeAuthLabelsSchema(db);
   initializeFamilyToolRestrictions(db);
@@ -965,9 +1010,16 @@ export function initDatabase(): void {
   initializeAccountAvatars(db);
   initializeAccountModelDefaults(db);
   initializeFamilyScheduledGrants(db);
+  initializeFamilyTaskAdmission(db);
   initializeFamilyScheduledOccurrences(db);
   initializeFamilyScheduledExecutions(db);
   initializeFamilyScheduledDispatch(db);
+  initializeFamilyScheduledExpiry(db);
+  initializeFamilyScheduledInterruptions(db);
+  initializeFamilyScheduledCancellations(db);
+  initializeFamilyExecutionAdmission(db);
+  initializeFamilyWorkspaceIndex(db);
+  initializeFamilyMemory(db);
   initializeFamilyScheduledPublications(db);
   // The legacy live store historically runs without global FK enforcement.
   // EF-S07 uses a dedicated FK-enabled scheduler connection in production;

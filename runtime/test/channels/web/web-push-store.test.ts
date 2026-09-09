@@ -10,7 +10,9 @@ import {
   listStoredWebPushSubscriptions,
   normalizeStoredWebPushSubscription,
   removeStoredWebPushSubscription,
+  pruneStoredWebPushSubscriptions,
   upsertStoredWebPushSubscription,
+  upsertStoredWebPushSubscriptionAtomic,
 } from "../../../src/channels/web/push/web-push-store.js";
 
 const tempDirs: string[] = [];
@@ -68,6 +70,8 @@ describe("web push store", () => {
     expect(typeof normalized?.updatedAt).toBe("string");
     expect(normalized?.userAgent).toBeNull();
     expect(normalized?.deviceId).toBeNull();
+    expect(normalized?.ownerUserId).toBeNull();
+    expect(normalized?.loginSessionId).toBeNull();
 
     expect(normalizeStoredWebPushSubscription({ endpoint: "", keys: {} })).toBeNull();
     expect(normalizeStoredWebPushSubscription(null)).toBeNull();
@@ -146,5 +150,76 @@ describe("web push store", () => {
     } finally {
       WEB_RUNTIME_CONFIG.pushSubscriptionCap = previousCap;
     }
+  });
+
+  test("binds family subscriptions to an owner and login without cross-owner device replacement", () => {
+    const baseDir = createTempPushDir();
+    upsertStoredWebPushSubscription(createSubscription("https://push.example.test/alice", "shared-device"), {
+      baseDir, ownerUserId: "alice", loginSessionId: "login-alice",
+    });
+    upsertStoredWebPushSubscription(createSubscription("https://push.example.test/bob", "shared-device"), {
+      baseDir, ownerUserId: "bob", loginSessionId: "login-bob",
+    });
+    expect(listStoredWebPushSubscriptions(baseDir, { ownerUserId: "alice" }).map(entry => entry.endpoint)).toEqual(["https://push.example.test/alice"]);
+    expect(listStoredWebPushSubscriptions(baseDir, { ownerUserId: "bob" }).map(entry => entry.endpoint)).toEqual(["https://push.example.test/bob"]);
+    expect(removeStoredWebPushSubscription("https://push.example.test/bob", baseDir, { ownerUserId: "alice", loginSessionId: "login-alice" })).toBe(false);
+    expect(removeStoredWebPushSubscription("https://push.example.test/alice", baseDir, { ownerUserId: "alice", loginSessionId: "login-alice", deviceId: "wrong" })).toBe(false);
+    expect(removeStoredWebPushSubscription("https://push.example.test/alice", baseDir, { ownerUserId: "alice", loginSessionId: "login-alice", deviceId: "shared-device" })).toBe(true);
+  });
+
+  test("same owner endpoint refresh preserves the server-selected device identity", () => {
+    const baseDir = createTempPushDir(), endpoint = "https://push.example.test/stable";
+    upsertStoredWebPushSubscription(createSubscription(endpoint, "first-device"), { baseDir, ownerUserId: "alice", loginSessionId: "login-a" });
+    const refreshed = upsertStoredWebPushSubscription(createSubscription(endpoint, "new-page-device"), { baseDir, ownerUserId: "alice", loginSessionId: "login-b" });
+    expect(refreshed.deviceId).toBe("first-device"); expect(refreshed.loginSessionId).toBe("login-b");
+  });
+
+  test("a browser can rebind an exact subscription but changed keys cannot claim it", () => {
+    const baseDir = createTempPushDir(), subscription = createSubscription("https://push.example.test/rebind", "old-device");
+    upsertStoredWebPushSubscription(subscription, { baseDir, ownerUserId: "alice", loginSessionId: "login-a" });
+    const rebound = upsertStoredWebPushSubscription(subscription, { baseDir, ownerUserId: "bob", loginSessionId: "login-b", allowOwnerRebind: true });
+    expect(rebound).toMatchObject({ ownerUserId: "bob", loginSessionId: "login-b", deviceId: "old-device" });
+    expect(listStoredWebPushSubscriptions(baseDir, { ownerUserId: "alice" })).toEqual([]);
+    expect(() => upsertStoredWebPushSubscription({ ...subscription, keys: { ...subscription.keys, auth: "wrong" } },
+      { baseDir, ownerUserId: "alice", loginSessionId: "login-c", allowOwnerRebind: true })).toThrow("Invalid push subscription.");
+  });
+
+  test("does not trust owner fields supplied inside a browser subscription body", () => {
+    const normalized = normalizeStoredWebPushSubscription({ ...createSubscription(), ownerUserId: "alice", loginSessionId: "login" });
+    expect(normalized?.ownerUserId).toBeNull(); expect(normalized?.loginSessionId).toBeNull();
+  });
+
+  test("serializes family subscription updates without losing another owner", async () => {
+    const baseDir = createTempPushDir();
+    await Promise.all(Array.from({ length: 8 }, (_, index) => upsertStoredWebPushSubscriptionAtomic(
+      createSubscription(`https://push.example.test/alice/${index}`, `alice-${index}`),
+      { baseDir, ownerUserId: "alice", loginSessionId: "login-a", now: new Date(1780000000000 + index).toISOString() },
+    )).concat([upsertStoredWebPushSubscriptionAtomic(createSubscription("https://push.example.test/bob/1", "bob-1"),
+      { baseDir, ownerUserId: "bob", loginSessionId: "login-b" })]));
+    expect(listStoredWebPushSubscriptions(baseDir, { ownerUserId: "alice" })).toHaveLength(8);
+    expect(listStoredWebPushSubscriptions(baseDir, { ownerUserId: "bob" })).toHaveLength(1);
+  });
+
+  test("caps family subscriptions per owner before applying the instance-wide cap", async () => {
+    const baseDir = createTempPushDir(), previousCap = WEB_RUNTIME_CONFIG.pushSubscriptionCap;
+    WEB_RUNTIME_CONFIG.pushSubscriptionCap = 32;
+    try {
+      for (let index = 0; index < 10; index += 1) await upsertStoredWebPushSubscriptionAtomic(
+        createSubscription(`https://push.example.test/alice/cap/${index}`, `alice-cap-${index}`),
+        { baseDir, ownerUserId: "alice", loginSessionId: "login-a", now: new Date(1780000000000 + index).toISOString() },
+      );
+      await upsertStoredWebPushSubscriptionAtomic(createSubscription("https://push.example.test/bob/cap", "bob-cap"), { baseDir, ownerUserId: "bob", loginSessionId: "login-b" });
+      expect(listStoredWebPushSubscriptions(baseDir, { ownerUserId: "alice" })).toHaveLength(8);
+      expect(listStoredWebPushSubscriptions(baseDir, { ownerUserId: "bob" })).toHaveLength(1);
+    } finally { WEB_RUNTIME_CONFIG.pushSubscriptionCap = previousCap; }
+  });
+
+  test("prunes a recipient snapshot in one serialized write without deleting another owner", async () => {
+    const baseDir = createTempPushDir();
+    await upsertStoredWebPushSubscriptionAtomic(createSubscription("https://push.example.test/alice/old", "alice-old"), { baseDir, ownerUserId: "alice", loginSessionId: "old" });
+    await upsertStoredWebPushSubscriptionAtomic(createSubscription("https://push.example.test/alice/live", "alice-live"), { baseDir, ownerUserId: "alice", loginSessionId: "live" });
+    await upsertStoredWebPushSubscriptionAtomic(createSubscription("https://push.example.test/bob/live", "bob-live"), { baseDir, ownerUserId: "bob", loginSessionId: "bob" });
+    expect(await pruneStoredWebPushSubscriptions(entry => entry.ownerUserId === "alice" && entry.loginSessionId === "old", baseDir)).toBe(1);
+    expect(listStoredWebPushSubscriptions(baseDir).map(entry => entry.endpoint).sort()).toEqual(["https://push.example.test/alice/live", "https://push.example.test/bob/live"]);
   });
 });

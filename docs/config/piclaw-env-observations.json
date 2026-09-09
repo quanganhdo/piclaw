@@ -78,16 +78,16 @@
       "semanticReaderOccurrences": 0
     },
     "tooling": {
-      "referencedNames": 77,
-      "directReaderNames": 40,
-      "directReaderOccurrences": 67,
+      "referencedNames": 87,
+      "directReaderNames": 42,
+      "directReaderOccurrences": 69,
       "helperReaderNames": 0,
       "helperReaderOccurrences": 0,
-      "semanticReaderNames": 40,
-      "semanticReaderOccurrences": 67
+      "semanticReaderNames": 42,
+      "semanticReaderOccurrences": 69
     },
     "docsDeploy": {
-      "referencedNames": 123,
+      "referencedNames": 127,
       "directReaderNames": 16,
       "directReaderOccurrences": 32,
       "helperReaderNames": 0,
@@ -763,6 +763,7 @@
           "helperReaders": 0,
           "semanticReaders": 0,
           "files": [
+            "docs/getting-started.md",
             "docs/release.md"
           ],
           "readerFiles": []
@@ -1199,9 +1200,11 @@
           "semanticReaders": 4,
           "files": [
             "runtime/scripts/benchmark-cold-session.ts",
+            "runtime/scripts/test-filesystem-isolation.ts",
             "scripts/audit-baseline-quality-deterministic.ts",
             "scripts/audit-piclaw-env-surface.ts",
             "scripts/audit-queue-session-threading-replay.ts",
+            "scripts/smoke-install-from-repo.sh",
             "scripts/token-chart.ts"
           ],
           "readerFiles": [
@@ -1216,7 +1219,8 @@
           "helperReaders": 0,
           "semanticReaders": 0,
           "files": [
-            "runtime/src/core/config-paths.ts"
+            "runtime/src/core/config-paths.ts",
+            "runtime/src/workspace-index-process.ts"
           ],
           "readerFiles": []
         },
@@ -1226,7 +1230,8 @@
           "helperReaders": 0,
           "semanticReaders": 0,
           "files": [
-            "runtime/src/core/config-paths.ts"
+            "runtime/src/core/config-paths.ts",
+            "runtime/src/workspace-index-process.ts"
           ],
           "readerFiles": []
         }
@@ -1253,12 +1258,13 @@
         },
         "tooling": {
           "referenced": true,
-          "directReaders": 4,
+          "directReaders": 3,
           "helperReaders": 0,
-          "semanticReaders": 4,
+          "semanticReaders": 3,
           "files": [
             "runtime/scripts/benchmark-cold-session.ts",
             "runtime/scripts/controlled-test-runner.ts",
+            "runtime/scripts/test-filesystem-isolation.ts",
             "scripts/audit-baseline-quality-deterministic.ts",
             "scripts/audit-core-config-keychain-coverage.sh",
             "scripts/audit-extract-typed-config-objects.sh",
@@ -1269,7 +1275,6 @@
           ],
           "readerFiles": [
             "runtime/scripts/benchmark-cold-session.ts",
-            "runtime/scripts/controlled-test-runner.ts",
             "scripts/audit-queue-session-threading-replay.ts"
           ]
         },
@@ -1333,6 +1338,21 @@
           "files": [
             "runtime/src/core/config-sources.ts",
             "runtime/src/core/config-web.ts"
+          ],
+          "readerFiles": []
+        }
+      }
+    },
+    {
+      "name": "PICLAW_DESKTOP_URL",
+      "scopes": {
+        "docsDeploy": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "docs/desktop.md"
           ],
           "readerFiles": []
         }
@@ -1708,17 +1728,80 @@
     {
       "name": "PICLAW_E2E_BASE_URL",
       "scopes": {
+        "docsDeploy": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "docs/development.md"
+          ],
+          "readerFiles": []
+        },
         "tooling": {
           "referenced": true,
-          "directReaders": 1,
+          "directReaders": 4,
           "helperReaders": 0,
-          "semanticReaders": 1,
+          "semanticReaders": 4,
           "files": [
-            "runtime/scripts/playwright/terminal-reopen.ts"
+            "runtime/scripts/playwright/terminal-reopen-multicycle.ts",
+            "runtime/scripts/playwright/terminal-reopen-race.ts",
+            "runtime/scripts/playwright/terminal-reopen.ts",
+            "scripts/web-silence-test.ts"
           ],
           "readerFiles": [
-            "runtime/scripts/playwright/terminal-reopen.ts"
+            "runtime/scripts/playwright/terminal-reopen-multicycle.ts",
+            "runtime/scripts/playwright/terminal-reopen-race.ts",
+            "runtime/scripts/playwright/terminal-reopen.ts",
+            "scripts/web-silence-test.ts"
           ]
+        }
+      }
+    },
+    {
+      "name": "PICLAW_E2E_DISPOSABLE",
+      "scopes": {
+        "docsDeploy": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            ".github/workflows/e2e.yml",
+            "docs/development.md"
+          ],
+          "readerFiles": []
+        },
+        "tooling": {
+          "referenced": true,
+          "directReaders": 2,
+          "helperReaders": 0,
+          "semanticReaders": 2,
+          "files": [
+            "runtime/scripts/playwright/vnc-harness-report.ts",
+            "runtime/scripts/test-filesystem-isolation.ts",
+            "runtime/scripts/test-target.ts",
+            "runtime/scripts/vnc-harness-standalone.ts"
+          ],
+          "readerFiles": [
+            "runtime/scripts/playwright/vnc-harness-report.ts",
+            "runtime/scripts/vnc-harness-standalone.ts"
+          ]
+        }
+      }
+    },
+    {
+      "name": "PICLAW_E2E_FIXTURE_ROOT",
+      "scopes": {
+        "docsDeploy": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            ".github/workflows/e2e.yml"
+          ],
+          "readerFiles": []
         }
       }
     },
@@ -1748,9 +1831,29 @@
           "helperReaders": 0,
           "semanticReaders": 0,
           "files": [
-            ".github/workflows/e2e.yml"
+            ".github/workflows/e2e.yml",
+            "docs/development.md"
           ],
           "readerFiles": []
+        },
+        "tooling": {
+          "referenced": true,
+          "directReaders": 4,
+          "helperReaders": 0,
+          "semanticReaders": 4,
+          "files": [
+            "runtime/scripts/playwright/terminal-reopen-multicycle.ts",
+            "runtime/scripts/playwright/terminal-reopen-race.ts",
+            "runtime/scripts/playwright/terminal-reopen.ts",
+            "runtime/scripts/playwright/web-auth-bootstrap.ts",
+            "runtime/scripts/test-filesystem-isolation.ts"
+          ],
+          "readerFiles": [
+            "runtime/scripts/playwright/terminal-reopen-multicycle.ts",
+            "runtime/scripts/playwright/terminal-reopen-race.ts",
+            "runtime/scripts/playwright/terminal-reopen.ts",
+            "runtime/scripts/playwright/web-auth-bootstrap.ts"
+          ]
         }
       }
     },
@@ -1780,7 +1883,8 @@
           "helperReaders": 0,
           "semanticReaders": 0,
           "files": [
-            ".github/workflows/e2e.yml"
+            ".github/workflows/e2e.yml",
+            "docs/development.md"
           ],
           "readerFiles": []
         }
@@ -2153,22 +2257,14 @@
         },
         "tooling": {
           "referenced": true,
-          "directReaders": 4,
+          "directReaders": 0,
           "helperReaders": 0,
-          "semanticReaders": 4,
+          "semanticReaders": 0,
           "files": [
-            "runtime/scripts/playwright/terminal-reopen-multicycle.ts",
-            "runtime/scripts/playwright/terminal-reopen-race.ts",
-            "runtime/scripts/playwright/terminal-reopen.ts",
-            "runtime/scripts/playwright/web-auth-bootstrap.ts",
+            "runtime/scripts/test-filesystem-isolation.ts",
             "scripts/audit-piclaw-env-surface.ts"
           ],
-          "readerFiles": [
-            "runtime/scripts/playwright/terminal-reopen-multicycle.ts",
-            "runtime/scripts/playwright/terminal-reopen-race.ts",
-            "runtime/scripts/playwright/terminal-reopen.ts",
-            "runtime/scripts/playwright/web-auth-bootstrap.ts"
-          ]
+          "readerFiles": []
         },
         "production": {
           "referenced": true,
@@ -2214,6 +2310,18 @@
           ],
           "readerFiles": []
         },
+        "tooling": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "runtime/scripts/test-filesystem-isolation.ts",
+            "scripts/audit-piclaw-env-surface.ts",
+            "scripts/smoke-install-from-repo.sh"
+          ],
+          "readerFiles": []
+        },
         "production": {
           "referenced": true,
           "directReaders": 0,
@@ -2239,16 +2347,6 @@
           "readerFiles": [
             "runtime/src/core/config-secrets.ts"
           ]
-        },
-        "tooling": {
-          "referenced": true,
-          "directReaders": 0,
-          "helperReaders": 0,
-          "semanticReaders": 0,
-          "files": [
-            "scripts/audit-piclaw-env-surface.ts"
-          ],
-          "readerFiles": []
         }
       }
     },
@@ -2266,6 +2364,18 @@
           ],
           "readerFiles": []
         },
+        "tooling": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "runtime/scripts/test-filesystem-isolation.ts",
+            "scripts/audit-piclaw-env-surface.ts",
+            "scripts/smoke-install-from-repo.sh"
+          ],
+          "readerFiles": []
+        },
         "production": {
           "referenced": true,
           "directReaders": 0,
@@ -2291,16 +2401,6 @@
           "readerFiles": [
             "runtime/src/core/config-secrets.ts"
           ]
-        },
-        "tooling": {
-          "referenced": true,
-          "directReaders": 0,
-          "helperReaders": 0,
-          "semanticReaders": 0,
-          "files": [
-            "scripts/audit-piclaw-env-surface.ts"
-          ],
-          "readerFiles": []
         }
       }
     },
@@ -2891,7 +2991,20 @@
           "helperReaders": 0,
           "semanticReaders": 0,
           "files": [
+            ".github/workflows/e2e.yml",
             "docs/configuration.md"
+          ],
+          "readerFiles": []
+        },
+        "tooling": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "runtime/scripts/test-filesystem-isolation.ts",
+            "scripts/audit-piclaw-env-surface.ts",
+            "scripts/smoke-install-from-repo.sh"
           ],
           "readerFiles": []
         },
@@ -2912,16 +3025,6 @@
           "semanticReaders": 0,
           "files": [
             "runtime/src/core/agent-dir.ts"
-          ],
-          "readerFiles": []
-        },
-        "tooling": {
-          "referenced": true,
-          "directReaders": 0,
-          "helperReaders": 0,
-          "semanticReaders": 0,
-          "files": [
-            "scripts/audit-piclaw-env-surface.ts"
           ],
           "readerFiles": []
         }
@@ -3448,6 +3551,40 @@
       }
     },
     {
+      "name": "PICLAW_PROVIDER_TEST_LIVE",
+      "scopes": {
+        "tooling": {
+          "referenced": true,
+          "directReaders": 1,
+          "helperReaders": 0,
+          "semanticReaders": 1,
+          "files": [
+            "runtime/scripts/azure-openai-harness.ts"
+          ],
+          "readerFiles": [
+            "runtime/scripts/azure-openai-harness.ts"
+          ]
+        }
+      }
+    },
+    {
+      "name": "PICLAW_PROVIDER_TEST_SETTINGS",
+      "scopes": {
+        "tooling": {
+          "referenced": true,
+          "directReaders": 1,
+          "helperReaders": 0,
+          "semanticReaders": 1,
+          "files": [
+            "runtime/scripts/azure-openai-harness.ts"
+          ],
+          "readerFiles": [
+            "runtime/scripts/azure-openai-harness.ts"
+          ]
+        }
+      }
+    },
+    {
       "name": "PICLAW_QUEUE_REPLAY_AUDIT_DIR",
       "scopes": {
         "tooling": {
@@ -3525,6 +3662,16 @@
           "semanticReaders": 0,
           "files": [
             "docs/configuration.md"
+          ],
+          "readerFiles": []
+        },
+        "tooling": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "runtime/scripts/test-filesystem-isolation.ts"
           ],
           "readerFiles": []
         },
@@ -3745,6 +3892,18 @@
           ],
           "readerFiles": []
         },
+        "tooling": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "runtime/scripts/test-filesystem-isolation.ts",
+            "scripts/audit-piclaw-env-surface.ts",
+            "scripts/smoke-install-from-repo.sh"
+          ],
+          "readerFiles": []
+        },
         "production": {
           "referenced": true,
           "directReaders": 0,
@@ -3762,16 +3921,6 @@
           "semanticReaders": 0,
           "files": [
             "runtime/src/core/config-paths.ts"
-          ],
-          "readerFiles": []
-        },
-        "tooling": {
-          "referenced": true,
-          "directReaders": 0,
-          "helperReaders": 0,
-          "semanticReaders": 0,
-          "files": [
-            "scripts/audit-piclaw-env-surface.ts"
           ],
           "readerFiles": []
         }
@@ -4414,6 +4563,7 @@
           "helperReaders": 0,
           "semanticReaders": 0,
           "files": [
+            "docs/getting-started.md",
             "docs/release.md"
           ],
           "readerFiles": []
@@ -4876,10 +5026,12 @@
           "semanticReaders": 5,
           "files": [
             "runtime/scripts/benchmark-cold-session.ts",
+            "runtime/scripts/test-filesystem-isolation.ts",
             "scripts/audit-baseline-quality-deterministic.ts",
             "scripts/audit-piclaw-env-surface.ts",
             "scripts/audit-queue-session-threading-replay.ts",
             "scripts/backfill-token-usage.ts",
+            "scripts/smoke-install-from-repo.sh",
             "scripts/token-chart.ts"
           ],
           "readerFiles": [
@@ -4896,7 +5048,8 @@
           "semanticReaders": 0,
           "files": [
             "runtime/src/core/config-paths.ts",
-            "runtime/src/db/connection.ts"
+            "runtime/src/db/connection.ts",
+            "runtime/src/workspace-index-process.ts"
           ],
           "readerFiles": []
         },
@@ -4907,7 +5060,8 @@
           "semanticReaders": 0,
           "files": [
             "runtime/src/core/config-paths.ts",
-            "runtime/src/db/connection.ts"
+            "runtime/src/db/connection.ts",
+            "runtime/src/workspace-index-process.ts"
           ],
           "readerFiles": []
         }
@@ -5104,6 +5258,36 @@
           "semanticReaders": 0,
           "files": [
             "runtime/src/channels/web/terminal/terminal-session-service.ts"
+          ],
+          "readerFiles": []
+        }
+      }
+    },
+    {
+      "name": "PICLAW_TEST_FS_ISOLATION_ACTIVE",
+      "scopes": {
+        "tooling": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "runtime/scripts/test-filesystem-isolation.ts"
+          ],
+          "readerFiles": []
+        }
+      }
+    },
+    {
+      "name": "PICLAW_TEST_FS_ISOLATION_ROOT",
+      "scopes": {
+        "tooling": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "runtime/scripts/test-filesystem-isolation.ts"
           ],
           "readerFiles": []
         }
@@ -5761,6 +5945,7 @@
           "semanticReaders": 0,
           "files": [
             "docs/configuration.md",
+            "docs/getting-started.md",
             "docs/reverse-proxy.md"
           ],
           "readerFiles": []
@@ -6427,22 +6612,14 @@
         },
         "tooling": {
           "referenced": true,
-          "directReaders": 4,
+          "directReaders": 0,
           "helperReaders": 0,
-          "semanticReaders": 4,
+          "semanticReaders": 0,
           "files": [
-            "runtime/scripts/playwright/terminal-reopen-multicycle.ts",
-            "runtime/scripts/playwright/terminal-reopen-race.ts",
-            "runtime/scripts/playwright/terminal-reopen.ts",
-            "runtime/scripts/playwright/web-auth-bootstrap.ts",
+            "runtime/scripts/test-filesystem-isolation.ts",
             "scripts/audit-piclaw-env-surface.ts"
           ],
-          "readerFiles": [
-            "runtime/scripts/playwright/terminal-reopen-multicycle.ts",
-            "runtime/scripts/playwright/terminal-reopen-race.ts",
-            "runtime/scripts/playwright/terminal-reopen.ts",
-            "runtime/scripts/playwright/web-auth-bootstrap.ts"
-          ]
+          "readerFiles": []
         },
         "production": {
           "referenced": true,
@@ -6933,6 +7110,17 @@
           ],
           "readerFiles": []
         },
+        "tooling": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "runtime/scripts/test-filesystem-isolation.ts",
+            "scripts/audit-piclaw-env-surface.ts"
+          ],
+          "readerFiles": []
+        },
         "production": {
           "referenced": true,
           "directReaders": 0,
@@ -6958,16 +7146,6 @@
           "readerFiles": [
             "runtime/src/core/config-network-bootstrap.ts"
           ]
-        },
-        "tooling": {
-          "referenced": true,
-          "directReaders": 0,
-          "helperReaders": 0,
-          "semanticReaders": 0,
-          "files": [
-            "scripts/audit-piclaw-env-surface.ts"
-          ],
-          "readerFiles": []
         }
       }
     },
@@ -6984,6 +7162,17 @@
           ],
           "readerFiles": []
         },
+        "tooling": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "runtime/scripts/test-filesystem-isolation.ts",
+            "scripts/audit-piclaw-env-surface.ts"
+          ],
+          "readerFiles": []
+        },
         "production": {
           "referenced": true,
           "directReaders": 0,
@@ -7009,16 +7198,6 @@
           "readerFiles": [
             "runtime/src/core/config-network-bootstrap.ts"
           ]
-        },
-        "tooling": {
-          "referenced": true,
-          "directReaders": 0,
-          "helperReaders": 0,
-          "semanticReaders": 0,
-          "files": [
-            "scripts/audit-piclaw-env-surface.ts"
-          ],
-          "readerFiles": []
         }
       }
     },
@@ -7032,6 +7211,16 @@
           "semanticReaders": 0,
           "files": [
             "docs/configuration.md"
+          ],
+          "readerFiles": []
+        },
+        "tooling": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "runtime/scripts/test-filesystem-isolation.ts"
           ],
           "readerFiles": []
         },
@@ -7210,6 +7399,16 @@
     {
       "name": "PICLAW_WEB_WIDGET_TOKEN",
       "scopes": {
+        "tooling": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "runtime/scripts/test-filesystem-isolation.ts"
+          ],
+          "readerFiles": []
+        },
         "production": {
           "referenced": true,
           "directReaders": 0,
@@ -7312,6 +7511,7 @@
             ".github/workflows/e2e.yml",
             "docs/azure/README.md",
             "docs/configuration.md",
+            "docs/desktop.md",
             "skel/.pi/skills/bootstrap-container/SKILL.md",
             "skel/.pi/skills/bootstrap-container/bootstrap-container.sh",
             "skel/.pi/skills/situate-daily-notes/agent-memory-sidecar.ts",
@@ -7330,9 +7530,11 @@
           "semanticReaders": 3,
           "files": [
             "runtime/scripts/benchmark-cold-session.ts",
+            "runtime/scripts/test-filesystem-isolation.ts",
             "scripts/audit-baseline-quality-deterministic.ts",
             "scripts/audit-piclaw-env-surface.ts",
-            "scripts/audit-queue-session-threading-replay.ts"
+            "scripts/audit-queue-session-threading-replay.ts",
+            "scripts/smoke-install-from-repo.sh"
           ],
           "readerFiles": [
             "runtime/scripts/benchmark-cold-session.ts",
@@ -7346,7 +7548,8 @@
           "semanticReaders": 0,
           "files": [
             "runtime/src/core/config-paths.ts",
-            "runtime/src/db/connection.ts"
+            "runtime/src/db/connection.ts",
+            "runtime/src/workspace-index-process.ts"
           ],
           "readerFiles": []
         },
@@ -7357,7 +7560,8 @@
           "semanticReaders": 0,
           "files": [
             "runtime/src/core/config-paths.ts",
-            "runtime/src/db/connection.ts"
+            "runtime/src/db/connection.ts",
+            "runtime/src/workspace-index-process.ts"
           ],
           "readerFiles": []
         }
@@ -7400,6 +7604,16 @@
           "semanticReaders": 0,
           "files": [
             "docs/configuration.md"
+          ],
+          "readerFiles": []
+        },
+        "tooling": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "runtime/scripts/test-filesystem-isolation.ts"
           ],
           "readerFiles": []
         },

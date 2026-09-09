@@ -979,7 +979,6 @@ export interface TokenCache {
 }
 
 let tokenCacheWriteSequence = 0;
-let tokenRefreshInFlight: Promise<TokenCache> | null = null;
 
 type ImageArgs = {
   prompt: string;
@@ -1062,17 +1061,27 @@ async function fetchTokenFromImds(): Promise<TokenCache> {
   return { accessToken: data.access_token, expiresOn: expiresRaw, expiresOnEpoch };
 }
 
+export function createAzureTokenRefreshCoalescer() {
+  let inFlight: Promise<TokenCache> | null = null;
+  const run = (refresh: () => Promise<TokenCache>): Promise<TokenCache> => {
+    if (inFlight) return inFlight;
+    const operation = Promise.resolve().then(refresh).finally(() => {
+      if (inFlight === operation) inFlight = null;
+    });
+    inFlight = operation;
+    return operation;
+  };
+  return { run, current: () => inFlight };
+}
+
+const tokenRefreshCoalescer = createAzureTokenRefreshCoalescer();
 export function runAzureTokenRefresh(refresh: () => Promise<TokenCache>): Promise<TokenCache> {
-  if (tokenRefreshInFlight) return tokenRefreshInFlight;
-  const operation = Promise.resolve().then(refresh).finally(() => {
-    if (tokenRefreshInFlight === operation) tokenRefreshInFlight = null;
-  });
-  tokenRefreshInFlight = operation;
-  return operation;
+  return tokenRefreshCoalescer.run(refresh);
 }
 
 async function ensureToken(force = false): Promise<TokenCache> {
-  if (tokenRefreshInFlight) return tokenRefreshInFlight;
+  const active = tokenRefreshCoalescer.current();
+  if (active) return active;
   const cached = readCache();
   if (!force && isTokenValid(cached)) return cached;
 

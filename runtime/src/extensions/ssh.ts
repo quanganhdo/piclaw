@@ -2,6 +2,7 @@ import type { ExtensionAPI, ExtensionFactory } from "@earendil-works/pi-coding-a
 import { Type } from "typebox";
 
 import { getChatJid } from "../core/chat-context.js";
+import { requireFamilyToolAccess } from "../agent-pool/family-tool-access.js";
 import { registerToolStatusHintProvider } from "../tool-status-hints.js";
 import type {
   SshConfig,
@@ -122,6 +123,7 @@ export const sshTool: ExtensionFactory = (pi: ExtensionAPI) => {
     promptSnippet: "ssh: set up or inspect an SSH profile to redirect read/grep/find/ls/bash/edit/write to a remote host via keychain-backed SSH.",
     parameters: SshToolSchema,
     async execute(_toolCallId, params): Promise<SshToolResult> {
+      requireFamilyToolAccess("ssh");
       const handlers = registeredHandlers;
       if (!handlers) {
         return {

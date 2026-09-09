@@ -2,7 +2,7 @@ import { FamilyApi } from './family-api.js';
 
 function node<T extends HTMLElement>(id:string):T { return document.getElementById(id) as T; }
 interface ResultItem { execution_id:string;chat_jid:string;created_at:number;state:string;publication_recorded:boolean }
-const states=['unsettled','expired-unsettled','settled'];
+const states=['unsettled','expired-unsettled','expired','interrupted','cancelled','settled'];
 const validId=(id:unknown):id is string=>typeof id==='string'&&/^[a-zA-Z0-9_-]{1,128}$/.test(id);
 
 /** No browser storage, automatic publication, or caller-selectable result destination. */
@@ -13,6 +13,8 @@ export class FamilyResults {
   private status=node('scheduled-results-status');
   private confirm=node<HTMLInputElement>('confirm-result-publication');
   private publish=node<HTMLButtonElement>('publish-result');
+  private cancelConfirm=node<HTMLInputElement>('confirm-execution-cancellation');
+  private cancel=node<HTMLButtonElement>('cancel-execution');
   private opened=false;
   private paused=false;
   private stopped=false;
@@ -20,17 +22,21 @@ export class FamilyResults {
   private generation=0;
   private controller:AbortController|null=null;
   private selected:{id:string;chat:string}|null=null;
+  private cancelTarget:string|null=null;
 
-  constructor(private api:FamilyApi,private hooks:{lock:(value:boolean)=>boolean;changed:()=>Promise<void>}) {
+  constructor(private api:FamilyApi,private hooks:{lock:(value:boolean)=>boolean;changed:()=>Promise<void>;beforeCancel?:()=>void}) {
     node('open-results').addEventListener('click',()=>{if(this.paused||this.stopped||this.busy)return;this.opened=true;void this.load(true);});
     node('close-results').addEventListener('click',()=>{this.opened=false;this.clear();node('open-results').focus();});
     node('refresh-results').addEventListener('click',()=>{void this.load();});
     this.confirm.addEventListener('change',()=>{this.publish.disabled=this.busy||!this.selected||!this.confirm.checked;});
     this.publish.addEventListener('click',()=>{void this.publishSelected();});
+    this.cancelConfirm.addEventListener('change',()=>{this.cancel.disabled=this.busy||!this.cancelTarget||!this.cancelConfirm.checked;});
+    this.cancel.addEventListener('click',()=>{void this.cancelSelected();});
   }
   private visible():boolean {return this.opened&&!this.paused&&!this.stopped&&!document.hidden;}
   private resetDetail():void {
     this.selected=null;this.detail.hidden=true;this.confirm.checked=false;this.confirm.disabled=true;this.publish.disabled=true;
+    this.cancelTarget=null;this.cancelConfirm.checked=false;this.cancelConfirm.disabled=true;this.cancel.disabled=true;node('scheduled-execution-cancellation').hidden=true;
     node('scheduled-result-target').textContent='';node('scheduled-result-text').textContent='';node('scheduled-result-state').textContent='';
   }
   private clear():void {
@@ -57,7 +63,7 @@ export class FamilyResults {
       if(value?.owner_user_id!==this.api.identity.userId||value.window_size!==50||!Array.isArray(value.items)||value.items.length>50)throw Error('Invalid result list. Refresh before continuing.');
       const fragment=document.createDocumentFragment(),ids=new Set<string>();
       for(const item of value.items as ResultItem[]) {
-        if(!validId(item.execution_id)||ids.has(item.execution_id)||typeof item.chat_jid!=='string'||!item.chat_jid||!Number.isSafeInteger(item.created_at)||!states.includes(item.state)||typeof item.publication_recorded!=='boolean')throw Error('Invalid result metadata.');
+        if(!validId(item.execution_id)||ids.has(item.execution_id)||typeof item.chat_jid!=='string'||!item.chat_jid||!Number.isSafeInteger(item.created_at)||item.created_at<0||item.created_at>8640000000000000||!states.includes(item.state)||typeof item.publication_recorded!=='boolean')throw Error('Invalid result metadata.');
         ids.add(item.execution_id);const li=document.createElement('li'),label=document.createElement('span'),button=document.createElement('button');
         label.textContent=`${item.chat_jid} · ${new Date(item.created_at).toISOString()} · recorded state: ${item.state}${item.publication_recorded?' · publication receipt recorded':''}`;
         button.type='button';button.textContent='Inspect result';button.addEventListener('click',()=>{void this.inspect(item);});li.append(label,button);fragment.append(li);
@@ -77,6 +83,7 @@ export class FamilyResults {
       node('scheduled-result-state').textContent=`${value.state}${value.result?' · '+value.result.status:''}${value.publication_recorded?' · Publication already recorded; confirming again checks the existing message.':''}`;
       node('scheduled-result-text').textContent=value.result?.text??'';this.status.textContent='';
       if(value.state==='settled'){this.selected={id:item.execution_id,chat:item.chat_jid};this.confirm.disabled=false;}
+      if(value.state==='unsettled'&&!value.publication_recorded){this.cancelTarget=item.execution_id;this.cancelConfirm.disabled=false;node('scheduled-execution-cancellation').hidden=false;}
       node('scheduled-result-detail-heading').focus();
     }catch(error){if(this.active(request.generation)){this.resetDetail();this.status.textContent=(error as Error).message;}}
   }
@@ -94,6 +101,27 @@ export class FamilyResults {
       this.busy=false;this.hooks.lock(false);
       if(!this.stopped)await this.hooks.changed();
       if(this.visible())node<HTMLButtonElement>('open-results').disabled=false;
+    }
+  }
+  private async cancelSelected():Promise<void> {
+    if(!this.visible()||this.busy||!this.cancelTarget||!this.cancelConfirm.checked)return;
+    this.hooks.beforeCancel?.();
+    // Do not acquire or release the shell mutation lock: revocation must not wait behind a busy send.
+    const target=this.cancelTarget;this.busy=true;this.cancelConfirm.checked=false;this.cancelConfirm.disabled=true;this.cancel.disabled=true;
+    const request=this.startRequest();this.status.textContent='Cancelling execution authority…';
+    try {
+      const value=await this.api.request(`/agent/scheduled-results/${encodeURIComponent(target)}/cancel`,'POST',{confirm:true},request.signal);
+      if(!this.active(request.generation))return;
+      if(value?.execution_id!==target||value.cancelled!==true||typeof value.created!=='boolean')throw Error('Invalid cancellation response.');
+      this.resetDetail();this.status.textContent=`${value.created?'Execution authority cancelled':'Cancellation verified'}. This does not prove the provider or tools stopped. Refresh results to inspect saved state.`;
+    }catch(error){if(this.active(request.generation)){this.resetDetail();this.status.textContent=`${(error as Error).message} Cancellation may have completed. Refresh results and inspect before confirming again.`;}}
+    finally {
+      this.busy=false;
+      if(!this.stopped)await this.hooks.changed();
+      if(this.visible()){
+        node<HTMLButtonElement>('open-results').disabled=false;
+        if(this.root.hidden)void this.load();
+      }
     }
   }
 }

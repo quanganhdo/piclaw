@@ -108,18 +108,18 @@ test('family ceiling is mandatory, intersects narrower callers and survives reac
     provenance: { kind: 'interactive', actorUserId: 'alice', ownerUserId: 'alice', chatJid: 'web:alice', authenticationSessionId: 'login' } };
   withExecutionIdentity(identity, () => {
     for (const filter of [undefined, () => true, (name: string) => name === 'read']) {
-      const owner = createToolSession(['read', 'messages', 'bash', 'keychain', 'unknown-addon']);
+      const owner = createToolSession(['read', 'messages', 'bash', 'keychain', 'delegate', 'unknown-addon']);
       const ceiling = createRunToolCeilingController({ chatJid: 'web:alice', runOptions: { toolCeilingFilter: filter } });
       expect(ceiling.apply(owner.session)).toBe(true);
       const expected = filter?.('messages') === false ? ['read'] : ['read', 'messages'];
       expect(owner.active()).toEqual(expected);
-      owner.session.setActiveToolsByName!(['read', 'messages', 'bash', 'unknown-addon']); expect(owner.active()).toEqual(expected);
+      owner.session.setActiveToolsByName!(['read', 'messages', 'bash', 'delegate', 'unknown-addon']); expect(owner.active()).toEqual(expected);
       const replacement = createToolSession(['write', 'read', 'messages']); ceiling.apply(replacement.session); expect(replacement.active()).toEqual(expected);
       expect(() => ceiling.apply({})).toThrow('requires active-tool controls');
       expect(() => ceiling.apply(null)).toThrow('requires active-tool controls');
       ceiling.release();
     }
-    const owner = createToolSession([...FAMILY_WEB_TOOLS, 'shell', 'introspect_sql', 'mcp']);
+    const owner = createToolSession([...FAMILY_WEB_TOOLS, 'shell', 'introspect_sql', 'mcp', 'delegate']);
     const ceiling = createRunToolCeilingController({ chatJid: 'web:alice', runOptions: {} }); ceiling.apply(owner.session);
     expect(owner.active()).toEqual([...FAMILY_WEB_TOOLS]); ceiling.release();
   });

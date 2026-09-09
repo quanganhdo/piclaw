@@ -44,6 +44,16 @@ For the current end-to-end GitHub Actions flow (triggers, job dependencies, and 
 
 ## Testing
 
+Repository test entry points create an owned temporary filesystem root before importing runtime configuration. The local launcher, direct controlled runner and Bun test preloads in the root and `runtime/` isolate workspace, store, data, home, Pi profile, XDG and temporary directories. Nested runners retain only paths inside that root. CI and niceness flags do not disable filesystem isolation.
+
+Destructive Dream fixtures additionally reject paths outside the owned root and symlink ancestors before deletion. Tests that need keychain access must provide a test-only key; inherited keychain and deployment secrets are removed. `PICLAW_DB_IN_MEMORY=1` isolates SQLite only and must never be treated as filesystem protection.
+
+This prevents inherited live paths from becoming test fixtures; it is not an OS sandbox for arbitrary shell commands. Do not hard-code live paths in test mutations or run unreviewed destructive scripts. Older worktrees without the preloads and launcher changes are unsafe for live-host test runs.
+
+Every directory containing Bun tests has a local `bunfig.toml`: Bun does not inherit test preloads reliably from ancestor directories. `check:local-test-entrypoints` also checks this coverage. Add the corresponding preload when creating a new test directory. Recursive fixture cleanup refuses mounted descendants; overlay lower layers must also be disposable fixtures, and failed unmounts retain the directory instead of deleting through a mount.
+
+External browser tests require an explicit `PICLAW_E2E_URL` (or `PICLAW_E2E_BASE_URL` for terminal scripts), `PICLAW_E2E_DISPOSABLE=1`, and, when needed, `PICLAW_E2E_INTERNAL_SECRET` for that instance. Injected production credentials are removed from test children. The OOBE container harness creates its own loopback-only container and cleans up by returned ID. Provider integration scripts require explicit opt-in and a test profile; they do not discover the default Pi profile or an SSH host's credentials.
+
 The implementation lives under `runtime/`, so direct Bun test runs should target that subtree. Sequential mode is recommended for SQLite safety:
 
 ```bash

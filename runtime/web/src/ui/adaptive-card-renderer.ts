@@ -121,9 +121,14 @@ export function isAdaptiveCardBlock(block: unknown): block is AdaptiveCardBlock 
   return (
     b.type === "adaptive_card" &&
     typeof b.card_id === "string" &&
+    b.card_id.trim().length > 0 &&
+    b.card_id.length <= 256 &&
     typeof b.schema_version === "string" &&
+    b.schema_version.length <= 16 &&
+    (b.state === undefined || ["active", "completed", "cancelled", "failed"].includes(String(b.state))) &&
     typeof b.payload === "object" &&
-    b.payload !== null
+    b.payload !== null &&
+    !Array.isArray(b.payload)
   );
 }
 
@@ -139,7 +144,9 @@ export function isSupportedVersion(version: string): boolean {
  */
 export function extractCardBlocks(contentBlocks: unknown): AdaptiveCardBlock[] {
   if (!Array.isArray(contentBlocks)) return [];
-  return contentBlocks.filter(isAdaptiveCardBlock);
+  return contentBlocks
+    .filter(isAdaptiveCardBlock)
+    .map((block) => block.state === undefined ? { ...block, state: "active" } : block);
 }
 
 export function normalizeAdaptiveCardAction(action: any): AdaptiveCardActionInfo {
@@ -193,6 +200,115 @@ function coerceInputValue(type: unknown, value: unknown, definition?: Record<str
   if (Array.isArray(value)) return value.join(", ");
   if (typeof value === "object") return formatSubmissionValue(value);
   return typeof value === "string" ? value : String(value);
+}
+
+export function sanitizeAdaptiveCardPayloadForReadOnly(
+  payload: Record<string, unknown>,
+  rewriteResourceUrl?: (value: string) => string,
+): Record<string, unknown> {
+  const rewrite = (value: unknown): string | null => {
+    if (typeof value !== "string" || typeof rewriteResourceUrl !== "function") return null;
+    const result = rewriteResourceUrl(value);
+    return typeof result === "string" && result.trim() ? result.trim() : null;
+  };
+  const sanitizeText = (value: string): string => value
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, (_match, alt) => String(alt || ''))
+    .replace(/!\[([^\]]*)\]\[[^\]]*\]/g, (_match, alt) => String(alt || ''))
+    .replace(/^\s*\[[^\]]+\]:\s*\S+.*$/gm, '')
+    .replace(/<img\b[^>]*>/gi, '')
+    .replace(/<svg\b[\s\S]*?<\/svg\s*>/gi, '');
+  const visit = (node: unknown): unknown => {
+    if (Array.isArray(node)) return node.map((item) => visit(item));
+    if (!node || typeof node !== "object") return node;
+    const record = node as Record<string, unknown>;
+    const cardType = typeof record.type === "string" ? record.type : "";
+    if (cardType.startsWith("Input.")) {
+      const label = typeof record.label === "string" ? sanitizeText(record.label) : "";
+      const value = record.value == null ? "" : sanitizeText(String(record.value));
+      const text = [label, value].filter(Boolean).join(": ") || "Input unavailable";
+      return { type: "TextBlock", text, wrap: true, isSubtle: true };
+    }
+    const sanitized: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(record)) {
+      const normalizedKey = key.toLowerCase();
+      if (["action", "actions", "inlineaction", "selectaction", "refresh", "authentication"].includes(normalizedKey)) continue;
+      if (normalizedKey === "url" || normalizedKey === "iconurl" || normalizedKey === "poster") {
+        const rewritten = rewrite(value);
+        if (rewritten) sanitized[key] = rewritten;
+        continue;
+      }
+      if (normalizedKey === "backgroundimage" && typeof value === "string") {
+        const rewritten = rewrite(value);
+        if (rewritten) sanitized[key] = rewritten;
+        continue;
+      }
+      sanitized[key] = typeof value === "string" ? sanitizeText(value) : visit(value);
+    }
+    return sanitized;
+  };
+  return visit(payload) as Record<string, unknown>;
+}
+
+export function rewriteAdaptiveCardPayloadResources(
+  payload: Record<string,unknown>,rewriteResourceUrl?: (value:string)=>string,
+):Record<string,unknown>{
+  const visit=(value:unknown,key=""):unknown=>{
+    if(Array.isArray(value))return value.map(item=>visit(item,key));
+    if(!value||typeof value!=="object"){
+      if(typeof value==="string"&&["url","iconurl","poster","backgroundimage"].includes(key.toLowerCase())&&rewriteResourceUrl){const rewritten=rewriteResourceUrl(value);return rewritten?.trim()?rewritten:undefined;}
+      return value;
+    }
+    return Object.fromEntries(Object.entries(value as Record<string,unknown>).flatMap(([innerKey,inner])=>{const rewritten=visit(inner,innerKey);return rewritten===undefined?[]:[[innerKey,rewritten]];}));
+  };
+  return visit(payload) as Record<string,unknown>;
+}
+
+export function sanitizeAdaptiveCardRenderedResources(
+  root: HTMLElement,
+  rewriteResourceUrl?: (value: string) => string,
+  disableLinks = true,
+): void {
+  const rewrite = (value: string | null): string | null => {
+    if (!value || typeof rewriteResourceUrl !== "function") return null;
+    const result = rewriteResourceUrl(value);
+    return typeof result === "string" && result.trim() ? result.trim() : null;
+  };
+  const nodes = [root, ...Array.from(root.querySelectorAll<HTMLElement>("*"))];
+  for (const element of nodes) {
+    const tag = element.tagName.toLowerCase();
+    if (tag === "a" && disableLinks) {
+      element.removeAttribute("href");
+      element.removeAttribute("target");
+      element.removeAttribute("rel");
+      element.setAttribute("aria-disabled", "true");
+      element.setAttribute("tabindex", "-1");
+    }
+    for (const attribute of ["src", "poster", "data"]) {
+      if (!element.hasAttribute(attribute)) continue;
+      const rewritten = rewrite(element.getAttribute(attribute));
+      if (rewritten) element.setAttribute(attribute, rewritten);
+      else element.removeAttribute(attribute);
+    }
+    element.removeAttribute("srcset");
+    if (["image", "use", "feimage"].includes(tag)) {
+      for (const attribute of ["href", "xlink:href"]) {
+        if (!element.hasAttribute(attribute)) continue;
+        const rewritten = rewrite(element.getAttribute(attribute));
+        if (rewritten) element.setAttribute(attribute, rewritten);
+        else element.removeAttribute(attribute);
+      }
+    }
+    const style = element.getAttribute("style");
+    if (!style || !/url\s*\(/i.test(style)) continue;
+    let allowed = true;
+    const rewrittenStyle = style.replace(/url\(\s*(['"]?)(.*?)\1\s*\)/gi, (_match, quote, value) => {
+      const rewritten = rewrite(String(value).trim());
+      if (!rewritten) { allowed = false; return ""; }
+      return `url(${quote || '"'}${rewritten}${quote || '"'})`;
+    });
+    if (allowed) element.setAttribute("style", rewrittenStyle);
+    else element.removeAttribute("style");
+  }
 }
 
 export function hydrateAdaptiveCardPayloadWithSubmission(
@@ -270,6 +386,10 @@ export async function renderAdaptiveCard(
   options?: {
     /** Called when a card action is executed (Phase 2). */
     onAction?: (action: AdaptiveCardActionInfo) => void | Promise<void>;
+    /** Render the standard card presentation without allowing any action. */
+    readOnly?: boolean;
+    /** Restrict indirect card resources when rendering without actions. */
+    rewriteResourceUrl?: (value: string) => string;
   },
 ): Promise<boolean> {
   if (!isSupportedVersion(block.schema_version)) {
@@ -300,13 +420,18 @@ export async function renderAdaptiveCard(
     const submissionData = block.last_submission && typeof block.last_submission === "object"
       ? (block.last_submission as Record<string, unknown>).data
       : undefined;
-    const payload = block.state === "active"
+    const hydratedPayload = block.state === "active"
       ? block.payload
       : hydrateAdaptiveCardPayloadWithSubmission(block.payload, submissionData);
+    const payload = options?.readOnly
+      ? sanitizeAdaptiveCardPayloadForReadOnly(hydratedPayload, options.rewriteResourceUrl)
+      : options?.rewriteResourceUrl
+        ? rewriteAdaptiveCardPayloadResources(hydratedPayload,options.rewriteResourceUrl)
+        : hydratedPayload;
     card.parse(payload);
 
     // Wire up action handler (Phase 2)
-    card.onExecuteAction = (action: any) => {
+    card.onExecuteAction = options?.readOnly ? () => {} : (action: any) => {
       const normalizedAction = normalizeAdaptiveCardAction(action);
       if (options?.onAction) {
         clearAdaptiveCardNotice(container);
@@ -318,8 +443,6 @@ export async function renderAdaptiveCard(
         }).finally(() => {
           container.classList.remove("adaptive-card-busy");
         });
-      } else {
-        console.log("[adaptive-card] Action executed (not wired yet):", normalizedAction);
       }
     };
 
@@ -356,8 +479,9 @@ export async function renderAdaptiveCard(
     }
 
     clearAdaptiveCardNotice(container);
+    if (options?.rewriteResourceUrl) sanitizeAdaptiveCardRenderedResources(rendered, options.rewriteResourceUrl,options?.readOnly!==false);
     container.appendChild(rendered);
-    if (stateMeta) {
+    if (stateMeta || options?.readOnly) {
       lockAdaptiveCardInputs(rendered);
     }
     return true;

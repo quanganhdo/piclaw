@@ -1,12 +1,13 @@
 #!/usr/bin/env bun
 
 import { chromium, type Page } from 'playwright';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 const runtimeRoot = resolve(import.meta.dir, '../..');
 const fixturePath = join(runtimeRoot, 'test/fixtures/markdown-live-preview-parity/atomic-port-parity.md');
-const workDir = join(runtimeRoot, 'generated/cache/markdown-live-preview-parity');
+const workDir = mkdtempSync(join(tmpdir(), 'piclaw-markdown-live-preview-'));
 const outDir = join(workDir, 'dist');
 const source = readFileSync(fixturePath, 'utf8');
 const markdownPath = 'notes/atomic-port-parity.md';

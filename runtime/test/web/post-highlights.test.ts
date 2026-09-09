@@ -1,10 +1,26 @@
 import { expect, test } from 'bun:test';
 import {
   buildHighlightFromSelectionSnapshot,
+  extractAsidesFromAnnotations,
+  extractHighlightsFromAnnotations,
   getSelectionInElement,
   hasCoarseAnnotationPointer,
   resolveHighlightPopupPlacement,
 } from '../../web/src/components/post-highlights.ts';
+
+test('saved annotation readers reject malformed offsets, colors, and unbounded text', () => {
+  expect(extractHighlightsFromAnnotations([
+    { type: 'highlight', text: 'valid', textOffset: 0, color: 'rgba(250, 204, 21, 0.4)' },
+    { type: 'highlight', text: 'negative', textOffset: -1, color: 'rgba(250, 204, 21, 0.4)' },
+    { type: 'highlight', text: 'fractional', textOffset: 1.5, color: 'rgba(250, 204, 21, 0.4)' },
+    { type: 'highlight', text: 'unsafe color', textOffset: 0, color: 'url(https://foreign.example/pixel)' },
+  ])).toEqual([{ type: 'highlight', text: 'valid', textOffset: 0, color: 'rgba(250, 204, 21, 0.4)' }]);
+  expect(extractAsidesFromAnnotations([
+    { type: 'aside', text: 'valid', textOffset: 0, note: 'note' },
+    { type: 'aside', text: 'bad', textOffset: Number.NaN, note: 'note' },
+    { type: 'aside', text: 'bad', textOffset: 0, note: '' },
+  ])).toEqual([{ type: 'aside', text: 'valid', textOffset: 0, note: 'note' }]);
+});
 
 test('getSelectionInElement preserves multiline list selection while trimming only edge whitespace', () => {
   if (typeof document === 'undefined') return;

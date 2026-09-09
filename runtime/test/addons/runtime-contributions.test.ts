@@ -11,6 +11,7 @@ import {
   runAddonStatusPanelAction,
   setAddonAgentMessageEnqueuer,
   setAddonMessagingRuntimeHandlers,
+  shutdownAddonRuntimeContributionsForTests,
 } from "../../src/addons/runtime-contributions.js";
 import { withTempWorkspaceEnv } from "../helpers.js";
 import { getChatTransport } from "../../src/extensions/chat-transport-registry.js";
@@ -217,6 +218,40 @@ test("startup entry loading fails clearly when concrete messaging handlers were 
   });
   resetAddonRuntimeContributionsForTests();
 });
+
+test("runtime add-on lifecycle cleanup is process-scoped, awaited, and unregisterable", async () => {
+  resetAddonRuntimeContributionsForTests();
+  const api = installAddonRuntimeApi();
+  expect(api.lifecycle.version).toBe(1);
+  const events: string[] = [];
+  api.lifecycle.onShutdown(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    events.push("async");
+  });
+  const unregister = api.lifecycle.onShutdown(() => events.push("removed"));
+  unregister();
+  unregister();
+  api.lifecycle.onShutdown(() => {
+    events.push("throws");
+    throw new Error("cleanup failure");
+  });
+  await shutdownAddonRuntimeContributionsForTests();
+  expect(events.sort()).toEqual(["async", "throws"]);
+  await shutdownAddonRuntimeContributionsForTests();
+  expect(events.sort()).toEqual(["async", "throws"]);
+  resetAddonRuntimeContributionsForTests();
+});
+
+test("runtime add-on lifecycle shutdown is bounded when a handler never settles", async () => {
+  resetAddonRuntimeContributionsForTests();
+  const api = installAddonRuntimeApi();
+  api.lifecycle.onShutdown(() => new Promise(() => {}));
+  const started = Date.now();
+  await shutdownAddonRuntimeContributionsForTests();
+  expect(Date.now() - started).toBeGreaterThanOrEqual(3900);
+  expect(Date.now() - started).toBeLessThan(5500);
+  resetAddonRuntimeContributionsForTests();
+}, 7000);
 
 test("runtime add-on messaging API validates lifecycle, data dirs, and transport cleanup", async () => {
   resetAddonRuntimeContributionsForTests();

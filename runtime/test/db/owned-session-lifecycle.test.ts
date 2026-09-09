@@ -152,8 +152,11 @@ test("HTTP roots/home/archive/restore remain cookie-owner scoped and require Ori
   const list = await req("/agent/branches?include_archived=true", "GET"); expect(list.status).toBe(200);
   const branches = (await list.json()).branches; expect(branches).toHaveLength(2);
   expect(branches.some((row: any) => row.chat_jid === bob.homeChatJid)).toBe(false);
+  expect(branches.find((row: any) => row.chat_jid === alice.homeChatJid)).toMatchObject({ archived_at: expect.any(String), is_active: false, model: null, context_usage: null, capabilities: { open: false, restore: true } });
   expect((await req("/agent/branch-restore", "POST", { chat_jid: alice.homeChatJid })).status).toBe(200);
   expect((await req("/agent/branch-restore", "POST", { chat_jid: bob.homeChatJid })).status).toBe(403);
+  expect((await req(`/agent/branches?root_chat_jid=${encodeURIComponent(alice.homeChatJid!)}&include_archived=true`, "GET")).status).toBe(200);
+  expect((await req(`/agent/branches?root_chat_jid=${encodeURIComponent(bob.homeChatJid!)}&include_archived=true`, "GET")).status).toBe(403);
   expect((await req("/agent/branches?include_archived=anything", "GET")).status).toBe(403);
 });
 

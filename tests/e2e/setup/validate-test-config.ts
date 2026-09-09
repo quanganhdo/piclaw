@@ -8,8 +8,9 @@
  * agent turns are deliberately not release blockers here.
  */
 
-const BASE_URL = process.env.PICLAW_E2E_URL || "http://localhost:3000";
-const INTERNAL_SECRET = process.env.PICLAW_INTERNAL_SECRET || process.env.PICLAW_WEB_INTERNAL_SECRET || "";
+import { requireDisposableTestTarget } from '../../../runtime/scripts/test-target.js';
+const BASE_URL = requireDisposableTestTarget(process.env.PICLAW_E2E_URL);
+const INTERNAL_SECRET = process.env.PICLAW_E2E_INTERNAL_SECRET || "";
 
 interface CheckResult {
   name: string;
@@ -43,6 +44,7 @@ if (!INTERNAL_SECRET) {
   try {
     const resp = await fetch(`${BASE_URL}/auth/e2e/bootstrap`, {
       method: "POST",
+      redirect: 'error',
       headers: {
         "Content-Type": "application/json",
         "x-piclaw-internal-secret": INTERNAL_SECRET,

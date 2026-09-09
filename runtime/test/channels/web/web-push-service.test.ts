@@ -11,6 +11,7 @@ import {
   sendStoredWebPushNotification
 } from "../../../src/channels/web/push/web-push-service.js";
 import { WebNotificationPresenceService } from "../../../src/channels/web/push/web-notification-presence-service.js";
+import { createTempWorkspace } from "../../helpers.js";
 
 const tempDirs: string[] = [];
 
@@ -368,5 +369,17 @@ describe("web push service", () => {
 
     expect(secondResult).toEqual({ attempted: 1, sent: 1, removed: 0, failed: 0 });
     expect(deliveries).toEqual(["https://push.example.test/device/32"]);
+  });
+
+  test("family reply delivery targets only the owning account and prunes revoked-login subscriptions", async () => {
+    const ws = createTempWorkspace("family-push-delivery-");
+    try {
+      const fixturePath = new URL('../../fixtures/family-web-push-delivery.ts', import.meta.url).pathname;
+      const child = Bun.spawn([process.execPath, '--no-env-file', '-e', `import { runFamilyWebPushDeliveryScenario } from ${JSON.stringify(fixturePath)}; await runFamilyWebPushDeliveryScenario();`], {
+        env: { ...process.env, PICLAW_WORKSPACE: ws.workspace, PICLAW_STORE: ws.store, PICLAW_DATA: ws.data, PICLAW_DB_IN_MEMORY: '1' }, stdout: 'pipe', stderr: 'pipe',
+      });
+      const [code, stdout, stderr] = await Promise.all([child.exited, new Response(child.stdout).text(), new Response(child.stderr).text()]);
+      expect(code, stderr || stdout).toBe(0); expect(stdout).toContain('FAMILY_PUSH_OK');
+    } finally { ws.cleanup(); }
   });
 });

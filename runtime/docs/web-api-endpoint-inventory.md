@@ -72,7 +72,12 @@ These exact routes are implemented in `http/family-authorisation.ts`, `http/fami
 | POST | `/agent/:id/message` | Cookie/Origin + owned target; `{content,request_id,thread_id?}` only; 30/min | 201 new or 200 retry `{user_message,created,queued:"message"}`; immutable persisted authority |
 | GET | `/agent/scheduled-results/:execution_id` | Live owner cookie + mandatory account/login pins; no query selectors | Owned settled result or unsettled/expired state; no capabilities/tokens; private/no-store |
 | GET | `/agent/scheduled-results` | Live owner cookie + mandatory account/login pins; no query selectors | Metadata only from newest 50 owner execution records, inaccessible targets omitted; recorded state/receipt indicators, no result text/prompts/tokens |
+| GET | `/agent/scheduled-tasks`, `/agent/scheduled-tasks/:grant_id` | Live owner cookie + mandatory account/login pins; no selectors | Newest 50 metadata window or exact owned preparation; revoked detail has no prompt, no capabilities |
+| POST | `/agent/scheduled-tasks` | Recent owner + pins + Origin; exact `{confirm:true,request_id,chat_jid,prompt,scheduled_for,allowed_tools}`; 128 KiB/10 s; 20/min/account | 201 paused preparation or 200 matching retry; 100 unrevoked-grant cap; no queue/activation |
+| POST | `/agent/scheduled-tasks/:grant_id/revoke` | Recent owner + pins + Origin; exact `{confirm:true}`; 1 KiB/10 s; shared preparation rate bucket | `{grant_id,revoked:true}`; permanent/idempotent, no task activation or replay |
+| POST | `/agent/scheduled-tasks/:grant_id/run` | Recent owner + pins + Origin + JSON `{request_id,confirm:true}`; due owned grant, 1 KiB/10 s, separate 20/min/account | 202 durable admission / 200 receipt retry; original execution ID only, no token, no replay; first admission attempts one internal dispatch, task remains paused |
 | POST | `/agent/scheduled-results/:execution_id/publish` | Recent owner cookie + mandatory pins + Origin; exactly `{confirm:true}`, bounded 1 KiB/10 s; 20/min/account | 201 publication or 200 exact retry with original chat/message row ID; atomic bot message+receipt, no model/queue/push effects |
+| POST | `/agent/scheduled-results/:execution_id/cancel` | Recent owner + pins + Origin + JSON `{confirm:true}`; 1 KiB/10 s, separate 20/min/account bucket; active original target | 201 cancellation or 200 same-owner retry; remaining authority revoked outside busy lane, no provider/process termination claim |
 | GET | `/agent/message-recovery` | Live owned target or home; no recent-auth requirement | `{state}` or `{state:"held"|"legacy-held",message_rowid}`; oldest held input only, no failure/prompt/login data |
 | POST | `/agent/message-recovery` | Recent self + Origin; `{chat_jid,message_rowid,request_id,action}`; retry/skip for admitted input or dismiss-legacy for migrated hold, 20/min, same chat lane | `{recovered:true,created,recovery_id,action,message_rowid}`; latest retry login binds admitted dequeue; legacy dismissal only filters its row, never grants execution or changes cursor/history |
 | GET | `/media/:id`, `/media/:id/thumbnail`, `/media/:id/info` | Stored message link to an active owned chat; ignore claimed owner/chat authority | Binary/thumbnail or safe metadata projection; private/no-store |
@@ -258,6 +263,9 @@ The web agent surface now follows a stricter rule:
   - recovery-card actions such as **Continue** and **Retry cleanly** first **skip** the held failed run so the recovery follow-up prompt is not blocked behind the unresolved failure marker
 - `GET /agent/status`
   - remains the live in-memory status surface; the held failed-run state itself is durable DB state rather than a separate new endpoint family
+  - family mode resolves an owned target, returns the shared core status and thought/draft previews, rechecks authority after collection, and omits instance diagnostics, extension working state/status hints and process-generation metadata
+- `GET /agent/context`
+  - family mode resolves an owned target and returns its context plus latest-run token/cost summary after a final authority check
 
 This keeps the HTTP surface small while making the message-consumption semantics truthful.
 

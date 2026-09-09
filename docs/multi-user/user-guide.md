@@ -1,8 +1,45 @@
-# Family preview user guide
+# Family user guide
 
-Piclaw supports **single-user deployments only**. Family and isolated modes cannot start in a supported installation. Use this guide for controlled testing of the family preview. Do not enable family mode or change database markers to follow these steps.
+Piclaw supports promoted **family-shared** deployments for trusted households. Single-user remains the default; isolated-container mode is unavailable. Operators must use the offline [migration and promotion runbook](migration-copy.md); users must never edit activation markers or configuration to enable the mode.
 
-For the supported single-user app, see [Web UI](../web-ui.md). For family testing, use this guide with the [administrator guide](administrator-guide.md) and [troubleshooting](troubleshooting.md). Operators have separate [migration](migration-copy.md) and [offline recovery](operator-recovery.md) runbooks. Developers can check [implementation status](README.md).
+For the single-user app, see [Web UI](../web-ui.md). For family use, read this guide with the [administrator guide](administrator-guide.md) and [troubleshooting](troubleshooting.md). Operators have separate [migration](migration-copy.md) and [offline recovery](operator-recovery.md) runbooks. Developers can check [implementation status and limits](README.md). [Family acceptance evidence](family-acceptance.md) records the tested browser, security and resource gates.
+
+## Enable family mode
+
+Family mode requires an offline promoted database. Do not point a running instance at an unprepared database or edit activation records by hand.
+
+1. Stop all writers and follow the [offline migration and promotion runbook](migration-copy.md).
+2. Set the promoted instance configuration to:
+
+```json
+{
+  "domains": {
+    "access": {
+      "mode": "family-shared"
+    }
+  }
+}
+```
+
+3. Start the promoted copy and use the administrator flow to create or invite accounts. An absent mode remains `single-user`; `isolated-containers` is unavailable.
+
+## Current chat experience
+
+These screenshots use synthetic household data and the production family bundle tested in PR #1286.
+
+![Rich family conversation with the standard compose box](screenshots/01-rich-conversation-desktop.png)
+
+| Curated models | Owned sessions |
+|---|---|
+| ![Curated model picker](screenshots/02-curated-model-picker.png) | ![Owned session picker](screenshots/03-owned-session-picker.png) |
+
+![Live thinking, tool and queue state](screenshots/04-live-status-thinking-tools-queue.png)
+
+![Rich family conversation on a mobile viewport](screenshots/05-rich-conversation-mobile.png)
+
+| Family administration | Workspace and security |
+|---|---|
+| ![Family administration panel](screenshots/06-family-administration.png) | ![Workspace and security panel](screenshots/07-workspace-security.png) |
 
 ## Accounts, conversations and shared files
 
@@ -11,7 +48,7 @@ For the supported single-user app, see [Web UI](../web-ui.md). For family testin
 - Your **home** is the root used after a fresh sign-in or when you have not selected a conversation.
 - A **handle** is a friendly session name such as `research`. Renaming it does not change the conversation's internal ID or stored history. Different accounts can use the same handle; your active sessions must have distinct names within your account.
 
-The family preview checks conversation ownership. Administrators manage accounts and sign-in factors but cannot open another person's conversation or avatar through their role alone. They can reset another account's sign-in factors, so grant the role only to people you trust.
+Family mode checks conversation ownership. Administrators manage accounts and sign-in factors but cannot open another person's conversation or avatar through their role alone. They can reset another account's sign-in factors, so grant the role only to people you trust.
 
 **Workspace files are shared between tool-capable users.** Skills, add-ons, provider configuration and permitted integration credentials belong to the instance. Piclaw selects personal memory by account ID; those files still live on the shared filesystem. Account ownership does not make workspace files private. The host operator and privileged installed code can access them.
 
@@ -54,18 +91,18 @@ The sign-in page loads the site's enabled methods before accepting input:
 
 There are no passwords, email recovery or SSO in this account flow. Use an enabled alternative or contact an administrator if you lose access. Repeated failures are rate-limited; stop guessing and follow the retry notice.
 
-A fresh sign-in opens your home. To change accounts, use **Sign out**, then sign in to the other account. The **Owned session** selector changes conversations within the current account; it does not change who you are signed in as.
+A fresh sign-in opens your home. Choose **Switch account** to clear the current family page and open the sign-in screen for another account; it does not revoke the current login. Choose **Sign out** when you also want to revoke this device login. The **Owned session** selector changes conversations within the current account; it does not change who you are signed in as.
 
 Tabs in one browser profile share the site's login cookie. Signing in as another account can invalidate an older tab, which clears its conversation and draft. Use separate browser profiles when testing two accounts concurrently.
 
 ## Read and send messages
 
-1. Check your displayed account name and select an **Owned session**, or choose **Go home**.
-2. Read the current conversation. The preview shows up to the most recent 100 text messages and refreshes by polling every five seconds while active.
-3. Enter plain text in **Message** and choose **Send**.
-4. Wait for the queued/running status and reply. **Refresh** requests the latest state.
+1. Check your displayed account name and select an owned session, or choose **Go home**. The standard searchable picker groups roots and forks, including pinned and archived entries, without exposing another account's names.
+2. Read up to the latest 100 text messages through the same timeline, post and status components used in single-user mode. Server-authorised events stream replies, thinking, tool progress, drafts, queue state and model changes for that owned conversation.
+3. Use the standard compose box to type, paste or drop text and attachments. **Send**, queue, queue-all, steer, stop, retry, model/thinking controls and queue-item actions appear when the current owner/session policy permits them.
+4. Use **Refresh** after an uncertain response. Reconnect and account checks never replay a mutation automatically.
 
-The family shell does not offer the classic app's rich rendering, attachments, add-on panes, terminal, live streaming or message-editing controls. Leading slash commands and `@` mentions are unsupported as prompts. Do not use the single-user UI instructions to bypass these restrictions.
+The family shell uses the standard chat CSS and TypeScript/Preact components for Markdown, code, KaTeX, Mermaid, media, link previews, annotations, outcomes, persisted thinking, Adaptive Cards, resources, generated widgets, attachment upload/download/preview and the curated model/session controls. Uploads are bound to the current account/login until they commit with an owned message. Generic Adaptive Card submissions, annotation edits and widget text submissions become owner-authorised chat messages; privileged login/recovery/add-on card intents remain denied. External card/image resources are removed unless rewritten to an owner-authorised media URL. Global provider/add-on administration, shell, terminal, VNC and cross-account writes remain unavailable.
 
 If you cannot tell whether a message was sent, choose **Refresh** before changing the text. After a failed or lost response, resending unchanged text from the same page and conversation reuses its request ID. The server returns the existing message if it already accepted that request. Editing the text, switching sessions or reloading the page may create a new request. The page never retries a failed send automatically.
 
@@ -86,6 +123,8 @@ For a **Legacy input** held by migration, Retry is unavailable. Check the confir
 A **Recovery is blocked** notice needs operator inspection; do not invent an input ID or edit stored authority to bypass it.
 
 ## Manage your account
+
+The authenticated header shows **Family shared** so this preview cannot be mistaken for the normal single-user interface. It is a read-only label, not a mode selector. The family workspace groups settings under **Personal**, **Sessions and work** and **Shared family**. Notifications, account switching and sign-out remain separate account actions. On a phone these groups form one vertical list; wider screens show three columns. Only one settings panel stays open; selecting another closes the previous panel and discards its unsaved private draft. Opening a group control does not change its permissions or move data between scopes.
 
 Open **My account**. A disabled control can mean the operation is prohibited, your authentication is too old, the browser lacks support, or the server is still loading. **Refresh account** reloads the current permissions and values.
 
@@ -141,6 +180,12 @@ Select **System**, **Light** or **Dark** appearance. Optionally enter up to 2,00
 
 Saved guidance applies to new model runs. It cannot change permissions, account identity or higher-priority instructions. A run already in progress keeps its original guidance. Account theme updates can arrive with polling without replacing your unsaved form fields.
 
+### Active model and thinking
+
+The model control below the current conversation opens the same searchable catalogue used by standard chat. It shows only locally available, instance-scoped models with their context window, catalogue pricing and reasoning support. Choosing a model or thinking level changes only the currently open owned session; it does not change provider credentials, instance defaults or another session.
+
+Model and session pins plus recent-model ordering live only in this family page's memory and are partitioned by immutable account identity. Reloading, switching accounts or invalidating the login clears them. A late response for a previous session is ignored. If the selected model cannot fit the current context, choose a larger model; automatic model-switch compaction is not available here.
+
 ### Model and thinking defaults
 
 Under **Model defaults for empty roots**, choose an available model and, optionally, one of its supported thinking levels. Choose **Save model defaults**. Leaving thinking at the instance default uses the instance's setting for that model, or its general default. Piclaw adjusts the level if the model does not support it.
@@ -151,7 +196,9 @@ The effective-value notice shows the configured default. Check the conversation'
 
 ## Manage your sessions
 
-Open **My sessions** to see your roots, forks, home and archives. Saving a change does not select another conversation. If you archive the selected session, its messages disappear and sending is disabled. Use **Open** or **Go home** to select an active conversation.
+Use the standard session control beside the compose box to search owned roots, forks and archives, pin active rows for this page, switch sessions, create a root or fork, rename, archive or restore where the server-provided capability allows it. The picker shows hierarchy, lifecycle state, active state and available model/context metrics. Foreign rows never appear. Merge and permanent purge stay unavailable.
+
+Open **My sessions** for the detailed owner-only tree, home selection and archived transcript controls. Saving a change there does not select another conversation. If you archive the selected session, its messages disappear and the shell returns to your home. Use **Open** or **Go home** to select an active conversation.
 
 ### Create a root or fork
 
@@ -189,15 +236,63 @@ The file excludes attachments, rich content, annotations, thread links, tasks, s
 
 **Cancel transcript**, closing or refreshing **My sessions**, losing tab focus, switching sessions or navigating away discards prepared text and cancels pending requests. This leaves the stored conversation unchanged. Prepare the transcript again if needed. A downloaded file stays on your device; signing out cannot recall it. Protect it as private conversation data.
 
+## Prepare or revoke a paused task
+
+Open **Prepared tasks** to see metadata from your newest 50 task grants. Archived or inaccessible targets are omitted. The panel can prepare, inspect, revoke and explicitly request one run of a due grant. It cannot enable automatic scheduling, edit or delete tasks. Writes need a sign-in within five minutes.
+
+The [development run-admission API](scheduled-execution.md#owner-confirmed-run-admission) backs **Run once**, described below. Startup remains gated. Its `admitted` response confirms a saved handoff, not that the model started or succeeded. Exact retries return the same execution without another attempt; inspect **Scheduled results** for its outcome.
+
+1. Choose the **Original conversation** explicitly. Preparing does not switch the conversation you are viewing.
+2. Enter a prompt up to 100 KiB UTF-8. The complete JSON request must fit within 128 KiB, including escaping; some prompts therefore need to be shorter.
+3. Enter a future due date and time within 366 days, in **UTC**. The control does not convert from your local time zone.
+4. Select any required tools from the current allowance. None are selected by default; leaving them unchecked requests no tools.
+5. Check the paused-task confirmation and choose **Prepare paused task**. Wait for acknowledgement, then use **Refresh tasks** and **Inspect task** to check the saved prompt, target, time and effective tools.
+
+Preparation never queues execution. Shell commands, model overrides, recurring schedules and notifications are unavailable. Each account can have at most 100 unrevoked grants.
+
+An uncertain response locks the exact request, including its ID. Confirm again and choose **Retry same preparation** to send that same request manually. There is no automatic retry. Clicking **Prepared tasks** again leaves the retry intact. **Discard task draft** deliberately clears it and unlocks a new draft; check the list for an earlier successful preparation before recreating it.
+
+For permanent revocation, choose **Inspect task**, check the exact grant and original conversation, check the revocation confirmation, then choose **Revoke task grant**. Revocation removes future grant authority but cannot undo earlier effects or delete history. A revoked grant cannot be restored by replaying the old preparation. After an uncertain revocation, refresh and inspect before confirming again.
+
+**Refresh tasks**, **Close tasks**, losing focus, hiding the tab, switching sessions or navigating away clears draft, retry payload and inspected text. A request already sent may still finish; clearing the form does not cancel or delete a saved task. Inspect the list before creating another. These controls store no task data in browser storage and never enable automatic scheduling.
+
+### Run an inspected due task once
+
+Choose **Inspect task** and review the original conversation, exact prompt, UTC due time and currently allowed tools. **Run once** appears only when the inspected grant is due according to the browser clock; the server rechecks its own clock and authority. If it is not due, inspect again after the due time. There is no automatic countdown or polling.
+
+Check the separate execution confirmation, then choose **Run once**. This may call the model and permitted tools. Preparation confirmation alone never authorises a run. Each grant can have only one admitted execution. The task remains paused for automatic scheduling; the response displays an execution ID and acknowledges admission only, not model start or success. Nothing is published automatically. Use **Scheduled results** to inspect the execution or cancel its remaining authority.
+
+An uncertain response offers **Retry same run request**, requiring confirmation again and reusing the exact original request ID. This verifies an existing admission without queuing another run. Refresh, reinspection, close, focus loss, session switch or navigation discards the retry key; inspect **Scheduled results** before another request. The server refuses a new key for an already-admitted grant. A held send or another shell mutation disables and clears run confirmation; execution cancellation also clears an armed run. No run occurs without another explicit confirmation.
+
+## Family memory publication
+
+Choose **Preview for family memory** on a text message in the selected conversation. The server rechecks the exact owned message and shows its current source text. Enter only the verbatim excerpt you want to share (at most 16 KiB UTF-8), read the warning and check the separate confirmation before **Publish memory**. Changing the excerpt clears confirmation. Preview and publication require a sign-in within five minutes. No message is shared just by opening the panel or previewing it.
+
+**Family memory** opens your retained metadata history, including withdrawn copies. **Refresh memory history** reloads that history; **Inspect memory** loads an owner-only receipt and copied text. **View shared memory** shows the newest 20 non-withdrawn copies with publisher attribution, without private source identifiers. Names are publisher snapshots, not proof of authorship or truth. No Dream, file projection or automatic prompt injection consumes these copies yet.
+
+An uncertain publication keeps its exact request ID and locks the excerpt. Reconfirm and choose **Retry same memory publication** to acknowledge the same request manually. Reopening **Family memory** preserves that retry. **Discard memory draft**, previewing another source, inspection, refresh, shared view, close, blur, hiding the tab, session change or navigation clears it. Inspect history before creating a new publication after losing the key. A request already sent may finish; nothing retries automatically or persists in browser storage.
+
+After inspecting a non-withdrawn receipt, check its separate confirmation and choose **Withdraw memory**. Withdrawal stops future shared reads but cannot retract existing copies or provider context, erase history or free a retained-history slot. It remains available while an unrelated send is pending and never releases that send’s lock. On focus return, revalidate the login then explicitly refresh history and inspect again. **Close memory** clears the panel. Publication/withdrawal require another explicit confirmation after any clearing event; late responses cannot restore cleared content.
+
+The ledger retains at most 100 publications per owner and 1,000 globally, including withdrawals. A full ledger rejects new publications. Shared workspace files are still accessible to permitted tools; these application controls provide no filesystem confidentiality. [HTTP and source contracts](memory-bootstrap.md#publication-http-api) describe the limits.
+
 ## Inspect scheduled results
 
 Open **Scheduled results** to see metadata from the newest 50 execution records belonging to your account. Inaccessible or archived targets are omitted, so the list may contain fewer than 50 entries. Family scheduling and automatic execution are still disabled; this panel only exposes results prepared during development testing.
 
-Choose **Inspect result** to load the stored result as plain text. Check the **Original conversation** and execution ID. An unsettled or expired-unsettled record cannot be published. “Publication receipt recorded” means a receipt exists; confirming publication verifies the actual message before acknowledging a retry.
+Choose **Inspect result** to load the stored result as plain text. Check the **Original conversation** and execution ID. An unsettled, expired-unsettled, expired, interrupted or cancelled record cannot be published. `expired-unsettled` means the settlement deadline passed without a result; `expired` means internal maintenance recorded terminal expiry. `interrupted` means an admitted dispatcher could not settle and recorded a terminal failure. `cancelled` means its owner revoked the execution's remaining authority. None of these states retries the model, proves the provider call stopped or undoes external work already performed. “Publication receipt recorded” means a receipt exists; confirming publication verifies the actual message before acknowledging a retry.
 
 To publish a settled result, check the confirmation and choose **Publish result**. A sign-in within five minutes is required. The server adds one service-labelled message to the original conversation; it does not switch your selected conversation, run an agent or send a notification. Publication does not change the result's original owner labels. Use the normal session picker to view a different original conversation.
 
 **Refresh results**, **Close results**, losing focus, switching sessions or navigating away clears inspected text and confirmation. No result text is saved in browser storage. A request already sent may still finish. After an uncertain response, refresh and inspect again before confirming; the server verifies the existing publication rather than duplicating it. There is no automatic retry, task creation or result deletion in this panel.
+
+### Cancel an unsettled execution
+
+After **Inspect result** verifies an unsettled execution, the panel offers **Cancel execution authority**. Check its original conversation and execution ID, read the warning and select the separate permanent-cancellation confirmation before clicking the button. A sign-in within five minutes is required. The server rechecks ownership and rejects a request if the execution has already expired or reached another terminal state.
+
+Cancellation revokes remaining execution authority. It does not delete task/history, undo earlier effects or guarantee that a provider request or tool has stopped. It is available while an unrelated send is pending and does not release that send's lock. Returning to the page while a send is held rechecks your login independently before restoring the results panel; other controls and conversation text remain masked until the send completes.
+
+After success, use **Refresh results** and **Inspect result** to verify the saved state. After an uncertain response, refresh and inspect before confirming again; there is no automatic retry. Closing, refreshing, losing focus, hiding the tab, switching sessions or navigating clears the selection and confirmation. A request already sent may finish. Terminal executions have no cancellation control, and this panel still cannot start tasks.
 
 ## Browser state and privacy
 
@@ -217,8 +312,8 @@ Administrators may deny tools within the fixed preview set. A new run sees the n
 
 ## Current limits and getting help
 
-The preview cannot start a supported family or isolated deployment, promote a migration copy or start in recovery-only mode. It has no per-user containers or complete equivalent of the classic and visual apps.
+Family mode uses the standard chat experience but has no per-user containers. Users and web administrators cannot activate, restart, migrate or recover the deployment; those are offline host-operator procedures. Isolated-container mode remains unavailable.
 
-Unsupported user actions include attachments, steering and commands; switching a running session's model; provider login and generic add-on panes; shell, terminal and VNC access; family scheduling, Dream and push notifications; cross-account sharing; and session merge or purge.
+Use **Enable notifications** to grant this signed-in browser login a Web Push subscription. Notifications are delivered only for your owned conversations while that exact login remains valid. Family notifications say only that a reply is available; open PiClaw to read it after account checks. **Disable notifications** removes the current browser subscription. Signing out, revoking the device or disabling the account prevents future delivery; already displayed notifications cannot be recalled. Device and tab identifiers are memory-only in the family shell and presence is cleared on blur, navigation and account invalidation. Unsupported user actions include global provider login and generic add-on panes; shell, terminal and VNC access; automatic family task scheduling and Dream; cross-account sharing; session merge or purge; and privileged Adaptive Card/add-on intents without an owner-scoped contract.
 
 Consult [troubleshooting](troubleshooting.md) before retrying an uncertain operation. Contact your account administrator for invitations, factor resets or account policy. Contact the host operator for certificates, old browser caches, backups, migration quarantine, prepared-copy errors and unavailable startup modes. Send only the minimum diagnostic information requested; never include setup keys, invitation links, cookies, private transcripts or credential files.

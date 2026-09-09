@@ -43,6 +43,8 @@ Each Web Push subscription is associated with a stable device id. Before sending
 
 This avoids local/push duplicates on the same device while still letting a swiped-away iPhone PWA fall back to Web Push.
 
+In family mode, subscription and presence records also carry the immutable account ID and current login ID. Presence for one account cannot suppress another account's delivery. Before provider dispatch, the server resolves the reply chat's root owner and rechecks the account, login, mode and root ownership. Invalid recipients are removed in one serialised store update. Family payloads contain only a generic reply notice and the root app URL; conversation text and identifiers remain behind normal browser authentication.
+
 ## Presence model
 
 The client publishes lightweight presence updates containing:

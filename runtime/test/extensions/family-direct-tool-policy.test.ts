@@ -19,6 +19,7 @@ import { chatTool } from '../../src/extensions/chat-tool.js';
 import { getChatTransportDirectories, registerChatTransport, resetChatTransportRegistryForTests } from '../../src/extensions/chat-transport-registry.js';
 import { sessionControl, setSessionControlHandler } from '../../src/extensions/session-control.js';
 import { sessionStatus, clearSessionStatusForTests, trackToolStart } from '../../src/extensions/session-status.js';
+import { setSshToolHandlers, sshTool } from '../../src/extensions/ssh.js';
 import { inspectOwnedSession } from '../../src/runtime/owned-session-control.js';
 
 let ws: ReturnType<typeof createTempWorkspace>, restore: () => void;
@@ -49,9 +50,9 @@ beforeEach(() => {
   storeMessage({ id: 'owned', chat_jid: alice.homeChatJid!, sender: alice.userId, sender_name: 'Alice', content: 'OWNED_CONTENT', timestamp: new Date().toISOString(), is_from_me: false, is_bot_message: false });
   trackToolStart(target, 'owned', 'read', {}); trackToolStart(bob.homeChatJid!, 'foreign', 'read', {});
   tools.clear(); const pi = { on: () => {}, registerTool: (tool: any) => tools.set(tool.name, tool) };
-  for (const extension of [messagesCrud, chatTool, sessionControl, sessionStatus]) extension(pi as any);
+  for (const extension of [messagesCrud, chatTool, sessionControl, sessionStatus, sshTool]) extension(pi as any);
 });
-afterEach(() => { clearSessionStatusForTests(); resetChatTransportRegistryForTests(); setSessionControlHandler(undefined); closeDatabase(); restore(); ws.cleanup(); });
+afterEach(() => { clearSessionStatusForTests(); resetChatTransportRegistryForTests(); setSessionControlHandler(undefined); setSshToolHandlers(null); closeDatabase(); restore(); ws.cleanup(); });
 
 test('denials apply at direct helpers and registered tools before data or runtime callbacks', async () => {
   deny(['messages', 'chat', 'session_control', 'session_status']); const snapshot = identity(); let inspected = 0, directories = 0;
@@ -66,6 +67,25 @@ test('denials apply at direct helpers and registered tools before data or runtim
   const control = await run(snapshot, () => tools.get('session_control').execute('call', { target_chat_jid: target, action: 'inspect' })); expect(control.details.ok).toBe(false);
   const status = await run(snapshot, () => tools.get('session_status').execute('call', { action: 'check' })); expect(status.details.error).toBe('access_denied'); expect(status.details.safe_to_restart).toBe(false);
   expect(inspected).toBe(0); expect(directories).toBe(0);
+});
+
+test('ssh denies family direct invocation before profile handlers or redirection can run', async () => {
+  const snapshot = identity(); let callbacks = 0;
+  setSshToolHandlers({
+    get: () => { callbacks++; return null; },
+    isActive: () => { callbacks++; return false; },
+    set: async () => { callbacks++; throw Error('must not set'); },
+    clear: async () => { callbacks++; throw Error('must not clear'); },
+  });
+  for (const params of [
+    { action: 'get' },
+    { action: 'set', ssh_target: 'root@foreign', private_key_keychain: 'ssh/foreign' },
+    { action: 'clear' },
+  ]) await expect(run(snapshot, () => tools.get('ssh').execute('call', params))).rejects.toThrow('Session access denied');
+  expect(callbacks).toBe(0);
+  writeFileSync(join(ws.workspace, '.piclaw/config.json'), JSON.stringify({ domains: { access: { mode: 'single-user' } } }));
+  await expect(run(snapshot, () => tools.get('ssh').execute('call', { action: 'get' }))).rejects.toThrow('Session access denied');
+  expect(callbacks).toBe(0);
 });
 
 test('the existing run retains its snapshot while new runs observe changes, with no owner bleed', async () => {

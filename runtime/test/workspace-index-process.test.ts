@@ -66,7 +66,7 @@ describe("workspace index background process", () => {
     expect(calls).toHaveLength(1);
     expect(calls[0].command).toBe(process.execPath);
     expect(calls[0].args[0]).toContain("workspace-index-process.ts");
-    expect(calls[0].args).toEqual([expect.any(String), "--scope", "notes", "--max-kb", "64"]);
+    expect(calls[0].args).toEqual([expect.any(String), "--scope", "notes", "--max-kb", "64", "--expected-mode", "single-user"]);
     expect(calls[0].options.stdio).toBe("ignore");
     expect((calls[0].options.env as Record<string, string | undefined>)[AGGRESSIVE_WORKSPACE_INDEX_MEMORY_ENV]).toBe("1");
     expect(child.unrefCalled).toBe(true);
@@ -92,7 +92,7 @@ describe("workspace index background process", () => {
 
   test("does not launch when the index is already ready", async () => {
     setWorkspaceIndexProcessFinalizeForTests(() => {});
-    await runWorkspaceIndexProcessFromArgs(["--scope", "notes"]);
+    await runWorkspaceIndexProcessFromArgs(["--scope", "notes", "--expected-mode", "single-user"]);
 
     let called = false;
     setWorkspaceIndexSpawnForTests(() => {
@@ -107,7 +107,7 @@ describe("workspace index background process", () => {
 
   test("runWorkspaceIndexProcessFromArgs refreshes the index without a session runtime", async () => {
     setWorkspaceIndexProcessFinalizeForTests(() => {});
-    await runWorkspaceIndexProcessFromArgs(["--scope", "notes"]);
+    await runWorkspaceIndexProcessFromArgs(["--scope", "notes", "--expected-mode", "single-user"]);
 
     const status = getWorkspaceIndexStatus({ scope: "notes" });
     expect(status.state).toBe("ready");
@@ -124,7 +124,7 @@ describe("workspace index background process", () => {
       cleanupCalls += 1;
     });
 
-    await runWorkspaceIndexProcessFromArgs(["--scope", "notes"]);
+    await runWorkspaceIndexProcessFromArgs(["--scope", "notes", "--expected-mode", "single-user"]);
 
     expect(cleanupCalls).toBe(1);
   });

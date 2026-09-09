@@ -10,7 +10,8 @@
 
 import { readFileSync, statSync } from "fs";
 import { basename, extname } from "path";
-import { createMedia, getMediaById, getMediaInfoById } from "../../../db.js";
+import { createMedia, createMediaInDatabase, getMediaById, getMediaInfoById } from "../../../db/media.js";
+import type Database from "bun:sqlite";
 import { getWebRuntimeConfig } from "../../../core/config.js";
 import { createLogger, debugSuppressedError } from "../../../utils/logger.js";
 
@@ -102,7 +103,7 @@ export class MediaService {
    * Validate and store an uploaded file.
    * Returns 413 if file exceeds the configured compose/media upload limit.
    */
-  async createFromFile(file: File): Promise<{ status: number; body: unknown }> {
+  async createFromFile(file: File, database?: Database, onCreated?: (mediaId: number) => void): Promise<{ status: number; body: unknown }> {
     // Size check — reject before reading the full body into memory
     const maxMediaUploadBytes = getMaxMediaUploadBytes();
     if (file.size > maxMediaUploadBytes) {
@@ -130,13 +131,25 @@ export class MediaService {
       }
     }
 
-    const mediaId = createMedia(
-      file.name || "upload",
-      contentType,
-      data,
-      thumbnail,
-      { size: file.size }
-    );
+    let mediaId = 0;
+    const persist = () => {
+      mediaId = database ? createMediaInDatabase(
+        database,
+        file.name || "upload",
+        contentType,
+        data,
+        thumbnail,
+        { size: file.size }
+      ) : createMedia(
+        file.name || "upload",
+        contentType,
+        data,
+        thumbnail,
+        { size: file.size }
+      );
+      onCreated?.(mediaId);
+    };
+    if (database) database.transaction(persist).immediate(); else persist();
 
     return { status: 200, body: { id: mediaId, filename: file.name, size: file.size, contentType } };
   }

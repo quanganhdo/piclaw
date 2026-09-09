@@ -11,9 +11,12 @@ import type { AgentSession, AgentSessionRuntime, ModelRegistry, ModelRuntime, Se
 import type { Api, Model, Provider } from "@earendil-works/pi-ai";
 
 import { applyControlCommand, type AgentControlCommand, type AgentControlResult } from "../agent-control/index.js";
+import { handleModel } from "../agent-control/handlers/model.js";
+import { formatThinkingLevelForDisplay, getAvailableThinkingLevelsForModel, resolveThinkingAlias, THINKING_LEVELS } from "../agent-control/agent-control-helpers.js";
 import { buildSessionTreeSnapshot } from "../agent-control/session-tree-snapshot.js";
 import { getLatestTokenUsageModel } from "../db.js";
-import { formatThinkingLevelForDisplay, getAvailableThinkingLevelsForModel } from "../agent-control/agent-control-helpers.js";
+import { requireOwnedSessionExecution } from "./owned-session-access.js";
+
 import { SESSIONS_DIR } from "../core/config.js";
 import { detectChannel } from "../router.js";
 import { executeSlashCommand } from "./slash-command.js";
@@ -25,6 +28,8 @@ import { withChatContext } from "../core/chat-context.js";
 import { sanitiseJid } from "./session.js";
 import type { PoolEntry } from "./session-manager.js";
 import { probeCompactionModel, type CompactionModelProbeResult } from "./compaction-model-probe.js";
+import { readAccessConfig } from "../core/config-access.js";
+import { getExecutionIdentity } from "../core/execution-context.js";
 
 const MAX_PERSISTED_MODEL_STATE_CACHE_CHATS = 512;
 const persistedModelStateCache = new Map<string, {
@@ -32,6 +37,13 @@ const persistedModelStateCache = new Map<string, {
   current: string | null;
   thinkingLevel: string | null;
 }>();
+
+/** Direct session mutations have no owner-aware admission contract yet. */
+function requireSingleUserDirectExecution(label: string): void {
+  const mode = readAccessConfig().mode;
+  const identity = getExecutionIdentity();
+  if (mode !== "single-user" || (identity && identity.mode !== "single-user")) throw new Error(`${label} is unavailable in multi-user mode.`);
+}
 
 function setPersistedModelStateCache(
   chatJid: string,
@@ -306,6 +318,7 @@ export class AgentRuntimeFacade {
   }
 
   async applyControlCommand(chatJid: string, command: AgentControlCommand): Promise<AgentControlResult> {
+    requireSingleUserDirectExecution("Direct control commands");
     const runtime = await this.options.getOrCreateRuntime(chatJid);
     const session = runtime.session;
     const previousSessionGeneration = typeof session.sessionId === "string" ? session.sessionId : null;
@@ -328,6 +341,56 @@ export class AgentRuntimeFacade {
       : result;
   }
 
+  /** Owner-authorized active-session model/thinking mutation; never writes shared defaults. */
+  async applyOwnedModelControl(
+    chatJid: string,
+    command: Extract<AgentControlCommand, { type: "model" | "thinking" }>,
+  ): Promise<AgentControlResult> {
+    const identity = getExecutionIdentity();
+    if (readAccessConfig().mode !== "family-shared" || identity?.mode !== "family-shared" || identity.provenance.chatJid !== chatJid) {
+      throw new Error("Session access denied.");
+    }
+    requireOwnedSessionExecution(chatJid);
+    const runtime = await this.options.getOrCreateRuntime(chatJid);
+    const session = runtime.session;
+    if (session.isStreaming || session.isCompacting || session.isRetrying) {
+      return { status: "error", message: "Wait for the current session operation to finish before changing its model." };
+    }
+    if (command.type === "model") {
+      if (!command.provider || !command.modelId || command.compact) return { status: "error", message: "Select one exact available model." };
+      const available = await this.getAvailableModels(chatJid, { includeProviderUsage: false, includeProviderDiagnostics: false });
+      const requested = `${command.provider}/${command.modelId}`;
+      if (!available.model_options.some(option => option.label === requested)) return { status: "error", message: "Selected model is unavailable." };
+      // Standard handler applies context-fit checks. AgentSession.setModel persists only
+      // to this transcript unless persist:true is supplied (it is not).
+      return await withChatContext(chatJid, detectChannel(chatJid), () => handleModel(session, this.options.modelRegistry, command, { refreshRegistry: false, allowCompaction: false }));
+    }
+    if (!session.model) return { status: "error", message: "No model selected yet." };
+    const requested = typeof command.level === "string" ? command.level.trim().toLowerCase() : "";
+    if (!requested) {
+      return {
+        status: "success",
+        message: "Current thinking level.",
+        thinking_level: session.thinkingLevel ?? null,
+        thinking_level_label: formatThinkingLevelForDisplay(session.thinkingLevel, session.model),
+      };
+    }
+    const resolved = resolveThinkingAlias(requested, session.model);
+    const available = getAvailableThinkingLevelsForModel(session.model, session.getAvailableThinkingLevels());
+    if (!THINKING_LEVELS.includes(resolved as never) || !available.includes(resolved)) {
+      return { status: "error", message: "Selected thinking level is unavailable for this model." };
+    }
+    // SDK default options persist only to this session transcript, not SettingsManager.
+    session.setThinkingLevel(resolved as never);
+    const applied = session.thinkingLevel ?? resolved;
+    return {
+      status: "success",
+      message: `Thinking level set to ${formatThinkingLevelForDisplay(applied, session.model)}.`,
+      thinking_level: applied,
+      thinking_level_label: formatThinkingLevelForDisplay(applied, session.model),
+    };
+  }
+
   async getCurrentModelLabel(chatJid: string): Promise<string | null> {
     const session = (await this.options.getOrCreateRuntime(chatJid)).session;
     const model = session.model;
@@ -338,7 +401,10 @@ export class AgentRuntimeFacade {
     return await probeCompactionModel(this.options.modelRuntime, modelLabel);
   }
 
-  async getAvailableModels(chatJid: string): Promise<AvailableModelsResult> {
+  async getAvailableModels(
+    chatJid: string,
+    options: { includeProviderUsage?: boolean; includeProviderDiagnostics?: boolean } = {},
+  ): Promise<AvailableModelsResult> {
     // Passive UI refreshes should not hydrate a cold runtime just to render
     // model state for the picker.
     const session = this.options.pool.get(chatJid)?.runtime.session ?? null;
@@ -389,10 +455,11 @@ export class AgentRuntimeFacade {
       ? getAvailableThinkingLevelsForModel(currentModelDescriptor, baseThinkingLevels)
       : baseThinkingLevels;
     const activeProvider = session?.model?.provider ?? currentModelOption?.provider ?? null;
-    const providerUsage = activeProvider
+    const includeProviderUsage = options.includeProviderUsage !== false;
+    const providerUsage = includeProviderUsage && activeProvider
       ? await peekProviderUsageForRuntime(this.options.modelRuntime, activeProvider, { allowStale: true })
       : null;
-    if (activeProvider && !peekProviderUsage(activeProvider)) {
+    if (includeProviderUsage && activeProvider && !peekProviderUsage(activeProvider)) {
       this.warmProviderUsage(activeProvider);
     }
     const thinkingLevelLabel = thinkingLevel && currentModelDescriptor
@@ -421,7 +488,9 @@ export class AgentRuntimeFacade {
       scoped_models_only: scopedModels.scopedModelsOnly,
       scoped_model_filter_active: scopedModels.scoped,
       enabled_model_patterns: scopedModels.patterns,
-      provider_diagnostics: buildProviderCompositionDiagnostics(this.options.modelRuntime, available),
+      provider_diagnostics: options.includeProviderDiagnostics === false
+        ? { providers: [], registered_provider_ids: [], composition_error: null }
+        : buildProviderCompositionDiagnostics(this.options.modelRuntime, available),
     };
   }
 
@@ -533,6 +602,7 @@ export class AgentRuntimeFacade {
     text: string,
     behavior: "steer" | "followUp",
   ): Promise<{ queued: boolean; error?: string }> {
+    requireSingleUserDirectExecution("Direct queue mutation");
     const session = (await this.options.getOrCreateRuntime(chatJid)).session;
     if (!session.isStreaming) return { queued: false };
 
@@ -552,7 +622,39 @@ export class AgentRuntimeFacade {
     }
   }
 
+  /** Owner-authorized active-session steering. Durable authority stays in the family queue ledger. */
+  async queueOwnedStreamingMessage(
+    chatJid: string,
+    text: string,
+    behavior: "steer",
+  ): Promise<{ queued: boolean; error?: string }> {
+    requireOwnedSessionExecution(chatJid);
+    const session = this.options.pool.get(chatJid)?.runtime.session;
+    if (!session) return { queued: false };
+    if (!session.isStreaming) return { queued: false };
+    try {
+      return await withChatContext(chatJid, detectChannel(chatJid), async () => {
+        await session.prompt(text, { streamingBehavior: behavior });
+        return { queued: true };
+      });
+    } catch (error) {
+      return { queued: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  }
+
+  /** Owner-authorized abort; checked again inside the execution identity immediately before mutation. */
+  async abortOwnedRun(chatJid: string): Promise<AgentControlResult> {
+    requireOwnedSessionExecution(chatJid);
+    const runtime = this.options.pool.get(chatJid)?.runtime;
+    if (!runtime || !(runtime.session.isStreaming || runtime.session.isCompacting || runtime.session.isRetrying || runtime.session.isBashRunning)) {
+      return { status: "error", message: "No active response to abort." };
+    }
+    return await withChatContext(chatJid, detectChannel(chatJid), () =>
+      (this.options.applyControlCommandFn ?? applyControlCommand)(runtime, this.options.modelRegistry, { type: "abort", raw: "/abort" }));
+  }
+
   async removeQueuedFollowupMessage(chatJid: string, queuedContent?: string): Promise<boolean> {
+    requireSingleUserDirectExecution("Direct queue mutation");
     const session = (await this.options.getOrCreateRuntime(chatJid)).session;
     if (!session.isStreaming) return false;
 
@@ -615,6 +717,7 @@ export class AgentRuntimeFacade {
   }
 
   async applySlashCommand(chatJid: string, rawText: string): Promise<AgentControlResult> {
+    requireSingleUserDirectExecution("Direct slash commands");
     this.options.clearAttachments(chatJid);
     const runtime = await this.options.getOrCreateRuntime(chatJid);
     const session = runtime.session;

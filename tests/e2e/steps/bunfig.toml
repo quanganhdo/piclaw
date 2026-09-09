@@ -1,0 +1,2 @@
+[test]
+preload = ["../../../runtime/test/setup-filesystem-isolation.ts"]

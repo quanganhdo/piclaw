@@ -1,13 +1,14 @@
 #!/usr/bin/env bun
 import { chromium, firefox, webkit, type Browser, type Page } from 'playwright';
-import { existsSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { $ } from 'bun';
 
 const runtimeRoot = resolve(import.meta.dir, '../..');
 const repoRoot = resolve(runtimeRoot, '..');
-const baselineRoot = join(runtimeRoot, 'generated/cache/markdown-editor-speed-baseline');
-const tmpRoot = join(runtimeRoot, 'generated/cache/markdown-editor-speed-audit');
+const tmpRoot = mkdtempSync(join(tmpdir(), 'piclaw-markdown-editor-speed-'));
+const baselineRoot = join(tmpRoot, 'baseline');
 const baselineRef = process.env.BASELINE_REF || 'HEAD^';
 const skipBaselineTyping = process.env.SPEED_AUDIT_BASELINE_SKIP_TYPING !== '0';
 const browserTypes = { chromium, firefox, webkit } as const;

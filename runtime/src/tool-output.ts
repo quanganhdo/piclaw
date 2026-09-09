@@ -17,16 +17,18 @@
  *   - agent-pool.ts may call readToolOutputFile() to fetch full content.
  */
 
-import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from "fs";
-import { basename, dirname, join, resolve } from "path";
+import { closeSync, constants, existsSync, fstatSync, lstatSync, mkdirSync, openSync, readFileSync, readdirSync, readSync, realpathSync, renameSync, statSync, unlinkSync, writeFileSync } from "fs";
+import { basename, dirname, join, relative, resolve } from "path";
+import { createHash } from 'node:crypto';
 import { getDataDir } from "./core/config.js";
-import { canUseLegacyToolOutput, createToolOutputAccessGuard, ToolOutputAccessDenied } from "./core/tool-output-access.js";
+import { canUseLegacyToolOutput, createToolOutputAccessGuard, ToolOutputAccessDenied, type ToolOutputScope } from "./core/tool-output-access.js";
 import { createUuid } from "./utils/ids.js";
 import { createLogger, debugSuppressedError } from "./utils/logger.js";
 import {
   storeToolOutput,
-  insertToolOutputChunk,
+  storeToolOutputWithChunks,
   getToolOutputById,
+  deleteToolOutputById,
   deleteToolOutputsBefore,
   searchToolOutputSnippets,
   getDb,
@@ -58,9 +60,14 @@ function buildToolOutputCutoff(maxAgeMs: number): string {
   return new Date(Date.now() - retentionMs).toISOString();
 }
 
-function buildToolOutputPath(id: string, createdAt: string): string {
-  return getDateShardedPath(getToolOutputDir(), `${id}.log`, createdAt);
+function buildToolOutputPath(id: string, createdAt: string,scope:ToolOutputScope|null=null): string {
+  return getDateShardedPath(scopeOutputDir(scope), `${id}.log`, createdAt);
 }
+function scopeOutputDir(scope:ToolOutputScope|null):string {if(!scope)return getToolOutputDir();const digest=createHash('sha256').update(`${scope.ownerUserId}\0${scope.rootBranchId}\0${scope.sourceBranchId}\0${scope.executionKind}`).digest('hex');return join(getToolOutputDir(),'users',digest.slice(0,16),digest.slice(16,32));}
+function ensureOutputParent(path:string,scope:ToolOutputScope|null):void {if(!scope){mkdirSync(dirname(path),{recursive:true});return;}const root=resolve(getToolOutputDir()),target=resolve(dirname(path));mkdirSync(root,{recursive:true,mode:0o700});const rel=relative(root,target);if(!rel||rel.startsWith('..'))throw new ToolOutputAccessDenied();let current=root;for(const part of rel.split('/')){current=join(current,part);try{const stat=lstatSync(current);if(!stat.isDirectory()||stat.isSymbolicLink()||realpathSync(current)!==resolve(current))throw new ToolOutputAccessDenied();}catch(error){if(error instanceof ToolOutputAccessDenied)throw error;if((error as NodeJS.ErrnoException).code!=='ENOENT')throw new ToolOutputAccessDenied();mkdirSync(current,{mode:0o700});const stat=lstatSync(current);if(!stat.isDirectory()||stat.isSymbolicLink()||realpathSync(current)!==resolve(current))throw new ToolOutputAccessDenied();}}}
+function scopedRecordPath(record:ToolOutputRecord,scope:ToolOutputScope):string {const expected=resolve(buildToolOutputPath(record.id,record.created_at,scope));if(!record.path||resolve(record.path)!==expected)throw new ToolOutputAccessDenied();return expected;}
+function readStableFile(path:string):string {const before=lstatSync(path);if(!before.isFile()||before.isSymbolicLink()||before.nlink!==1||realpathSync(path)!==resolve(path))throw new ToolOutputAccessDenied();const fd=openSync(path,constants.O_RDONLY|constants.O_NOFOLLOW);try{const opened=fstatSync(fd);if(!opened.isFile()||opened.nlink!==1||opened.dev!==before.dev||opened.ino!==before.ino||opened.size!==before.size)throw new ToolOutputAccessDenied();const bytes=Buffer.alloc(opened.size);let offset=0;while(offset<bytes.length){const n=readSync(fd,bytes,offset,bytes.length-offset,offset);if(!n)throw new ToolOutputAccessDenied();offset+=n;}const after=fstatSync(fd);if(after.dev!==opened.dev||after.ino!==opened.ino||after.size!==opened.size||after.mtimeMs!==opened.mtimeMs||realpathSync(path)!==resolve(path))throw new ToolOutputAccessDenied();return bytes.toString('utf8');}finally{closeSync(fd);}}
+function validateScopedPathForDelete(record:ToolOutputRecord,scope:ToolOutputScope):void {const path=scopedRecordPath(record,scope);if(!existsSync(path))return;const stat=lstatSync(path);if(!stat.isFile()||stat.isSymbolicLink()||stat.nlink!==1||realpathSync(path)!==path)throw new ToolOutputAccessDenied();}
 
 /** Options for saveToolOutput(). */
 export interface ToolOutputSaveOptions {
@@ -157,12 +164,13 @@ export function chunkText(text: string, chunkSize = DEFAULT_CHUNK_SIZE): string[
  * index content chunks in FTS5. Returns a summary result.
  */
 export function saveToolOutput(text: string, options: ToolOutputSaveOptions = {}): ToolOutputSaveResult {
-  createToolOutputAccessGuard();
+  const access=createToolOutputAccessGuard(),scope=access.scope;
   const id = options.id ?? createUuid("out");
+  if(!/^[A-Za-z0-9_-]{1,128}$/.test(id))throw new ToolOutputAccessDenied();
   const createdAt = options.createdAt ?? new Date().toISOString();
-  const path = buildToolOutputPath(id, createdAt);
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, text ?? "", "utf8");
+  const path = buildToolOutputPath(id, createdAt,scope);
+  ensureOutputParent(path,scope);
+  writeFileSync(path, text ?? "", {encoding:"utf8",mode:0o600,flag:"wx"});
 
   const sizeBytes = Buffer.byteLength(text ?? "", "utf8");
   const lineCount = text ? text.replace(/\r\n/g, "\n").split("\n").length : 0;
@@ -176,38 +184,35 @@ export function saveToolOutput(text: string, options: ToolOutputSaveOptions = {}
     line_count: lineCount,
     summary,
     path,
+    owner_user_id:scope?.ownerUserId??null,root_branch_id:scope?.rootBranchId??null,source_branch_id:scope?.sourceBranchId??null,chat_jid:scope?.chatJid??null,execution_kind:scope?.executionKind??null,
   };
 
-  storeToolOutput(record);
-
-  // Index content in FTS5 in chunks for efficient full-text search.
-  const chunks = chunkText(text ?? "");
-  for (const chunk of chunks) {
-    if (chunk.trim()) insertToolOutputChunk(id, chunk);
-  }
+  let committed=false;try {access();storeToolOutputWithChunks(record,chunkText(text??""),access);committed=true;access();}
+  catch(error){if(committed)try{deleteToolOutputById(id,scope);}catch(deleteError){debugSuppressedError(log,"Failed to remove rejected tool-output metadata.",deleteError,{operation:"tool_output.save.rollback_metadata",id});}try{unlinkSync(path);}catch(unlinkError){debugSuppressedError(log,"Failed to remove rejected tool-output file.",unlinkError,{operation:"tool_output.save.rollback",id});}throw error;}
 
   return { id, path, summary, sizeBytes, lineCount };
 }
 
 /** Retrieve a tool output record by its UUID handle. */
 export function getToolOutput(handle: string): ToolOutputRecord | undefined {
-  createToolOutputAccessGuard();
-  return getToolOutputById(handle);
+  const access=createToolOutputAccessGuard(),record=getToolOutputById(handle,access.scope);if(record&&access.scope)scopedRecordPath(record,access.scope);access();return record;
 }
 
 /** Search the FTS index for a tool output, returning snippet strings. */
 export function searchToolOutput(handle: string, query: string, limit = 5): string[] {
-  createToolOutputAccessGuard();
+  const access=createToolOutputAccessGuard();
   const trimmed = query?.trim?.() ?? "";
   if (!trimmed) return [];
-  return searchToolOutputSnippets(handle, trimmed, limit);
+  const result=searchToolOutputSnippets(handle,trimmed,limit,access.scope);access();return result;
 }
 
-function listRegisteredToolOutputPaths(): Set<string> {
+function listRegisteredToolOutputPaths(scope:ToolOutputScope|null): Set<string> {
   try {
-    const rows = getDb().prepare("SELECT path FROM tool_outputs WHERE path IS NOT NULL").all() as Array<{ path: string | null }>;
+    const rows = scope?getDb().prepare("SELECT path FROM tool_outputs WHERE path IS NOT NULL AND owner_user_id=? AND root_branch_id=? AND source_branch_id=? AND execution_kind=?").all(scope.ownerUserId,scope.rootBranchId,scope.sourceBranchId,scope.executionKind) as Array<{path:string|null}>
+      :getDb().prepare("SELECT path FROM tool_outputs WHERE path IS NOT NULL AND owner_user_id IS NULL").all() as Array<{path:string|null}>;
     return new Set(rows.map((row) => row.path).filter((path): path is string => Boolean(path)).map((path) => resolve(path)));
   } catch (error) {
+    if(scope)throw new ToolOutputAccessDenied();
     debugSuppressedError(log, "Failed to list registered tool-output paths during filesystem pruning.", error, {
       operation: "tool_output.prune.list_registered_paths",
     });
@@ -217,12 +222,12 @@ function listRegisteredToolOutputPaths(): Set<string> {
 
 /** Remove unreferenced tool-output log files older than the retention window. */
 export function pruneToolOutputFiles(maxAgeMs = DEFAULT_TOOL_OUTPUT_RETENTION_MS): number {
-  createToolOutputAccessGuard();
-  const toolOutputDir = getToolOutputDir();
+  const access=createToolOutputAccessGuard(),scope=access.scope;
+  const toolOutputDir = scopeOutputDir(scope);
   if (!existsSync(toolOutputDir)) return 0;
   const retentionMs = clampLogRetentionMs(maxAgeMs, DEFAULT_TOOL_OUTPUT_RETENTION_MS);
   const cutoffMs = Date.now() - retentionMs;
-  const registeredPaths = listRegisteredToolOutputPaths();
+  const registeredPaths = listRegisteredToolOutputPaths(scope);access();
   let removed = 0;
 
   const visit = (dir: string): void => {
@@ -230,6 +235,7 @@ export function pruneToolOutputFiles(maxAgeMs = DEFAULT_TOOL_OUTPUT_RETENTION_MS
     try {
       entries = readdirSync(dir);
     } catch (error) {
+      if(scope||error instanceof ToolOutputAccessDenied)throw new ToolOutputAccessDenied();
       debugSuppressedError(log, "Failed to read a tool-output directory during pruning.", error, {
         operation: "tool_output.prune_files.read_dir",
         dir,
@@ -238,11 +244,15 @@ export function pruneToolOutputFiles(maxAgeMs = DEFAULT_TOOL_OUTPUT_RETENTION_MS
     }
 
     for (const entry of entries) {
+      access();
       const path = join(dir, entry);
+      if(!scope&&resolve(path)===resolve(getToolOutputDir(),"users"))continue;
       let stat;
       try {
-        stat = statSync(path);
-      } catch {
+        stat = lstatSync(path);
+        if(stat.isSymbolicLink()||(scope&&realpathSync(path)!==resolve(path)))throw new ToolOutputAccessDenied();
+      } catch(error) {
+        if(scope||error instanceof ToolOutputAccessDenied)throw new ToolOutputAccessDenied();
         continue;
       }
 
@@ -255,10 +265,12 @@ export function pruneToolOutputFiles(maxAgeMs = DEFAULT_TOOL_OUTPUT_RETENTION_MS
       if (stat.mtimeMs >= cutoffMs || registeredPaths.has(resolve(path))) continue;
 
       try {
+        access();
         unlinkSync(path);
         removed += 1;
         cleanupEmptyParentDirs(toolOutputDir, dirname(path));
       } catch (error) {
+        if(scope||error instanceof ToolOutputAccessDenied)throw new ToolOutputAccessDenied();
         debugSuppressedError(log, "Failed to unlink an orphaned tool-output file during pruning.", error, {
           operation: "tool_output.prune_files.unlink",
           path,
@@ -276,7 +288,7 @@ export function pruneToolOutputFiles(maxAgeMs = DEFAULT_TOOL_OUTPUT_RETENTION_MS
  * Existing flat DB paths remain readable if migration cannot move a file.
  */
 export function migrateFlatToolOutputsToDateShards(): number {
-  createToolOutputAccessGuard();
+  const access=createToolOutputAccessGuard();if(access.scope)return 0;
   const toolOutputDir = getToolOutputDir();
   mkdirSync(toolOutputDir, { recursive: true });
   const root = resolve(toolOutputDir);
@@ -334,15 +346,19 @@ export function migrateFlatToolOutputsToDateShards(): number {
  * and the on-disk log files. Returns the number of records pruned.
  */
 export function pruneToolOutputs(maxAgeMs = DEFAULT_TOOL_OUTPUT_RETENTION_MS): number {
-  createToolOutputAccessGuard();
+  const access=createToolOutputAccessGuard();
   const cutoff = buildToolOutputCutoff(maxAgeMs);
-  const rows = deleteToolOutputsBefore(cutoff);
+  const rows = deleteToolOutputsBefore(cutoff,access.scope,access,record=>{if(access.scope)validateScopedPathForDelete(record,access.scope);});
   for (const row of rows) {
     if (row.path && existsSync(row.path)) {
       try {
-        unlinkSync(row.path);
-        cleanupEmptyParentDirs(getToolOutputDir(), dirname(row.path));
+        access();
+        const path=access.scope?scopedRecordPath(row,access.scope):row.path;
+        const stat=lstatSync(path);if(stat.isSymbolicLink()||!stat.isFile()||(access.scope&&(stat.nlink!==1||realpathSync(path)!==resolve(path))))throw new ToolOutputAccessDenied();
+        unlinkSync(path);
+        cleanupEmptyParentDirs(access.scope?scopeOutputDir(access.scope):getToolOutputDir(), dirname(path));
       } catch (err) {
+        if(access.scope||err instanceof ToolOutputAccessDenied)throw new ToolOutputAccessDenied();
         debugSuppressedError(log, "Failed to unlink a pruned tool-output file; it may already be gone.", err, {
           operation: "tool_output.prune.unlink",
           path: row.path,
@@ -395,10 +411,12 @@ export function startToolOutputCleanup(
  * Returns null if the file doesn't exist or is unreadable.
  */
 export function readToolOutputFile(path: string): string | null {
-  createToolOutputAccessGuard();
+  const access=createToolOutputAccessGuard();
+  if(access.scope){const record=getDb().prepare('SELECT * FROM tool_outputs WHERE path=? AND owner_user_id=? AND root_branch_id=? AND source_branch_id=? AND execution_kind=?').get(path,access.scope.ownerUserId,access.scope.rootBranchId,access.scope.sourceBranchId,access.scope.executionKind) as ToolOutputRecord|null;if(!record)return null;scopedRecordPath(record,access.scope);}
   try {
-    return readFileSync(path, "utf8");
-  } catch {
+    const value=access.scope?readStableFile(path):readFileSync(path,"utf8");access();return value;
+  } catch(error) {
+    if(access.scope||error instanceof ToolOutputAccessDenied)throw new ToolOutputAccessDenied();
     return null;
   }
 }

@@ -11,8 +11,8 @@ import {
     sendHarnessPayload,
 } from './vnc-harness-bridge-helpers.ts';
 
-const DEFAULT_TARGET = '192.168.1.10:5917';
-const DEFAULT_PASSWORD = 'cd8a99cd';
+const DEFAULT_TARGET = "";
+const DEFAULT_PASSWORD = "";
 const DEFAULT_PORT = 8791;
 const DEFAULT_HOST = '127.0.0.1';
 
@@ -261,6 +261,8 @@ function buildHarnessHtml({ target, password }: { target: string; password: stri
 
 async function main() {
     const args = parseArgs(process.argv.slice(2));
+    if (process.env.PICLAW_E2E_DISPOSABLE !== '1' || !args.target) throw new Error('VNC harness requires an explicit disposable target and PICLAW_E2E_DISPOSABLE=1.');
+    if (!['127.0.0.1', 'localhost', '::1'].includes(args.host)) throw new Error('VNC test harness must bind loopback.');
     const parsedTarget = parseTarget(args.target);
     const paths = getPaths();
     const harnessBundle = await buildHarnessBundle(paths.harnessEntry);

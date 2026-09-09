@@ -32,6 +32,32 @@ export function initializeMessageAuthoritySchema(database: Database): void {
   CREATE TRIGGER IF NOT EXISTS message_execution_authority_immutable
     BEFORE UPDATE ON message_execution_authorities
     BEGIN SELECT RAISE(ABORT, 'Message execution authority is immutable'); END;
+  CREATE TABLE IF NOT EXISTS family_turn_queue (
+    message_rowid INTEGER PRIMARY KEY REFERENCES message_execution_authorities(message_rowid),
+    message_id TEXT NOT NULL,
+    chat_jid TEXT NOT NULL,
+    owner_user_id TEXT NOT NULL REFERENCES users(id),
+    admission_mode TEXT NOT NULL CHECK(admission_mode IN ('send','queue','queue_all','steer','auto')),
+    queue_position INTEGER NOT NULL,
+    state TEXT NOT NULL CHECK(state IN ('held','ready','dispatching','completed','removed','skipped','steered')),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    revision INTEGER NOT NULL DEFAULT 0
+  ) STRICT;
+  CREATE INDEX IF NOT EXISTS idx_family_turn_queue_chat_state_position
+    ON family_turn_queue(chat_jid,state,queue_position,message_rowid);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_family_turn_queue_one_ready
+    ON family_turn_queue(chat_jid) WHERE state='ready';
+  CREATE TRIGGER IF NOT EXISTS family_turn_queue_identity_immutable
+    BEFORE UPDATE OF message_rowid,message_id,chat_jid,owner_user_id,admission_mode,created_at ON family_turn_queue
+    WHEN NEW.message_rowid != OLD.message_rowid OR NEW.message_id != OLD.message_id
+      OR NEW.chat_jid != OLD.chat_jid OR NEW.owner_user_id != OLD.owner_user_id
+      OR NEW.admission_mode != OLD.admission_mode OR NEW.created_at != OLD.created_at
+    BEGIN SELECT RAISE(ABORT, 'Family turn queue identity is immutable'); END;
+  CREATE TRIGGER IF NOT EXISTS family_turn_queue_terminal_immutable
+    BEFORE UPDATE ON family_turn_queue
+    WHEN OLD.state IN ('completed','removed','skipped','steered')
+    BEGIN SELECT RAISE(ABORT, 'Family turn queue terminal state is immutable'); END;
   CREATE TABLE IF NOT EXISTS message_recovery_authorities (
     id INTEGER PRIMARY KEY,
     message_rowid INTEGER NOT NULL REFERENCES message_execution_authorities(message_rowid),

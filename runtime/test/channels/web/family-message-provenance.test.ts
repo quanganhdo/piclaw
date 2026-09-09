@@ -27,8 +27,12 @@ function actor(id: string) {
   const login = createWebSession(`token-${id}`, id, 3600, "passkey");
   return resolveRequestPrincipal(new Request("https://family.local", { headers: { cookie: "piclaw_session=fixture" } }), { mode: "family-shared", authEnabled: true }, { getSession: () => login, getUser: () => getUser(getDb(), id), getLocalDisplayName: () => "unused" })!;
 }
-function request(body: unknown, target = alice.homeChatJid!, origin: string | null = "https://family.local") {
-  return new Request(`https://family.local/agent/default/message?chat_jid=${encodeURIComponent(target)}`, { method: "POST", headers: { cookie: `piclaw_session=token-${alice.userId}`, ...(origin ? { origin } : {}), "x-piclaw-user-id": bob.userId, "x-piclaw-internal-secret": "secret" }, body: JSON.stringify(body) });
+function request(body: unknown, target = alice.homeChatJid!, origin: string | null = "https://family.local", actor = alice) {
+  return new Request(`https://family.local/agent/default/message?chat_jid=${encodeURIComponent(target)}`, { method: "POST", headers: { cookie: `piclaw_session=token-${actor.userId}`, ...(origin ? { origin } : {}), "x-piclaw-user-id": bob.userId, "x-piclaw-internal-secret": "secret" }, body: JSON.stringify(body) });
+}
+function uploadRequest(actor: AuthenticatedPrincipal, file: File, origin: string | null = "https://family.local") {
+  const form = new FormData(); form.append("file", file);
+  return new Request("https://family.local/media/upload", { method:"POST", headers:{ cookie:`piclaw_session=token-${actor.userId}`, ...(origin?{origin}:{}), "x-piclaw-account-id":actor.userId, "x-piclaw-login-id":actor.authentication.sessionId! }, body:form });
 }
 function router(channelExtra: Record<string, unknown> = {}) {
   const json = (body: unknown, status=200) => Response.json(body, { status });
@@ -121,6 +125,30 @@ test("HTTP permits only authenticated plain-text/idempotent admission and reject
   expect((await handleAgentMessage({ json: (value: unknown, status: number) => Response.json(value, { status }) } as any, request({ content: "bypass" }), "/agent/default/message", alice.homeChatJid!, "default")).status).toBe(403);
 });
 
+test("family upload and message admission bind media to one owner and consume it atomically",async()=>{
+  const ingress=router({resumeChat:()=>{}});
+  const uploaded=await ingress.handle(uploadRequest(alice,new File(["hello"],"note.txt",{type:"text/plain"})));expect(uploaded.status).toBe(200);
+  const uploadValue=await uploaded.json();const mediaId=uploadValue.id as number;expect(getDb().query("SELECT owner_user_id,login_session_id FROM family_media_uploads WHERE media_id=?").get(mediaId)).toEqual({owner_user_id:alice.userId,login_session_id:alice.authentication.sessionId});
+  expect(()=>admitFamilyMessage(bob,{content:"steal",requestId:"steal",mediaIds:[mediaId]})).toThrow();
+  expect(()=>admitFamilyMessage(alice,{content:"guess",requestId:"guess",mediaIds:[mediaId+1000]})).toThrow();
+  const response=await ingress.handle(request({content:"attached",request_id:"attachment",media_ids:[mediaId]}));expect(response.status).toBe(201);
+  const value=await response.json();expect(value.user_message.data.media_ids).toEqual([mediaId]);expect(value.user_message.data.content_blocks).toEqual([{type:"file",media_id:mediaId,name:"note.txt",filename:"note.txt",mime_type:uploadValue.contentType}]);
+  expect(getDb().query("SELECT 1 FROM family_media_uploads WHERE media_id=?").get(mediaId)).toBeNull();expect(getDb().query("SELECT media_id FROM message_media WHERE message_rowid=?").get(value.user_message.id)).toEqual({media_id:mediaId});
+  expect((await ingress.handle(request({content:"attached",request_id:"attachment",media_ids:[mediaId]}))).status).toBe(200);
+  expect((await ingress.handle(request({content:"different",request_id:"attachment",media_ids:[mediaId]}))).status).toBe(403);
+  expect(()=>admitFamilyMessage(alice,{content:"reuse",requestId:"reuse",mediaIds:[mediaId]})).toThrow();
+});
+
+test("upload requires current pins and origin and failed admission retains the pending claim",async()=>{
+  const ingress=router();
+  expect((await ingress.handle(uploadRequest(alice,new File(["x"],"x.txt"),null))).status).toBe(403);
+  const bad=uploadRequest(alice,new File(["x"],"x.txt"));bad.headers.set("x-piclaw-account-id",bob.userId);expect((await ingress.handle(bad)).status).toBe(409);
+  const uploaded=await ingress.handle(uploadRequest(alice,new File(["x"],"x.txt")));const mediaId=(await uploaded.json()).id as number;
+  getDb().exec("CREATE TRIGGER fail_media_admission BEFORE INSERT ON message_execution_authorities BEGIN SELECT RAISE(ABORT,'admission failed'); END;");
+  expect((await ingress.handle(request({content:"will fail",request_id:"media-fail",media_ids:[mediaId]}))).status).toBe(400);
+  expect(getDb().query("SELECT 1 FROM family_media_uploads WHERE media_id=?").get(mediaId)).not.toBeNull();expect(getDb().query("SELECT 1 FROM message_media WHERE media_id=?").get(mediaId)).toBeNull();
+});
+
 test("persisted messages drain individually with distinct current-owner contexts and resume the remainder", async () => {
   const first = admitFamilyMessage(alice, { content: "first", requestId: "first" });
   const second = admitFamilyMessage(alice, { content: "second", requestId: "second" });
@@ -151,6 +179,7 @@ test("revocation during a run prevents reply persistence and leaves the input un
   await instance.processChat(alice.homeChatJid!, "default");
   expect((getDb().query("SELECT count(*) n FROM messages WHERE chat_jid=? AND is_bot_message=1").get(alice.homeChatJid!) as any).n).toBe(0);
   expect(getChatCursor(alice.homeChatJid!)).toBe("");
+  expect(getDb().query("SELECT state FROM family_turn_queue").get()).toEqual({ state: "ready" });
 });
 
 test("generic user persistence cannot inject family inputs outside admission", () => {

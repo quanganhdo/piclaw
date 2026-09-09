@@ -74,6 +74,8 @@ export async function auditLocalTestEntrypoints(
 }
 
 if (import.meta.main) {
+  // Bun resolves config from cwd, not ancestor package roots.
+  await import('./check-test-preloads.js');
   const violations = await auditLocalTestEntrypoints();
   if (violations.length > 0) {
     process.stderr.write(`[local-test-entrypoints] raw local test invocation(s):\n${violations.join("\n")}\n`);

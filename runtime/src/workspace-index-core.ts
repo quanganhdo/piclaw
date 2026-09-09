@@ -13,25 +13,15 @@ import path from "node:path";
 import { getDb } from "./db.js";
 import { getWorkspaceDir, getWorkspaceSearchConfig } from "./core/config.js";
 import { createLogger, debugSuppressedError } from "./utils/logger.js";
+import { workspaceIndexAccess,WorkspaceIndexAccessDenied } from './core/workspace-index-access.js';
+import { familyWorkspaceIndexStatus,familyWorkspaceScope,refreshFamilyWorkspaceIndex,staleFamilyWorkspaceIndex } from './family-workspace-index.js';
 
 const log = createLogger("workspace-index-core");
 export const AGGRESSIVE_WORKSPACE_INDEX_MEMORY_ENV = "PICLAW_AGGRESSIVE_WORKSPACE_INDEX_MEMORY";
 const AGGRESSIVE_WORKSPACE_INDEX_GC_EVERY_FILES = 8;
 
-/** Search scope: restrict to notes/, skills/, or search all indexed roots. */
-export type WorkspaceSearchScope = "notes" | "skills" | "all";
-
-export type WorkspaceIndexState = "never_indexed" | "indexing" | "ready" | "stale" | "failed";
-
-export type WorkspaceIndexStatus = {
-  scope: WorkspaceSearchScope;
-  state: WorkspaceIndexState;
-  last_indexed_at: string | null;
-  last_error: string | null;
-  indexed_file_count: number;
-  roots: string[];
-  updated_at: string | null;
-};
+import type { WorkspaceSearchScope,WorkspaceIndexState,WorkspaceIndexStatus } from './core/workspace-index-types.js';
+export type { WorkspaceSearchScope,WorkspaceIndexState,WorkspaceIndexStatus } from './core/workspace-index-types.js';
 
 export type WorkspaceIndexBackgroundRefreshParams = {
   scope?: WorkspaceSearchScope | string;
@@ -160,26 +150,29 @@ function aggressivelyReleaseWorkspaceIndexMemory(): void {
   }
 }
 
-async function walkFiles(root: string): Promise<string[]> {
+async function walkFiles(root: string,validate:()=>void): Promise<string[]> {
   const files: string[] = [];
   try {
-    const entries = await fs.readdir(root, { withFileTypes: true });
+    validate();const entries = await fs.readdir(root, { withFileTypes: true });validate();
     for (const entry of entries) {
       const full = path.join(root, entry.name);
       if (entry.isDirectory()) {
         if (entry.name === "node_modules" || entry.name === ".git" || entry.name === ".cache" || entry.name === "generated") continue;
-        files.push(...(await walkFiles(full)));
+        files.push(...(await walkFiles(full,validate)));validate();
       } else if (entry.isFile()) {
         files.push(full);
       }
     }
-  } catch {
+  } catch (error) {
+    validate();if(error instanceof WorkspaceIndexAccessDenied)throw error;
     return files;
   }
   return files;
 }
 
 export function normalizeWorkspaceIndexRoots(scope: string | undefined): string[] {
+  const access=workspaceIndexAccess();
+  if(access.mode==='family-shared'){const selected=familyWorkspaceScope(scope);return (selected==='notes'?['notes/family']:selected==='skills'?['.pi/skills']:['notes/family','.pi/skills']).map(root=>path.resolve(access.workspace,root));}
   const configuredRoots = getDefaultRoots();
   const builtInRoots = getBuiltInRoots();
   if (!scope || scope === "all") return configuredRoots;
@@ -281,7 +274,8 @@ function upsertStatus(
   );
 }
 
-async function indexWorkspace(roots: string[], maxBytes: number): Promise<void> {
+async function indexWorkspace(roots: string[], maxBytes: number,validate:()=>void): Promise<void> {
+  validate();
   const db = getDb();
   const seen = new Set<string>();
   const now = new Date().toISOString();
@@ -290,12 +284,12 @@ async function indexWorkspace(roots: string[], maxBytes: number): Promise<void> 
 
   for (const root of roots) {
     const absRoot = path.resolve(root);
-    const files = await walkFiles(absRoot);
+    const files = await walkFiles(absRoot,validate);validate();
     for (const file of files) {
       if (!isTextFile(file)) continue;
       const rel = toRelative(file);
       try {
-        const stat = await fs.stat(file);
+        validate();const stat = await fs.stat(file);validate();
         if (stat.size > maxBytes) {
           db.prepare("DELETE FROM workspace_fts WHERE path = ?").run(rel);
           db.prepare("DELETE FROM workspace_files WHERE path = ?").run(rel);
@@ -309,7 +303,7 @@ async function indexWorkspace(roots: string[], maxBytes: number): Promise<void> 
           continue;
         }
 
-        let content = await fs.readFile(file, "utf8");
+        let content = await fs.readFile(file, "utf8");validate();
         db.prepare("DELETE FROM workspace_fts WHERE path = ?").run(rel);
         db.prepare("INSERT INTO workspace_fts (content, path, mtime_ms, size_bytes) VALUES (?, ?, ?, ?)").run(content, rel, mtimeMs, stat.size);
         db.prepare(
@@ -321,6 +315,7 @@ async function indexWorkspace(roots: string[], maxBytes: number): Promise<void> 
           aggressivelyReleaseWorkspaceIndexMemory();
         }
       } catch (err) {
+        validate();if(err instanceof WorkspaceIndexAccessDenied)throw err;
         debugSuppressedError(log, "Workspace index skipped an unreadable file.", err, {
           operation: "workspace_search.refresh.read_file",
           path: rel,
@@ -329,7 +324,7 @@ async function indexWorkspace(roots: string[], maxBytes: number): Promise<void> 
     }
   }
 
-  const existingPaths = db.prepare("SELECT path FROM workspace_files").all() as Array<{ path: string }>;
+  validate();const existingPaths = db.prepare("SELECT path FROM workspace_files").all() as Array<{ path: string }>;
   for (const row of existingPaths) {
     const inScope = rootPrefixes.some((prefix) => prefix === "" || row.path.startsWith(prefix));
     if (!inScope) continue;
@@ -359,12 +354,14 @@ export function getAffectedWorkspaceIndexScopes(paths: string[]): WorkspaceSearc
 }
 
 export function getWorkspaceIndexStatus(params?: { scope?: WorkspaceSearchScope | string }): WorkspaceIndexStatus {
+  const access=workspaceIndexAccess();if(access.mode==='family-shared')return familyWorkspaceIndexStatus(params?.scope);
   const scope = normalizeWorkspaceSearchScope(params?.scope);
   const roots = normalizeWorkspaceIndexRoots(scope);
   return buildStatusSnapshot(scope, roots, getStatusRow(scope));
 }
 
 export function markWorkspaceIndexCoreStale(params?: { scope?: WorkspaceSearchScope | string; paths?: string[] }): WorkspaceSearchScope[] {
+  const access=workspaceIndexAccess();if(access.mode==='family-shared')return staleFamilyWorkspaceIndex(params);
   const explicitScope = params?.paths?.length ? null : normalizeWorkspaceSearchScope(params?.scope);
   const scopes = explicitScope ? [explicitScope] : getAffectedWorkspaceIndexScopes(params?.paths || []);
 
@@ -384,19 +381,22 @@ export function markWorkspaceIndexCoreStale(params?: { scope?: WorkspaceSearchSc
 }
 
 export async function refreshWorkspaceIndex(params?: { scope?: WorkspaceSearchScope | string; max_kb?: number }): Promise<WorkspaceIndexStatus> {
+  const access=workspaceIndexAccess();if(access.mode==='family-shared')return refreshFamilyWorkspaceIndex(params);
+  const database=getDb();let denied=false;
+  const validate=()=>{access.validate();if(denied||getDb()!==database){denied=true;throw new WorkspaceIndexAccessDenied();}};
   const scope = normalizeWorkspaceSearchScope(params?.scope);
   const roots = normalizeWorkspaceIndexRoots(scope);
   const maxBytes = clampNumber(params?.max_kb, 512, 16, 2048) * 1024;
   const previous = getStatusRow(scope);
 
   activeIndexScopes.add(scope);
-  upsertStatus(scope, "indexing", roots, {
-    lastIndexedAt: previous?.last_indexed_at ?? null,
-    lastError: null,
-    indexedFileCount: previous?.indexed_file_count ?? 0,
-  });
   try {
-    await indexWorkspace(roots, maxBytes);
+    upsertStatus(scope, "indexing", roots, {
+      lastIndexedAt: previous?.last_indexed_at ?? null,
+      lastError: null,
+      indexedFileCount: previous?.indexed_file_count ?? 0,
+    });
+    await indexWorkspace(roots, maxBytes,validate);validate();
     const indexedAt = new Date().toISOString();
     upsertStatus(scope, "ready", roots, {
       lastIndexedAt: indexedAt,
@@ -406,6 +406,7 @@ export async function refreshWorkspaceIndex(params?: { scope?: WorkspaceSearchSc
     activeIndexScopes.delete(scope);
     return buildStatusSnapshot(scope, roots, getStatusRow(scope));
   } catch (error) {
+    validate();if(error instanceof WorkspaceIndexAccessDenied)throw error;
     upsertStatus(scope, "failed", roots, {
       lastIndexedAt: previous?.last_indexed_at ?? null,
       lastError: error instanceof Error ? error.message : String(error),

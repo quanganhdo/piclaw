@@ -109,7 +109,7 @@ test("token-chart --mode provider-model-cost renders an estimated cost chart wit
 
   expect(output.startsWith("![token-chart](data:image/svg+xml;base64,")).toBe(true);
   expect(output).toContain("Estimated cost chart (provider + model): last 2 days • $17.2 across 2 active series");
-  expect(output).toContain("pricing ref 2026-08-03");
+  expect(output).toContain("pricing ref 2026-09-05");
 
   rmSync(base, { recursive: true, force: true });
 });

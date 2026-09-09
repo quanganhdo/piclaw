@@ -117,7 +117,7 @@ function resolveThreadInfo(displayPosts) {
 }
 
 /** Timeline component. */
-function TimelineView({ posts, hasMore, onLoadMore, onPostClick, onHashtagClick, onMessageRef, onScrollToMessage, onFileRef, onOpenWidget, onOpenAttachmentPreview, emptyMessage, timelineRef, agents, user, onDeletePost, reverse = true, removingPostIds, searchQuery }) {
+function TimelineView({ posts, hasMore, onLoadMore, onPostClick, onHashtagClick, onMessageRef, onScrollToMessage, onFileRef, onOpenWidget, onOpenAttachmentPreview, onSaveAnnotations, onSubmitCardAction, renderPostAccessory, postCapabilities, emptyMessage, timelineRef, timelineId, agents, user, onDeletePost, reverse = true, removingPostIds, searchQuery }) {
     const [loadingMore, setLoadingMore] = useState(false);
     const [windowRange, setWindowRange] = useState({ start: 0, end: 0 });
     const [heightRevision, setHeightRevision] = useState(0);
@@ -290,7 +290,7 @@ function TimelineView({ posts, hasMore, onLoadMore, onPostClick, onHashtagClick,
 
     if (displayPosts.length === 0) {
         return html`
-            <div class="timeline" ref=${timelineRef}>
+            <div id=${timelineId} class="timeline" ref=${timelineRef}>
                 <div class="timeline-content">
                     <div style="padding: var(--spacing-xl); text-align: center; color: var(--text-secondary)">
                         ${emptyMessage || 'No messages yet. Start a conversation!'}
@@ -314,7 +314,7 @@ function TimelineView({ posts, hasMore, onLoadMore, onPostClick, onHashtagClick,
     const loadMoreSentinel = html`<div class="timeline-sentinel" ref=${sentinelRef}></div>`;
 
     return html`
-        <div class="timeline ${reverse ? 'reverse' : 'normal'}" ref=${timelineRef} onScroll=${handleScroll}>
+        <div id=${timelineId} class="timeline ${reverse ? 'reverse' : 'normal'}" ref=${timelineRef} onScroll=${handleScroll}>
             <div class="timeline-content" ref=${timelineContentRef}>
                 ${reverse ? loadMoreSentinel : null}
                 ${shouldWindow && topSpacerHeight > 0 ? html`<div class="timeline-virtual-spacer" style=${{ height: `${topSpacerHeight}px` }}></div>` : null}
@@ -345,6 +345,10 @@ function TimelineView({ posts, hasMore, onLoadMore, onPostClick, onHashtagClick,
                         onOpenWidget=${onOpenWidget}
                         onDelete=${onDeletePost}
                         onOpenAttachmentPreview=${onOpenAttachmentPreview}
+                        onSaveAnnotations=${onSaveAnnotations}
+                        onSubmitCardAction=${onSubmitCardAction}
+                        accessory=${renderPostAccessory?.(post)}
+                        capabilities=${postCapabilities}
                     />
                 `})}
                 ${shouldWindow && bottomSpacerHeight > 0 ? html`<div class="timeline-virtual-spacer" style=${{ height: `${bottomSpacerHeight}px` }}></div>` : null}

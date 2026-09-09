@@ -88,4 +88,17 @@ describe("web notification presence service", () => {
       ],
     });
   });
+
+  test("partitions identical device/client identifiers by owner and login", () => {
+    const service = new WebNotificationPresenceService({ now: () => 1000 });
+    const payload = { device_id: "shared", client_id: "tab", chat_jid: "web:alice", visibility_state: "visible", has_focus: true };
+    service.upsert(payload, { ownerUserId: "alice", loginSessionId: "login-a" });
+    service.upsert({ ...payload, chat_jid: "web:bob" }, { ownerUserId: "bob", loginSessionId: "login-b" });
+    service.upsert({ ...payload, chat_jid: "web:alice-two" }, { ownerUserId: "alice", loginSessionId: "login-a" });
+    expect(service.getDeviceChatState("shared", "web:alice", 1000, { ownerUserId: "alice", loginSessionId: "login-a" }).clients).toHaveLength(1);
+    expect(service.getDeviceChatState("shared", "web:alice", 1000, { ownerUserId: "bob", loginSessionId: "login-b" }).clients).toHaveLength(0);
+    expect(service.remove(payload, { ownerUserId: "charlie", loginSessionId: "login-c" })).toBe(false);
+    expect(service.remove(payload, { ownerUserId: "alice", loginSessionId: "login-a" })).toBe(true);
+    expect(service.getDeviceChatState("shared", "web:alice-two", 1000, { ownerUserId: "alice", loginSessionId: "login-a" }).clients).toHaveLength(1);
+  });
 });

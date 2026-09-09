@@ -46,7 +46,16 @@ Conversations and saved settings persist on the server. Profile, preference and 
 - **Legacy input held by migration:** Retry is unavailable. Confirm **Dismiss legacy input without running** to release later entries. Review and submit a new plain-text prompt separately if execution is wanted.
 - **Recovery blocked:** contact the operator. Changed message content, mismatched authority, an incompatible hold or other inconsistent state must not be repaired by guessing IDs or advancing a cursor.
 - **Uncertain send/recovery response:** refresh first. An unchanged manual retry in the same page/action keeps its request ID; reloading or changing the action may not. No automatic retry is performed.
-- **Missing rich content:** the family shell displays recent plain text only. Classic/visual add-on, attachment, terminal and rich-rendering instructions do not apply to this preview.
+- **Missing rich content:** refresh after the standard renderer/vendor assets load. External inline images and interactive rich actions are intentionally removed or disabled; only owner-authorized media reads are allowed. Upload, viewer, card-submit, widget-open, annotation-edit, resource-download, add-on and terminal instructions do not apply to this preview.
+
+## Prepared tasks
+
+- **Uncertain execution cancellation:** use **Refresh results**, inspect the same execution and confirm again only if it is still unsettled. `cancelled` revokes remaining authority; it cannot undo effects or prove provider/tool termination. A held send does not block cancellation after the page rechecks your login.
+
+- **Uncertain preparation:** while the original draft stays open, confirm **Retry same preparation** to reuse the exact request ID. No automatic retry occurs. After discard, refresh, close, focus loss or navigation, inspect the saved list before recreating it; the original write may have committed.
+- **Prompt accepted but encoded request too large:** JSON escaping counts towards 128 KiB independently of the 100 KiB prompt limit. Shorten the prompt before confirming again.
+- **Preparation or revocation denied:** check recent sign-in, active target, live tool restrictions and the 100-unrevoked-grant allowance. Wait when rate-limited. Refresh and inspect before another change.
+- **No Run control:** expected. Tasks remain paused; this preview cannot activate or execute them. Revocation removes authority without deleting history or undoing prior work.
 
 ## Old browser caches and private UI
 
@@ -60,7 +69,7 @@ Only the host operator should run these commands on an offline, backed-up worksp
 
 | Operator error | Required action |
 |---|---|
-| Prepared migration copy cannot start | Expected safeguard. Keep the copy for review; do not remove its marker or point an older binary at it. Promotion is not implemented. |
+| Prepared migration copy cannot start | Expected safeguard. Keep the copy for review; do not remove its marker or point an older binary at it. Use the version-five offline `promote-copy` workflow to create a separate eligible database. |
 | Access mode mismatch, missing marker or unsupported schema | Stop. Restore matching configuration and a compatible coordinated backup; never silently downgrade. |
 | Runtime lock exists or SQLite is busy | Stop all cooperating writers and confirm the correct workspace/host. Never delete an active lock to force progress. |
 | Migration inventory changed | Generate and review a fresh preview. Do not replace only the hash in an old plan without review. |
@@ -70,7 +79,7 @@ Only the host operator should run these commands on an offline, backed-up worksp
 | Unresolved durable work blocks preparation | Resolve it through the relevant supported queue/outbox workflow before another preview. Stopped processes do not prove work is safe to discard. |
 | Recovery command returned no success | Inspect private output and database before retrying; a crash/lost output can leave commit status uncertain. Use fresh paths and the runbook. |
 
-Copy preparation leaves the live source unchanged and cannot activate a mode. Offline administrator recovery can prepare a restricted grant. Piclaw cannot yet start in recovery-only mode to redeem it. Back up the database, configuration, original key and session files together. Neither command rotates keys or installs a deployment.
+Copy preparation leaves the live source unchanged and cannot activate a mode. Offline administrator recovery can prepare a restricted grant and run a separate TLS-only invitation listener for that grant while normal Piclaw stays stopped. Back up the database, configuration, original key and session files together. Neither command rotates keys or installs or activates a deployment.
 
 ## Report a problem safely
 
