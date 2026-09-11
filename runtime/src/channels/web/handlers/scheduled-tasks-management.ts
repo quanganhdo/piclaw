@@ -1,5 +1,6 @@
 import type { WebChannelLike } from "../core/web-channel-contracts.js";
-import { deleteTask, getTaskById, updateTask } from "../../../db.js";
+import { deleteTask, getBudgetCap, getTaskById, saveBudgetCap, setBudgetCapEnabled, updateTask } from "../../../db.js";
+import { parseBudgetDecimalMicros } from "../../../budget/amount.js";
 import { getScheduledTaskInspection, listScheduledTasks } from "../../../scheduled-task-query-service.js";
 import type { ScheduledTask } from "../../../types.js";
 
@@ -34,7 +35,7 @@ function mutationError(channel: WebChannelLike, action: string, message: string,
   return json(channel, { ok: false, action, error: message, ...extra }, status);
 }
 
-function getMutableTask(channel: WebChannelLike, action: "pause" | "resume" | "delete", id: string, allowInternal: boolean): ScheduledTask | Response {
+function getMutableTask(channel: WebChannelLike, action: "pause" | "resume" | "delete" | "set_budget", id: string, allowInternal: boolean): ScheduledTask | Response {
   if (!id) return mutationError(channel, action, "Missing scheduled task id.", 400, { id: null });
   const task = getTaskById(id);
   if (!task) return mutationError(channel, action, `No scheduled task found for ${id}.`, 404, { id });
@@ -78,13 +79,46 @@ export async function handleScheduledTasksManagementAction(channel: WebChannelLi
   const id = typeof body.id === "string" ? body.id.trim() : "";
   const allowInternal = body.allow_internal === true;
 
-  if (action !== "pause" && action !== "resume" && action !== "delete") {
+  if (action !== "pause" && action !== "resume" && action !== "delete" && action !== "set_budget") {
     return mutationError(channel, action || "unknown", "Unsupported scheduled task action.", 400);
+  }
+  const allowedKeys = action === "set_budget"
+    ? new Set(["action", "id", "budget_usd", "enabled", "confirm_revision", "allow_internal"])
+    : new Set(["action", "id", "allow_internal"]);
+  if (Object.keys(body).some((key) => !allowedKeys.has(key))) {
+    return mutationError(channel, action, "Scheduled task request contains unsupported fields.", 400);
   }
 
   const loaded = getMutableTask(channel, action, id, allowInternal);
   if (loaded instanceof Response) return loaded;
   const task = loaded;
+
+  if (action === "set_budget") {
+    if (taskKind(task) !== "agent") return mutationError(channel, action, "Per-run budget applies only to scheduled agent tasks.", 409, { id, task_kind: taskKind(task) });
+    const existing = getBudgetCap(`scheduled-cap:${id}`);
+    if (existing && body.confirm_revision !== existing.revision) {
+      return mutationError(channel, action, "Scheduled budget revision changed; reload before confirming this update.", 409, { id, revision: existing.revision });
+    }
+    if (!existing && body.confirm_revision !== undefined) return mutationError(channel, action, "confirm_revision is only valid when revising an existing budget.", 400, { id });
+    if (body.enabled === false) {
+      if (!existing) return mutationError(channel, action, `No scheduled budget found for ${id}.`, 404, { id });
+      setBudgetCapEnabled(existing.id, false);
+    } else {
+      let amount: number;
+      try { amount = parseBudgetDecimalMicros(body.budget_usd); }
+      catch (error) { return mutationError(channel, action, error instanceof Error ? error.message : String(error), 400, { id }); }
+      saveBudgetCap({
+        id: existing?.id ?? `scheduled-cap:${id}`,
+        scope: "scheduled_run",
+        metric: "api_usd_micros",
+        amount,
+        enabled: true,
+        scheduledTaskId: id,
+      });
+    }
+    const updated = getScheduledTaskInspection(id, { include_latest_run_log: true, include_run_logs: true });
+    return json(channel, { ok: true, action, id, task: updated });
+  }
 
   if (action === "pause") {
     if (task.status === "completed") return mutationError(channel, action, `Task ${id} is completed and cannot be paused.`, 409, { id, status: task.status });

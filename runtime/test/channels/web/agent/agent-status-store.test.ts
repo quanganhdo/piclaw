@@ -66,12 +66,15 @@ describe("web agent status store", () => {
       setAgentStatus: () => {},
       getAgentStatuses: () => ({}),
     };
-    const store = new AgentStatusStore(state, { getInflightRuns: () => [] }, 1);
+    // Leave a real observation window: a 1 ms timer can expire between update()
+    // and the first assertion on a busy hosted runner, testing scheduler timing
+    // rather than the store's terminal-status contract.
+    const store = new AgentStatusStore(state, { getInflightRuns: () => [] }, 50);
 
     store.update("web:terminal", { type: "error", title: "Rotation failed" });
     expect(store.get("web:terminal")).toMatchObject({ type: "error", title: "Rotation failed" });
     expect((store as any).terminalStatusTimers.size).toBe(1);
-    await Bun.sleep(5);
+    await Bun.sleep(80);
     expect((store as any).activeAgentStatuses.has("web:terminal")).toBe(false);
     expect((store as any).terminalStatusTimers.size).toBe(0);
     expect(store.get("web:terminal")).toBeNull();

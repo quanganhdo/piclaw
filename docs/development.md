@@ -76,6 +76,31 @@ bun run runtime/scripts/controlled-test-runner.ts --report artifacts/performance
 
 Use `runtime/generated/reports/` for disposable local reports. Use `artifacts/performance/` or another deliberate artifact path when the report should be reviewed or retained.
 
+## Packaged extension import boundaries
+
+Files under `runtime/extensions/` are packaged extension entrypoints. Relative imports are classified by their **resolved target from the importing file**, not by raw `../` text, so nesting and normalised path spellings cannot bypass the policy.
+
+Allowed core targets are intentionally narrow:
+
+- any target beneath `runtime/src/extensions/` is an extension bridge;
+- exact reviewed compatibility/runtime seams are listed in `ALLOWED_PACKAGED_EXTENSION_SRC_TARGETS` in `runtime/scripts/check-import-boundaries.ts`.
+
+All other relative imports that resolve into `runtime/src/` fail the extension boundary check. Do not add a catch-all re-export module or directory wildcard. Add a target only after documenting why it is a stable packaged-extension seam and adding focused coverage.
+
+Run the extension-only gate while working on this boundary:
+
+```bash
+bun run check:import-boundaries:extensions
+```
+
+The existing combined `check:import-boundaries` command also checks separate service-effects rules. Its failures must not be hidden or allowlisted by extension-boundary work; resolve them in their owning scope.
+
+Failure diagnostics include the importer, raw specifier and resolved project target, for example:
+
+```text
+extensions/integrations/nested.ts: disallowed direct src import (../../src/db/messages.js -> src/db/messages.js)
+```
+
 ## Focused integration notes
 
 ### Earendil 0.84.0 runtime

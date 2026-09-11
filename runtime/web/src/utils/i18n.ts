@@ -120,6 +120,7 @@ type MessageKey =
   | 'settings.section.sessions'
   | 'settings.section.recordings'
   | 'settings.section.compaction'
+  | 'settings.section.budget'
   | 'settings.section.keyboard'
   | 'settings.section.workspace'
   | 'settings.section.environment'
@@ -767,6 +768,7 @@ const EN: Record<MessageKey, string> = {
   'settings.section.sessions': 'Sessions',
   'settings.section.recordings': 'Recordings',
   'settings.section.compaction': 'Compaction',
+  'settings.section.budget': 'Budget',
   'settings.section.keyboard': 'Keyboard',
   'settings.section.workspace': 'Workspace',
   'settings.section.environment': 'Environment',
@@ -1408,6 +1410,7 @@ const ZH_CN: Partial<Record<MessageKey, string>> = {
   'settings.section.sessions': '会话',
   'settings.section.recordings': '录制',
   'settings.section.compaction': '压缩',
+  'settings.section.budget': '预算',
   'settings.section.keyboard': '键盘',
   'settings.section.workspace': '工作区',
   'settings.section.environment': '环境',
@@ -2049,6 +2052,7 @@ const JA: Partial<Record<MessageKey, string>> = {
   'settings.section.sessions': 'セッション',
   'settings.section.recordings': '録画',
   'settings.section.compaction': '圧縮',
+  'settings.section.budget': '予算',
   'settings.section.keyboard': 'キーボード',
   'settings.section.workspace': 'ワークスペース',
   'settings.section.environment': '環境',

@@ -12,9 +12,20 @@ Amounts are stored as integer millionths of the native unit. For USD, `1000000` 
 
 ## Create and inspect caps
 
-Use `/budget status` or the read-only `budget_status` tool to inspect limits. The tool cannot approve more spending.
+Use **Settings → Budget**, `/budget status`, or the read-only `budget_status` tool to inspect limits. The tool cannot approve more spending. Settings and `/budget` read the same durable caps, accounting windows, work state and provider evidence.
 
-Only the single-user slash-command path can mutate policy:
+The Budget pane is available to the authenticated single-user owner. It shows enabled and disabled caps, current known usage and remaining value, unknown-pricing states, local windows and provider evidence freshness. Provider credential/account references are derived and bound on the server; they are never returned to the browser.
+
+Settings uses authenticated direct budget endpoints rather than forwarding browser requests through slash commands:
+
+```text
+GET  /agent/settings/budget?chat_jid=<chat>
+POST /agent/settings/budget/action?chat_jid=<chat>
+```
+
+Mutations remain disabled in multi-user modes until owner-bound policy controls exist. Existing caps can only be revised or enabled/disabled after explicit confirmation of their current revision. Every change retains current-window spend, prior revisions, accounting and audit history.
+
+The equivalent single-user command forms remain available:
 
 ```text
 /budget cap set task 2.50 id=task-cap
@@ -27,13 +38,13 @@ Only the single-user slash-command path can mutate policy:
 
 Task caps bind to the current active work unless `work=<work-id>` is supplied. Provider account references are derived from the active credential and are never shown in status. Revising an existing cap requires `confirm=true`; it retains the current window and existing spend.
 
-The `schedule_task` and `scheduled_tasks` tools also accept `budget_usd` when creating an agent task. This creates an opt-in per-run cap. Shell tasks reject `budget_usd` because Piclaw does not invent model spend for shell execution.
+The `schedule_task` and `scheduled_tasks` tools also accept `budget_usd` when creating an agent task. This creates an opt-in per-run cap. **Settings → Scheduled Tasks** is the single UI source of truth for inspecting, setting, revising and disabling that per-run cap; the Budget pane links there instead of duplicating the editor. Shell tasks reject `budget_usd` because Piclaw does not invent model spend for shell execution.
 
 ## Pauses and approvals
 
 Interactive work pauses before the next controllable model or tool boundary. Scheduled and background work stops instead of waiting for approval. Piclaw never selects a cheaper model automatically.
 
-For paused work:
+For paused work, use Settings → Budget or the equivalent commands:
 
 ```text
 /budget allow <cap-id> <extra-amount> [expires=<ISO timestamp>]
@@ -63,7 +74,7 @@ Evidence must match the active credential/account, configured dimension and unex
 
 ## Persistence and migration
 
-The migration is additive. It adds budget tables and valuation/identity columns without deleting or rewriting existing token-usage rows. First activation of an instance cap includes existing attributable spend in the current window. Cap changes and disablement preserve ledger and audit rows.
+The migration is additive. It adds budget tables and valuation/identity columns without deleting or rewriting existing token-usage rows. First activation of an instance cap includes existing attributable spend in the current window. Every cap create, revision, enablement and disablement appends an immutable `budget_cap_revisions` row; current-window spend, prior windows, decisions and accounting history remain intact.
 
 Paused work, cap/window revisions, accounting identities, allowances, overrides and pending stop notifications are stored in `messages.db`. Restart does not reset counters or extend expiry. Cancellation closes permission records but retains charges.
 
@@ -73,7 +84,9 @@ Enforcement is best effort at boundaries Piclaw controls. Calls already in fligh
 
 Internal compaction and branch-summary usage is charged when the SDK reports it. Where an SDK or external add-on exposes no pre-call hook, Piclaw can enforce only at the enclosing boundary and after reported usage. Remote peers and independent processes are not governed by a fleet-wide authority.
 
-Persistence, status delivery and safe cleanup do not require another paid model call. Provider-side authentication, rate limits and quota remain authoritative even in warnings-only mode.
+Persistence, Settings reads, status delivery and safe cleanup do not require another paid model call. The Budget pane loads on demand and adds no startup provider request. Provider-side authentication, rate limits and quota remain authoritative even in warnings-only mode.
+
+After an allowance, warnings-only override or explicit resume, Settings reports that the work is ready but does not synthesize a prompt: send a continuation message in the owning chat. This preserves the durable work identity and rechecks every cap before the next model call.
 
 ## Verification matrix
 

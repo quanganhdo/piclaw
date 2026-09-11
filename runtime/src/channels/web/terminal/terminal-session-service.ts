@@ -1,6 +1,6 @@
 import { execFileSync, spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { openSync, closeSync, readlinkSync, readdirSync, readFileSync, accessSync, existsSync, statSync, constants, read as fsRead, write as fsWrite } from "node:fs";
-import { dirname, join } from "node:path";
+import { delimiter, dirname, extname, join, posix, win32 } from "node:path";
 import { FFIType, dlopen, ptr } from "bun:ffi";
 import type { ServerWebSocket } from "bun";
 
@@ -71,6 +71,7 @@ const TERMINAL_ANON_CLIENT_HEADER = "x-piclaw-terminal-client";
 
 const IS_LINUX = process.platform === "linux";
 const IS_MACOS = process.platform === "darwin";
+const IS_WINDOWS = process.platform === "win32";
 const DEFAULT_TERMINAL_HANDOFF_TTL_MS = 5 * 60 * 1000;
 const DEFAULT_TERMINAL_RECONNECT_GRACE_MS = 300_000;
 const DEFAULT_TERMINAL_OUTPUT_HISTORY_LIMIT_BYTES = 2 * 1024 * 1024;
@@ -361,25 +362,36 @@ function normalizeChunk(chunk: string | Uint8Array): string {
 
 const EXTRA_BIN_DIRS = ["/run/current-system/sw/bin", "/usr/local/bin", "/usr/bin", "/bin"];
 
-function findExecutable(name: string, env: NodeJS.ProcessEnv = process.env): string | null {
-  const dirs = (env.PATH || "").split(":").concat(EXTRA_BIN_DIRS);
+export function findExecutable(name: string, env: NodeJS.ProcessEnv = process.env, platform = process.platform): string | null {
+  const pathDelimiter = platform === "win32" ? ";" : delimiter;
+  const pathDirs = (env.PATH || "").split(pathDelimiter).filter(Boolean);
+  const dirs = platform === "win32" ? pathDirs : pathDirs.concat(EXTRA_BIN_DIRS);
+  const extensions = platform === "win32" && !extname(name)
+    ? (env.PATHEXT || ".COM;.EXE;.BAT;.CMD").split(";").filter(Boolean)
+    : [""];
   for (const dir of dirs) {
-    if (!dir) continue;
-    const candidate = `${dir}/${name}`;
-    try {
-      accessSync(candidate, constants.X_OK);
-      return candidate;
-    } catch (error) {
-      debugSuppressedError(log, "candidate executable unavailable", error, { name, candidate });
+    for (const extension of extensions) {
+      const candidate = join(dir, `${name}${extension}`);
+      try {
+        accessSync(candidate, constants.X_OK);
+        return candidate;
+      } catch (error) {
+        debugSuppressedError(log, "candidate executable unavailable", error, { name, candidate });
+      }
     }
   }
   return null;
 }
 
-function resolveExecutableCandidate(value: string | null | undefined, env: NodeJS.ProcessEnv): string | null {
+export function isExplicitExecutablePath(value: string, platform = process.platform): boolean {
+  if (platform === "win32") return win32.isAbsolute(value) || value.includes("/") || value.includes("\\");
+  return posix.isAbsolute(value) || value.includes("/");
+}
+
+function resolveExecutableCandidate(value: string | null | undefined, env: NodeJS.ProcessEnv, platform = process.platform): string | null {
   const candidate = String(value || "").trim();
   if (!candidate) return null;
-  if (!candidate.includes("/")) return findExecutable(candidate, env);
+  if (!isExplicitExecutablePath(candidate, platform)) return findExecutable(candidate, env, platform);
   try {
     accessSync(candidate, constants.X_OK);
     return candidate;
@@ -406,19 +418,19 @@ function readPasswdLoginShell(uid = typeof process.getuid === "function" ? proce
 export function resolveTerminalShell(
   env: NodeJS.ProcessEnv = process.env,
   passwdShell: string | null = readPasswdLoginShell(),
+  platform = process.platform,
 ): string {
-  const candidates = [
-    env.PICLAW_TERMINAL_SHELL,
-    passwdShell,
-    env.SHELL,
-    "/bin/bash",
-    "/bin/sh",
-  ];
+  const candidates = platform === "win32"
+    ? [env.PICLAW_TERMINAL_SHELL, env.SHELL, "pwsh.exe", "powershell.exe", env.COMSPEC, "cmd.exe"]
+    : [env.PICLAW_TERMINAL_SHELL, passwdShell, env.SHELL, "/bin/bash", "/bin/sh"];
   for (const candidate of candidates) {
-    const resolved = resolveExecutableCandidate(candidate, env);
+    const resolved = resolveExecutableCandidate(candidate, env, platform);
     if (resolved) return resolved;
   }
-  throw new Error("Terminal backend unavailable: no executable login shell found (checked PICLAW_TERMINAL_SHELL, passwd, SHELL, /bin/bash, /bin/sh).");
+  const checked = platform === "win32"
+    ? "PICLAW_TERMINAL_SHELL, SHELL, pwsh.exe, powershell.exe, COMSPEC, cmd.exe"
+    : "PICLAW_TERMINAL_SHELL, passwd, SHELL, /bin/bash, /bin/sh";
+  throw new Error(`Terminal backend unavailable: no executable login shell found (checked ${checked}).`);
 }
 
 export type LinuxTerminalBackend = "bun-native-pty" | "script" | "unavailable";
@@ -453,7 +465,12 @@ try {
 
 /** Build shell arguments: zsh gets PROMPT_SP disabled to avoid blank lines in the web terminal. */
 export function buildShellArgs(shell = USER_SHELL): string[] {
-  return shell.endsWith("/zsh") ? ["+o", "PROMPT_SP", "-i"] : ["-i"];
+  const executable = shell.split(/[\\/]/).pop()?.toLowerCase() ?? shell.toLowerCase();
+  if (executable === "pwsh" || executable === "pwsh.exe" || executable === "powershell" || executable === "powershell.exe") {
+    return ["-NoLogo", "-NoProfile"];
+  }
+  if (executable === "cmd" || executable === "cmd.exe") return ["/Q"];
+  return executable === "zsh" ? ["+o", "PROMPT_SP", "-i"] : ["-i"];
 }
 
 export function spawnBunNativePty(
@@ -464,7 +481,7 @@ export function spawnBunNativePty(
   rows = DEFAULT_ROWS,
   setsidPath: string | null = SETSID_BIN,
 ): TerminalProcessLike | null {
-  if (typeof Bun.Terminal !== "function" || !setsidPath) return null;
+  if (typeof Bun.Terminal !== "function" || (IS_LINUX && !setsidPath)) return null;
 
   const dataListeners: Array<(chunk: string | Uint8Array) => void> = [];
   const exitListeners: Array<(code: number | null, signal: NodeJS.Signals | null) => void> = [];
@@ -479,10 +496,12 @@ export function spawnBunNativePty(
         for (const listener of dataListeners) listener(data);
       },
     });
-    // Bun.Terminal allocates the PTY, while setsid --ctty makes the shell a
-    // session leader with the PTY as its controlling terminal. Without this,
-    // interactive shells report that job control is unavailable.
-    const child = Bun.spawn([setsidPath, "--ctty", shell, ...buildShellArgs(shell)], {
+    // Linux needs setsid --ctty for foreground job control. Bun supplies the
+    // native PTY directly on Windows, so launch PowerShell/cmd without expect.
+    const command = IS_LINUX
+      ? [setsidPath!, "--ctty", shell, ...buildShellArgs(shell)]
+      : [shell, ...buildShellArgs(shell)];
+    const child = Bun.spawn(command, {
       cwd,
       env,
       terminal,
@@ -581,6 +600,11 @@ function defaultSpawnProcess(cwd: string, env: NodeJS.ProcessEnv): TerminalProce
     if (proc) return proc;
   }
 
+  if (IS_WINDOWS) {
+    const proc = spawnBunNativePty(cwd, env, USER_SHELL, DEFAULT_COLS, DEFAULT_ROWS, null);
+    if (proc) return proc;
+  }
+
   if (!EXPECT_BIN) {
     throw new Error("Terminal backend unavailable: native PTY failed and no executable 'expect' fallback was found.");
   }
@@ -634,9 +658,11 @@ export class TerminalSessionService {
       ? resolveLinuxTerminalBackend({ setsidPath: SETSID_BIN, scriptPath: SCRIPT_BIN })
       : IS_MACOS
         ? "native-or-expect"
-        : EXPECT_BIN
-          ? "expect"
-          : "unavailable";
+        : IS_WINDOWS && typeof Bun.Terminal === "function"
+          ? "bun-native-pty"
+          : EXPECT_BIN
+            ? "expect"
+            : "unavailable";
     const enabled = Boolean(USER_SHELL) && backend !== "unavailable";
     return {
       enabled,

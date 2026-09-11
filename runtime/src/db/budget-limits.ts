@@ -99,6 +99,12 @@ export function saveBudgetCap(input: BudgetCapInput, database: Database = getDb(
       now,
     );
     const cap = database.prepare("SELECT * FROM budget_caps WHERE id=?").get(id) as BudgetCap;
+    database.prepare(`INSERT INTO budget_cap_revisions (
+      cap_id,revision,scope,metric,amount,enabled,work_id,scheduled_task_id,provider_id,quota_dimension,account_ref,timezone,recorded_at
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+      cap.id, cap.revision, cap.scope, cap.metric, cap.amount, cap.enabled ? 1 : 0,
+      cap.work_id, cap.scheduled_task_id, cap.provider_id, cap.quota_dimension, cap.account_ref, cap.timezone, now,
+    );
     if (cap.enabled && (cap.scope === "instance_daily" || cap.scope === "instance_monthly")) {
       ensureBudgetCapWindow(cap, database, nowInput);
     }

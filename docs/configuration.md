@@ -207,7 +207,11 @@ PICLAW_WEB_TERMINAL_ENABLED=1
 
 Pass this as an environment variable to `docker run`, `docker-compose.yml`, or `make up`, or set the nested config key `.piclaw/config.json -> web.terminalEnabled`.
 
-On Linux, PiClaw uses Bun's native PTY backend first and falls back to an executable `script` command when native PTY creation fails. The interactive shell resolves in this order: `PICLAW_TERMINAL_SHELL`, the current user's passwd login shell, `SHELL`, `/bin/bash`, then `/bin/sh`. Set `PICLAW_TERMINAL_SHELL` to an executable path or command name to override it. `/terminal/session` reports the selected backend and a structured error when neither a shell nor PTY backend is available.
+On Linux, PiClaw uses Bun's native PTY backend first and falls back to an executable `script` command when native PTY creation fails. The interactive shell resolves in this order: `PICLAW_TERMINAL_SHELL`, the current user's passwd login shell, `SHELL`, `/bin/bash`, then `/bin/sh`.
+
+On Windows, explicitly enabling the terminal uses Bun's native PTY backend. The shell resolves in this order: `PICLAW_TERMINAL_SHELL`, `SHELL`, `pwsh.exe`, `powershell.exe`, `COMSPEC`, then `cmd.exe`. Windows `PATH` and `PATHEXT` semantics are respected. Set `PICLAW_TERMINAL_SHELL` to an executable path or command name to override the selection.
+
+`/terminal/session` reports the selected backend and a structured error when neither a shell nor PTY backend is available.
 
 Once enabled:
 

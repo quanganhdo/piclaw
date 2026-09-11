@@ -19,6 +19,7 @@ import {
   handleRestartAddonRuntime,
   handleUninstallAddon,
 } from "../handlers/addons.js";
+import { handleBudgetSettingsAction, handleBudgetSettingsRead } from "../handlers/budget-settings.js";
 import { getCompactionSettingsData, resetCompactionBackoff, saveCompactionSettings } from "../handlers/compaction-settings.js";
 import {
   buildGeneralSettingsProfileUpdate,
@@ -192,6 +193,16 @@ const EXACT_AGENT_ROUTES: ExactAgentRoute[] = [
     method: "GET",
     path: "/agent/system-metrics",
     handle: (channel, req) => channel.handleSystemMetrics(req),
+  },
+  {
+    method: "GET",
+    path: "/agent/settings/budget",
+    handle: (channel, _req, url) => handleBudgetSettingsRead(channel, url),
+  },
+  {
+    method: "POST",
+    path: "/agent/settings/budget/action",
+    handle: (channel, req) => handleBudgetSettingsAction(channel, req),
   },
   {
     method: "GET",

@@ -60,6 +60,7 @@ export interface WebChannelLike
   agentPool: AgentPool & {
     queueOwnedStreamingMessage?(chatJid: string, text: string, behavior: "steer"): Promise<{ queued: boolean; error?: string }>;
     abortOwnedRun?(chatJid: string): Promise<unknown>;
+    resolveBudgetProviderAccountRef?(providerId: string): Promise<string | null>;
   };
   uiBridge: UiBridge;
   interactionBroadcaster: InteractionBroadcasterLike;

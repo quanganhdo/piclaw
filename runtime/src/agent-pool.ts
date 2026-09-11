@@ -96,6 +96,7 @@ import { startAgentLogCleanup } from "./agent-pool/logging.js";
 import { createUuid } from "./utils/ids.js";
 import { getBudgetWorkContext, withBudgetWorkContext } from "./budget/context.js";
 import { admitBudgetBoundary } from "./budget/admission.js";
+import { resolveProviderUsageAccountRef } from "./agent-pool/provider-usage.js";
 
 const log = createLogger("agent-pool");
 
@@ -606,6 +607,10 @@ export class AgentPool {
 
   accountModelDefaults(actor: import('./core/access-types.js').AuthenticatedPrincipal, input?: unknown) {
     return ownAccountModelDefaults(getDb(), actor, this.modelRuntime, this.settingsManager, input);
+  }
+
+  resolveBudgetProviderAccountRef(providerId: string): Promise<string | null> {
+    return resolveProviderUsageAccountRef(this.modelRuntime, providerId);
   }
 
   setProviderUsageRefreshListener(

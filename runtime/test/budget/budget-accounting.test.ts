@@ -16,6 +16,7 @@ describe("budget accounting foundation", () => {
     const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'budget_%' ORDER BY name").all() as Array<{ name: string }>;
     expect(tables.map((row) => row.name)).toEqual([
       "budget_allowances",
+      "budget_cap_revisions",
       "budget_cap_windows",
       "budget_caps",
       "budget_decisions",

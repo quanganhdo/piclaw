@@ -1,10 +1,15 @@
 import { beforeEach, expect, test } from "bun:test";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { WEB_RUNTIME_CONFIG } from "../../../src/core/config.js";
 import { createWebSession, deleteExpiredWebSessions, getDb, initDatabase } from "../../../src/db.js";
 import {
   TerminalSessionService,
   buildShellArgs,
+  findExecutable,
+  isExplicitExecutablePath,
   resolveLinuxTerminalBackend,
   resolveTerminalShell,
   spawnBunNativePty,
@@ -57,14 +62,72 @@ beforeEach(() => {
 });
 
 test("terminal shell and backend selection prefer explicit native-capable paths", () => {
-  expect(resolveTerminalShell({ PICLAW_TERMINAL_SHELL: "/bin/sh", PATH: "/bin" }, "/bin/bash")).toBe("/bin/sh");
+  const root = mkdtempSync(join(tmpdir(), "piclaw-explicit-shell-"));
+  const shell = join(root, process.platform === "win32" ? "shell.exe" : "shell");
+  try {
+    writeFileSync(shell, "test");
+    chmodSync(shell, 0o755);
+    expect(resolveTerminalShell({ PICLAW_TERMINAL_SHELL: shell, PATH: root }, null)).toBe(shell);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
   expect(buildShellArgs("/usr/bin/zsh")).toEqual(["+o", "PROMPT_SP", "-i"]);
   expect(buildShellArgs("/bin/sh")).toEqual(["-i"]);
+  expect(buildShellArgs("C:\\Program Files\\PowerShell\\7\\pwsh.exe")).toEqual(["-NoLogo", "-NoProfile"]);
+  expect(buildShellArgs("C:\\Windows\\System32\\cmd.exe")).toEqual(["/Q"]);
   expect(resolveLinuxTerminalBackend({ bunTerminalAvailable: true, setsidPath: "/usr/bin/setsid", scriptPath: null })).toBe("bun-native-pty");
   expect(resolveLinuxTerminalBackend({ bunTerminalAvailable: true, setsidPath: null, scriptPath: "/usr/bin/script" })).toBe("script");
   expect(resolveLinuxTerminalBackend({ bunTerminalAvailable: false, setsidPath: "/usr/bin/setsid", scriptPath: "/usr/bin/script" })).toBe("script");
   expect(resolveLinuxTerminalBackend({ bunTerminalAvailable: false, setsidPath: null, scriptPath: null })).toBe("unavailable");
 });
+
+test("explicit executable path detection is platform-aware", () => {
+  expect(isExplicitExecutablePath("C:\\Windows\\System32\\cmd.exe", "win32")).toBeTrue();
+  expect(isExplicitExecutablePath("C:/Windows/System32/cmd.exe", "win32")).toBeTrue();
+  expect(isExplicitExecutablePath("\\\\server\\share\\pwsh.exe", "win32")).toBeTrue();
+  expect(isExplicitExecutablePath("pwsh.exe", "win32")).toBeFalse();
+  expect(isExplicitExecutablePath("/bin/bash", "linux")).toBeTrue();
+  expect(isExplicitExecutablePath("bin/bash", "linux")).toBeTrue();
+  expect(isExplicitExecutablePath("bash", "linux")).toBeFalse();
+  expect(isExplicitExecutablePath("C:\\Windows\\System32\\cmd.exe", "linux")).toBeFalse();
+});
+
+test("Windows executable discovery uses semicolon PATH entries and PATHEXT", () => {
+  const root = mkdtempSync(join(tmpdir(), "piclaw-win-path-"));
+  try {
+    const first = join(root, "first");
+    const second = join(root, "second");
+    const executable = join(second, "pwsh.EXE");
+    mkdirSync(first);
+    mkdirSync(second);
+    writeFileSync(executable, "test");
+    chmodSync(executable, 0o755);
+    const env = { PATH: `${first};${second}`, PATHEXT: ".EXE;.CMD" };
+    expect(findExecutable("pwsh", env, "win32")?.toLowerCase()).toBe(executable.toLowerCase());
+    expect(resolveTerminalShell({ ...env, PICLAW_TERMINAL_SHELL: "pwsh" }, null, "win32").toLowerCase()).toBe(executable.toLowerCase());
+    expect(resolveTerminalShell({ ...env, PICLAW_TERMINAL_SHELL: join(first, "missing.exe"), COMSPEC: executable }, null, "win32").toLowerCase()).toBe(executable.toLowerCase());
+    expect(resolveTerminalShell({ PATH: first, PATHEXT: ".EXE;.CMD", COMSPEC: executable }, null, "win32").toLowerCase()).toBe(executable.toLowerCase());
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+const windowsNativePtyTest = process.platform === "win32" && typeof Bun.Terminal === "function" ? test : test.skip;
+
+windowsNativePtyTest("Bun native Windows PTY runs PowerShell without expect", async () => {
+  const shell = resolveTerminalShell(process.env, null, "win32");
+  const proc = spawnBunNativePty(process.cwd(), { ...process.env, TERM: "xterm-256color" }, shell, 80, 24, null);
+  expect(proc).not.toBeNull();
+  const output: string[] = [];
+  proc!.stdout.on("data", (chunk) => output.push(typeof chunk === "string" ? chunk : Buffer.from(chunk).toString("utf8")));
+  const exited = new Promise<void>((resolve) => proc!.on("exit", () => resolve()));
+  proc!.stdin.write("Write-Output PICLAW_WINDOWS_PTY_OK; exit\r\n");
+  await Promise.race([
+    exited,
+    Bun.sleep(10_000).then(() => { throw new Error("Windows PTY shell did not exit"); }),
+  ]);
+  expect(output.join("")).toContain("PICLAW_WINDOWS_PTY_OK");
+}, 15_000);
 
 const nativePtyTest = process.platform === "linux" && typeof Bun.Terminal === "function" ? test : test.skip;
 

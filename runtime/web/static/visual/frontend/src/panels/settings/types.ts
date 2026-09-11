@@ -115,7 +115,7 @@ export interface SettingsData {
   toolsets?: Toolset[];
 }
 
-export type Category = "general" | "sessions" | "recordings" | "workspace" | "environment" | "models" | "keychain" | "tools" | "appearance" | "compaction" | "providers";
+export type Category = "general" | "sessions" | "recordings" | "workspace" | "environment" | "models" | "keychain" | "tools" | "appearance" | "compaction" | "budget" | "providers";
 
 /**
  * Props passed to every built-in settings section component when rendered

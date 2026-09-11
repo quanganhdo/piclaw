@@ -24,6 +24,28 @@ export function initializeBudgetLimitsSchema(database: Database): void {
     CREATE INDEX IF NOT EXISTS idx_budget_caps_scheduled_task ON budget_caps(scheduled_task_id, enabled);
     CREATE INDEX IF NOT EXISTS idx_budget_caps_provider ON budget_caps(provider_id, enabled);
 
+    CREATE TABLE IF NOT EXISTS budget_cap_revisions (
+      cap_id TEXT NOT NULL REFERENCES budget_caps(id),
+      revision INTEGER NOT NULL CHECK(revision >= 1),
+      scope TEXT NOT NULL CHECK(scope IN ('task','instance_daily','instance_monthly','scheduled_run','provider_window')),
+      metric TEXT NOT NULL CHECK(metric IN ('api_usd_micros','provider_percent_used_micros','provider_credits_remaining_micros','provider_key_usd_micros')),
+      amount INTEGER NOT NULL CHECK(amount >= 0),
+      enabled INTEGER NOT NULL CHECK(enabled IN (0,1)),
+      work_id TEXT,
+      scheduled_task_id TEXT,
+      provider_id TEXT,
+      quota_dimension TEXT,
+      account_ref TEXT,
+      timezone TEXT,
+      recorded_at TEXT NOT NULL,
+      PRIMARY KEY(cap_id, revision)
+    ) STRICT;
+    CREATE INDEX IF NOT EXISTS idx_budget_cap_revisions_recorded ON budget_cap_revisions(recorded_at, cap_id);
+    INSERT OR IGNORE INTO budget_cap_revisions (
+      cap_id,revision,scope,metric,amount,enabled,work_id,scheduled_task_id,provider_id,quota_dimension,account_ref,timezone,recorded_at
+    ) SELECT id,revision,scope,metric,amount,enabled,work_id,scheduled_task_id,provider_id,quota_dimension,account_ref,timezone,updated_at
+      FROM budget_caps;
+
     CREATE TABLE IF NOT EXISTS budget_cap_windows (
       cap_id TEXT NOT NULL REFERENCES budget_caps(id),
       cap_revision INTEGER NOT NULL,
@@ -125,6 +147,10 @@ export function initializeBudgetLimitsSchema(database: Database): void {
     CREATE INDEX IF NOT EXISTS idx_budget_provider_evidence_lookup
       ON budget_provider_evidence(provider_id, account_ref, quota_dimension, fetched_at DESC);
 
+    CREATE TRIGGER IF NOT EXISTS budget_cap_revisions_no_update
+      BEFORE UPDATE ON budget_cap_revisions BEGIN SELECT RAISE(ABORT, 'budget cap revisions are immutable'); END;
+    CREATE TRIGGER IF NOT EXISTS budget_cap_revisions_no_delete
+      BEFORE DELETE ON budget_cap_revisions BEGIN SELECT RAISE(ABORT, 'budget cap revisions are immutable'); END;
     CREATE TRIGGER IF NOT EXISTS budget_usage_events_no_update
       BEFORE UPDATE ON budget_usage_events BEGIN SELECT RAISE(ABORT, 'budget usage events are immutable'); END;
     CREATE TRIGGER IF NOT EXISTS budget_usage_events_no_delete

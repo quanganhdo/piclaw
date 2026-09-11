@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 
 import "../../helpers.js";
-import { createTask, getDb, initDatabase } from "../../../src/db.js";
+import { createTask, getBudgetCap, getDb, initDatabase } from "../../../src/db.js";
 import { handleAgentRoutes } from "../../../src/channels/web/http/dispatch-agent.js";
 
 function jsonChannel() {
@@ -78,6 +78,39 @@ describe("scheduled task web management routes", () => {
     const resumeResponse = await handleAgentRoutes(jsonChannel(), resumeReq, "/agent/scheduled-tasks/action", new URL(resumeReq.url));
     expect(resumeResponse?.status).toBe(200);
     expect((await resumeResponse!.json() as any).task.status).toBe("active");
+  });
+
+  test("edits per-run budget only through the scheduled task surface", async () => {
+    insertTask();
+    const setReq = new Request("https://example.com/agent/scheduled-tasks/action", {
+      method: "POST",
+      body: JSON.stringify({ action: "set_budget", id: "task-web-ui", budget_usd: "0.25" }),
+    });
+    const setResponse = await handleAgentRoutes(jsonChannel(), setReq, "/agent/scheduled-tasks/action", new URL(setReq.url));
+    expect(setResponse?.status).toBe(200);
+    expect((await setResponse!.json() as any).task).toMatchObject({ budget_usd: 0.25, budget_cap_enabled: true, budget_cap_revision: 1 });
+    expect(getBudgetCap("scheduled-cap:task-web-ui")).toMatchObject({ amount: 250_000, enabled: 1 });
+
+    const staleReq = new Request("https://example.com/agent/scheduled-tasks/action", {
+      method: "POST",
+      body: JSON.stringify({ action: "set_budget", id: "task-web-ui", budget_usd: "0.50", confirm_revision: 99 }),
+    });
+    expect((await handleAgentRoutes(jsonChannel(), staleReq, "/agent/scheduled-tasks/action", new URL(staleReq.url)))?.status).toBe(409);
+
+    const disableReq = new Request("https://example.com/agent/scheduled-tasks/action", {
+      method: "POST",
+      body: JSON.stringify({ action: "set_budget", id: "task-web-ui", enabled: false, confirm_revision: 1 }),
+    });
+    const disableResponse = await handleAgentRoutes(jsonChannel(), disableReq, "/agent/scheduled-tasks/action", new URL(disableReq.url));
+    expect((await disableResponse!.json() as any).task).toMatchObject({ budget_usd: 0.25, budget_cap_enabled: false, budget_cap_revision: 2 });
+  });
+
+  test("rejects per-run budgets for shell tasks", async () => {
+    insertTask({ id: "task-shell", task_kind: "shell", command: "echo hi", prompt: "" });
+    const req = new Request("https://example.com/agent/scheduled-tasks/action", {
+      method: "POST", body: JSON.stringify({ action: "set_budget", id: "task-shell", budget_usd: "1" }),
+    });
+    expect((await handleAgentRoutes(jsonChannel(), req, "/agent/scheduled-tasks/action", new URL(req.url)))?.status).toBe(409);
   });
 
   test("protects internal tasks unless explicitly allowed", async () => {

@@ -39,7 +39,7 @@ import { GeneralSection } from './settings/general.js';
 perf('imports-done');
 
 type SettingsSectionComponent = unknown;
-type BuiltinSectionId = 'general' | 'sessions' | 'recordings' | 'compaction' | 'keyboard' | 'workspace' | 'environment' | 'providers' | 'models' | 'theme' | 'scheduled-tasks' | 'quick-actions' | 'keychain' | 'tools' | 'addons';
+type BuiltinSectionId = 'general' | 'sessions' | 'recordings' | 'compaction' | 'budget' | 'keyboard' | 'workspace' | 'environment' | 'providers' | 'models' | 'theme' | 'scheduled-tasks' | 'quick-actions' | 'keychain' | 'tools' | 'addons';
 
 const builtinSectionComponentCache = new Map<BuiltinSectionId, SettingsSectionComponent>();
 const builtinSectionLoadPromiseCache = new Map<BuiltinSectionId, Promise<SettingsSectionComponent>>();
@@ -52,6 +52,7 @@ const BUILTIN_SECTION_LOADERS: Record<BuiltinSectionId, () => Promise<SettingsSe
     sessions: () => import('./settings/sessions.js').then(mod => mod.SessionsSection),
     recordings: () => import('./settings/recordings.js').then(mod => mod.RecordingsSection),
     compaction: () => import('./settings/compaction.js').then(mod => mod.CompactionSection),
+    budget: () => import('./settings/budget.js').then(mod => mod.BudgetSection),
     keyboard: () => import('./settings/keyboard.js').then(mod => mod.KeyboardSection),
     workspace: () => import('./settings/workspace.js').then(mod => mod.WorkspaceSection),
     environment: () => import('./settings/environment.js').then(mod => mod.EnvironmentSection),
@@ -112,6 +113,7 @@ const iconGeneral = html`<svg viewBox="0 0 24 24" width="16" height="16" fill="n
 const iconSessions = html`<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`;
 const iconRecordings = html`<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="12" r="2.2"/><path d="m13 10 4-2.5v9L13 14z"/></svg>`;
 const iconCompaction = html`<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><polyline points="3 4 3 10 9 10"/><path d="M12 7v5l3 3"/></svg>`;
+const iconBudget = html`<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18"/><path d="M7 15h4"/></svg>`;
 const iconWorkspace = html`<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>`;
 const iconEnvironment = html`<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/><path d="M8 7v10"/><path d="M16 7v10"/></svg>`;
 const iconKeyboard = html`<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9h.01"/><path d="M10 9h.01"/><path d="M14 9h.01"/><path d="M18 9h.01"/><path d="M8 13h.01"/><path d="M12 13h.01"/><path d="M16 13h.01"/><path d="M7 17h10"/></svg>`;
@@ -130,6 +132,7 @@ const BUILTIN_SECTIONS = [
     { id: 'sessions', label: 'Sessions', icon: iconSessions, searchable: false, order: 12 },
     { id: 'recordings', label: 'Recordings', icon: iconRecordings, searchable: true, placeholder: 'Filter recordings…', order: 12.5 },
     { id: 'compaction', label: 'Compaction', icon: iconCompaction, searchable: false, order: 13 },
+    { id: 'budget', label: 'Budget', icon: iconBudget, searchable: false, order: 13.5 },
     { id: 'keyboard', label: 'Keyboard', icon: iconKeyboard, searchable: true, placeholder: 'Filter shortcuts…', order: 14 },
     { id: 'workspace', label: 'Workspace', icon: iconWorkspace, searchable: false, order: 15 },
     { id: 'environment', label: 'Environment', icon: iconEnvironment, searchable: true, placeholder: 'Filter environment…', order: 16 },
@@ -311,6 +314,7 @@ export function SettingsDialogContent({ onClose }) {
             case 'sessions': return html`<${Comp} settingsData=${settingsData} setStatus=${setStatus} mergeSettingsData=${mergeSettingsData} />`;
             case 'recordings': return html`<${Comp} filter=${filter} setStatus=${setStatus} />`;
             case 'compaction': return html`<${Comp} settingsData=${settingsData} setStatus=${setStatus} mergeSettingsData=${mergeSettingsData} />`;
+            case 'budget': return html`<${Comp} setStatus=${setStatus} />`;
             case 'keyboard': return html`<${Comp} filter=${filter} setStatus=${setStatus} />`;
             case 'workspace': return html`<${Comp} settingsData=${settingsData} setStatus=${setStatus} mergeSettingsData=${mergeSettingsData} />`;
             case 'environment': return html`<${Comp} settingsData=${settingsData} filter=${filter} setStatus=${setStatus} mergeSettingsData=${mergeSettingsData} />`;

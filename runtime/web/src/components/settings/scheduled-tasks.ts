@@ -69,6 +69,8 @@ function TaskRunLogList({ task }) {
 
 function TaskDetail({ task, onAction }) {
     const { t: tr } = useTranslation();
+    const [budgetDraft, setBudgetDraft] = useState('');
+    useEffect(() => { setBudgetDraft(task?.budget_usd == null ? '' : String(task.budget_usd)); }, [task?.id, task?.budget_usd]);
     if (!task) return html`<div class="settings-task-detail-empty">${tr('settings.tasks.selectPrompt')}</div>`;
     const protectedTask = isProtectedTask(task);
     return html`
@@ -95,8 +97,18 @@ function TaskDetail({ task, onAction }) {
                 <span>${tr('settings.tasks.model')}</span><code>${task.model || 'default'}</code>
                 ${task.cwd && html`<span>${tr('settings.tasks.cwd')}</span><code>${task.cwd}</code>`}
                 ${task.timeout_sec && html`<span>${tr('settings.tasks.timeout')}</span><strong>${task.timeout_sec}s</strong>`}
+                ${task.task_kind === 'agent' && html`<span>Per-run budget</span><strong>${task.budget_usd == null ? 'Uncapped' : `$${task.budget_usd}`}${task.budget_usd != null && !task.budget_cap_enabled ? ' · disabled' : ''}</strong>`}
                 ${protectedTask && html`<span>${tr('settings.tasks.protection')}</span><strong>${tr('settings.tasks.protectionHint')}</strong>`}
             </div>
+            ${task.task_kind === 'agent' && html`
+                <form class="settings-task-budget-row" onSubmit=${event => { event.preventDefault(); onAction('set_budget', task, { budgetUsd: budgetDraft, enabled: true, confirmRevision: task.budget_cap_revision }); }}>
+                    <label>Per-run API-equivalent USD</label>
+                    <input inputmode="decimal" value=${budgetDraft} onInput=${event => setBudgetDraft(event.target.value)} placeholder="Uncapped" />
+                    <button type="submit">${task.budget_usd == null ? 'Set budget' : 'Update budget'}</button>
+                    ${task.budget_usd != null && task.budget_cap_enabled && html`<button type="button" onClick=${() => onAction('set_budget', task, { enabled: false, confirmRevision: task.budget_cap_revision })}>Disable</button>`}
+                </form>
+                <p class="settings-hint">This is the single source of truth for each scheduled agent run. It is not a reservation or invoice limit.</p>
+            `}
             <div class="settings-task-command-block">
                 <strong>${task.task_kind === 'shell' ? tr('settings.tasks.command') : tr('settings.tasks.prompt')}</strong>
                 <pre>${task.command || task.prompt || task.command_summary || task.prompt_summary || task.summary || '—'}</pre>
@@ -167,20 +179,22 @@ export function ScheduledTasksSection({ filter = '', setStatus }) {
         setSelectedTask(task || null);
     }, []);
 
-    const runAction = useCallback(async (action, task) => {
+    const runAction = useCallback(async (action, task, actionOptions: any = {}) => {
         if (!task || acting) return;
         const protectedTask = isProtectedTask(task);
         const summary = task.summary || task.command_summary || task.prompt_summary || task.id;
         const confirmation = action === 'delete'
             ? tr('settings.tasks.confirmDelete', { id: task.id }) + `\n\n${summary}`
-            : (action === 'pause' ? tr('settings.tasks.confirmPause', { id: task.id }) : tr('settings.tasks.confirmResume', { id: task.id })) + `\n\n${summary}`;
+            : action === 'set_budget'
+                ? `${actionOptions.enabled === false ? 'Disable' : task.budget_usd == null ? 'Set' : 'Update'} the per-run budget for ${task.id}? Existing run spend and history remain.`
+                : (action === 'pause' ? tr('settings.tasks.confirmPause', { id: task.id }) : tr('settings.tasks.confirmResume', { id: task.id })) + `\n\n${summary}`;
         if (!window.confirm(confirmation)) return;
         if (protectedTask && !window.confirm(tr('settings.tasks.confirmProtected', { id: task.id, action }))) return;
 
         setActing(true);
         setStatus?.(action === 'delete' ? tr('settings.tasks.deleting', { id: task.id }) : action === 'pause' ? tr('settings.tasks.pausing', { id: task.id }) : tr('settings.tasks.resuming', { id: task.id }), 'info');
         try {
-            await updateScheduledTask(action, task.id, { allowInternal: protectedTask });
+            await updateScheduledTask(action, task.id, { allowInternal: protectedTask, ...actionOptions });
             setStatus?.(action === 'delete' ? tr('settings.tasks.deletedToast', { id: task.id }) : action === 'pause' ? tr('settings.tasks.pausedToast', { id: task.id }) : tr('settings.tasks.resumedToast', { id: task.id }), 'success');
             await loadTasks({ selectedId: action === 'delete' ? null : task.id });
         } catch (e) {

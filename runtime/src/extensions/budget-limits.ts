@@ -1,6 +1,7 @@
 import type { ExtensionAPI, ExtensionFactory, ModelRuntime } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 
+import { parseBudgetDecimalMicros } from "../budget/amount.js";
 import { getBudgetWorkContext } from "../budget/context.js";
 import { evaluateBudgetStatus, formatBudgetStatus, getBudgetStatus } from "../budget/status.js";
 import { formatBudgetDecision } from "../budget/admission.js";
@@ -21,14 +22,6 @@ import {
   persistBudgetDecision,
 } from "../db.js";
 import { getDb } from "../db/connection.js";
-
-function decimalMicros(value: string): number {
-  if (!/^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/.test(value)) throw new Error("Amount must be a non-negative decimal with at most six places");
-  const [whole, fraction = ""] = value.split(".");
-  const micros = BigInt(whole) * 1_000_000n + BigInt((fraction + "000000").slice(0, 6));
-  if (micros > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error("Amount is too large");
-  return Number(micros);
-}
 
 function parseTokens(args: string): { words: string[]; options: Record<string, string> } {
   const words: string[] = [];
@@ -124,7 +117,7 @@ export function createBudgetLimitsExtension(options: { modelRuntime?: ModelRunti
               id: parsed.options.id,
               scope: scope as any,
               metric,
-              amount: decimalMicros(amountText),
+              amount: parseBudgetDecimalMicros(amountText),
               workId: parsed.options.work ?? work?.id ?? null,
               scheduledTaskId: parsed.options.task ?? null,
               providerId,
@@ -145,7 +138,7 @@ export function createBudgetLimitsExtension(options: { modelRuntime?: ModelRunti
               capId: subcommand,
               capRevision: binding.capRevision,
               windowId: binding.windowId,
-              amount: decimalMicros(third),
+              amount: parseBudgetDecimalMicros(third, { positive: true }),
               expiresAt: parsed.options.expires ?? new Date(Date.now() + 3_600_000).toISOString(),
             });
             resumeBudgetWork(work.id);

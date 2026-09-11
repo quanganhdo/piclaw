@@ -1,12 +1,22 @@
 #!/usr/bin/env bun
 
 import { existsSync, readdirSync, readFileSync, statSync } from "fs";
-import { join, relative } from "path";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "path";
 
 const ENTRY_EXTENSIONS_DIR = "extensions";
 const SRC_EXTENSIONS_DIR = "src/extensions";
 
-const ALLOWED_ENTRY_SRC_IMPORT_PREFIX = "../src/extensions/";
+export const ALLOWED_PACKAGED_EXTENSION_SRC_TARGETS = Object.freeze([
+  "src/core/config-secrets.js",
+  "src/core/config-web.js",
+  "src/core/config.js",
+  "src/tool-status-hints.js",
+  "src/tools/tracked-bash.js",
+  "src/utils/azure-tool-call-limit.js",
+  "src/utils/logger.js",
+  "src/utils/process-spawn.js",
+] as const);
+const ALLOWED_ENTRY_SRC_TARGETS = new Set<string>(ALLOWED_PACKAGED_EXTENSION_SRC_TARGETS);
 const LATENT_SERVICE_EFFECTS_DIR = "src/service-effects";
 const SERVICE_EFFECTS_TESTING_DIR = "src/service-effects/testing";
 
@@ -47,6 +57,29 @@ export function extractModuleSpecifiers(content: string): string[] {
   return specifiers;
 }
 
+function portablePath(value: string): string {
+  return value.split(sep).join("/");
+}
+
+/** Resolve a relative module specifier from its importer into a project-relative target. */
+export function resolveProjectImportTarget(projectDir: string, importer: string, specifier: string): string | null {
+  const normalizedSpecifier = specifier.replaceAll("\\", "/");
+  if (!normalizedSpecifier.startsWith("./") && !normalizedSpecifier.startsWith("../")) return null;
+  const target = resolve(dirname(importer), normalizedSpecifier);
+  const projectRoot = resolve(projectDir);
+  const relativeTarget = portablePath(relative(projectRoot, target));
+  if (!relativeTarget || relativeTarget === "." || isAbsolute(relativeTarget) || relativeTarget === ".." || relativeTarget.startsWith("../")) return null;
+  return relativeTarget;
+}
+
+function isWithin(target: string, directory: string): boolean {
+  return target === directory || target.startsWith(`${directory}/`);
+}
+
+function isAllowedEntrySrcTarget(target: string): boolean {
+  return isWithin(target, SRC_EXTENSIONS_DIR) || ALLOWED_ENTRY_SRC_TARGETS.has(target);
+}
+
 function importsLatentServiceEffects(specifier: string): boolean {
   return /(?:^|\/)service-effects(?:\/|$)/.test(specifier);
 }
@@ -56,25 +89,25 @@ function importsServiceEffectsTesting(specifier: string): boolean {
     /(?:^|\/)testing(?:\/|$)/.test(specifier);
 }
 
-export function findImportBoundaryViolations(projectDir: string): string[] {
+export function findPackagedExtensionImportViolations(projectDir: string): string[] {
   const violations: string[] = [];
   const entryFiles = walkFiles(join(projectDir, ENTRY_EXTENSIONS_DIR), ".ts");
   const srcBridgeFiles = walkFiles(join(projectDir, SRC_EXTENSIONS_DIR), ".ts");
-  const productionFiles = walkFiles(join(projectDir, "src"), ".ts");
 
   for (const file of entryFiles) {
     const rel = relative(projectDir, file);
     const specifiers = extractModuleSpecifiers(readFileSync(file, "utf8"));
 
     for (const specifier of specifiers) {
-      if (specifier.includes("../node_modules/")) {
-        violations.push(`${rel}: disallowed node_modules relative import (${specifier})`);
+      const target = resolveProjectImportTarget(projectDir, file, specifier);
+      if (target && target.split("/").includes("node_modules")) {
+        violations.push(`${rel}: disallowed node_modules relative import (${specifier} -> ${target})`);
       }
       if (specifier.startsWith("@earendil-works/pi-ai/dist/")) {
         violations.push(`${rel}: disallowed direct pi-ai dist import (${specifier})`);
       }
-      if (specifier.startsWith("../src/") && !specifier.startsWith(ALLOWED_ENTRY_SRC_IMPORT_PREFIX)) {
-        violations.push(`${rel}: disallowed direct src import (${specifier})`);
+      if (target && isWithin(target, "src") && !isAllowedEntrySrcTarget(target)) {
+        violations.push(`${rel}: disallowed direct src import (${specifier} -> ${target})`);
       }
     }
   }
@@ -89,6 +122,12 @@ export function findImportBoundaryViolations(projectDir: string): string[] {
     }
   }
 
+  return violations.sort();
+}
+
+function findServiceEffectsImportViolations(projectDir: string): string[] {
+  const violations: string[] = [];
+  const productionFiles = walkFiles(join(projectDir, "src"), ".ts");
   for (const file of productionFiles) {
     const rel = relative(projectDir, file);
     const inServiceEffects = rel === LATENT_SERVICE_EFFECTS_DIR || rel.startsWith(`${LATENT_SERVICE_EFFECTS_DIR}/`);
@@ -107,8 +146,23 @@ export function findImportBoundaryViolations(projectDir: string): string[] {
   return violations.sort();
 }
 
+export function findImportBoundaryViolations(projectDir: string): string[] {
+  return [
+    ...findPackagedExtensionImportViolations(projectDir),
+    ...findServiceEffectsImportViolations(projectDir),
+  ].sort();
+}
+
 if (import.meta.main) {
-  const violations = findImportBoundaryViolations(process.cwd());
+  const args = process.argv.slice(2);
+  const extensionsOnly = args.length === 1 && args[0] === "--scope=extensions";
+  if (args.length > (extensionsOnly ? 1 : 0)) {
+    console.error("Usage: check-import-boundaries.ts [--scope=extensions]");
+    process.exit(2);
+  }
+  const violations = extensionsOnly
+    ? findPackagedExtensionImportViolations(process.cwd())
+    : findImportBoundaryViolations(process.cwd());
   if (violations.length > 0) {
     console.error("[import-boundaries] detected violations:");
     for (const violation of violations) {
@@ -117,5 +171,5 @@ if (import.meta.main) {
     process.exit(1);
   }
 
-  console.log("[import-boundaries] ok");
+  console.log(`[import-boundaries] ${extensionsOnly ? "extensions " : ""}ok`);
 }

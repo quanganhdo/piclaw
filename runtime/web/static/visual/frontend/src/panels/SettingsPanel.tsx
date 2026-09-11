@@ -11,6 +11,8 @@ import "./settings/GeneralSection";
 import "./settings/SessionsSection";
 import "./settings/RecordingsSection";
 import "./settings/CompactionSection";
+import "./settings/BudgetSection";
+import "./settings/ScheduledTasksSection";
 import "./settings/WorkspaceSection";
 import "./settings/EnvironmentSection";
 import "./settings/ProvidersSection";
