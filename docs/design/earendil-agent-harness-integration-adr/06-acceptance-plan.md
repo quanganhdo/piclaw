@@ -2,11 +2,19 @@
 
 Full capability/regression/assumption coverage is recorded in [`evidence/traceability-matrix.md`](evidence/traceability-matrix.md): 59 capabilities, 26 regressions and 10 Earendil assumptions all map to owners, mechanisms and planned tests.
 
+## Current PR boundaries
+
+The [published 0.85.1 work sequence](evidence/earendil-0851-work-sequence.md) separates A admission, B atomic current-loop migration/basic positive compatibility, C broader inactive deterministic HC completion, and D later-release reassessment. B retains already-tested partial HC evidence; C owns the remaining broad completion effort. No physical split or branch-history rewrite is required.
+
+An authorised disposable microVM upgrade/restart/rollback receipt is a prerequisite for B merge. No target, access, restart or provider authority is granted by this chapter. Whole-change rollback returns the exact baseline 0.84.4 runtime/dependency set; no production schema migration or session rewrite is intended.
+
+The following full-architecture criteria remain separate from B's limited current-loop scope. None is marked complete by package import success or by scheduling PR C.
+
 ## ADR acceptance criteria
 
 This ADR is complete only when it contains:
 
-1. pinned Piclaw/released-Earendil baselines plus the exact unreleased Harness v3 target specification and implementation evidence;
+1. pinned Piclaw/released-Earendil baselines plus the selected published Harness target and separately labelled historical or unreleased planning evidence;
 2. current architecture and responsibility map;
 3. completed capability traceability matrix;
 4. completed bug and regression corpus;
@@ -100,15 +108,15 @@ The assessment resolves ownership and design questions that can be answered from
 
 | Question | Current assessment position | Resolution gate |
 |---|---|---|
-| Which Earendil source/version should Harness production target? | The current Piclaw loop selects `0.84.4`, whose Harness scaffold is byte-identical to `0.84.2`. `dev`/draft PR #8963 at `d14d6b22327d545d6a253f932165b63e48d7f9c8` has complete public lane drive and green exact-head CI; only session watch is stubbed, while WP08 storage/fork work remains active. | Keep production Harness disabled; allow a separately approved latent positive compatibility run against exact `dev`, then select production only after storage/fork stability and HC/PC gates. |
-| How much Earendil type stability is required? | None across selected upgrades. Piclaw accepts source breakage and removes obsolete glue. | Compile and run HC-001–HC-025 for every selected version; record migration differences. |
-| Does Earendil expose recoverable run state? | Current `dev` exposes total flat operation state, bounded restore, lane watches, deferred suspension, immutable `OperationResultRecord` and public drive; provider/tool/structural reconciliation is implemented. PR #7784's v2 `findRecords()` proposal is not a v3 dependency. | HC-004/005/012/013/022 against the selected real harness/backend. |
+| Which source/version is selected? | Production uses 0.84.4; draft B targets published 0.85.1 (`d981de1229ef899957bbe968bc8dcda02a21f477`) for the existing loop. Historical dev/#8963 is not the active candidate; pinned tip is planning-only. | Keep Harness disabled. B needs migration/public compatibility and authorised canary evidence; production Harness selection requires a separate ADR after broader C evidence. |
+| How much Earendil type stability is required? | None across selected upgrades. Piclaw accepts source breakage and removes obsolete glue. | B compiles migrated direct contracts and runs bounded migration checks. C/full Harness promotion requires the applicable complete HC catalogue for the selected version; record migration differences without treating B's partial evidence as completion. |
+| Does the release expose recoverable run state? | Published 0.85.1 exposes public operation state, lane watches and drive; B has bounded JSONL process-loss and restoration tests. Session watch remains a concrete stub. Historical v2 `findRecords()` proposals are not prerequisites. | Broader crash/retry/deferred/structural coverage belongs to C; preserve partial/unverified labels until executed. |
 | Who owns tool process groups? | Harness v3 owns effect signals/tool invocation; Piclaw's `ExecutionEnv` implementation may retain host process tracking. | TP process-group and real-harness abort/close tests before M6. |
 | Who owns transcript persistence? | Harness v3 owns entries, typed values/lists, immutable operation results and usage ledger; Piclaw owns accepted sources, timeline and service dispositions. | Selected backend/fork conformance and two-domain reconciliation tests. |
-| Can real harness use deterministic fake models/tools? | Current `dev` supports generic contextual tools, direct `Models`, stable invocation identity, memos/checkpoints, gated storage and public drive. | HC suite against the exact selected constructor using direct Context-last APIs. |
+| Can the real Harness use deterministic fake models/tools? | Published 0.85.1 supports contextual tools, direct Models, invocation identity/memos and public drive; B uses the real constructor with public faux-provider fixtures. Built-in raw Storage fixture access is not exported. | C completes the broader deterministic HC suite through supported public APIs; no private Storage access. |
 | Which Piclaw writes share one transaction? | EF-S01 atomically accepts/claims service work. EF-S02 separately performs one terminal transaction across disposition, terminal timeline/media binding, source disposal, frontier, owner release and outbox. Both use `messages.db`; Earendil sessions stay separate. | Future logical-schema review and EF-S01/EF-S02 contract fault suites. |
 | Which modules qualify as effectors? | Classified in `evidence/effector-inventory.md`; nine implementable interfaces and their current-internal adapter sources are specified in `evidence/future-effector-specifications.md`; orchestration modules are rejected. | G-SHAPE, G-OWNER, G-CURRENT and per-interface contract review. |
 | Which baseline behaviours are removed? | Cursor authority, deferred JSON queue, chat-scoped abort/provenance, Piclaw recovery/compaction loop and direct scheduler agent delivery are migration targets. User-visible capabilities remain unless separately approved. | M0 ADR decision and per-capability implementation issues. |
 | What closes the effect-start crash window? | Nothing process-local can close it. `Gate.admit()` orders durable abort versus admission; durable intent and settlement bound an unknown-outcome interval. | HC-021/022 plus provider/tool/structural recovery tests before M4. |
-| How is writable Session ownership fenced? | Current `dev` assigns one writable Session to a host-managed worker. SQLite no longer implements a second writer lease. Same-repository forks use commit-queue ordering; live external sources use read-only WAL snapshots. | HC-015/023/024/025 plus host replacement, deletion and fork tests before M4. |
+| How is writable Session ownership fenced? | B validates public Memory/JSONL ownership and fork cases for the selected release. Earlier SQLite host-ownership captures remain historical; tip-only streaming-fork tests and incomplete SQLite parity are not release evidence. | C verifies broader host replacement/deletion/fork semantics. D reassesses later-release changes before any adoption. |
 | What shadow/soak and resource budgets apply? | Metrics and gates are defined; numeric budgets need measured real-harness evidence. | Set numbers after M4 canary measurements and before M6/M7 approval. |

@@ -5,7 +5,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { describe, expect, test } from "bun:test";
-import { Result } from "@earendil-works/pi-agent-core";
+import { Result, applyShellOutputUpdate, type ShellOutputUpdate, type ShellOutputView } from "@earendil-works/pi-agent-core";
+import { BACKGROUND_CONTEXT, withAbortSignal } from "@earendil-works/pi-agent-core/harness/context";
 
 import type { NormalisedEffectTrace } from "../../src/service-effects/contracts/common.js";
 import { CurrentPiclawExecutionContextResolver } from "../../src/service-effects/current-piclaw/execution-context-resolver.js";
@@ -33,7 +34,7 @@ function createContext(): ContractTestContext {
 for (const [name, fake] of [["current-Piclaw adapter", false], ["independent deterministic fake", true]] as const) {
   describe(`EF-H01 ExecutionContextResolver shared contract: ${name}`, () => {
     test("parameterized contract", async () => {
-      expect(await defineExecutionContextResolverContract(subjectFactory(name, fake), createContext)).toHaveLength(11);
+      expect(await defineExecutionContextResolverContract(subjectFactory(name, fake), createContext)).toHaveLength(12);
     });
   });
 }
@@ -47,20 +48,21 @@ describe("EF-H01 local NodeExecutionEnv adapter under Bun", () => {
     if (!first.ok || !second.ok) return;
     expect(first.value).not.toBe(second.value);
     const timeoutPids: number[] = [];
-    const timed = await first.value.exec("sleep 30 & echo \"$$ $!\"; wait", { timeout: 0.05, onStdout: (chunk) => timeoutPids.push(...readPids(chunk)) });
+    const capture = { limits: { maxBytes: 4096, maxLines: 20, retain: "head" as const } };
+    const timed = await first.value.exec("sleep 30 & echo \"$$ $!\"; wait", { timeout: 0.05, capture, onUpdate: collectPids(timeoutPids) }, BACKGROUND_CONTEXT);
     expect(timed.ok).toBeFalse(); expect(!timed.ok && timed.error.code).toBe("timeout");
     await expectGone(timeoutPids);
 
     const abort = new AbortController(); const abortPids: number[] = []; let started!: () => void;
     const observed = new Promise<void>((resolve) => { started = resolve; });
-    const pending = first.value.exec("sleep 30 & echo \"$$ $!\"; wait", { abortSignal: abort.signal, onStdout: (chunk) => { abortPids.push(...readPids(chunk)); started(); } });
+    const pending = first.value.exec("sleep 30 & echo \"$$ $!\"; wait", { capture, onUpdate: collectPids(abortPids, started) }, withAbortSignal(abort.signal, BACKGROUND_CONTEXT));
     await observed;
-    await second.value.cleanup();
+    await second.value.cleanup(BACKGROUND_CONTEXT);
     expect(abortPids.every(isAlive)).toBeTrue();
     abort.abort(); const aborted = await pending;
     expect(aborted.ok).toBeFalse(); expect(!aborted.ok && aborted.error.code).toBe("aborted");
     await expectGone(abortPids);
-    await first.value.cleanup(); await first.value.cleanup(); await rm(cwd, { recursive: true, force: true });
+    await first.value.cleanup(BACKGROUND_CONTEXT); await first.value.cleanup(BACKGROUND_CONTEXT); await rm(cwd, { recursive: true, force: true });
   }, 10_000);
 });
 
@@ -70,7 +72,7 @@ function subjectFactory(name: string, fake: boolean): ContractSubjectFactory<Exe
     name,
     create() { state = new SubjectState(fake); return state.subject(); },
     async crashAndRestore(subject, context) {
-      await Promise.all([...subject.createdLocals(), ...subject.createdRemotes()].map((env) => env.cleanup()));
+      await Promise.all([...subject.createdLocals(), ...subject.createdRemotes()].map((env) => env.cleanup(BACKGROUND_CONTEXT)));
       state = state.restore();
       return { subject: state.subject(), context };
     },
@@ -166,6 +168,14 @@ function callback(fault: CallbackFault, value: unknown): never | unknown {
 }
 function rejectingThenable(): PromiseLike<never> { return { then(_resolve, reject) { reject?.(new Error("thenable fault")); } }; }
 function changingEnvironment(): object { let reads = 0; return { get EF_H01_FIXTURE_AUTH() { return reads++ === 0 ? "first" : "second"; } }; }
+function collectPids(pids: number[], started?: () => void): (update: ShellOutputUpdate) => void {
+  let view: ShellOutputView | undefined;
+  return (update) => {
+    view = applyShellOutputUpdate(view, update);
+    pids.splice(0, pids.length, ...readPids(view.text));
+    if (pids.length >= 2) started?.();
+  };
+}
 function readPids(chunk: string): number[] { return chunk.trim().split(/\s+/).map(Number).filter((value) => Number.isInteger(value) && value > 1); }
 function isAlive(pid: number): boolean { try { process.kill(pid, 0); return true; } catch { return false; } }
 async function expectGone(pids: readonly number[]): Promise<void> {

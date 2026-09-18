@@ -21,7 +21,17 @@ import { getWorkspaceDir as getConfiguredWorkspaceDir } from "../../../core/conf
 import { requestGracefulShutdown } from "../../../runtime/shutdown-registry.js";
 import { createLogger } from "../../../utils/logger.js";
 import { handleRegisteredAddonConfigApiRequest } from "./addon-config-api.js";
-import { recordAddonApiFailure, recordAddonApiSuccess } from "../../../addons/addon-api-health.js";
+import {
+  listInstalledAddonPackageDirs,
+  readInstalledAddonPackage,
+  resolveAddonPackageEntries,
+} from "../../../addons/package-entries.js";
+import {
+  recordAddonApiFailure,
+  recordAddonApiSuccess,
+  recordAddonApiTransportSelection,
+  type AddonConfigApiTransport,
+} from "../../../addons/addon-api-health.js";
 
 const DEFAULT_CATALOG_URL = "https://raw.githubusercontent.com/rcarmo/piclaw-addons/main/catalog.json";
 const DEFAULT_CATALOG_URLS = [DEFAULT_CATALOG_URL] as const;
@@ -201,23 +211,6 @@ function getInstalledVersion(packageName: string): string | null {
   return null;
 }
 
-function listAddonPackageDirs(addonsNodeModulesDir: string): string[] {
-  if (!existsSync(addonsNodeModulesDir)) return [];
-  const results: string[] = [];
-  for (const entry of readdirSync(addonsNodeModulesDir, { withFileTypes: true })) {
-    if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
-    const entryPath = join(addonsNodeModulesDir, entry.name);
-    if (entry.name.startsWith('@')) {
-      for (const scoped of readdirSync(entryPath, { withFileTypes: true })) {
-        if (scoped.isDirectory() || scoped.isSymbolicLink()) results.push(join(entryPath, scoped.name));
-      }
-      continue;
-    }
-    results.push(entryPath);
-  }
-  return results;
-}
-
 function getInstalledAddonPackageDir(packageName: string, workspaceDir = getWorkspaceDir()): string | null {
   const addonsNodeModulesDir = join(workspaceDir, '.pi', 'extensions', 'node_modules');
   const packageDir = join(addonsNodeModulesDir, packageName);
@@ -227,28 +220,19 @@ function getInstalledAddonPackageDir(packageName: string, workspaceDir = getWork
 export function getInstalledAddonWebEntries(workspaceDir = getWorkspaceDir()): InstalledAddonWebEntry[] {
   const addonsNodeModulesDir = join(workspaceDir, '.pi', 'extensions', 'node_modules');
   const entries: InstalledAddonWebEntry[] = [];
-  for (const packageDir of listAddonPackageDirs(addonsNodeModulesDir)) {
-    const packageJsonPath = join(packageDir, 'package.json');
-    if (!existsSync(packageJsonPath)) continue;
-    try {
-      const manifest = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as AddonPackageManifest;
-      const packageName = typeof manifest.name === 'string' ? manifest.name.trim() : '';
-      const webEntries = Array.isArray(manifest?.pi?.web?.entries)
-        ? manifest.pi.web.entries.filter((value): value is string => typeof value === 'string' && Boolean(value.trim()))
-        : [];
-      if (!packageName || webEntries.length === 0) continue;
-      for (const entry of webEntries) {
-        const normalizedEntry = entry.replace(/^\.\//, '');
-        const fullPath = join(packageDir, normalizedEntry);
-        if (!existsSync(fullPath)) continue;
-        entries.push({
-          packageName,
-          entry: normalizedEntry,
-          url: `/agent/addons/assets/${encodeURIComponent(packageName)}/${normalizedEntry.split('/').map((segment) => encodeURIComponent(segment)).join('/')}`,
-        });
-      }
-    } catch {
-      continue;
+  for (const packageDir of listInstalledAddonPackageDirs(addonsNodeModulesDir)) {
+    const addonPackage = readInstalledAddonPackage(packageDir);
+    if (!addonPackage) continue;
+    const manifest = addonPackage.manifest as AddonPackageManifest;
+    const packageName = typeof manifest.name === 'string' ? manifest.name.trim() : '';
+    if (!packageName) continue;
+    for (const fullPath of resolveAddonPackageEntries(packageDir, manifest.pi?.web?.entries)) {
+      const normalizedEntry = fullPath.slice(packageDir.length + 1).split('\\').join('/');
+      entries.push({
+        packageName,
+        entry: normalizedEntry,
+        url: `/agent/addons/assets/${encodeURIComponent(packageName)}/${normalizedEntry.split('/').map((segment) => encodeURIComponent(segment)).join('/')}`,
+      });
     }
   }
   return entries;
@@ -799,6 +783,8 @@ export async function handleAddonConfigApiRequest(
   const method = req.method.toUpperCase();
   const directResponse = await handleRegisteredAddonConfigApiRequest(req, parsed.addonId, parsed.action, json);
   if (directResponse) {
+    const transport: AddonConfigApiTransport = "direct_handler";
+    recordAddonApiTransportSelection({ addonId: parsed.addonId, action: parsed.action, chatJid, method, path: pathname, transport });
     if (directResponse.status >= 400) {
       recordAddonApiFailure({
         addonId: parsed.addonId,
@@ -806,14 +792,18 @@ export async function handleAddonConfigApiRequest(
         chatJid,
         method,
         path: pathname,
+        transport,
         status: directResponse.status,
         error: `HTTP ${directResponse.status}`,
       });
     } else {
-      recordAddonApiSuccess({ addonId: parsed.addonId, action: parsed.action, chatJid, method, path: pathname });
+      recordAddonApiSuccess({ addonId: parsed.addonId, action: parsed.action, chatJid, method, path: pathname, transport });
     }
     return directResponse;
   }
+
+  const transport: AddonConfigApiTransport = "legacy_slash_command";
+  recordAddonApiTransportSelection({ addonId: parsed.addonId, action: parsed.action, chatJid, method, path: pathname, transport });
 
   const fail = (body: unknown, status: number, error: unknown): Response => {
     recordAddonApiFailure({
@@ -822,6 +812,7 @@ export async function handleAddonConfigApiRequest(
       chatJid,
       method,
       path: pathname,
+      transport,
       status,
       error,
     });
@@ -841,7 +832,7 @@ export async function handleAddonConfigApiRequest(
 
   try {
     const payloadJson = parseAddonCommandJsonPayload(parsed.addonId, result);
-    recordAddonApiSuccess({ addonId: parsed.addonId, action: parsed.action, chatJid, method, path: pathname });
+    recordAddonApiSuccess({ addonId: parsed.addonId, action: parsed.action, chatJid, method, path: pathname, transport });
     return json(payloadJson);
   } catch (error) {
     return fail({ error: String((error as Error)?.message || error) }, 502, error);

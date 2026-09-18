@@ -1,3 +1,4 @@
+import { isOperationSession } from "./operation-session-profile.js";
 /**
  * agent-pool/session-manager.ts – Main/side session lifecycle management for AgentPool.
  *
@@ -197,7 +198,7 @@ export class AgentSessionManager {
 
       const chatSessionDir = ensureSessionDir(chatJid);
 
-      const extensionFactories = await this.options.getSessionExtensionFactories?.(chatJid) ?? [];
+      const extensionFactories = isOperationSession(chatJid) ? [] : await this.options.getSessionExtensionFactories?.(chatJid) ?? [];
       requireOwnedSessionExecution(chatJid);
       const runtime = this.options.createSession
         ? await this.options.createSession(chatJid, chatSessionDir)
@@ -205,7 +206,7 @@ export class AgentSessionManager {
             modelRuntime: this.options.modelRuntime,
             settingsManager: this.options.settingsManager,
             tools: this.options.createDefaultTools(),
-            customTools: this.options.createCustomToolOverrides?.(chatJid) ?? [],
+            customTools: isOperationSession(chatJid) ? [] : this.options.createCustomToolOverrides?.(chatJid) ?? [],
             extensionFactories,
           });
 

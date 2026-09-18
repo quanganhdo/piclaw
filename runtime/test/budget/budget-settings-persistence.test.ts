@@ -2,6 +2,8 @@ import { expect, test } from "bun:test";
 import { createTempWorkspace } from "../helpers.js";
 
 const entry = new URL("./budget-settings-persistence-subprocess.ts", import.meta.url).pathname;
+// Two file-backed runtime bootstraps routinely approach Bun's 5s unit default.
+// Keep a bounded integration timeout under the isolated low-priority full suite.
 
 test("Settings and slash status preserve the same durable state after restart", async () => {
   const workspace = createTempWorkspace("budget-settings-persistence-");
@@ -32,7 +34,7 @@ test("Settings and slash status preserve the same durable state after restart", 
   } finally {
     workspace.cleanup();
   }
-});
+}, 15_000);
 
 function processEnvWithoutInMemory(): Record<string, string> {
   const env: Record<string, string> = {};

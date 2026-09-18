@@ -55,6 +55,8 @@ export interface AgentStatusContext {
   getTokenUsageForChat(chatJid: string): AgentTokenUsageContext | null;
   getAvailableModels(chatJid: string): Promise<unknown>;
   getProviderReadyCompletedForInstance(): boolean;
+  getAddonApiHealthSnapshot?: typeof getAddonApiHealthSnapshot;
+  getMcpStartupDiagnostics?: typeof getMcpStartupDiagnostics;
 }
 
 function resolveChatJid(req: Request, defaultChatJid: string): string {
@@ -135,8 +137,10 @@ function formatTokenUsageContext(usage: AgentTokenUsageContext | null): Record<s
   };
 }
 
-function getMcpStartupStatus(): { degraded: boolean; servers: Array<{ server_name: string; reason: string }> } {
-  const diagnostics = getMcpStartupDiagnostics();
+function getMcpStartupStatus(
+  readDiagnostics: typeof getMcpStartupDiagnostics = getMcpStartupDiagnostics,
+): { degraded: boolean; servers: Array<{ server_name: string; reason: string }> } {
+  const diagnostics = readDiagnostics();
   return {
     degraded: diagnostics.length > 0,
     servers: diagnostics.map((diagnostic) => ({
@@ -181,7 +185,10 @@ export function buildAgentStatusSnapshot(
   const includeDiagnostics = options.includeDiagnostics !== false;
   const includeExtensionWorking = options.includeExtensionWorking !== false;
   const diagnostics = includeDiagnostics
-    ? { addon_api: getAddonApiHealthSnapshot(), mcp_startup: getMcpStartupStatus() }
+    ? {
+        addon_api: (ctx.getAddonApiHealthSnapshot ?? getAddonApiHealthSnapshot)(),
+        mcp_startup: getMcpStartupStatus(ctx.getMcpStartupDiagnostics),
+      }
     : {};
   const extensionWorking = includeExtensionWorking ? ctx.getExtensionWorkingState(chatJid) : null;
   const status = ctx.getAgentStatus(chatJid);

@@ -35,6 +35,8 @@ import {
   type SearchMatchMode,
 } from "../../../core/config.js";
 import { generateTotpQr } from "../../../utils/totp-qr.js";
+import { getAutomaticRecoveryConfig } from "../../../agent-pool/automatic-recovery.js";
+import { getAgentRuntimeConfig } from "../../../core/config.js";
 import { ensureAvatarCache, resolveAvatarUrl, type AvatarKind } from "../media/avatar-service.js";
 import { getServerUiOutputConfig, getServerUiThemeConfig, setServerUiOutputConfig, setServerUiThemeConfig } from "../ui-state.js";
 
@@ -67,6 +69,7 @@ export interface GeneralSettingsData {
   automaticRecoveryEnabled: boolean;
   automaticRecoveryMaxAttempts: number;
   automaticRecoveryTotalBudgetMs: number;
+  automaticRecoveryEffectiveBudgetMs: number;
   uiTheme: string;
   uiTint: string | null;
   outputPad: number;
@@ -215,6 +218,7 @@ export function getGeneralSettingsData(): GeneralSettingsData {
     automaticRecoveryEnabled: recovery.automaticRecoveryEnabled,
     automaticRecoveryMaxAttempts: recovery.automaticRecoveryMaxAttempts,
     automaticRecoveryTotalBudgetMs: recovery.automaticRecoveryTotalBudgetMs,
+    automaticRecoveryEffectiveBudgetMs: getAutomaticRecoveryConfig(undefined, getAgentRuntimeConfig().timeoutMs).totalBudgetMs,
     uiTheme: uiTheme.theme,
     uiTint: uiTheme.tint,
     outputPad: uiOutput.outputPad,
@@ -327,7 +331,7 @@ export async function saveGeneralSettings(input: GeneralSettingsInput): Promise<
   }
   if (input.automaticRecoveryTotalBudgetMs !== undefined) {
     const value = Number(input.automaticRecoveryTotalBudgetMs);
-    if (!Number.isInteger(value) || value < 1) throw new Error("automaticRecoveryTotalBudgetMs must be a positive integer");
+    if (!Number.isInteger(value) || value < 0) throw new Error("automaticRecoveryTotalBudgetMs must be a non-negative integer");
     recoveryPatch.automaticRecoveryTotalBudgetMs = value;
   }
   if (Object.keys(recoveryPatch).length > 0) setAutomaticRecoveryPolicyConfig(recoveryPatch);

@@ -44,4 +44,7 @@ test('draft and thought delta helpers preserve existing buffer semantics', () =>
   expect(applyThoughtDeltaBuffer('base', { delta: ' plus' })).toBe('base plus');
   expect(applyThoughtDeltaBuffer('base', { reset: true, delta: 'fresh' })).toBe('fresh');
   expect(applyThoughtDeltaBuffer('base', { delta: 5 })).toBe('base');
+  expect(applyThoughtDeltaBuffer('prefix', { delta: ' suffix', text: 'prefix suffix' })).toBe('prefix suffix');
+  expect(applyThoughtDeltaBuffer('prefixprefix extended', { delta: ' ignored', text: 'prefix extended' })).toBe('prefix extended');
+  expect(applyThoughtDeltaBuffer('stale', { reset: true, delta: 'fresh', text: 'fresh' })).toBe('fresh');
 });

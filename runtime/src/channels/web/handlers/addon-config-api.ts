@@ -1,17 +1,15 @@
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { getWorkspaceDir as getConfiguredWorkspaceDir } from "../../../core/config.js";
 import { createLogger } from "../../../utils/logger.js";
+import {
+  listInstalledAddonPackageDirs,
+  readInstalledAddonPackage,
+  resolveAddonPackageEntries,
+} from "../../../addons/package-entries.js";
 
 const log = createLogger("web.addon-config-api");
-
-type AddonPackageManifest = {
-  pi?: {
-    extensions?: string[];
-  };
-};
 
 export type AddonConfigApiHandler = (payload: unknown, req: Request) => unknown | Promise<unknown>;
 
@@ -45,45 +43,14 @@ function getWorkspaceDir(): string {
   return getConfiguredWorkspaceDir();
 }
 
-function listAddonPackageDirs(addonsNodeModulesDir: string): string[] {
-  if (!existsSync(addonsNodeModulesDir)) return [];
-  const results: string[] = [];
-  for (const entry of readdirSync(addonsNodeModulesDir, { withFileTypes: true })) {
-    if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
-    const entryPath = join(addonsNodeModulesDir, entry.name);
-    if (entry.name.startsWith("@")) {
-      for (const scoped of readdirSync(entryPath, { withFileTypes: true })) {
-        if (scoped.isDirectory() || scoped.isSymbolicLink()) results.push(join(entryPath, scoped.name));
-      }
-      continue;
-    }
-    results.push(entryPath);
-  }
-  return results;
-}
-
 export function getInstalledAddonConfigEntryPaths(workspaceDir = getWorkspaceDir()): string[] {
   const addonsNodeModulesDir = join(workspaceDir, ".pi", "extensions", "node_modules");
   const entryPaths: string[] = [];
-
-  for (const packageDir of listAddonPackageDirs(addonsNodeModulesDir)) {
-    const packageJsonPath = join(packageDir, "package.json");
-    if (!existsSync(packageJsonPath)) continue;
-
-    try {
-      const manifest = JSON.parse(readFileSync(packageJsonPath, "utf8")) as AddonPackageManifest;
-      const declared = Array.isArray(manifest?.pi?.extensions)
-        ? manifest.pi.extensions.filter((value): value is string => typeof value === "string" && Boolean(value.trim()))
-        : [];
-      for (const relativePath of declared) {
-        const fullPath = join(packageDir, relativePath);
-        if (existsSync(fullPath) && statSync(fullPath).isFile()) entryPaths.push(fullPath);
-      }
-    } catch {
-      continue;
-    }
+  for (const packageDir of listInstalledAddonPackageDirs(addonsNodeModulesDir)) {
+    const addonPackage = readInstalledAddonPackage(packageDir);
+    if (!addonPackage) continue;
+    entryPaths.push(...resolveAddonPackageEntries(packageDir, addonPackage.manifest.pi?.extensions));
   }
-
   return entryPaths;
 }
 

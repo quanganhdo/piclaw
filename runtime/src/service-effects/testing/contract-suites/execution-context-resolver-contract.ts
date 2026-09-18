@@ -1,4 +1,14 @@
-import { ExecutionError, type ExecutionEnv } from "@earendil-works/pi-agent-core";
+import {
+  applyShellOutputUpdate,
+  BACKGROUND_CONTEXT,
+  createContextKey,
+  ExecutionError,
+  withAbortSignal,
+  withContextValue,
+  type Context,
+  type ExecutionEnv,
+  type ShellOutputView,
+} from "@earendil-works/pi-agent-core";
 
 import type { ExecutionContextResolver, ResolveExecutionContextRequest } from "../../contracts/execution-context-resolver.js";
 import { runParameterisedContractSuite, type ContractCaseResult, type ContractSubjectFactory, type ContractTestContext, type ParameterisedContractCase } from "../contract-suite.js";
@@ -76,12 +86,12 @@ const cases: readonly ParameterisedContractCase<ExecutionContextResolverContract
     async run({ subject }) {
       const resolved = await subject.resolver.resolve(request()); assert(resolved.ok, "SSH context must resolve");
       const env = resolved.value.env;
-      const written = await env.writeFile("dir/file.txt", "hello"); assert(written.ok, "relative write must succeed");
-      const addressed = await env.absolutePath("dir/file.txt"); assert(addressed.ok && addressed.value === "/remote/a/dir/file.txt", "relative path must address selected cwd");
+      const written = await env.writeFile("dir/file.txt", "hello", BACKGROUND_CONTEXT); assert(written.ok, "relative write must succeed");
+      const addressed = await env.absolutePath("dir/file.txt", BACKGROUND_CONTEXT); assert(addressed.ok && addressed.value === "/remote/a/dir/file.txt", "relative path must address selected cwd");
       const backend = subject.createdRemotes().at(-1) as ExecutionEnv & { link?(path: string, target: string): void };
       backend.link?.("link.txt", "dir/file.txt");
-      const linked = await env.fileInfo("link.txt"); assert(linked.ok && linked.value.kind === "symlink", "fileInfo must not follow a symlink");
-      const canonical = await env.canonicalPath("link.txt"); assert(canonical.ok && canonical.value === "/remote/a/dir/file.txt", "canonicalPath must explicitly resolve symlink");
+      const linked = await env.fileInfo("link.txt", BACKGROUND_CONTEXT); assert(linked.ok && linked.value.kind === "symlink", "fileInfo must not follow a symlink");
+      const canonical = await env.canonicalPath("link.txt", BACKGROUND_CONTEXT); assert(canonical.ok && canonical.value === "/remote/a/dir/file.txt", "canonicalPath must explicitly resolve symlink");
     },
   },
   {
@@ -89,18 +99,19 @@ const cases: readonly ParameterisedContractCase<ExecutionContextResolverContract
     async run({ subject }) {
       const resolved = await subject.resolver.resolve(request()); assert(resolved.ok, "context must resolve");
       const env = resolved.value.env; const abort = new AbortController(); abort.abort();
+      const abortedContext = withAbortSignal(abort.signal, BACKGROUND_CONTEXT);
       const aborted = await Promise.all([
-        env.absolutePath("x", abort.signal), env.joinPath(["x"], abort.signal), env.readTextFile("x", abort.signal), env.readTextLines("x", { abortSignal: abort.signal }),
-        env.readBinaryFile("x", abort.signal), env.writeFile("x", "x", abort.signal), env.appendFile("x", "x", abort.signal), env.renameFile("x", "y", abort.signal),
-        env.fileInfo("x", abort.signal), env.listDir("x", abort.signal), env.canonicalPath("x", abort.signal), env.exists("x", abort.signal), env.createDir("x", { abortSignal: abort.signal }),
-        env.remove("x", { abortSignal: abort.signal }), env.createTempDir("x", abort.signal), env.createTempFile({ abortSignal: abort.signal }),
+        env.absolutePath("x", abortedContext), env.joinPath(["x"], abortedContext), env.readTextFile("x", abortedContext), env.readTextLines("x", undefined, abortedContext),
+        env.readBinaryFile("x", abortedContext), env.writeFile("x", "x", abortedContext), env.appendFile("x", "x", abortedContext), env.renameFile("x", "y", abortedContext),
+        env.fileInfo("x", abortedContext), env.listDir("x", abortedContext), env.canonicalPath("x", abortedContext), env.exists("x", abortedContext), env.createDir("x", undefined, abortedContext),
+        env.remove("x", undefined, abortedContext), env.createTempDir("x", abortedContext), env.createTempFile(undefined, abortedContext),
       ]);
       assert(aborted.every((result) => !result.ok && result.error.code === "aborted"), "every FS method must resolve aborted Result");
       const backend = subject.createdRemotes().at(-1) as ExecutionEnv & { rejectAllFiles?: boolean; rejectAllFilesWithThrow?: boolean }; backend.rejectAllFiles = true;
-      const directErrors = await allFileMethods(env);
+      const directErrors = await allFileMethods(env, BACKGROUND_CONTEXT);
       assert(directErrors.every((result) => !result.ok && result.error.code === "unknown"), "every direct FileError must remain bounded");
       backend.rejectAllFilesWithThrow = true;
-      const rejections = await allFileMethods(env);
+      const rejections = await allFileMethods(env, BACKGROUND_CONTEXT);
       assert(rejections.every((result) => !result.ok && result.error.code === "unknown"), "every delegated FS rejection must become FileError unknown");
     },
   },
@@ -110,9 +121,9 @@ const cases: readonly ParameterisedContractCase<ExecutionContextResolverContract
       const resolved = await subject.resolver.resolve(request()); assert(resolved.ok, "context must resolve");
       const backend = subject.createdRemotes().at(-1) as ExecutionEnv & { script(...steps: unknown[]): void };
       backend.script({ _tag: "result", stdout: "ok", stderr: "", exitCode: 0 }, { _tag: "result", stdout: "", stderr: "bad", exitCode: 7 }, { _tag: "error", error: new ExecutionError("spawn_error", "not started") });
-      const success = await resolved.value.env.exec("one"); const nonzero = await resolved.value.env.exec("two"); const failed = await resolved.value.env.exec("three");
-      assert(success.ok && success.value.exitCode === 0, "success must preserve output");
-      assert(nonzero.ok && nonzero.value.exitCode === 7, "nonzero exit is a successful shell result");
+      const success = await resolved.value.env.exec("one", undefined, BACKGROUND_CONTEXT); const nonzero = await resolved.value.env.exec("two", undefined, BACKGROUND_CONTEXT); const failed = await resolved.value.env.exec("three", undefined, BACKGROUND_CONTEXT);
+      assert(success.ok && success.value.exitCode === 0 && success.value.truncation.totalBytes === 2, "success must preserve output metadata");
+      assert(nonzero.ok && nonzero.value.exitCode === 7 && nonzero.value.truncation.totalBytes === 3, "nonzero exit is a successful shell result with output metadata");
       assert(!failed.ok && failed.error.code === "spawn_error", "typed execution error must remain direct");
     },
   },
@@ -122,13 +133,13 @@ const cases: readonly ParameterisedContractCase<ExecutionContextResolverContract
       const one = await subject.resolver.resolve(request()); const two = await subject.resolver.resolve(request()); assert(one.ok && two.ok, "contexts must resolve");
       const first = subject.createdRemotes().at(-2) as ExecutionEnv & ScriptableProcessEnv; const second = subject.createdRemotes().at(-1) as ExecutionEnv & ScriptableProcessEnv;
       const timeoutGate = gate(); first.script({ _tag: "wait_for_stop", started: timeoutGate.started, release: timeoutGate.promise });
-      const timed = one.value.env.exec("timeout", { timeout: 0.001 }); await timeoutGate.waitStarted(); await delay(5); timeoutGate.release();
+      const timed = one.value.env.exec("timeout", { timeout: 0.001 }, BACKGROUND_CONTEXT); await timeoutGate.waitStarted(); await delay(5); timeoutGate.release();
       const timeout = await timed; assert(!timeout.ok && timeout.error.code === "timeout" && first.killedGroups.length === 1, "timeout must stop its process group");
       const abortGate = gate(); second.script({ _tag: "wait_for_stop", started: abortGate.started, release: abortGate.promise }); const controller = new AbortController();
-      const abortedPromise = two.value.env.exec("abort", { abortSignal: controller.signal }); await abortGate.waitStarted(); controller.abort(); abortGate.release();
+      const abortedPromise = two.value.env.exec("abort", undefined, withAbortSignal(controller.signal, BACKGROUND_CONTEXT)); await abortGate.waitStarted(); controller.abort(); abortGate.release();
       const aborted = await abortedPromise; assert(!aborted.ok && aborted.error.code === "aborted" && second.killedGroups.length === 1, "abort must stop its process group");
       assert(first.killedGroups.length === 1, "second context abort must not kill first context groups");
-      second.throwCleanup = true; await two.value.env.cleanup(); await two.value.env.cleanup();
+      second.throwCleanup = true; await two.value.env.cleanup(BACKGROUND_CONTEXT); await two.value.env.cleanup(BACKGROUND_CONTEXT);
       assert(second.cleanupCalls === 1, "adapter cleanup must be idempotent and non-rejecting");
     },
   },
@@ -136,10 +147,10 @@ const cases: readonly ParameterisedContractCase<ExecutionContextResolverContract
     name: "EF-H01-C8 SSH disconnect certainty distinguishes before effect and after submission",
     async run({ subject }) {
       subject.scriptRemoteDisconnect(false); const before = await subject.resolver.resolve(request()); assert(before.ok, "context must resolve");
-      const notApplied = await before.value.env.exec("before");
+      const notApplied = await before.value.env.exec("before", undefined, BACKGROUND_CONTEXT);
       assert(!notApplied.ok && notApplied.error.code === "spawn_error", "disconnect before submission must be bounded not-applied execution failure");
       subject.scriptRemoteDisconnect(true); const after = await subject.resolver.resolve(request()); assert(after.ok, "second context must resolve");
-      const unknown = await after.value.env.exec("after");
+      const unknown = await after.value.env.exec("after", undefined, BACKGROUND_CONTEXT);
       assert(!unknown.ok && unknown.error.code === "unknown", "disconnect after submission must report unknown");
     },
   },
@@ -147,7 +158,7 @@ const cases: readonly ParameterisedContractCase<ExecutionContextResolverContract
     name: "EF-H01-C9 credentials remain consumed only by execution and absent from metadata and traces",
     async run({ subject }) {
       const resolved = await subject.resolver.resolve(request()); assert(resolved.ok, "context must resolve");
-      const result = await resolved.value.env.exec("env"); assert(result.ok, "execution must consume prepared environment");
+      const result = await resolved.value.env.exec("env", undefined, BACKGROUND_CONTEXT); assert(result.ok, "execution must consume prepared environment");
       const backend = subject.createdRemotes().at(-1) as ExecutionEnv & { observedShellEnvironments?: Array<Record<string, string> | undefined> };
       assert(backend.observedShellEnvironments?.at(-1)?.EF_H01_FIXTURE_AUTH === subject.secretFixture(), "prepared secret must reach only delegate execution environment");
       const metadata = { chatJid: resolved.value.chatJid, operationId: resolved.value.operationId, route: { kind: "ssh", profileId: "profile-1" }, profile: { profileId: "profile-1", transportRef: "transport-a", cwd: "/remote/a" }, trace: subject.traceText() };
@@ -172,9 +183,28 @@ const cases: readonly ParameterisedContractCase<ExecutionContextResolverContract
       subject.setLocalFactoryFault("malformed"); const malformed = await subject.resolver.resolve(request("local")); assert(!malformed.ok && malformed.error._tag === "environment_unavailable", "malformed factory result must be bounded"); subject.setLocalFactoryFault(null);
       for (const fault of ["throw", "thenable", "malformed", "changing"] as const) {
         subject.setPreparedEnvironmentFault(fault); const preparedContext = await subject.resolver.resolve(request()); assert(preparedContext.ok, "prepared environment fault context must resolve");
-        const prepared = await preparedContext.value.env.exec("prepared"); assert(!prepared.ok && prepared.error.code === "unknown", "hostile prepared environment callback must become bounded ExecutionError unknown");
+        const prepared = await preparedContext.value.env.exec("prepared", undefined, BACKGROUND_CONTEXT); assert(!prepared.ok && prepared.error.code === "unknown", "hostile prepared environment callback must become bounded ExecutionError unknown");
       }
       subject.setPreparedEnvironmentFault(null);
+    },
+  },
+  {
+    name: "EF-H01-C11 Context identity and bounded shell-update replay are preserved",
+    async run({ subject }) {
+      const resolved = await subject.resolver.resolve(request()); assert(resolved.ok, "context must resolve");
+      const backend = subject.createdRemotes().at(-1) as ExecutionEnv & { script(...steps: unknown[]): void; observedContexts?: readonly Context[] };
+      backend.script({ _tag: "result", stdout: "abcdef", stderr: "", exitCode: 0 });
+      const key = createContextKey<string>("execution-context-resolver-contract");
+      const context = withContextValue(key, "identity", BACKGROUND_CONTEXT);
+      let replay: ShellOutputView | undefined; const updateContexts: Context[] = [];
+      const result = await resolved.value.env.exec("bounded", {
+        capture: { limits: { maxBytes: 3, maxLines: 10, retain: "tail" } },
+        onUpdate(update, updateContext) { replay = applyShellOutputUpdate(replay, update); updateContexts.push(updateContext); },
+      }, context);
+      assert(result.ok && result.value.exitCode === 0 && result.value.truncation.truncated && result.value.truncation.totalBytes === 6, "completion must return bounded-output metadata without fixture stdout/stderr");
+      assert(replay?.text === "def" && replay.truncation.totalBytes === 6, "bounded updates must replay to the retained tail");
+      assert(updateContexts.length > 0 && updateContexts.every((seen) => seen === context), "onUpdate must receive the exact invocation Context");
+      assert(backend.observedContexts?.at(-1) === context, "adapter must preserve Context identity at the execution source");
     },
   },
   {
@@ -182,9 +212,9 @@ const cases: readonly ParameterisedContractCase<ExecutionContextResolverContract
     async run(fixture) {
       const admitted = await fixture.subject.resolver.resolve(request()); assert(admitted.ok, "context must resolve");
       const oldBackend = fixture.subject.createdRemotes().at(-1) as ExecutionEnv & ScriptableProcessEnv;
-      const process = gate(); oldBackend.script({ _tag: "wait_for_stop", started: process.started, release: process.promise }); const pending = admitted.value.env.exec("owned"); await process.waitStarted();
+      const process = gate(); oldBackend.script({ _tag: "wait_for_stop", started: process.started, release: process.promise }); const pending = admitted.value.env.exec("owned", undefined, BACKGROUND_CONTEXT); await process.waitStarted();
       fixture.subject.mutateProfile({ profileId: "profile-1", transportRef: "transport-b", cwd: "/remote/b" });
-      const restored = await fixture.crashAndRestore(); await admitted.value.env.cleanup(); process.release(); await pending;
+      const restored = await fixture.crashAndRestore(); await admitted.value.env.cleanup(BACKGROUND_CONTEXT); process.release(); await pending;
       assert(oldBackend.killedGroups.length === 1, "crashed instance cleanup must stop its owned process group");
       assert(admitted.value.env.cwd === "/remote/a", "admitted context must preserve its immutable route");
       const fresh = await restored.resolver.resolve(request()); assert(fresh.ok && fresh.value.env.cwd === "/remote/b" && fresh.value.env !== admitted.value.env, "restore must reconstruct a fresh environment from the later profile");
@@ -193,8 +223,8 @@ const cases: readonly ParameterisedContractCase<ExecutionContextResolverContract
 ];
 
 interface ScriptableProcessEnv { script(...steps: unknown[]): void; readonly killedGroups: number[]; throwCleanup: boolean; cleanupCalls: number; }
-async function allFileMethods(env: ExecutionEnv) {
-  return Promise.all([env.absolutePath("x"), env.joinPath(["x"]), env.readTextFile("x"), env.readTextLines("x"), env.readBinaryFile("x"), env.writeFile("x", "x"), env.appendFile("x", "x"), env.renameFile("x", "y"), env.fileInfo("x"), env.listDir("x"), env.canonicalPath("x"), env.exists("x"), env.createDir("x"), env.remove("x"), env.createTempDir(), env.createTempFile()]);
+async function allFileMethods(env: ExecutionEnv, context: Context) {
+  return Promise.all([env.absolutePath("x", context), env.joinPath(["x"], context), env.readTextFile("x", context), env.readTextLines("x", undefined, context), env.readBinaryFile("x", context), env.writeFile("x", "x", context), env.appendFile("x", "x", context), env.renameFile("x", "y", context), env.fileInfo("x", context), env.listDir("x", context), env.canonicalPath("x", context), env.exists("x", context), env.createDir("x", undefined, context), env.remove("x", undefined, context), env.createTempDir(undefined, context), env.createTempFile(undefined, context)]);
 }
 function request(requestedRoute: "current" | "local" = "current"): ResolveExecutionContextRequest { return { chatJid: "chat-1", operationId: "operation-1", expectedOperationVersion: 1, requestedRoute }; }
 function hostile(field: string, first: unknown, second: unknown): object { let reads = 0; return { kind: "ssh", profileId: "profile-1", transportRef: "transport-a", cwd: "/remote/a", get [field]() { return reads++ === 0 ? first : second; } }; }

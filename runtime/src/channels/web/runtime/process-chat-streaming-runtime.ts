@@ -197,8 +197,16 @@ export async function createProcessChatStreamingRuntime(options: {
       const completedAt = new Date().toISOString(); const record = usage && typeof usage === "object" ? usage as Record<string, unknown> : {};
       const read = (...keys: string[]) => { for (const key of keys) { const value = Number(record[key]); if (Number.isFinite(value) && value >= 0) return value; } return 0; };
       const input = read("input", "inputTokens", "promptTokens"), output = read("output", "outputTokens", "completionTokens"), reasoning = read("reasoning", "reasoningTokens", "reasoning_tokens"), cacheRead = read("cacheRead", "cacheReadTokens"), cacheWrite = read("cacheWrite", "cacheWriteTokens"), explicit = read("totalTokens", "total", "total_tokens");
-      const total = explicit || input + output + cacheRead + cacheWrite; const cost = record.cost && typeof record.cost === "object" ? Number((record.cost as Record<string, unknown>).total) : Number(record.costTotal ?? record.cost_total);
-      const normalized = total || input || output || reasoning || cacheRead || cacheWrite ? { input_tokens: input, output_tokens: output, reasoning_tokens: reasoning, cache_read_tokens: cacheRead, cache_write_tokens: cacheWrite, total_tokens: total, ...(Number.isFinite(cost) && cost > 0 ? { cost_total: cost } : {}) } : null;
+      const total = explicit || input + output + cacheRead + cacheWrite;
+      const optionalCost = (...values: unknown[]) => { for (const value of values) { if (typeof value === "number" && Number.isFinite(value) && value >= 0) return value; } return null; };
+      const catalogueCost = record.cost && typeof record.cost === "object" ? optionalCost((record.cost as Record<string, unknown>).total) : optionalCost(record.costTotal, record.cost_total);
+      const providerCost = optionalCost(record.providerCost, record.provider_cost);
+      const providerCostKnown = providerCost !== null;
+      const catalogueCostKnown = catalogueCost !== null && catalogueCost > 0;
+      const normalized = total || input || output || reasoning || cacheRead || cacheWrite || providerCostKnown || catalogueCostKnown ? {
+        input_tokens: input, output_tokens: output, reasoning_tokens: reasoning, cache_read_tokens: cacheRead, cache_write_tokens: cacheWrite, total_tokens: total,
+        ...(providerCostKnown ? { provider_cost_total: providerCost, cost_total: providerCost, cost_provenance: "provider_reported" } : catalogueCostKnown ? { cost_total: catalogueCost, cost_provenance: "catalogue_estimate" } : {}),
+      } : null;
       return { type: "agent_timing", started_at: options.runStartedAt, completed_at: completedAt, duration_ms: Math.max(0, Date.parse(completedAt) - Date.parse(options.runStartedAt)), turn_id: turnId, source_message_id: options.sourceMessageId, ...(normalized ? { usage: normalized } : {}) };
     },
     buildThinkingRefBlocks: () => shouldPersistThinking && pendingThinkingText ? [{ type: "thinking_ref", lines: pendingThinkingLines, duration_ms: pendingThinkingDurationMs }] : [],

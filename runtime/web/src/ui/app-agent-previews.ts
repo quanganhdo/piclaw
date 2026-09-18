@@ -1,4 +1,5 @@
 import { estimatePreviewLines } from './app-helpers.js';
+import { reconcileThoughtStreamText } from './thought-stream-reconciliation.js';
 
 export interface AgentPreviewState {
   text: string;
@@ -74,12 +75,5 @@ export function applyDraftDeltaBuffer(currentBuffer: string | null | undefined, 
 }
 
 export function applyThoughtDeltaBuffer(currentBuffer: string | null | undefined, data: Record<string, any> | null | undefined): string {
-  let next = currentBuffer || '';
-  if (data?.reset) {
-    next = '';
-  }
-  if (typeof data?.delta === 'string') {
-    next += data.delta;
-  }
-  return next;
+  return reconcileThoughtStreamText(currentBuffer, data);
 }

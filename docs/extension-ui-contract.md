@@ -62,6 +62,25 @@ Runtime add-on modules register those handlers via `globalThis.__piclaw_register
 
 Do **not** treat add-on settings panes as slash-command clients. The slash-command bridge remains only as a legacy fallback for older add-ons.
 
+### Settings buttons
+
+Classic and Visual apply host-owned button styles inside registered add-on
+panes. Classic matches General's **Widget bearer token → Regenerate** button;
+Visual uses its own shared defaults. Plain `<button>` elements need no class.
+The host normalises typography, padding, borders, colours, hover, keyboard focus and disabled states,
+including older add-ons with inline button styles. Pane layout and event handlers
+remain add-on-owned; controls outside Settings are unaffected.
+
+Use `data-settings-button="primary"` for a primary action, `"danger"` for a
+destructive action, or `"icon"` for a compact icon button with an accessible label.
+The existing `primary` and `danger` classes also work. Native `disabled` prevents
+activation; `aria-disabled="true"` only supplies the visual state, so add-ons using
+it must also block the action in their handler.
+
+Tabs, switches and the host's number-stepper controls retain their geometry.
+Use `data-settings-button="unstyled"` only for a custom composite control that
+provides its own styling and keyboard focus indication.
+
 ## Low-level bridge: `extension_ui_*`
 
 The web runtime forwards `extension_ui_*` SSE events into browser events for the current chat.

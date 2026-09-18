@@ -1,0 +1,166 @@
+{
+  "version": "0.84.4",
+  "commit": "b79e4cc834970cca69daebffab7df1da7d1e52c4",
+  "source": "83b42a1be parent compatibility test and direct public probe",
+  "missingExports": [
+    "AgentHarnessConstructor",
+    "HarnessEventBus",
+    "Storage",
+    "Transaction",
+    "UsageRow"
+  ],
+  "negativeCompilerChecks": 7,
+  "toolExecuteArgumentCount": 5,
+  "operations": [
+    {
+      "operation": "prompt",
+      "status": "unsupported",
+      "reportedOperation": "prompt",
+      "errorName": "HarnessNotImplemented"
+    },
+    {
+      "operation": "skill",
+      "status": "unsupported",
+      "reportedOperation": "skill",
+      "errorName": "HarnessNotImplemented"
+    },
+    {
+      "operation": "promptFromTemplate",
+      "status": "unsupported",
+      "reportedOperation": "promptFromTemplate",
+      "errorName": "HarnessNotImplemented"
+    },
+    {
+      "operation": "compact",
+      "status": "unsupported",
+      "reportedOperation": "compact",
+      "errorName": "HarnessNotImplemented"
+    },
+    {
+      "operation": "navigateTree",
+      "status": "unsupported",
+      "reportedOperation": "navigateTree",
+      "errorName": "HarnessNotImplemented"
+    },
+    {
+      "operation": "resume",
+      "status": "unsupported",
+      "reportedOperation": "resume",
+      "errorName": "HarnessNotImplemented"
+    },
+    {
+      "operation": "abort",
+      "status": "unsupported",
+      "reportedOperation": "abort",
+      "errorName": "HarnessNotImplemented"
+    },
+    {
+      "operation": "steer",
+      "status": "unsupported",
+      "reportedOperation": "steer",
+      "errorName": "HarnessNotImplemented"
+    },
+    {
+      "operation": "followUp",
+      "status": "unsupported",
+      "reportedOperation": "followUp",
+      "errorName": "HarnessNotImplemented"
+    },
+    {
+      "operation": "nextRun",
+      "status": "unsupported",
+      "reportedOperation": "nextRun",
+      "errorName": "HarnessNotImplemented"
+    },
+    {
+      "operation": "cancelQueued",
+      "status": "unsupported",
+      "reportedOperation": "cancelQueued",
+      "errorName": "HarnessNotImplemented"
+    },
+    {
+      "operation": "recordUsage",
+      "status": "unsupported",
+      "reportedOperation": "recordUsage",
+      "errorName": "HarnessNotImplemented"
+    },
+    {
+      "operation": "waitForIdle",
+      "status": "unsupported",
+      "reportedOperation": "waitForIdle",
+      "errorName": "HarnessNotImplemented"
+    },
+    {
+      "operation": "runWhenIdle",
+      "status": "unsupported",
+      "reportedOperation": "runWhenIdle",
+      "errorName": "HarnessNotImplemented"
+    },
+    {
+      "operation": "peekAction",
+      "status": "unsupported",
+      "reportedOperation": "peekAction",
+      "errorName": "HarnessNotImplemented"
+    },
+    {
+      "operation": "executeAction",
+      "status": "unsupported",
+      "reportedOperation": "executeAction",
+      "errorName": "HarnessNotImplemented"
+    },
+    {
+      "operation": "runToCompletion",
+      "status": "unsupported",
+      "reportedOperation": "runToCompletion",
+      "errorName": "HarnessNotImplemented"
+    },
+    {
+      "operation": "watch",
+      "status": "unsupported",
+      "reportedOperation": "watch",
+      "errorName": "HarnessNotImplemented"
+    },
+    {
+      "operation": "lane",
+      "status": "unsupported",
+      "reportedOperation": "lane",
+      "errorName": "HarnessNotImplemented"
+    },
+    {
+      "operation": "createLane",
+      "status": "unsupported",
+      "reportedOperation": "createLane",
+      "errorName": "HarnessNotImplemented"
+    },
+    {
+      "operation": "lanes",
+      "status": "unsupported",
+      "reportedOperation": "lanes",
+      "errorName": "HarnessNotImplemented"
+    },
+    {
+      "operation": "watchSession",
+      "status": "unsupported",
+      "reportedOperation": "watchSession",
+      "errorName": "HarnessNotImplemented"
+    },
+    {
+      "operation": "hooks.on",
+      "status": "unsupported",
+      "reportedOperation": "hooks.on",
+      "errorName": "HarnessNotImplemented"
+    },
+    {
+      "operation": "events.on",
+      "status": "unsupported",
+      "reportedOperation": "events.on",
+      "errorName": "HarnessNotImplemented"
+    },
+    {
+      "operation": "create.restore",
+      "status": "unsupported",
+      "reportedOperation": "create.restore",
+      "errorName": "HarnessNotImplemented"
+    }
+  ]
+}

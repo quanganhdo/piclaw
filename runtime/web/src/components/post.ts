@@ -4,6 +4,7 @@ import { getMediaInfo, getMediaUrl, getThumbnailUrl, submitAdaptiveCardAction } 
 import { renderMarkdown, renderMermaidDiagrams, renderThinkingMarkdown, sanitizeUrl } from '../markdown.js';
 import { dispatchQmdViewerOpen, handleQmdLinkClick, sanitizeQmdHref } from '../qmd-links.js';
 import { dispatchVaultViewerOpen, handleVaultLinkClick, sanitizeVaultHref } from '../vault-links.js';
+import { decodeSvgSource } from '../utils/svg-images.js';
 import { formatCount, formatFileSize, formatTime, formatTimestamp } from '../utils/format.js';
 import { buildPostMarkdownCopyPayload } from '../utils/post-copy-markdown.js';
 import { DEFAULT_AGENT_NAME, getAvatarInfo } from '../ui/agent-utils.js';
@@ -247,13 +248,31 @@ export function formatAgentTokenStats(usage) {
     const cacheWrite = readUsageNumber(usage, 'cache_write_tokens');
     const total = readUsageNumber(usage, 'total_tokens') || input + output + cacheRead + cacheWrite;
     if (!total && !input && !output && !reasoning && !cacheRead && !cacheWrite) return null;
-    const parts = [`${formatCount(total)} total`];
-    if (input) parts.push(`${formatCount(input)} in`);
-    if (output) parts.push(`${formatCount(output)} out`);
-    if (reasoning) parts.push(`${formatCount(reasoning)} reasoning`);
-    const cache = cacheRead + cacheWrite;
-    if (cache) parts.push(`${formatCount(cache)} cache`);
-    return `Tokens ${parts.join(' · ')}`;
+    const lines = [`Tokens: ${formatCount(total)} total`];
+    if (input) lines.push(`Input: ${formatCount(input)}`);
+    if (output) lines.push(`Output: ${formatCount(output)}`);
+    if (reasoning) lines.push(`Reasoning: ${formatCount(reasoning)}`);
+    if (cacheRead) lines.push(`Cache read: ${formatCount(cacheRead)}`);
+    if (cacheWrite) lines.push(`Cache write: ${formatCount(cacheWrite)}`);
+    return lines.join('\n');
+}
+
+function readUsageCost(usage, key) {
+    const value = usage?.[key];
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+function formatAgentCost(usage) {
+    if (!usage || typeof usage !== 'object') return null;
+    const providerCost = readUsageCost(usage, 'provider_cost_total');
+    const effectiveCost = readUsageCost(usage, 'cost_total');
+    const provenance = usage.cost_provenance;
+    const cost = provenance === 'provider_reported' ? providerCost ?? effectiveCost : effectiveCost;
+    if (cost === null) return null;
+    const formatted = `$${cost.toFixed(cost >= 0.01 ? 2 : 4)}`;
+    if (provenance === 'provider_reported') return `Provider-reported cost: ${formatted}`;
+    if (provenance === 'catalogue_estimate') return `Catalogue cost estimate: ~${formatted}`;
+    return null;
 }
 
 export function buildPostTimeTooltip(post, timingBlock = extractAgentTimingBlock(post?.data?.content_blocks)) {
@@ -263,6 +282,8 @@ export function buildPostTimeTooltip(post, timingBlock = extractAgentTimingBlock
     if (duration) parts.push(`Agent reply took ${duration}`);
     const tokenStats = formatAgentTokenStats(timingBlock?.usage);
     if (tokenStats) parts.push(tokenStats);
+    const cost = formatAgentCost(timingBlock?.usage);
+    if (cost) parts.push(cost);
     const startedAt = typeof timingBlock?.started_at === 'string' && timingBlock.started_at.trim()
         ? formatTimestamp(timingBlock.started_at)
         : '';
@@ -1179,7 +1200,9 @@ function enhanceCodeBlocks(container) {
             event.preventDefault();
             event.stopPropagation();
             const code = pre.querySelector('code');
-            const text = code?.textContent || '';
+            const text = code?.hasAttribute('data-svg-source')
+                ? decodeSvgSource(code.getAttribute('data-svg-source') || '')
+                : code?.textContent || '';
             const ok = await copyTextToClipboard(text);
             setButtonState(button, ok ? 'success' : 'error');
             const existingTimer = resetTimers.get(button);

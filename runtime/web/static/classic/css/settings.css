@@ -174,6 +174,34 @@
     padding: 20px 28px;
 }
 
+/* Match General's Widget bearer token Regenerate control. Keep browser-native
+ * button typography, as used by .settings-row and the keychain submit control.
+ * Visual retains the shared stylesheet's defaults.
+ */
+.settings-content.settings-addon-pane {
+    --settings-addon-button-min-height: auto;
+    --settings-addon-button-min-width: 70px;
+    --settings-addon-button-font-size: calc(var(--font-size-md, 15px) * 0.84);
+    --settings-addon-button-font-weight: normal;
+    --settings-addon-button-line-height: normal;
+    --settings-addon-button-white-space: nowrap;
+    --settings-addon-button-transition: all 0s;
+    --settings-addon-button-hover-border: var(--border-color, rgba(128,128,128,0.3));
+    --settings-addon-button-disabled-opacity: 0.5;
+    --settings-addon-button-disabled-cursor: pointer;
+}
+
+.settings-content.settings-addon-pane :where(button:not(.settings-number-step-btn):not(.settings-panel__stepper-btn):not([role="tab"]):not([role="switch"]):not([data-settings-button="unstyled"])) {
+    font-family: revert !important;
+}
+
+@media (max-width: 640px) {
+    .settings-content.settings-addon-pane {
+        /* Settings content uses 0.9em on phones; Regenerate uses 0.84em. */
+        --settings-addon-button-font-size: calc(var(--font-size-md, 15px) * 0.9 * 0.84);
+    }
+}
+
 .settings-section { margin-bottom: 28px; }
 .settings-section h3 { margin: 0 0 14px; font-size: 1.1em; font-weight: 600; }
 
@@ -277,6 +305,53 @@
     background: color-mix(in srgb, var(--accent-color) 15%, var(--bg-primary));
 }
 
+/* Dense forms opt into stable label, control, and help columns. */
+.settings-dense-row {
+    --settings-dense-label-width: 220px;
+    --settings-dense-control-width: 190px;
+    display: grid;
+    grid-template-columns: var(--settings-dense-label-width) var(--settings-dense-control-width) minmax(0, 1fr);
+    align-items: center;
+    column-gap: 12px;
+}
+
+.settings-dense-row > label {
+    min-width: 0;
+}
+
+.settings-dense-row > .settings-hint {
+    min-width: 0;
+    margin: 0;
+}
+
+.settings-dense-row > select {
+    width: 100%;
+    min-width: 0;
+}
+
+.settings-dense-row > input[type="checkbox"] {
+    justify-self: start;
+    margin: 0;
+}
+
+.settings-dense-row > .settings-number-stepper {
+    justify-self: start;
+}
+
+.settings-dense-row-checkbox {
+    grid-template-columns: var(--settings-dense-label-width) var(--settings-dense-control-width) minmax(0, 1fr);
+}
+
+.settings-dense-row-compound {
+    align-items: start;
+}
+
+.settings-dense-row-compound > .settings-hint,
+.settings-dense-row-compound > .compaction-model-probe-result,
+.settings-dense-row-compound > .compaction-latency-estimate {
+    grid-column: 2 / -1;
+}
+
 .compaction-model-picker {
     align-items: flex-start;
     flex-wrap: wrap;
@@ -343,6 +418,12 @@
 
 .settings-hint a { color: var(--accent-color, #1d9bf0); }
 
+.settings-shortcut-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 14px;
+}
+
 .settings-shortcut-list {
     display: flex;
     flex-direction: column;
@@ -366,8 +447,13 @@
 }
 
 .settings-shortcut-title {
+    display: block;
     font-weight: 600;
     color: var(--text-primary);
+}
+
+.settings-shortcut-description {
+    margin: 4px 0 0;
 }
 
 .settings-shortcut-default {
@@ -390,9 +476,17 @@
     align-items: stretch;
 }
 
-.settings-shortcut-controls input {
+.settings-shortcut-controls .settings-shortcut-input {
     width: 100%;
     max-width: none;
+    padding: 6px 10px;
+    border: 1px solid var(--border-color, rgba(128,128,128,0.3));
+    border-radius: 6px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.88em;
+    line-height: normal;
+    font-family: var(--font-family-mono, ui-monospace, monospace);
 }
 
 .settings-shortcut-actions {
@@ -408,6 +502,10 @@
 .settings-dialog-narrow .settings-shortcut-controls {
     width: 100%;
     flex-basis: auto;
+}
+
+.settings-dialog-narrow .settings-shortcut-actions {
+    justify-content: flex-start;
 }
 
 .settings-totp-panel {
@@ -1192,6 +1290,27 @@
     .settings-row textarea,
     .settings-number-input { max-width: 100%; }
     .settings-number-stepper { width: 100%; }
+
+    .settings-dense-row,
+    .settings-dense-row-checkbox {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+    .settings-dense-row > *,
+    .settings-dense-row-compound > .settings-hint,
+    .settings-dense-row-compound > .compaction-model-probe-result,
+    .settings-dense-row-compound > .compaction-latency-estimate {
+        grid-column: 1;
+        min-width: 0;
+        max-width: 100%;
+    }
+    .settings-dense-row > select,
+    .settings-dense-row > .settings-number-stepper,
+    .settings-dense-row-compound > div {
+        width: 100%;
+        max-width: 100%;
+    }
 
     .settings-model-filter { margin-bottom: 6px; }
     .settings-filter-input { font-size: 0.84em; padding: 6px 10px; }

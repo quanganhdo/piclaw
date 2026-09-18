@@ -63,5 +63,16 @@ jobs:
       - name: Run canonical fast CI contract
         run: make ci-fast
 
+      - name: Install SVG acceptance browsers
+        run: bunx playwright install --with-deps chromium webkit
+
+      - name: Verify shared SVG images in Chromium and WebKit
+        env:
+          PICLAW_RUN_OPTIONAL_BROWSER_TESTS: '1'
+          PLAYWRIGHT_BROWSERS_PATH: /home/runner/.cache/ms-playwright
+        run: |
+          bun run test:local --cwd runtime -- bun test --timeout=30000 test/web/svg-images.optional.test.ts
+          PICLAW_OPTIONAL_BROWSER=webkit bun run test:local --cwd runtime -- bun test --timeout=30000 test/web/svg-images.optional.test.ts
+
       - name: Smoke-test isolated Git global install
         run: bun run smoke:repo-install

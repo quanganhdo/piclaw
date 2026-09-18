@@ -66,17 +66,17 @@ export function formatVisualLatestRunUsage(context: AgentContext | null, activeM
   const cost = formatUsd(latest.costTotal);
   const costLabel = latest.costProvenance === "provider_reported" ? cost
     : latest.costProvenance === "catalogue_estimate" && cost ? `~${cost}` : null;
-  const detail = [
-    ["in", latest.inputTokens],
-    ["out", latest.outputTokens],
-    ["reason", latest.reasoningTokens],
-    ["cache-r", latest.cacheReadTokens],
-    ["cache-w", latest.cacheWriteTokens],
-    ["total", latest.totalTokens],
+  const tokenLines = [
+    ["Tokens", latest.totalTokens],
+    ["Input", latest.inputTokens],
+    ["Output", latest.outputTokens],
+    ["Reasoning", latest.reasoningTokens],
+    ["Cache read", latest.cacheReadTokens],
+    ["Cache write", latest.cacheWriteTokens],
   ].map(([label, value]) => {
     const numeric = finiteNumber(value);
-    return numeric === null ? null : `${label} ${formatCompact(numeric)}`;
-  }).filter(Boolean).join(", ");
+    return numeric === null ? null : `${label}: ${formatCompact(numeric)}`;
+  }).filter((line): line is string => Boolean(line));
   const responseModel = typeof latest.responseModel === "string" && latest.responseModel.trim() ? latest.responseModel.trim() : null;
   const cacheTitle = cacheRate === null
     ? latest.cacheReadReported === false ? "Prompt cache telemetry unavailable" : "Prompt cache hit unavailable"
@@ -91,10 +91,10 @@ export function formatVisualLatestRunUsage(context: AgentContext | null, activeM
     title: [
       `${previous ? "Previous" : "Latest"} run${requestedModel ? `: ${requestedModel}` : ""}`,
       responseModel && responseModel !== latest.model ? `Response model: ${responseModel}` : null,
-      detail || null,
+      ...tokenLines,
       cacheTitle,
       costTitle,
-    ].filter(Boolean).join(" • "),
+    ].filter(Boolean).join("\n"),
   };
 }
 
@@ -113,13 +113,13 @@ export function formatVisualProviderUsage(usage: ProviderUsage | null): { label:
         `Key limit: ${limit}`,
         `Key remaining: ${formatUsd(usage.key_limit_remaining_usd) || "unavailable"}`,
         usage.stale ? `Telemetry stale after ${usage.refresh_failure || "refresh failure"}` : null,
-      ].filter(Boolean).join(" • "),
+      ].filter(Boolean).join("\n"),
     };
   }
   if (usage.primary && typeof usage.primary.used_percent === "number") {
     return {
       label: `${usage.primary.used_percent}% ${usage.primary.label || "premium"}`,
-      title: [usage.provider ? `Provider: ${usage.provider}` : null, usage.plan ? `Plan: ${usage.plan}` : null].filter(Boolean).join(" • "),
+      title: [usage.provider ? `Provider: ${usage.provider}` : null, usage.plan ? `Plan: ${usage.plan}` : null].filter(Boolean).join("\n"),
     };
   }
   return usage.hint_short?.trim() ? { label: usage.hint_short.trim(), title: usage.hint_short.trim() } : null;

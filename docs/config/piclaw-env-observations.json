@@ -87,7 +87,7 @@
       "semanticReaderOccurrences": 69
     },
     "docsDeploy": {
-      "referencedNames": 127,
+      "referencedNames": 128,
       "directReaderNames": 16,
       "directReaderOccurrences": 32,
       "helperReaderNames": 0,
@@ -1781,6 +1781,7 @@
             "runtime/scripts/playwright/vnc-harness-report.ts",
             "runtime/scripts/test-filesystem-isolation.ts",
             "runtime/scripts/test-target.ts",
+            "runtime/scripts/test-vnc-disposable.sh",
             "runtime/scripts/vnc-harness-standalone.ts"
           ],
           "readerFiles": [
@@ -2956,6 +2957,21 @@
       }
     },
     {
+      "name": "PICLAW_OPTIONAL_BROWSER",
+      "scopes": {
+        "docsDeploy": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            ".github/workflows/ci.yml"
+          ],
+          "readerFiles": []
+        }
+      }
+    },
+    {
       "name": "PICLAW_PACKAGE_ROOT",
       "scopes": {
         "production": {
@@ -3834,6 +3850,7 @@
           "helperReaders": 0,
           "semanticReaders": 0,
           "files": [
+            ".github/workflows/ci.yml",
             "package.json"
           ],
           "readerFiles": []
@@ -3844,6 +3861,7 @@
           "helperReaders": 0,
           "semanticReaders": 0,
           "files": [
+            "runtime/scripts/test-vnc-disposable.sh",
             "scripts/audit-session-turn-management-regression.sh"
           ],
           "readerFiles": []

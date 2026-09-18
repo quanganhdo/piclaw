@@ -397,6 +397,7 @@ type MessageKey =
   | 'settings.general.recoveryTotalBudget'
   | 'settings.general.recoveryTotalBudgetAria'
   | 'settings.general.recoveryTotalBudgetHint'
+  | 'settings.general.recoveryEffectiveBudget'
   | 'settings.general.authentication'
   | 'settings.general.widgetToken'
   | 'settings.general.token'
@@ -1039,7 +1040,8 @@ const EN: Record<MessageKey, string> = {
   'settings.general.recoveryMaxAttemptsHint': '0 inherits the normal retry limit.',
   'settings.general.recoveryTotalBudget': 'Total budget (ms)',
   'settings.general.recoveryTotalBudgetAria': 'automatic recovery total budget in milliseconds',
-  'settings.general.recoveryTotalBudgetHint': 'Caps all automatic recovery work for one turn.',
+  'settings.general.recoveryTotalBudgetHint': '0 derives one-third of the turn timeout, bounded to 6–60 minutes. Positive values are explicit caps.',
+  'settings.general.recoveryEffectiveBudget': 'Effective for the default turn timeout: {budget} ms.',
   'settings.general.authentication': 'Authentication',
   'settings.general.widgetToken': 'Widget bearer token',
   'settings.general.token': 'Token',
@@ -1681,7 +1683,8 @@ const ZH_CN: Partial<Record<MessageKey, string>> = {
   'settings.general.recoveryMaxAttemptsHint': '0 表示继承常规重试限制。',
   'settings.general.recoveryTotalBudget': '总预算（毫秒）',
   'settings.general.recoveryTotalBudgetAria': '自动恢复总预算（毫秒）',
-  'settings.general.recoveryTotalBudgetHint': '限制单个回合的所有自动恢复工作。',
+  'settings.general.recoveryTotalBudgetHint': '0 表示取回合超时的三分之一，并限制在 6–60 分钟；正数为明确上限。',
+  'settings.general.recoveryEffectiveBudget': '默认回合超时的有效预算：{budget} 毫秒。',
   'settings.general.authentication': '身份验证',
   'settings.general.widgetToken': '小部件 bearer 令牌',
   'settings.general.token': '令牌',
@@ -2323,7 +2326,8 @@ const JA: Partial<Record<MessageKey, string>> = {
   'settings.general.recoveryMaxAttemptsHint': '0 は通常の再試行上限を継承します。',
   'settings.general.recoveryTotalBudget': '合計予算（ミリ秒）',
   'settings.general.recoveryTotalBudgetAria': '自動復旧の合計予算（ミリ秒）',
-  'settings.general.recoveryTotalBudgetHint': '1 ターンのすべての自動復旧処理を制限します。',
+  'settings.general.recoveryTotalBudgetHint': '0 はターンのタイムアウトの 3 分の 1（6〜60 分に制限）を使用し、正の値は明示的な上限です。',
+  'settings.general.recoveryEffectiveBudget': '既定のターンタイムアウトでの有効予算：{budget} ミリ秒。',
   'settings.general.authentication': '認証',
   'settings.general.widgetToken': 'ウィジェット bearer トークン',
   'settings.general.token': 'トークン',

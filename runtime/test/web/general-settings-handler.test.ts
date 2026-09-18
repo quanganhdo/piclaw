@@ -148,9 +148,22 @@ test('getGeneralSettingsData exposes recovery defaults without writing configura
     expect(handler.getGeneralSettingsData()).toMatchObject({
       automaticRecoveryEnabled: true,
       automaticRecoveryMaxAttempts: 0,
-      automaticRecoveryTotalBudgetMs: 360000,
+      automaticRecoveryTotalBudgetMs: 0,
+      automaticRecoveryEffectiveBudgetMs: 1200000,
     });
     expect(existsSync(configPath)).toBe(false);
+  });
+});
+
+test('saveGeneralSettings persists automatic recovery budget mode', async () => {
+  await withTempWorkspaceEnv('piclaw-general-settings-recovery-automatic-', {}, async (workspace) => {
+    const handler = await importFresh<typeof import('../../src/channels/web/handlers/general-settings.js')>(
+      '../src/channels/web/handlers/general-settings.js',
+    );
+    const automatic = await handler.saveGeneralSettings({ automaticRecoveryTotalBudgetMs: 0 });
+    expect(automatic).toMatchObject({ automaticRecoveryTotalBudgetMs: 0, automaticRecoveryEffectiveBudgetMs: 1200000 });
+    const persisted = JSON.parse(readFileSync(join(workspace.workspace, '.piclaw', 'config.json'), 'utf8'));
+    expect(persisted.domains.recovery.automaticRecoveryTotalBudgetMs).toBe(0);
   });
 });
 
@@ -164,10 +177,10 @@ test('saveGeneralSettings rejects invalid recovery bounds without persisting the
       .rejects.toThrow('non-negative integer');
     await expect(handler.saveGeneralSettings({ automaticRecoveryMaxAttempts: 1.5 }))
       .rejects.toThrow('non-negative integer');
-    await expect(handler.saveGeneralSettings({ automaticRecoveryTotalBudgetMs: 0 }))
-      .rejects.toThrow('positive integer');
+    await expect(handler.saveGeneralSettings({ automaticRecoveryTotalBudgetMs: -1 }))
+      .rejects.toThrow('non-negative integer');
     await expect(handler.saveGeneralSettings({ automaticRecoveryTotalBudgetMs: 1000.5 }))
-      .rejects.toThrow('positive integer');
+      .rejects.toThrow('non-negative integer');
     expect(existsSync(configPath)).toBe(false);
   });
 });

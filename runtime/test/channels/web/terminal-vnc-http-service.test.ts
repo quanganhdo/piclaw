@@ -226,6 +226,7 @@ describe("web terminal/VNC HTTP service", () => {
       ws_path: "/vnc/ws",
       targets: [{ id: "desk", label: "Desk", readOnly: false }],
       target: { id: "desk", label: "desk", read_only: false, direct_connect: false },
+      history_scope: expect.stringMatching(/^[a-f0-9]{64}$/),
     });
     expect(fixture.state.authChecks).toEqual(["enabled"]);
     expect(fixture.state.vncPrepareCalls).toEqual(["desk"]);

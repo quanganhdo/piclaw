@@ -1,3 +1,4 @@
+import { createOperationModelBoundary } from "./run-operation-boundary.js";
 /**
  * agent-pool/run-agent-orchestrator.ts – Main runAgent prompt lifecycle orchestration.
  */
@@ -995,6 +996,12 @@ async function runAgentPromptWithIdentity(
   const toolCallCapRef = { exceeded: false, count: 0, cap: undefined as number | undefined };
   let toolCallUnsub: (() => void) | undefined;
   let sessionCtrl: SessionWithToolControl | null = null;
+  let abortOwner: AgentSessionRuntime["session"] | null = null;
+  const onCallerAbort = () => {
+    if (!abortOwner) return;
+    void Promise.resolve(abortOwner.abort()).catch((error) => options.onWarn?.("Caller abort failed", { operation: "run_agent.caller_abort", err: error }));
+  };
+  const operationModelBoundary = createOperationModelBoundary(runOptions);
   const toolCeiling = createRunToolCeilingController({
     chatJid,
     runOptions,
@@ -1006,6 +1013,7 @@ async function runAgentPromptWithIdentity(
       cancelScheduledIdleAutoCompaction(chatJid);
     }
 
+    if (runOptions.abortSignal?.aborted) return { status: "error", result: null, error: "Operation cancelled before prompt.", failureCategory: "aborted" };
     const runtime = await options.getOrCreateRuntime(chatJid);
     const preflightBudgetBlock = await runOptions.budgetBeforeModelCall?.("preprompt_compaction", prompt, runtime.session.model?.provider);
     if (preflightBudgetBlock) {
@@ -1165,6 +1173,10 @@ async function runAgentPromptWithIdentity(
     // session object.
     sessionCtrl = session as unknown as SessionWithToolControl;
     toolCeiling.apply(sessionCtrl);
+    operationModelBoundary.apply(session);
+    if (runOptions.abortSignal?.aborted) return { status: "error", result: null, error: "Operation cancelled before prompt.", failureCategory: "aborted" };
+    abortOwner = session;
+    runOptions.abortSignal?.addEventListener("abort", onCallerAbort, { once: true });
 
     const channel = detectChannel(chatJid);
     const retrySettings = ((runtime.services?.settingsManager as RetrySettingsProvider | undefined)?.getRetrySettings?.()) || undefined;
@@ -1177,10 +1189,7 @@ async function runAgentPromptWithIdentity(
         return attempted.output;
       }finally{restoreRetries();}
     }
-    const baseRecoveryConfig = getAutomaticRecoveryConfig(retrySettings);
-    const recoveryConfig = timeoutMs > 0
-      ? { ...baseRecoveryConfig, totalBudgetMs: Math.min(baseRecoveryConfig.totalBudgetMs, timeoutMs) }
-      : baseRecoveryConfig;
+    const recoveryConfig = getAutomaticRecoveryConfig(retrySettings, timeoutMs);
 
     const openRouterOutputBudgetState = createOpenRouterOutputBudgetState(chatJid, runOptions.turnId);
     const runRecoveryPhaseWithOutputBudget = async (): Promise<AgentOutput> => await runAgentRecoveryPhase({
@@ -1212,6 +1221,9 @@ async function runAgentPromptWithIdentity(
         session = runtime.session;
         sessionCtrl = session as unknown as SessionWithToolControl;
         toolCeiling.apply(sessionCtrl);
+        operationModelBoundary.apply(session);
+        abortOwner = session;
+        if (runOptions.abortSignal?.aborted) onCallerAbort();
         noteCompactionSuccess(session, chatJid, "rotation", {
           ...options,
           countSuccess: false,
@@ -1234,6 +1246,9 @@ async function runAgentPromptWithIdentity(
         session = runtime.session;
         sessionCtrl = session as unknown as SessionWithToolControl;
         toolCeiling.apply(sessionCtrl);
+        operationModelBoundary.apply(session);
+        abortOwner = session;
+        if (runOptions.abortSignal?.aborted) onCallerAbort();
         noteCompactionSuccess(session, chatJid, "rotation", {
           ...options,
           countSuccess: false,
@@ -1296,6 +1311,9 @@ async function runAgentPromptWithIdentity(
     endTrackedPhase(chatJid);
     updateSessionStreaming(chatJid, false);
     toolCallUnsub?.();
+    runOptions.abortSignal?.removeEventListener("abort", onCallerAbort);
+    abortOwner = null;
+    operationModelBoundary.release();
     toolCeiling.release();
     try {
       await clearLiveSshConfig(chatJid);

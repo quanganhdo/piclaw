@@ -1,0 +1,117 @@
+{
+  "approval": {
+    "message": "Yes. Use piclaw-test",
+    "at": "2026-09-17T06:58:17.667Z",
+    "sessionRepoScopeAccepted": true,
+    "scope": "disposable canary installation/restart/upgrade/rollback and synthetic tests only",
+    "productionMergeOrDeploy": false,
+    "paidProviderCalls": false
+  },
+  "target": {
+    "name": "piclaw-test",
+    "vmid": 900,
+    "node": "radxax4",
+    "address": "192.168.1.236",
+    "os": "Debian microVM Linux6.12.22 x86_64",
+    "initialState": "stopped",
+    "finalState": "stopped",
+    "snapshot": "pre-ear0851-20260917",
+    "snapshotRollback": "Proxmox task exitstatus OK"
+  },
+  "artifacts": {
+    "baseline": {
+      "source": "ad922bdaac40b3a5119aa3017a10ee63897e318b",
+      "earendil": "0.84.4",
+      "sha256": "ff05d8b62c9b21816ed45268b6c13727fde15591dfb2aa1586924ec2d697d06b"
+    },
+    "candidate": {
+      "source": "da9098fcff7f7af0e0647c8c61a1bc9895bf85c8",
+      "earendil": "0.85.1",
+      "sha256": "f7e86fa8d4b41e7fe04afbe3b0b593c0929ff3e7c303d2d1a1499938bc898cb8"
+    },
+    "laterPrChanges": "inactive evidence/tests/docs only through4b9cd52fe"
+  },
+  "validation": {
+    "candidateInputMatchesBaseline": true,
+    "rollbackCheckpointExact": true,
+    "checkpointMessageCount": 9,
+    "checkpointUsageCount": 6,
+    "checkpointQueueCount": 1,
+    "rollbackEqualityPhase": "before rollback startup",
+    "queueExecutionScope": "once per restored phase, not once globally",
+    "checkpointSessionSha256": "2346171bb83cf7368fee0a43d910b3a2fa9165efd86c097e2ee34102c649bca6",
+    "queueRecoveredOnceCandidate": true,
+    "queueRecoveredOnceRollback": true,
+    "existingMessageAndUsageRowsPreserved": true,
+    "sessionIdentityModelEffortAndToolIdsPreserved": true,
+    "extensionToolRoundtrip": true,
+    "shellTimeout": true,
+    "uiAbortAndProcessCleanup": true,
+    "managedCompaction": true,
+    "browsers": [
+      {
+        "phase": "baseline",
+        "url": "http://192.168.1.236:8080",
+        "http": 200,
+        "timelineCanary": true,
+        "settingsGeneral": true,
+        "pageErrors": []
+      },
+      {
+        "phase": "candidate-classic",
+        "url": "http://192.168.1.236:8080",
+        "http": 200,
+        "timelineCanary": true,
+        "settingsGeneral": true,
+        "pageErrors": []
+      },
+      {
+        "phase": "candidate-visual",
+        "url": "http://192.168.1.236:8080",
+        "http": 200,
+        "timelineCanary": true,
+        "settingsGeneral": true,
+        "pageErrors": []
+      },
+      {
+        "phase": "rollback-classic",
+        "url": "http://192.168.1.236:8080",
+        "http": 200,
+        "timelineCanary": true,
+        "settingsGeneral": true,
+        "pageErrors": []
+      }
+    ]
+  },
+  "isolation": {
+    "testRoot": "/opt/earendil-canary-20260917",
+    "testUser": "earcanary",
+    "testUid": 996,
+    "originalServicesStopped": [
+      "piclaw.service",
+      "opencode-proxy.service"
+    ],
+    "provider": "deterministic loopback HTTP fixture127.0.0.1:18444",
+    "networkPolicy": "nft UID rule: loopback/established replies allowed, other outbound dropped",
+    "networkCounter": "one dropped control packet; no subsequent increase in captured policy",
+    "originalSnapshotRestored": true,
+    "productionHost": "smith unchanged"
+  },
+  "baselineDefects": [
+    {
+      "issue": "https://github.com/rcarmo/piclaw/issues/1334",
+      "path": "POST /agent/runs/abort",
+      "result": "outer status ok / nested unknown /abort; active tool continues",
+      "bothVersions": true,
+      "workingPath": "message /abort in steer mode (browser Stop)"
+    }
+  ],
+  "limitations": [
+    "Targeted browser smoke only; not full E2E suite",
+    "No live paid-provider behavior tested",
+    "No external MCP server lifecycle canary; existing local integration evidence remains separate",
+    "No explicit canary UI-prompt watchdog/deadline interaction or branch/model-switch sequence",
+    "Rollback restored baseline checkpoint; candidate-written-store downgrade compatibility is not claimed",
+    "Full HC/raw Storage and non-Linux coverage are not implied"
+  ]
+}

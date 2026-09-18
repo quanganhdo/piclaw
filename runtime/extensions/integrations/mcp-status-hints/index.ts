@@ -1,10 +1,11 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { loadMcpConfig } from "pi-mcp-adapter/config.ts";
-import { loadMetadataCache, type MetadataCache } from "pi-mcp-adapter/metadata-cache.ts";
-import { resourceNameToToolName } from "pi-mcp-adapter/resource-tools.ts";
-import type { McpConfig } from "pi-mcp-adapter/types.ts";
-import { formatToolName } from "pi-mcp-adapter/types.ts";
-import { getConfigPathFromArgv } from "pi-mcp-adapter/utils.ts";
+import {
+  formatToolName,
+  loadMcpStatusHintRuntimeState,
+  resourceNameToToolName,
+  type McpStatusHintConfig,
+  type McpStatusHintMetadataCache,
+} from "../../../src/extensions/mcp-status-hint-adapter.js";
 import { registerToolStatusHintProvider } from "../../../src/tool-status-hints.js";
 
 export const MCP_STATUS_ICON_SVG = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="7" cy="12" r="2.5"></circle><circle cx="17" cy="7" r="2.5"></circle><circle cx="17" cy="17" r="2.5"></circle><path d="M9.2 11 14.8 8"></path><path d="M9.2 13 14.8 16"></path></svg>`;
@@ -39,7 +40,7 @@ function pushProxyTool(map: Map<string, string[]>, toolName: string, serverName:
   map.set(toolName, existing);
 }
 
-export function buildMcpToolServerIndex(config: McpConfig, cache: MetadataCache | null): ToolServerIndex {
+export function buildMcpToolServerIndex(config: McpStatusHintConfig, cache: McpStatusHintMetadataCache | null): ToolServerIndex {
   const directToolToServer = new Map<string, string>();
   const proxyToolToServers = new Map<string, string[]>();
   if (!config || !cache) return { directToolToServer, proxyToolToServers };
@@ -104,7 +105,7 @@ export function resolveMcpServerName(
 
 export function buildMcpStatusHintLabel(
   serverName: string | null,
-  config: McpConfig,
+  config: McpStatusHintConfig,
 ): { label: string; title: string } | null {
   if (!serverName) return null;
   const definition = config.mcpServers?.[serverName];
@@ -115,13 +116,9 @@ export function buildMcpStatusHintLabel(
   };
 }
 
-function loadMcpStatusHintState(): { config: McpConfig; index: ToolServerIndex } {
-  const config = loadMcpConfig(getConfigPathFromArgv());
-  const cache = loadMetadataCache();
-  return {
-    config,
-    index: buildMcpToolServerIndex(config, cache),
-  };
+function loadMcpStatusHintState(): { config: McpStatusHintConfig; index: ToolServerIndex } {
+  const { config, cache } = loadMcpStatusHintRuntimeState();
+  return { config, index: buildMcpToolServerIndex(config, cache) };
 }
 
 registerToolStatusHintProvider({

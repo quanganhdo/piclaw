@@ -59,7 +59,7 @@ export interface EarendilCapabilityEvidence {
   readonly reason: "harness_not_implemented" | "restore_not_implemented" | "missing_v3_surface" | "partial_scaffold_is_not_capability";
 }
 
-export interface EarendilHarnessCompatibilityManifest {
+export interface HistoricalEarendilHarnessCompatibilityManifest {
   readonly schemaVersion: 2;
   readonly authority: Readonly<{
     currentRuntimeVersion: "0.84.4";
@@ -75,6 +75,13 @@ export interface EarendilHarnessCompatibilityManifest {
   readonly boundaries: readonly EarendilBoundaryEvidence[];
   readonly capabilities: readonly EarendilCapabilityEvidence[];
   readonly promotionCriteria: readonly Readonly<{ id: `PG-0${number}`; requirement: string }>[];
+}
+
+export interface EarendilHarnessCompatibilityManifest {
+  readonly schemaVersion: 3;
+  readonly authority: Readonly<{ currentRuntimeVersion: "0.85.1"; harnessActivation: "latent_only"; unsupportedCountsAsPass: false }>;
+  readonly historical: HistoricalEarendilHarnessCompatibilityManifest;
+  readonly selected: typeof SELECTED_RELEASE;
 }
 
 export type EarendilManifestIssueCode =
@@ -245,7 +252,7 @@ const PROMOTION_CRITERIA = [
   { id: "PG-09", requirement: "Obtain separate approval for Harness activation callers schemas and convergence." },
 ] as const;
 
-const RAW_MANIFEST = {
+const HISTORICAL_MANIFEST = {
   schemaVersion: 2,
   authority: {
     currentRuntimeVersion: "0.84.4",
@@ -298,6 +305,414 @@ const RAW_MANIFEST = {
   boundaries: BOUNDARIES,
   capabilities: CAPABILITIES,
   promotionCriteria: PROMOTION_CRITERIA,
+} as const satisfies HistoricalEarendilHarnessCompatibilityManifest;
+
+const SELECTED_RELEASE = {
+  "version": "0.85.1",
+  "commit": "d981de1229ef899957bbe968bc8dcda02a21f477",
+  "runtimeSelection": "candidate_branch_only",
+  "harnessSelection": "inactive_partial_evidence",
+  "packages": [
+    {
+      "name": "@earendil-works/chord",
+      "version": "0.85.1",
+      "integrity": "sha512-VDlkEC3dhCzQ5fcyH1OhG19dq+6jCn+rqc/iXFivwDYGR5anwo2RCiXij9PpHhqNR5GuhhE+Er69Zi1Sn4eY6w==",
+      "shasum": "acc677176bee8b7c1fbed96483317f694398aded",
+      "gitHead": "d981de1229ef899957bbe968bc8dcda02a21f477",
+      "engine": ">=22.19.0",
+      "installation": "transitive",
+      "exports": [
+        ".",
+        "./bundler",
+        "./context",
+        "./delta",
+        "./node",
+        "./package.json"
+      ],
+      "internalDependencies": []
+    },
+    {
+      "name": "@earendil-works/pi-agent-core",
+      "version": "0.85.1",
+      "integrity": "sha512-hIXIP3eAWueAYiAl8aMvWCvvZ8Q5gT3Dip5bE5uJyIGh4+YlWRjtMLI4BaeoXoSs93zndjue61u1B/vhefLnuA==",
+      "shasum": "8a85116c0d4494e4d9e82341237d91ad360fdc2a",
+      "gitHead": "d981de1229ef899957bbe968bc8dcda02a21f477",
+      "engine": ">=22.19.0",
+      "installation": "direct",
+      "exports": [
+        ".",
+        "./harness/context",
+        "./harness/env/nodejs",
+        "./harness/runtime/reducer",
+        "./harness/session",
+        "./harness/session/testing",
+        "./node",
+        "./package.json"
+      ],
+      "internalDependencies": [
+        {
+          "name": "@earendil-works/chord",
+          "range": "^0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "range": "^0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "range": "^0.85.1"
+        }
+      ]
+    },
+    {
+      "name": "@earendil-works/pi-ai",
+      "version": "0.85.1",
+      "integrity": "sha512-+VgVIJDkDO2efYJKEEqvPTH4zmnIaXdAppGbO+vKFA9qy5PdhFiAenuFAkU+oiCSfOC4dMHDyrjdQeL4ZoC5CQ==",
+      "shasum": "3f5726032c30149f6060a3aeacb79436c7387a37",
+      "gitHead": "d981de1229ef899957bbe968bc8dcda02a21f477",
+      "engine": ">=22.19.0",
+      "installation": "direct",
+      "exports": [
+        ".",
+        "./api/*",
+        "./bedrock-provider",
+        "./bun-oauth",
+        "./compat",
+        "./oauth",
+        "./providers/*",
+        "./utils/*"
+      ],
+      "internalDependencies": [
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "range": "^0.85.1"
+        }
+      ]
+    },
+    {
+      "name": "@earendil-works/pi-coding-agent",
+      "version": "0.85.1",
+      "integrity": "sha512-FGRN+OHbWaefBPGaTggAdLjrIHW+s2PzLyglz/5dfLzb9of7uuXMXYC0fJIeZTw+shS32o2cuQ9jF7YSDuL/oQ==",
+      "shasum": "4cd00f653c3dabeb193b46f511044e7fbfe0f947",
+      "gitHead": "d981de1229ef899957bbe968bc8dcda02a21f477",
+      "engine": ">=22.19.0",
+      "installation": "direct",
+      "exports": [
+        ".",
+        "./client",
+        "./experimental/plugin",
+        "./rpc-entry"
+      ],
+      "internalDependencies": [
+        {
+          "name": "@earendil-works/chord",
+          "range": "^0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "range": "^0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "range": "^0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "range": "^0.85.1"
+        }
+      ]
+    },
+    {
+      "name": "@earendil-works/pi-telemetry",
+      "version": "0.85.1",
+      "integrity": "sha512-Bg/YN6kA7Swja/NQxka8xFdecb4E/auIEGF2G5A25EaQXhRnPj300/7/KpgsDDMYUzHTDAv4RyUxaQPJKW81Rw==",
+      "shasum": "b4dbe9155fff8aedb3ff752e7a954b9c7201ddf1",
+      "gitHead": "d981de1229ef899957bbe968bc8dcda02a21f477",
+      "engine": ">=22.19.0",
+      "installation": "transitive",
+      "exports": [
+        ".",
+        "./testing"
+      ],
+      "internalDependencies": []
+    },
+    {
+      "name": "@earendil-works/pi-tui",
+      "version": "0.85.1",
+      "integrity": "sha512-OIzw9efInmO4WOBnD4TxcTdBjmzvYJpzslkgoUro946nEGoYWg5rwv1p4fDt3/JvMx9QybryUCUwlm7j8Dreig==",
+      "shasum": "06a13bc6f4093f14262e72868234e6d4eb9bbf55",
+      "gitHead": "d981de1229ef899957bbe968bc8dcda02a21f477",
+      "engine": ">=22.19.0",
+      "installation": "transitive",
+      "exports": [],
+      "internalDependencies": []
+    }
+  ],
+  "fingerprints": [
+    {
+      "package": "@earendil-works/pi-agent-core",
+      "subpath": ".",
+      "kind": "runtime",
+      "sha256": "4a551a8b128525e90f3da827f5c459a6f6ba39796c63b2ba73d0f0bfb7be9e72"
+    },
+    {
+      "package": "@earendil-works/pi-agent-core",
+      "subpath": ".",
+      "kind": "declaration",
+      "sha256": "3ce94af0dcd9a9f82cdb2e6aa213222e29b42401367eb6c31c747fee02364611"
+    },
+    {
+      "package": "@earendil-works/pi-agent-core",
+      "subpath": "./node",
+      "kind": "runtime",
+      "sha256": "84c03ea93b7c4a6a656a3f560c1301ed825ca2f97ce919e16ee52bd13d88f28c"
+    },
+    {
+      "package": "@earendil-works/pi-agent-core",
+      "subpath": "./node",
+      "kind": "declaration",
+      "sha256": "eeb8d9441cb120cb5b0f86dc884e8df4c8e129a5f0a8d7d505da9a7186946686"
+    },
+    {
+      "package": "@earendil-works/pi-agent-core",
+      "subpath": "./harness/context",
+      "kind": "runtime",
+      "sha256": "3c6f154b1fd181967991b6df371e55eb2e52e834591b56bec928805cff54b143"
+    },
+    {
+      "package": "@earendil-works/pi-agent-core",
+      "subpath": "./harness/context",
+      "kind": "declaration",
+      "sha256": "8cddbf79a46b2b79f337d08b59049918be74d0efbdadbbf9c476c1af53e52eca"
+    },
+    {
+      "package": "@earendil-works/pi-agent-core",
+      "subpath": "./harness/env/nodejs",
+      "kind": "runtime",
+      "sha256": "30c08f4619c896048ba51dfe9dfc408644d425eabc86eb38cae116647fea8a98"
+    },
+    {
+      "package": "@earendil-works/pi-agent-core",
+      "subpath": "./harness/env/nodejs",
+      "kind": "declaration",
+      "sha256": "f604426f24f2a7a7c82c647cddeb85c4915b20a7a1074cbc3e3ac9f8fc3969fd"
+    },
+    {
+      "package": "@earendil-works/pi-agent-core",
+      "subpath": "./harness/session",
+      "kind": "runtime",
+      "sha256": "685d779201af8a00ee8572a36b71ea88b64643d0df5a3acfef90d14c9bb69ed1"
+    },
+    {
+      "package": "@earendil-works/pi-agent-core",
+      "subpath": "./harness/session",
+      "kind": "declaration",
+      "sha256": "e89de9bae6e9f45350f26c789934c9120c4f5ca4aba252e9fb72e9d790e3612d"
+    },
+    {
+      "package": "@earendil-works/pi-agent-core",
+      "subpath": "./harness/session/testing",
+      "kind": "runtime",
+      "sha256": "0ddcde3a3353af89353bf8667a9552d8c4f4eb1d6df8b4d13c913a99a20a62c5"
+    },
+    {
+      "package": "@earendil-works/pi-agent-core",
+      "subpath": "./harness/session/testing",
+      "kind": "declaration",
+      "sha256": "0ea7e2f85101ab3c4e0793da2baa01f921ac000c36f07c95bef3fac9fc31a654"
+    },
+    {
+      "package": "@earendil-works/pi-ai",
+      "subpath": ".",
+      "kind": "runtime",
+      "sha256": "010778daab84fd68b88507d6cd2c4ff1fc1f2efe230e096100eebff98d5183a5"
+    },
+    {
+      "package": "@earendil-works/pi-ai",
+      "subpath": ".",
+      "kind": "declaration",
+      "sha256": "1a17322292ed4af5ba0e1d801ca47917a22aa465112b1e8ef3f679c61c7cc460"
+    },
+    {
+      "package": "@earendil-works/pi-coding-agent",
+      "subpath": ".",
+      "kind": "runtime",
+      "sha256": "82cb4ea864f3d8816c06bc8f2f2d9a8d82d883297af179dc69d287d042834844"
+    },
+    {
+      "package": "@earendil-works/pi-coding-agent",
+      "subpath": ".",
+      "kind": "declaration",
+      "sha256": "f1cb93477c7357d08b839c0663d079b8f9bb949079ed7b50a71f8d2945cece90"
+    }
+  ],
+  "conformance": {
+    "repositoryCatalogueCount": 17,
+    "memoryRepositoryCases": 17,
+    "jsonlRepositoryCases": 15,
+    "backendExecutions": 32,
+    "catalogueAndExecutionCountChecks": 2,
+    "memory": "pass",
+    "jsonl": "pass",
+    "storage": "not_admitted_private_constructors",
+    "sqlite": "not_evaluated"
+  },
+  "capabilities": [
+    {
+      "id": "HC-001",
+      "name": "simple prompt",
+      "requirement": "Acceptance precedes provider effects; terminal settlement yields one result and lane.lastResult.",
+      "status": "partial",
+      "evidence": "accept persists operation before generation; drive settles transcript and getResult once"
+    },
+    {
+      "id": "HC-002",
+      "name": "tool prompt",
+      "requirement": "Tool effect_pending commits before execution; tool result and final run settle once.",
+      "status": "partial",
+      "evidence": "six arguments, Piclaw authority distinct from Harness operation; awaited memo read/write/delete and late-write rejection"
+    },
+    {
+      "id": "HC-003",
+      "name": "parallel tools",
+      "requirement": "Parallel effects may complete out of order while durable results commit in source order.",
+      "status": "partial",
+      "evidence": "parallel effects finish out of order; transcript tool results retain source order"
+    },
+    {
+      "id": "HC-004",
+      "name": "safe replay",
+      "requirement": "Restore re-executes effect_pending only when persisted and current declarations both say safe.",
+      "status": "partial",
+      "evidence": "Public JSONL process loss at effect_pending after awaited memo writes: four persisted/current safe-never combinations; safe-safe preserves invocation/turn/operation identity, memo deletion and reserved result ID; settled third-process drive repeats neither fixture invocation nor provider call. Other crash boundaries unproved."
+    },
+    {
+      "id": "HC-005",
+      "name": "never replay",
+      "requirement": "Restore settles a never-replay tool under its reserved result ID without re-execution.",
+      "status": "partial",
+      "evidence": "Public JSONL process loss: persisted-never or current-never prevents fixture replay, publishes one interrupted tool result at the reserved ID, and remains settled after a third-process drive. Other effects and crash points unproved."
+    },
+    {
+      "id": "HC-006",
+      "name": "steer",
+      "requirement": "An active operation owns accepted steer until one placement transaction consumes it.",
+      "status": "partial",
+      "evidence": "queue admission, lane identity and cancellation; active-run steer crash races not proved"
+    },
+    {
+      "id": "HC-007",
+      "name": "follow-up",
+      "requirement": "Follow-up stays operation-owned and executes after current work according to queue mode.",
+      "status": "partial",
+      "evidence": "queue admission, lane identity and cancellation; finish-boundary follow-up crash races not proved"
+    },
+    {
+      "id": "HC-008",
+      "name": "next run",
+      "requirement": "Lane pendingNextRun survives cleanup and one later operation captures it once.",
+      "status": "partial",
+      "evidence": "nextRun consumed once by an accepted successor; process-loss retention not proved"
+    },
+    {
+      "id": "HC-009",
+      "name": "abort",
+      "requirement": "Cancellation commits before signal pull; late effects cannot create a second terminal settlement.",
+      "status": "partial",
+      "evidence": "requestAbort uses exact operation identity; late invocation write rejected and operation settles"
+    },
+    {
+      "id": "HC-010",
+      "name": "compaction",
+      "requirement": "Manual threshold and overflow compaction preserve structural preparation and result state.",
+      "status": "unverified",
+      "evidence": "No selected-release complete semantic proof yet; historical unsupported result is not promoted."
+    },
+    {
+      "id": "HC-011",
+      "name": "retry",
+      "requirement": "Captured retry policy options and attempt progression survive restore with specified effective options.",
+      "status": "unverified",
+      "evidence": "No selected-release complete semantic proof yet; historical unsupported result is not promoted."
+    },
+    {
+      "id": "HC-012",
+      "name": "suspension",
+      "requirement": "Deferred missing-identity and crash suspension report the current operation and resume safely.",
+      "status": "unverified",
+      "evidence": "No selected-release complete semantic proof yet; historical unsupported result is not promoted."
+    },
+    {
+      "id": "HC-013",
+      "name": "restore",
+      "requirement": "Bounded current-register reads reconstruct open state without folding full history.",
+      "status": "unverified",
+      "evidence": "No selected-release complete semantic proof yet; historical unsupported result is not promoted."
+    },
+    {
+      "id": "HC-014",
+      "name": "corruption",
+      "requirement": "Invalid current-register and reference combinations fail without silent repair.",
+      "status": "partial",
+      "evidence": "Public Session writes an incomplete lane register set referencing a missing operation; real constructor rejects while the register remains unchanged and the branch still exists. Other corruption variants unproved."
+    },
+    {
+      "id": "HC-015",
+      "name": "lane isolation",
+      "requirement": "Operations configuration and queues do not cross named lanes.",
+      "status": "partial",
+      "evidence": "no implicit lane; atomic same-name acquire and configuration isolation"
+    },
+    {
+      "id": "HC-016",
+      "name": "close",
+      "requirement": "Close writes nothing rejects new work drains admitted commits and leaves open work resumable.",
+      "status": "partial",
+      "evidence": "close invokes no provider; accepted-undriven operation restored from public repository"
+    },
+    {
+      "id": "HC-017",
+      "name": "manual drive",
+      "requirement": "Manual and automatic drive yield identical durable state while one action advances at a time.",
+      "status": "partial",
+      "evidence": "Public prompt versus accept-drive for one deterministic turn produces equal role/content transcript, completed result kind/status, empty queues and one provider call. Full boundary-by-boundary state equality remains unproved."
+    },
+    {
+      "id": "HC-018",
+      "name": "hooks events and watch",
+      "requirement": "Typed hooks obey settlement barriers and snapshot-first buffered event ordering.",
+      "status": "partial",
+      "evidence": "before_run registration order, lane snapshot/resnapshot, entry committed before watch.start delivered from buffer, and blocked before_run_end hook delaying drive settlement/run_end; other interleavings unproved and watchSession stub remains unsupported"
+    },
+    {
+      "id": "HC-019",
+      "name": "usage",
+      "requirement": "Each settled attempt has one UsageRow and totals equal the non-duplicated ledger sum.",
+      "status": "partial",
+      "evidence": "explicit adjustments yield stable lane/session usage totals; retry-cost provenance remains Piclaw-owned"
+    },
+    {
+      "id": "HC-020",
+      "name": "deferred provider",
+      "requirement": "One poll per resume preserves handle lineage and cancel/restart outcomes.",
+      "status": "unverified",
+      "evidence": "No selected-release complete semantic proof yet; historical unsupported result is not promoted."
+    }
+  ],
+  "watchSession": {
+    "status": "unsupported",
+    "publicDeclaration": "Promise<WatchHandle<SessionSnapshot>>",
+    "runtimeDeclaration": "Promise<never>",
+    "runtimeError": "SliceNotImplemented"
+  },
+  "productionActivation": false
+} as const;
+
+const RAW_MANIFEST = {
+  schemaVersion: 3,
+  authority: { currentRuntimeVersion: "0.85.1", harnessActivation: "latent_only", unsupportedCountsAsPass: false },
+  historical: HISTORICAL_MANIFEST,
+  selected: SELECTED_RELEASE,
 } as const satisfies EarendilHarnessCompatibilityManifest;
 
 const CANONICAL_MANIFEST = deepFreeze(RAW_MANIFEST);

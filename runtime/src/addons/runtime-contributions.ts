@@ -1,4 +1,8 @@
-import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, statSync } from "node:fs";
+import { AddonOperationService } from "./operation-service.js";
+import { admitAddonOutboundWork } from './operation-outbound-admission.js';
+import type { OperationHost } from "./operation-contracts.js";
+import { getCurrentAddonRegistrationOwner } from "./external-routes.js";
+import { mkdirSync, realpathSync } from "node:fs";
 import { join, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { getDataDir, getWorkspaceDir as getConfiguredWorkspaceDir } from "../core/config.js";
@@ -14,6 +18,11 @@ import {
   type ChatTransport,
 } from "../extensions/chat-transport-registry.js";
 import { resetRuntimeStreamSessionsForTests, runtimeStreamSessions } from "./runtime-stream-sessions.js";
+import {
+  listInstalledAddonPackageDirs,
+  readInstalledAddonPackage,
+  resolveAddonPackageEntries,
+} from "./package-entries.js";
 import {
   freezeExternalAddonRoutes,
   registerExternalAddonRoute,
@@ -102,6 +111,12 @@ export interface PiclawRuntimeExternalRoutesApiV1 {
   register(registration: ExternalAddonRouteRegistration): () => void;
 }
 
+export interface PiclawRuntimeOperationsApiV1 {
+  version: 1;
+  /** Register only during an owning startup import; verified principals bind later. */
+  register(): { forPrincipal(principalId: string): ReturnType<AddonOperationService["bind"]>; admitOutbound(): ReturnType<typeof admitAddonOutboundWork> };
+}
+
 export interface PiclawRuntimeAddonApi {
   lifecycle: {
     version: 1;
@@ -113,13 +128,14 @@ export interface PiclawRuntimeAddonApi {
   enqueueAgentMessage: AddonAgentMessageEnqueuer;
   messaging: PiclawRuntimeMessagingApiV1;
   externalRoutes: PiclawRuntimeExternalRoutesApiV1;
+  operations: PiclawRuntimeOperationsApiV1;
   createMedia: typeof createMedia;
   getMediaById: typeof getMediaById;
   postMessage: typeof postMessagesToolMessage;
   streamSessions: typeof runtimeStreamSessions;
 }
 
-type AddonPackageManifest = {
+type RuntimeAddonPackageManifest = {
   name?: string;
   pi?: {
     runtime?: {
@@ -183,23 +199,6 @@ function getWorkspaceDir(): string {
   return getConfiguredWorkspaceDir();
 }
 
-function listAddonPackageDirs(addonsNodeModulesDir: string): string[] {
-  if (!existsSync(addonsNodeModulesDir)) return [];
-  const results: string[] = [];
-  for (const entry of readdirSync(addonsNodeModulesDir, { withFileTypes: true })) {
-    if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
-    const entryPath = join(addonsNodeModulesDir, entry.name);
-    if (entry.name.startsWith("@")) {
-      for (const scoped of readdirSync(entryPath, { withFileTypes: true })) {
-        if (scoped.isDirectory() || scoped.isSymbolicLink()) results.push(join(entryPath, scoped.name));
-      }
-      continue;
-    }
-    results.push(entryPath);
-  }
-  return results;
-}
-
 export type AddonRuntimeEntryLoad = "lazy" | "startup";
 
 export interface InstalledAddonRuntimeEntry {
@@ -212,31 +211,17 @@ export function getInstalledAddonRuntimeEntries(workspaceDir = getWorkspaceDir()
   const addonsNodeModulesDir = join(workspaceDir, ".pi", "extensions", "node_modules");
   const runtimeEntries: InstalledAddonRuntimeEntry[] = [];
 
-  for (const packageDir of listAddonPackageDirs(addonsNodeModulesDir)) {
-    const packageJsonPath = join(packageDir, "package.json");
-    if (!existsSync(packageJsonPath)) continue;
-
-    try {
-      const manifest = JSON.parse(readFileSync(packageJsonPath, "utf8")) as AddonPackageManifest;
-      const declared = Array.isArray(manifest?.pi?.runtime?.entries)
-        ? manifest.pi.runtime.entries.filter((value): value is string => typeof value === "string" && Boolean(value.trim()))
-        : [];
-      const load: AddonRuntimeEntryLoad = manifest?.pi?.runtime?.load === "startup" ? "startup" : "lazy";
-      const realPackageDir = realpathSync(packageDir);
-      for (const relativePath of declared) {
-        const fullPath = resolve(packageDir, relativePath);
-        if (fullPath !== packageDir && !fullPath.startsWith(`${packageDir}${sep}`)) continue;
-        if (!existsSync(fullPath) || !statSync(fullPath).isFile()) continue;
-        const realEntryPath = realpathSync(fullPath);
-        if (realEntryPath !== realPackageDir && !realEntryPath.startsWith(`${realPackageDir}${sep}`)) continue;
-        runtimeEntries.push({
-            packageName: typeof manifest.name === "string" && manifest.name.trim() ? manifest.name.trim() : packageDir.split(/[\\/]/).pop() || "unknown",
-            path: fullPath,
-            load,
-          });
-      }
-    } catch {
-      continue;
+  for (const packageDir of listInstalledAddonPackageDirs(addonsNodeModulesDir)) {
+    const addonPackage = readInstalledAddonPackage(packageDir);
+    if (!addonPackage) continue;
+    const manifest = addonPackage.manifest as RuntimeAddonPackageManifest;
+    const load: AddonRuntimeEntryLoad = manifest.pi?.runtime?.load === "startup" ? "startup" : "lazy";
+    for (const entryPath of resolveAddonPackageEntries(packageDir, manifest.pi?.runtime?.entries)) {
+      runtimeEntries.push({
+        packageName: typeof manifest.name === "string" && manifest.name.trim() ? manifest.name.trim() : packageDir.split(/[\\/]/).pop() || "unknown",
+        path: entryPath,
+        load,
+      });
     }
   }
 
@@ -343,6 +328,20 @@ async function enqueueAgentMessageViaRuntime(request: RuntimeAgentMessageRequest
   return await agentMessageEnqueuer(request);
 }
 
+let operationService: AddonOperationService | null = null;
+export function setAddonOperationHost(host: OperationHost): void {
+  if (operationService) throw new Error("Operation host already installed.");
+  operationService = new AddonOperationService(host);
+  registerAddonRuntimeShutdownHandler(() => operationService?.shutdown());
+  operationService.recover();
+}
+function registerOperations() {
+  const owner = getCurrentAddonRegistrationOwner();
+  if (!owner || !operationService) throw new Error("Operations require an owning startup import and a ready host.");
+  const service = operationService;
+  return Object.freeze({ forPrincipal: (principalId: string) => service.bind({ addonId: owner.addonId, principalId }), admitOutbound: () => admitAddonOutboundWork(owner.addonId) });
+}
+
 export function installAddonRuntimeApi(): PiclawRuntimeAddonApi {
   if (!addonRuntimeShutdownHookRegistered) {
     addonRuntimeShutdownHookRegistered = true;
@@ -370,6 +369,7 @@ export function installAddonRuntimeApi(): PiclawRuntimeAddonApi {
       version: 1,
       register: registerExternalAddonRoute,
     },
+    operations: { version: 1, register: registerOperations },
     createMedia,
     getMediaById,
     postMessage: postMessagesToolMessage,
@@ -470,6 +470,8 @@ export async function shutdownAddonRuntimeContributionsForTests(): Promise<void>
 }
 
 export function resetAddonRuntimeContributionsForTests(): void {
+  operationService?.shutdown();
+  operationService = null;
   statusPanelProviders.clear();
   adaptiveCardIntentHandlers.clear();
   for (const unregister of [...addonChatTransportUnregisters]) unregister();

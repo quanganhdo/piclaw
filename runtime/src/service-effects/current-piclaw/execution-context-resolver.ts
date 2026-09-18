@@ -1,4 +1,5 @@
 import {
+  BACKGROUND_CONTEXT,
   Result,
   type ExecutionEnv,
   type Result as ResultValue,
@@ -96,12 +97,12 @@ export class CurrentPiclawExecutionContextResolver implements ExecutionContextRe
   }
 
   private async createLocal(): Promise<ResultValue<ExecutionEnv, ExecutionContextError>> {
-    try { return normaliseFactoryResult(await Promise.resolve(this.localEnvironments.createLocalEnv()), "environment_unavailable"); }
+    try { return await normaliseFactoryResult(await Promise.resolve(this.localEnvironments.createLocalEnv()), "environment_unavailable"); }
     catch { return Result.err(error("environment_unavailable", true)); }
   }
 
   private async createSsh(profile: SshExecutionProfileSnapshot): Promise<ResultValue<ExecutionEnv, ExecutionContextError>> {
-    try { return normaliseFactoryResult(await Promise.resolve(this.sshEnvironments.createSshEnv(profile)), "environment_unavailable"); }
+    try { return await normaliseFactoryResult(await Promise.resolve(this.sshEnvironments.createSshEnv(profile)), "environment_unavailable"); }
     catch { return Result.err(error("environment_unavailable", true)); }
   }
 }
@@ -144,14 +145,25 @@ function normaliseProfile(value: unknown): SshExecutionProfileSnapshot | null {
   } catch { return null; }
 }
 
-function normaliseFactoryResult(value: unknown, tag: ExecutionContextError["_tag"]): ResultValue<ExecutionEnv, ExecutionContextError> {
+async function normaliseFactoryResult(value: unknown, tag: ExecutionContextError["_tag"]): Promise<ResultValue<ExecutionEnv, ExecutionContextError>> {
   try {
     if (!recordValue(value)) return Result.err(error(tag, true));
-    const ok = stable(value, "ok");
+    let ok: unknown;
+    try { ok = stable(value, "ok"); }
+    catch {
+      await cleanupCandidates(boundedField(value, "value").candidates);
+      return Result.err(error(tag, true));
+    }
     if (ok === false) return Result.err(normaliseError(stable(value, "error"), tag));
-    if (ok !== true) return Result.err(error(tag, true));
-    const captured = captureExecutionEnv(stable(value, "value"));
-    return captured ? Result.ok(captured) : Result.err(error(tag, true));
+    const field = boundedField(value, "value");
+    if (ok !== true || !field.stable) {
+      await cleanupCandidates(field.candidates);
+      return Result.err(error(tag, true));
+    }
+    const captured = captureExecutionEnv(field.value);
+    if (captured) return Result.ok(captured);
+    await cleanupCandidates(field.candidates);
+    return Result.err(error(tag, true));
   } catch { return Result.err(error(tag, true)); }
 }
 
@@ -178,8 +190,26 @@ function captureExecutionEnv(value: unknown): ExecutionEnv | null {
 function context(request: Readonly<ResolveExecutionContextRequest>, env: ExecutionEnv, localEnv: ExecutionEnv): PiclawToolContext { return Object.freeze({ chatJid: request.chatJid, operationId: request.operationId, env, localEnv }); }
 function recordValue(value: unknown): value is Record<string, unknown> { return Boolean(value && typeof value === "object" && !Array.isArray(value)); }
 function stable(record: Record<string, unknown>, key: string): unknown { const value = record[key]; return record[key] === value ? value : UNSTABLE; }
+function boundedField(record: Record<string, unknown>, key: string): { readonly stable: boolean; readonly value: unknown; readonly candidates: readonly unknown[] } {
+  const candidates: unknown[] = [];
+  let first: unknown; let second: unknown;
+  try { first = record[key]; candidates.push(first); } catch { return { stable: false, value: UNSTABLE, candidates }; }
+  try { second = record[key]; candidates.push(second); } catch { return { stable: false, value: UNSTABLE, candidates }; }
+  return { stable: first === second, value: first === second ? first : UNSTABLE, candidates };
+}
 function nonBlank(value: unknown): value is string { return typeof value === "string" && value.trim().length > 0; }
-async function safeCleanup(env: ExecutionEnv): Promise<void> { try { await env.cleanup(); } catch (error) { void error; /* cleanup is best effort by contract */ } }
+async function safeCleanup(env: ExecutionEnv): Promise<void> { try { await env.cleanup(BACKGROUND_CONTEXT); } catch (error) { void error; /* cleanup is best effort by contract */ } }
+async function cleanupCandidates(candidates: readonly unknown[]): Promise<void> {
+  const cleaned = new Set<unknown>();
+  for (const candidate of candidates) {
+    if (cleaned.has(candidate) || !recordValue(candidate)) continue;
+    cleaned.add(candidate);
+    try {
+      const cleanup = stable(candidate, "cleanup");
+      if (typeof cleanup === "function") await cleanup.call(candidate, BACKGROUND_CONTEXT);
+    } catch (error) { void error; /* cleanup is best effort by contract */ }
+  }
+}
 function error(_tag: ExecutionContextError["_tag"], retryable: boolean): ExecutionContextError { return Object.freeze({ _tag, certainty: "not_applied", retryable }); }
 const UNSTABLE = Symbol("unstable");
 const TAGS = new Set<ExecutionContextError["_tag"]>(["operation_not_found", "version_mismatch", "route_unavailable", "invalid_ssh_profile", "credential_unavailable", "environment_unavailable"]);

@@ -12,6 +12,7 @@
 
 import { applySyntaxHighlighting } from "./code-highlighting";
 import _DOMPurifyModule from "dompurify";
+import { renderSvgFences, escapeSvgSource, encodeSvgSource } from "../../../../../src/utils/svg-images";
 
 // ── DOMPurify lazy init (browser + Bun/Node safe) ─────────────────────────
 
@@ -490,6 +491,13 @@ export function prepareMarkdownSource(text: string): { safeHtml: string; mermaid
 
 export function renderMarkdown(text: string, options: { sanitize?: boolean } = {}): string {
   if (!text) return "";
+  return renderSvgFences(text, (part) => renderMarkdownBody(part, options), (source) => {
+    const encoded = encodeSvgSource(source);
+    return `<div class="code-block"><div class="code-block__header"><span class="code-block__lang">SVG</span><button type="button" class="code-block__copy" aria-label="Copy code" data-code="${encoded}"><i class="codicon codicon-copy"></i></button></div><pre><code class="language-svg">${escapeSvgSource(source)}</code></pre></div>`;
+  });
+}
+
+function renderMarkdownBody(text: string, options: { sanitize?: boolean }): string {
 
   const { safeHtml, mermaidBlocks } = prepareMarkdownSource(text);
 

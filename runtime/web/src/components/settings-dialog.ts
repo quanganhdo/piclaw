@@ -362,7 +362,7 @@ export function SettingsDialogContent({ onClose }) {
                             `;
                         })}
                     </nav>
-                    <main class="settings-content">
+                    <main class=${`settings-content${activeMeta?.isExtension ? ' settings-addon-pane' : ''}`}>
                         ${showRootLoading ? renderSectionLoading(t('settings.loading')) : renderSection()}
                     </main>
                 </div>

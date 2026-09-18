@@ -261,7 +261,7 @@ export function CompactionSection({ settingsData, setStatus, mergeSettingsData }
     }, [applyIncoming, mergeSettingsData, setStatus, settingsData]);
 
     return html`
-        <div class="settings-section">
+        <div class="settings-section settings-dense-form">
             ${appliedHint && html`
                 <div class="settings-general-applied-notice" role="status" aria-live="polite">
                     ${t('settings.compaction.appliedNotice')}
@@ -269,14 +269,12 @@ export function CompactionSection({ settingsData, setStatus, mergeSettingsData }
             `}
 
             <h3>${t('settings.compaction.autoHeading')}</h3>
-            <div class="settings-row">
+            <div class="settings-row settings-dense-row settings-dense-row-checkbox">
                 <label>${t('settings.compaction.enableAutomatic')}</label>
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <input type="checkbox" checked=${autoCompactionEnabled} onChange=${e => setAutoCompactionEnabled(Boolean(e.target.checked))} />
-                    <span class="settings-hint" style="margin:0">${t('settings.compaction.enableAutomaticHint')}</span>
-                </div>
+                <input type="checkbox" checked=${autoCompactionEnabled} onChange=${e => setAutoCompactionEnabled(Boolean(e.target.checked))} />
+                <span class="settings-hint">${t('settings.compaction.enableAutomaticHint')}</span>
             </div>
-            <div class="settings-row">
+            <div class="settings-row settings-dense-row">
                 <label>${t('settings.compaction.processingMethod')}</label>
                 <select id="smartCompactionMethod" value=${smartCompactionMethod} onChange=${e => setSmartCompactionMethod(normalizeSmartCompactionMethod(e.target.value))}>
                     <option value="selective">${t('settings.compaction.methodSelective')}</option>
@@ -288,7 +286,7 @@ export function CompactionSection({ settingsData, setStatus, mergeSettingsData }
                         : t('settings.compaction.methodSelectiveHint')}
                 </span>
             </div>
-            <div class="settings-row compaction-model-picker">
+            <div class="settings-row settings-dense-row settings-dense-row-compound compaction-model-picker">
                 <label for="compactionModel">${t('settings.compaction.model')}</label>
                 <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; min-width:0;">
                     <select id="compactionModel" value=${compactionModel} onChange=${e => { setCompactionModel(e.target.value); setProbeResult(null); }} aria-describedby="compactionModelHint">
@@ -309,16 +307,14 @@ export function CompactionSection({ settingsData, setStatus, mergeSettingsData }
                     Observed ${Math.round(compactionLatencyEstimate.medianDurationMs / 1000)}–${Math.round(compactionLatencyEstimate.p90DurationMs / 1000)}s across ${compactionLatencyEstimate.sampleCount} recent comparable samples (${compactionLatencyEstimate.inputBucketMin.toLocaleString()}–${(compactionLatencyEstimate.inputBucketMax - 1).toLocaleString()} input tokens; newest ${formatIso(compactionLatencyEstimate.newestSampleAt)}). ${compactionLatencyEstimate.warningText || 'The conservative estimate is within the configured deadline.'}
                 </div>`}
             </div>
-            <div class="settings-row">
-                <label>${t('settings.compaction.remoteNative')}</label>
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <input id="remoteCompactionEnabled" type="checkbox" checked=${remoteCompactionEnabled} onChange=${e => setRemoteCompactionEnabled(Boolean(e.target.checked))} />
-                    <span class="settings-hint" style="margin:0">
-                        ${t('settings.compaction.remoteNativeHint', { providers: remoteCompactionSupportedProviders.join(', ') })}
-                    </span>
-                </div>
+            <div class="settings-row settings-dense-row settings-dense-row-checkbox">
+                <label for="remoteCompactionEnabled">${t('settings.compaction.remoteNative')}</label>
+                <input id="remoteCompactionEnabled" type="checkbox" checked=${remoteCompactionEnabled} onChange=${e => setRemoteCompactionEnabled(Boolean(e.target.checked))} />
+                <span class="settings-hint">
+                    ${t('settings.compaction.remoteNativeHint', { providers: remoteCompactionSupportedProviders.join(', ') })}
+                </span>
             </div>
-            <div class="settings-row">
+            <div class="settings-row settings-dense-row">
                 <label>${t('settings.compaction.remoteTimeout')}</label>
                 <${NumberStepper}
                     label=${t('settings.compaction.remoteTimeoutAria')}
@@ -332,21 +328,17 @@ export function CompactionSection({ settingsData, setStatus, mergeSettingsData }
                 />
                 <span class="settings-hint" style="margin:0">${t('settings.compaction.remoteTimeoutHint')}</span>
             </div>
-            <div class="settings-row">
+            <div class="settings-row settings-dense-row settings-dense-row-checkbox">
                 <label>${t('settings.compaction.enableToolResult')}</label>
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <input type="checkbox" checked=${toolResultCompactionEnabled} onChange=${e => setToolResultCompactionEnabled(Boolean(e.target.checked))} />
-                    <span class="settings-hint" style="margin:0">${t('settings.compaction.enableToolResultHint')}</span>
-                </div>
+                <input type="checkbox" checked=${toolResultCompactionEnabled} onChange=${e => setToolResultCompactionEnabled(Boolean(e.target.checked))} />
+                <span class="settings-hint">${t('settings.compaction.enableToolResultHint')}</span>
             </div>
-            <div class="settings-row">
+            <div class="settings-row settings-dense-row settings-dense-row-checkbox">
                 <label>${t('settings.compaction.semanticSummaries')}</label>
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <input type="checkbox" checked=${toolResultSemanticSummaryEnabled} onChange=${e => setToolResultSemanticSummaryEnabled(Boolean(e.target.checked))} />
-                    <span class="settings-hint" style="margin:0">${t('settings.compaction.semanticSummariesHint')}</span>
-                </div>
+                <input type="checkbox" checked=${toolResultSemanticSummaryEnabled} onChange=${e => setToolResultSemanticSummaryEnabled(Boolean(e.target.checked))} />
+                <span class="settings-hint">${t('settings.compaction.semanticSummariesHint')}</span>
             </div>
-            <div class="settings-row">
+            <div class="settings-row settings-dense-row">
                 <label>${t('settings.compaction.inputLimit')}</label>
                 <${NumberStepper}
                     label=${t('settings.compaction.inputLimitAria')}
@@ -360,7 +352,7 @@ export function CompactionSection({ settingsData, setStatus, mergeSettingsData }
                 />
                 <span class="settings-hint" style="margin:0">${t('settings.compaction.inputLimitHint')}</span>
             </div>
-            <div class="settings-row">
+            <div class="settings-row settings-dense-row">
                 <label>${t('settings.compaction.maxTokens')}</label>
                 <${NumberStepper}
                     label=${t('settings.compaction.maxTokensAria')}
@@ -374,7 +366,7 @@ export function CompactionSection({ settingsData, setStatus, mergeSettingsData }
                 />
                 <span class="settings-hint" style="margin:0">${t('settings.compaction.maxTokensHint')}</span>
             </div>
-            <div class="settings-row">
+            <div class="settings-row settings-dense-row">
                 <label>${t('settings.compaction.summaryTimeout')}</label>
                 <${NumberStepper}
                     label=${t('settings.compaction.summaryTimeoutAria')}
@@ -388,7 +380,7 @@ export function CompactionSection({ settingsData, setStatus, mergeSettingsData }
                 />
                 <span class="settings-hint" style="margin:0">${t('settings.compaction.summaryTimeoutHint')}</span>
             </div>
-            <div class="settings-row">
+            <div class="settings-row settings-dense-row">
                 <label>${t('settings.compaction.threshold')}</label>
                 <${NumberStepper}
                     label=${t('settings.compaction.thresholdAria')}
@@ -401,7 +393,7 @@ export function CompactionSection({ settingsData, setStatus, mergeSettingsData }
                 />
                 <span class="settings-hint" style="margin:0">${t('settings.compaction.thresholdHint')}</span>
             </div>
-            <div class="settings-row">
+            <div class="settings-row settings-dense-row">
                 <label>${t('settings.compaction.timeout')}</label>
                 <${NumberStepper}
                     label=${t('settings.compaction.timeoutAria')}
@@ -414,7 +406,7 @@ export function CompactionSection({ settingsData, setStatus, mergeSettingsData }
                 />
                 <span class="settings-hint" style="margin:0">${t('settings.compaction.timeoutHint')}</span>
             </div>
-            <div class="settings-row">
+            <div class="settings-row settings-dense-row">
                 <label>${t('settings.compaction.backoffBase')}</label>
                 <${NumberStepper}
                     label=${t('settings.compaction.backoffBaseAria')}
@@ -427,7 +419,7 @@ export function CompactionSection({ settingsData, setStatus, mergeSettingsData }
                 />
                 <span class="settings-hint" style="margin:0">${t('settings.compaction.backoffBaseHint')}</span>
             </div>
-            <div class="settings-row">
+            <div class="settings-row settings-dense-row">
                 <label>${t('settings.compaction.backoffMax')}</label>
                 <${NumberStepper}
                     label=${t('settings.compaction.backoffMaxAria')}
@@ -441,7 +433,7 @@ export function CompactionSection({ settingsData, setStatus, mergeSettingsData }
                 <span class="settings-hint" style="margin:0">${t('settings.compaction.backoffMaxHint')}</span>
             </div>
 
-            <div class="settings-row">
+            <div class="settings-row settings-dense-row">
                 <label>${t('settings.compaction.decayFactor')}</label>
                 <${NumberStepper}
                     label=${t('settings.compaction.decayFactorAria')}
@@ -456,14 +448,12 @@ export function CompactionSection({ settingsData, setStatus, mergeSettingsData }
             </div>
 
             <h3 style="margin-top:20px">${t('settings.compaction.watchdogHeading')}</h3>
-            <div class="settings-row">
+            <div class="settings-row settings-dense-row settings-dense-row-checkbox">
                 <label>${t('settings.compaction.enableWatchdog')}</label>
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <input type="checkbox" checked=${progressWatchdogEnabled} onChange=${e => setProgressWatchdogEnabled(Boolean(e.target.checked))} />
-                    <span class="settings-hint" style="margin:0">${t('settings.compaction.enableWatchdogHint')}</span>
-                </div>
+                <input type="checkbox" checked=${progressWatchdogEnabled} onChange=${e => setProgressWatchdogEnabled(Boolean(e.target.checked))} />
+                <span class="settings-hint">${t('settings.compaction.enableWatchdogHint')}</span>
             </div>
-            <div class="settings-row">
+            <div class="settings-row settings-dense-row">
                 <label>${t('settings.compaction.watchdogTimeout')}</label>
                 <${NumberStepper}
                     label=${t('settings.compaction.watchdogTimeoutAria')}

@@ -52,7 +52,7 @@ function normalizeGeneralSettings(data: Record<string, any> = {}) {
         workspaceUploadLimitMb: data.workspaceUploadLimitMb ?? 256,
         automaticRecoveryEnabled: data.automaticRecoveryEnabled ?? true,
         automaticRecoveryMaxAttempts: data.automaticRecoveryMaxAttempts ?? 0,
-        automaticRecoveryTotalBudgetMs: data.automaticRecoveryTotalBudgetMs ?? 360000,
+        automaticRecoveryTotalBudgetMs: data.automaticRecoveryTotalBudgetMs ?? 0,
     };
 }
 
@@ -102,7 +102,7 @@ export function GeneralSection({ settingsData, setStatus, mergeSettingsData }) {
     const [workspaceUploadLimitMb, setWorkspaceUploadLimitMb] = useState(256);
     const [automaticRecoveryEnabled, setAutomaticRecoveryEnabled] = useState(true);
     const [automaticRecoveryMaxAttempts, setAutomaticRecoveryMaxAttempts] = useState(0);
-    const [automaticRecoveryTotalBudgetMs, setAutomaticRecoveryTotalBudgetMs] = useState(360000);
+    const [automaticRecoveryTotalBudgetMs, setAutomaticRecoveryTotalBudgetMs] = useState(0);
     const [widgetToken, setWidgetToken] = useState('');
     const [widgetTokenRevealed, setWidgetTokenRevealed] = useState(false);
     const [widgetTokenCopied, setWidgetTokenCopied] = useState(false);
@@ -336,13 +336,13 @@ export function GeneralSection({ settingsData, setStatus, mergeSettingsData }) {
                 <${NumberStepper}
                     label=${t('settings.general.recoveryTotalBudgetAria')}
                     value=${automaticRecoveryTotalBudgetMs}
-                    min=${1}
+                    min=${0}
                     step=${1000}
-                    fallback=${360000}
+                    fallback=${0}
                     width="110px"
                     onChange=${setAutomaticRecoveryTotalBudgetMs}
                 />
-                <span class="settings-hint" style="margin:0">${t('settings.general.recoveryTotalBudgetHint')}</span>
+                <span class="settings-hint" style="margin:0">${t('settings.general.recoveryTotalBudgetHint')} ${automaticRecoveryTotalBudgetMs === 0 && Number.isFinite(settingsData?.automaticRecoveryEffectiveBudgetMs) ? t('settings.general.recoveryEffectiveBudget', { budget: settingsData.automaticRecoveryEffectiveBudgetMs }) : ''}</span>
             </div>
 
             <h3 style="margin-top:20px">${t('settings.general.authentication')}</h3>

@@ -1,0 +1,20 @@
+{
+  "name": "@earendil-works/pi-coding-agent",
+  "version": "0.85.1",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./rpc-entry": {
+      "import": "./dist/bundle/rpc-entry.js"
+    },
+    "./client": {
+      "source": "./src/client/index.ts"
+    },
+    "./experimental/plugin": {
+      "source": "./src/experimental/plugin.ts"
+    }
+  }
+}

@@ -259,6 +259,11 @@ export function freezeExternalAddonRoutes(): void {
   });
 }
 
+/** Startup registration owner only; runtime request fields cannot select an add-on identity. */
+export function getCurrentAddonRegistrationOwner(): ExternalAddonRegistrationOwner | null {
+  return currentOwner ? { ...currentOwner } : null;
+}
+
 export function isExternalAddonRouteRegistryFrozen(): boolean {
   return frozen;
 }

@@ -73,8 +73,9 @@ async function sha256(path: string): Promise<string> {
 }
 
 describe("Earendil release churn gate", () => {
-  test("pins the repository and lockfile to the selected coherent 0.84.4 current runtime", async () => {
-    const [historical, current] = EARENDIL_HARNESS_V3_COMPATIBILITY_MANIFEST.releases;
+  test("pins the repository and lockfile to the selected coherent 0.85.1 candidate runtime", async () => {
+    const manifest = EARENDIL_HARNESS_V3_COMPATIBILITY_MANIFEST;
+    const historical = manifest.historical.releases[0], current = manifest.selected;
     const rootManifest = requireRecord(await Bun.file(resolve(repositoryRoot, "package.json")).json(), "repository package.json");
     const rootDependencies = requireRecord(rootManifest.dependencies, "repository dependencies");
     for (const directName of [
@@ -82,7 +83,7 @@ describe("Earendil release churn gate", () => {
       "@earendil-works/pi-ai",
       "@earendil-works/pi-coding-agent",
     ]) {
-      expect(rootDependencies[directName]).toBe("0.84.4");
+      expect(rootDependencies[directName]).toBe("0.85.1");
     }
     expect(rootDependencies.openai).toBe("7.5.0");
 
@@ -107,8 +108,8 @@ describe("Earendil release churn gate", () => {
   });
 
   test("matches installed public package manifests, export maps, engines, and internal ranges", async () => {
-    const current = EARENDIL_HARNESS_V3_COMPATIBILITY_MANIFEST.releases[1];
-    expect(current.packages).toHaveLength(9);
+    const current = EARENDIL_HARNESS_V3_COMPATIBILITY_MANIFEST.selected;
+    expect(current.packages).toHaveLength(6);
     for (const evidence of current.packages) {
       const directory = resolve(modulesRoot, evidence.name);
       if (evidence.installation === "not_installed") {
@@ -118,14 +119,14 @@ describe("Earendil release churn gate", () => {
       const installed = await readPackage(evidence.name);
       expect(installed.name).toBe(evidence.name);
       expect(installed.version).toBe(evidence.version);
-      expect(requireRecord(installed.engines, `${evidence.name} engines`).node).toBe(evidence.engine);
+      expect(installed.engines ? requireRecord(installed.engines, `${evidence.name} engines`).node : null).toBe(evidence.engine);
       expect(exportNames(installed)).toEqual(evidence.exports);
       expect(internalDependencies(installed)).toEqual(evidence.internalDependencies);
     }
   });
 
   test("matches current hashes only through contained package-declared public export targets", async () => {
-    const current = EARENDIL_HARNESS_V3_COMPATIBILITY_MANIFEST.releases[1];
+    const current = EARENDIL_HARNESS_V3_COMPATIBILITY_MANIFEST.selected;
     for (const fingerprint of current.fingerprints) {
       if (fingerprint.subpath.startsWith("audit:")) continue;
       const installed = await readPackage(fingerprint.package);
@@ -157,7 +158,7 @@ describe("Earendil release churn gate", () => {
   });
 
   test("pins manifest uniqueness, canonical order, hashes, SRI, and inert candidate classifications", () => {
-    const manifest = EARENDIL_HARNESS_V3_COMPATIBILITY_MANIFEST;
+    const manifest = EARENDIL_HARNESS_V3_COMPATIBILITY_MANIFEST.historical;
     const expectedPackages = [
       "@earendil-works/pi-agent-core",
       "@earendil-works/pi-ai",
@@ -223,8 +224,8 @@ describe("Earendil release churn gate", () => {
     expect(current.packages.map((entry) => entry.installation)).toEqual(expectedInstallation);
   });
 
-  test("independently pins the selected 0.84.4 runtime and rejected Harness evidence aggregates", () => {
-    const current = EARENDIL_HARNESS_V3_COMPATIBILITY_MANIFEST.releases[1];
+  test("independently preserves the historical 0.84.4 evidence aggregates", () => {
+    const current = EARENDIL_HARNESS_V3_COMPATIBILITY_MANIFEST.historical.releases[1];
     const packageEvidence = current.packages.map((entry) => ({
       name: entry.name,
       version: entry.version,

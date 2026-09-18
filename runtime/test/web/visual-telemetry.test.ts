@@ -66,10 +66,12 @@ test("visual latest-run telemetry preserves cache presence, reasoning, cost prov
 
   expect(meta?.label).toBe("Last • 5K • CH60.0% • $0.0012");
   expect(meta?.title).toContain("Latest run: openrouter/auto");
-  expect(meta?.title).toContain("reason 40");
-  expect(meta?.title).toContain("cache-w 1K");
-  expect(meta?.title).toContain("total 5K");
+  expect(meta?.title).toContain("Tokens: 5K");
+  expect(meta?.title).toContain("Reasoning: 40");
+  expect(meta?.title).toContain("Cache read: 3K");
+  expect(meta?.title).toContain("Cache write: 1K");
   expect(meta?.title).toContain("Provider-reported cost: $0.0012");
+  expect(meta?.title.split("\n").every((line) => line.length < 80)).toBe(true);
 });
 
 test("visual latest-run telemetry distinguishes explicit zero, omitted cache fields, and nested OpenRouter model IDs", () => {
@@ -118,7 +120,7 @@ test("visual OpenRouter provider telemetry shows spend, limit, remaining, and un
     key_limit_configured: true,
   })).toEqual({
     label: "$1.25 / $10.00 • $8.75 left",
-    title: "Key spend: $1.25 • Key limit: $10.00 • Key remaining: $8.75",
+    title: "Key spend: $1.25\nKey limit: $10.00\nKey remaining: $8.75",
   });
   expect(formatVisualProviderUsage({
     provider: "openrouter",

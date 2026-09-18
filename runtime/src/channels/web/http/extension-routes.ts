@@ -33,6 +33,14 @@ interface RegisteredRoute {
   registeredAt: string;
 }
 
+export interface ExtensionRouteConflict {
+  type: "exact" | "nested";
+  prefix: string;
+  extensionPath: string;
+  conflictingPrefix: string;
+  conflictingExtensionPath: string;
+}
+
 const routes: RegisteredRoute[] = [];
 let frozen = false;
 
@@ -47,6 +55,7 @@ export function freezeExtensionRoutes(): void {
     operation: "web_extension_routes.freeze",
     routeCount: routes.length,
     routes: routes.map(r => ({ prefix: r.prefix, extensionPath: r.extensionPath })),
+    conflicts: getExtensionRouteConflicts(),
   });
 }
 
@@ -62,6 +71,22 @@ export function isExtensionRouteRegistryFrozen(): boolean {
  * @param extensionPath Extension identifier/path used for diagnostics.
  * @returns "created", "updated", or "rejected" if the registry is frozen.
  */
+export function prefixesOverlap(left: string, right: string): boolean {
+  return left === right || left.startsWith(`${right}/`) || right.startsWith(`${left}/`);
+}
+
+function findRouteConflicts(prefix: string, extensionPath: string): ExtensionRouteConflict[] {
+  return routes
+    .filter((route) => route.extensionPath !== extensionPath && prefixesOverlap(prefix, route.prefix))
+    .map((route) => ({
+      type: prefix === route.prefix ? "exact" as const : "nested" as const,
+      prefix,
+      extensionPath,
+      conflictingPrefix: route.prefix,
+      conflictingExtensionPath: route.extensionPath,
+    }));
+}
+
 export function registerExtensionRoute(
   prefix: string,
   handler: ExtensionRouteHandler,
@@ -89,6 +114,14 @@ export function registerExtensionRoute(
       extensionPath,
     });
     return "rejected";
+  }
+
+  const conflicts = findRouteConflicts(normalised, extensionPath);
+  for (const conflict of conflicts) {
+    log.warn("Extension route prefix overlaps another owner; registration order and null fall-through remain active", {
+      operation: "web_extension_routes.register_conflict",
+      ...conflict,
+    });
   }
 
   routes.push({ prefix: normalised, handler, extensionPath, registeredAt: now });
@@ -152,6 +185,25 @@ export function clearExtensionRoutes(): void {
  */
 export function getRegisteredRoutes(): Array<{ prefix: string; extensionPath: string; registeredAt: string }> {
   return routes.map(r => ({ prefix: r.prefix, extensionPath: r.extensionPath, registeredAt: r.registeredAt }));
+}
+
+/** Return cross-owner exact/nested overlaps without changing dispatch policy. */
+export function getExtensionRouteConflicts(): ExtensionRouteConflict[] {
+  const conflicts: ExtensionRouteConflict[] = [];
+  for (let index = 0; index < routes.length; index += 1) {
+    const route = routes[index];
+    for (const other of routes.slice(index + 1)) {
+      if (route.extensionPath === other.extensionPath || !prefixesOverlap(route.prefix, other.prefix)) continue;
+      conflicts.push({
+        type: route.prefix === other.prefix ? "exact" : "nested",
+        prefix: other.prefix,
+        extensionPath: other.extensionPath,
+        conflictingPrefix: route.prefix,
+        conflictingExtensionPath: route.extensionPath,
+      });
+    }
+  }
+  return conflicts;
 }
 
 /**

@@ -470,7 +470,6 @@ export async function runAgentRecoveryPhase(options: RunAgentRecoveryPhaseOption
   let activeSessionCtrl = options.sessionCtrl;
   let attemptPrompt = prompt;
   let recoveryContinuationWithoutTools = false;
-  const protectedPostCompactionToolRetry = { available: Boolean(runOptions.protectedRecoveryContinuation) };
   let lastAttemptWasGenericProtected = false;
   let turnToolExecutionCount = 0;
   let recoveryAttemptsUsed = 0;
@@ -491,6 +490,14 @@ export async function runAgentRecoveryPhase(options: RunAgentRecoveryPhaseOption
       ?? protectedRecoveryHandoffContext?.recoveryGeneration
       ?? 0,
   ));
+  // One successful recovery compaction may re-arm one tools-enabled attempt.
+  // The token is turn-local, consumed once, and unavailable after the final
+  // recovery generation; unresolved execution and failed/skipped compaction
+  // remain terminal.
+  const postCompactionToolRetry = {
+    available: recoveryGeneration + 1 < MAX_RECOVERY_GENERATIONS_PER_SOURCE,
+  };
+  let safeResolvedToolRetryCandidate = false;
   let protectedRecoveryToolsRequired = protectedRecoveryHandoffContext?.toolsRequired ?? false;
   let protectedRecoveryPrimaryFailure: ProtectedRecoveryPrimaryFailure | undefined = protectedRecoveryHandoffContext?.primaryFailure;
   let protectedRecoveryHasUnresolvedToolExecution =
@@ -588,6 +595,7 @@ export async function runAgentRecoveryPhase(options: RunAgentRecoveryPhaseOption
   };
 
   while (true) {
+    if (options.runOptions.abortSignal?.aborted) return { status: "error", result: null, error: "Caller cancelled operation.", failureCategory: "aborted" };
     // Yield to the event loop on every iteration. Prevents synchronous-
     // throw + catch + retry from starving the event loop when the error
     // path never reaches an await that actually suspends.
@@ -772,6 +780,7 @@ export async function runAgentRecoveryPhase(options: RunAgentRecoveryPhaseOption
       );
     }
 
+    if (options.runOptions.abortSignal?.aborted) return { status: "error", result: null, error: "Caller cancelled operation.", failureCategory: "aborted" };
     // If the tool-call cap was hit, abort immediately without recovery.
     if (options.toolCallCap?.exceeded) {
       const duration = Date.now() - startTime;
@@ -918,6 +927,15 @@ export async function runAgentRecoveryPhase(options: RunAgentRecoveryPhaseOption
             snapshot: attempt.snapshot,
           });
 
+    safeResolvedToolRetryCandidate = recoveryAttemptsUsed === 0
+      && decision.classifier === "context_pressure"
+      && attempt.snapshot.hadToolActivity === true
+      && attempt.snapshot.hasUnresolvedToolExecution === false
+      && attempt.snapshot.hadToolFailure === false
+      && attempt.snapshot.sawTerminalSideEffectToolActivity !== true
+      && attempt.snapshot.toolUseBudgetExceeded !== true
+      && attempt.snapshot.canDisableToolsForRecovery === true;
+
     let effectiveDecision = decision;
     if (shouldAdvanceRecoveryGeneration({
       recoveryGeneration,
@@ -1027,19 +1045,22 @@ export async function runAgentRecoveryPhase(options: RunAgentRecoveryPhaseOption
         attempt.output.toolStepsBudget = terminalBudgetFailure.toolStepsBudget;
         attempt.output.nextAction = terminalBudgetFailure.nextAction;
       }
+      const timeoutRecoveryExhausted = recoveryAttemptsUsed > 0
+        && attempt.output.failureCategory === "timeout";
       const providerRetryExhausted = recoveryAttemptsUsed > 0
         && (attempt.output.failureCategory === "rate_limit"
           || attempt.output.failureCategory === "network"
-          || attempt.output.failureCategory === "timeout"
           || attempt.output.failureCategory === "provider"
           || attempt.output.failureCategory === "provider_unavailable"
           || attempt.output.failureCategory === "unknown");
       if (runOptions.protectedRecoveryContinuation
-        && (protectedRecoveryHasUnresolvedToolExecution || providerRetryExhausted)) {
+        && (protectedRecoveryHasUnresolvedToolExecution || timeoutRecoveryExhausted || providerRetryExhausted)) {
         attempt.output.protectedRecoveryHandoff = buildHandoffMetadata(
           protectedRecoveryHasUnresolvedToolExecution
             ? "unresolved_tool_execution"
-            : "provider_retry_exhausted",
+            : timeoutRecoveryExhausted
+              ? "timeout_recovery_exhausted"
+              : "provider_retry_exhausted",
         );
       }
       return attempt.output;
@@ -1253,9 +1274,10 @@ export async function runAgentRecoveryPhase(options: RunAgentRecoveryPhaseOption
         && compactionResult.compacted
         && recoveryContinuationWithoutTools
         && !protectedRecoveryHasUnresolvedToolExecution
-        && protectedPostCompactionToolRetry.available) {
+        && postCompactionToolRetry.available
+        && (runOptions.protectedRecoveryContinuation || safeResolvedToolRetryCandidate)) {
         recoveryContinuationWithoutTools = false;
-        protectedPostCompactionToolRetry.available = false;
+        postCompactionToolRetry.available = false;
         options.onInfo?.("Re-armed one tool-enabled retry after protected recovery compaction", {
           operation: "run_agent.protected_recovery_post_compaction_retry",
           chatJid,

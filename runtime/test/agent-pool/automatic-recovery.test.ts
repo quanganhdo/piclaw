@@ -10,6 +10,9 @@ import {
   isNonRecoverableFailure,
   isProviderAuthConfigFailure,
   isTransientFailure,
+  MAX_AUTOMATIC_RECOVERY_BUDGET_MS,
+  MIN_AUTOMATIC_RECOVERY_BUDGET_MS,
+  resolveAutomaticRecoveryBudgetMs,
   type RecoveryDecisionInput,
 } from "../../src/agent-pool/automatic-recovery.js";
 
@@ -66,8 +69,18 @@ test("honors explicit turn auto-recovery env disable", () => {
   }
 });
 
-test("automatic recovery default budget accommodates long compaction", () => {
-  expect(DEFAULT_AUTOMATIC_RECOVERY_CONFIG.totalBudgetMs).toBe(360_000);
+test("automatic recovery default budget derives from the effective turn timeout", () => {
+  expect(DEFAULT_AUTOMATIC_RECOVERY_CONFIG.totalBudgetMs).toBe(MIN_AUTOMATIC_RECOVERY_BUDGET_MS);
+  expect(resolveAutomaticRecoveryBudgetMs(0, 0)).toBe(MIN_AUTOMATIC_RECOVERY_BUDGET_MS);
+  expect(resolveAutomaticRecoveryBudgetMs(0, 3 * 60_000)).toBe(3 * 60_000);
+  expect(resolveAutomaticRecoveryBudgetMs(0, 30 * 60_000)).toBe(10 * 60_000);
+  expect(resolveAutomaticRecoveryBudgetMs(0, 3 * 60 * 60_000)).toBe(MAX_AUTOMATIC_RECOVERY_BUDGET_MS);
+});
+
+test("explicit recovery budgets remain exact but never exceed a positive turn timeout", () => {
+  expect(resolveAutomaticRecoveryBudgetMs(120_000, 3_600_000)).toBe(120_000);
+  expect(resolveAutomaticRecoveryBudgetMs(7_200_000, 3_600_000)).toBe(3_600_000);
+  expect(resolveAutomaticRecoveryBudgetMs(120_000, 0)).toBe(120_000);
 });
 
 test("honors transient recovery and transient tool env controls", () => {
@@ -95,7 +108,7 @@ test("turn auto-recovery numeric env rejects malformed suffixes", () => {
   try {
     const config = getAutomaticRecoveryConfig({ enabled: true, maxRetries: 7, baseDelayMs: 1234, maxDelayMs: 5678 });
     expect(config.maxAttempts).toBe(7);
-    expect(config.totalBudgetMs).toBe(DEFAULT_AUTOMATIC_RECOVERY_CONFIG.totalBudgetMs);
+    expect(config.totalBudgetMs).toBe(MIN_AUTOMATIC_RECOVERY_BUDGET_MS);
   } finally {
     if (previousAttempts === undefined) delete process.env.PICLAW_TURN_AUTO_RECOVERY_MAX_ATTEMPTS;
     else process.env.PICLAW_TURN_AUTO_RECOVERY_MAX_ATTEMPTS = previousAttempts;

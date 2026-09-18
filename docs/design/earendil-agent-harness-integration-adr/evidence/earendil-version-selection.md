@@ -19,20 +19,20 @@ Piclaw's existing coding-agent loop selects the coherent `0.84.4` package family
 
 Released `0.84.1` remains historical baseline evidence for the exported v2 session model, action vocabulary and unsupported Harness scaffold. Tagged `0.84.4` retains that scaffold: all audited Harness operations remain unimplemented, so it is rejected as a Harness-v3 implementation even though the current loop uses its non-Harness APIs.
 
-Current execution design and implementation evidence are on Earendil `dev`/draft PR #8963 at `d14d6b22327d545d6a253f932165b63e48d7f9c8`, assessed in [`earendil-harness-v3-assessment.md`](earendil-harness-v3-assessment.md). It implements public lane drive and SQLite host ownership; only session watch is stubbed, while WP08 fork/storage work remains active.
+The old `dev`/draft #8963 observation at `d14d6b22327d545d6a253f932165b63e48d7f9c8` remains a dated [historical capture](earendil-harness-v3-assessment.md). Draft PR B selects exact published 0.85.1 at `d981de1229ef899957bbe968bc8dcda02a21f477` for the current loop. Its public Context/tools/lanes support basic positive compatibility and Memory/JSONL SessionRepo tests; session watch remains a stub. The separate pinned tip `e4c75a73222ae2c72abb5f5314fa35ee8effc508` is planning evidence only.
 
-Piclaw retains `0.84.1` fixture data for historical comparisons while executable compatibility probes and backend conformance run against installed `0.84.4`. New Harness work follows current direct v3 contracts. No source compatibility with `0.84.1`, the released `0.84.4` scaffold or the current `dev` snapshot is required.
+The versioned manifest retains 0.84.1 and 0.84.4 results under historical data, including seven negative compiler checks and 25 unsupported Harness outcomes. Selected-release direct assignments and tests target installed 0.85.1 in the candidate worktree only. No compatibility dialect, private export workaround or tip-only API is introduced. See [A/B/C/D scope and gates](earendil-0851-work-sequence.md).
 
 ## Upgrade workflow
 
-A current-loop package update may proceed when existing direct imports and behaviour suites pass; it does not satisfy or bypass the Harness migration gates below.
+For the current 0.85.1 work, PR B requires atomic direct-contract migration, basic selected positive compatibility, public Memory/JSONL SessionRepo evidence and an explicitly authorised microVM upgrade/restart/rollback receipt before merge. No production schema migration or session rewrite is intended; rollback reverts the whole runtime/dependency change to 0.84.4. Broader deterministic HC completion is PR C and later-release reassessment is PR D. Passing B does not complete or activate the Harness architecture below.
 
 For each Harness candidate:
 
 1. require one coherent release candidate or approved exact source and pin its complete Earendil package/source set;
 2. compile Piclaw's direct imports and `satisfies` checks;
 3. update local construction/context binding to the candidate's API;
-4. run upstream session backend conformance unchanged;
+4. run the applicable public SessionRepo conformance; raw Storage conformance requires supported built-in constructors or fixture factories and cannot use private fields;
 5. verify the candidate exports a real public `AgentHarnessConstructor`, then run HC-001–HC-025 through it;
 6. run PC-001–PC-020 and golden replay fixtures;
 7. inspect semantic differences in result tags, values/lists, immutable operation results, lane-owned Drive/admission behaviour, snapshots, tools, errors and telemetry;

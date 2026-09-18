@@ -96,9 +96,25 @@ export function createAttemptToolBudgetController(options: {
     applyToolBudgetSoftStop(assistantToolUseMessageCount);
   };
 
+  if (options.runOptions.requireToolCeiling && !agent) throw new Error("Restricted execution requires a tool admission hook.");
   const toolBudgetBeforeToolCall: NonNullable<AgentSession["agent"]["beforeToolCall"]> = async (context, signal) => {
+    if (options.runOptions.requireToolCeiling) {
+      const allowed = !signal?.aborted && !options.runOptions.abortSignal?.aborted
+        && options.runOptions.toolCeilingFilter?.(context.toolCall.name)
+        && (!options.runOptions.executionAdmissionCheck || await options.runOptions.executionAdmissionCheck());
+      if (!allowed) return { block: true, reason: "Restricted operation permission denied." };
+      const cap = options.runOptions.maxToolCalls;
+      if (cap !== undefined && state.reservedToolExecutionCount >= cap) return { block: true, reason: "Restricted operation tool budget exhausted." };
+    }
     const prior = await originalBeforeToolCall?.(context, signal);
     if (prior?.block) return prior;
+    // A preceding asynchronous hook may interleave parallel tool admissions.
+    // Recheck the restricted cap after the final await before reserving an execution.
+    if (options.runOptions.requireToolCeiling) {
+      if (signal?.aborted || options.runOptions.abortSignal?.aborted) return { block: true, reason: "Restricted operation cancelled." };
+      const cap = options.runOptions.maxToolCalls;
+      if (cap !== undefined && state.reservedToolExecutionCount >= cap) return { block: true, reason: "Restricted operation tool budget exhausted." };
+    }
     if (state.finalizationReserveApplied) {
       return {
         block: true,

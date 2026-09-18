@@ -1,0 +1,7 @@
+/* Shared by Classic and Visual. Model SVG is only an inert image resource. */
+.model-svg-block { max-width: 100%; min-width: 0; margin: 0.75em 0; }
+.model-svg-block > .model-svg-image { display: block; max-width: 100%; height: auto; object-fit: contain; }
+.model-svg-source { margin-top: 0.5em; max-width: 100%; }
+.model-svg-source > summary { cursor: pointer; font-size: 0.85em; }
+.model-svg-source > summary:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.model-svg-source pre { white-space: pre; overflow: auto; }

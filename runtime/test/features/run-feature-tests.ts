@@ -18,7 +18,7 @@ cleanEnv.PICLAW_DB_IN_MEMORY = "1";
 cleanEnv.PICLAW_RUN_FEATURE_TESTS = "1";
 
 const proc = Bun.spawn(
-  ["bun", "test", "--max-concurrency=1", "--timeout=30000", "test/features/feature-regression.test.ts"],
+  ["bun", "test", "--max-concurrency=1", "--timeout=30000", "test/features/feature-regression.test.ts", "test/features/canonical-ux-contract.test.ts"],
   {
     cwd: import.meta.dir.replace(/\/test\/features$/, ""),
     stdout: "inherit",

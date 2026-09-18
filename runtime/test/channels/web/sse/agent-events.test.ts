@@ -112,6 +112,46 @@ describe("web SSE tool execution events", () => {
     });
   });
 
+  it("normalizes a provider cumulative Thought update instead of appending its repeated prefix", () => {
+    const { handler, emitter } = makeHandler(undefined, true);
+    const prefix = "Deciding on a commit\n\nI need to decide whether to commit this owner's decision. First, I’ll";
+    const complete = `${prefix} test the document differences and check the commit.`;
+
+    handler({ type: "message_update", assistantMessageEvent: { type: "thinking_start" } } as any);
+    handler({ type: "message_update", assistantMessageEvent: { type: "thinking_delta", delta: prefix } } as any);
+    handler({ type: "message_update", assistantMessageEvent: { type: "thinking_delta", delta: complete } } as any);
+    handler({ type: "message_update", assistantMessageEvent: { type: "thinking_delta", delta: complete } } as any);
+    handler({ type: "message_update", assistantMessageEvent: { type: "thinking_end", content: complete } } as any);
+
+    expect(emitter.thought).toHaveBeenLastCalledWith(expect.objectContaining({ text: complete }));
+    expect(emitter.thoughtDelta.mock.calls.map(([payload]) => payload.delta).join("")).toBe(complete);
+  });
+
+  it("preserves legitimate repeated Thought deltas", () => {
+    const { handler, emitter } = makeHandler(undefined, true);
+
+    handler({ type: "message_update", assistantMessageEvent: { type: "thinking_start" } } as any);
+    handler({ type: "message_update", assistantMessageEvent: { type: "thinking_delta", delta: "ha" } } as any);
+    handler({ type: "message_update", assistantMessageEvent: { type: "thinking_delta", delta: "ha" } } as any);
+    handler({ type: "message_update", assistantMessageEvent: { type: "thinking_end", content: "haha" } } as any);
+
+    expect(emitter.thought).toHaveBeenLastCalledWith(expect.objectContaining({ text: "haha" }));
+  });
+
+  it("replaces a divergent streamed Thought segment with authoritative completion content", () => {
+    const { handler, emitter } = makeHandler(undefined, true);
+
+    handler({ type: "message_update", assistantMessageEvent: { type: "thinking_start" } } as any);
+    handler({ type: "message_update", assistantMessageEvent: { type: "thinking_delta", delta: "wrong partial" } } as any);
+    handler({ type: "message_update", assistantMessageEvent: { type: "thinking_end", content: "authoritative thought" } } as any);
+
+    expect(emitter.thought).toHaveBeenLastCalledWith(expect.objectContaining({ text: "authoritative thought" }));
+    expect(emitter.thoughtDelta).toHaveBeenLastCalledWith(expect.objectContaining({
+      reset: true,
+      delta: "authoritative thought",
+    }));
+  });
+
   it("preserves cumulative thought and advances the post-tool phase on model output", () => {
     const { handler, statuses, emitter } = makeHandler(undefined, true);
 

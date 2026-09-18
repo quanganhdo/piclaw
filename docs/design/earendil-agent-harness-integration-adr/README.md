@@ -1,8 +1,8 @@
 # ADR: Earendil-aligned agent harness integration
 
-Status: **Proposed — assessment complete; architecture awaiting Rui's decision**
+Status: **Harness architecture proposed; released 0.85.1 current-loop migration in draft review**
 
-This ADR proposes how Piclaw replaces its agentic loop with a service-plane coordinator around a selected Earendil agent harness version. The assessment changed documentation only.
+This ADR proposes a future service-plane coordinator around Earendil Harness. The original assessment changed documentation only. The separately authorised 0.85.1 work updates Piclaw's existing coding-agent loop and inactive compatibility evidence; it does not activate this proposed replacement architecture. See the [A/B/C/D work sequence](evidence/earendil-0851-work-sequence.md).
 
 ## Decision record
 
@@ -11,12 +11,12 @@ This ADR proposes how Piclaw replaces its agentic loop with a service-plane coor
 | Decision owner | Rui Carmo |
 | Assessment baseline | Piclaw `v2.13.2` |
 | Baseline commit | `0afd3ae645c423bed82deef80c343bcaa6f31d4d` |
-| Earendil runtime selection | Current-loop packages use exact `0.84.4`; `0.84.1` remains the historical Harness baseline |
-| Earendil released evidence | `main` at `b8b873b9872db04a938fb4357b5e8e824ddc051c`; latest release `v0.84.4` at `b79e4cc834970cca69daebffab7df1da7d1e52c4` retains the unsupported released-v2 Harness scaffold |
-| Earendil implementation watch | `dev` / draft PR `earendil-works/pi#8963` at `d14d6b22327d545d6a253f932165b63e48d7f9c8`; public lane drive complete, only session watch deferred |
-| Earendil candidate design | `dev` `packages/agent/docs/harness.md` blob `c7c18c74730d4971f8ca004924e44c7fbe236f25`, SHA-256 `1b200eb7b4255d5afd71e17bb4cf54f82e2c5d1d1e24ae87ba97363838251785` |
-| Evidence timestamp | 2026-09-01 18:30 UTC; moving upstream state is valid only at the pinned revisions |
-| Document state | Assessment refreshed through public drive, SQLite host ownership and current fork work; decision requested |
+| Earendil runtime selection | Production remains exact `0.84.4`; draft PR B selects exact published `0.85.1` for the existing loop |
+| Earendil released evidence | 0.85.1 at `d981de1229ef899957bbe968bc8dcda02a21f477`; supported root imports and selected public compatibility are validated, Harness activation is absent |
+| Earendil planning tip | `main` at `e4c75a73222ae2c72abb5f5314fa35ee8effc508`; separate planning evidence only, no tip-only APIs admitted |
+| Historical implementation capture | `dev` / draft #8963 at `d14d6b22327d545d6a253f932165b63e48d7f9c8`; spec blob `c7c18c74730d4971f8ca004924e44c7fbe236f25`, SHA-256 `1b200eb7b4255d5afd71e17bb4cf54f82e2c5d1d1e24ae87ba97363838251785` |
+| Evidence timestamps | Original capture: 2026-09-01 18:30 UTC; release-pinned follow-up: 2026-09-17; observations apply only to their recorded revisions |
+| Document state | A admission; B current-loop migration/basic evidence; C broader inactive HC completion; D later-release reassessment. Canary and architecture approvals remain explicit |
 | Production changes | Current-loop dependencies select `0.84.4`; no Harness activation, execution-path or service change |
 | Final decision | Proposed: select direct Earendil adoption with a selected-version test implementation first |
 
@@ -49,7 +49,11 @@ The assessment covers the complete lifecycle of agent work:
 9. SSE and web status projection;
 10. extension and add-on integration points.
 
-The assessment produced this ADR, its evidence tables and a proposed semantic contract suite. Published `0.84.4` still exposes the incomplete released-v2 Harness scaffold. Earendil `dev` now has a concrete v3 constructor and complete public lane drive; source selection, session-wide watch scope, storage/fork stability and Piclaw acceptance remain. This ADR does not activate the production runner, change persistence or deploy a service.
+The original assessment produced this ADR, evidence tables and a proposed semantic suite. Its 0.84.4 scaffold and earlier `dev` observations remain historical. Published 0.85.1 now supplies the public constructor, Context/tool and lane APIs used by the draft migration evidence. Session watch remains a concrete stub; raw Storage exports, broader HC completion and activation approvals remain separate gates. This ADR does not activate a production runner, migrate persistence or deploy a service.
+
+## Published 0.85.1 admission follow-up
+
+[Package admission and corrected catalogue evidence](evidence/earendil-0851-admission.md) supersedes the old requirement that pi-server become transitive. Fresh supported root imports pass in Bun and real Node, including the minimum declared Node version. Production pins remain 0.84.4; Harness activation is a separate approval. Historical negative evidence below is preserved.
 
 ## Chapters and evidence
 
@@ -59,6 +63,9 @@ The assessment produced this ADR, its evidence tables and a proposed semantic co
 - [Direct Earendil adoption and selected-version fixture](04-earendil-adoption.md)
 - [Alternatives and migration](05-alternatives-and-migration.md)
 - [Acceptance plan and open questions](06-acceptance-plan.md)
+- [Published 0.85.1 A/B/C/D work sequence](evidence/earendil-0851-work-sequence.md)
+- [Current candidate readiness](evidence/earendil-0851-readiness.md)
+- [Canary procedure](evidence/earendil-0851-canary.md) and [executed piclaw-test receipt](evidence/earendil-0851-canary-result.md)
 - [Evidence register](evidence/README.md)
   - [Piclaw v2.13.2 capability matrix](evidence/current-capability-matrix.md)
   - [Agent lifecycle regression corpus](evidence/regression-corpus.md)
@@ -84,9 +91,9 @@ The index is the ADR decision record. Chapters hold the assessment and design an
 Select the direct-adoption architecture in [`evidence/alternatives-and-migration.md`](evidence/alternatives-and-migration.md), starting with a selected-version test implementation:
 
 - Piclaw retains authenticated acceptance, canonical source order, operation identity, exact cancellation, timeline/media persistence, scheduler/delivery policy, terminal disposition, frontier and restart reconciliation.
-- Earendil owns transcript execution, model/tool lifecycle, execution compaction and execution recovery. Harness v3's entries, typed values/lists, immutable operation results and usage ledger are the target execution model; `0.84.1` remains historical baseline evidence and `dev`/PR #8963 remains unselected development evidence.
+- Earendil owns transcript execution, model/tool lifecycle, execution compaction and execution recovery. Harness v3's entries, typed values/lists, immutable operation results and usage ledger are the proposed execution model; 0.84 captures remain historical, and 0.85.1 supplies the selected inactive compatibility surface. The old `dev`/PR #8963 capture is not the current candidate.
 - Piclaw imports no current agent orchestration into the replacement path. Piclaw service actions use reviewed service-plane ports; execution uses Earendil's exported lower-level harness/session/model/tool/environment contracts directly, never private coding-agent factories.
 - One semantic suite runs against deterministic gated fixtures and a selected real constructor. It covers explicit Context propagation, one lane-owned Drive, `Gate.admit()` ordering, unknown effect outcomes, tool invocation identity, selected storage migration, host ownership and backend conformance. Piclaw updates its latent boundaries when Earendil types change; backward source compatibility is not a goal.
-- Production remains on the current Piclaw loop with Earendil `0.84.4`. That runtime selection does not select Harness v3. A latent positive compatibility refresh may target exact `dev`; production migration waits for storage/fork stability, Piclaw HC/PC evidence and explicit activation approval.
+- Production remains on the current Piclaw loop with Earendil `0.84.4` until the separate 0.85.1 candidate passes merge/deployment gates. PR C's broader inactive HC work is release-pinned; PR D reassesses later releases. No exact-`dev` adoption is part of B.
 
-Rui's approval is required before M1 or any production implementation. [`evidence/future-effector-specifications.md`](evidence/future-effector-specifications.md) is a documentation-only specification of contracts, fakes and later implementation slices; its TypeScript blocks are illustrative.
+Rui's architecture approval is required before M1 or production Harness implementation. Existing current-loop migration authorisation does not grant that approval. [`evidence/future-effector-specifications.md`](evidence/future-effector-specifications.md) is a documentation-only specification of contracts, fakes and later implementation slices; its TypeScript blocks are illustrative.

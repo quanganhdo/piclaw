@@ -23,7 +23,10 @@ const APPROVED_PUBLIC_EARENDIL_SPECIFIERS = new Set([
   "@earendil-works/pi-agent-core",
   "@earendil-works/pi-agent-core/node",
   "@earendil-works/pi-agent-core/package.json",
-  "@earendil-works/pi-agent-core/session/testing",
+  "@earendil-works/pi-agent-core/harness/context",
+  "@earendil-works/pi-agent-core/harness/env/nodejs",
+  "@earendil-works/pi-agent-core/harness/session",
+  "@earendil-works/pi-agent-core/harness/session/testing",
   "@earendil-works/pi-ai",
   "@earendil-works/pi-ai/compat",
   "@earendil-works/pi-coding-agent",
@@ -94,6 +97,7 @@ describe("latent Earendil Harness v3 non-interference boundary", () => {
         "@earendil-works/pi-ai",
         "@earendil-works/pi-agent-core",
         "@earendil-works/pi-coding-agent",
+        "@earendil-works/pi-agent-core/harness/context",
       ]);
     expect(assignmentsAst.statements.every(isTypeOnlyStatement)).toBe(true);
 
@@ -103,11 +107,13 @@ describe("latent Earendil Harness v3 non-interference boundary", () => {
     expect(preparationAst.statements.filter(syntax.isImportDeclaration)
       .every((declaration) => declaration.importKind === "type")).toBe(true);
     expect(moduleSpecifiers(preparationPath, preparation)).toEqual([
+      "@earendil-works/pi-agent-core",
+      "@earendil-works/pi-agent-core/harness/context",
+      "@earendil-works/pi-agent-core/harness/session",
       "../contracts/execution-context-resolver.js",
     ]);
     expect(preparationAst.statements.every(isTypeOnlyStatement)).toBe(true);
     expect(preparation).not.toContain("@earendil-works/chord");
-    expect(preparation).not.toContain("@earendil-works/pi-agent-core");
   });
 
   test("contains no runtime package import, activation primitive, shim declaration, or import-time I/O", () => {
@@ -164,11 +170,12 @@ describe("latent Earendil Harness v3 non-interference boundary", () => {
     }
   });
 
-  test("keeps both test fixtures on declared public exports and outside production source", async () => {
+  test("keeps Harness and repository test fixtures on declared public exports and outside production source", async () => {
     const runtimeRoot = resolve(import.meta.dir, "../..");
     const fixtureNames = [
       "earendil-harness-direct-probe.ts",
       "earendil-session-backend-fixtures.ts",
+      "earendil-jsonl-process-loss.ts",
     ];
     for (const fixtureName of fixtureNames) {
       const path = resolve(runtimeRoot, "test/service-effects/fixtures", fixtureName);

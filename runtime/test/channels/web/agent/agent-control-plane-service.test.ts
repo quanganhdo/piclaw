@@ -8,6 +8,12 @@ import {
 } from "../../../../src/channels/web/agent/agent-control-plane-service.js";
 import type { QueuedFollowupLifecycleService } from "../../../../src/channels/web/runtime/queued-followup-lifecycle-service.js";
 
+function abortRequest(payload: unknown): Request {
+  return new Request("https://example.com/agent/runs/abort", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+  });
+}
+
 function jsonResponse(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), {
     status,
@@ -203,7 +209,7 @@ describe("WebAgentControlPlaneService", () => {
   test("lists active runs and supports targeted abort, stale marker clear, and queue drain", async () => {
     initDatabase();
     const events: Array<{ type: string; data: unknown }> = [];
-    const slashCalls: Array<{ chatJid: string; rawText: string }> = [];
+    const controlCalls: Array<{ chatJid: string; command: unknown }> = [];
     const removedRows: number[] = [];
     beginChatRun("web:hung", "2024-01-01T00:00:02.000Z", {
       prevTs: "2024-01-01T00:00:01.000Z",
@@ -237,8 +243,8 @@ describe("WebAgentControlPlaneService", () => {
       agentPool: {
         setSessionBinder: () => {},
         listActiveChats: () => [{ chat_jid: "web:hung", agent_name: "hung", is_active: true }],
-        applySlashCommand: async (chatJid: string, rawText: string) => {
-          slashCalls.push({ chatJid, rawText });
+        applyControlCommand: async (chatJid: string, command: unknown) => {
+          controlCalls.push({ chatJid, command });
           return { status: "success", message: "aborted" };
         },
       },
@@ -263,7 +269,7 @@ describe("WebAgentControlPlaneService", () => {
     }));
     expect(abortResponse.status).toBe(200);
     expect(await abortResponse.json()).toEqual(expect.objectContaining({ status: "ok", chat_jid: "web:hung", turn_id: "turn-hung" }));
-    expect(slashCalls).toEqual([{ chatJid: "web:hung", rawText: "/abort" }]);
+    expect(controlCalls).toEqual([{ chatJid: "web:hung", command: { type: "abort", raw: "/abort" } }]);
 
     const drainResponse = await service.handleAgentRunDrainQueue(new Request("https://example.com/agent/runs/drain-queue", {
       method: "POST",
@@ -292,6 +298,77 @@ describe("WebAgentControlPlaneService", () => {
     expect(events).toEqual(expect.arrayContaining([
       { type: "agent_followup_drained", data: { chat_jid: "web:hung", removed_count: 2 } },
     ]));
+  });
+
+  test("run abort dispatches the parsed control command to the captured chat", async () => {
+    const aborted: string[] = [];
+    const controller = new AbortController();
+    controller.signal.addEventListener("abort", () => aborted.push("web:target"), { once: true });
+    const service = createService({
+      getAgentStatus: () => ({ turnId: "current-turn" }),
+      agentPool: {
+        setSessionBinder: () => {},
+        applySlashCommand: async () => { throw new Error("legacy slash path must not run"); },
+        applyControlCommand: async (chatJid, command) => {
+          expect(chatJid).toBe("web:target");
+          expect(command).toEqual({ type: "abort", raw: "/abort" });
+          controller.abort();
+          return { status: "success", message: "Aborted current response.", sessionGeneration: "owned-session" };
+        },
+      },
+    });
+    const response = await service.handleAgentRunAbort(abortRequest({ chat_jid: " web:target ", turn_id: " current-turn " }));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ status: "ok", chat_jid: "web:target", turn_id: "current-turn", result: {
+      status: "success", message: "Aborted current response.", sessionGeneration: "owned-session",
+    } });
+    expect(aborted).toEqual(["web:target"]);
+  });
+
+  test("stale run abort and invalid payloads never invoke a control command", async () => {
+    let calls = 0;
+    const service = createService({
+      getAgentStatus: () => ({ turn_id: "new-turn" }),
+      agentPool: { setSessionBinder: () => {}, applyControlCommand: async () => {
+        calls++; return { status: "success", message: "aborted" };
+      } },
+    });
+    const stale = await service.handleAgentRunAbort(abortRequest({ chat_jid: "web:target", turn_id: "old-turn" }));
+    expect(stale.status).toBe(409);
+    expect(await stale.json()).toMatchObject({ error: "turn_id does not match the active run", active_turn_id: "new-turn" });
+    expect((await service.handleAgentRunAbort(abortRequest({}))).status).toBe(400);
+    expect((await service.handleAgentRunAbort(new Request("https://example.com/agent/runs/abort", { method: "POST", body: "{" }))).status).toBe(400);
+    expect(calls).toBe(0);
+  });
+
+  test("run abort returns unavailable without falling back to slash dispatch", async () => {
+    let calls = 0;
+    const service = createService({ agentPool: { setSessionBinder: () => {}, applySlashCommand: async () => {
+      calls++; return { status: "success", message: "not a control path" };
+    } } });
+    const response = await service.handleAgentRunAbort(abortRequest({ chat_jid: "web:target" }));
+    expect(response.status).toBe(501);
+    expect(await response.json()).toEqual({ error: "Run abort is not available." });
+    expect(calls).toBe(0);
+  });
+
+  test("run abort reports command failure without an outer success", async () => {
+    const failure = { status: "error" as const, message: "Cancellation failed", sessionGeneration: "owned-session" };
+    const service = createService({ getAgentStatus: () => ({ turn_id: "target-turn" }), agentPool: {
+      setSessionBinder: () => {}, applyControlCommand: async () => failure,
+    } });
+    const response = await service.handleAgentRunAbort(abortRequest({ chat_jid: "web:target", turn_id: "target-turn" }));
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ status: "error", error: "Cancellation failed", chat_jid: "web:target", turn_id: "target-turn", result: failure });
+  });
+
+  test("run abort reports a rejected control dispatch as a bounded failure", async () => {
+    const service = createService({ agentPool: { setSessionBinder: () => {}, applyControlCommand: async () => {
+      throw new Error("internal failure detail");
+    } } });
+    const response = await service.handleAgentRunAbort(abortRequest({ chat_jid: "web:target" }));
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ status: "error", error: "Run abort failed.", chat_jid: "web:target", turn_id: null });
   });
 
   test("preserves branch lifecycle wrapper status codes and payload shapes", async () => {

@@ -458,15 +458,17 @@ describe("WP-3C closed manifest policy and hostile-safe normalization", () => {
 });
 
 describe("WP-3C hermetic add-on package-tree oracle", () => {
-  test("pins current join/exists/isFile semantics separately from future containment blockers", () => {
-    const productionSource = readFileSync(new URL("../../src/agent-pool/session.ts", import.meta.url), "utf8");
-    const discoveryBody = productionSource.slice(
-      productionSource.indexOf("export function getInstalledAddonExtensionPaths"),
-      productionSource.indexOf("function getBundledExtensionPaths"),
+  test("pins the shared package-entry containment policy adopted by installed add-on consumers", () => {
+    const sessionSource = readFileSync(new URL("../../src/agent-pool/session.ts", import.meta.url), "utf8");
+    const resolverSource = readFileSync(new URL("../../src/addons/package-entries.ts", import.meta.url), "utf8");
+    const discoveryBody = sessionSource.slice(
+      sessionSource.indexOf("export function getInstalledAddonExtensionPaths"),
+      sessionSource.indexOf("function getBundledExtensionPaths"),
     );
-    expect(discoveryBody).toContain("join(packageDir, relativePath)");
-    expect(discoveryBody).toContain("existsSync(fullPath) && statSync(fullPath).isFile()");
-    expect(discoveryBody).not.toMatch(/realpath|relative\(|contain/i);
+    expect(discoveryBody).toContain("resolveAddonPackageEntries(packageDir, addonPackage.manifest.pi?.extensions)");
+    expect(resolverSource).toContain("statSync(fullPath).isFile()");
+    expect(resolverSource).toContain("realpathSync(fullPath)");
+    expect(resolverSource).toContain("isInside(realPackageDir, realEntryPath)");
     const tree: VirtualPackageTree = {
       nodeModulesRoot: "/node_modules",
       nodes: {
@@ -486,13 +488,7 @@ describe("WP-3C hermetic add-on package-tree oracle", () => {
         "/node_modules/not-a-package.txt": { kind: "file", content: "ignored" },
       },
     };
-    const current = resolveAddonPackageTree(tree, "current");
     const future = resolveAddonPackageTree(tree, "futureHardened");
-    expect(current).toMatchObject({ fixtureValid: true, policy: "current", rejections: [] });
-    expect(current.extensionPaths).toEqual([
-      "/node_modules/@scope/pkg/extension.ts", "/node_modules/link/entry.ts", "/node_modules/plain/entry.ts",
-      "/node_modules/plain/alias.ts", "/node_modules/plain/entry.ts",
-    ]);
     expect(future.fixtureValid).toBeTrue();
     expect(future.policy).toBe("futureHardened");
     expect(Object.isFrozen(future)).toBeTrue();

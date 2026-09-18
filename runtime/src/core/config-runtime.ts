@@ -720,6 +720,7 @@ export interface RecoveryPolicyConfig {
   transientRecoveryToolsEnabled: boolean;
   /** Zero inherits the normalized retry max-attempt setting. */
   automaticRecoveryMaxAttempts: number;
+  /** Zero derives the per-run budget from the effective agent timeout. */
   automaticRecoveryTotalBudgetMs: number;
 }
 
@@ -733,7 +734,7 @@ const recoveryPolicyDomainSchema = registerDomainConfig<RecoveryPolicyConfig>({
     transientRecoveryEnabled: boolField({ key: "transientRecoveryEnabled", owner: "agent-runtime", defaultValue: true, persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_TURN_TRANSIENT_RECOVERY_ENABLED", replacement: "domains.recovery.transientRecoveryEnabled", removalVersion: "3.0.0", skipInvalid: true }] }),
     transientRecoveryToolsEnabled: boolField({ key: "transientRecoveryToolsEnabled", owner: "agent-runtime", defaultValue: false, persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_TURN_TRANSIENT_RECOVERY_TOOLS_ENABLED", replacement: "domains.recovery.transientRecoveryToolsEnabled", removalVersion: "3.0.0", skipInvalid: true }] }),
     automaticRecoveryMaxAttempts: integerField({ key: "automaticRecoveryMaxAttempts", owner: "agent-runtime", defaultValue: 0, min: 0, bounds: "0 inherits retry max; otherwise positive integer", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_TURN_AUTO_RECOVERY_MAX_ATTEMPTS", replacement: "domains.recovery.automaticRecoveryMaxAttempts", removalVersion: "3.0.0", parse: (raw) => { const parsed = Number(raw); return Number.isInteger(parsed) && parsed > 0 ? parsed : -1; }, skipInvalid: true }] }),
-    automaticRecoveryTotalBudgetMs: integerField({ key: "automaticRecoveryTotalBudgetMs", owner: "agent-runtime", defaultValue: 360_000, min: 1, bounds: "positive integer ms", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_TURN_AUTO_RECOVERY_TOTAL_BUDGET_MS", replacement: "domains.recovery.automaticRecoveryTotalBudgetMs", removalVersion: "3.0.0", skipInvalid: true }] }),
+    automaticRecoveryTotalBudgetMs: integerField({ key: "automaticRecoveryTotalBudgetMs", owner: "agent-runtime", defaultValue: 0, min: 0, bounds: "0 derives from effective turn timeout; otherwise positive integer ms", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_TURN_AUTO_RECOVERY_TOTAL_BUDGET_MS", replacement: "domains.recovery.automaticRecoveryTotalBudgetMs", removalVersion: "3.0.0", skipInvalid: true }] }),
   },
 });
 
@@ -764,8 +765,8 @@ export function setAutomaticRecoveryPolicyConfig(patch: AutomaticRecoveryPolicyP
   const nextTotalBudgetMs = patch.automaticRecoveryTotalBudgetMs === undefined
     ? current.automaticRecoveryTotalBudgetMs
     : patch.automaticRecoveryTotalBudgetMs;
-  if (!Number.isInteger(nextTotalBudgetMs) || nextTotalBudgetMs < 1) {
-    throw new Error("automaticRecoveryTotalBudgetMs must be a positive integer");
+  if (!Number.isInteger(nextTotalBudgetMs) || nextTotalBudgetMs < 0) {
+    throw new Error("automaticRecoveryTotalBudgetMs must be a non-negative integer");
   }
 
   return writeDomainConfig(recoveryPolicyDomainSchema, getDomainConfigOptions(), {

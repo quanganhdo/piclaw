@@ -28,7 +28,7 @@ Declare runtime entries in the package manifest:
 - `"startup"` loads after Piclaw has started its WebChannel and wired the runtime messaging handlers, before chat warmup and crash recovery resume work. Use it for chat transports and other process-wide services that must exist before the first agent session.
 - `"lazy"` loads when a status panel, config action or Adaptive Card intent first needs runtime contributions. It is the default when `load` is omitted and preserves existing add-on behaviour.
 
-Entry paths must resolve to files inside the installed add-on package. Piclaw rejects lexical path traversal and symlinks that escape the package.
+Piclaw applies the same package-entry policy to `pi.extensions`, `pi.web.entries` and `pi.runtime.entries`. Each declaration must be a non-empty relative string that resolves to a regular file inside both the lexical package directory and its realpath. Package-directory symlinks and file symlinks that stay inside the resolved package are supported. Absolute paths, traversal, missing files, directories and symlink escapes are ignored. Package roots are processed deterministically; declaration order and duplicate entries within each field are preserved.
 
 Runtime entry registration lasts for the Piclaw process. Installing or uninstalling an add-on requires the normal Piclaw restart; the process rebuilds the registry from currently installed packages.
 
@@ -154,6 +154,8 @@ Core enforces:
 The add-on remains responsible for protocol authentication, signatures, nonce/replay checks, trust state, endpoint-specific limits, payload validation, and response schemas.
 
 Unknown paths within `/api/addons/` return JSON 404 without redirecting to browser login. Generic extension routes registered through `__piclaw_registerRoute` remain browser-authenticated and CSRF-protected.
+
+Generic extension routes preserve registration order. For overlapping prefixes, dispatch calls matching handlers in that order until one returns a `Response`; returning `null` allows fall-through. Cross-owner exact and nested overlaps produce `web_extension_routes.register_conflict` warnings and appear in the registry freeze diagnostic, but registration is not rejected. External add-on routes use the stricter `/api/addons/<id>/...` registry and reject overlaps.
 
 The unregister callback is idempotent. Add-on install/uninstall already requires a Piclaw restart; the registry is rebuilt from installed startup entries on the new process.
 

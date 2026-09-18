@@ -122,12 +122,12 @@ export function CompactionSection({
   }
 
   return (
-    <section className="settings-panel__section">
+    <section className="settings-panel__section settings-panel__dense-form">
       <h2 className="settings-panel__section-title">Compaction</h2>
 
       <h3 className="settings-panel__subsection-title">Automatic compaction</h3>
 
-      <div className="settings-panel__field settings-panel__checkbox-row">
+      <div className="settings-panel__field settings-panel__dense-row settings-panel__dense-row--checkbox">
         <input
           id="autoCompactionEnabled"
           type="checkbox"
@@ -144,7 +144,7 @@ export function CompactionSection({
         <span className="settings-panel__description">Piclaw-managed pre-prompt/idle compaction. The upstream agent auto-compactor stays suppressed internally.</span>
       </div>
 
-      <div className="settings-panel__field">
+      <div className="settings-panel__field settings-panel__dense-row">
         <label className="settings-panel__label" htmlFor="smartCompactionMethod">Processing method</label>
         <div className="settings-panel__field-content">
           <select
@@ -168,7 +168,7 @@ export function CompactionSection({
         </div>
       </div>
 
-      <div className="settings-panel__field compaction-model-picker">
+      <div className="settings-panel__field settings-panel__dense-row settings-panel__dense-row--compound compaction-model-picker">
         <label className="settings-panel__label" htmlFor="compactionModel">Compaction model</label>
         <div className="settings-panel__field-content">
           <select
@@ -213,7 +213,7 @@ export function CompactionSection({
 
       <h3 className="settings-panel__subsection-title">Provider-native compaction</h3>
 
-      <div className="settings-panel__field settings-panel__checkbox-row">
+      <div className="settings-panel__field settings-panel__dense-row settings-panel__dense-row--checkbox">
         <input
           id="remoteCompactionEnabled"
           type="checkbox"
@@ -232,7 +232,7 @@ export function CompactionSection({
         </span>
       </div>
 
-      <div className="settings-panel__field">
+      <div className="settings-panel__field settings-panel__dense-row">
         <label className="settings-panel__label">Provider-native timeout (sec)</label>
         <NumberStepper value={remoteCompactionTimeoutSec} min={1} max={300} step={5} onSave={(v) => onSaveCompaction("remoteCompactionTimeoutSec", v)} />
         <span className="settings-panel__description">Deadline for the remote pre-pass before the selected local fallback runs.</span>
@@ -240,25 +240,25 @@ export function CompactionSection({
 
       <h3 className="settings-panel__subsection-title">Execution limits</h3>
 
-      <div className="settings-panel__field">
+      <div className="settings-panel__field settings-panel__dense-row">
         <label className="settings-panel__label">Compaction timeout (sec)</label>
         <NumberStepper value={timeoutSec} min={1} max={3600} step={10} onSave={(v) => onSaveCompaction("compactionTimeoutSec", v)} />
         <span className="settings-panel__description">Single wall-clock deadline for deterministic preparation, provider prefill/streaming, and settlement. Local provider requests inherit the remaining time.</span>
       </div>
 
-      <div className="settings-panel__field">
+      <div className="settings-panel__field settings-panel__dense-row">
         <label className="settings-panel__label">Automatic threshold (%)</label>
         <NumberStepper value={thresholdPercent} min={10} max={95} step={1} onSave={(v) => onSaveCompaction("compactionThresholdPercent", v)} />
         <span className="settings-panel__description">Start automatic compaction when active context reaches this percentage of its effective window.</span>
       </div>
 
-      <div className="settings-panel__field">
+      <div className="settings-panel__field settings-panel__dense-row">
         <label className="settings-panel__label">Failure backoff base (min)</label>
         <NumberStepper value={backoffBase} min={1} max={1440} step={5} onSave={(v) => onSaveCompaction("compactionBackoffBaseMin", v)} />
         <span className="settings-panel__description">First suppression window after a compaction failure.</span>
       </div>
 
-      <div className="settings-panel__field">
+      <div className="settings-panel__field settings-panel__dense-row">
         <label className="settings-panel__label">Failure backoff max (min)</label>
         <NumberStepper value={backoffMax} min={1} max={10080} step={10} onSave={(v) => onSaveCompaction("compactionBackoffMaxMin", v)} />
         <span className="settings-panel__description">Upper bound for exponential suppression after repeated failures.</span>
@@ -266,7 +266,7 @@ export function CompactionSection({
 
       <h3 className="settings-panel__subsection-title">Tool result compaction</h3>
 
-      <div className="settings-panel__field settings-panel__checkbox-row">
+      <div className="settings-panel__field settings-panel__dense-row settings-panel__dense-row--checkbox">
         <input
           id="toolResultCompactionEnabled"
           type="checkbox"
@@ -284,7 +284,7 @@ export function CompactionSection({
         <span className="settings-panel__description">Compress large tool outputs before they are stored in the context window.</span>
       </div>
 
-      <div className="settings-panel__field">
+      <div className="settings-panel__field settings-panel__dense-row">
         <label className="settings-panel__label">Compacted tools</label>
         <div className="settings-panel__field-content">
           <input
@@ -301,7 +301,7 @@ export function CompactionSection({
 
       <h3 className="settings-panel__subsection-title">Semantic summarization</h3>
 
-      <div className="settings-panel__field settings-panel__checkbox-row">
+      <div className="settings-panel__field settings-panel__dense-row settings-panel__dense-row--checkbox">
         <input
           id="toolResultSemanticSummaryEnabled"
           type="checkbox"
@@ -319,19 +319,19 @@ export function CompactionSection({
         <span className="settings-panel__description">Use a model to semantically summarize large tool results instead of truncating them.</span>
       </div>
 
-      <div className="settings-panel__field">
+      <div className="settings-panel__field settings-panel__dense-row">
         <label className="settings-panel__label">Max input chars</label>
         <NumberStepper value={semanticSummaryMaxInputChars} min={500} max={200000} step={500} onSave={(v) => onSaveCompaction("toolResultSemanticSummaryMaxInputChars", v)} />
         <span className="settings-panel__description">Maximum characters of tool output to feed into the summarizer.</span>
       </div>
 
-      <div className="settings-panel__field">
+      <div className="settings-panel__field settings-panel__dense-row">
         <label className="settings-panel__label">Max output tokens</label>
         <NumberStepper value={semanticSummaryMaxTokens} min={64} max={4096} step={64} onSave={(v) => onSaveCompaction("toolResultSemanticSummaryMaxTokens", v)} />
         <span className="settings-panel__description">Token budget for the summary response.</span>
       </div>
 
-      <div className="settings-panel__field">
+      <div className="settings-panel__field settings-panel__dense-row">
         <label className="settings-panel__label">Summarization timeout (sec)</label>
         <NumberStepper value={semanticSummaryTimeoutSec} min={1} max={300} step={5} onSave={(v) => onSaveCompaction("toolResultSemanticSummaryTimeoutSec", v)} />
         <span className="settings-panel__description">Abort slow summarization requests after this many seconds.</span>
@@ -339,7 +339,7 @@ export function CompactionSection({
 
       <h3 className="settings-panel__subsection-title">Stall watchdog</h3>
 
-      <div className="settings-panel__field settings-panel__checkbox-row">
+      <div className="settings-panel__field settings-panel__dense-row settings-panel__dense-row--checkbox">
         <input
           id="progressWatchdogEnabled"
           type="checkbox"
@@ -357,7 +357,7 @@ export function CompactionSection({
         <span className="settings-panel__description">Disabled by default. When enabled, a helper process terminates the runtime if an active phase stops heartbeating.</span>
       </div>
 
-      <div className="settings-panel__field">
+      <div className="settings-panel__field settings-panel__dense-row">
         <label className="settings-panel__label">Watchdog timeout (sec)</label>
         <NumberStepper value={watchdogTimeout} min={0} max={3600} step={10} onSave={(v) => onSaveCompaction("progressWatchdogTimeoutSec", v)} />
         <span className="settings-panel__description">How long an active phase can go without a heartbeat before the watchdog kills the runtime.</span>

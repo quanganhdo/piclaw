@@ -689,15 +689,18 @@ export function handleAppSseEvent(
       setActiveTurn(turnId);
     }
     noteAgentActivity({ running: true, clearSilence: true });
-    thoughtBufferRef.current = applyThoughtDeltaBuffer(thoughtBufferRef.current, data);
+    const previousThought = thoughtBufferRef.current;
+    const expectedAppend = `${previousThought}${typeof data.delta === 'string' ? data.delta : ''}`;
+    thoughtBufferRef.current = applyThoughtDeltaBuffer(previousThought, data);
+    const repairedFromAuthoritativeText = typeof data.text === 'string' && !data.reset && data.text !== expectedAppend;
     const now = Date.now();
     const trailingState = previewTrailingFlushState(previewResyncGenerationRef);
-    if (data.reset) {
+    if (data.reset || repairedFromAuthoritativeText) {
       cancelPanelTrailingFlush('thought');
       trailingState.thoughtSnapshot = null;
     }
     trailingState.thoughtDeltaActive = true;
-    if (data.reset || !thoughtThrottleRef.current || now - thoughtThrottleRef.current >= 100) {
+    if (data.reset || repairedFromAuthoritativeText || !thoughtThrottleRef.current || now - thoughtThrottleRef.current >= 100) {
       cancelPanelTrailingFlush('thought');
       thoughtThrottleRef.current = now;
       const fullText = thoughtBufferRef.current;

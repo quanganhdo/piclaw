@@ -3,6 +3,7 @@ import type {
   AgentHarness,
   AgentHarnessResources,
   AgentHarnessTool,
+  AgentHarnessToolInvocation,
   AgentLane,
   Closed,
   Events,
@@ -15,7 +16,7 @@ import type {
   Result,
   Session,
   SessionSnapshot,
-  SessionTree,
+  SessionReader,
   Skill,
   TelemetryContext,
   createBashTool,
@@ -24,6 +25,7 @@ import type {
   createWriteTool,
 } from "@earendil-works/pi-agent-core";
 import type { ModelRuntime } from "@earendil-works/pi-coding-agent";
+import type { Context } from "@earendil-works/pi-agent-core/harness/context";
 
 import type { FileCredentialStore } from "../../agent-pool/credential-store.js";
 import type { PiclawToolContext } from "../contracts/execution-context-resolver.js";
@@ -36,8 +38,8 @@ export type EarendilDirectAssignments = Readonly<{
   credentials: Assignable<CredentialStore, FileCredentialStore>;
   executionEnvironment: Assignable<ExecutionEnv, PiclawExecutionEnv>;
   contextualTool: Assignable<AgentHarnessTool<PiclawToolContext>, AgentHarnessTool<PiclawToolContext>>;
-  fiveArgumentExecution: Assignable<
-    [unknown, unknown, unknown, unknown, PiclawToolContext],
+  sixArgumentExecution: Assignable<
+    [string, unknown, unknown, PiclawToolContext, AgentHarnessToolInvocation, Context],
     Parameters<AgentHarnessTool<PiclawToolContext>["execute"]>
   >;
   readTool: Assignable<AgentHarnessTool<PiclawToolContext>, ReturnType<typeof createReadTool<PiclawToolContext>>>;
@@ -45,8 +47,8 @@ export type EarendilDirectAssignments = Readonly<{
   editTool: Assignable<AgentHarnessTool<PiclawToolContext>, ReturnType<typeof createEditTool<PiclawToolContext>>>;
   bashTool: Assignable<AgentHarnessTool<PiclawToolContext>, ReturnType<typeof createBashTool<PiclawToolContext>>>;
   resources: Assignable<AgentHarnessResources<Skill, PromptTemplate>, Resources>;
-  harnessLane: Assignable<AgentLane, AgentHarness>;
-  sessionTree: Assignable<SessionTree, Session>;
+  harnessLane: Assignable<Promise<AgentLane>, ReturnType<AgentHarness["lane"]>>;
+  sessionReader: Assignable<SessionReader, Session>;
   laneSnapshot: Assignable<LaneSnapshot, LaneSnapshot>;
   sessionSnapshot: Assignable<SessionSnapshot, SessionSnapshot>;
   hooks: Assignable<Hooks, Hooks>;

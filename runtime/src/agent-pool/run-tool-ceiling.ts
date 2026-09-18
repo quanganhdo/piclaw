@@ -63,10 +63,12 @@ export function createRunToolCeilingController(options: {
       // A caller may narrow the family ceiling but cannot omit or widen it.
       const ceilingFilter = family ? (name: string) => isFamilyWebToolAllowed(name) && identity.toolPolicy!.allowed.includes(name) && (!requested || requested(name)) : requested;
       if (identity && identity.mode !== 'single-user' && !family) throw new Error('Isolated tool execution is unavailable.');
-      if (family && !nextOwner) throw new Error('Family execution requires active-tool controls.');
+      const mandatory = family || options.runOptions.requireToolCeiling === true;
+      if (mandatory && !ceilingFilter) throw new Error("Required tool ceiling is missing.");
+      if (mandatory && !nextOwner) throw new Error('Family execution requires active-tool controls.');
       if (!ceilingFilter || !nextOwner) return false;
       if (typeof nextOwner.getActiveToolNames !== "function" || typeof nextOwner.setActiveToolsByName !== "function") {
-        if (family) throw new Error('Family execution requires active-tool controls.');
+        if (mandatory) throw new Error("Restricted execution requires active-tool controls.");
         options.onWarn?.("Tool ceiling requested but session lacks active-tool controls; ceiling not enforced", {
           operation: "run_agent.tool_ceiling",
           chatJid: options.chatJid,

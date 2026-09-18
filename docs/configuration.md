@@ -19,6 +19,10 @@ This page lists Piclaw's environment variables, config files, secrets, authentic
 [External workspace](#using-an-external-workspace) ·
 [Cross-instance interop](#remote-peer-add-on)
 
+## External add-on operations
+
+`domains.operations` controls generic principal-scoped background work for runtime add-ons. It defaults to disabled with no grants. The [operation API and configuration guide](addon-operations.md) describes explicit principal/target grants, text-only defaults, budget lineage, cancellation, persistence and tool authority. This does not enable A2A or expose a network endpoint.
+
 ## Configuration surface policy
 
 Piclaw keeps `PICLAW_*` environment variables for immutable deployment bootstrap, secrets, and compatibility aliases. Runtime code should read ordinary settings through typed config helpers instead of open-coded `process.env.PICLAW_*` expressions.
@@ -124,9 +128,11 @@ export PICLAW_WEB_VNC_TARGETS='[{"id":"lab","host":"192.168.1.50","port":5901,"r
 export PICLAW_WEB_VNC_TARGETS='{ "lab": { "id": "lab", "host": "192.168.1.50", "port": 5901 }, "pi": { "host": "192.168.1.20", "port": 5900 } }'
 ```
 
-When direct-connect is allowed, the VNC target picker starts at `localhost:5901`. After a valid direct target is selected, the browser stores its host and port under `piclaw:vnc-direct-target` for the next viewer. Invalid or unavailable browser storage falls back to `localhost:5901`.
+The Classic VNC connection manager starts new direct connections at `localhost:5901`. Configured targets and successful connection history are separate lists. History is local to this browser, account and instance; it records only target reference, label, last-success time and pin state after the first framebuffer is painted. It keeps up to ten unpinned recents and ten pins, deduplicates targets, and ignores corrupt or blocked storage. Clear recent history preserves pins. Old unscoped direct-target preferences are not imported into this history.
 
-The VNC password stays in JavaScript memory for the loaded page and is reused by in-page viewers and reconnects. Submitting an empty password clears it. A full reload or closed tab clears it; host and port remain. The existing pop-out flow can copy the password through its one-time, 60-second handoff record. Piclaw does not add the password to direct-target storage, URLs, cookies or logs. Same-origin code can access page memory while the viewer is loaded.
+Connected Classic sessions show only the framebuffer. Hover at the top centre for a reveal chevron, or tap/swipe down there on touch devices. `Ctrl+Alt+Shift+V` opens controls; Escape closes them. Open details or local keyboard focus retains controls. Connections & history preserves the active session until another target is selected. Disconnect closes it and cancels retries. Visual does not yet host this pane. See [VNC viewer setup](../runtime/skills/integrations/vnc-viewer-setup/SKILL.md) for configuration and isolated real-desktop tests.
+
+The VNC password stays in JavaScript memory for the loaded page and is reused by in-page viewers and reconnects. Submitting an empty password clears it. A full reload or closed tab clears it; successful target metadata remains in scoped history. The existing pop-out flow can copy the password through its one-time, 60-second handoff record. Piclaw does not add the password to direct-target storage, URLs, cookies or logs. Same-origin code can access page memory while the viewer is loaded.
 
 Direct-connect is enabled by default on Linux, macOS, and Windows. Disable it explicitly with:
 
@@ -397,6 +403,9 @@ Notes:
 - In pressure mode, the main-session pool clamps to `PICLAW_MAIN_SESSION_PRESSURE_POOL_MAX_SIZE` (default `1`) and uses the shorter `PICLAW_MAIN_SESSION_PRESSURE_IDLE_TTL_MS` (default `60000`).
 - Oversized persisted `toolResult` payloads are sanitized before session resume and at append-time so inline image/blob payloads do not keep re-accumulating inside session files.
 - Blank or no-terminal-output turns are not considered successful consumption. Automatic recovery still runs first; if no terminal assistant reply is persisted, the cursor is rewound and the failed run is held for explicit retry or skip resolution.
+- `domains.recovery.automaticRecoveryTotalBudgetMs` controls the total bounded recovery window. `0` (the default) derives one-third of the effective turn timeout, bounded to 6–60 minutes and never above a positive turn timeout. A positive value remains an explicit cap; with timeout disabled, automatic mode uses 6 minutes.
+- Timeout recovery exhaustion is reported separately from provider retry exhaustion, preserving timeout as the primary cause in protected handoff metadata.
+- A first tool-dependent timeout or context-pressure failure may compact and run one tools-enabled continuation automatically. This one-use path requires explicitly resolved tool state, no tool failure, no terminal side-effect mix, no exhausted tool budget, available tool control, a successful non-skipped compaction, remaining recovery time/attempts, and an available source generation. It resumes the persisted session with a neutral continuation prompt; it never replays the original instruction.
 
 ### Smart-compaction processing method
 

@@ -13,7 +13,7 @@ import { h, render, Component } from 'preact';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'preact/hooks';
 import { html as htmHtml } from 'htm/preact';
 import {
-    registerSettingsPane,
+    registerAddonSettingsPane,
     unregisterSettingsPane,
     notifySettingsPanesChanged,
 } from '../panels/settings/pane-registry';
@@ -46,7 +46,7 @@ export function installAddonGlobals(): void {
 
     const settingsPaneRegistry = {
         registerSettingsPane: (def: unknown) => {
-            registerSettingsPane(def as Parameters<typeof registerSettingsPane>[0]);
+            registerAddonSettingsPane(def as Parameters<typeof registerAddonSettingsPane>[0]);
             notifySettingsPanesChanged();
             return () => {
                 unregisterSettingsPane((def as { id: string }).id);

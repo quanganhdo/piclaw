@@ -659,6 +659,45 @@ test('handleAddonConfigApiRequest prefers directly registered addon config handl
   expect(postRes?.status).toBe(200);
   expect(await postRes?.json()).toEqual({ ok: true, body: { enabled: false }, source: 'direct' });
   expect(slashCalls).toBe(0);
+  expect(getAddonApiHealthSnapshot()).toEqual({
+    degraded: false,
+    entries: [],
+    transportCounts: { direct_handler: 2, legacy_slash_command: 0 },
+  });
+});
+
+test('handleAddonConfigApiRequest records direct handler failures with transport classification', async () => {
+  registerAddonConfigApi('observability', 'config', {
+    get: async () => { throw new Error('direct handler failed'); },
+  }, 'test-addon');
+
+  const logs: Array<Record<string, unknown>> = [];
+  const { addLogSink, removeLogSink } = await import('../../src/utils/logger.js');
+  const sink = (record: Record<string, unknown>) => logs.push(record);
+  addLogSink(sink);
+  try {
+    const res = await handleAddonConfigApiRequest(
+      new Request('https://example.test/agent/addons/api/observability/config'),
+      '/agent/addons/api/observability/config',
+      (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }),
+      { async applySlashCommand() { return { status: 'error', message: 'slash should not be called' }; } },
+      'web:test',
+    );
+    expect(res?.status).toBe(500);
+    expect(getAddonApiHealthSnapshot()).toEqual({
+      degraded: true,
+      entries: [expect.objectContaining({ transport: 'direct_handler', lastStatus: 500 })],
+      transportCounts: { direct_handler: 1, legacy_slash_command: 0 },
+    });
+    const selection = logs.find((record) => record.operation === 'addon_api.transport_selected');
+    expect(selection).toMatchObject({
+      addonId: 'observability', action: 'config', chatJid: 'web:test', method: 'GET',
+      path: '/agent/addons/api/observability/config', transport: 'direct_handler',
+    });
+    expect(JSON.stringify(selection)).not.toContain('direct handler failed');
+  } finally {
+    removeLogSink(sink);
+  }
 });
 
 test('handleAddonConfigApiRequest loads direct addon config handlers from installed addon extension entries', async () => {
@@ -799,6 +838,11 @@ test('handleAddonConfigApiRequest falls back to suffixed addon slash commands wh
       { chatJid: 'web:test', rawText: '/proxmox-config-get' },
       { chatJid: 'web:test', rawText: '/proxmox-config-get:1' },
     ]);
+    expect(getAddonApiHealthSnapshot()).toEqual({
+      degraded: false,
+      entries: [],
+      transportCounts: { direct_handler: 0, legacy_slash_command: 1 },
+    });
   });
 });
 
@@ -831,10 +875,12 @@ test('handleAddonConfigApiRequest records degraded add-on API state and clears i
         chatJid: 'web:test',
         method: 'GET',
         path: '/agent/addons/api/goal/session',
+        transport: 'legacy_slash_command',
         failureCount: 1,
         degraded: true,
         lastError: 'backend unavailable',
       })],
+      transportCounts: { direct_handler: 0, legacy_slash_command: 1 },
     });
 
     const second = await handleAddonConfigApiRequest(
@@ -851,7 +897,11 @@ test('handleAddonConfigApiRequest records degraded add-on API state and clears i
     );
     expect(second?.status).toBe(200);
     expect(await second?.json()).toEqual({ ok: true });
-    expect(getAddonApiHealthSnapshot()).toEqual({ degraded: false, entries: [] });
+    expect(getAddonApiHealthSnapshot()).toEqual({
+      degraded: false,
+      entries: [],
+      transportCounts: { direct_handler: 0, legacy_slash_command: 2 },
+    });
     expect(calls).toBe(2);
   });
 });
@@ -884,6 +934,11 @@ test('handleAddonConfigApiRequest maps POST config requests to addon slash comma
     expect(res?.status).toBe(200);
     expect(await res?.json()).toEqual({ ok: true, config: { enabled: false, graphite_port: 2004 } });
     expect(invocations).toEqual([{ chatJid: 'web:test', rawText: '/observability-config-set {"enabled":false,"graphite_port":2004}' }]);
+    expect(getAddonApiHealthSnapshot()).toEqual({
+      degraded: false,
+      entries: [],
+      transportCounts: { direct_handler: 0, legacy_slash_command: 1 },
+    });
   });
 });
 

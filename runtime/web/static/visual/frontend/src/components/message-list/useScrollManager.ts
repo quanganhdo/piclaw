@@ -10,6 +10,31 @@ import { createLogger } from "../../utils/logger";
 const log = createLogger("MessageList");
 
 
+/** Own delegated copy listeners/timers for both ordinary and SVG-source code blocks. */
+export function bindCodeCopyButtons(container: HTMLElement): () => void {
+  const timers = new Set<ReturnType<typeof setTimeout>>();
+  let disposed = false;
+  const handler = async (event: Event) => {
+    const btn = (event.target as HTMLElement).closest<HTMLElement>(".code-block__copy");
+    if (!btn || !container.contains(btn)) return;
+    const encoded = btn.dataset.code;
+    if (encoded === undefined) return;
+    const code = decodeURIComponent(escape(atob(encoded)));
+    const ok = await copyToClipboard(code);
+    if (disposed) return;
+    btn.dataset.copyState = ok ? "copied" : "error";
+    btn.setAttribute("aria-label", ok ? "Copied" : "Copy failed");
+    const timer = setTimeout(() => {
+      btn.dataset.copyState = "";
+      btn.setAttribute("aria-label", "Copy code");
+      timers.delete(timer);
+    }, 2000);
+    timers.add(timer);
+  };
+  container.addEventListener("click", handler);
+  return () => { disposed = true; container.removeEventListener("click", handler); timers.forEach(clearTimeout); };
+}
+
 /**
  * Manages scroll state and scroll-related behaviours:
  * - Creates and returns listRef (attach to the list container)
@@ -126,24 +151,7 @@ export function useScrollManager(
   // Copy button delegated handler
   useEffect(() => {
     const container = listRef.current;
-    if (!container) return;
-    const handler = async (e: MouseEvent) => {
-      const btn = (e.target as HTMLElement).closest(
-        ".code-block__copy"
-      ) as HTMLElement;
-      if (!btn) return;
-      const encoded = btn.dataset.code;
-      if (!encoded) return;
-      const code = decodeURIComponent(escape(atob(encoded)));
-      const ok = await copyToClipboard(code);
-      if (ok) {
-        btn.dataset.copyState = "copied";
-        setTimeout(() => { btn.dataset.copyState = ""; }, 2000);
-      }
-    };
-    container.addEventListener("click", handler as unknown as EventListener);
-    return () =>
-      container.removeEventListener("click", handler as unknown as EventListener);
+    if (container) return bindCodeCopyButtons(container);
   }, []);
 
   // Post-render: mermaid diagrams

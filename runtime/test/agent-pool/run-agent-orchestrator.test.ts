@@ -5639,3 +5639,40 @@ test("runAgentPrompt recovery loop guard numeric env rejects malformed suffixes"
     restoreEnv();
   }
 });
+
+test("caller AbortSignal aborts only its active operation session and removes its listener", async () => {
+  const abort = new AbortController();
+  let settle!: () => void;
+  let prompted!: () => void;
+  const started = new Promise<void>((resolve) => { prompted = resolve; });
+  let abortCalls = 0;
+  const listeners = new Set<(event: any) => void>();
+  let removes = 0;
+  const originalRemove = abort.signal.removeEventListener.bind(abort.signal);
+  abort.signal.removeEventListener = ((...args: Parameters<AbortSignal['removeEventListener']>) => { removes++; originalRemove(...args); }) as typeof abort.signal.removeEventListener;
+  const session = {
+    agent: { streamFunction: () => ({}), state: { messages: [] } },
+    model: { provider: 'fixture', id: 'fixture', contextWindow: 10000, maxTokens: 1000 }, thinkingLevel: 'off', sessionManager: { getLeafId: () => null },
+    getActiveToolNames: () => [], setActiveToolsByName: () => undefined,
+    isStreaming: false, isCompacting: false, isRetrying: false,
+    getContextUsage: () => null,
+    async prompt() {
+      this.isStreaming = true; prompted(); await new Promise<void>((resolve) => { settle = resolve; }); this.isStreaming = false;
+      const message = { ...createAssistantMessage(''), stopReason: 'aborted' };
+      for (const listener of listeners) listener({ type: 'message_update', assistantMessageEvent: { type: 'error', reason: 'aborted', error: message } });
+    },
+    async abort() { abortCalls++; settle?.(); },
+    subscribe: (listener: (event: any) => void) => { listeners.add(listener); return () => listeners.delete(listener); },
+    get isIdle() { return !this.isStreaming; },
+    waitForIdle: async () => undefined,
+  };
+  const run = runAgentPrompt('external task','operation:signal-test',{abortSignal:abort.signal,requireToolCeiling:true,toolCeilingFilter:()=>false,skipPrePromptCompaction:true,maxToolCalls:0},{getOrCreateRuntime:async()=>createRuntime(session,{enabled:false,maxRetries:0}),turnCoordinator:new AgentTurnCoordinator({touchSession:()=>{},takeAttachments:()=>[]}),clearAttachments:()=>{},takeAttachments:()=>[],setActiveForkBaseLeaf:()=>{},clearActiveForkBaseLeaf:()=>{},logsDir:createTestLogsDir()});
+  await started;abort.abort();await run;
+  expect(abortCalls).toBe(1);expect(removes).toBeGreaterThan(0);
+});
+
+test("pre-aborted operation never hydrates a session", async () => {
+  const abort = new AbortController();abort.abort();let hydrated = false;
+  const output = await runAgentPrompt('external task','operation:pre-aborted',{abortSignal:abort.signal},{getOrCreateRuntime:async()=>{hydrated=true;throw new Error('must not hydrate');},turnCoordinator:new AgentTurnCoordinator({touchSession:()=>{},takeAttachments:()=>[]}),clearAttachments:()=>{},takeAttachments:()=>[],setActiveForkBaseLeaf:()=>{},clearActiveForkBaseLeaf:()=>{},logsDir:createTestLogsDir()});
+  expect(output.failureCategory).toBe('aborted');expect(hydrated).toBe(false);
+});

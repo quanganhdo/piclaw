@@ -7,6 +7,8 @@
  * Ported from runtime/web/src/components/settings/pane-registry.ts.
  */
 
+import { compareAddonSettingsPanes } from '../../../../../../shared/settings-pane-order';
+
 export interface SettingsPaneDefinition {
     /** Unique id (used as nav key). */
     id: string;
@@ -20,17 +22,33 @@ export interface SettingsPaneDefinition {
     searchable?: boolean;
     /** Placeholder text for the header search. */
     searchPlaceholder?: string;
-    /** Sort order (lower = higher in nav). Built-in panes use 0-100. */
+    /** Fixed core-pane order. Ignored for add-on pane navigation. */
     order?: number;
+    /** Internal ownership marker set by the add-on registration API. */
+    source?: 'core' | 'addon';
 }
 
 const registry: SettingsPaneDefinition[] = [];
 
+function compareSettingsPanes(left: SettingsPaneDefinition, right: SettingsPaneDefinition): number {
+    const leftIsAddon = left.source === 'addon';
+    const rightIsAddon = right.source === 'addon';
+    if (leftIsAddon !== rightIsAddon) return leftIsAddon ? 1 : -1;
+    if (leftIsAddon) return compareAddonSettingsPanes(left, right);
+    const orderCompare = (left.order ?? 500) - (right.order ?? 500);
+    return orderCompare || compareAddonSettingsPanes(left, right);
+}
+
 export function registerSettingsPane(def: SettingsPaneDefinition): void {
+    const normalized = { ...def, source: def.source ?? 'core' } as SettingsPaneDefinition;
     const idx = registry.findIndex(p => p.id === def.id);
-    if (idx >= 0) registry[idx] = def;
-    else registry.push(def);
-    registry.sort((a, b) => (a.order ?? 500) - (b.order ?? 500));
+    if (idx >= 0) registry[idx] = normalized;
+    else registry.push(normalized);
+    registry.sort(compareSettingsPanes);
+}
+
+export function registerAddonSettingsPane(def: SettingsPaneDefinition): void {
+    registerSettingsPane({ ...def, source: 'addon' });
 }
 
 export function unregisterSettingsPane(id: string): void {

@@ -12,6 +12,7 @@ import "./settings/SessionsSection";
 import "./settings/RecordingsSection";
 import "./settings/CompactionSection";
 import "./settings/BudgetSection";
+import "./settings/KeyboardSection";
 import "./settings/ScheduledTasksSection";
 import "./settings/WorkspaceSection";
 import "./settings/EnvironmentSection";
@@ -157,9 +158,8 @@ export function SettingsPanel() {
     );
   }
 
-  // Split panes: built-in (order < 100) vs addon (order >= 100)
-  const builtinPanes = allPanes.filter(p => (p.order ?? 500) < 100);
-  const addonPanes = allPanes.filter(p => (p.order ?? 500) >= 100);
+  const builtinPanes = allPanes.filter(p => p.source !== "addon");
+  const addonPanes = allPanes.filter(p => p.source === "addon");
 
   const activePane = allPanes.find(p => p.id === activeCategory.value)
     ?? allPanes[0];
@@ -195,7 +195,7 @@ export function SettingsPanel() {
       </nav>
 
       {/* Right content */}
-      <div className="settings-panel__content">
+      <div className={`settings-panel__content${activePane?.source === "addon" ? " settings-addon-pane" : ""}`}>
         {error.value && (
           <div className="settings-panel__error">{error.value}</div>
         )}

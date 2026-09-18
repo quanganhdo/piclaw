@@ -1,14 +1,17 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import {
   handleAgentContextRequest,
   handleAgentModelsRequest,
   handleAgentStatusRequest,
   type AgentStatusContext,
 } from "../../../../src/channels/web/agent/agent-status.js";
-import { resetMcpStartupStateForTests } from "../../../../src/secure/mcp-keychain.js";
 import { createJsonResponder } from "../helpers/http.js";
 
-afterEach(() => resetMcpStartupStateForTests());
+const EMPTY_ADDON_API = {
+  degraded: false,
+  entries: [],
+  transportCounts: { direct_handler: 0, legacy_slash_command: 0 },
+};
 
 function createContext(overrides: Partial<AgentStatusContext> = {}): AgentStatusContext {
   return {
@@ -22,6 +25,8 @@ function createContext(overrides: Partial<AgentStatusContext> = {}): AgentStatus
     getTokenUsageForChat: () => null,
     getAvailableModels: async () => ({ models: [] }),
     getProviderReadyCompletedForInstance: () => false,
+    getAddonApiHealthSnapshot: () => EMPTY_ADDON_API,
+    getMcpStartupDiagnostics: () => [],
     ...overrides,
   };
 }
@@ -39,26 +44,20 @@ describe("web agent status helpers", () => {
       chat_jid: "web:default",
       data: null,
       extension_working: null,
-      addon_api: { degraded: false, entries: [] },
+      addon_api: { degraded: false, entries: [], transportCounts: { direct_handler: 0, legacy_slash_command: 0 } },
       mcp_startup: { degraded: false, servers: [] },
     });
   });
 
   test("handleAgentStatusRequest exposes quarantined MCP startup servers", async () => {
-    const { hydrateMcpKeychainCredentials } = await import("../../../../src/secure/mcp-keychain.js");
-    const { mkdtempSync, mkdirSync, writeFileSync } = await import("node:fs");
-    const { tmpdir } = await import("node:os");
-    const { join } = await import("node:path");
-    const root = mkdtempSync(join(tmpdir(), "piclaw-mcp-status-"));
-    mkdirSync(join(root, ".pi"), { recursive: true });
-    writeFileSync(join(root, ".pi", "mcp.json"), JSON.stringify({
-      mcpServers: { broken: { bearerTokenKeychain: "broken/token" } },
-    }));
-    await hydrateMcpKeychainCredentials(root);
-
     const body = await handleAgentStatusRequest(
       new Request("https://example.com/agent/status"),
-      createContext(),
+      createContext({
+        getMcpStartupDiagnostics: () => [{
+          serverName: "broken",
+          reason: "must set a valid bearerTokenEnv with bearerTokenKeychain.",
+        }],
+      }),
     ).json();
     expect(body.mcp_startup).toEqual({
       degraded: true,
@@ -85,7 +84,7 @@ describe("web agent status helpers", () => {
       chat_jid: "web:ux",
       data: null,
       extension_working: null,
-      addon_api: { degraded: false, entries: [] },
+      addon_api: { degraded: false, entries: [], transportCounts: { direct_handler: 0, legacy_slash_command: 0 } },
       mcp_startup: { degraded: false, servers: [] },
     });
   });

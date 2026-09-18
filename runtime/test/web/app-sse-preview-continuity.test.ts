@@ -279,6 +279,23 @@ test('bounded snapshots do not duplicate state writes once full Draft and Though
   expect(snapshotOnly.getThought()).toMatchObject({ text: 'legacy thought', totalLines: 1 });
 });
 
+test('authoritative Thought text repairs a duplicated local buffer', () => {
+  const harness = createPreviewHarness();
+  const prefix = "Deciding on a commit\n\nI need to decide. First, I’ll";
+  const complete = `${prefix} test the document differences.`;
+
+  handleAppSseEvent('agent_thought_delta', {
+    chat_jid: 'chat:preview', turn_id: 'turn-preview', reset: true, delta: prefix, text: prefix,
+  }, harness.deps);
+  harness.deps.thoughtBufferRef.current = `${prefix}${complete}`;
+  handleAppSseEvent('agent_thought_delta', {
+    chat_jid: 'chat:preview', turn_id: 'turn-preview', delta: '', text: complete,
+  }, harness.deps);
+
+  expectAuthoritativePreview(harness.getThought(), complete.split('\n'));
+  expect(harness.deps.thoughtBufferRef.current).toBe(complete);
+});
+
 test('sub-throttle Draft and Thought suffixes render after a bounded live pause', async () => {
   const harness = createPreviewHarness();
 

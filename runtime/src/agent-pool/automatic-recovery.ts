@@ -76,7 +76,10 @@ export interface RecoveryDecision {
 }
 
 const DEFAULT_MAX_ATTEMPTS = 3;
-const DEFAULT_TOTAL_BUDGET_MS = 360_000;
+export const MIN_AUTOMATIC_RECOVERY_BUDGET_MS = 6 * 60_000;
+export const MAX_AUTOMATIC_RECOVERY_BUDGET_MS = 60 * 60_000;
+export const AUTOMATIC_RECOVERY_TIMEOUT_DIVISOR = 3;
+const DEFAULT_TOTAL_BUDGET_MS = MIN_AUTOMATIC_RECOVERY_BUDGET_MS;
 const DEFAULT_RETRY_BASE_DELAY_MS = 2_000;
 const DEFAULT_RETRY_MAX_DELAY_MS = 60_000;
 
@@ -112,7 +115,20 @@ export function normalizeRetryBackoffSettings(settings?: Partial<RetryBackoffSet
   };
 }
 
-export function getAutomaticRecoveryConfig(retrySettings?: Partial<RetryBackoffSettings> | null): Readonly<AutomaticRecoveryConfig> {
+export function resolveAutomaticRecoveryBudgetMs(configuredBudgetMs: number, timeoutMs: number): number {
+  if (Number.isFinite(configuredBudgetMs) && configuredBudgetMs > 0) {
+    const explicit = Math.max(1, Math.round(configuredBudgetMs));
+    return timeoutMs > 0 ? Math.min(explicit, Math.round(timeoutMs)) : explicit;
+  }
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return MIN_AUTOMATIC_RECOVERY_BUDGET_MS;
+  const derived = Math.round(timeoutMs / AUTOMATIC_RECOVERY_TIMEOUT_DIVISOR);
+  return Math.min(Math.round(timeoutMs), Math.max(MIN_AUTOMATIC_RECOVERY_BUDGET_MS, Math.min(MAX_AUTOMATIC_RECOVERY_BUDGET_MS, derived)));
+}
+
+export function getAutomaticRecoveryConfig(
+  retrySettings?: Partial<RetryBackoffSettings> | null,
+  timeoutMs = 0,
+): Readonly<AutomaticRecoveryConfig> {
   const normalizedRetry = normalizeRetryBackoffSettings(retrySettings);
   const policy = getRecoveryPolicyConfig();
   return Object.freeze({
@@ -126,7 +142,7 @@ export function getAutomaticRecoveryConfig(retrySettings?: Partial<RetryBackoffS
     maxAttempts: policy.automaticRecoveryMaxAttempts > 0
       ? policy.automaticRecoveryMaxAttempts
       : normalizedRetry.maxRetries,
-    totalBudgetMs: policy.automaticRecoveryTotalBudgetMs,
+    totalBudgetMs: resolveAutomaticRecoveryBudgetMs(policy.automaticRecoveryTotalBudgetMs, timeoutMs),
     baseDelayMs: normalizedRetry.baseDelayMs,
     maxDelayMs: normalizedRetry.maxDelayMs,
   });
@@ -332,12 +348,21 @@ export function decideAutomaticRecovery(input: RecoveryDecisionInput): RecoveryD
         reason: "A terminal side-effect tool completed after another tool failed; preserve the mixed outcome instead of converting it to recovery success.",
       };
     }
-    if (failureCategory === "context_pressure" || input.snapshot.sawCompactionIntent) {
+    const canSafelyCompactTimedOutToolWork = input.recoveryAttemptsUsed === 0
+      && failureCategory === "timeout"
+      && input.snapshot.hasUnresolvedToolExecution === false
+      && input.snapshot.hadToolFailure === false
+      && input.snapshot.sawTerminalSideEffectToolActivity !== true
+      && input.snapshot.toolUseBudgetExceeded !== true
+      && input.snapshot.canDisableToolsForRecovery === true;
+    if (failureCategory === "context_pressure" || canSafelyCompactTimedOutToolWork || input.snapshot.sawCompactionIntent) {
       return {
         recover: true,
         classifier: "context_pressure",
         strategy: "compact_then_retry",
-        reason: "Failure looks context-related despite tool activity; compacting before retrying.",
+        reason: canSafelyCompactTimedOutToolWork
+          ? "Tool-dependent turn timed out with resolved tool state; compacting before one bounded tools-enabled continuation."
+          : "Failure looks context-related despite tool activity; compacting before retrying.",
       };
     }
     if (toolHistoryPressure) {

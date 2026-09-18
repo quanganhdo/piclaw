@@ -26,9 +26,9 @@ The target design uses the selected Earendil version's actual concepts and publi
 
 Where the selected Earendil implementation is unavailable, the assessment may define a test-only implementation of that version's public contracts. It may not freeze those contracts: the fixture and tests update when Piclaw selects a new Earendil version.
 
-### Assessment-only change
+### Historical assessment-only phase
 
-This phase may change this document only. It must not modify production code, generated bundles, schemas, tests or package pins.
+The original assessment phase was documentation-only and did not authorise production code, generated bundles, schemas, tests or package-pin changes. Later current-loop migration authorisation is tracked separately in the [published 0.85.1 work sequence](evidence/earendil-0851-work-sequence.md). It does not activate the replacement runner or relax service-ownership rules.
 
 ## Assessment quality bar
 

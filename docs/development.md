@@ -42,6 +42,23 @@ For the current end-to-end GitHub Actions flow (triggers, job dependencies, and 
 
 - [CI workflows and dependencies](./ci-flows.md)
 
+### Local-first validation policy
+
+GitHub Actions is the final hosted verification layer, not the development test loop.
+
+Before pushing a feature/fix branch or opening a pull request:
+
+1. run focused tests through the repository's isolated local launcher;
+2. use host-independent fixtures for platform or policy variants whenever practical;
+3. run relevant package/static/workflow-contract checks;
+4. run `make ci-fast` on the final candidate.
+
+Do not add temporary/per-feature workflows, manually dispatch Actions, or repeatedly push speculative fixes to use hosted CI as an iterative or ad-hoc test runner. Once local validation is complete, push the immutable candidate; the existing automatic PR check provides supplementary hosted evidence.
+
+For repository-owned PRs authored and validated by the project, explicit merge authorization plus passing required local gates is sufficient. Merge without waiting for hosted CI. External/untrusted contributions, or behavior that cannot be reproduced locally (for example a platform-specific runtime path), may still require hosted evidence before merge. Automatic PR/main checks may finish after an authorized merge; investigate and remediate failures without making that wait the default gate for locally validated project PRs.
+
+Manual workflow dispatch remains available only for explicitly authorized procedures already documented under release or operations (for example a required release-candidate UX run). It must not be used to bypass local feature validation.
+
 ## Testing
 
 Repository test entry points create an owned temporary filesystem root before importing runtime configuration. The local launcher, direct controlled runner and Bun test preloads in the root and `runtime/` isolate workspace, store, data, home, Pi profile, XDG and temporary directories. Nested runners retain only paths inside that root. CI and niceness flags do not disable filesystem isolation.

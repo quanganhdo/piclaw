@@ -18,6 +18,7 @@ import {
   type InteractionRow,
 } from "../../../db.js";
 import { createLogger } from "../../../utils/logger.js";
+import type { AgentControlCommand, AgentControlResult } from "../../../agent-control/agent-control-types.js";
 import type { QueuedFollowupItem } from "../runtime/followup-placeholders.js";
 import { parseJsonObjectRequest } from "../json-body.js";
 import type { QueuedFollowupLifecycleService } from "../runtime/queued-followup-lifecycle-service.js";
@@ -89,6 +90,7 @@ type ControlPlaneAgentPool = AgentPool & {
   permanentPurgeChatBranch?: (chatJid: string) => Promise<unknown>;
   restoreChatBranch?: (chatJid: string, options?: { agentName?: string | null }) => Promise<unknown>;
   applySlashCommand?: (chatJid: string, rawText: string) => Promise<{ status: string; message?: string }>;
+  applyControlCommand?: (chatJid: string, command: AgentControlCommand) => Promise<AgentControlResult>;
   listActiveChats?: () => unknown[];
 };
 
@@ -481,7 +483,7 @@ export class WebAgentControlPlaneService {
     if (expectedTurnId && activeTurnId && expectedTurnId !== activeTurnId) {
       return this.options.json({ error: "turn_id does not match the active run", chat_jid: chatJid, active_turn_id: activeTurnId }, 409);
     }
-    if (typeof this.options.agentPool.applySlashCommand !== "function") {
+    if (typeof this.options.agentPool.applyControlCommand !== "function") {
       return this.options.json({ error: "Run abort is not available." }, 501);
     }
 
@@ -491,8 +493,16 @@ export class WebAgentControlPlaneService {
       requestedTurnId: expectedTurnId || null,
       activeTurnId: activeTurnId || null,
     });
-    const result = await this.options.agentPool.applySlashCommand(chatJid, "/abort");
-    return this.options.json({ status: "ok", chat_jid: chatJid, turn_id: activeTurnId || null, result }, 200);
+    try {
+      const result = await this.options.agentPool.applyControlCommand(chatJid, { type: "abort", raw: "/abort" });
+      if (result.status === "error") {
+        return this.options.json({ status: "error", error: result.message, chat_jid: chatJid, turn_id: activeTurnId || null, result }, 500);
+      }
+      return this.options.json({ status: "ok", chat_jid: chatJid, turn_id: activeTurnId || null, result }, 200);
+    } catch (error) {
+      log.error("Agent run abort failed", { operation: "operator_run.abort_failed", chatJid, error });
+      return this.options.json({ status: "error", error: "Run abort failed.", chat_jid: chatJid, turn_id: activeTurnId || null }, 500);
+    }
   }
 
   async handleAgentRunClearStale(req: Request): Promise<Response> {

@@ -12,6 +12,7 @@ import {
   type ParsedTitle,
 } from "../utils/agent-status";
 import { AgentRequestModal, type AgentRequest } from "./AgentRequestModal";
+import { reconcileThoughtStreamText } from "../../../../../src/ui/thought-stream-reconciliation";
 import { CollapsibleContent, MarkdownContent } from "./CollapsibleContent";
 import { PanelHeader } from "./PanelHeader";
 import {
@@ -195,12 +196,7 @@ export function AgentStatusPanel() {
     const handleThought = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (!thoughtStartRef.current) thoughtStartRef.current = Date.now();
-      if (detail.reset) thoughtBufferRef.current = "";
-      if (detail.delta) {
-        thoughtBufferRef.current += detail.delta;
-      } else if (detail.text !== undefined) {
-        thoughtBufferRef.current = detail.text;
-      }
+      thoughtBufferRef.current = reconcileThoughtStreamText(thoughtBufferRef.current, detail);
       if (!thoughtRafRef.current) {
         thoughtRafRef.current = requestAnimationFrame(flushThought);
       }

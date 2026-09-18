@@ -1,3 +1,4 @@
+import { operationSessionProfile, operationSessionTools } from "./operation-session-profile.js";
 /**
  * agent-pool/session.ts – pi-agent session creation and directory management.
  *
@@ -52,11 +53,16 @@ import { createLogger, debugSuppressedError } from "../utils/logger.js";
 import type { CompactionStreamFn } from "../extensions/smart-compaction/stream-complete.js";
 import { normalizeLlmContext } from "./llm-context-normalizer.js";
 import { writeMergedSessionArchive } from "../session-archive.js";
+import {
+  listInstalledAddonPackageDirs,
+  readInstalledAddonPackage,
+  resolveAddonPackageEntries,
+} from "../addons/package-entries.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 const { createMcpAdapter } = require("pi-mcp-adapter") as {
-  createMcpAdapter(options: { config: unknown }): ExtensionFactory;
+  createMcpAdapter(options: { config: unknown; initializeOnLoad?: boolean }): ExtensionFactory;
 };
 const AGENT_DIR = getPiclawAgentDir();
 const EMPTY_STRING_ARRAY: string[] = [];
@@ -196,56 +202,13 @@ function ensureWorkspaceExtensionNodeModulesLink(nodeModulesDir: string | null):
   ensuredWorkspaceExtensionLinkKey = ensureKey;
 }
 
-type AddonPackageManifest = {
-  name?: string;
-  main?: string;
-  pi?: {
-    extensions?: string[];
-  };
-};
-
-function listAddonPackageDirs(addonsNodeModulesDir: string): string[] {
-  if (!existsSync(addonsNodeModulesDir)) return EMPTY_STRING_ARRAY;
-  const results: string[] = [];
-  for (const entry of readdirSync(addonsNodeModulesDir, { withFileTypes: true })) {
-    if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
-    const entryPath = join(addonsNodeModulesDir, entry.name);
-    if (!existsSync(entryPath)) continue; // broken symlink
-    if (entry.name.startsWith("@")) {
-      try {
-        for (const scoped of readdirSync(entryPath, { withFileTypes: true })) {
-          if (!scoped.isDirectory() && !scoped.isSymbolicLink()) continue;
-          const scopedPath = join(entryPath, scoped.name);
-          if (existsSync(scopedPath)) results.push(scopedPath);
-        }
-      } catch (error) {
-        debugSuppressedError(log, "Skipping unreadable scoped directory during extension scan.", error, { scopedDir: entryPath });
-      }
-      continue;
-    }
-    results.push(entryPath);
-  }
-  return results;
-}
-
 export function getInstalledAddonExtensionPaths(workspaceDir = getWorkspaceDir()): string[] {
   const addonsNodeModulesDir = join(workspaceDir, ".pi", "extensions", "node_modules");
   const extensionPaths: string[] = [];
-  for (const packageDir of listAddonPackageDirs(addonsNodeModulesDir)) {
-    const packageJsonPath = join(packageDir, "package.json");
-    if (!existsSync(packageJsonPath)) continue;
-    try {
-      const manifest = JSON.parse(readFileSync(packageJsonPath, "utf8")) as AddonPackageManifest;
-      const declared = Array.isArray(manifest?.pi?.extensions) && manifest.pi?.extensions?.length
-        ? manifest.pi.extensions
-        : [];
-      for (const relativePath of declared) {
-        const fullPath = join(packageDir, relativePath);
-        if (existsSync(fullPath) && statSync(fullPath).isFile()) extensionPaths.push(fullPath);
-      }
-    } catch {
-      continue;
-    }
+  for (const packageDir of listInstalledAddonPackageDirs(addonsNodeModulesDir)) {
+    const addonPackage = readInstalledAddonPackage(packageDir);
+    if (!addonPackage) continue;
+    extensionPaths.push(...resolveAddonPackageEntries(packageDir, addonPackage.manifest.pi?.extensions));
   }
   return extensionPaths;
 }
@@ -598,9 +561,10 @@ export async function createSessionInDir(
     requireOwnedSessionExecution(options.chatJid);
   }
   ensureValidProcessCwd();
-  const channelSystemPromptAppendix = getChannelSystemPromptAppendix(options.chatJid);
+  const operationProfile = operationSessionProfile(options.chatJid);
+  const channelSystemPromptAppendix = operationProfile ? '' : getChannelSystemPromptAppendix(options.chatJid);
   const appendSystemPromptOverride = getAppendSystemPromptOverride(channelSystemPromptAppendix);
-  const additionalExtensionPaths = getBundledExtensionPaths(options.chatJid);
+  const additionalExtensionPaths = operationProfile ? [] : getBundledExtensionPaths(options.chatJid);
 
   const workspaceDir = getWorkspaceDir();
   const owner = mode === 'family-shared' ? requireOwnedSessionExecution(options.chatJid!) : null;
@@ -624,14 +588,16 @@ export async function createSessionInDir(
     sessionStartEvent?: SessionStartEvent;
   }) => {
     if (mode === 'family-shared' && !requireOwnedSessionExecution(options.chatJid!)) throw new Error('Owned family session identity is required.');
-    const builtinExtensionFactories = [
+    const builtinExtensionFactories = operationProfile ? [] : [
       ...(mode === 'family-shared' ? [createFamilyToolCallGuard(options.chatJid!)] : []),
       ...createBuiltinExtensionFactories({
         compactionStreamFn: createCompactionStreamFn(options.modelRuntime, options.settingsManager),
         modelRuntime: options.modelRuntime,
         chatJid: options.chatJid,
       }),
-      createMcpAdapter({ config: getPreparedMcpConfig() }),
+      // Piclaw synchronously emits the initial session_start event. Let that
+      // session own eager servers instead of spawning a superseded load-time owner.
+      createMcpAdapter({ config: getPreparedMcpConfig(), initializeOnLoad: false }),
     ];
     const resourceLoader = new DefaultResourceLoader({
       cwd,
@@ -642,6 +608,7 @@ export async function createSessionInDir(
         : builtinExtensionFactories,
       additionalExtensionPaths,
       ...(appendSystemPromptOverride ? { appendSystemPromptOverride } : {}),
+      ...operationProfile,
     });
     await resourceLoader.reload();
     if (mode === 'family-shared' && !requireOwnedSessionExecution(options.chatJid!)) throw new Error('Owned family session identity is required.');
@@ -665,7 +632,8 @@ export async function createSessionInDir(
       // allowlist that silently blocks every extension tool not listed.
       // The tool-activation extension sets the correct default-active set
       // via its session_start handler instead.
-      customTools: mode === 'family-shared'
+      ...(operationProfile ? { tools: operationSessionTools(options.chatJid!) } : {}),
+      customTools: operationProfile ? [] : mode === 'family-shared'
         ? createFamilyBuiltinTools(cwd, options.chatJid!, (options.customTools ?? []) as ToolDefinition[])
         : options.customTools as any,
     });

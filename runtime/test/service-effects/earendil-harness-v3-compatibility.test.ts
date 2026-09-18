@@ -3,22 +3,10 @@ import { rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// @ts-expect-error -- 0.84.4 has no public v3 constructor contract.
-import type { AgentHarnessConstructor } from "@earendil-works/pi-agent-core";
-// @ts-expect-error -- 0.84.4 has only the non-generic Events registry.
-import type { HarnessEventBus } from "@earendil-works/pi-agent-core";
-// @ts-expect-error -- 0.84.4 has no public harness Storage contract.
-import type { Storage } from "@earendil-works/pi-agent-core";
-// @ts-expect-error -- 0.84.4 has no public harness Transaction contract.
-import type { Transaction } from "@earendil-works/pi-agent-core";
-// @ts-expect-error -- 0.84.4 has no public durable UsageRow contract.
-import type { UsageRow } from "@earendil-works/pi-agent-core";
 import type {
-  AgentHarnessOptions,
-  AgentHarnessTool,
-  HarnessTool,
+  AgentHarnessConstructor, AgentHarnessOptions, AgentHarnessTool,
+  Events, Storage, SessionMutation, UsageRow,
 } from "@earendil-works/pi-agent-core";
-
 import type { EarendilDirectAssignments } from "../../src/service-effects/earendil-harness-v3-compatibility/direct-assignments.js";
 import {
   EARENDIL_HARNESS_V3_COMPATIBILITY_MANIFEST,
@@ -30,18 +18,9 @@ import { collectModuleSpecifiers } from "./fixtures/typescript-syntax-oracle.js"
 import {
   EARENDIL_HARNESS_DIRECT_OPERATIONS,
   readInstalledEarendilAgentCoreVersion,
-  runEarendilHarnessDirectProbe,
 } from "./fixtures/earendil-harness-direct-probe.js";
 
-// @ts-expect-error -- released-v2 AgentHarnessOptions is deliberately non-generic.
-type _UnsupportedContextualOptions = AgentHarnessOptions<PiclawToolContext>;
-function _assignContextualToolToReleasedV2(tool: AgentHarnessTool<PiclawToolContext>): void {
-  // @ts-expect-error -- contextual v3 tools are not released-v2 HarnessTool values.
-  const releasedTool: HarnessTool = tool;
-  void releasedTool;
-}
-
-type _CompileOnlyMissingExports = [AgentHarnessConstructor, HarnessEventBus, Storage, Transaction, UsageRow];
+type _PublicSelectedContracts = [AgentHarnessConstructor, Events, Storage, SessionMutation, UsageRow, AgentHarnessOptions<PiclawToolContext>, AgentHarnessTool<PiclawToolContext>];
 type _CompileOnlyDirectAssignments = EarendilDirectAssignments;
 
 const compatibilityTestPath = fileURLToPath(import.meta.url);
@@ -108,7 +87,8 @@ describe("latent Earendil Harness v3 compatibility evidence", () => {
     expect(normalized.value).toEqual(EARENDIL_HARNESS_V3_COMPATIBILITY_MANIFEST);
     expectDeepFrozen(normalized.value);
 
-    expect(normalized.value.authority).toEqual({
+    expect(normalized.value.authority).toEqual({ currentRuntimeVersion: "0.85.1", harnessActivation: "latent_only", unsupportedCountsAsPass: false });
+    expect(normalized.value.historical.authority).toEqual({
       currentRuntimeVersion: "0.84.4",
       harnessBaselineVersion: "0.84.1",
       harnessCandidateVersion: "0.84.4",
@@ -118,7 +98,7 @@ describe("latent Earendil Harness v3 compatibility evidence", () => {
       designCommit: "5f7195c51eac43cdf329f813a7ef020d7bd74527",
       draftEvidenceCommit: "fd389abc4677b4e0fa5dc9b2bbd2e63418f079b4",
     });
-    expect(normalized.value.releases.map((release) => [
+    expect(normalized.value.historical.releases.map((release) => [
       release.tag,
       release.commit,
       release.runtimeSelection,
@@ -172,8 +152,8 @@ describe("latent Earendil Harness v3 compatibility evidence", () => {
     expect(normalizeEarendilHarnessCompatibilityManifest(hostile).issues[0]?.code).toBe("invalid_container");
   });
 
-  test("keeps every HC row explicitly unsupported and every operation backed by the direct probe catalogue", () => {
-    const manifest = EARENDIL_HARNESS_V3_COMPATIBILITY_MANIFEST;
+  test("retains all historical unsupported HC rows and historical operation catalogue", () => {
+    const manifest = EARENDIL_HARNESS_V3_COMPATIBILITY_MANIFEST.historical;
     expect(manifest.capabilities.map((capability) => capability.id).join(",")).toBe(
       Array.from({ length: 20 }, (_, index) => `HC-${String(index + 1).padStart(3, "0")}`).join(","),
     );
@@ -196,55 +176,37 @@ describe("latent Earendil Harness v3 compatibility evidence", () => {
     ]);
   });
 
-  test("CI-compiles the direct assignments and exactly seven negative incompatibilities", async () => {
+  test("CI compiles positive selected public contracts without negative suppressions", async () => {
     const source = await Bun.file(compatibilityTestPath).text();
-    const directAssignments = await Bun.file(directAssignmentsPath).text();
-    const directives = source.match(/^\s*\/\/ @ts-expect-error -- .*$/gm) ?? [];
-    expect(directives).toHaveLength(7);
+    const assignments = await Bun.file(directAssignmentsPath).text();
+    expect(source.match(/^\s*\/\/ @ts-expect-error/gm) ?? []).toHaveLength(0);
     expect(compileCompatibilitySource(source)).toEqual([]);
-
-    const exposedSource = source.replace(/^\s*\/\/ @ts-expect-error -- .*$/gm, "// expected incompatibility exposed");
-    const diagnostics = compileCompatibilitySource(exposedSource);
-    const expected = [
-      [2305, "AgentHarnessConstructor"],
-      [2305, "HarnessEventBus"],
-      [2305, "Storage"],
-      [2305, "Transaction"],
-      [2305, "UsageRow"],
-      [2315, "AgentHarnessOptions"],
-      [2322, "AgentHarnessTool<PiclawToolContext>"],
-    ] as const;
-    expect(diagnostics).toHaveLength(expected.length);
-    for (const [index, diagnostic] of diagnostics.entries()) {
-      const [code, marker] = expected[index];
-      expect(diagnostic.code).toBe(code);
-      expect(diagnostic.message).toContain(marker);
-    }
-
-    const specifiers = earendilModuleSpecifiers(`${source}\n${directAssignments}`);
-    expect([...new Set(specifiers)].sort()).toEqual([
-      "@earendil-works/pi-agent-core",
-      "@earendil-works/pi-ai",
-      "@earendil-works/pi-coding-agent",
-    ]);
-    expect(specifiers.every((specifier) => !specifier.includes("/dist/") && !specifier.includes("/src/"))).toBe(true);
-  }, 30_000);
-
-  test("resolves the package-root public package.json export to the selected 0.84.4 current runtime", async () => {
-    expect(await readInstalledEarendilAgentCoreVersion()).toBe("0.84.4");
-  });
-
-  test("observes the 25 exact public HarnessNotImplemented outcomes without converting them to passes", async () => {
-    const rows = await runEarendilHarnessDirectProbe();
-    expect(rows.map((row) => row.operation)).toEqual([...EARENDIL_HARNESS_DIRECT_OPERATIONS]);
-    expect(rows).toHaveLength(25);
-    for (const row of rows) {
-      expect(row).toEqual({
-        operation: row.operation,
-        status: "unsupported",
-        reportedOperation: row.operation,
-        errorName: "HarnessNotImplemented",
-      });
+    expect(assignments).toContain("sixArgumentExecution");
+    expect(assignments).not.toContain("fiveArgumentExecution");
+    for (const specifier of earendilModuleSpecifiers(source + "\n" + assignments)) {
+      expect(specifier).not.toContain("/dist/");
+      expect(specifier).not.toMatch(/0\.84\./);
     }
   });
+
+  test("preserves the historical negative receipt without executing it against 0.85.1", async () => {
+    const receipt = await Bun.file(resolve(runtimeRoot, "../docs/design/earendil-agent-harness-integration-adr/evidence/earendil-0844-historical-negatives.json")).json();
+    expect(receipt.version).toBe("0.84.4");
+    expect(receipt.negativeCompilerChecks).toBe(7);
+    expect(receipt.toolExecuteArgumentCount).toBe(5);
+    expect(receipt.operations.map((r: { operation: string }) => r.operation)).toEqual(EARENDIL_HARNESS_DIRECT_OPERATIONS);
+    expect(receipt.operations).toHaveLength(25);
+    expect(receipt.operations.every((r: { status: string; errorName: string }) => r.status === "unsupported" && r.errorName === "HarnessNotImplemented")).toBe(true);
+    expect(await readInstalledEarendilAgentCoreVersion()).toBe("0.85.1");
+  });
+
+  test("selected-release partial HC coverage never counts as full promotion", () => {
+    const selected = EARENDIL_HARNESS_V3_COMPATIBILITY_MANIFEST.selected;
+    expect(selected.version).toBe("0.85.1");
+    expect(selected.capabilities).toHaveLength(20);
+    expect(selected.capabilities.every((c) => c.status === "partial" || c.status === "unverified")).toBe(true);
+    expect(selected.productionActivation).toBe(false);
+    expect(selected.watchSession.status).toBe("unsupported");
+  });
+
 });

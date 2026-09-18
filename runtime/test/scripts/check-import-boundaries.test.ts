@@ -113,6 +113,33 @@ describe("check-import-boundaries", () => {
     }
   });
 
+  test("MCP adapter subpath imports stay behind the approved status-hint adapter", () => {
+    const dir = mkdtempSync(join(tmpdir(), "import-boundaries-"));
+    try {
+      mkdirSync(join(dir, "extensions", "integrations"), { recursive: true });
+      mkdirSync(join(dir, "src", "extensions"), { recursive: true });
+      writeFileSync(
+        join(dir, "extensions", "integrations", "bad.ts"),
+        "import { loadMcpConfig } from 'pi-mcp-adapter/config.ts';\n",
+      );
+      writeFileSync(
+        join(dir, "src", "extensions", "bad.ts"),
+        "import { loadMetadataCache } from 'pi-mcp-adapter/metadata-cache.ts';\n",
+      );
+      writeFileSync(
+        join(dir, "src", "extensions", "mcp-status-hint-adapter.ts"),
+        "import { loadMcpConfig } from 'pi-mcp-adapter/config.ts';\n",
+      );
+
+      expect(findPackagedExtensionImportViolations(dir)).toEqual([
+        "extensions/integrations/bad.ts: direct pi-mcp-adapter subpath import must use src/extensions/mcp-status-hint-adapter.ts (pi-mcp-adapter/config.ts)",
+        "src/extensions/bad.ts: direct pi-mcp-adapter subpath import must use src/extensions/mcp-status-hint-adapter.ts (pi-mcp-adapter/metadata-cache.ts)",
+      ]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   test("findImportBoundaryViolations keeps latent service effects unreachable from production core", () => {
     const dir = mkdtempSync(join(tmpdir(), "import-boundaries-"));
     try {

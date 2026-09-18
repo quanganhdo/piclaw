@@ -1,0 +1,76 @@
+/* Host-owned controls for every registered add-on Settings pane, in both skins.
+ * Existing add-ons often supply inline button styles. Override only the control
+ * appearance here; leave layout, visibility and event handling to the add-on.
+ * Composite controls retain their own geometry. Custom widgets can opt out with
+ * data-settings-button="unstyled"; ordinary buttons need no class or attribute.
+ */
+.settings-addon-pane :where(button:not(.settings-number-step-btn):not(.settings-panel__stepper-btn):not([role="tab"]):not([role="switch"]):not([data-settings-button="unstyled"])) {
+    appearance: none !important;
+    box-sizing: border-box !important;
+    min-height: var(--settings-addon-button-min-height, 32px) !important;
+    min-width: var(--settings-addon-button-min-width, 0px) !important;
+    padding: 6px 14px !important;
+    border: 1px solid var(--border-color, var(--border)) !important;
+    border-radius: 6px !important;
+    background: var(--bg-hover, var(--bg-secondary)) !important;
+    color: var(--text-primary) !important;
+    font-family: var(--font-family, system-ui, sans-serif) !important;
+    font-size: var(--settings-addon-button-font-size, 13px) !important;
+    font-weight: var(--settings-addon-button-font-weight, 500) !important;
+    line-height: var(--settings-addon-button-line-height, 18px) !important;
+    white-space: var(--settings-addon-button-white-space, normal) !important;
+    text-decoration: none !important;
+    cursor: pointer !important;
+    transition: var(--settings-addon-button-transition, background-color 0.15s, border-color 0.15s, color 0.15s) !important;
+}
+
+/* Keep Visual's generic span typography from changing button labels. */
+.settings-addon-pane button:not([data-settings-button="unstyled"]) span {
+    font-size: inherit !important;
+}
+
+.settings-addon-pane :where(button:not(.settings-number-step-btn):not(.settings-panel__stepper-btn):not([role="tab"]):not([role="switch"]):not([data-settings-button="unstyled"])):hover:not(:disabled):not([aria-disabled="true"]) {
+    background: color-mix(in srgb, var(--accent-color) 15%, var(--bg-primary)) !important;
+    border-color: var(--settings-addon-button-hover-border, var(--accent-color)) !important;
+}
+
+.settings-addon-pane button:not([data-settings-button="unstyled"]):focus-visible {
+    outline: 2px solid var(--accent-color) !important;
+    outline-offset: 2px !important;
+}
+
+.settings-addon-pane button:not([data-settings-button="unstyled"]):is(:disabled, [aria-disabled="true"]) {
+    opacity: var(--settings-addon-button-disabled-opacity, 0.55) !important;
+    cursor: var(--settings-addon-button-disabled-cursor, not-allowed) !important;
+}
+
+.settings-addon-pane button:is(.primary, [data-settings-button="primary"]):not([data-settings-button="unstyled"]) {
+    background: var(--accent-color) !important;
+    border-color: var(--accent-color) !important;
+    color: var(--accent-contrast-text, #fff) !important;
+}
+
+.settings-addon-pane button:is(.primary, [data-settings-button="primary"]):not([data-settings-button="unstyled"]):hover:not(:disabled):not([aria-disabled="true"]) {
+    background: var(--accent-hover, var(--accent-color)) !important;
+    color: var(--accent-contrast-text, #fff) !important;
+}
+
+.settings-addon-pane button:is(.danger, [data-settings-button="danger"]):not([data-settings-button="unstyled"]) {
+    color: var(--danger-color) !important;
+}
+
+.settings-addon-pane button:is(.danger, [data-settings-button="danger"]):not([data-settings-button="unstyled"]):hover:not(:disabled):not([aria-disabled="true"]) {
+    background: color-mix(in srgb, var(--danger-color) 12%, var(--bg-primary)) !important;
+    border-color: var(--danger-color) !important;
+}
+
+.settings-addon-pane button[data-settings-button="icon"] {
+    min-width: 32px !important;
+    padding: 6px !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .settings-addon-pane button:not([data-settings-button="unstyled"]) {
+        transition: var(--settings-addon-button-transition, none) !important;
+    }
+}

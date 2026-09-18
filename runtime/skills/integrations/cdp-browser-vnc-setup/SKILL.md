@@ -23,6 +23,9 @@ The check is read-only. It reports:
 - the Chromium-family browser command Piclaw can launch;
 - whether the stable pane path can use the managed Linux service.
 
+For configured targets, history, controls and disposable real-desktop testing, see
+[VNC viewer setup](../vnc-viewer-setup/SKILL.md). Targets do not bypass route authorization.
+
 ## Linux managed setup
 
 Piclaw starts the managed desktop only after an authenticated request opens `piclaw://vnc/cdp-browser`. It does not start Chromium, Xvfb, or VNC during Piclaw boot.

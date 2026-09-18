@@ -1,0 +1,291 @@
+{
+  "schemaVersion": 1,
+  "baseline": "ad922bdaac40b3a5119aa3017a10ee63897e318b",
+  "release": "0.85.1",
+  "integrities": [
+    {
+      "name": "@earendil-works/pi-ai",
+      "version": "0.84.4",
+      "integrity": "sha512-AClAZxf5+c4RRu44NJPS6wyQy+Nmq+Mzyyrdvm4ZVMNuixelO02RZX4G4Aq1F145Yzp43wnM5S+hLlSI7ypfVw==",
+      "verified": true
+    },
+    {
+      "name": "@earendil-works/pi-agent-core",
+      "version": "0.84.4",
+      "integrity": "sha512-HyUnjaOXj6oN/6SNcr8A1J/ElRQA50FtIE0XUTSKAQVqmdlb9qdojOyUQwF/jULE5+yOEtGuVgi/N1RnBiNG+g==",
+      "verified": true
+    },
+    {
+      "name": "@earendil-works/pi-coding-agent",
+      "version": "0.84.4",
+      "integrity": "sha512-jmOlrqUmvhh/siNWFRXjYLJzhKFIHNsAQaysRwzQPQFnPAaV/vhqHsLH/MBsIISA1Rjj7WTUFR3nJrpXoLx39w==",
+      "verified": true
+    },
+    {
+      "name": "@earendil-works/pi-ai",
+      "version": "0.85.1",
+      "integrity": "sha512-+VgVIJDkDO2efYJKEEqvPTH4zmnIaXdAppGbO+vKFA9qy5PdhFiAenuFAkU+oiCSfOC4dMHDyrjdQeL4ZoC5CQ==",
+      "verified": true
+    },
+    {
+      "name": "@earendil-works/pi-agent-core",
+      "version": "0.85.1",
+      "integrity": "sha512-hIXIP3eAWueAYiAl8aMvWCvvZ8Q5gT3Dip5bE5uJyIGh4+YlWRjtMLI4BaeoXoSs93zndjue61u1B/vhefLnuA==",
+      "verified": true
+    },
+    {
+      "name": "@earendil-works/pi-coding-agent",
+      "version": "0.85.1",
+      "integrity": "sha512-FGRN+OHbWaefBPGaTggAdLjrIHW+s2PzLyglz/5dfLzb9of7uuXMXYC0fJIeZTw+shS32o2cuQ9jF7YSDuL/oQ==",
+      "verified": true
+    }
+  ],
+  "consumer": {
+    "family": [
+      {
+        "name": "@earendil-works/pi-ai",
+        "version": "0.85.1"
+      },
+      {
+        "name": "@earendil-works/pi-agent-core",
+        "version": "0.85.1"
+      },
+      {
+        "name": "@earendil-works/pi-coding-agent",
+        "version": "0.85.1"
+      },
+      {
+        "name": "@earendil-works/pi-tui",
+        "version": "0.85.1"
+      },
+      {
+        "name": "@earendil-works/pi-telemetry",
+        "version": "0.85.1"
+      },
+      {
+        "name": "@earendil-works/chord",
+        "version": "0.85.1"
+      }
+    ],
+    "runtimes": [
+      {
+        "requested": "node",
+        "actual": {
+          "release": "node",
+          "node": "22.19.0",
+          "bun": null
+        },
+        "rootExports": {
+          "createAgentSession": "function",
+          "createAgentSessionRuntime": "function",
+          "ModelRuntime": "function"
+        },
+        "sourceOnlyRejected": [
+          {
+            "specifier": "@earendil-works/pi-coding-agent/client",
+            "code": "ERR_PACKAGE_PATH_NOT_EXPORTED"
+          },
+          {
+            "specifier": "@earendil-works/pi-coding-agent/experimental/plugin",
+            "code": "ERR_PACKAGE_PATH_NOT_EXPORTED"
+          }
+        ]
+      },
+      {
+        "requested": "node",
+        "actual": {
+          "release": "node",
+          "node": "26.7.0",
+          "bun": null
+        },
+        "rootExports": {
+          "createAgentSession": "function",
+          "createAgentSessionRuntime": "function",
+          "ModelRuntime": "function"
+        },
+        "sourceOnlyRejected": [
+          {
+            "specifier": "@earendil-works/pi-coding-agent/client",
+            "code": "ERR_PACKAGE_PATH_NOT_EXPORTED"
+          },
+          {
+            "specifier": "@earendil-works/pi-coding-agent/experimental/plugin",
+            "code": "ERR_PACKAGE_PATH_NOT_EXPORTED"
+          }
+        ]
+      },
+      {
+        "requested": "bun",
+        "actual": {
+          "release": "node",
+          "node": "26.3.0",
+          "bun": "1.4.1"
+        },
+        "rootExports": {
+          "createAgentSession": "function",
+          "createAgentSessionRuntime": "function",
+          "ModelRuntime": "function"
+        },
+        "sourceOnlyRejected": [
+          {
+            "specifier": "@earendil-works/pi-coding-agent/client",
+            "code": "ERR_MODULE_NOT_FOUND"
+          },
+          {
+            "specifier": "@earendil-works/pi-coding-agent/experimental/plugin",
+            "code": "ERR_MODULE_NOT_FOUND"
+          }
+        ]
+      }
+    ],
+    "noPiServerInstalled": true,
+    "providerFactoryCalls": 0,
+    "networkSandboxed": false
+  },
+  "catalogue": {
+    "summary": {
+      "providers_added": 0,
+      "providers_removed": 0,
+      "providers_changed": 24,
+      "models_added": 107,
+      "models_removed": 43,
+      "models_changed": 71,
+      "api_moves": 15,
+      "base_entries": 1290,
+      "head_entries": 1354,
+      "field_changes": 107,
+      "changed_entries_by_field": {
+        "api": 0,
+        "baseUrl": 0,
+        "compat": 1,
+        "contextWindow": 14,
+        "cost": 39,
+        "input": 2,
+        "maxTokens": 28,
+        "name": 3,
+        "reasoning": 0,
+        "thinkingLevelMap": 20
+      }
+    },
+    "apiMoves": [
+      {
+        "provider": "github-copilot",
+        "model": "claude-fable-5",
+        "from_api": "openai-completions",
+        "to_api": "anthropic-messages"
+      },
+      {
+        "provider": "openrouter",
+        "model": "anthropic/claude-3-haiku",
+        "from_api": "openai-completions",
+        "to_api": "anthropic-messages"
+      },
+      {
+        "provider": "openrouter",
+        "model": "anthropic/claude-fable-5",
+        "from_api": "openai-completions",
+        "to_api": "anthropic-messages"
+      },
+      {
+        "provider": "openrouter",
+        "model": "anthropic/claude-haiku-4.5",
+        "from_api": "openai-completions",
+        "to_api": "anthropic-messages"
+      },
+      {
+        "provider": "openrouter",
+        "model": "anthropic/claude-opus-4",
+        "from_api": "openai-completions",
+        "to_api": "anthropic-messages"
+      },
+      {
+        "provider": "openrouter",
+        "model": "anthropic/claude-opus-4.1",
+        "from_api": "openai-completions",
+        "to_api": "anthropic-messages"
+      },
+      {
+        "provider": "openrouter",
+        "model": "anthropic/claude-opus-4.5",
+        "from_api": "openai-completions",
+        "to_api": "anthropic-messages"
+      },
+      {
+        "provider": "openrouter",
+        "model": "anthropic/claude-opus-4.6",
+        "from_api": "openai-completions",
+        "to_api": "anthropic-messages"
+      },
+      {
+        "provider": "openrouter",
+        "model": "anthropic/claude-opus-4.7",
+        "from_api": "openai-completions",
+        "to_api": "anthropic-messages"
+      },
+      {
+        "provider": "openrouter",
+        "model": "anthropic/claude-opus-4.8",
+        "from_api": "openai-completions",
+        "to_api": "anthropic-messages"
+      },
+      {
+        "provider": "openrouter",
+        "model": "anthropic/claude-opus-5",
+        "from_api": "openai-completions",
+        "to_api": "anthropic-messages"
+      },
+      {
+        "provider": "openrouter",
+        "model": "anthropic/claude-sonnet-4",
+        "from_api": "openai-completions",
+        "to_api": "anthropic-messages"
+      },
+      {
+        "provider": "openrouter",
+        "model": "anthropic/claude-sonnet-4.5",
+        "from_api": "openai-completions",
+        "to_api": "anthropic-messages"
+      },
+      {
+        "provider": "openrouter",
+        "model": "anthropic/claude-sonnet-4.6",
+        "from_api": "openai-completions",
+        "to_api": "anthropic-messages"
+      },
+      {
+        "provider": "openrouter",
+        "model": "anthropic/claude-sonnet-5",
+        "from_api": "openai-completions",
+        "to_api": "anthropic-messages"
+      }
+    ]
+  },
+  "activation": {
+    "productionPins": "0.84.4",
+    "harness": false,
+    "piServer": false,
+    "watchSession": false
+  },
+  "validation": {
+    "focused": {
+      "pass": 20,
+      "fail": 0,
+      "files": 3
+    },
+    "runtimeGate": {
+      "pass": 5334,
+      "skip": 4,
+      "fail": 0
+    },
+    "featureGate": {
+      "pass": 25,
+      "fail": 0
+    },
+    "webBuildGate": {
+      "pass": 9,
+      "fail": 0
+    },
+    "typecheck": "pass",
+    "independentReview": "no remaining correctness blockers within stated trusted-input assumptions"
+  }
+}

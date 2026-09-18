@@ -6,6 +6,7 @@ export const PROTECTED_RECOVERY_HANDOFF_REASONS = [
   "unresolved_tool_execution",
   "continuation_generation_exhausted",
   "provider_retry_exhausted",
+  "timeout_recovery_exhausted",
 ] as const;
 
 export type ProtectedRecoveryHandoffReason = typeof PROTECTED_RECOVERY_HANDOFF_REASONS[number];
@@ -125,6 +126,11 @@ const PRESENTATION: Record<ProtectedRecoveryHandoffReason, Omit<ProtectedRecover
     label: "provider retries",
     title: "Provider recovery retries exhausted",
     detail: "The provider did not produce an authoritative terminal reply within the bounded retry path. The session is preserved.",
+  },
+  timeout_recovery_exhausted: {
+    label: "timeout",
+    title: "Automatic recovery timed out",
+    detail: "The tool-dependent turn timed out and did not reach an authoritative terminal reply within the bounded recovery path. The session is preserved.",
   },
 };
 

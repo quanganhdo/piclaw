@@ -4340,6 +4340,65 @@ body {
 
 .settings-panel__input:focus { border-color: var(--accent); outline: none; }
 
+/* Dense forms opt into stable, skin-specific label/control/help columns. */
+.settings-panel__dense-row {
+  --settings-panel-dense-label-width: 180px;
+  --settings-panel-dense-control-width: 200px;
+  display: grid;
+  grid-template-columns: var(--settings-panel-dense-label-width) var(--settings-panel-dense-control-width) minmax(0, 1fr);
+  align-items: center;
+  column-gap: 12px;
+}
+.settings-panel__dense-row > .settings-panel__label {
+  min-width: 0;
+  max-width: none;
+  width: auto;
+}
+.settings-panel__dense-row > .settings-panel__description {
+  min-width: 0;
+  width: auto;
+  margin: 0;
+}
+.settings-panel__dense-row > .settings-panel__field-content {
+  display: contents;
+}
+.settings-panel__dense-row > .settings-panel__field-content > .settings-panel__input,
+.settings-panel__dense-row > .settings-panel__field-content > .settings-panel__stepper,
+.settings-panel__dense-row > .settings-panel__field-content > .settings-panel__provider-btn {
+  grid-column: 2;
+}
+.settings-panel__dense-row > .settings-panel__field-content > .settings-panel__description {
+  grid-column: 3;
+  min-width: 0;
+  margin: 0;
+}
+.settings-panel__dense-row--checkbox {
+  margin-left: 0;
+  flex-wrap: nowrap;
+}
+.settings-panel__dense-row--checkbox > input[type="checkbox"] {
+  grid-column: 2;
+  justify-self: start;
+  margin: 0;
+}
+.settings-panel__dense-row--checkbox > .settings-panel__label {
+  grid-column: 1;
+  grid-row: 1;
+  white-space: normal;
+}
+.settings-panel__dense-row--checkbox > .settings-panel__description {
+  grid-column: 3;
+  width: auto;
+  margin: 0;
+}
+.settings-panel__dense-row--compound {
+  align-items: start;
+}
+.settings-panel__dense-row--compound > .settings-panel__field-content {
+  display: flex;
+  grid-column: 2 / -1;
+}
+
 .settings-panel__empty {
   font-size: 12px;
   color: var(--text-secondary, #71767b);
@@ -5051,6 +5110,76 @@ body {
   display: flex;
   gap: 8px;
   margin-top: 8px;
+}
+
+.settings-panel__keyboard-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.settings-panel__keyboard-header > div { min-width: 0; }
+.settings-panel__keyboard-header .settings-panel__section-title { margin-bottom: 8px; }
+.settings-panel__keyboard-header .settings-panel__description { margin: 4px 0 0; }
+.settings-panel__keyboard-filter {
+  width: 100%;
+  max-width: 300px;
+  margin-bottom: 12px;
+}
+.settings-panel__keyboard-status {
+  margin-bottom: 10px;
+  font-size: 12px;
+}
+.settings-panel__keyboard-status--success { color: var(--accent); }
+.settings-panel__keyboard-status--error { color: var(--error, #f38ba8); }
+.settings-panel__shortcut-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.settings-panel__shortcut-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  gap: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-elevated);
+}
+.settings-panel__shortcut-copy,
+.settings-panel__shortcut-controls { min-width: 0; }
+.settings-panel__shortcut-title {
+  display: block;
+  color: var(--text-primary, #e7e9ea);
+  font-size: 13px;
+  font-weight: 600;
+}
+.settings-panel__shortcut-description { margin: 4px 0 0; }
+.settings-panel__shortcut-default {
+  margin: 8px 0 0;
+  color: var(--text-secondary, #71767b);
+  font-size: 11px;
+}
+.settings-panel__shortcut-default code,
+.settings-panel__keyboard-header code {
+  font-family: var(--font-mono);
+  color: var(--text-primary, #e7e9ea);
+}
+.settings-panel__shortcut-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.settings-panel__shortcut-input {
+  width: 100%;
+  max-width: none;
+  font-family: var(--font-mono);
+}
+.settings-panel__shortcut-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .settings-panel__tools-filter {
@@ -7256,6 +7385,43 @@ pre.frontmatter-block {
   .settings-panel__content {
     padding: 12px 10px;
   }
+  .settings-panel__dense-row,
+  .settings-panel__dense-row--checkbox {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 6px;
+  }
+  .settings-panel__dense-row > *,
+  .settings-panel__dense-row > .settings-panel__field-content,
+  .settings-panel__dense-row > .settings-panel__field-content > *,
+  .settings-panel__dense-row--checkbox > input[type="checkbox"],
+  .settings-panel__dense-row--checkbox > .settings-panel__label,
+  .settings-panel__dense-row--checkbox > .settings-panel__description {
+    grid-column: 1;
+    grid-row: auto;
+    min-width: 0;
+    max-width: 100%;
+    width: auto;
+    text-align: left;
+  }
+  .settings-panel__dense-row > .settings-panel__field-content {
+    display: flex;
+    width: 100%;
+  }
+  .settings-panel__dense-row > .settings-panel__field-content > .settings-panel__input {
+    width: 100%;
+  }
+  .settings-panel__keyboard-header,
+  .settings-panel__shortcut-card {
+    display: flex;
+    flex-direction: column;
+  }
+  .settings-panel__keyboard-header .settings-panel__provider-btn {
+    align-self: flex-start;
+  }
+  .settings-panel__shortcut-controls { width: 100%; }
+  .settings-panel__shortcut-actions { justify-content: flex-start; }
 
   /* Compose bar full-width */
   .chat__compose {

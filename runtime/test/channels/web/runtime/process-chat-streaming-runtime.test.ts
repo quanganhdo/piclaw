@@ -56,5 +56,12 @@ describe("process chat streaming runtime", () => {
       payload: expect.objectContaining({ turn_id: "turn-1", thread_id: 7, row_id: 42 }),
     }));
     expect(runtime.buildAgentTimingBlock({ input: 10, output: 4, cacheRead: 2 })).toMatchObject({ type: "agent_timing", source_message_id: "m1", usage: { input_tokens: 10, output_tokens: 4, cache_read_tokens: 2, total_tokens: 16 } });
+    expect(runtime.buildAgentTimingBlock({ input: 10, providerCost: 0.00123, cost: { total: 0.00456 } })).toMatchObject({
+      usage: { provider_cost_total: 0.00123, cost_total: 0.00123, cost_provenance: "provider_reported" },
+    });
+    expect(runtime.buildAgentTimingBlock({ input: 10, cost: { total: 0.00456 } })).toMatchObject({
+      usage: { cost_total: 0.00456, cost_provenance: "catalogue_estimate" },
+    });
+    expect(runtime.buildAgentTimingBlock({ input: 10 })).not.toHaveProperty("usage.cost_total");
   });
 });

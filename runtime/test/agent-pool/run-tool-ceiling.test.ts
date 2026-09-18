@@ -124,3 +124,11 @@ test('family ceiling is mandatory, intersects narrower callers and survives reac
     expect(owner.active()).toEqual([...FAMILY_WEB_TOOLS]); ceiling.release();
   });
 });
+
+test("explicit required ceilings fail closed outside family mode too", () => {
+  const controller=createRunToolCeilingController({chatJid:'operation:test',runOptions:{requireToolCeiling:true,toolCeilingFilter:()=>false}});
+  expect(()=>controller.apply(null)).toThrow('active-tool controls');
+  expect(()=>controller.apply({})).toThrow('active-tool controls');
+  const missing=createRunToolCeilingController({chatJid:'operation:test',runOptions:{requireToolCeiling:true}});
+  expect(()=>missing.apply(createToolSession(['bash']).session)).toThrow('ceiling is missing');
+});

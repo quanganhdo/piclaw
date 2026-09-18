@@ -7,9 +7,8 @@
  */
 
 import type { PaneCapability, PaneContext, PaneInstance, WebPaneExtension } from './pane-types.js';
-import { isStandaloneWebAppMode } from '../ui/chat-window.js';
 import { WebSocketRemoteDisplayBoundary } from './remote-display-socket.js';
-import { disposeSocketBoundaryBestEffort, readRandomUuidBestEffort, removeStorageItemBestEffort } from './pane-runtime-safety.js';
+import { readRandomUuidBestEffort, removeStorageItemBestEffort } from './pane-runtime-safety.js';
 import { loadRemoteDisplayWasmDecoder } from './remote-display-decoder.js';
 import {
     boundedVncClientClipboardText,
@@ -32,6 +31,8 @@ import {
     vncButtonMaskForPointerButton,
 } from './vnc-input.js';
 import { VncRemoteDisplayProtocol } from './remote-display-vnc.js';
+import { installVncViewerStyles, vncSessionMarkup } from './vnc-viewer-ui.js';
+import { readVncHistory, recordVncSuccess, writeVncHistory, scopedVncHistoryStorage } from './vnc-history.js';
 
 export const VNC_TAB_PREFIX = 'piclaw://vnc';
 export const CDP_BROWSER_VNC_TARGET_ID = 'cdp-browser';
@@ -218,21 +219,6 @@ async function fetchVncSession(targetId = null) {
     return body;
 }
 
-function isPanePopoutMode() {
-    if (typeof window === 'undefined') return false;
-    try {
-        const raw = new URLSearchParams(window.location.search).get('pane_popout');
-        const normalized = String(raw || '').trim().toLowerCase();
-        return normalized === '1' || normalized === 'true' || normalized === 'yes';
-    } catch {
-        return false;
-    }
-}
-
-function canRequestPanePopout() {
-    return !isStandaloneWebAppMode() && !isPanePopoutMode();
-}
-
 function buildVncWebSocketUrl(targetId, handoffToken = null) {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const url = new URL(`${protocol}//${window.location.host}/vnc/ws`);
@@ -260,22 +246,6 @@ export function buildDirectVncTargetReference(host, port) {
     if (!target) return null;
     const normalizedHost = target.host.includes(':') && !target.host.startsWith('[') ? `[${target.host}]` : target.host;
     return `${normalizedHost}:${target.port}`;
-}
-
-function parseDirectVncTargetReference(value) {
-    const text = String(value || '').trim();
-    if (!text) return null;
-    const ipv6Match = /^\[([^\]]+)\]:(\d+)$/.exec(text);
-    if (ipv6Match) {
-        return { host: ipv6Match[1], port: ipv6Match[2] };
-    }
-    const firstColon = text.indexOf(':');
-    const lastColon = text.lastIndexOf(':');
-    if (firstColon <= 0 || firstColon !== lastColon) return null;
-    return {
-        host: text.slice(0, lastColon),
-        port: text.slice(lastColon + 1),
-    };
 }
 
 export function loadVncDirectTarget(runtime = globalThis): { host: string; port: string } {
@@ -368,7 +338,7 @@ export function shouldRetryVncPopoutWithoutHandoff(options) {
     const handoffToken = String(options?.handoffToken || '').trim();
     if (!handoffToken) return false;
     return Number(options?.bytesIn || 0) <= 0
-        && !Boolean(options?.hasRenderedFrame)
+        && !options?.hasRenderedFrame
         && Number(options?.reconnectAttempts || 0) <= 0;
 }
 
@@ -424,10 +394,23 @@ class VncPaneInstance implements PaneInstance {
     private rawFallbackAttempted = false;
     private protocolRecovering = false;
     private pendingHandoffToken = null;
+    private uiAbort: AbortController | null = null;
+    private uiTimers = new Set<ReturnType<typeof setTimeout>>();
+    private releasePointers: (() => void) | null = null;
+    private connectionGeneration = 0;
+    private connected = false;
+    private manuallyStopped = false;
+    private recordedSuccess = false;
+    private menuPinned = false;
+    private remoteClipboard = '';
+    private chooserOverlay: HTMLElement | null = null;
+    private historyStorage: ReturnType<typeof scopedVncHistoryStorage> = null;
+    private cueEl: HTMLButtonElement | null = null;
 
     constructor(container, context) {
         this.container = container;
         this.targetId = parseVncTargetFromPath(context?.path);
+        installVncViewerStyles(container.ownerDocument || document);
         this.targetLabel = this.targetId || null;
         this.pendingHandoffToken = consumePanePopoutTransferToken('vnc_handoff');
         const passwordToken = consumePanePopoutTransferToken('vnc_secret');
@@ -447,7 +430,7 @@ class VncPaneInstance implements PaneInstance {
         this.statusEl.textContent = '';
 
         this.bodyEl = document.createElement('div');
-        this.bodyEl.style.cssText = 'flex:1;min-height:0;display:flex;align-items:stretch;justify-content:stretch;padding:12px;';
+        this.bodyEl.className = 'vnc-pane-body';
 
         this.metricsEl = document.createElement('div');
         this.metricsEl.style.cssText = 'display:none;';
@@ -464,21 +447,47 @@ class VncPaneInstance implements PaneInstance {
     }
 
     private setSessionChromeVisible(visible) {
-        if (this.chromeEl) {
-            this.chromeEl.style.display = visible ? 'grid' : 'none';
-        }
-        if (this.sessionShellEl?.style) {
-            this.sessionShellEl.style.gridTemplateRows = visible ? 'auto minmax(0,1fr)' : '1fr';
-        }
-        if (this.displayStageEl?.style) {
-            this.displayStageEl.style.padding = visible ? '12px' : '0';
-            this.displayStageEl.style.border = visible ? '1px solid var(--border-color)' : 'none';
-            this.displayStageEl.style.borderRadius = visible ? '16px' : '0';
-            this.displayStageEl.style.background = visible ? '#0a0a0a' : '#000';
-        }
-        if (this.displayPlaceholderEl?.style) {
-            this.displayPlaceholderEl.style.display = visible && !this.hasRenderedFrame ? 'block' : 'none';
-        }
+        this.clearUiTimers();
+        if (visible) { this.releasePressedKeys(); this.releasePointers?.(); }
+        if (this.chromeEl) this.chromeEl.hidden = !visible;
+        if (this.cueEl) { this.cueEl.classList.toggle('vnc-cue-hidden', !visible); this.cueEl.setAttribute('aria-expanded', String(visible)); }
+        if (!visible) this.menuPinned = false;
+    }
+
+    private clearUiTimers() {
+        for (const timer of this.uiTimers) clearTimeout(timer);
+        this.uiTimers.clear();
+    }
+
+    private laterUi(callback: () => void, delay: number) {
+        const timer = setTimeout(() => { this.uiTimers.delete(timer); if (!this.disposed) callback(); }, delay);
+        this.uiTimers.add(timer);
+    }
+
+    private canSendInput(): boolean {
+        return this.connected && !this.readOnly && !this.manuallyStopped && !this.chooserOverlay
+            && Boolean(this.chromeEl?.hidden);
+    }
+
+    private setConnectionState(state: string, message: string) {
+        this.root.dataset.vncState = state;
+        const stateEl = this.bodyEl.querySelector('[data-vnc-state]');
+        if (stateEl) stateEl.textContent = message;
+        const progress = this.bodyEl.querySelector('[data-vnc-progress]');
+        if (progress) progress.textContent = message;
+        if (this.displayPlaceholderEl) this.displayPlaceholderEl.hidden = state === 'connected';
+    }
+
+    private stopConnection() {
+        this.manuallyStopped = true;
+        this.releasePressedKeys(); this.releasePointers?.();
+        this.connected = false;
+        this.connectionGeneration += 1;
+        this.clearReconnectTimer();
+        if (this.frameTimeoutId) clearTimeout(this.frameTimeoutId);
+        this.frameTimeoutId = null;
+        this.socketBoundary?.dispose(); this.socketBoundary = null;
+        this.clearUiTimers();
     }
 
     private clearReconnectTimer() {
@@ -489,7 +498,7 @@ class VncPaneInstance implements PaneInstance {
     }
 
     private scheduleReconnect(delayOverrideMs = null) {
-        if (this.disposed || !this.targetId) return;
+        if (this.disposed || !this.targetId || this.manuallyStopped || this.reconnectAttempts >= 3) return;
         this.clearReconnectTimer();
         const computedDelayMs = Math.min(8000, 1500 + (this.reconnectAttempts * 1000));
         const delayMs = Number.isFinite(delayOverrideMs) ? Math.max(0, Number(delayOverrideMs)) : computedDelayMs;
@@ -511,34 +520,15 @@ class VncPaneInstance implements PaneInstance {
         this.updateMetrics();
     }
 
-    private openTargetTab(targetId, label) {
-        this.targetId = String(targetId || '').trim() || null;
-        this.targetLabel = String(label || targetId || '').trim() || this.targetId || 'VNC';
-        if (this.targetId) {
-            this.renderTargetSession({
-                direct_connect_enabled: true,
-                target: {
-                    id: this.targetId,
-                    label: this.targetLabel,
-                    read_only: false,
-                    direct_connect: true,
-                },
-            });
-            this.setStatus('Connecting…');
-            this.updateDisplayInfo('Connecting…');
-            this.updateDisplayMeta('connecting');
-        }
-        void this.load();
-    }
-
-    private requestPanePopout(path, label) {
-        this.container.dispatchEvent(new CustomEvent('pane:popout', {
-            bubbles: true,
-            detail: { path, label },
-        }));
-    }
-
     private resetLiveSession() {
+        this.connectionGeneration += 1;
+        this.uiAbort?.abort(); this.uiAbort = null;
+        this.clearUiTimers();
+        this.releasePressedKeys(); this.releasePointers?.(); this.releasePointers = null;
+        this.connected = false; this.recordedSuccess = false;
+        this.remoteClipboard = '';
+        this.chooserOverlay?.remove(); this.chooserOverlay = null;
+        this.cueEl = null; this.chromeEl = null;
         this.clearReconnectTimer();
         this.reconnectAttempts = 0;
         this.protocol = null;
@@ -570,266 +560,215 @@ class VncPaneInstance implements PaneInstance {
         this.pressedKeysyms.clear();
     }
 
-    private renderTargets(payload) {
-        this.resetLiveSession();
+    private renderTargets(payload, overlay = false) {
+        if (!overlay) this.resetLiveSession();
         const targets = Array.isArray(payload?.targets) ? payload.targets : [];
-        const directConnectEnabled = Boolean(payload?.direct_connect_enabled);
-        const emptyState = getVncTargetsEmptyStateCopy({
-            enabled: payload?.enabled,
-            directConnectEnabled,
-            targets,
-        });
-        const directTarget = loadVncDirectTarget();
-        this.bodyEl.innerHTML = `
-            <div style="width:100%;height:100%;min-height:0;display:grid;align-content:start;justify-items:center;gap:16px;overflow:auto;padding:24px;box-sizing:border-box;">
-                ${directConnectEnabled ? `
-                    <div style="width:min(540px,100%);padding:16px 16px 18px;border:1px solid var(--border-color);border-radius:10px;background:transparent;display:grid;gap:12px;box-shadow:none;">
-                        <div style="display:grid;gap:6px;">
-                            <div style="font-size:18px;font-weight:700;">Connect to VNC</div>
-                            <div style="font-size:12px;color:var(--text-secondary);">Enter a server target to start a direct session.</div>
-                        </div>
-                        <div style="display:grid;gap:10px;align-items:end;">
-                            <label style="display:grid;gap:6px;min-width:0;">
-                                <span style="font-size:12px;color:var(--text-secondary);">Server</span>
-                                <input type="text" data-vnc-direct-host value="${esc(directTarget.host)}" placeholder="${esc(DEFAULT_DIRECT_VNC_TARGET.host)}" spellcheck="false" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;background:transparent;color:inherit;" />
-                            </label>
-                            <label style="display:grid;gap:6px;min-width:0;">
-                                <span style="font-size:12px;color:var(--text-secondary);">Port</span>
-                                <input type="number" data-vnc-direct-port min="1" max="65535" step="1" value="${esc(directTarget.port)}" placeholder="${esc(DEFAULT_DIRECT_VNC_TARGET.port)}" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;background:transparent;color:inherit;" />
-                            </label>
-                            <label style="display:grid;gap:6px;min-width:0;">
-                                <span style="font-size:12px;color:var(--text-secondary);">Password</span>
-                                <input type="password" data-vnc-direct-password placeholder="Optional" autocomplete="current-password" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;background:transparent;color:inherit;" />
-                            </label>
-                            <button type="button" data-direct-open-tab="1" style="padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;background:transparent;cursor:pointer;color:inherit;min-height:40px;font-weight:500;">Connect</button>
-                        </div>
-                    </div>
-                ` : ''}
-                ${targets.length ? `
-                    <div style="width:min(100%,900px);min-height:0;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));align-content:start;">
-                        ${targets.map((target) => `
-                            <div style="text-align:left;padding:14px;border:1px solid var(--border-color);border-radius:10px;background:transparent;color:inherit;display:flex;flex-direction:column;gap:10px;">
-                                <div>
-                                    <div style="font-weight:600;margin-bottom:6px;">${esc(target.label || target.id)}</div>
-                                    <div style="font:12px var(--font-family-mono, monospace);color:var(--text-secondary);">${esc(target.id)}</div>
-                                    <div style="margin-top:8px;font-size:12px;color:var(--text-secondary);">${target.readOnly ? 'Read-only target' : 'Interactive target'}</div>
-                                </div>
-                                <div style="display:flex;flex-wrap:wrap;gap:8px;">
-                                    <button type="button" data-target-open-tab="${esc(target.id)}" data-target-label="${esc(target.label || target.id)}" style="padding:8px 12px;border:1px solid var(--border-color);border-radius:8px;background:transparent;cursor:pointer;color:inherit;">Connect</button>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                ` : `
-                    <div style="min-height:0;display:grid;place-items:center;justify-items:center;">
-                        <div style="width:min(100%,540px);text-align:center;padding:24px 20px;border:1px dashed var(--border-color);border-radius:10px;background:transparent;font-size:13px;color:var(--text-secondary);line-height:1.5;display:grid;gap:6px;">
-                            <div style="font-weight:600;color:var(--text-primary);">${esc(emptyState.title)}</div>
-                            <div>${esc(emptyState.body)}</div>
-                        </div>
-                    </div>
-                `}
-            </div>
-        `;
-        this.directHostInputEl = this.bodyEl.querySelector('[data-vnc-direct-host]');
-        this.directPortInputEl = this.bodyEl.querySelector('[data-vnc-direct-port]');
-        this.directPasswordInputEl = this.bodyEl.querySelector('[data-vnc-direct-password]');
-        if (this.directPasswordInputEl && this.authPassword !== null) {
-            this.directPasswordInputEl.value = this.authPassword;
+        const allowDirect = Boolean(payload?.direct_connect_enabled);
+        const direct = DEFAULT_DIRECT_VNC_TARGET;
+        const host = document.createElement('div');
+        host.className = 'vnc-manager';
+        if (overlay) {
+            this.releasePressedKeys(); this.releasePointers?.();
+            host.style.cssText = 'position:absolute;inset:0;z-index:5;background:var(--bg-primary);';
+            this.chooserOverlay = host;
         }
-        const openDirectTarget = () => {
-            const selection = prepareDirectVncSelection(
-                this.directHostInputEl?.value,
-                this.directPortInputEl?.value,
-                this.directPasswordInputEl ? this.directPasswordInputEl.value : this.authPassword,
-            );
-            if (!selection) return;
-            this.authPassword = selection.password;
-            this.openTargetTab(selection.targetRef, selection.targetRef);
+        const entries = readVncHistory(this.historyStorage);
+        host.innerHTML = `<section><h2>Connections</h2>
+            <input type="search" data-vnc-search aria-label="Filter connections" placeholder="Find a name or address…">
+            <h3>Configured targets</h3><div data-vnc-configured></div>
+            <h3>Recent connections</h3><div data-vnc-history></div>
+            <button data-vnc-clear>Clear recent history</button>
+            <p>History stays in this browser for this account and instance. No passwords or clipboard text are saved.</p>
+            ${overlay ? '<button data-vnc-back>Return to desktop</button>' : ''}</section>
+            <section>${allowDirect ? `<h2>New connection</h2><form data-vnc-connect-form>
+            <div class="vnc-endpoint"><label><span>Server</span><input data-vnc-direct-host value="${esc(direct.host)}" autocomplete="off" spellcheck="false"></label>
+            <label><span>Port</span><input type="number" required min="1" max="65535" step="1" data-vnc-direct-port value="${esc(direct.port)}"></label></div>
+            <details><summary>Password, if required</summary><label><span>VNC password</span><input type="password" data-vnc-direct-password autocomplete="off"></label></details>
+            <p data-vnc-form-error role="alert"></p><button class="vnc-connect" type="submit">Connect</button></form>
+            <p>Addresses are reached from the Piclaw server. The default is localhost:5901.</p>` : '<p>Direct connections are disabled. Choose a configured target.</p>'}
+            <p>During a session, move to the top centre for the reveal chevron. Hover or tap it for controls. Keyboard: Ctrl+Alt+Shift+V.</p></section>`;
+        const select = (target: string, label: string, password: string | null = null) => {
+            if (overlay && target === this.targetId && this.connected) { host.remove(); this.chooserOverlay = null; this.setSessionChromeVisible(false); this.focus(); return; }
+            this.authPassword = password;
+            this.targetId = target; this.targetLabel = label;
+            this.manuallyStopped = false;
+            void this.load();
         };
-        this.directHostInputEl?.addEventListener('keydown', (event) => {
-            if (event.key !== 'Enter') return;
+        const draw = () => {
+            const query = String((host.querySelector('[data-vnc-search]') as HTMLInputElement).value || '').toLowerCase();
+            const matches = (label, id) => (String(label) + ' ' + id).toLowerCase().includes(query);
+            const configured = host.querySelector('[data-vnc-configured]');
+            configured.replaceChildren();
+            for (const target of targets.filter(t => matches(t.label, t.id))) {
+                const row = document.createElement('div'); row.className = 'vnc-history-row';
+                row.innerHTML = `<button class="vnc-history-open"><strong>${esc(target.label || target.id)}</strong><small>${esc(target.id)} · ${target.readOnly ? 'Read-only' : 'Interactive'}</small></button>`;
+                row.querySelector('button').onclick = () => select(target.id, target.label || target.id);
+                configured.append(row);
+            }
+            if (!configured.children.length) configured.textContent = query ? 'No matching configured targets.' : 'No configured targets.';
+            const list = host.querySelector('[data-vnc-history]'); list.replaceChildren();
+            for (const entry of entries.filter(e => matches(e.label, e.target)).sort((a,b) => Number(b.pinned)-Number(a.pinned) || b.connectedAt-a.connectedAt)) {
+                const available = allowDirect || targets.some(t => t.id === entry.target);
+                const row = document.createElement('div'); row.className = 'vnc-history-row';
+                row.innerHTML = `<button class="vnc-history-open" ${available ? '' : 'disabled'}><strong>${esc(entry.label)}</strong><small>${esc(entry.target)} · ${available ? esc(new Date(entry.connectedAt).toLocaleString()) : 'Unavailable under current policy'}</small></button>
+                    <button data-pin aria-label="${entry.pinned ? 'Unpin' : 'Pin'} ${esc(entry.label)}">${entry.pinned ? '★' : '☆'}</button><button data-remove aria-label="Remove ${esc(entry.label)}">×</button>`;
+                row.querySelector('.vnc-history-open').addEventListener('click', () => select(entry.target, entry.label));
+                row.querySelector('[data-pin]').addEventListener('click', () => { entry.pinned = !entry.pinned; writeVncHistory(this.historyStorage, entries); draw(); });
+                row.querySelector('[data-remove]').addEventListener('click', () => { entries.splice(entries.indexOf(entry),1); writeVncHistory(this.historyStorage, entries); draw(); });
+                list.append(row);
+            }
+            if (!list.children.length) list.textContent = query ? 'No matching recent connections.' : 'Successful connections will appear here.';
+        };
+        host.querySelector('[data-vnc-search]').addEventListener('input', draw);
+        host.querySelector('[data-vnc-clear]').addEventListener('click', () => { for (let i=entries.length-1;i>=0;i--) if(!entries[i].pinned) entries.splice(i,1); writeVncHistory(this.historyStorage,entries); draw(); });
+        const close = () => { host.remove(); this.chooserOverlay = null; this.setSessionChromeVisible(false); this.focus(); };
+        host.querySelector('[data-vnc-back]')?.addEventListener('click', close);
+        host.addEventListener('keydown', event => { event.stopPropagation(); if (overlay && event.key === 'Escape') { event.preventDefault(); close(); } });
+        host.querySelector('[data-vnc-connect-form]')?.addEventListener('submit', event => {
             event.preventDefault();
-            openDirectTarget();
+            const { host: hostValue, port: portValue } = normalizeDirectVncTarget((host.querySelector('[data-vnc-direct-host]') as HTMLInputElement).value,
+                (host.querySelector('[data-vnc-direct-port]') as HTMLInputElement).value) || {host: '', port: ''};
+            const selection = hostValue && portValue && !/[\s/@?#]/.test(hostValue) ? {
+                targetRef: buildDirectVncTargetReference(hostValue, portValue),
+                password: normalizeVncPassword((host.querySelector('[data-vnc-direct-password]') as HTMLInputElement).value),
+            } : null;
+            if (!selection) { host.querySelector('[data-vnc-form-error]').textContent = 'Use a valid host and a port from 1 to 65535.'; return; }
+            select(selection.targetRef, selection.targetRef, selection.password);
         });
-        this.directPortInputEl?.addEventListener('keydown', (event) => {
-            if (event.key !== 'Enter') return;
-            event.preventDefault();
-            openDirectTarget();
-        });
-        this.directPasswordInputEl?.addEventListener('keydown', (event) => {
-            if (event.key !== 'Enter') return;
-            event.preventDefault();
-            openDirectTarget();
-        });
-        this.bodyEl.querySelector('[data-direct-open-tab]')?.addEventListener('click', () => openDirectTarget());
-        for (const button of Array.from(this.bodyEl.querySelectorAll('[data-target-open-tab]')) as HTMLElement[]) {
-            button.addEventListener('click', () => {
-                const targetId = button.getAttribute('data-target-open-tab');
-                const label = button.getAttribute('data-target-label') || targetId || 'VNC';
-                if (!targetId) return;
-                this.openTargetTab(targetId, label);
-            });
-        }
+        if (!overlay) this.bodyEl.replaceChildren(host); else this.bodyEl.append(host);
+        draw(); host.querySelector('input')?.focus();
     }
 
     private renderTargetSession(payload) {
         this.resetLiveSession();
         const target = payload?.target || {};
-        const targetLabel = target?.label || this.targetId || 'VNC target';
-        const compactWindow = isPanePopoutMode();
-        this.targetLabel = targetLabel;
+        this.targetLabel = target.label || this.targetId || 'VNC';
         this.readOnly = Boolean(target.read_only);
-        this.pointerButtonMask = 0;
-        this.hasRenderedFrame = false;
-        this.pressedKeysyms.clear();
-        this.bodyEl.innerHTML = compactWindow
-            ? `
-                <div data-vnc-session-shell style="width:100%;height:100%;min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr);gap:6px;">
-                    <div data-vnc-session-chrome style="padding:6px 8px;border:1px solid var(--border-color);border-radius:8px;background:transparent;display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
-                        <div data-display-info style="min-width:0;flex:1 1 240px;font-size:12px;color:var(--text-secondary);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Negotiating remote display…</div>
-                        <input type="password" data-vnc-password placeholder="Password" autocomplete="current-password" style="width:150px;max-width:100%;padding:6px 8px;border:1px solid var(--border-color);border-radius:6px;background:transparent;color:inherit;" />
-                        <input type="text" data-vnc-clipboard placeholder="Clipboard" autocomplete="off" spellcheck="false" style="width:180px;max-width:100%;padding:6px 8px;border:1px solid var(--border-color);border-radius:6px;background:transparent;color:inherit;" />
-                        <button type="button" data-vnc-send-clipboard="1" ${this.readOnly ? 'disabled' : ''} style="padding:6px 10px;border:1px solid var(--border-color);border-radius:6px;background:transparent;cursor:pointer;color:inherit;">Send clipboard</button>
-                        <button type="button" data-vnc-reconnect="1" style="padding:6px 10px;border:1px solid var(--border-color);border-radius:6px;background:transparent;cursor:pointer;color:inherit;">Reconnect</button>
-                    </div>
-                    <div data-display-stage style="min-height:0;height:100%;border:1px solid var(--border-color);border-radius:8px;background:#0a0a0a;display:flex;align-items:center;justify-content:center;padding:4px;position:relative;overflow:hidden;">
-                        <canvas data-display-canvas tabindex="0" style="display:none;max-width:100%;max-height:100%;width:auto;height:auto;image-rendering:auto;box-shadow:none;border-radius:2px;background:#000;"></canvas>
-                        <div data-display-placeholder style="max-width:520px;text-align:center;color:#d7d7d7;line-height:1.5;">
-                            <div style="font-weight:600;font-size:14px;margin-bottom:6px;">${esc(targetLabel)}</div>
-                            <div style="font-size:12px;color:#b7b7b7;">Waiting for the VNC/RFB handshake and first framebuffer update…</div>
-                        </div>
-                    </div>
-                </div>
-            `
-            : `
-                <div data-vnc-session-shell style="width:100%;height:100%;min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr);gap:12px;">
-                    <div data-vnc-session-chrome style="padding:10px 12px;border:1px solid var(--border-color);border-radius:10px;background:transparent;display:grid;gap:10px;">
-                        <div style="display:grid;gap:4px;min-width:0;">
-                            <div style="font:12px var(--font-family-mono, monospace);color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(target.id || this.targetId || '')} · ${target.read_only ? 'read-only' : 'interactive'} · websocket → TCP proxy</div>
-                            <div data-display-info style="font-size:13px;color:var(--text-primary);line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Negotiating remote display…</div>
-                            <div data-display-meta style="font:11px var(--font-family-mono, monospace);color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
-                        </div>
-                        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:end;">
-                            <label style="display:grid;gap:4px;min-width:160px;flex:1 1 180px;">
-                                <span style="font-size:11px;color:var(--text-secondary);">VNC password</span>
-                                <input type="password" data-vnc-password placeholder="Optional" autocomplete="current-password" style="width:100%;padding:8px 10px;border:1px solid var(--border-color);border-radius:8px;background:transparent;color:inherit;" />
-                            </label>
-                            <label style="display:grid;gap:4px;min-width:220px;flex:2 1 260px;">
-                                <span style="font-size:11px;color:var(--text-secondary);">Clipboard</span>
-                                <input type="text" data-vnc-clipboard placeholder="Text to send, or remote clipboard text" autocomplete="off" spellcheck="false" style="width:100%;padding:8px 10px;border:1px solid var(--border-color);border-radius:8px;background:transparent;color:inherit;" />
-                            </label>
-                            <button type="button" data-vnc-send-clipboard="1" ${this.readOnly ? 'disabled' : ''} style="padding:8px 12px;border:1px solid var(--border-color);border-radius:8px;background:transparent;cursor:pointer;color:inherit;">Send clipboard</button>
-                            <button type="button" data-vnc-copy-clipboard="1" style="padding:8px 12px;border:1px solid var(--border-color);border-radius:8px;background:transparent;cursor:pointer;color:inherit;">Copy</button>
-                            <button type="button" data-vnc-paste-clipboard="1" style="padding:8px 12px;border:1px solid var(--border-color);border-radius:8px;background:transparent;cursor:pointer;color:inherit;">Paste</button>
-                            <button type="button" data-vnc-reconnect="1" style="padding:8px 12px;border:1px solid var(--border-color);border-radius:8px;background:transparent;cursor:pointer;color:inherit;">Reconnect</button>
-                            <button type="button" data-open-target-picker="1" style="padding:8px 12px;border:1px solid var(--border-color);border-radius:8px;background:transparent;cursor:pointer;color:inherit;">Target</button>
-                        </div>
-                    </div>
-                    <div data-display-stage style="min-height:0;height:100%;border:1px solid var(--border-color);border-radius:10px;background:#0a0a0a;display:flex;align-items:center;justify-content:center;padding:8px;position:relative;overflow:hidden;">
-                        <canvas data-display-canvas tabindex="0" style="display:none;max-width:100%;max-height:100%;width:auto;height:auto;image-rendering:auto;box-shadow:none;border-radius:4px;background:#000;"></canvas>
-                        <div data-display-placeholder style="max-width:520px;text-align:center;color:#d7d7d7;line-height:1.6;">
-                            <div style="font-weight:700;font-size:18px;margin-bottom:8px;">${esc(targetLabel)}</div>
-                            <div style="font-size:13px;color:#b7b7b7;">Waiting for the VNC/RFB handshake and first framebuffer update…</div>
-                        </div>
-                    </div>
-                </div>
-            `;
-
+        this.bodyEl.innerHTML = vncSessionMarkup(this.targetLabel, this.readOnly);
         this.sessionShellEl = this.bodyEl.querySelector('[data-vnc-session-shell]');
         this.chromeEl = this.bodyEl.querySelector('[data-vnc-session-chrome]');
+        this.cueEl = this.bodyEl.querySelector('[data-vnc-cue]');
         this.displayStageEl = this.bodyEl.querySelector('[data-display-stage]');
         this.canvas = this.bodyEl.querySelector('[data-display-canvas]');
         this.displayPlaceholderEl = this.bodyEl.querySelector('[data-display-placeholder]');
         this.displayInfoEl = this.bodyEl.querySelector('[data-display-info]');
         this.displayMetaEl = this.bodyEl.querySelector('[data-display-meta]');
-        this.canvasCtx = this.canvas?.getContext?.('2d', { alpha: false }) || null;
-        if (this.canvasCtx) {
-            this.canvasCtx.imageSmoothingEnabled = true;
-            this.canvasCtx.imageSmoothingQuality = 'high';
-        }
-        this.updateDisplayInfo('Waiting for VNC protocol negotiation…');
-        this.updateDisplayMeta();
-        this.setSessionChromeVisible(true);
-        this.attachDisplayResizeObserver();
-        this.attachCanvasPointerHandlers();
-        this.attachCanvasKeyboardHandlers();
-
+        this.canvasCtx = this.canvas.getContext('2d', { alpha: false });
         this.passwordInputEl = this.bodyEl.querySelector('[data-vnc-password]');
-        if (this.passwordInputEl && this.authPassword !== null) {
-            this.passwordInputEl.value = this.authPassword;
-        }
-        this.passwordInputEl?.addEventListener('input', () => {
-            this.authPassword = rememberVncPagePassword(this.passwordInputEl.value);
-        });
-        this.passwordInputEl?.addEventListener('keydown', (event) => {
-            if (event.key !== 'Enter') return;
-            event.preventDefault();
-            void this.connectSocket();
-        });
-
+        this.passwordInputEl.value = this.authPassword || '';
         this.clipboardInputEl = this.bodyEl.querySelector('[data-vnc-clipboard]');
-        this.installVncClipboardControls();
+        this.setSessionChromeVisible(false);
+        this.attachDisplayResizeObserver();
+        this.attachCanvasPointerHandlers(); this.attachCanvasKeyboardHandlers();
+        this.installVncClipboardControls(); this.installViewerControls();
+        this.setConnectionState('connecting', 'Connecting…');
+        this.setSessionChromeVisible(true);
+    }
 
-        const reconnectBtn = this.bodyEl.querySelector('[data-vnc-reconnect]');
-        reconnectBtn?.addEventListener('click', () => {
-            this.authPassword = rememberVncPagePassword(this.passwordInputEl ? this.passwordInputEl.value : this.authPassword);
-            void this.connectSocket();
-        });
-        const pickerBtn = this.bodyEl.querySelector('[data-open-target-picker]');
-        pickerBtn?.addEventListener('click', () => {
-            this.openTargetTab('', 'VNC');
-        });
+    private installViewerControls() {
+        this.uiAbort = new AbortController();
+        const signal = this.uiAbort.signal;
+        const show = (pinned = false) => { this.menuPinned = pinned; this.setSessionChromeVisible(true); if(pinned) this.chromeEl.querySelector('button')?.focus(); };
+        const hide = () => { this.setSessionChromeVisible(false); this.focus(); };
+        const nearEdge = event => { const rect=this.displayStageEl.getBoundingClientRect(); return Math.abs(event.clientX-rect.x-rect.width/2)<70 && event.clientY>=rect.y && event.clientY-rect.y<24; };
+        const deferHide = () => { this.clearUiTimers(); this.laterUi(() => {
+            if(!this.connected || this.menuPinned || this.chromeEl?.matches(':hover') || this.chromeEl?.querySelector('details[open]') || this.chromeEl?.contains(document.activeElement)) return;
+            this.setSessionChromeVisible(false);
+        },350); };
+        this.sessionShellEl.addEventListener('pointermove', event => {
+            if(!this.connected || this.chooserOverlay || event.pointerType==='touch' || !this.chromeEl.hidden) return;
+            this.cueEl.classList.toggle('vnc-cue-hidden', !nearEdge(event));
+        }, {signal});
+        this.cueEl.addEventListener('pointerenter', event => { if(event.pointerType==='touch') return; this.clearUiTimers(); this.laterUi(()=>show(),200); }, {signal});
+        this.cueEl.addEventListener('click',()=>show(true),{signal});
+        this.cueEl.addEventListener('pointerleave',deferHide,{signal});
+        this.chromeEl.addEventListener('pointerenter',()=>this.clearUiTimers(),{signal});
+        this.chromeEl.addEventListener('pointerleave',deferHide,{signal});
+        this.chromeEl.addEventListener('focusin',()=>{this.menuPinned=true;this.clearUiTimers();},{signal});
+        this.chromeEl.addEventListener('toggle',deferHide,{signal,capture:true});
+        this.chromeEl.querySelector('[data-vnc-hide]').addEventListener('click',hide,{signal});
+        const reconnect = () => { this.authPassword = normalizeVncPassword(this.passwordInputEl.value); this.manuallyStopped=false; this.reconnectAttempts=0; void this.connectSocket(); };
+        this.chromeEl.querySelector('[data-vnc-reconnect]').addEventListener('click', reconnect,{signal});
+        this.chromeEl.querySelector('[data-vnc-auth-connect]').addEventListener('click', reconnect,{signal});
+        this.passwordInputEl.addEventListener('keydown', event => { if(event.key==='Enter'){event.preventDefault();reconnect();} },{signal});
+        this.chromeEl.querySelector('[data-vnc-disconnect]').addEventListener('click',()=>{
+            this.stopConnection(); this.authPassword=null; clearVncPagePassword(); this.passwordInputEl.value='';
+            this.setConnectionState('disconnected','Disconnected. Choose Reconnect or Connections.'); show(true);
+        },{signal});
+        this.chromeEl.querySelector('[data-open-target-picker]').addEventListener('click',async()=>{
+            const generation=this.connectionGeneration;
+            try {const payload=await fetchVncSession(); if(this.disposed||generation!==this.connectionGeneration)return; this.historyStorage=scopedVncHistoryStorage(getVncLocalStorage(),payload?.history_scope); this.renderTargets(payload,true);}
+            catch(error){this.updateDisplayInfo(String(error?.message||error));}
+        },{signal});
+        this.root.addEventListener('keydown',event=>{
+            if(event.ctrlKey&&event.altKey&&event.shiftKey&&event.code==='KeyV'){event.preventDefault();event.stopImmediatePropagation();show(true);return;}
+            if(!this.chromeEl.hidden && this.chromeEl.contains(event.target) && event.key==='Escape') { event.preventDefault(); event.stopPropagation(); hide(); }
+        },{signal,capture:true});
+        this.chromeEl.addEventListener('keydown', event => event.stopPropagation(), {signal});
+        this.chromeEl.addEventListener('keyup', event => event.stopPropagation(), {signal});
+        this.chromeEl.addEventListener('focusout', () => { this.menuPinned=false; deferHide(); }, {signal});
+        this.sessionShellEl.addEventListener('pointerleave', deferHide, {signal});
+        this.canvas.addEventListener('pointerdown', event => {
+            if (!this.chromeEl.hidden) { event.preventDefault(); event.stopImmediatePropagation(); hide(); }
+        }, {signal,capture:true});
+        let touchId: number | null=null;
+        let startY=0;
+        this.sessionShellEl.addEventListener('pointerdown',event=>{
+            if(this.chromeEl.hidden && event.pointerType==='touch'&&nearEdge(event)){event.preventDefault();event.stopImmediatePropagation();touchId=event.pointerId;startY=event.clientY;this.releasePressedKeys();this.releasePointers?.();this.cueEl.classList.remove('vnc-cue-hidden');}
+        },{signal,capture:true});
+        for(const type of ['pointermove','pointerup','pointercancel']) this.sessionShellEl.addEventListener(type,event=>{
+            if(event.pointerId!==touchId)return;event.preventDefault();event.stopImmediatePropagation();
+            if(type!=='pointermove'){touchId=null;if(type==='pointerup'&&(event.clientY-startY>35 || Math.abs(event.clientY-startY)<10))show(true);}
+        },{signal,capture:true});
+    }
+
+    private clipboardStatus(message: string) {
+        const status = this.bodyEl.querySelector('[data-vnc-clipboard-status]');
+        if (status) status.textContent = message;
     }
 
     private installVncClipboardControls() {
-        const sendButton = this.bodyEl.querySelector('[data-vnc-send-clipboard]');
-        sendButton?.addEventListener('click', () => this.sendClientClipboardText(this.clipboardInputEl?.value || ''));
-        this.clipboardInputEl?.addEventListener('keydown', (event) => {
-            if (event.key !== 'Enter') return;
-            event.preventDefault();
-            this.sendClientClipboardText(this.clipboardInputEl?.value || '');
-        });
+        const field = this.clipboardInputEl;
+        const isCurrent = () => !this.disposed && this.clipboardInputEl === field;
+        this.bodyEl.querySelector('[data-vnc-send-clipboard]')?.addEventListener('click', () => this.sendClientClipboardText(this.clipboardInputEl?.value || ''));
         this.bodyEl.querySelector('[data-vnc-copy-clipboard]')?.addEventListener('click', async () => {
-            const text = boundedVncClientClipboardText(this.clipboardInputEl?.value || '');
-            if (this.clipboardInputEl && this.clipboardInputEl.value !== text) this.clipboardInputEl.value = text;
+            const field = this.clipboardInputEl;
             try {
-                await navigator.clipboard?.writeText?.(text);
-                this.setStatus('Clipboard copied locally.');
-                this.updateDisplayInfo('Clipboard copied locally.');
+                if (!navigator.clipboard?.writeText) throw new Error('Clipboard API unavailable');
+                await navigator.clipboard.writeText(this.remoteClipboard);
+                if (isCurrent()) this.clipboardStatus('Remote text copied locally.');
             } catch {
-                this.clipboardInputEl?.focus?.();
-                this.clipboardInputEl?.select?.();
-                this.setStatus('Clipboard text selected for copying.');
-                this.updateDisplayInfo('Clipboard text selected for copying.');
+                if (!isCurrent()) return;
+                field.value = this.remoteClipboard; field.focus(); field.select();
+                this.clipboardStatus('Press Ctrl+C or use Copy to copy the selected remote text.');
             }
         });
         this.bodyEl.querySelector('[data-vnc-paste-clipboard]')?.addEventListener('click', async () => {
             try {
-                const text = await navigator.clipboard?.readText?.();
-                if (this.clipboardInputEl && typeof text === 'string') {
-                    this.clipboardInputEl.value = boundedVncClientClipboardText(text);
-                }
-                this.setStatus('Local clipboard pasted into VNC clipboard field.');
-                this.updateDisplayInfo('Local clipboard pasted into VNC clipboard field.');
+                if (!navigator.clipboard?.readText) throw new Error('Clipboard API unavailable');
+                const text = await navigator.clipboard.readText();
+                if (!isCurrent()) return;
+                this.clipboardInputEl.value = boundedVncClientClipboardText(text);
+                this.clipboardStatus('Local text pasted. Choose Send to remote to transfer it.');
             } catch {
-                this.clipboardInputEl?.focus?.();
-                this.setStatus('Focus the clipboard field and press Ctrl+V to paste.');
-                this.updateDisplayInfo('Focus the clipboard field and press Ctrl+V to paste.');
+                if (!isCurrent()) return;
+                this.clipboardInputEl.focus();
+                this.clipboardStatus('Press Ctrl+V or use Paste in the clipboard field.');
             }
         });
     }
 
     private sendClientClipboardText(text) {
         if (this.readOnly) return;
-        if (!this.socketBoundary || !this.protocol || this.protocol.state !== 'connected') {
-            this.setStatus('Clipboard can be sent after VNC connects.');
+        if (!this.connected || this.manuallyStopped || !this.socketBoundary || !this.protocol || this.protocol.state !== 'connected') {
+            this.clipboardStatus('Clipboard can be sent after VNC connects.');
             this.updateDisplayInfo('Clipboard can be sent after VNC connects.');
             return;
         }
         const boundedText = boundedVncClientClipboardText(text);
         if (this.clipboardInputEl && this.clipboardInputEl.value !== boundedText) this.clipboardInputEl.value = boundedText;
         this.socketBoundary.send(encodeVncClientCutText(boundedText));
-        this.setStatus('Clipboard sent to remote.');
+        this.clipboardStatus('Clipboard sent to remote.');
         this.updateDisplayInfo(`Clipboard sent to remote (${boundedText.length} chars).`);
         this.updateDisplayMeta();
     }
@@ -866,9 +805,7 @@ class VncPaneInstance implements PaneInstance {
         const reveal = options?.reveal === true;
         this.canvas.style.display = reveal || this.hasRenderedFrame ? 'block' : 'none';
         this.canvas.style.aspectRatio = `${w} / ${h}`;
-        if (this.displayPlaceholderEl) {
-            this.displayPlaceholderEl.style.display = reveal || this.hasRenderedFrame ? 'none' : '';
-        }
+
         this.updateCanvasScale();
     }
 
@@ -887,8 +824,8 @@ class VncPaneInstance implements PaneInstance {
         requestAnimationFrame(() => {
             if (!this.canvas || !this.displayStageEl) return;
             const bounds = this.displayStageEl.getBoundingClientRect?.();
-            const availableWidth = Math.max(1, Math.floor(bounds?.width || this.displayStageEl.clientWidth || 0) - 32);
-            const availableHeight = Math.max(1, Math.floor(bounds?.height || this.displayStageEl.clientHeight || 0) - 32);
+            const availableWidth = Math.max(1, Math.floor(bounds?.width || this.displayStageEl.clientWidth || 0));
+            const availableHeight = Math.max(1, Math.floor(bounds?.height || this.displayStageEl.clientHeight || 0));
             if (!availableWidth || !availableHeight) return;
             const scale = computeContainedRemoteDisplayScale(availableWidth, availableHeight, this.canvas.width, this.canvas.height);
             this.displayScale = scale;
@@ -899,7 +836,7 @@ class VncPaneInstance implements PaneInstance {
     }
 
     private getFramebufferPointFromEvent(event) {
-        if (!this.canvas || !this.protocol?.framebufferWidth || !this.protocol?.framebufferHeight) return null;
+        if (!this.canSendInput() || !this.canvas || !this.protocol?.framebufferWidth || !this.protocol?.framebufferHeight) return null;
         const rect = this.canvas.getBoundingClientRect?.();
         if (!rect || !rect.width || !rect.height) return null;
         return mapClientToFramebufferPoint(event.clientX, event.clientY, rect, this.protocol.framebufferWidth, this.protocol.framebufferHeight);
@@ -1118,6 +1055,7 @@ class VncPaneInstance implements PaneInstance {
             return true;
         };
 
+        this.releasePointers = () => releaseAllPointers();
         this.canvas.addEventListener('contextmenu', (event) => {
             event.preventDefault();
         }, { signal });
@@ -1373,6 +1311,7 @@ class VncPaneInstance implements PaneInstance {
     private attachCanvasKeyboardHandlers() {
         if (!this.canvas || this.readOnly) return;
         this.canvas.addEventListener('keydown', (event) => {
+            if (!this.canSendInput()) return;
             const keysym = resolveVncKeysymFromKeyboardEvent(event);
             if (keysym == null) return;
             const keyId = event.code || event.key;
@@ -1386,6 +1325,7 @@ class VncPaneInstance implements PaneInstance {
             this.sendKeyEvent(true, keysym);
         });
         this.canvas.addEventListener('keyup', (event) => {
+            if (!this.canSendInput()) return;
             const keyId = event.code || event.key;
             const keysym = this.pressedKeysyms.get(keyId) ?? resolveVncKeysymFromKeyboardEvent(event);
             if (keysym == null) return;
@@ -1475,13 +1415,13 @@ class VncPaneInstance implements PaneInstance {
                 return;
             case 'display-init':
                 this.ensureCanvasSize(event.width, event.height);
-                this.setSessionChromeVisible(true);
+                this.setConnectionState('connecting', 'Waiting for the first framebuffer…');
                 this.setStatus(`Connected to ${this.targetLabel || this.targetId || 'target'} — waiting for first framebuffer update (${event.width}×${event.height}).`);
                 this.updateDisplayInfo(`Connected to ${event.name || this.targetLabel || this.targetId || 'remote display'}. Waiting for first framebuffer update…`);
                 this.updateDisplayMeta('awaiting-frame');
                 this.scheduleRawFallbackTimeout();
                 return;
-            case 'framebuffer-update':
+            case 'framebuffer-update': {
                 if (this.frameTimeoutId) {
                     clearTimeout(this.frameTimeoutId);
                     this.frameTimeoutId = null;
@@ -1537,6 +1477,14 @@ class VncPaneInstance implements PaneInstance {
                     }
                 }
                 if (painted || this.hasRenderedFrame) {
+                    this.hasRenderedFrame = true;
+                    if (!this.connected) {
+                        this.connected = true; this.reconnectAttempts = 0;
+                        this.setConnectionState('connected', this.readOnly ? 'Connected · Read-only' : 'Connected');
+                        this.setSessionChromeVisible(false);
+                        this.focus();
+                        if(!this.recordedSuccess){recordVncSuccess(this.historyStorage,this.targetId,this.targetLabel);this.recordedSuccess=true;}
+                    }
                     this.protocolRecovering = false;
                     this.setStatus(`Rendering live framebuffer — ${event.width}×${event.height}.`);
                     this.updateDisplayInfo(`Framebuffer update applied (${(event.rects || []).length} rect${(event.rects || []).length === 1 ? '' : 's'}).`);
@@ -1548,8 +1496,10 @@ class VncPaneInstance implements PaneInstance {
                     this.scheduleRawFallbackTimeout();
                 }
                 return;
+            }
             case 'clipboard': {
                 const text = boundedVncClientClipboardText(event.text || '');
+                this.remoteClipboard = text;
                 if (this.clipboardInputEl) this.clipboardInputEl.value = text;
                 this.setStatus('Remote clipboard updated.');
                 this.updateDisplayInfo(`Clipboard text received (${text.length} chars).`);
@@ -1565,9 +1515,11 @@ class VncPaneInstance implements PaneInstance {
     }
 
     private async handleSocketMessage(message) {
+        const generation = this.connectionGeneration;
         if (message?.kind === 'control') {
             const payload = message.payload;
             if (payload?.type === 'vnc.error') {
+                this.connected = false; this.setConnectionState('error', payload.error || 'VNC proxy failed'); this.setSessionChromeVisible(true);
                 this.setStatus(`Proxy error: ${payload.error || 'Unknown error'}`);
                 this.updateDisplayInfo(`Proxy error: ${payload.error || 'Unknown error'}`);
                 this.updateDisplayMeta('proxy-error');
@@ -1589,6 +1541,7 @@ class VncPaneInstance implements PaneInstance {
         const protocol = this.protocol || (this.protocol = new VncRemoteDisplayProtocol());
         try {
             const chunk = message.data instanceof Blob ? await message.data.arrayBuffer() : message.data;
+            if (this.disposed || this.manuallyStopped || generation !== this.connectionGeneration) return;
             const result = protocol.receive(chunk);
             for (const outgoing of result.outgoing || []) {
                 this.socketBoundary?.send?.(outgoing);
@@ -1598,7 +1551,9 @@ class VncPaneInstance implements PaneInstance {
             }
         } catch (error) {
             const message = error?.message || 'Unknown error';
+            this.connected = false; this.setConnectionState('error', message);
             this.setSessionChromeVisible(true);
+            if (/password|auth|security/i.test(message)) { this.stopConnection(); const auth=this.bodyEl.querySelector('[data-vnc-auth]'); if(auth) auth.open=true; this.passwordInputEl?.focus(); }
             this.setStatus(`Display protocol error: ${message}`);
             this.updateDisplayInfo(`Display protocol error: ${message}`);
             this.updateDisplayMeta('protocol-error');
@@ -1615,7 +1570,13 @@ class VncPaneInstance implements PaneInstance {
     }
 
     private async connectSocket(preferredEncodings = null) {
-        if (!this.targetId || this.disposed) return;
+        if (!this.targetId || this.disposed || this.manuallyStopped) return;
+        const generation=++this.connectionGeneration;
+        const target=this.targetId;
+        this.releasePressedKeys(); this.releasePointers?.();
+        this.connected=false; this.recordedSuccess=false;
+        if(this.frameTimeoutId)clearTimeout(this.frameTimeoutId);this.frameTimeoutId=null;
+        this.setConnectionState('connecting', 'Connecting…');
         this.clearReconnectTimer();
         if (this.protocolRecovering && preferredEncodings == null) {
             this.protocolRecovering = false;
@@ -1632,6 +1593,7 @@ class VncPaneInstance implements PaneInstance {
 
         const selectedEncodings = preferredEncodings == null ? null : String(preferredEncodings).trim();
         const wasmDecoder = await loadRemoteDisplayWasmDecoder();
+        if(this.disposed || this.manuallyStopped || generation!==this.connectionGeneration || target!==this.targetId)return;
         const protocolOptions: any = {};
         if (wasmDecoder) {
             protocolOptions.pipeline = wasmDecoder;
@@ -1648,24 +1610,22 @@ class VncPaneInstance implements PaneInstance {
 
         const preserveRenderedFrame = Boolean(this.canvas && this.hasRenderedFrame);
         this.protocol = new VncRemoteDisplayProtocol(protocolOptions);
-        this.hasRenderedFrame = preserveRenderedFrame;
+        this.hasRenderedFrame = false;
         this.frameTimeoutId = null;
 
         if (this.canvas) {
             this.canvas.style.display = preserveRenderedFrame ? 'block' : 'none';
         }
-        if (this.displayPlaceholderEl) {
-            this.displayPlaceholderEl.style.display = preserveRenderedFrame ? 'none' : '';
-        }
+
 
         this.socketBoundary = new WebSocketRemoteDisplayBoundary({
             url: buildVncWebSocketUrl(this.targetId, handoffToken),
             binaryType: 'arraybuffer',
             onOpen: () => {
+                if(generation!==this.connectionGeneration)return;
                 if (handoffToken && this.pendingHandoffToken === handoffToken) {
                     this.pendingHandoffToken = null;
                 }
-                this.reconnectAttempts = 0;
                 this.setStatus(`Connected to proxy for ${this.targetId}. Waiting for VNC/RFB data…`);
                 this.updateDisplayInfo('WebSocket proxy connected. Waiting for handshake…');
                 this.updateDisplayMeta();
@@ -1675,9 +1635,12 @@ class VncPaneInstance implements PaneInstance {
                 this.applyMetrics(metrics);
             },
             onMessage: (message) => {
+                if(generation!==this.connectionGeneration)return;
                 void this.handleSocketMessage(message);
             },
             onClose: () => {
+                if(generation!==this.connectionGeneration || this.manuallyStopped)return;
+                this.connected=false;this.setConnectionState('disconnected','Connection lost. Retry or choose Connections.');
                 this.setSessionChromeVisible(true);
                 if (this.frameTimeoutId) {
                     clearTimeout(this.frameTimeoutId);
@@ -1714,6 +1677,8 @@ class VncPaneInstance implements PaneInstance {
                 this.updateDisplayMeta('closed');
             },
             onError: () => {
+                if(generation!==this.connectionGeneration || this.manuallyStopped)return;
+                this.connected=false;this.setConnectionState('error','Connection failed. Retry or choose Connections.');
                 this.setSessionChromeVisible(true);
                 if (shouldRetryVncPopoutWithoutHandoff({
                     handoffToken,
@@ -1749,9 +1714,15 @@ class VncPaneInstance implements PaneInstance {
     }
 
     private async load() {
+        this.resetLiveSession();
+        let generation=this.connectionGeneration;
+        const target=this.targetId;
         this.setStatus('');
+        this.bodyEl.innerHTML = '<p role="status">Loading connections…</p>';
         try {
-            const payload = await fetchVncSession(this.targetId);
+            const payload = await fetchVncSession(target);
+            if(this.disposed||generation!==this.connectionGeneration||target!==this.targetId)return;
+            this.historyStorage = scopedVncHistoryStorage(getVncLocalStorage(), payload?.history_scope);
             if (!payload?.enabled) {
                 this.renderTargets(payload);
                 this.setStatus('');
@@ -1763,8 +1734,11 @@ class VncPaneInstance implements PaneInstance {
                 return;
             }
             this.renderTargetSession(payload);
-            await this.connectSocket();
+            const connecting = this.connectSocket();
+            generation=this.connectionGeneration;
+            await connecting;
         } catch (error) {
+            if(this.disposed||generation!==this.connectionGeneration)return;
             this.resetLiveSession();
             this.bodyEl.innerHTML = `
                 <div style="max-width:620px;text-align:center;padding:28px;border:1px dashed var(--border-color);border-radius:14px;background:var(--bg-secondary);">
@@ -1773,12 +1747,13 @@ class VncPaneInstance implements PaneInstance {
                     <div style="color:var(--text-secondary);font-size:13px;line-height:1.5;">${esc(error?.message || 'Unknown error')}</div>
                 </div>
             `;
+            const back = document.createElement('button'); back.textContent = 'Connections'; back.onclick = () => { this.targetId=null; this.authPassword=null; void this.load(); }; this.bodyEl.append(back);
             this.setStatus(`Session load failed: ${error?.message || 'Unknown error'}`);
         }
     }
 
     beforeDetachFromHost() {
-        this.releasePressedKeys();
+        this.releasePressedKeys(); this.releasePointers?.();
         this.setStatus('Moving VNC session…');
         this.updateDisplayInfo('Moving VNC session to a new window…');
         this.updateDisplayMeta('moving');
@@ -1794,6 +1769,7 @@ class VncPaneInstance implements PaneInstance {
         if (this.disposed || !this.root) return false;
         this.releasePressedKeys();
         this.container = container;
+        installVncViewerStyles(container.ownerDocument || document);
         if (!relocateVncPaneRoot(this.root, container)) {
             return false;
         }
@@ -1807,10 +1783,11 @@ class VncPaneInstance implements PaneInstance {
 
     getContent() { return undefined; }
     isDirty() { return false; }
-    focus() { this.canvas?.focus?.(); this.root?.focus?.(); }
+    focus() { if (this.chooserOverlay) return; if(this.chromeEl && !this.chromeEl.hidden) return; this.canvas?.focus?.(); }
     resize() { this.updateCanvasScale(); }
     dispose() {
         if (this.disposed) return;
+        this.stopConnection();
         this.disposed = true;
         this.resetLiveSession();
         this.root?.remove?.();

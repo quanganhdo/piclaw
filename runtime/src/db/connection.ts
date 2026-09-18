@@ -43,6 +43,7 @@ import { initializeFamilyMemory } from './family-memory-schema.js';
 import { initializeFamilyScheduledPublications } from './family-scheduled-publications-schema.js';
 import { initializeToolOutputOwnership } from './tool-output-ownership-schema.js';
 import { initializeBudgetLimitsSchema } from './budget-limits-schema.js';
+import { initializeAddonOperationsSchema } from './addon-operations-schema.js';
 import fs from "fs";
 import path from "path";
 
@@ -985,6 +986,7 @@ export function initDatabase(): void {
   ensureKeychainNoteColumns(db);
   ensureTokenUsageColumns(db);
   initializeBudgetLimitsSchema(db);
+  initializeAddonOperationsSchema(db);
   ensureScheduledTaskColumns(db);
   installScheduledRunCompositionSchema(db);
   migrateScheduledTaskAuthorities(db);

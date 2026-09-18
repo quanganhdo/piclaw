@@ -149,6 +149,28 @@ mcp({ tool: "filesystem_read_file", args: "{\"path\":\"./README.md\"}" })
 
 `args` must be a JSON string.
 
+## Tool authorization filters
+
+Per-server `includeTools` and `excludeTools` are authorization controls for the adapter's model-visible surfaces, not only prompt-size filters. They apply to direct tools and to generic proxy status, list, search, describe, resource reads, and tool calls. Exclusions take precedence over inclusions.
+
+The adapter evaluates the active server policy against the underlying raw MCP tool/resource name for both raw and prefixed requests. Cached metadata cannot grant access after configuration changes. Denied proxy calls stop locally before server connection or transport invocation and return a structured `tool_not_allowed` error.
+
+For example, a read-only projection can be defined as:
+
+```json
+{
+  "mcpServers": {
+    "workiq": {
+      "command": "workiq.exe",
+      "includeTools": ["retrieve", "fetch", "list_agents"],
+      "excludeTools": ["create_entity", "update_entity", "delete_entity", "do_action"]
+    }
+  }
+}
+```
+
+Use `excludeTools` as defense in depth, not as a substitute for least-privilege credentials or server-side authorization.
+
 ## Timeout, abort, and output handling
 
 `pi-mcp-adapter` 2.15.0 forwards Pi abort signals into connect, discovery, resource, and tool requests. It also applies `requestTimeoutMs` consistently across those request types. Configure a global protocol-request timeout in the active MCP configuration file:

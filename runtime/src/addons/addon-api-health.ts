@@ -3,12 +3,15 @@ import { createLogger } from "../utils/logger.js";
 
 const log = createLogger("addons.api-health");
 
+export type AddonConfigApiTransport = "direct_handler" | "legacy_slash_command";
+
 export interface AddonApiHealthEntry {
   addonId: string;
   action: string;
   chatJid: string | null;
   method: string;
   path: string;
+  transport: AddonConfigApiTransport;
   degraded: boolean;
   failureCount: number;
   firstFailedAt: string | null;
@@ -22,6 +25,10 @@ export interface AddonApiHealthEntry {
 
 const MAX_ENTRIES = 200;
 const entries = new Map<string, AddonApiHealthEntry>();
+const transportCounts: Record<AddonConfigApiTransport, number> = {
+  direct_handler: 0,
+  legacy_slash_command: 0,
+};
 
 function nowIso(nowMs = Date.now()): string {
   return new Date(nowMs).toISOString();
@@ -49,12 +56,33 @@ function pruneIfNeeded(): void {
   for (const [key] of victims) entries.delete(key);
 }
 
+export function recordAddonApiTransportSelection(input: {
+  addonId: string;
+  action: string;
+  chatJid?: string | null;
+  method?: string;
+  path?: string;
+  transport: AddonConfigApiTransport;
+}): void {
+  transportCounts[input.transport] += 1;
+  log.info("Selected add-on config API transport", {
+    operation: "addon_api.transport_selected",
+    addonId: String(input.addonId || "").trim(),
+    action: String(input.action || "").trim(),
+    chatJid: input.chatJid ? String(input.chatJid).trim() : null,
+    method: String(input.method || "").trim().toUpperCase() || "GET",
+    path: String(input.path || "").trim(),
+    transport: input.transport,
+  });
+}
+
 export function recordAddonApiFailure(input: {
   addonId: string;
   action: string;
   chatJid?: string | null;
   method?: string;
   path?: string;
+  transport: AddonConfigApiTransport;
   status?: number | null;
   error?: unknown;
 }): AddonApiHealthEntry & { shouldLog: boolean } {
@@ -69,6 +97,7 @@ export function recordAddonApiFailure(input: {
     chatJid: input.chatJid ? String(input.chatJid).trim() : null,
     method: String(input.method || "").trim().toUpperCase() || "GET",
     path: String(input.path || "").trim(),
+    transport: input.transport,
     degraded: true,
     failureCount: (previous?.failureCount ?? 0) + 1,
     firstFailedAt: previous?.firstFailedAt ?? nowIso(nowMs),
@@ -89,6 +118,7 @@ export function recordAddonApiFailure(input: {
       chatJid: next.chatJid,
       method: next.method,
       path: next.path,
+      transport: next.transport,
       status: next.lastStatus,
       error: next.lastError,
       failureCount: next.failureCount,
@@ -104,12 +134,14 @@ export function recordAddonApiSuccess(input: {
   chatJid?: string | null;
   method?: string;
   path?: string;
+  transport: AddonConfigApiTransport;
 }): AddonApiHealthEntry | null {
   const key = keyFor(input);
   const previous = entries.get(key);
   if (!previous) return null;
   const next: AddonApiHealthEntry = {
     ...previous,
+    transport: input.transport,
     degraded: false,
     lastRecoveredAt: nowIso(),
     lastStatus: 200,
@@ -125,16 +157,23 @@ export function recordAddonApiSuccess(input: {
     chatJid: next.chatJid,
     method: next.method,
     path: next.path,
+    transport: next.transport,
     failureCount: next.failureCount,
   });
   return next;
 }
 
-export function getAddonApiHealthSnapshot(): { degraded: boolean; entries: AddonApiHealthEntry[] } {
+export function getAddonApiHealthSnapshot(): {
+  degraded: boolean;
+  entries: AddonApiHealthEntry[];
+  transportCounts: Record<AddonConfigApiTransport, number>;
+} {
   const snapshot = [...entries.values()].filter((entry) => entry.degraded);
-  return { degraded: snapshot.length > 0, entries: snapshot };
+  return { degraded: snapshot.length > 0, entries: snapshot, transportCounts: { ...transportCounts } };
 }
 
 export function resetAddonApiHealthForTests(): void {
   entries.clear();
+  transportCounts.direct_handler = 0;
+  transportCounts.legacy_slash_command = 0;
 }

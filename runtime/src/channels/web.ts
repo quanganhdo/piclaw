@@ -53,9 +53,8 @@ import {
   type WebChannelPrototypeMembers,
 } from "./web/core/web-channel-prototype.js";
 import { TerminalSessionService } from "./web/terminal/terminal-session-service.js";
-import type { TerminalSocketData } from "./web/terminal/terminal-session-service.js";
 import { VncSessionService } from "./web/vnc/vnc-session-service.js";
-import type { VncSocketData } from "./web/vnc/vnc-session-service.js";
+import { createLazyTerminalService, createLazyVncService } from "./web/lazy-session-services.js";
 import type { WebMessageProcessingStorageService } from "./web/messaging/message-processing-storage-service.js";
 import type { WebChannelRuntimeFollowupFacadeService } from "./web/runtime/runtime-followup-facade-service.js";
 import { initializeWebChannelConstructor } from "./web/core/web-channel-constructor-factory.js";
@@ -63,74 +62,6 @@ import { initializeWebChannelConstructor } from "./web/core/web-channel-construc
 const DEFAULT_CHAT_JID = "web:default";
 const DEFAULT_AGENT_ID = "default";
 const STATE_KEY = "last_agent_timestamp_web";
-
-function createLazyTerminalService(factory: () => TerminalSessionService): TerminalSessionService {
-  let instance: TerminalSessionService | null = null;
-  const get = (): TerminalSessionService => {
-    instance ??= factory();
-    return instance;
-  };
-  return {
-    resolveOwnerFromRequest(req: Request, allowUnauthenticated = false) {
-      return get().resolveOwnerFromRequest(req, allowUnauthenticated);
-    },
-    getSessionInfo(owner: { token: string; userId: string }) {
-      return get().getSessionInfo(owner);
-    },
-    attachClient(ws: Bun.ServerWebSocket<TerminalSocketData>) {
-      return get().attachClient(ws);
-    },
-    handleMessage(ws: Bun.ServerWebSocket<TerminalSocketData>, rawMessage: string | Buffer | Uint8Array) {
-      return get().handleMessage(ws, rawMessage);
-    },
-    detachClient(ws: Bun.ServerWebSocket<TerminalSocketData>) {
-      return get().detachClient(ws);
-    },
-    createHandoffFromRequest(req: Request, allowUnauthenticated = false) {
-      return get().createHandoffFromRequest(req, allowUnauthenticated);
-    },
-    shutdown() {
-      return get().shutdown();
-    },
-  } as unknown as TerminalSessionService;
-}
-
-function createLazyVncService(factory: () => VncSessionService): VncSessionService {
-  let instance: VncSessionService | null = null;
-  const get = (): VncSessionService => {
-    instance ??= factory();
-    return instance;
-  };
-  return {
-    prepareTargetReference(targetRef: string) {
-      return get().prepareTargetReference(targetRef);
-    },
-    resolveTargetReference(targetRef: string) {
-      return get().resolveTargetReference(targetRef);
-    },
-    resolveOwnerFromRequest(req: Request, targetRef: string, allowUnauthenticated = false) {
-      return get().resolveOwnerFromRequest(req, targetRef, allowUnauthenticated);
-    },
-    createHandoffFromRequest(req: Request, targetRef: string, allowUnauthenticated = false) {
-      return get().createHandoffFromRequest(req, targetRef, allowUnauthenticated);
-    },
-    getSessionInfo(targetRef?: string | null) {
-      return get().getSessionInfo(targetRef);
-    },
-    attachClient(ws: Bun.ServerWebSocket<VncSocketData>) {
-      return get().attachClient(ws);
-    },
-    handleMessage(ws: Bun.ServerWebSocket<VncSocketData>, message: string | Buffer | Uint8Array) {
-      return get().handleMessage(ws, message);
-    },
-    detachClient(ws: Bun.ServerWebSocket<VncSocketData>) {
-      return get().detachClient(ws);
-    },
-    shutdown() {
-      return get().shutdown();
-    },
-  } as unknown as VncSessionService;
-}
 
 /** Construction options for WebChannel: queue and agentPool references. */
 export interface WebChannelOpts {

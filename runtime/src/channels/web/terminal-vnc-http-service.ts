@@ -1,4 +1,5 @@
 import type { TerminalSocketData } from "./terminal/terminal-session-service.js";
+import { getVncHistoryScope } from "./vnc/vnc-history-scope.js";
 import { checkCsrfOrigin as defaultCheckCsrfOrigin } from "./http/security.js";
 
 type JsonObject = Record<string, unknown>;
@@ -143,7 +144,7 @@ export class WebTerminalVncHttpService {
         }, managedUnavailable ? 503 : 404);
       }
     }
-    return this.deps.json(this.deps.vncService.getSessionInfo(targetId || null), 200);
+    return this.deps.json({ ...this.deps.vncService.getSessionInfo(targetId || null), history_scope: getVncHistoryScope(req, !authEnabled) }, 200);
   }
 
   async handleVncHandoff(req: Request): Promise<Response> {

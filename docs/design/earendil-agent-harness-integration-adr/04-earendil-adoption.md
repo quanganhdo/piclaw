@@ -4,9 +4,9 @@
 
 ### API and package survey
 
-The historical `0.84.1` package survey is recorded in [`evidence/earendil-0.84.1-harness-surface.md`](evidence/earendil-0.84.1-harness-surface.md). It found implemented v2 session contracts and a private recovery reducer, but no usable released execution harness. Piclaw's current loop now selects `0.84.4`; that release retains the same unsupported Harness boundary.
+The historical `0.84.1` package survey is recorded in [`evidence/earendil-0.84.1-harness-surface.md`](evidence/earendil-0.84.1-harness-surface.md). It found implemented v2 session contracts and a private recovery reducer, but no usable released execution harness. Production remains on `0.84.4`, whose unsupported Harness boundary is historical evidence. Draft PR B selects published `0.85.1` for the current loop without activating Harness.
 
-Published `0.84.4` retains the audited released-v2 scaffold. Active design and implementation now live on `dev` and draft PR #8963 at `d14d6b22327d545d6a253f932165b63e48d7f9c8`, assessed in [`evidence/earendil-harness-v3-assessment.md`](evidence/earendil-harness-v3-assessment.md). Harness v3 replaces the v2 record reducer with immutable entries, typed mutable values/lists, immutable operation results and an append-only usage ledger. The candidate implements complete public lane drive, while session watch, source selection and storage/fork stability remain gates.
+The earlier `dev`/draft #8963 capture at `d14d6b22327d545d6a253f932165b63e48d7f9c8` is preserved in the [historical assessment](evidence/earendil-harness-v3-assessment.md). The selected release is now 0.85.1 at `d981de1229ef899957bbe968bc8dcda02a21f477`. It ships Context, six-argument tools/memos, AgentLane and lane watch/events/usage. Its immutable entries, typed values/lists and usage ledger differ from the old released-v2 scaffold. Session watch is still a concrete stub; raw Storage fixture exports and broader HC acceptance remain gated. The [current A/B/C/D sequence](evidence/earendil-0851-work-sequence.md) excludes tip-only APIs.
 
 The fixture and future production code use the selected Earendil version's exact exported types and semantics described in [`evidence/earendil-native-effector-contracts.md`](evidence/earendil-native-effector-contracts.md), not Piclaw equivalents. Piclaw accepts source breakage when selecting a newer Earendil version.
 
@@ -23,7 +23,7 @@ Before choosing Piclaw service interfaces, the assessment must inventory the pin
 - checkpoint or recovery facilities;
 - one lane-owned Drive and `Gate.admit()` semantics;
 - the effect-start uncertainty boundary;
-- storage transactions, conformance, selected migrations, host ownership and streaming forks;
+- storage mutations, conformance, selected migrations, host ownership and release-specific fork semantics; tip-only streaming-fork helpers are excluded;
 - extension points;
 - filesystem and persistence ports;
 - disposal and process ownership.
@@ -34,7 +34,7 @@ The survey must record exact package versions and source commits. [`docs/earendi
 
 The required fixture, deterministic driver/fault model, assumption ledger and parameterised contract cases are specified in [`evidence/earendil-version-fixture-contract.md`](evidence/earendil-version-fixture-contract.md).
 
-The released Harness cannot execute runs. Current `dev` can, but remains unselected. Deterministic test implementations remain useful for Piclaw-owned service boundaries and fault scheduling; a latent positive compatibility suite may also run the exact `dev` constructor. Fixtures remain small and disposable and change with the selected Earendil source.
+Released 0.85.1 can execute runs through its public constructor. PR B already retains tested, bounded partial semantics for the migrated direct contracts and public Memory/JSONL SessionRepo conformance. PR C owns the broader deterministic fixture and full HC completion effort; these are inactive tests, not a production execution plane. Fixtures use the selected release's public APIs and change with that release. No branch-history rewrite or removal of existing partial B evidence is required.
 
 It should implement only the selected public contract surface needed by the semantic cases:
 
@@ -52,9 +52,9 @@ Every selected-version assumption needs an evidence record. The current assumpti
 
 The fixture must import no current Piclaw orchestration code. Its Harness v3 target uses selected direct `Models`, generic `AgentHarnessTool<TContext>`, `ExecutionEnv`, `Storage`, `SessionRepo`, event/hook and result/error contracts with deterministic test implementations. The released-v2 fixture surface remains historical evidence only.
 
-### Shared contract suite
+### Broader PR C contract suite
 
-One parameterised contract suite must run against both:
+This future completion work is separate from PR B's bounded migration checks. One parameterised contract suite must run against both:
 
 1. the test implementation of the selected Earendil contracts; and
 2. the real public constructor exported by that selected Earendil version.

@@ -1,5 +1,20 @@
 # Evidence register
 
+## Published 0.85.1 follow-up
+
+| Evidence | Scope / state |
+|---|---|
+| [A/B/C/D work sequence](earendil-0851-work-sequence.md) | Current release-pinned boundaries; B migration, C broader inactive HC completion, D later-release reassessment |
+| [Admission and catalogue](earendil-0851-admission.md) | Bun/real Node public closure, source-only exclusions, 15 total API moves with +107/-43 gross entries; no pi-server workaround |
+| [Candidate readiness](earendil-0851-readiness.md) | Executed local gates and partial HC evidence; no merge/deployment approval |
+| [All-package import/path smoke](earendil-0851-addon-matrix.md) | 42 Linux/Bun package-root imports and four no-main path checks; no runtime/browser activation |
+| [Canary procedure](earendil-0851-canary.md) and [executed receipt](earendil-0851-canary-result.md) | Authorised piclaw-test upgrade/rollback and targeted browser checks executed; baseline abort-endpoint defect #1334 reproduced; guest snapshot restored stopped; no merge/deploy approval |
+| [0.84.4 negative receipt](earendil-0844-historical-negatives.json) | Preserves seven negative compiler checks and 25 unsupported outcomes; never promoted to selected-release success |
+
+## Historical assessment register
+
+Rows E-001–E-029 are dated observations from the original assessment and its 1 September refresh. Their terms “current”, `dev`, #8963 and d14d6b refer to that capture window, not today's selected candidate. The original source identities and outcomes are retained below.
+
 | Evidence ID | Source | Baseline relevance | State |
 |---|---|---|---|
 | E-001 | `v2.13.2` / `0afd3ae645c423bed82deef80c343bcaa6f31d4d` | Stable Piclaw assessment baseline | Verified tag and commit; ADR scaffold is the only child commit on `main` |

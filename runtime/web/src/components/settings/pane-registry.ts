@@ -5,6 +5,8 @@
  * settings dialog's nav. Each pane provides a Preact render function.
  */
 
+import { compareAddonSettingsPanes } from '../../../shared/settings-pane-order.js';
+
 export interface SettingsPaneDefinition {
     /** Unique id (used as nav key). */
     id: string;
@@ -18,17 +20,13 @@ export interface SettingsPaneDefinition {
     searchable?: boolean;
     /** Placeholder text for the header search. */
     searchPlaceholder?: string;
-    /** Sort order (lower = higher in nav). Built-in panes use 0-100. */
+    /** @deprecated Accepted for compatibility; add-on panes sort by label then id. */
     order?: number;
 }
 
 const registry: SettingsPaneDefinition[] = [];
 
-export function compareSettingsPanesAlphabetically(a: Pick<SettingsPaneDefinition, "label" | "id">, b: Pick<SettingsPaneDefinition, "label" | "id">): number {
-    const labelCompare = String(a.label || '').localeCompare(String(b.label || ''), undefined, { sensitivity: 'base' });
-    if (labelCompare !== 0) return labelCompare;
-    return String(a.id || '').localeCompare(String(b.id || ''), undefined, { sensitivity: 'base' });
-}
+export const compareSettingsPanesAlphabetically = compareAddonSettingsPanes;
 
 export function registerSettingsPane(def: SettingsPaneDefinition): void {
     // Replace if same id exists

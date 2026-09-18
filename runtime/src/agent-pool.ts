@@ -455,6 +455,8 @@ export class AgentPool {
         budgetWorkId,
         budgetExecutionKind,
         budgetBeforeModelCall: async (boundary, boundaryPrompt, providerId) => {
+          if (options.abortSignal?.aborted) return "Restricted execution cancelled.";
+          if (options.executionAdmissionCheck && !await options.executionAdmissionCheck()) return "Restricted execution grant revoked.";
           const admitted = await admitBudgetBoundary({
             workId: budgetWorkId,
             boundary,

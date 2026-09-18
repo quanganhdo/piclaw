@@ -1,0 +1,3355 @@
+{
+  "scope": "Linux x64 Bun 1.4.1 standalone package-root import smoke",
+  "baseline": "6374ed3c85627c590794e44828d13b08587ba46b",
+  "earendil": "0.85.1",
+  "sourceVerification": {
+    "sourceRevision": "6374ed3c85627c590794e44828d13b08587ba46b",
+    "verifiedAddonFiles": 3350,
+    "equal": true
+  },
+  "summary": {
+    "total": 46,
+    "mainImports": 42,
+    "skillAssets": 4,
+    "failed": []
+  },
+  "coherentCompatibility": {
+    "passed": 125,
+    "files": 10,
+    "typechecks": 3,
+    "directTui": "0.85.1"
+  },
+  "networkControl": {
+    "control": "loopback-fetch-denied",
+    "code": "FailedToOpenSocket",
+    "bun": "1.4.1"
+  },
+  "limitations": [
+    "No factory, runtime or browser entry invoked by harness; top-level package code executes",
+    "Lifecycle scripts disabled for packing/install; vendor/prepack functionality not validated",
+    "Install/pack phases use network; import filter is process-local syscall denial, not a general hostile-code sandbox",
+    "No native platform beyond Linuxx64/Bun1.4.1, functional or activation claim"
+  ],
+  "rows": [
+    {
+      "slug": "ast-grep-tool",
+      "name": "@rcarmo/piclaw-addon-ast-grep",
+      "version": "0.1.7",
+      "status": "main_import_pass",
+      "archiveSha256": "c3911df1b2b9bded232b6753984a17ad8f3acde0da8b5add1ff9b0fa1fc990ee",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "skills",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "autoresearch",
+      "name": "@rcarmo/piclaw-addon-autoresearch",
+      "version": "0.1.4",
+      "status": "main_import_pass",
+      "archiveSha256": "462f918e896e61b50eab47590adab120fd13defb7db3896654f3eedda1ac55b8",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "skills",
+          "present": true
+        },
+        {
+          "path": "runtime.ts",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "cheapskate",
+      "name": "@rcarmo/piclaw-addon-cheapskate",
+      "version": "0.5.1",
+      "status": "main_import_pass",
+      "archiveSha256": "78c3cd94fadef14039d64cbb8cb6fa82faa621f828362f322b18b5f8922281fa",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "skills",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "code-validator",
+      "name": "@rcarmo/piclaw-addon-code-validator",
+      "version": "0.1.3",
+      "status": "main_import_pass",
+      "archiveSha256": "ceb0096db1c51850de0652459ea37d6931bea2e7f3925aa53b45ef4d7a1ebe15",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "codex-conversion",
+      "name": "@rcarmo/piclaw-addon-codex-conversion",
+      "version": "0.2.1",
+      "status": "main_import_pass",
+      "archiveSha256": "047c6c53e86616a69e1057ac7e7dcf515b909525edcf249cea7b3a828fe66f1f",
+      "declaredPaths": [
+        {
+          "path": "src/index.ts",
+          "present": true
+        },
+        {
+          "path": "src/index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "delegate",
+      "name": "@rcarmo/piclaw-addon-delegate",
+      "version": "0.2.9",
+      "status": "main_import_pass",
+      "archiveSha256": "2772e9c572ee754f7a4af934432e8821d14802b7debdf66967f6e81cd9ffcc81",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "skills",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "dev-tools",
+      "name": "@rcarmo/piclaw-addon-dev-tools",
+      "version": "0.1.4",
+      "status": "main_import_pass",
+      "archiveSha256": "aba1160e9adeadba34392346b8f398e3649903226a2b73cf842d4689dfea4ca5",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "diagram-tools",
+      "name": "@rcarmo/piclaw-addon-diagram-tools",
+      "version": "0.1.0",
+      "status": "skill_assets_verified_no_main",
+      "archiveSha256": "7e15665f910404cd8b42f79f290261010a75e531b3ebe1ddf5465be7bb560ac6",
+      "declaredPaths": [
+        {
+          "path": "skills",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [],
+      "nestedFamilyPackages": [],
+      "entryPeerProvenance": [],
+      "defaultExport": null
+    },
+    {
+      "slug": "drawio-editor",
+      "name": "@rcarmo/piclaw-addon-drawio-editor",
+      "version": "31.4.3",
+      "status": "main_import_pass",
+      "archiveSha256": "5e4d124959272e382bf2f562128a2643e9696075d9a583c5bc1b697455cbf1b4",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "editable-table",
+      "name": "@rcarmo/piclaw-addon-editable-table",
+      "version": "0.1.4",
+      "status": "main_import_pass",
+      "archiveSha256": "47edb63e02cb550fe7c9c4fd5836bb94a7f930502d65b23fbf3a201679c350c9",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "skills",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "eml-viewer",
+      "name": "@rcarmo/piclaw-addon-eml-viewer",
+      "version": "0.2.1",
+      "status": "main_import_pass",
+      "archiveSha256": "b7e265ddb56309e42adcb3e39ce91c01f9b59e917c70eabcc7243e9d90ad6c47",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "export-timeline-pdf",
+      "name": "@rcarmo/piclaw-addon-export-timeline-pdf",
+      "version": "0.1.1",
+      "status": "skill_assets_verified_no_main",
+      "archiveSha256": "e9304008bc17cc21f22f0e1ad390422b6b4aac08db3cf2f3cdf4ce69b84299fe",
+      "declaredPaths": [
+        {
+          "path": "skills",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [],
+      "nestedFamilyPackages": [],
+      "entryPeerProvenance": [],
+      "defaultExport": null
+    },
+    {
+      "slug": "ghostty-terminal",
+      "name": "@rcarmo/piclaw-addon-ghostty-terminal",
+      "version": "0.1.0",
+      "status": "main_import_pass",
+      "archiveSha256": "a3a9d9a95b820e427a94102fe8240405229741e036d5d6c5147916a4881af3e6",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "git-query-tools",
+      "name": "@rcarmo/piclaw-addon-git-query-tools",
+      "version": "0.1.5",
+      "status": "main_import_pass",
+      "archiveSha256": "b446f6465ff52f055015eb23286c8c3ed3b335a02d3c92df8dc24a8c8c4f21d1",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "skills",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "goal",
+      "name": "@rcarmo/piclaw-addon-goal",
+      "version": "0.1.47",
+      "status": "main_import_pass",
+      "archiveSha256": "93080579535774f1f0456ea2aea92611f143baf1f15d454304115f65041cf771",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "runtime.ts",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "image-processing",
+      "name": "@rcarmo/piclaw-addon-image-processing",
+      "version": "0.1.4",
+      "status": "main_import_pass",
+      "archiveSha256": "845a457f7c9a363620a7489b7c2defd54f31724227a2daa94e31457503db9f68",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "imap",
+      "name": "@rcarmo/piclaw-addon-imap",
+      "version": "0.1.10",
+      "status": "main_import_pass",
+      "archiveSha256": "aafb2e61253946df108fca70317066d8672def7e9842da4b218fb4ab4d3ef3aa",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "kanban-board-widget",
+      "name": "@rcarmo/piclaw-addon-kanban-board-widget",
+      "version": "0.1.1",
+      "status": "main_import_pass",
+      "archiveSha256": "302971ed8ef61e74a2c10eb0318a5760abc82aca2e0b84c1fcb00ab6f9eb6400",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "kanban-editor",
+      "name": "@rcarmo/piclaw-addon-kanban-editor",
+      "version": "0.1.2",
+      "status": "main_import_pass",
+      "archiveSha256": "07f39a4824b3cc5f4190d70da5bb0bbe02471e1823cdb96208119acdf3b8b8ac",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "late-night-regrets",
+      "name": "@rcarmo/piclaw-addon-late-night-regrets",
+      "version": "0.1.4",
+      "status": "main_import_pass",
+      "archiveSha256": "63cd9f65b76adb7c80c0fb92c065150f1b357380cf2b1426b4e41c4333db30e0",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "lite-term",
+      "name": "@rcarmo/piclaw-addon-lite-term",
+      "version": "0.1.2",
+      "status": "main_import_pass",
+      "archiveSha256": "61e5e96fc51c2ff7bd1863246ba85424f666e99e318f03ea8ae6aa3051f3972a",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "m365",
+      "name": "@rcarmo/piclaw-addon-m365",
+      "version": "0.1.2",
+      "status": "main_import_pass",
+      "archiveSha256": "5f9d1a492ed2fddb4296d77bc4d10f8c388a8cbbc3d427489e6b4140cc9e5532",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "skills",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "mindmap",
+      "name": "@rcarmo/piclaw-addon-mindmap",
+      "version": "0.1.3",
+      "status": "main_import_pass",
+      "archiveSha256": "b326563ed65a7b784e91f316238da8358f48e42fabc0e2aea759176ee250b82c",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "observability",
+      "name": "@rcarmo/piclaw-addon-observability",
+      "version": "0.1.16",
+      "status": "main_import_pass",
+      "archiveSha256": "501cb8a09e695f0f36e3aa8dd69edccdf5759f284b2c4e1b1fe5c04f26524ff6",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "office-tools",
+      "name": "@rcarmo/piclaw-addon-office-tools",
+      "version": "0.1.6",
+      "status": "main_import_pass",
+      "archiveSha256": "3c0ca89bdf723ad97474101e21bb4ce498825fee0542bcefcf7ee399e4a3eb68",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "office-viewer",
+      "name": "@rcarmo/piclaw-addon-office-viewer",
+      "version": "0.1.3",
+      "status": "main_import_pass",
+      "archiveSha256": "cce198284248e81b8335e3935105211fe83932b3c28940342d3ebc83e42a15f7",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "plan-sidebar",
+      "name": "@rcarmo/piclaw-addon-plan-sidebar",
+      "version": "0.1.25",
+      "status": "main_import_pass",
+      "archiveSha256": "1adb80f42748337f6076e3c0644cbf2b5aad6e8c7641703ef3eaf1ba01de8473",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "portainer",
+      "name": "@rcarmo/piclaw-addon-portainer",
+      "version": "0.1.8",
+      "status": "main_import_pass",
+      "archiveSha256": "80e93755c1c7738c0e3403249e4156bbb9ccfaa37d1c3304587513a33d34db47",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "skills",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "proxmox",
+      "name": "@rcarmo/piclaw-addon-proxmox",
+      "version": "0.1.9",
+      "status": "main_import_pass",
+      "archiveSha256": "67c87819a0fda14f51f90faf6b0d6e26ce1a8de313a98be0489eacf35ec7b230",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "skills",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "remote-peer",
+      "name": "@rcarmo/piclaw-addon-remote-peer",
+      "version": "0.3.3",
+      "status": "main_import_pass",
+      "archiveSha256": "a6f92d9491f18b55b3e9842c504ae10d263e72d6e98510ee9938201f26e11bce",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "skills",
+          "present": true
+        },
+        {
+          "path": "runtime.ts",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "sample-addon",
+      "name": "@rcarmo/piclaw-addon-sample-addon",
+      "version": "0.1.10",
+      "status": "main_import_pass",
+      "archiveSha256": "6c73316f57ec1df81d09cb3fbabd56fcd2645ce55b53024a6131ac1aa0372fb1",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "session-dashboard",
+      "name": "@rcarmo/piclaw-addon-session-dashboard",
+      "version": "0.2.4",
+      "status": "main_import_pass",
+      "archiveSha256": "575d1f82b7b8ea2c548d82a9fbf6a51dfe720840ba84bb7ddb24d965090ad837",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "session-tree",
+      "name": "@rcarmo/piclaw-addon-session-tree",
+      "version": "0.2.0",
+      "status": "main_import_pass",
+      "archiveSha256": "b52cd8b0cc9307db92894e79cccfa4cc8f3e3bec21c03db03bc30800a7de608b",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "settings-dialog-screenshot",
+      "name": "@rcarmo/piclaw-addon-settings-dialog-screenshot",
+      "version": "0.1.0",
+      "status": "skill_assets_verified_no_main",
+      "archiveSha256": "42b91e385631ee20ab081c2e5c4a39079f3f9691475d904cd717f73ce4f6dc1e",
+      "declaredPaths": [
+        {
+          "path": "skills",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [],
+      "nestedFamilyPackages": [],
+      "entryPeerProvenance": [],
+      "defaultExport": null
+    },
+    {
+      "slug": "skill-model-effort",
+      "name": "@rcarmo/piclaw-addon-skill-model-effort",
+      "version": "0.1.3",
+      "status": "main_import_pass",
+      "archiveSha256": "df540b68e362dc6756178b15e316b32cb26205cbda7e82b7d9e9b3c6e410c4fc",
+      "declaredPaths": [
+        {
+          "path": "src/index.ts",
+          "present": true
+        },
+        {
+          "path": "src/index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "smart-compaction",
+      "name": "@rcarmo/piclaw-addon-smart-compaction",
+      "version": "0.1.4",
+      "status": "main_import_pass",
+      "archiveSha256": "ea03611371f149459e2feb7d6dc274c723657f6db737d623a263c28bff9963d1",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "stealth-browser",
+      "name": "@rcarmo/piclaw-addon-stealth-browser",
+      "version": "0.1.1",
+      "status": "main_import_pass",
+      "archiveSha256": "6b9bfbff1b8a669d49016bf89ce2b92829765246ee207d741ddcebb3a6c835ee",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "skills",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "telegram",
+      "name": "@rcarmo/piclaw-addon-telegram",
+      "version": "0.1.2",
+      "status": "main_import_pass",
+      "archiveSha256": "00ad5d16af8c961eea48da6575c9fb902a1c74458bc2910cfc6a58420b3936a2",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "vent",
+      "name": "@rcarmo/piclaw-addon-vent",
+      "version": "0.1.3",
+      "status": "main_import_pass",
+      "archiveSha256": "8221c91b072fffa494196b62f5844605156bf9f94b85760ff99019d58b4a6b79",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "skills",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "voice-pipeline",
+      "name": "@rcarmo/piclaw-addon-voice-pipeline",
+      "version": "0.2.2",
+      "status": "main_import_pass",
+      "archiveSha256": "f0650322202c961d35caedb302a30f6cb029e9ca4808436b76f18f7f3ccb240e",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "web-viewer",
+      "name": "@rcarmo/piclaw-addon-web-viewer",
+      "version": "0.1.1",
+      "status": "main_import_pass",
+      "archiveSha256": "ca0eefca56ad12f893b311c3e7f1106a7cdd91d68589ddc501981e3111130308",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "whatsapp",
+      "name": "@rcarmo/piclaw-addon-whatsapp",
+      "version": "0.1.3",
+      "status": "main_import_pass",
+      "archiveSha256": "5a2872b67bc8dd7075fdb18e36c6d6d10ad3ac13cd2d2c3508f2a05c7d3edd5a",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "win-ui",
+      "name": "@rcarmo/piclaw-addon-win-ui",
+      "version": "0.1.1",
+      "status": "main_import_pass",
+      "archiveSha256": "4622c966773e4cc3b4bd214395390f47098be994f46292ee5bddf3c2bcbc865b",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "writer-fonts",
+      "name": "@rcarmo/piclaw-addon-writer-fonts",
+      "version": "0.2.0",
+      "status": "main_import_pass",
+      "archiveSha256": "7333e319a5e36491581b9b7a58ffdc924984db10ca7dd14d5ede7593c62cfe3b",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        }
+      ],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "yolo-vibe",
+      "name": "@rcarmo/piclaw-addon-yolo-vibe",
+      "version": "0.1.7",
+      "status": "main_import_pass",
+      "archiveSha256": "5178bca5b485081aab05416fddd95b878261e1e9cd31c91da26d582730705640",
+      "declaredPaths": [
+        {
+          "path": "index.ts",
+          "present": true
+        },
+        {
+          "path": "index.ts",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "nestedFamilyPackages": [
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/chord",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-coding-agent",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "version": "0.85.1"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "version": "0.85.1"
+        }
+      ],
+      "entryPeerProvenance": [],
+      "defaultExport": "function"
+    },
+    {
+      "slug": "yolochat",
+      "name": "@rcarmo/piclaw-addon-yolochat",
+      "version": "0.1.0",
+      "status": "skill_assets_verified_no_main",
+      "archiveSha256": "86fee59d6fdd44a42a38e2e87ca0a9d1d41e0ee81b1b6edb0248915b081fa238",
+      "declaredPaths": [
+        {
+          "path": "skills",
+          "present": true
+        }
+      ],
+      "rootResolvedFamily": [],
+      "nestedFamilyPackages": [],
+      "entryPeerProvenance": [],
+      "defaultExport": null
+    }
+  ]
+}

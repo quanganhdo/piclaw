@@ -62,13 +62,16 @@ test("general settings keeps unsaved browser-local avatar previews direct", () =
   expect(resolveAvatarPreview("avatar.png", "unknown")).toBe("");
 });
 
-test("general settings renders advanced recovery controls with exact millisecond budget", () => {
+test("general settings renders automatic or exact recovery budgets in milliseconds", () => {
   const source = readFileSync(join(runtimeRoot, "web/src/components/settings/general.ts"), "utf8");
   expect(source).toContain("settings.general.agentRecovery");
   expect(source).toContain("automaticRecoveryEnabled");
   expect(source).toContain("automaticRecoveryMaxAttempts");
   expect(source).toContain("automaticRecoveryTotalBudgetMs");
   expect(source).toContain("settings.general.recoveryTotalBudgetHint");
+  expect(source).toContain("min=${0}");
+  expect(source).toContain("fallback=${0}");
+  expect(source).toContain("automaticRecoveryEffectiveBudgetMs");
   expect(source).toContain("step=${1000}");
 });
 

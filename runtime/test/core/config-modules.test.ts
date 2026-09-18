@@ -180,7 +180,7 @@ test("config runtime module preserves grouped session and recovery contracts", (
   expect(getSessionStorageConfig().maxSizeBytes).toBe(getSessionStorageConfig().maxSizeMb * 1024 * 1024);
   expect(getCompactionRuntimeConfig().backoffMaxMs).toBeGreaterThanOrEqual(getCompactionRuntimeConfig().backoffBaseMs);
   expect(getProgressWatchdogConfig().timeoutMs).toBeGreaterThanOrEqual(0);
-  expect(getRecoveryPolicyConfig().automaticRecoveryTotalBudgetMs).toBeGreaterThan(0);
+  expect(getRecoveryPolicyConfig().automaticRecoveryTotalBudgetMs).toBe(0);
 });
 
 test("identity and integration modules preserve grouped facade contracts", () => {
