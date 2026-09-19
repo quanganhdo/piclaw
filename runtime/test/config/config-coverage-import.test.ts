@@ -150,6 +150,7 @@ test("plain import covers config module init branches with isolated argv and env
       pushSubscriptionCap: 32,
       pushVapidSubject: "mailto:notifications@localhost.invalid",
       notificationDebugLabels: false,
+      sanitizeSvgFences: true,
       vncAllowDirect: false,
       vncTargetsRaw: "",
       debugCardSubmissions: false,

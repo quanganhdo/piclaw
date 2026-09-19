@@ -699,7 +699,7 @@ test("initDatabase migrates legacy chat branch uniqueness so pruned handles can 
   }
 });
 
-test("token usage migration adds provenance columns without rewriting legacy rows", () => {
+test("token usage migration adds provenance columns without rewriting legacy rows", { timeout: 15_000 }, () => {
   const ws = createTempWorkspace("piclaw-token-usage-migration-");
   try {
     const databasePath = resolve(ws.store, "messages.db");

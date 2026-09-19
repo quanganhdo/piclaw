@@ -18,6 +18,7 @@ test('saveWorkspaceSettings persists and applies workspace settings immediately'
     const saved = handler.saveWorkspaceSettings({
       webTerminalEnabled: false,
       vncAllowDirect: false,
+      sanitizeSvgFences: false,
       treeMaxDepth: 3,
       treeMaxEntries: 1250,
     });
@@ -25,6 +26,7 @@ test('saveWorkspaceSettings persists and applies workspace settings immediately'
     expect(saved).toMatchObject({
       webTerminalEnabled: false,
       vncAllowDirect: false,
+      sanitizeSvgFences: false,
       treeMaxDepth: 3,
       treeMaxEntries: 1250,
     });
@@ -36,6 +38,7 @@ test('saveWorkspaceSettings persists and applies workspace settings immediately'
         web: {
           terminalEnabled: false,
           vncAllowDirect: false,
+          sanitizeSvgFences: false,
         },
       },
       web: {

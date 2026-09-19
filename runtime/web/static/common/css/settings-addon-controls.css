@@ -1,0 +1,84 @@
+/* Opt-in Settings authoring contract. The host owns .settings-addon-pane;
+ * these classes never alter core fields or arbitrary third-party widgets.
+ * Per-skin defaults intentionally differ. No universal height/font migration.
+ */
+.settings-panel__content.settings-addon-pane {
+    --settings-addon-control-font: inherit;
+    --settings-addon-control-size: 13px;
+    --settings-addon-control-padding: 5px 10px;
+    --settings-addon-control-radius: 3px;
+    --settings-addon-control-width: 200px;
+    --settings-addon-control-background: var(--bg-elevated);
+    --settings-addon-control-border: var(--border);
+    --settings-addon-control-accent: var(--accent);
+    --settings-addon-label-size: 13px;
+    --settings-addon-help-size: 11px;
+}
+
+.settings-addon-pane .settings-addon-section { margin-bottom: 20px; min-width: 0; }
+.settings-addon-pane .settings-addon-field {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    min-width: 0;
+    margin-bottom: 12px;
+}
+.settings-addon-pane .settings-addon-label {
+    font-size: var(--settings-addon-label-size);
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+.settings-addon-pane .settings-addon-control-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    max-width: 100%;
+}
+.settings-addon-pane .settings-addon-control-group > .settings-addon-control { flex: 1 1 160px; }
+.settings-addon-pane .settings-addon-control {
+    box-sizing: border-box;
+    width: var(--settings-addon-control-width);
+    min-width: 0;
+    max-width: 100%;
+    padding: var(--settings-addon-control-padding);
+    border: 1px solid var(--settings-addon-control-border);
+    border-radius: var(--settings-addon-control-radius);
+    background: var(--settings-addon-control-background);
+    color: var(--text-primary);
+    font-family: var(--settings-addon-control-font);
+    font-size: var(--settings-addon-control-size);
+}
+.settings-addon-pane textarea.settings-addon-control { resize: vertical; }
+.settings-addon-pane .settings-addon-control::placeholder { color: var(--text-secondary); opacity: 0.7; }
+.settings-addon-pane .settings-addon-control:focus-visible {
+    outline: 2px solid var(--settings-addon-control-accent);
+    outline-offset: 2px;
+}
+.settings-addon-pane .settings-addon-control:disabled { opacity: 0.5; cursor: not-allowed; }
+.settings-addon-pane .settings-addon-control[readonly] { cursor: text; }
+.settings-addon-pane .settings-addon-control[aria-invalid="true"] { border-color: var(--danger-color, var(--error, #e55)); }
+.settings-addon-pane .settings-addon-help {
+    font-size: var(--settings-addon-help-size);
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+.settings-addon-pane .settings-addon-actions {
+    position: static;
+    white-space: normal;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+.settings-addon-pane .settings-addon-error { color: var(--danger-color, var(--error, #e55)); }
+.settings-addon-pane .settings-addon-status { color: var(--text-secondary); }
+.settings-addon-pane :is(.settings-addon-help, .settings-addon-error, .settings-addon-status) { overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+    .settings-addon-pane .settings-addon-control { width: 100%; }
+    .settings-addon-pane .settings-addon-field { align-items: stretch; }
+}

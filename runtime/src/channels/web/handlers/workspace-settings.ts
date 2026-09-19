@@ -2,6 +2,7 @@ import {
   getWebRuntimeConfig,
   setWebTerminalEnabled,
   setWebVncAllowDirect,
+  setWebSanitizeSvgFences,
 } from "../../../core/config.js";
 import {
   getWorkspaceScanSettings,
@@ -11,6 +12,7 @@ import {
 export interface WorkspaceSettingsData {
   webTerminalEnabled: boolean;
   vncAllowDirect: boolean;
+  sanitizeSvgFences: boolean;
   treeMaxDepth: number;
   treeMaxEntries: number;
 }
@@ -18,6 +20,7 @@ export interface WorkspaceSettingsData {
 export interface WorkspaceSettingsInput {
   webTerminalEnabled?: unknown;
   vncAllowDirect?: unknown;
+  sanitizeSvgFences?: unknown;
   treeMaxDepth?: unknown;
   treeMaxEntries?: unknown;
 }
@@ -32,6 +35,7 @@ export function getWorkspaceSettingsData(): WorkspaceSettingsData {
   return {
     webTerminalEnabled: web.terminalEnabled,
     vncAllowDirect: web.vncAllowDirect,
+    sanitizeSvgFences: web.sanitizeSvgFences,
     treeMaxDepth: scan.treeMaxDepth,
     treeMaxEntries: scan.treeMaxEntries,
   };
@@ -46,6 +50,11 @@ export function saveWorkspaceSettings(input: WorkspaceSettingsInput): WorkspaceS
   const nextVncAllowDirect = normalizeOptionalBoolean(input.vncAllowDirect);
   if (nextVncAllowDirect !== undefined) {
     setWebVncAllowDirect(nextVncAllowDirect);
+  }
+
+  const nextSanitizeSvgFences = normalizeOptionalBoolean(input.sanitizeSvgFences);
+  if (nextSanitizeSvgFences !== undefined) {
+    setWebSanitizeSvgFences(nextSanitizeSvgFences);
   }
 
   if (input.treeMaxDepth !== undefined || input.treeMaxEntries !== undefined) {

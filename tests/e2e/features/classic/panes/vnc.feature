@@ -36,6 +36,11 @@ Feature: VNC connection manager and framebuffer-only viewer
     When I press Escape
     Then the framebuffer regains focus
     And the connection manager fits the viewport in Classic light theme
+    When the VNC pane is resized from 900 to 280 pixels inside a wide browser window
+    Then its connection form stacks above saved connections below 720 pixels of pane width
+    And endpoint inputs, long history labels and row actions remain within the pane
+    And form values and the live session survive pane-only resizing
+    And the history overlay and session controls remain scrollable in a short pane
 
   @ux-vnc-004
   Scenario: Preserve the session while browsing successful history

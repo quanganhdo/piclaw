@@ -53,6 +53,24 @@ async function fixture(run: (page: Page, requests: string[], dialogs: string[]) 
 const safe = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 300"><title>A &amp; B</title><defs><linearGradient id="paint"><stop offset="0" stop-color="red"/></linearGradient><clipPath id="clip"><rect width="600" height="300"/></clipPath></defs><g clip-path="url(#clip)"><rect width="600" height="300" fill="url(#paint)" onload="alert(1)" style="fill:url(https://bad.invalid)"/><text x="5" y="20">Hello</text></g></svg>\n';
 
 for (const skin of ['classic', 'visual']) {
+  browserTest(`${skin}: disabled SVG-fence sanitization restores trusted inline interaction`, async () => {
+    await fixture(async page => {
+      const result = await page.evaluate((skin) => {
+        const api = (window as any).svgTest, root = document.querySelector('#post')!;
+        (window as any).__PICLAW_SANITIZE_SVG_FENCES__ = false;
+        root.innerHTML = api[skin]('```svg\n<svg viewBox="0 0 20 20"><rect id="interactive" width="20" height="20" onclick="this.setAttribute(\'data-clicked\', \'yes\')"/></svg>\n```', null);
+        const rect = root.querySelector('#interactive') as SVGRectElement | null;
+        rect?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        return {
+          imageCount: root.querySelectorAll('img').length,
+          svgCount: root.querySelectorAll('svg').length,
+          clicked: rect?.getAttribute('data-clicked'),
+        };
+      }, skin);
+      expect(result).toEqual({ imageCount: 0, svgCount: 1, clicked: 'yes' });
+    });
+  }, 30_000);
+
   browserTest(`${skin}: safe image, label, layout, keyboard source copy and rerender (029,005,006,007)`, async () => {
     await fixture(async page => {
       const result = await page.evaluate(({ skin, source }) => {

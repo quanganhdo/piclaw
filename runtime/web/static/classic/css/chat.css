@@ -982,6 +982,18 @@
     gap: var(--spacing-xs);
 }
 
+/* Picker controls must not fall back to platform button fonts or native chrome. */
+.compose-model-popup :where(button) {
+    -webkit-appearance: none;
+    appearance: none;
+    box-sizing: border-box;
+    margin: 0;
+    font-family: inherit;
+    line-height: 1.25;
+    letter-spacing: normal;
+    text-transform: none;
+}
+
 .compose-model-popup-title {
     font-size: var(--font-size-sm);
     color: var(--text-secondary);
@@ -1004,6 +1016,10 @@
 }
 
 .compose-session-popup-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
     width: 32px;
     height: 32px;
     border: 1px solid transparent;
@@ -1372,18 +1388,34 @@
 
 .compose-model-popup-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--spacing-xs);
     justify-content: flex-end;
 }
 
 .compose-model-popup-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 28px;
     border: 1px solid var(--border-color);
     background: var(--bg-primary);
     color: var(--text-primary);
     border-radius: var(--radius-sm);
-    font-size: 12px;
+    font: 400 12px/15px var(--font-family);
     padding: 4px 8px;
+    white-space: nowrap;
     cursor: pointer;
+}
+
+.compose-model-popup-btn:hover:not(:disabled) {
+    background: var(--bg-hover);
+}
+
+.compose-model-popup-btn:focus-visible {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
 }
 
 .compose-model-popup-btn.primary {
@@ -1449,6 +1481,11 @@
 }
 
 .compose-model-catalogue-clear {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    line-height: 1;
     position: absolute;
     right: 4px;
     width: 28px;
@@ -1669,6 +1706,7 @@
 
 .compose-model-catalogue-footer-start {
     display: flex;
+    align-items: center;
     flex-wrap: wrap;
     gap: 6px;
 }
@@ -1682,7 +1720,10 @@
 }
 
 .compose-model-catalogue-thinking select {
-    min-height: 32px;
+    box-sizing: border-box;
+    font: 400 12px/15px var(--font-family);
+    padding: 4px 8px;
+    height: 32px;
     max-width: 140px;
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);

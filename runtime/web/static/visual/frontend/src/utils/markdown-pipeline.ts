@@ -14,6 +14,12 @@ import { applySyntaxHighlighting } from "./code-highlighting";
 import _DOMPurifyModule from "dompurify";
 import { renderSvgFences, escapeSvgSource, encodeSvgSource } from "../../../../../src/utils/svg-images";
 
+declare global {
+  interface Window {
+    __PICLAW_SANITIZE_SVG_FENCES__?: boolean;
+  }
+}
+
 // ── DOMPurify lazy init (browser + Bun/Node safe) ─────────────────────────
 
 let _purifyInstance: typeof _DOMPurifyModule | null = null;
@@ -494,7 +500,7 @@ export function renderMarkdown(text: string, options: { sanitize?: boolean } = {
   return renderSvgFences(text, (part) => renderMarkdownBody(part, options), (source) => {
     const encoded = encodeSvgSource(source);
     return `<div class="code-block"><div class="code-block__header"><span class="code-block__lang">SVG</span><button type="button" class="code-block__copy" aria-label="Copy code" data-code="${encoded}"><i class="codicon codicon-copy"></i></button></div><pre><code class="language-svg">${escapeSvgSource(source)}</code></pre></div>`;
-  });
+  }, { sanitize: typeof window === "undefined" || window.__PICLAW_SANITIZE_SVG_FENCES__ !== false });
 }
 
 function renderMarkdownBody(text: string, options: { sanitize?: boolean }): string {

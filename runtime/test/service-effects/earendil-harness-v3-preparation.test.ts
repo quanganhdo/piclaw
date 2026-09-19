@@ -183,7 +183,7 @@ describe("selected 0.85.1 Harness v3 preparation contract", () => {
     expect(exact<Equal<EarendilV3HarnessActivationBlockShape["selectedRuntimeStub"], EarendilV3RuntimeWatchSessionStubShape>>()).toBeTrue();
   });
 
-  test("selects 0.85.1 while isolating historical 0.85.0 and gating live deployment", () => {
+  test("records installed 0.85.1 while isolating historical 0.85.0 and gating Harness deployment", () => {
     const historical: EarendilV3Historical0850AssessmentShape = {
       assessedVersion: "0.85.0",
       assessedReleaseCommit: "107d79f11072bbc8a3a757ed7fd69596bee7d68c",
@@ -192,19 +192,19 @@ describe("selected 0.85.1 Harness v3 preparation contract", () => {
       directPiServerWorkaround: "forbidden",
     };
     const gate: EarendilV3SelectionGateShape = {
-      productionVersion: "0.84.4",
+      currentLoopVersion: "0.85.1",
       selectedVersion: "0.85.1",
       selectedReleaseCommit: "d981de1229ef899957bbe968bc8dcda02a21f477",
-      selectionScope: "candidate_branch_only",
-      liveDeploymentRequiresApproval: true,
+      selectionScope: "installed_current_loop_only",
+      harnessDeploymentRequiresApproval: true,
       packageClosure: "fresh_supported_coding_agent_root_imports_in_bun_and_supported_node_without_workarounds",
       watchSession: "public_contract_present_selected_runtime_stub_unsupported",
       harnessActivation: "blocked",
       productionImporter: "forbidden",
     };
-    expect(gate.productionVersion).toBe("0.84.4");
+    expect(gate.currentLoopVersion).toBe("0.85.1");
     expect(gate.selectedVersion).toBe("0.85.1");
-    expect(gate.liveDeploymentRequiresApproval).toBeTrue();
+    expect(gate.harnessDeploymentRequiresApproval).toBeTrue();
     expect(historical.disposition).toBe("rejected");
   });
 });

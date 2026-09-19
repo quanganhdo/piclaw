@@ -87,13 +87,19 @@ export async function writeSettingsClipboardText(value, runtime: any = {}) {
         const copied = Boolean(doc.execCommand('copy'));
         doc.body.removeChild(textarea);
         return copied;
-    } catch (_error) {
+    } catch {
         return false;
     }
 }
 
+let generalInstanceId = 0;
+
 export function GeneralSection({ settingsData, setStatus, mergeSettingsData }) {
     const { t } = useTranslation();
+    const fieldPrefixRef = useRef(null);
+    if (!fieldPrefixRef.current) fieldPrefixRef.current = `settings-general-${++generalInstanceId}`;
+    const fieldPrefix = fieldPrefixRef.current;
+    const fieldId = (name) => `${fieldPrefix}-general-${name}`;
     const [userName, setUserName] = useState('');
     const [userAvatar, setUserAvatar] = useState('');
     const [assistantName, setAssistantName] = useState('');
@@ -219,10 +225,11 @@ export function GeneralSection({ settingsData, setStatus, mergeSettingsData }) {
             setTimeout(() => { if (mountedRef.current) setAppliedHint(false); }, 4000);
         } catch (error) {
             console.warn('[settings/general] Failed to regenerate widget token.', error);
+            if (mountedRef.current) setStatus?.(String(error?.message || error), 'error');
         } finally {
             if (mountedRef.current) setWidgetTokenBusy(false);
         }
-    }, [widgetTokenBusy, mergeSettingsData]);
+    }, [widgetTokenBusy, mergeSettingsData, setStatus]);
 
     const isSecureContext = typeof window !== 'undefined' && window.isSecureContext;
     const maskedWidgetToken = widgetToken ? '•'.repeat(Math.min(Math.max(widgetToken.length, 16), 48)) : '—';
@@ -237,14 +244,14 @@ export function GeneralSection({ settingsData, setStatus, mergeSettingsData }) {
             `}
             <h3>${t('settings.general.identity')}</h3>
             <div class="settings-row">
-                <label>${t('settings.general.userLabel')}</label>
+                <label for=${fieldId('user')}>${t('settings.general.userLabel')}</label>
                 <${AvatarField} kind="user" value=${userAvatar} onChange=${setUserAvatar} />
-                <input type="text" value=${userName} onInput=${e => setUserName(e.target.value)} placeholder=${t('settings.general.yourName')} />
+                <input id=${fieldId('user')} type="text" value=${userName} onInput=${e => setUserName(e.target.value)} placeholder=${t('settings.general.yourName')} />
             </div>
             <div class="settings-row">
-                <label>${t('settings.general.agentLabel')}</label>
+                <label for=${fieldId('agent')}>${t('settings.general.agentLabel')}</label>
                 <${AvatarField} kind="agent" value=${assistantAvatar} onChange=${setAssistantAvatar} />
-                <input type="text" value=${assistantName} onInput=${e => setAssistantName(e.target.value)} placeholder=${t('settings.general.agentName')} />
+                <input id=${fieldId('agent')} type="text" value=${assistantName} onInput=${e => setAssistantName(e.target.value)} placeholder=${t('settings.general.agentName')} />
             </div>
 
             <h3 style="margin-top:20px">${t('settings.general.notifications')}</h3>
@@ -270,9 +277,9 @@ export function GeneralSection({ settingsData, setStatus, mergeSettingsData }) {
 
             <h3 style="margin-top:20px">${t('settings.general.display')}</h3>
             <div class="settings-row">
-                <label>${t('settings.general.systemMeters')}</label>
+                <label for=${fieldId('meters')}>${t('settings.general.systemMeters')}</label>
                 <div style="display:flex; align-items:center; gap:10px;">
-                    <input type="checkbox" checked=${metersEnabled}
+                    <input id=${fieldId('meters')} type="checkbox" checked=${metersEnabled}
                         onChange=${() => {
                             const next = applyMetersEnabled(!metersEnabled);
                             setMetersEnabled(next);
@@ -283,8 +290,9 @@ export function GeneralSection({ settingsData, setStatus, mergeSettingsData }) {
 
             <h3 style="margin-top:20px">${t('settings.general.instanceConfig')}</h3>
             <div class="settings-row">
-                <label>${t('settings.general.composeUpload')}</label>
+                <label for=${fieldId('compose')}>${t('settings.general.composeUpload')}</label>
                 <${NumberStepper}
+                    id=${fieldId('compose')}
                     label=${t('settings.general.composeUploadAria')}
                     value=${composeUploadLimitMb}
                     min=${1}
@@ -296,8 +304,9 @@ export function GeneralSection({ settingsData, setStatus, mergeSettingsData }) {
                 <span class="settings-hint" style="margin:0">${t('settings.general.composeUploadHint')}</span>
             </div>
             <div class="settings-row">
-                <label>${t('settings.general.workspaceUpload')}</label>
+                <label for=${fieldId('workspace')}>${t('settings.general.workspaceUpload')}</label>
                 <${NumberStepper}
+                    id=${fieldId('workspace')}
                     label=${t('settings.general.workspaceUploadAria')}
                     value=${workspaceUploadLimitMb}
                     min=${1}
@@ -311,16 +320,17 @@ export function GeneralSection({ settingsData, setStatus, mergeSettingsData }) {
 
             <h3 style="margin-top:20px">${t('settings.general.agentRecovery')}</h3>
             <div class="settings-row">
-                <label>${t('settings.general.automaticRecovery')}</label>
+                <label for=${fieldId('recovery')}>${t('settings.general.automaticRecovery')}</label>
                 <div style="display:flex; align-items:center; gap:10px;">
-                    <input type="checkbox" checked=${automaticRecoveryEnabled}
+                    <input id=${fieldId('recovery')} type="checkbox" checked=${automaticRecoveryEnabled}
                         onChange=${e => setAutomaticRecoveryEnabled(Boolean(e.target.checked))} />
                     <span class="settings-hint" style="margin:0">${t('settings.general.automaticRecoveryHint')}</span>
                 </div>
             </div>
             <div class="settings-row">
-                <label>${t('settings.general.recoveryMaxAttempts')}</label>
+                <label for=${fieldId('attempts')}>${t('settings.general.recoveryMaxAttempts')}</label>
                 <${NumberStepper}
+                    id=${fieldId('attempts')}
                     label=${t('settings.general.recoveryMaxAttemptsAria')}
                     value=${automaticRecoveryMaxAttempts}
                     min=${0}
@@ -332,8 +342,9 @@ export function GeneralSection({ settingsData, setStatus, mergeSettingsData }) {
                 <span class="settings-hint" style="margin:0">${t('settings.general.recoveryMaxAttemptsHint')}</span>
             </div>
             <div class="settings-row">
-                <label>${t('settings.general.recoveryTotalBudget')}</label>
+                <label for=${fieldId('budget')}>${t('settings.general.recoveryTotalBudget')}</label>
                 <${NumberStepper}
+                    id=${fieldId('budget')}
                     label=${t('settings.general.recoveryTotalBudgetAria')}
                     value=${automaticRecoveryTotalBudgetMs}
                     min=${0}
@@ -391,16 +402,16 @@ export function GeneralSection({ settingsData, setStatus, mergeSettingsData }) {
                         <div class="settings-totp-qr" dangerouslySetInnerHTML=${{ __html: totpSetup.qrSvg }}></div>
                         <div class="settings-totp-meta">
                             <div class="settings-row settings-row-vertical">
-                                <label>${t('settings.general.issuer')}</label>
-                                <input type="text" readonly value=${totpSetup.issuer || ''} />
+                                <label for=${fieldId('issuer')}>${t('settings.general.issuer')}</label>
+                                <input id=${fieldId('issuer')} type="text" readonly value=${totpSetup.issuer || ''} />
                             </div>
                             <div class="settings-row settings-row-vertical">
-                                <label>${t('settings.general.label')}</label>
-                                <input type="text" readonly value=${totpSetup.label || ''} />
+                                <label for=${fieldId('totp-label')}>${t('settings.general.label')}</label>
+                                <input id=${fieldId('totp-label')} type="text" readonly value=${totpSetup.label || ''} />
                             </div>
                             <div class="settings-row settings-row-vertical">
-                                <label>${t('settings.general.secret')}</label>
-                                <input type="text" readonly value=${totpSetup.secret || ''} />
+                                <label for=${fieldId('totp-secret')}>${t('settings.general.secret')}</label>
+                                <input id=${fieldId('totp-secret')} type="text" readonly value=${totpSetup.secret || ''} />
                             </div>
                         </div>
                     </div>

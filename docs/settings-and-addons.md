@@ -101,6 +101,11 @@ The hamburger menu button uses `position: fixed` and appears:
 
 ## Add-on Web Settings Pane API
 
+For same-skin field, label, help, action and validation classes, responsive
+behavior and accessible authoring, see [Settings control contract](settings-control-contract.md).
+The host's `.settings-addon-pane` root scopes compatibility styles to add-ons;
+it must not be used to rewrite built-in Settings controls.
+
 Installed add-ons can contribute browser-side settings panes that appear in the dialog nav.
 
 Important constraints:

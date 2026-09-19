@@ -9,6 +9,7 @@ declare const marked: { parse: (text: string, options?: Record<string, unknown>)
 
 declare global {
     interface Window {
+        __PICLAW_SANITIZE_SVG_FENCES__?: boolean;
         katex?: typeof katex;
         marked?: typeof marked;
         beautifulMermaid?: {
@@ -718,7 +719,8 @@ function transformAdmonitions(html: string): string {
 export function renderMarkdown(text, onHashtagClick, options: MarkdownOptions = {}) {
     if (!text) return '';
     return renderSvgFences(text, (part) => renderMarkdownBody(part, options),
-        (source) => `<pre><code class="language-svg" data-svg-source="${encodeSvgSource(source)}">${escapeSvgSource(source)}</code></pre>`);
+        (source) => `<pre><code class="language-svg" data-svg-source="${encodeSvgSource(source)}">${escapeSvgSource(source)}</code></pre>`,
+        { sanitize: typeof window === 'undefined' || window.__PICLAW_SANITIZE_SVG_FENCES__ !== false });
 }
 
 function renderMarkdownBody(text: string, options: MarkdownOptions): string {

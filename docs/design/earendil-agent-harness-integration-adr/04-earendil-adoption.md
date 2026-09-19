@@ -4,7 +4,7 @@
 
 ### API and package survey
 
-The historical `0.84.1` package survey is recorded in [`evidence/earendil-0.84.1-harness-surface.md`](evidence/earendil-0.84.1-harness-surface.md). It found implemented v2 session contracts and a private recovery reducer, but no usable released execution harness. Production remains on `0.84.4`, whose unsupported Harness boundary is historical evidence. Draft PR B selects published `0.85.1` for the current loop without activating Harness.
+The historical `0.84.1` package survey is recorded in [`evidence/earendil-0.84.1-harness-surface.md`](evidence/earendil-0.84.1-harness-surface.md). It found implemented v2 session contracts and a private recovery reducer, but no usable released execution harness. The current loop now uses published `0.85.1` without activating Harness; 0.84.4's unsupported Harness boundary remains historical evidence.
 
 The earlier `dev`/draft #8963 capture at `d14d6b22327d545d6a253f932165b63e48d7f9c8` is preserved in the [historical assessment](evidence/earendil-harness-v3-assessment.md). The selected release is now 0.85.1 at `d981de1229ef899957bbe968bc8dcda02a21f477`. It ships Context, six-argument tools/memos, AgentLane and lane watch/events/usage. Its immutable entries, typed values/lists and usage ledger differ from the old released-v2 scaffold. Session watch is still a concrete stub; raw Storage fixture exports and broader HC acceptance remain gated. The [current A/B/C/D sequence](evidence/earendil-0851-work-sequence.md) excludes tip-only APIs.
 
@@ -34,7 +34,7 @@ The survey must record exact package versions and source commits. [`docs/earendi
 
 The required fixture, deterministic driver/fault model, assumption ledger and parameterised contract cases are specified in [`evidence/earendil-version-fixture-contract.md`](evidence/earendil-version-fixture-contract.md).
 
-Released 0.85.1 can execute runs through its public constructor. PR B already retains tested, bounded partial semantics for the migrated direct contracts and public Memory/JSONL SessionRepo conformance. PR C owns the broader deterministic fixture and full HC completion effort; these are inactive tests, not a production execution plane. Fixtures use the selected release's public APIs and change with that release. No branch-history rewrite or removal of existing partial B evidence is required.
+Released 0.85.1 can execute runs through its public constructor. PR B retains tested, bounded partial semantics for the migrated direct contracts and public Memory/JSONL SessionRepo conformance. PR C extends this through a closed HC-001–HC-025 catalogue with 24 partial rows and HC-024 unsupported; these are inactive tests, not full HC promotion or a production execution plane. Fixtures use the selected release's public APIs and change with that release.
 
 It should implement only the selected public contract surface needed by the semantic cases:
 

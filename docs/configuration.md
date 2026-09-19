@@ -104,6 +104,24 @@ Bootstrap environment variables are reviewed as an allowlist in the inventory. T
 | `PICLAW_WEB_PREVIEW_CHARS` | `16000` | Compatibility alias for `domains.web.contentPreviewChars`; preview threshold, capped at the hard content limit. |
 | `PICLAW_TRUST_PROXY` | `0` | Trust `Forwarded` / `X-Forwarded-*` headers from a reverse proxy for origin, host, proto, and client IP handling |
 
+### Timeline SVG sanitization
+
+`domains.web.sanitizeSvgFences` controls rendering of fenced `svg` blocks in timeline Markdown for the whole instance. It defaults to `true`: Piclaw accepts a bounded, conservative SVG subset and renders it as a static image, preserving the original source in a disclosure. This prevents model-provided SVG from executing or interacting with the host page.
+
+Set it to `false` only when you trust the authors of timeline SVG and require interactive SVG content such as tooltips, click handlers, links, or authored CSS. In that mode, complete fenced SVG source is inserted inline after Markdown rendering, so its interactive markup runs with the authority available to the PiClaw page. Reload open browser tabs after changing this setting; messages then render consistently under the new instance policy.
+
+```json
+{
+  "domains": {
+    "web": {
+      "sanitizeSvgFences": false
+    }
+  }
+}
+```
+
+The same setting is available in **Settings → Workspace → Timeline SVG**. It applies only to fenced `svg` Markdown blocks, not application-owned icons, SVG attachments, or workspace image previews.
+
 If `PICLAW_WEB_TLS_CERT` and `PICLAW_WEB_TLS_KEY` are both omitted, piclaw checks for `.piclaw/certs/sandbox.local.crt` and `.piclaw/certs/sandbox.local.key` and enables HTTPS automatically if both exist.
 
 The following operational settings are persisted under typed domains in `.piclaw/config.json`; their legacy variables remain compatibility aliases until 3.0.0:

@@ -4,7 +4,7 @@ import { Type } from "typebox";
 import { createModels, fauxAssistantMessage, fauxProvider, fauxToolCall } from "@earendil-works/pi-ai";
 import { AgentHarness, type AgentHarnessTool } from "@earendil-works/pi-agent-core";
 import { BACKGROUND_CONTEXT } from "@earendil-works/pi-agent-core/harness/context";
-import { JsonlSessionRepo, operationState } from "@earendil-works/pi-agent-core/harness/session";
+import { JsonlSessionRepo, operationState, pendingToolOutput } from "@earendil-works/pi-agent-core/harness/session";
 import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/harness/env/nodejs";
 
 /** Child-only fixture: process.exit deliberately omits close at a durable tool boundary. */
@@ -26,7 +26,7 @@ const expectedMemo = { checkpoint: "before-process-loss", deleteMe: false };
 const tool: AgentHarnessTool = {
   name: "crash_probe", label: "Crash probe", description: "owned offline fixture", parameters: Type.Object({}),
   replay: (phase === "crash" ? storedReplay : currentReplay) as "safe" | "never",
-  async execute(callId, _params, _update, _toolContext, invocation, context) {
+  async execute(callId, _params, update, _toolContext, invocation, context) {
     if (context.abortSignal?.aborted) throw new Error("unexpected abort");
     const identity = { callId, invocationId: invocation.invocationId, operationId: invocation.operationId, turnId: invocation.turnId };
     if (phase === "crash") {
@@ -35,10 +35,16 @@ const tool: AgentHarnessTool = {
       await invocation.setMemo("remove", undefined);
       const memo = await invocation.getMemo("keep");
       if (JSON.stringify(memo) !== JSON.stringify(expectedMemo)) throw new Error("memo not committed before process loss");
+      update({ content: [{ type: "text", text: "durable checkpoint" }], details: { checkpoint: 1 } }, { checkpoint: true });
+      // The update callback is synchronous but enqueues its durable write. A
+      // subsequent awaited memo write is a public FIFO barrier for that queue.
+      await invocation.setMemo("checkpoint-barrier", true);
       appendFileSync(callsPath, JSON.stringify({ phase, identity, memo }) + "\n");
       const durableState = await session.getValue(operationState(operationId), ctx);
       if (durableState?.value.at !== "tools" || durableState.value.batch.calls[0]?.status !== "effect_pending") throw new Error("expected durable pending tool intent");
-      writeFileSync(join(root, "crash-receipt.json"), JSON.stringify({ identity, memo, durableState: durableState.value }));
+      const checkpoint = await session.getValue(pendingToolOutput(operationId, invocation.invocationId), ctx);
+      if (checkpoint?.value.content[0]?.type !== "text" || checkpoint.value.content[0].text !== "durable checkpoint") throw new Error("checkpoint not committed before process loss");
+      writeFileSync(join(root, "crash-receipt.json"), JSON.stringify({ identity, memo, checkpoint: checkpoint.value, durableState: durableState.value }));
       process.exit(73);
     }
     const memo = await invocation.getMemo("keep");
@@ -70,10 +76,13 @@ try {
   const afterWatch = await lane.watch(ctx);
   const after = afterWatch.snapshot; afterWatch.unsubscribe();
   const toolResults = after.transcript.flatMap((entry) => entry.type === "message" && entry.message.role === "toolResult" ? [{ id: entry.id, callId: entry.message.toolCallId, isError: entry.message.isError, content: entry.message.content }] : []);
+  const persistedIdentity = JSON.parse(readFileSync(join(root, "crash-receipt.json"), "utf8")).identity;
   writeFileSync(join(root, phase === "settled" ? "settled-receipt.json" : "resume-receipt.json"), JSON.stringify({
     open: created.open, beforeOperation: before.operation?.id, beforeTools: before.operation?.runningTools,
     result, lastResult: after.lastResult, resultById: await lane.getResult(operationId, ctx),
-    operationAfter: after.operation, toolResults, providerCalls: faux.state.callCount,
+    operationAfter: after.operation,
+    checkpointAfter: await session.getValue(pendingToolOutput(operationId, persistedIdentity.invocationId), ctx),
+    toolResults, providerCalls: faux.state.callCount,
     toolCalls: existsSync(callsPath) ? readFileSync(callsPath, "utf8").trim().split("\n").map((line) => JSON.parse(line)) : [],
   }, null, 2));
 } finally { await created.harness.close(ctx); await repo.close(ctx); await env.cleanup(ctx); }

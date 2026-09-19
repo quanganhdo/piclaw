@@ -188,6 +188,7 @@ export interface WebRuntimeConfig {
   composeUploadLimitMb: number;
   workspaceUploadLimitMb: number;
   notificationDebugLabels: boolean;
+  sanitizeSvgFences: boolean;
   vncAllowDirect: boolean;
   vncTargetsRaw: string;
   debugCardSubmissions: boolean;
@@ -256,6 +257,7 @@ type WebOrdinaryDomainConfig = Pick<
   | "composeUploadLimitMb"
   | "workspaceUploadLimitMb"
   | "notificationDebugLabels"
+  | "sanitizeSvgFences"
   | "vncAllowDirect"
   | "debugCardSubmissions"
   | "trustProxy"
@@ -288,6 +290,7 @@ const webOrdinaryDomainSchema = registerDomainConfig<WebOrdinaryDomainConfig>({
     composeUploadLimitMb: integerField({ key: "composeUploadLimitMb", owner: "web", defaultValue: configWebComposeUploadLimitMb ?? legacyWebComposeUploadLimitMb ?? 32, min: 1, max: 512, bounds: "1..512", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_WEB_COMPOSE_UPLOAD_LIMIT_MB", replacement: "domains.web.composeUploadLimitMb", removalVersion: "3.0.0" }] }),
     workspaceUploadLimitMb: integerField({ key: "workspaceUploadLimitMb", owner: "web", defaultValue: configWebWorkspaceUploadLimitMb ?? legacyWebWorkspaceUploadLimitMb ?? 256, min: 1, max: 1024, bounds: "1..1024", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_WEB_WORKSPACE_UPLOAD_LIMIT_MB", replacement: "domains.web.workspaceUploadLimitMb", removalVersion: "3.0.0" }] }),
     notificationDebugLabels: boolField({ key: "notificationDebugLabels", owner: "web", defaultValue: nestedWebNotificationDebugLabels ?? legacyWebNotificationDebugLabels ?? false, persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_WEB_NOTIFICATION_DEBUG_LABELS", replacement: "domains.web.notificationDebugLabels", removalVersion: "3.0.0" }] }),
+    sanitizeSvgFences: boolField({ key: "sanitizeSvgFences", owner: "web", defaultValue: true, persistence: "json-config", precedence: ["persisted", "default"], secretClass: "none" }),
     vncAllowDirect: boolField({ key: "vncAllowDirect", owner: "web", defaultValue: nestedWebVncAllowDirect ?? legacyWebVncAllowDirect ?? isDefaultWebVncDirectEnabled(), persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [
       { envKey: "PICLAW_WEB_VNC_ALLOW_DIRECT", replacement: "domains.web.vncAllowDirect", removalVersion: "3.0.0" },
       { envKey: "PICLAW_VNC_ALLOW_DIRECT", replacement: "domains.web.vncAllowDirect", removalVersion: "3.0.0" },
@@ -337,6 +340,7 @@ export const WEB_RUNTIME_CONFIG: WebRuntimeConfig = Object.seal({
   composeUploadLimitMb: WEB_ORDINARY_DOMAIN_CONFIG.composeUploadLimitMb,
   workspaceUploadLimitMb: WEB_ORDINARY_DOMAIN_CONFIG.workspaceUploadLimitMb,
   notificationDebugLabels: WEB_ORDINARY_DOMAIN_CONFIG.notificationDebugLabels,
+  sanitizeSvgFences: WEB_ORDINARY_DOMAIN_CONFIG.sanitizeSvgFences,
   vncAllowDirect: WEB_ORDINARY_DOMAIN_CONFIG.vncAllowDirect,
   vncTargetsRaw: WEB_ORDINARY_DOMAIN_CONFIG.vncTargets,
   debugCardSubmissions: WEB_ORDINARY_DOMAIN_CONFIG.debugCardSubmissions,
@@ -376,6 +380,11 @@ export function setWebTerminalEnabled(enabled: boolean): boolean {
 
 export function setWebVncAllowDirect(enabled: boolean): boolean {
   return persistWebOrdinarySetting("vncAllowDirect", Boolean(enabled));
+}
+
+/** Persist whether fenced SVG is converted into bounded static images before timeline rendering. */
+export function setWebSanitizeSvgFences(enabled: boolean): boolean {
+  return persistWebOrdinarySetting("sanitizeSvgFences", Boolean(enabled));
 }
 
 function persistWebOrdinarySetting<K extends keyof WebOrdinaryDomainConfig>(key: K, value: WebOrdinaryDomainConfig[K]): WebOrdinaryDomainConfig[K] {

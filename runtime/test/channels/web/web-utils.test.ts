@@ -13,6 +13,7 @@ import { clampInt, errorJson, jsonResponse, okJson, parseOptionalInt } from "../
 import { buildPreview, createToolTitleTracker, resolveMcpToolStatusIdentity } from "../../../src/channels/web/agent/agent-utils.js";
 import { handleSse, broadcastEvent } from "../../../src/channels/web/sse/sse.js";
 import { getAppAssetVersion, serveDocsStatic, serveStatic } from "../../../src/channels/web/http/static.js";
+import { getWebRuntimeConfig } from "../../../src/core/config.js";
 import { computeAssetContentVersion } from "../../../src/utils/asset-content-version.js";
 import { UiBridge } from "../../../src/channels/web/theming/ui-bridge.js";
 import { createUiContext } from "../../../src/channels/web/ui-context.js";
@@ -108,6 +109,8 @@ test("static helpers serve files and not-found", async () => {
   const indexHtml = await okRes.text();
   expect(indexHtml).not.toContain("__APP_ASSET_VERSION__");
   expect(indexHtml).not.toContain("__PICLAW_NOTIFICATION_SOURCE_LABELS_FLAG__");
+  expect(indexHtml).not.toContain("__PICLAW_SANITIZE_SVG_FENCES_FLAG__");
+  expect(indexHtml).toContain(`window.__PICLAW_SANITIZE_SVG_FENCES__ = "${getWebRuntimeConfig().sanitizeSvgFences ? "1" : "0"}" === "1";`);
   expect(indexHtml).toMatch(/\/static\/classic\/dist\/app\.bundle\.js\?v=[a-z0-9]+/i);
   const loadedAppVersion = indexHtml.match(/\/static\/classic\/dist\/app\.bundle\.js\?v=([a-z0-9]+)/i)?.[1];
   expect(loadedAppVersion).toBe(getAppAssetVersion());

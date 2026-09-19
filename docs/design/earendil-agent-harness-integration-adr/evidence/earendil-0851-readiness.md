@@ -1,6 +1,6 @@
 # Earendil 0.85.1 candidate readiness
 
-The current-runtime migration is implemented and passes the executed local runtime, type, package and Linux portable gates listed below. **It is not approved for merge or deployment.** Rui accepted public SessionRepo coverage for B; the authorised piclaw-test upgrade/rollback and targeted browser canary passed with a separately tracked baseline abort-endpoint defect. Complete HC promotion, non-Linux execution and full-suite acceptance remain separate.
+The current-runtime migration was merged and the running Piclaw service now uses exact 0.85.1. Rui accepted public SessionRepo coverage for B; the authorised piclaw-test upgrade/rollback and targeted browser canary passed, and the separately tracked baseline abort-endpoint defect was fixed in #1339. Production Harness activation, complete HC promotion and non-Linux execution remain separate.
 
 ## Scope and coordinates
 
@@ -9,13 +9,13 @@ The current-runtime migration is implemented and passes the executed local runti
 - PR B is stacked on PR A and selects exact `0.85.1` for pi-agent-core, pi-ai and pi-coding-agent, with the coherent lockfile. Release gitHead: `d981de1229ef899957bbe968bc8dcda02a21f477`.
 - MCP adapter remains `715843cd574923880c6a82e30641a0c2dc01c96a`.
 - Add-on archive baseline: `6374ed3c85627c590794e44828d13b08587ba46b`; changes to its test peers were disposable only.
-- Host: Smith, LXC, user-systemd. Canonical `/workspace`, `/workspace/.pi` and `/workspace/.piclaw` are unchanged. Production source and installed runtime remain on the baseline with Earendil 0.84.4.
+- Host: Smith, LXC, user-systemd. Canonical `/workspace`, `/workspace/.pi` and `/workspace/.piclaw` are unchanged. Production source and installed current-loop runtime now use exact Earendil 0.85.1; Harness remains inactive.
 
 ## PR scope refinement
 
 The [A/B/C/D sequence](earendil-0851-work-sequence.md) keeps PR B focused on the atomic current-loop migration, selected-release assignments/basic positive compatibility and public Memory/JSONL SessionRepo conformance. Already-tested partial HC cases stay in B; no history rewrite or removal of evidence is required.
 
-[PR C work](https://github.com/rcarmo/piclaw/issues/1332) owns broader deterministic real-Harness HC completion. [PR D work](https://github.com/rcarmo/piclaw/issues/1333) reassesses tip-only changes after a later coherent release. Scheduling C does not mark its cases passed or grant Harness activation. Full HC promotion remains separate from B's migration proof. Rui accepted the SessionRepo evidence scope and authorised the [executed canary](earendil-0851-canary-result.md); the resulting bounded receipt and remaining limitations are now available for the merge decision.
+[PR C work](https://github.com/rcarmo/piclaw/issues/1332) adds broader deterministic real-Harness evidence. Its [current result](earendil-0851-hc-evidence.md) is 24 partial rows and one unsupported row, never full promotion or activation. [PR D work](https://github.com/rcarmo/piclaw/issues/1333) reassesses tip-only changes after a later coherent release. Rui accepted the SessionRepo evidence scope and authorised the [executed canary](earendil-0851-canary-result.md).
 
 ## Implemented migration
 
@@ -65,7 +65,7 @@ Some initial focused commands named obsolete files which Bun ignored. Only actua
 
 The versioned manifest preserves the previous 0.84.1/0.84.4 object under `historical`, including package/fingerprint/conformance hashes and all unsupported HC rows. [Historical negative receipt](earendil-0844-historical-negatives.json) records the seven compiler incompatibilities and 25 HarnessNotImplemented results against their original version; they are not executed or relabelled against 0.85.1.
 
-The selected record contains six-package metadata and contained public-export fingerprints. HC rows keep their original requirements and are labelled `partial` or `unverified`, never full pass. Executed sub-boundaries cover admission-before-effect, terminal results, tool Context/authority/memos, parallel source-order results, queues/cancellation, abort/late writes, lane isolation, accepted-open restoration, hook order/lane snapshots and explicit usage totals.
+The selected record contains six-package metadata and contained public-export fingerprints. The broader catalogue now covers HC-001–HC-025 and keeps the original requirements: 24 rows are `partial`, HC-024 is `unsupported`, and none is a full pass. Executed sub-boundaries now also cover manual compaction, retry reattachment with captured policy, deferred resume across reopens, unavailable identities, public restore without duplicate effects, abort/admission ordering and one lane-owned Drive shared by observers. See the [bounded result](earendil-0851-hc-evidence.md).
 
 The follow-up adds real JSONL child-process loss inside an effect_pending tool after awaited memo writes/deletion. Only safe→safe replays; the three other persisted/current combinations publish one interrupted result without invoking the fixture tool again. Tests assert the reserved result ID, stable operation/turn/invocation identity, recovered memos/content, and a third settled process with no repeated fixture invocation or faux-provider call. This covers one defined crash boundary, not arbitrary external exactly-once effects.
 
@@ -87,7 +87,7 @@ Bun 1.4.1 successfully imports `node:sqlite` and executes an in-memory `SELECT 1
 
 ## Approval and execution gaps
 
-- Public SessionRepo scope for B is accepted. Raw Storage export limitations remain explicit; broader HC completion is PR C, without promotion or activation.
+- Public SessionRepo scope is accepted. Raw Storage export limitations remain explicit; PR C's 25-row catalogue is bounded evidence, without full promotion or activation.
 - Windows, macOS and other native architectures: launcher-generation tests only; no native artifact execution. Current portable builder runs on its host platform, with an additional Linux baseline target.
 - The 46-package Linux/Bun package-root import/path smoke matrix is complete (42 imports, four no-main path checks); full add-on runtime/browser/native functionality and non-Linux standalone execution are not covered by import receipts.
 - [Canary upgrade/restart/rollback](earendil-0851-canary-result.md) was authorised and executed on piclaw-test. Exact baseline restoration passed; candidate-written-state downgrade compatibility is not claimed. No production schema migration or session rewrite occurred.

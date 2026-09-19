@@ -50,6 +50,23 @@ export function WorkspaceSection({
 
       <p className="settings-panel__description">Terminal access updates immediately. Direct VNC target policy applies to new VNC requests.</p>
 
+      <h3 className="settings-panel__subsection-title">Timeline SVG</h3>
+
+      <div className="settings-panel__field settings-panel__checkbox-row">
+        <input
+          id="ws-sanitizeSvgFences"
+          type="checkbox"
+          checked={ws.sanitizeSvgFences ?? true}
+          onChange={(e) =>
+            onSaveWorkspace("sanitizeSvgFences", (e.target as HTMLInputElement).checked)
+          }
+        />
+        <label htmlFor="ws-sanitizeSvgFences" className="settings-panel__label">
+          Sanitize SVG code fences
+        </label>
+      </div>
+      <p className="settings-panel__description">Enabled by default: fenced SVG is rendered as a bounded static image. Disable only for trusted SVG that needs timeline interaction; its source will run in this page.</p>
+
       <h3 className="settings-panel__subsection-title">Server scan guardrails</h3>
 
       <div className="settings-panel__field">

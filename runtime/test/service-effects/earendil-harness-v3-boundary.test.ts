@@ -174,6 +174,8 @@ describe("latent Earendil Harness v3 non-interference boundary", () => {
     const runtimeRoot = resolve(import.meta.dir, "../..");
     const fixtureNames = [
       "earendil-harness-direct-probe.ts",
+      "earendil-harness-deterministic-controls.ts",
+      "earendil-harness-selected-catalogue.ts",
       "earendil-session-backend-fixtures.ts",
       "earendil-jsonl-process-loss.ts",
     ];

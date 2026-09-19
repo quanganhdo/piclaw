@@ -1027,12 +1027,13 @@ body {
 
 .session-pill__toolbar-btn {
   flex: 1;
-  border: none;
+  min-height: 28px;
+  border: 1px solid var(--border-color, #2f3336);
   border-radius: 4px;
-  background: transparent;
-  color: var(--text-secondary, #71767b);
-  font-size: 11px;
-  padding: 5px 6px;
+  background: var(--bg-primary, #16181c);
+  color: var(--text-primary, #e7e9ea);
+  font: 400 12px/15px var(--font-ui, var(--font-family));
+  padding: 4px 8px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -1042,13 +1043,13 @@ body {
   transition: color 0.15s, background 0.15s;
 }
 
-.session-pill__toolbar-btn:hover {
+.session-pill__toolbar-btn:hover:not(:disabled) {
   color: var(--text-primary, #e7e9ea);
   background: var(--overlay-white-07);
 }
 
 .session-pill__toolbar-btn:disabled {
-  opacity: 0.3;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
@@ -1174,6 +1175,19 @@ body {
   min-width: 0;
 }
 
+/* Keep the skin font and authored control geometry on every browser. */
+.model-picker :where(button),
+.session-pill__dropdown :where(button) {
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+  margin: 0;
+  font-family: inherit;
+  line-height: 1.25;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
 .model-picker {
   position: absolute;
   bottom: calc(100% + 4px);
@@ -1231,6 +1245,11 @@ body {
 }
 
 .model-picker__clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
   position: absolute;
   right: 4px;
   width: 28px;
@@ -1471,20 +1490,34 @@ body {
 }
 
 .model-picker__action {
-  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 28px;
   padding: 4px 8px;
   border: 1px solid var(--border-color, #2f3336);
   border-radius: 4px;
   background: var(--bg-primary, #16181c);
   color: var(--text-primary, #e7e9ea);
   cursor: pointer;
-  font-size: 11px;
+  font: 400 12px/15px var(--font-ui, var(--font-family));
+  white-space: nowrap;
 }
 
-.model-picker__action:hover,
-.model-picker__action:focus-visible {
+.model-picker__action:hover:not(:disabled) {
   border-color: var(--accent-color, #1d9bf0);
-  outline: none;
+}
+
+.model-picker__action:focus-visible,
+.session-pill__toolbar-btn:focus-visible {
+  outline: 2px solid var(--accent-color, #1d9bf0);
+  outline-offset: 2px;
+}
+
+.model-picker__action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .model-picker__action--primary {
@@ -1494,6 +1527,7 @@ body {
 }
 
 @media (max-width: 639px) {
+  .session-pill__toolbar-btn { min-height: 44px; }
   .model-picker__header { padding: 7px 8px; }
   .model-picker__search-label { margin-bottom: 4px; }
   .model-picker__search { min-height: 44px; }
@@ -4316,7 +4350,7 @@ body {
   flex-shrink: 0;
 }
 
-.settings-panel__content { flex: 1; overflow-y: auto; padding: 16px 20px; scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track); position: relative; }
+.settings-panel__content { flex: 1; min-width: 0; overflow-y: auto; padding: 16px 20px; scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track); position: relative; }
 .settings-panel__content:has(.settings-panel__section--models) {
   display: flex;
   flex-direction: column;
@@ -4339,6 +4373,12 @@ body {
 .settings-panel__input { background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-primary, #e7e9ea); padding: 5px 10px; border-radius: 3px; font-size: 13px; width: 200px; font-family: inherit; outline: none; }
 
 .settings-panel__input:focus { border-color: var(--accent); outline: none; }
+
+/* These Visual controls suppress the browser outline; retain the skin accent. */
+.settings-panel__content :is(.settings-panel__input, .settings-panel__select, .settings-panel__stepper-value, .custom-select__trigger):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 
 /* Dense forms opt into stable, skin-specific label/control/help columns. */
 .settings-panel__dense-row {
@@ -7385,6 +7425,29 @@ pre.frontmatter-block {
   .settings-panel__content {
     padding: 12px 10px;
   }
+  /* Only General and Keychain failed the measured phone-width contract. */
+  :is(.settings-panel__section--general, .settings-panel__section--keychain) .settings-panel__field:not(.settings-panel__checkbox-row) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+  :is(.settings-panel__section--general, .settings-panel__section--keychain) .settings-panel__label {
+    min-width: 0;
+    max-width: 100%;
+    text-align: left;
+    white-space: normal;
+  }
+  :is(.settings-panel__section--general, .settings-panel__section--keychain) :is(.settings-panel__field-content, .settings-panel__input, .settings-panel__select) {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .settings-panel__section--general .settings-panel__checkbox-row { margin-left: 0; }
+  .settings-panel__section--keychain .settings-panel__keychain-header { flex-wrap: wrap; }
+  .settings-panel__section--keychain .settings-panel__keychain-filter { min-width: 0; }
+  .settings-panel__section--keychain .settings-panel__actions-row { flex-wrap: wrap; }
+  .settings-panel__section--keychain .settings-panel__table { table-layout: fixed; width: 100%; }
+  .settings-panel__section--keychain .settings-panel__table :is(td, th, code) { overflow-wrap: anywhere; }
+  .settings-panel__section--keychain .settings-panel__table .settings-panel__provider-btn { padding: 6px 8px; }
   .settings-panel__dense-row,
   .settings-panel__dense-row--checkbox {
     display: grid;
@@ -8015,11 +8078,11 @@ pre.frontmatter-block {
   color: var(--text-secondary, #71767b);
   font-size: 13px;
 }
-/* Force addon pane content to inherit our typography */
-.settings-panel__content h1,
-.settings-panel__content h2,
-.settings-panel__content h3,
-.settings-panel__content h4 {
+/* Legacy add-on markup only. Built-in panes retain their named Visual rules. */
+.settings-addon-pane h1,
+.settings-addon-pane h2,
+.settings-addon-pane h3,
+.settings-addon-pane h4 {
   font-size: 13px !important;
   font-weight: 600 !important;
   color: var(--text) !important;
@@ -8029,41 +8092,37 @@ pre.frontmatter-block {
   padding-bottom: 6px;
   border-bottom: 1px solid var(--border);
 }
-.settings-panel__content h1:first-child,
-.settings-panel__content h2:first-child,
-.settings-panel__content h3:first-child,
-.settings-panel__content h4:first-child {
+.settings-addon-pane h1:first-child,
+.settings-addon-pane h2:first-child,
+.settings-addon-pane h3:first-child,
+.settings-addon-pane h4:first-child {
   margin-top: 0;
 }
-.settings-panel__content p {
+.settings-addon-pane p {
   font-size: 12px;
   color: var(--text-soft, var(--text-muted));
   margin: 4px 0 8px;
 }
-.settings-panel__content table {
+.settings-addon-pane table {
   width: 100%;
   font-size: 12px;
   border-collapse: collapse;
 }
-.settings-panel__content table,
-.settings-panel__content div {
-  max-height: none !important;
-}
-.settings-panel__content td,
-.settings-panel__content th {
+.settings-addon-pane td,
+.settings-addon-pane th {
   padding: 6px 8px;
   border-bottom: 1px solid var(--border);
   color: var(--text-soft, var(--text-muted));
   font-weight: normal;
 }
-.settings-panel__content td strong,
-.settings-panel__content td b {
+.settings-addon-pane td strong,
+.settings-addon-pane td b {
   font-weight: 500;
   color: var(--text-primary, #e7e9ea);
   font-size: 12px;
 }
-.settings-panel__content input[type="text"],
-.settings-panel__content input[type="search"] {
+.settings-addon-pane input[type="text"]:not(.settings-addon-control),
+.settings-addon-pane input[type="search"]:not(.settings-addon-control) {
   background: var(--bg-input, rgba(0,0,0,0.2));
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -8072,7 +8131,7 @@ pre.frontmatter-block {
   font-size: 12px;
   max-width: 300px;
 }
-.settings-panel__content button {
+.settings-addon-pane button {
   font-size: 11px;
   padding: 4px 10px;
   border-radius: 4px;
@@ -8082,47 +8141,47 @@ pre.frontmatter-block {
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
-.settings-panel__content button:hover {
+.settings-addon-pane button:hover {
   background: var(--bg-elevated, rgba(255,255,255,0.08));
   color: var(--text-primary, #e7e9ea);
 }
 
-/* ── #388 Aggressive addon pane typography overrides ──────────────── */
-.settings-panel__content label {
+/* Compatibility typography is confined to legacy add-on content. */
+.settings-addon-pane label:not(.settings-addon-label) {
   font-size: 12px !important;
   color: var(--text) !important;
   font-weight: normal !important;
 }
-.settings-panel__content span {
+.settings-addon-pane :where(span:not(.settings-addon-help):not(.settings-addon-error):not(.settings-addon-status)) {
   font-size: 12px !important;
 }
-.settings-panel__content strong,
-.settings-panel__content b {
+.settings-addon-pane strong,
+.settings-addon-pane b {
   font-weight: 500 !important;
   font-size: 12px !important;
 }
-.settings-panel__content code {
+.settings-addon-pane code {
   font-family: var(--font-mono, monospace) !important;
   font-size: 11px !important;
   background: var(--overlay-black-35, rgba(0,0,0,0.15)) !important;
   padding: 1px 4px !important;
   border-radius: 3px !important;
 }
-.settings-panel__content ul,
-.settings-panel__content ol {
+.settings-addon-pane ul,
+.settings-addon-pane ol {
   font-size: 12px !important;
   padding-left: 1.5em !important;
   color: var(--text-soft, var(--text-muted)) !important;
 }
-.settings-panel__content li {
+.settings-addon-pane li {
   margin: 2px 0 !important;
 }
-.settings-panel__content input[type="checkbox"] {
+.settings-addon-pane input[type="checkbox"] {
   width: 14px !important;
   height: 14px !important;
   accent-color: var(--accent) !important;
 }
-.settings-panel__content select {
+.settings-addon-pane select:not(.settings-addon-control) {
   background: var(--bg-input, rgba(0,0,0,0.2)) !important;
   border: 1px solid var(--border) !important;
   border-radius: 4px !important;
@@ -8131,7 +8190,7 @@ pre.frontmatter-block {
   font-size: 12px !important;
   color-scheme: dark !important;
 }
-.settings-panel__content hr {
+.settings-addon-pane hr {
   border: none !important;
   border-top: 1px solid var(--border) !important;
   margin: 12px 0 !important;

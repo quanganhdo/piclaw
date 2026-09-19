@@ -60,7 +60,19 @@ const caseId = (c: ConformanceCase) => c.group + " / " + c.name;
 const ids = [...new Set(BACKENDS.flatMap(([, cases]) => cases.map(caseId)))].sort();
 let completed = 0;
 describe("Earendil 0.85.1 public repository conformance", () => {
-  test("pins selected repository catalogue separately from historical counts", () => {
+  test("HC-024/025 pins public SessionRepo scope and rejects raw Storage/SQLite promotion", async () => {
+    const root = await import("@earendil-works/pi-agent-core");
+    const session = await import("@earendil-works/pi-agent-core/harness/session");
+    const testing = await import("@earendil-works/pi-agent-core/harness/session/testing");
+    expect("MemoryStorage" in root).toBeFalse();
+    expect("JsonlStorage" in root).toBeFalse();
+    expect("MemoryStorage" in session).toBeFalse();
+    expect("JsonlStorage" in session).toBeFalse();
+    expect(typeof testing.createStorageConformance).toBe("function");
+    expect(Object.keys(testing).some((name) => /StorageFixture|createMemoryStorage|createJsonlStorage/.test(name))).toBeFalse();
+  });
+
+  test("HC-025 pins selected repository catalogue separately from historical counts", () => {
     expect(HISTORICAL_0_84_COUNTS).toEqual({ casesPerBackend: 30, backendExecutions: 60 });
     expect(ids).toEqual(EXPECTED_CURRENT_CATALOG_IDS);
     expect(memoryCases).toHaveLength(17);

@@ -181,6 +181,15 @@ test("queued single-user leases still renew, but denial before or after renewal 
   await fixture(async (configure) => {
     const timers: Array<() => Promise<void>> = [];
     const original = globalThis.setTimeout;
+    const originalDate = globalThis.Date;
+    let clock = originalDate.now();
+    class ClockDate extends originalDate {
+      constructor(...args: any[]) {
+        super(...(args.length ? args : [clock]));
+      }
+      static now() { return clock; }
+    }
+    globalThis.Date = ClockDate as DateConstructor;
     const timerSpy = spyOn(globalThis, "setTimeout").mockImplementation(((fn: any, ms: number, ...args: any[]) => {
       if (ms === 20_000) { timers.push(fn); return { unref() {} } as any; }
       return original(fn, ms, ...args);
@@ -192,14 +201,14 @@ test("queued single-user leases still renew, but denial before or after renewal 
         if (changeOnRenew) configure("family-shared"); return result;
       } });
       await pollScheduledRunsOnce(h.deps, wrapped);
-      expect(timers).toHaveLength(1); await timers.shift()!(); expect(renewals).toBe(1); expect(timers).toHaveLength(1);
-      changeOnRenew = true; await timers.shift()!(); expect(renewals).toBe(2); expect(timers).toHaveLength(0);
+      expect(timers).toHaveLength(1); clock += 20_000; await timers.shift()!(); expect(renewals).toBe(1); expect(timers).toHaveLength(1);
+      changeOnRenew = true; clock += 20_000; await timers.shift()!(); expect(renewals).toBe(2); expect(timers).toHaveLength(0);
       expect(snapshot()).toBe(afterRenew); await h.queued[0](); expect(h.calls).toEqual([]);
 
       configure("single-user"); task(); const next = harness(); await pollScheduledRunsOnce(next.deps, wrapped);
-      expect(timers).toHaveLength(1); const before = snapshot(); configure("invalid"); await timers.shift()!();
+      expect(timers).toHaveLength(1); const before = snapshot(); configure("invalid"); clock += 20_000; await timers.shift()!();
       expect(renewals).toBe(2); expect(timers).toHaveLength(0); expect(snapshot()).toBe(before);
-    } finally { timerSpy.mockRestore(); }
+    } finally { globalThis.Date = originalDate; timerSpy.mockRestore(); }
   });
 });
 

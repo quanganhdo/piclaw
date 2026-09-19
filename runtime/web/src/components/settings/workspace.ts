@@ -12,6 +12,7 @@ function normalizeWorkspaceSettings(data: Record<string, any> = {}) {
     return {
         webTerminalEnabled: workspace.webTerminalEnabled !== false,
         vncAllowDirect: workspace.vncAllowDirect !== false,
+        sanitizeSvgFences: workspace.sanitizeSvgFences !== false,
         treeMaxDepth: workspace.treeMaxDepth ?? 4,
         treeMaxEntries: workspace.treeMaxEntries ?? 5000,
     };
@@ -21,6 +22,7 @@ export function WorkspaceSection({ settingsData, setStatus, mergeSettingsData })
     const { t } = useTranslation();
     const [webTerminalEnabled, setWebTerminalEnabled] = useState(true);
     const [vncAllowDirect, setVncAllowDirect] = useState(true);
+    const [sanitizeSvgFences, setSanitizeSvgFences] = useState(true);
     const [treeMaxDepth, setTreeMaxDepth] = useState(4);
     const [treeMaxEntries, setTreeMaxEntries] = useState(5000);
     const [refreshIntervalSec, setRefreshIntervalSec] = useState(60);
@@ -48,6 +50,7 @@ export function WorkspaceSection({ settingsData, setStatus, mergeSettingsData })
         const browser = readWorkspaceClientSettings();
         setWebTerminalEnabled(next.webTerminalEnabled);
         setVncAllowDirect(next.vncAllowDirect);
+        setSanitizeSvgFences(next.sanitizeSvgFences);
         setTreeMaxDepth(next.treeMaxDepth);
         setTreeMaxEntries(next.treeMaxEntries);
         setRefreshIntervalSec(browser.refreshIntervalSec);
@@ -63,10 +66,11 @@ export function WorkspaceSection({ settingsData, setStatus, mergeSettingsData })
         workspaceSettings: {
             webTerminalEnabled,
             vncAllowDirect,
+            sanitizeSvgFences,
             treeMaxDepth,
             treeMaxEntries,
         },
-    })), [webTerminalEnabled, vncAllowDirect, treeMaxDepth, treeMaxEntries]);
+    })), [webTerminalEnabled, vncAllowDirect, sanitizeSvgFences, treeMaxDepth, treeMaxEntries]);
 
     useEffect(() => {
         if (currentServerSnapshot === savedSnapshotRef.current) return;
@@ -127,6 +131,13 @@ export function WorkspaceSection({ settingsData, setStatus, mergeSettingsData })
                 <input type="checkbox" checked=${vncAllowDirect} onChange=${e => setVncAllowDirect(e.target.checked)} />
             </div>
             <p class="settings-hint">${t('settings.workspace.accessHint')}</p>
+
+            <h3 style="margin-top:20px">Timeline SVG</h3>
+            <div class="settings-row">
+                <label>Sanitize SVG code fences</label>
+                <input type="checkbox" checked=${sanitizeSvgFences} onChange=${e => setSanitizeSvgFences(e.target.checked)} />
+            </div>
+            <p class="settings-hint">Enabled by default: fenced SVG is rendered as a bounded static image. Disable only for trusted SVG that needs timeline interaction; its source will run in this page.</p>
 
             <h3 style="margin-top:20px">${t('settings.workspace.guardrails')}</h3>
             <div class="settings-row">

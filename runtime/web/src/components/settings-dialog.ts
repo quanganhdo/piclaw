@@ -367,10 +367,10 @@ export function SettingsDialogContent({ onClose }) {
                     </main>
                 </div>
                 ${statusMessage && html`
-                    <div class=${`settings-status-bar settings-status-bar-${statusMessage.type}`}>
+                    <div class=${`settings-status-bar settings-status-bar-${statusMessage.type}`} role=${statusMessage.type === 'error' ? 'alert' : 'status'} aria-live=${statusMessage.type === 'error' ? 'assertive' : 'polite'} aria-atomic="true">
                         ${statusMessage.type === 'info' && html`<span class="settings-spinner"></span>`}
                         <span>${statusMessage.text}</span>
-                        ${statusMessage.type !== 'info' && html`<button class="settings-status-dismiss" onClick=${() => setStatusMessage(null)}>✕</button>`}
+                        ${statusMessage.type !== 'info' && html`<button class="settings-status-dismiss" aria-label="Dismiss status message" onClick=${() => setStatusMessage(null)}>✕</button>`}
                     </div>
                 `}
             </div>

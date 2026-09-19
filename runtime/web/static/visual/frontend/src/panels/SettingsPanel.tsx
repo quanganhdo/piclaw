@@ -197,10 +197,10 @@ export function SettingsPanel() {
       {/* Right content */}
       <div className={`settings-panel__content${activePane?.source === "addon" ? " settings-addon-pane" : ""}`}>
         {error.value && (
-          <div className="settings-panel__error">{error.value}</div>
+          <div className="settings-panel__error" role="alert">{error.value}</div>
         )}
         {saveStatus.value && (
-          <div className="settings-panel__save-status">{saveStatus.value}</div>
+          <div className="settings-panel__save-status" role="status" aria-live="polite" aria-atomic="true">{saveStatus.value}</div>
         )}
 
         {activePane && (

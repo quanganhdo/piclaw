@@ -1,0 +1,78 @@
+import { expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+const css = (skin: string, file: string) =>
+  readFileSync(
+    join(import.meta.dir, `../../web/static/${skin}/css/${file}`),
+    "utf8",
+  );
+
+test("picker button native appearance reset stays scoped to picker surfaces", () => {
+  const classic = css("classic", "chat.css");
+  const visual = css("visual", "shell.css");
+  expect(classic).toContain(".compose-model-popup :where(button) {");
+  expect(visual).toContain(
+    ".model-picker :where(button),\n.session-pill__dropdown :where(button) {",
+  );
+  for (const source of [classic, visual]) {
+    const reset = source.slice(source.indexOf(":where(button)")).split("}")[0];
+    for (const rule of [
+      "-webkit-appearance: none;",
+      "appearance: none;",
+      "box-sizing: border-box;",
+      "margin: 0;",
+      "font-family: inherit;",
+      "line-height: 1.25;",
+      "letter-spacing: normal;",
+    ])
+      expect(reset).toContain(rule);
+  }
+});
+
+test("both skins define picker action geometry and retain separate mobile targets", () => {
+  const classic = css("classic", "chat.css");
+  const visual = css("visual", "shell.css");
+  const blocks = [
+    classic.split(".compose-model-popup-btn {")[1].split("}")[0],
+    visual.split(".model-picker__action {")[1].split("}")[0],
+    visual.split(".session-pill__toolbar-btn {")[1].split("}")[0],
+  ];
+  for (const block of blocks) {
+    expect(block).toContain("min-height: 28px;");
+    expect(block).toContain("12px/15px");
+    expect(block).toContain("padding: 4px 8px;");
+    expect(block).toContain("border: 1px solid");
+    expect(block).toContain("align-items: center;");
+    expect(block).toContain("white-space: nowrap;");
+  }
+  expect(classic).toContain(
+    ".compose-session-popup .compose-model-popup-btn {\n        min-height: 44px;",
+  );
+  expect(visual).toContain(".session-pill__toolbar-btn { min-height: 44px; }");
+  expect(classic).toContain(
+    ".compose-model-catalogue-footer-start {\n    display: flex;\n    align-items: center;",
+  );
+});
+
+test("picker action focus and disabled states are explicit and hover excludes disabled buttons", () => {
+  const classic = css("classic", "chat.css");
+  const visual = css("visual", "shell.css");
+  expect(classic).toContain(".compose-model-popup-btn:hover:not(:disabled)");
+  expect(classic).toContain(
+    ".compose-model-popup-btn:focus-visible {\n    outline: 2px solid var(--accent-color);",
+  );
+  expect(visual).toContain(".model-picker__action:hover:not(:disabled)");
+  expect(visual).toContain(".session-pill__toolbar-btn:hover:not(:disabled)");
+  expect(visual).toContain(
+    ".model-picker__action:focus-visible,\n.session-pill__toolbar-btn:focus-visible {\n  outline: 2px solid",
+  );
+  for (const [source, selector] of [
+    [classic, ".compose-model-popup-btn:disabled"],
+    [visual, ".model-picker__action:disabled"],
+    [visual, ".session-pill__toolbar-btn:disabled"],
+  ]) {
+    const block = source.split(selector + " {")[1].split("}")[0];
+    expect(block).toContain("opacity: 0.5;");
+    expect(block).toContain("cursor: not-allowed;");
+  }
+});

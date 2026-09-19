@@ -176,7 +176,7 @@ describe("selected 0.85.1 public Harness semantics (inactive evidence only)", ()
     } finally { secondDone.release(); await f.harness.close(ctx); await f.repo.close(ctx); }
   });
 
-  test("HC-006/007/008 lane queues preserve identity, support cancellation and consume nextRun once", async () => {
+  test("HC-006/HC-007/HC-008 lane queues preserve identity, support cancellation and consume nextRun once", async () => {
     const f = await createSelectedHarnessFixture({ responses: [fauxAssistantMessage("done")] });
     try {
       const lane = await f.harness.lane("main", ctx), other = await f.harness.lane("other", ctx);

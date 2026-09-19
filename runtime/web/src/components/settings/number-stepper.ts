@@ -39,6 +39,7 @@ export function NumberStepper({
     width = '80px',
     disabled = false,
     label,
+    id,
     onChange,
 }) {
     const effectiveFallback = Number.isFinite(Number(fallback)) ? Number(fallback) : normalizeNumberValue(value, { fallback: 0, min, max });
@@ -77,6 +78,9 @@ export function NumberStepper({
                 onClick=${() => nudge(-1)}
             >−</button>
             <input
+                id=${id}
+                aria-label=${label || undefined}
+                aria-invalid=${editingRef.current && (localValue.trim() === '' || !Number.isFinite(Number(localValue)) || (min != null && Number(localValue) < min) || (max != null && Number(localValue) > max)) ? 'true' : undefined}
                 class="settings-number-input"
                 type="text"
                 inputmode="numeric"

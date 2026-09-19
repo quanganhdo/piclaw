@@ -158,7 +158,12 @@ function parseSvgImage(source: string): SvgImage | null {
 }
 
 /** Extract only top-level SVG fences before entity decoding, preserving source bytes for copy. */
-export function renderSvgFences(text: string, renderMarkdown: (text: string) => string, renderSource: (source: string) => string): string {
+export function renderSvgFences(
+  text: string,
+  renderMarkdown: (text: string) => string,
+  renderSource: (source: string) => string,
+  options: { sanitize?: boolean } = {},
+): string {
   if (!/^ {0,3}(?:`{3,}|~{3,})svg\s*$/im.test(text)) return renderMarkdown(text);
   const lines = text.match(/[^\r\n]*(?:\r\n|\r|\n|$)/g)?.filter(Boolean) || [];
   let fence: { char: string; length: number } | null = null;
@@ -183,12 +188,14 @@ export function renderSvgFences(text: string, renderMarkdown: (text: string) => 
     while (end < lines.length && !close.test(lines[end].replace(/[\r\n]+$/, ''))) end++;
     if (i > last) output.push(lines.slice(last, i).join(''));
     const source = lines.slice(i + 1, end).join('');
-    const image = end < lines.length ? sanitizeSvgImage(source) : null;
+    const image = options.sanitize === false ? null : end < lines.length ? sanitizeSvgImage(source) : null;
     const code = renderSource(source);
     output.push(`\n\n${prefix}${replacements.length}END\n\n`);
-    replacements.push(image
-      ? `<div class="model-svg-block"><img class="model-svg-image" src="${image.src}" alt="${escapeSvgSource(image.label)}"><details class="model-svg-source"><summary>SVG source</summary>${code}</details></div>`
-      : code);
+    replacements.push(options.sanitize === false && end < lines.length
+      ? source
+      : image
+        ? `<div class="model-svg-block"><img class="model-svg-image" src="${image.src}" alt="${escapeSvgSource(image.label)}"><details class="model-svg-source"><summary>SVG source</summary>${code}</details></div>`
+        : code);
     i = end; last = end + 1; fence = null;
   }
   if (!replacements.length) return renderMarkdown(text);

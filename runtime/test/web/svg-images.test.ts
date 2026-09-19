@@ -21,3 +21,11 @@ test('SVG-looking fences inside another fence or YAML frontmatter stay ordinary 
     expect(renderSvgFences(source, text => text, () => { throw Error('nested SVG'); })).toBe(source);
   }
 });
+
+test('disabled SVG sanitization restores complete fenced source for inline rendering', () => {
+  const source = '<svg viewBox="0 0 10 10" onclick="this.dataset.clicked=\'yes\'"><rect width="10" height="10"/></svg>\n';
+  const result = renderSvgFences(`Before\n\n\`\`\`svg\n${source}\`\`\`\n\nAfter`, text => text, () => '<pre>source fallback</pre>', { sanitize: false });
+  expect(result).toContain(source);
+  expect(result).not.toContain('model-svg-image');
+  expect(result).not.toContain('source fallback');
+});

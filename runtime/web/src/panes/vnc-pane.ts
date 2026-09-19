@@ -573,20 +573,20 @@ class VncPaneInstance implements PaneInstance {
             this.chooserOverlay = host;
         }
         const entries = readVncHistory(this.historyStorage);
-        host.innerHTML = `<section><h2>Connections</h2>
-            <input type="search" data-vnc-search aria-label="Filter connections" placeholder="Find a name or address…">
-            <h3>Configured targets</h3><div data-vnc-configured></div>
-            <h3>Recent connections</h3><div data-vnc-history></div>
-            <button data-vnc-clear>Clear recent history</button>
-            <p>History stays in this browser for this account and instance. No passwords or clipboard text are saved.</p>
-            ${overlay ? '<button data-vnc-back>Return to desktop</button>' : ''}</section>
-            <section>${allowDirect ? `<h2>New connection</h2><form data-vnc-connect-form>
+        host.innerHTML = `${overlay ? '<div class="vnc-manager-toolbar"><button data-vnc-back>Return to desktop</button></div>' : ''}
+            <section class="vnc-connect-panel">${allowDirect ? `<h2>New connection</h2><form data-vnc-connect-form>
             <div class="vnc-endpoint"><label><span>Server</span><input data-vnc-direct-host value="${esc(direct.host)}" autocomplete="off" spellcheck="false"></label>
             <label><span>Port</span><input type="number" required min="1" max="65535" step="1" data-vnc-direct-port value="${esc(direct.port)}"></label></div>
             <details><summary>Password, if required</summary><label><span>VNC password</span><input type="password" data-vnc-direct-password autocomplete="off"></label></details>
             <p data-vnc-form-error role="alert"></p><button class="vnc-connect" type="submit">Connect</button></form>
-            <p>Addresses are reached from the Piclaw server. The default is localhost:5901.</p>` : '<p>Direct connections are disabled. Choose a configured target.</p>'}
-            <p>During a session, move to the top centre for the reveal chevron. Hover or tap it for controls. Keyboard: Ctrl+Alt+Shift+V.</p></section>`;
+            <p>Connects from the Piclaw server, not this device.</p>` : '<p>Direct connections are disabled. Choose a configured target.</p>'}
+            <details class="vnc-help"><summary>Viewer controls</summary><p>Move to the top centre of the desktop to reveal controls, or tap there. Keyboard: Ctrl+Alt+Shift+V.</p></details></section>
+            <section class="vnc-saved-panel"><h2>Connections</h2>
+            <input type="search" data-vnc-search aria-label="Filter connections" placeholder="Find a name or address…">
+            <h3>Configured targets</h3><div data-vnc-configured></div>
+            <h3>Recent connections</h3><div data-vnc-history></div>
+            <button data-vnc-clear>Clear recent history</button>
+            <p>Saved in this browser for this account. Passwords and clipboard text are never saved.</p></section>`;
         const select = (target: string, label: string, password: string | null = null) => {
             if (overlay && target === this.targetId && this.connected) { host.remove(); this.chooserOverlay = null; this.setSessionChromeVisible(false); this.focus(); return; }
             this.authPassword = password;
@@ -601,7 +601,7 @@ class VncPaneInstance implements PaneInstance {
             configured.replaceChildren();
             for (const target of targets.filter(t => matches(t.label, t.id))) {
                 const row = document.createElement('div'); row.className = 'vnc-history-row';
-                row.innerHTML = `<button class="vnc-history-open"><strong>${esc(target.label || target.id)}</strong><small>${esc(target.id)} · ${target.readOnly ? 'Read-only' : 'Interactive'}</small></button>`;
+                row.innerHTML = `<button class="vnc-history-open" title="${esc(target.label || target.id)} — ${esc(target.id)}"><strong>${esc(target.label || target.id)}</strong><small>${esc(target.id)} · ${target.readOnly ? 'Read-only' : 'Interactive'}</small></button>`;
                 row.querySelector('button').onclick = () => select(target.id, target.label || target.id);
                 configured.append(row);
             }
@@ -610,7 +610,7 @@ class VncPaneInstance implements PaneInstance {
             for (const entry of entries.filter(e => matches(e.label, e.target)).sort((a,b) => Number(b.pinned)-Number(a.pinned) || b.connectedAt-a.connectedAt)) {
                 const available = allowDirect || targets.some(t => t.id === entry.target);
                 const row = document.createElement('div'); row.className = 'vnc-history-row';
-                row.innerHTML = `<button class="vnc-history-open" ${available ? '' : 'disabled'}><strong>${esc(entry.label)}</strong><small>${esc(entry.target)} · ${available ? esc(new Date(entry.connectedAt).toLocaleString()) : 'Unavailable under current policy'}</small></button>
+                row.innerHTML = `<button class="vnc-history-open" title="${esc(entry.label)} — ${esc(entry.target)}" ${available ? '' : 'disabled'}><strong>${esc(entry.label)}</strong><small>${esc(entry.target)} · ${available ? esc(new Date(entry.connectedAt).toLocaleString()) : 'Unavailable under current policy'}</small></button>
                     <button data-pin aria-label="${entry.pinned ? 'Unpin' : 'Pin'} ${esc(entry.label)}">${entry.pinned ? '★' : '☆'}</button><button data-remove aria-label="Remove ${esc(entry.label)}">×</button>`;
                 row.querySelector('.vnc-history-open').addEventListener('click', () => select(entry.target, entry.label));
                 row.querySelector('[data-pin]').addEventListener('click', () => { entry.pinned = !entry.pinned; writeVncHistory(this.historyStorage, entries); draw(); });

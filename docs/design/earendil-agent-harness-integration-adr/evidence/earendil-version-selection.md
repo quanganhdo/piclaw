@@ -19,9 +19,9 @@ Piclaw's existing coding-agent loop selects the coherent `0.84.4` package family
 
 Released `0.84.1` remains historical baseline evidence for the exported v2 session model, action vocabulary and unsupported Harness scaffold. Tagged `0.84.4` retains that scaffold: all audited Harness operations remain unimplemented, so it is rejected as a Harness-v3 implementation even though the current loop uses its non-Harness APIs.
 
-The old `dev`/draft #8963 observation at `d14d6b22327d545d6a253f932165b63e48d7f9c8` remains a dated [historical capture](earendil-harness-v3-assessment.md). Draft PR B selects exact published 0.85.1 at `d981de1229ef899957bbe968bc8dcda02a21f477` for the current loop. Its public Context/tools/lanes support basic positive compatibility and Memory/JSONL SessionRepo tests; session watch remains a stub. The separate pinned tip `e4c75a73222ae2c72abb5f5314fa35ee8effc508` is planning evidence only.
+The old `dev`/draft #8963 observation at `d14d6b22327d545d6a253f932165b63e48d7f9c8` remains a dated [historical capture](earendil-harness-v3-assessment.md). The current loop now uses exact published 0.85.1 at `d981de1229ef899957bbe968bc8dcda02a21f477`. Its public Context/tools/lanes support positive compatibility and Memory/JSONL SessionRepo tests; session watch remains a stub. The separate pinned tip `e4c75a73222ae2c72abb5f5314fa35ee8effc508` is planning evidence only.
 
-The versioned manifest retains 0.84.1 and 0.84.4 results under historical data, including seven negative compiler checks and 25 unsupported Harness outcomes. Selected-release direct assignments and tests target installed 0.85.1 in the candidate worktree only. No compatibility dialect, private export workaround or tip-only API is introduced. See [A/B/C/D scope and gates](earendil-0851-work-sequence.md).
+The versioned manifest retains 0.84.1 and 0.84.4 results under historical data, including seven negative compiler checks and 25 unsupported Harness outcomes. Selected-release direct assignments and tests target installed 0.85.1; the broader inactive catalogue records 24 partial rows and HC-024 unsupported, never full promotion. No compatibility dialect, private export workaround or tip-only API is introduced. See [A/B/C/D scope and gates](earendil-0851-work-sequence.md).
 
 ## Upgrade workflow
 

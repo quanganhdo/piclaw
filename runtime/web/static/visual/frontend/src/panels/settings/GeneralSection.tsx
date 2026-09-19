@@ -1,3 +1,4 @@
+import { useId } from "preact/hooks";
 import { useSignal } from "@preact/signals";
 import { type SettingsData, type SettingsSectionProps } from "./types";
 import { NumberStepper } from "./NumberStepper";
@@ -10,13 +11,14 @@ export function GeneralSection({
   data: SettingsData;
   onSaveGeneral: (field: string, value: unknown) => void;
 }) {
+  const prefix = useId();
   const assistantName = useSignal(data.assistantName ?? "");
   const userName = useSignal(data.userName ?? "");
   const composeUploadMb = useSignal(data.composeUploadLimitMb ?? 32);
   const workspaceUploadMb = useSignal(data.workspaceUploadLimitMb ?? 256);
 
   return (
-    <section className="settings-panel__section">
+    <section className="settings-panel__section settings-panel__section--general">
       <h2 className="settings-panel__section-title">General</h2>
 
       {data.version && (
@@ -31,32 +33,36 @@ export function GeneralSection({
       <h3 className="settings-panel__subsection-title">Identity</h3>
 
       <div className="settings-panel__field">
-        <label className="settings-panel__label">User name</label>
+        <label htmlFor={`${prefix}-user`} className="settings-panel__label">User name</label>
         <div className="settings-panel__field-content">
           <input
             className="settings-panel__input"
             type="text"
+            id={`${prefix}-user`}
+            aria-describedby={`${prefix}-user-hint`}
             value={userName.value}
             onInput={(e) => (userName.value = (e.target as HTMLInputElement).value)}
             onBlur={() => onSaveGeneral("userName", userName.value)}
             placeholder="Your name"
           />
-          <span className="settings-panel__description">Your display name in chat</span>
+          <span id={`${prefix}-user-hint`} className="settings-panel__description">Your display name in chat</span>
         </div>
       </div>
 
       <div className="settings-panel__field">
-        <label className="settings-panel__label">Agent name</label>
+        <label htmlFor={`${prefix}-agent`} className="settings-panel__label">Agent name</label>
         <div className="settings-panel__field-content">
           <input
             className="settings-panel__input"
             type="text"
+            id={`${prefix}-agent`}
+            aria-describedby={`${prefix}-agent-hint`}
             value={assistantName.value}
             onInput={(e) => (assistantName.value = (e.target as HTMLInputElement).value)}
             onBlur={() => onSaveGeneral("assistantName", assistantName.value)}
             placeholder="Agent display name"
           />
-          <span className="settings-panel__description">Display name for the AI agent</span>
+          <span id={`${prefix}-agent-hint`} className="settings-panel__description">Display name for the AI agent</span>
         </div>
       </div>
 
@@ -70,17 +76,17 @@ export function GeneralSection({
       <h3 className="settings-panel__subsection-title">Instance Configuration</h3>
 
       <div className="settings-panel__field">
-        <label className="settings-panel__label">Compose upload (MB)</label>
+        <label htmlFor={`${prefix}-compose`} className="settings-panel__label">Compose upload (MB)</label>
         <div className="settings-panel__field-content">
-          <NumberStepper value={composeUploadMb} min={1} max={256} onSave={(v) => onSaveGeneral("composeUploadLimitMb", v)} />
+          <NumberStepper id={`${prefix}-compose`} label="Compose upload (MB)" value={composeUploadMb} min={1} max={256} onSave={(v) => onSaveGeneral("composeUploadLimitMb", v)} />
           <span className="settings-panel__description">Chat/media attachments</span>
         </div>
       </div>
 
       <div className="settings-panel__field">
-        <label className="settings-panel__label">Workspace upload (MB)</label>
+        <label htmlFor={`${prefix}-workspace`} className="settings-panel__label">Workspace upload (MB)</label>
         <div className="settings-panel__field-content">
-          <NumberStepper value={workspaceUploadMb} min={1} max={1024} onSave={(v) => onSaveGeneral("workspaceUploadLimitMb", v)} />
+          <NumberStepper id={`${prefix}-workspace`} label="Workspace upload (MB)" value={workspaceUploadMb} min={1} max={1024} onSave={(v) => onSaveGeneral("workspaceUploadLimitMb", v)} />
           <span className="settings-panel__description">Defaults to 256 MB; chunked uploads allow up to 1 GB</span>
         </div>
       </div>

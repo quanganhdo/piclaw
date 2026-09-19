@@ -48,12 +48,13 @@ export const EARENDIL_HARNESS_DIRECT_OPERATIONS = Object.freeze([
 ] as const);
 
 export type EarendilHarnessDirectOperation = typeof EARENDIL_HARNESS_DIRECT_OPERATIONS[number];
-export type EarendilSelectedSemanticStatus = "pass" | "fail" | "unsupported";
+export type EarendilSelectedSemanticStatus = "pass" | "partial" | "fail" | "unsupported" | "unverified";
 export type EarendilSelectedSemanticId = `HC-${
   | "001" | "002" | "003" | "004" | "005"
   | "006" | "007" | "008" | "009" | "010"
   | "011" | "012" | "013" | "014" | "015"
-  | "016" | "017" | "018" | "019" | "020"}`;
+  | "016" | "017" | "018" | "019" | "020"
+  | "021" | "022" | "023" | "024" | "025"}`;
 
 export interface EarendilSelectedSemanticOutcome {
   readonly id: EarendilSelectedSemanticId;
@@ -80,6 +81,7 @@ export interface CreateSelectedHarnessFixtureOptions<TContext extends object | u
   extends Omit<AgentHarnessOptions<TContext>, "session" | "models" | "model"> {
   readonly repo?: MemorySessionRepo;
   readonly session?: Session;
+  readonly faux?: FauxProviderHandle;
   readonly responses?: FauxResponseStep[];
   readonly providerOptions?: Parameters<typeof fauxProvider>[0];
   readonly context?: Context;
@@ -93,15 +95,16 @@ export async function createSelectedHarnessFixture<TContext extends object | und
   const {
     repo = new MemorySessionRepo(),
     session: suppliedSession,
-    responses = [],
+    faux: suppliedFaux,
+    responses,
     providerOptions,
     context = BACKGROUND_CONTEXT,
     sessionId = `selected-0851-${crypto.randomUUID()}`,
     ...harnessOptions
   } = options;
   const session = suppliedSession ?? await repo.create({ id: sessionId }, context);
-  const faux = fauxProvider(providerOptions);
-  faux.setResponses(responses);
+  const faux = suppliedFaux ?? fauxProvider(providerOptions);
+  if (responses !== undefined) faux.setResponses(responses);
   const models = createModels();
   models.setProvider(faux.provider);
   const created = await AgentHarness.create<TContext>({

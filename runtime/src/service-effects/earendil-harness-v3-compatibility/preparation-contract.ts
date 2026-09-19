@@ -106,11 +106,11 @@ export interface EarendilV3Historical0850AssessmentShape {
 }
 
 export interface EarendilV3SelectionGateShape {
-  readonly productionVersion: "0.84.4";
+  readonly currentLoopVersion: "0.85.1";
   readonly selectedVersion: "0.85.1";
   readonly selectedReleaseCommit: "d981de1229ef899957bbe968bc8dcda02a21f477";
-  readonly selectionScope: "candidate_branch_only";
-  readonly liveDeploymentRequiresApproval: true;
+  readonly selectionScope: "installed_current_loop_only";
+  readonly harnessDeploymentRequiresApproval: true;
   readonly packageClosure: "fresh_supported_coding_agent_root_imports_in_bun_and_supported_node_without_workarounds";
   readonly watchSession: "public_contract_present_selected_runtime_stub_unsupported";
   readonly harnessActivation: "blocked";

@@ -35,6 +35,7 @@ export interface CompactionBackoff {
 export interface WorkspaceSettings {
   webTerminalEnabled?: boolean;
   vncAllowDirect?: boolean;
+  sanitizeSvgFences?: boolean;
   treeMaxDepth?: number;
   treeMaxEntries?: number;
 }

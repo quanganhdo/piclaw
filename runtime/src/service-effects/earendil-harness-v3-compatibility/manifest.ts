@@ -310,7 +310,7 @@ const HISTORICAL_MANIFEST = {
 const SELECTED_RELEASE = {
   "version": "0.85.1",
   "commit": "d981de1229ef899957bbe968bc8dcda02a21f477",
-  "runtimeSelection": "candidate_branch_only",
+  "runtimeSelection": "installed_current_loop",
   "harnessSelection": "inactive_partial_evidence",
   "packages": [
     {
@@ -619,35 +619,35 @@ const SELECTED_RELEASE = {
       "name": "abort",
       "requirement": "Cancellation commits before signal pull; late effects cannot create a second terminal settlement.",
       "status": "partial",
-      "evidence": "requestAbort uses exact operation identity; late invocation write rejected and operation settles"
+      "evidence": "requestAbort uses exact operation identity; late invocation write is rejected; abort drains steer/follow-up while preserving nextRun; terminal settlement invokes no new provider effect."
     },
     {
       "id": "HC-010",
       "name": "compaction",
       "requirement": "Manual threshold and overflow compaction preserve structural preparation and result state.",
-      "status": "unverified",
-      "evidence": "No selected-release complete semantic proof yet; historical unsupported result is not promoted."
+      "status": "partial",
+      "evidence": "Public manual compaction after one deterministic turn writes one compaction entry and immutable result, clears the operation, and publishes ordered compaction events; unsummarized navigation publishes one result and moves to the exact target. Threshold, overflow, summarized navigation, decline and crash boundaries remain unproved."
     },
     {
       "id": "HC-011",
       "name": "retry",
       "requirement": "Captured retry policy options and attempt progression survive restore with specified effective options.",
-      "status": "unverified",
-      "evidence": "No selected-release complete semantic proof yet; historical unsupported result is not promoted."
+      "status": "partial",
+      "evidence": "A transient faux provider error durably enters long retry waiting; public close/reopen preserves exact operation identity/notBefore and captured policy despite changed process defaults. A separate zero-delay retry advances exactly once and settles. Exhaustion, timer-abort and structural retry variants remain unproved."
     },
     {
       "id": "HC-012",
       "name": "suspension",
       "requirement": "Deferred missing-identity and crash suspension report the current operation and resume safely.",
-      "status": "unverified",
-      "evidence": "No selected-release complete semantic proof yet; historical unsupported result is not promoted."
+      "status": "partial",
+      "evidence": "Deferred prompt and repeated suspension preserve exact operation/handle lineage across public repository reopen; unavailable selected model settles in band without provider execution. Other suspension causes and cancellation races remain unproved."
     },
     {
       "id": "HC-013",
       "name": "restore",
       "requirement": "Bounded current-register reads reconstruct open state without folding full history.",
-      "status": "unverified",
-      "evidence": "No selected-release complete semantic proof yet; historical unsupported result is not promoted."
+      "status": "partial",
+      "evidence": "Accepted-undriven operation reopens through public repository inventory and settles with one provider call; repeated drive returns the immutable result without replay. Bounded internal read counts and every durable leaf remain unproved without public raw Storage instrumentation."
     },
     {
       "id": "HC-014",
@@ -682,7 +682,7 @@ const SELECTED_RELEASE = {
       "name": "hooks events and watch",
       "requirement": "Typed hooks obey settlement barriers and snapshot-first buffered event ordering.",
       "status": "partial",
-      "evidence": "before_run registration order, lane snapshot/resnapshot, entry committed before watch.start delivered from buffer, and blocked before_run_end hook delaying drive settlement/run_end; other interleavings unproved and watchSession stub remains unsupported"
+      "evidence": "before_run registration order, snapshot/buffer delivery and blocked terminal hook are proved; public reduceLaneSnapshot folds one ordinary run event stream to an equal resnapshot. Navigation rebase and other interleavings remain unproved; watchSession stub remains unsupported."
     },
     {
       "id": "HC-019",
@@ -695,8 +695,43 @@ const SELECTED_RELEASE = {
       "id": "HC-020",
       "name": "deferred provider",
       "requirement": "One poll per resume preserves handle lineage and cancel/restart outcomes.",
-      "status": "unverified",
-      "evidence": "No selected-release complete semantic proof yet; historical unsupported result is not promoted."
+      "status": "partial",
+      "evidence": "Faux deferred submission performs zero polls initially, exactly one poll per public resume, survives two public repository reopens, preserves operation/handle lineage, and completes without resubmission; abort cancels the exact deferred handle and settles once. Unknown-poll process loss remains unproved."
+    },
+    {
+      "id": "HC-021",
+      "name": "effect admission",
+      "requirement": "Every selected Gate.admit() site proves abort-first starts nothing and admission-first receives the operation signal.",
+      "status": "partial",
+      "evidence": "Public abort-first prevents provider admission; admission-first starts one tool and the exact operation requestAbort flips its trailing Context abortSignal before settlement. Hook/provider/timer site coverage remains unproved because Gate is not public."
+    },
+    {
+      "id": "HC-022",
+      "name": "effect-start crash",
+      "requirement": "Crash after admission but before settlement is treated as unknown and follows provider/tool/structural replay policy.",
+      "status": "partial",
+      "evidence": "Public JSONL process loss after awaited memo writes and a durable tool-output checkpoint at effect_pending proves safe-safe replay and never containment under stable invocation/result identity, followed by no settled replay. Provider and structural unknown-effect variants remain unproved."
+    },
+    {
+      "id": "HC-023",
+      "name": "Drive/host ownership",
+      "requirement": "One lane-owned Drive serves observers; process replacement reattaches without duplicate writable authority.",
+      "status": "partial",
+      "evidence": "Two public same-operation drive observers return one equal result with one provider call; public close/reopen reattaches open operations. Cross-process host replacement and duplicate writable authority remain outside the in-process SessionRepo boundary."
+    },
+    {
+      "id": "HC-024",
+      "name": "storage migration",
+      "requirement": "A selected storage version migrates an open operation totally and resumes after a crash at every boundary.",
+      "status": "unsupported",
+      "evidence": "Published 0.85.1 exposes neither built-in Memory/JSONL raw Storage constructors nor public fixture factories, so downstream open-operation migration fault injection is not supportable without private access."
+    },
+    {
+      "id": "HC-025",
+      "name": "backend/fork parity",
+      "requirement": "Memory, JSONL and selected SQLite plus host ownership and streaming-fork boundaries produce specified outcomes.",
+      "status": "partial",
+      "evidence": "Supported public SessionRepo suites pass 17 Memory and 15 JSONL cases including fork behavior and ownership. Raw Storage, SQLite, streaming-fork parity and host-process ownership are not admitted."
     }
   ],
   "watchSession": {

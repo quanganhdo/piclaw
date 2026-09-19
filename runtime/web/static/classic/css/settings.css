@@ -179,6 +179,16 @@
  * Visual retains the shared stylesheet's defaults.
  */
 .settings-content.settings-addon-pane {
+    /* Match ordinary Classic fields; these tokens never restyle built-ins. */
+    --settings-addon-control-size: 0.88em;
+    --settings-addon-control-padding: 6px 10px;
+    --settings-addon-control-radius: 6px;
+    --settings-addon-control-width: 280px;
+    --settings-addon-control-background: var(--bg-primary);
+    --settings-addon-control-border: var(--border-color);
+    --settings-addon-control-accent: var(--accent-color);
+    --settings-addon-label-size: 0.88em;
+    --settings-addon-help-size: 0.82em;
     --settings-addon-button-min-height: auto;
     --settings-addon-button-min-width: 70px;
     --settings-addon-button-font-size: calc(var(--font-size-md, 15px) * 0.84);
@@ -193,6 +203,11 @@
 
 .settings-content.settings-addon-pane :where(button:not(.settings-number-step-btn):not(.settings-panel__stepper-btn):not([role="tab"]):not([role="switch"]):not([data-settings-button="unstyled"])) {
     font-family: revert !important;
+}
+
+.settings-content.settings-addon-pane .settings-addon-control {
+    /* Native Classic input/textarea fonts are role-specific. */
+    font-family: revert;
 }
 
 @media (max-width: 640px) {

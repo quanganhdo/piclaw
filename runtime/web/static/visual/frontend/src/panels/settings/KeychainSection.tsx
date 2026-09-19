@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "preact/hooks";
+import { useCallback, useEffect, useRef, useId } from "preact/hooks";
 import { useSignal } from "@preact/signals";
 import { useDialog } from "../../hooks/useDialog";
 import { registerSettingsPane } from "./pane-registry";
@@ -20,9 +20,16 @@ interface KeychainResponse {
 }
 
 export function KeychainSection() {
+  const prefix = useId();
+  const addButtonRef = useRef<HTMLButtonElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+  const pendingFocus = useRef(false);
+  const saving = useSignal(false);
+  const announcement = useSignal('');
   const entries = useSignal<KeychainEntry[]>([]);
   const filter = useSignal("");
   const showAdd = useSignal(false);
+  const finishAdd = () => { pendingFocus.current = true; showAdd.value = false; };
   const newName = useSignal("");
   const newSecret = useSignal("");
   const newType = useSignal("secret");
@@ -64,7 +71,8 @@ export function KeychainSection() {
   useEffect(() => { fetchEntries(); }, [fetchEntries]);
 
   const addEntry = async () => {
-    if (!newName.value.trim() || !newSecret.value.trim()) return;
+    if (saving.value || !newName.value.trim() || !newSecret.value.trim()) return;
+    saving.value = true;
     try {
       const res = await fetch("/agent/keychain", {
         method: "POST",
@@ -79,11 +87,14 @@ export function KeychainSection() {
       }
       newName.value = "";
       newSecret.value = "";
-      showAdd.value = false;
+      finishAdd();
+      announcement.value = "Keychain entry saved.";
       fetchEntries();
     } catch (err) {
       log.warn("add failed:", err);
       showKeychainError("Failed to add entry");
+    } finally {
+      saving.value = false;
     }
   };
 
@@ -106,6 +117,8 @@ export function KeychainSection() {
         showKeychainError("Couldn't delete entry. Please try again.");
         return;
       }
+      pendingFocus.current = true;
+      announcement.value = "Keychain entry deleted.";
       fetchEntries();
     } catch (err) {
       log.warn("delete failed:", err);
@@ -113,27 +126,45 @@ export function KeychainSection() {
     }
   };
 
+  useEffect(() => {
+    if (showAdd.value) {
+      const frame = requestAnimationFrame(() => nameRef.current?.focus());
+      return () => cancelAnimationFrame(frame);
+    }
+  }, [showAdd.value]);
+  useEffect(() => {
+    if (loading.value || !pendingFocus.current) return;
+    const frame = requestAnimationFrame(() => {
+      pendingFocus.current = false;
+      addButtonRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [loading.value, showAdd.value]);
+  useEffect(() => () => { if (keychainErrorTimer.current) clearTimeout(keychainErrorTimer.current); }, []);
+
   const filtered = filter.value
     ? entries.value.filter(e => e.name.toLowerCase().includes(filter.value.toLowerCase()))
     : entries.value;
 
   return (
-    <section className="settings-panel__section settings-panel__section--narrow">
+    <section className="settings-panel__section settings-panel__section--narrow settings-panel__section--keychain">
       <h2 className="settings-panel__section-title">Keychain</h2>
+      <div role="status" aria-live="polite" aria-atomic="true">{announcement.value}</div>
 
       {keychainError.value && (
-        <div className="settings-panel__save-status settings-panel__save-status--error">{keychainError.value}</div>
+        <div role="alert" className="settings-panel__save-status settings-panel__save-status--error">{keychainError.value}</div>
       )}
 
       <div className="settings-panel__keychain-header">
         <input
           className="settings-panel__input settings-panel__keychain-filter"
           type="text"
+          aria-label="Filter keychain entries"
           placeholder="Filter entries..."
           value={filter.value}
           onInput={(e) => (filter.value = (e.target as HTMLInputElement).value)}
         />
-        <button type="button" className="settings-panel__provider-btn" onClick={() => (showAdd.value = !showAdd.value)}>
+        <button ref={addButtonRef} type="button" className="settings-panel__provider-btn" aria-expanded={showAdd.value} aria-controls={`${prefix}-add-form`} onClick={() => { if (showAdd.value) finishAdd(); else showAdd.value = true; }}>
           + Add entry
         </button>
       </div>
@@ -142,7 +173,7 @@ export function KeychainSection() {
         <p className="settings-panel__description">Loading keychain...</p>
       )}
       {loadError.value && (
-        <div className="settings-panel__save-status settings-panel__save-status--error">
+        <div role="alert" className="settings-panel__save-status settings-panel__save-status--error">
           {loadError.value}
           <button type="button" className="settings-panel__provider-btn" onClick={fetchEntries} style="margin-left:8px">Retry</button>
         </div>
@@ -154,19 +185,20 @@ export function KeychainSection() {
       )}
 
       {showAdd.value && (
-        <div className="settings-panel__card settings-panel__card--spaced">
+        <div id={`${prefix}-add-form`} className="settings-panel__card settings-panel__card--spaced" role="group" aria-label="Add keychain entry" aria-busy={saving.value}>
           <h3 className="settings-panel__subsection-title">New entry</h3>
           <div className="settings-panel__field">
-            <label className="settings-panel__label">Name</label>
-            <input className="settings-panel__input" type="text" placeholder="entry-name" value={newName.value} onInput={(e) => (newName.value = (e.target as HTMLInputElement).value)} />
+            <label htmlFor={`${prefix}-name`} className="settings-panel__label">Name</label>
+            <input id={`${prefix}-name`} ref={nameRef} required aria-invalid={(newName.value.length > 0 && !newName.value.trim()) || undefined} className="settings-panel__input" type="text" placeholder="entry-name" value={newName.value} onInput={(e) => (newName.value = (e.target as HTMLInputElement).value)} />
           </div>
           <div className="settings-panel__field">
-            <label className="settings-panel__label">Secret</label>
-            <input className="settings-panel__input" type="password" placeholder="secret value" value={newSecret.value} onInput={(e) => (newSecret.value = (e.target as HTMLInputElement).value)} />
+            <label htmlFor={`${prefix}-secret`} className="settings-panel__label">Secret</label>
+            <input id={`${prefix}-secret`} required aria-invalid={(newSecret.value.length > 0 && !newSecret.value.trim()) || undefined} className="settings-panel__input" type="password" placeholder="secret value" value={newSecret.value} onInput={(e) => (newSecret.value = (e.target as HTMLInputElement).value)} />
           </div>
           <div className="settings-panel__field">
-            <label className="settings-panel__label">Type</label>
+            <label htmlFor={`${prefix}-type`} className="settings-panel__label">Type</label>
             <CustomSelect
+              id={`${prefix}-type`}
               className="settings-panel__select"
               options={[
                 { value: "secret", label: "Secret" },
@@ -179,8 +211,8 @@ export function KeychainSection() {
             />
           </div>
           <div className="settings-panel__actions-row">
-            <button type="button" className="settings-panel__provider-btn" onClick={addEntry}>Save</button>
-            <button type="button" className="settings-panel__provider-btn" onClick={() => (showAdd.value = false)}>Cancel</button>
+            <button type="button" className="settings-panel__provider-btn" disabled={saving.value || !newName.value.trim() || !newSecret.value.trim()} onClick={addEntry}>{saving.value ? "Saving…" : "Save"}</button>
+            <button type="button" className="settings-panel__provider-btn" onClick={finishAdd}>Cancel</button>
           </div>
         </div>
       )}
@@ -206,7 +238,7 @@ export function KeychainSection() {
                 <td><code className="settings-panel__env-var">{e.envVar ?? "—"}</code></td>
                 <td>{e.updatedAt ? new Date(e.updatedAt).toLocaleDateString() : "—"}</td>
                 <td>
-                  <button type="button" className="settings-panel__provider-btn settings-panel__provider-btn--logout" onClick={() => deleteEntry(e.name)} title="Delete">
+                  <button type="button" className="settings-panel__provider-btn settings-panel__provider-btn--logout" onClick={() => deleteEntry(e.name)} aria-label={`Delete ${e.name}`} title="Delete">
                     <i className="codicon codicon-trash" />
                   </button>
                 </td>

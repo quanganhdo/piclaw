@@ -22,7 +22,7 @@ async function child(root: string, phase: string, stored: string, current: strin
 for (const [stored, current, shouldReplay] of [
   ["safe", "safe", true], ["never", "safe", false], ["safe", "never", false], ["never", "never", false],
 ] as const) {
-  test(`HC-004/005 JSONL process loss: persisted ${stored}, current ${current}`, async () => {
+  test(`HC-004/HC-005/HC-022 JSONL process loss: persisted ${stored}, current ${current}`, async () => {
     const workspace = createTempWorkspace("earendil-jsonl-process-loss-");
     try {
       const crash = await child(workspace.base, "crash", stored, current);
@@ -39,6 +39,7 @@ for (const [stored, current, shouldReplay] of [
       expect(before.durableState.batch.calls[0].resultEntryId).toEqual(expect.any(String));
       expect(before.durableState.batch.calls[0].resultEntryId.length).toBeGreaterThan(0);
       expect(before.durableState.batch.calls[0].resultEntryId).toBe(before.identity.invocationId);
+      expect(before.checkpoint).toMatchObject({ content: [{ type: "text", text: "durable checkpoint" }], details: { checkpoint: 1 } });
       const resumed = await child(workspace.base, "resume", stored, current);
       expect(resumed.stderr).toBe("");
       expect(resumed.exit).toBe(0);
@@ -58,6 +59,7 @@ for (const [stored, current, shouldReplay] of [
       if (shouldReplay) expect(after.toolResults[0].content).toEqual([{ type: "text", text: "replayed-once" }]);
       else expect(JSON.stringify(after.toolResults[0].content)).toContain("interrupted");
       expect(after.operationAfter).toBeNull();
+      expect(after.checkpointAfter).toBeUndefined();
       expect(after.result.value.kind).toBe("settled");
       expect(after.resultById).toEqual(after.lastResult);
       expect(after.providerCalls).toBe(1);
@@ -68,6 +70,7 @@ for (const [stored, current, shouldReplay] of [
       expect(settled.open).toEqual([]);
       expect(settled.result.ok).toBe(true);
       expect(settled.result.value.kind).toBe("settled");
+      expect(settled.checkpointAfter).toBeUndefined();
       expect(settled.toolCalls).toEqual(after.toolCalls);
       expect(settled.toolResults).toEqual(after.toolResults);
       expect(settled.providerCalls).toBe(0);

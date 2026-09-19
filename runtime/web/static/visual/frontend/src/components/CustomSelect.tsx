@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "preact/hooks";
+import { useState, useRef } from "preact/hooks";
 import { useDismissableLayer } from "../hooks/useDismissableLayer";
 
 interface Option {
@@ -28,10 +28,19 @@ export function CustomSelect({ options, value, onChange, className, placeholder,
   const selected = options.find((o) => o.value === value);
   const displayLabel = selected?.label ?? placeholder ?? "Select...";
 
-  useDismissableLayer({ ref, open, onDismiss: () => setOpen(false), outsideEvent: "mousedown" });
+  // Pointer dismissal must not steal focus from the newly clicked control.
+  useDismissableLayer({ ref, open, onDismiss: () => setOpen(false), outsideEvent: "mousedown", escape: false });
 
   return (
-    <div className={`custom-select ${className ?? ""}`} ref={ref}>
+    <div className={`custom-select ${className ?? ""}`} ref={ref} onFocusOut={(event) => {
+      if (open && !ref.current?.contains(event.relatedTarget as Node | null)) setOpen(false);
+    }} onKeyDown={(event) => {
+      if (!open || event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      setOpen(false);
+      triggerRef.current?.focus();
+    }}>
       <button
         type="button"
         id={id}
@@ -67,6 +76,7 @@ export function CustomSelect({ options, value, onChange, className, placeholder,
               onClick={() => {
                 onChange(opt.value);
                 setOpen(false);
+                triggerRef.current?.focus();
               }}
             >
               {opt.label}

@@ -23,6 +23,7 @@ const OUTPUT = process.argv.includes("--output")
 
 const RESULTS_DIR = "test-results";
 const RESULTS_PATH = "reports/results.json";
+const EVIDENCE_DIR = "reports/evidence";
 
 if (!existsSync(RESULTS_PATH)) {
   console.error(`Error: ${RESULTS_PATH} not found. Run 'bun run test' first.`);
@@ -59,6 +60,15 @@ function dur(ms: number) {
 }
 function b64(path: string) {
   try { return `data:image/png;base64,${readFileSync(path).toString("base64")}`; } catch { return ""; }
+}
+function evidenceLabel(path: string) {
+  const labels: Record<string, string> = {
+    "classic-timeline.png": "Classic timeline and compose",
+    "classic-settings.png": "Classic Workspace Settings",
+    "visual-timeline.png": "Visual timeline and compose",
+    "visual-settings.png": "Visual Workspace Settings",
+  };
+  return labels[basename(path)] || basename(path);
 }
 function skipReason(test: any, suite: string, title: string) {
   const annotations = Array.isArray(test?.annotations) ? test.annotations : [];
@@ -197,13 +207,27 @@ for (const [suite, tests] of Object.entries(bySuite)) {
 // ── Footer ───────────────────────────────────────────────────────
 
 html += `<div class="page-break"></div>`;
-html += `<h2>Screenshots</h2>`;
+html += `<h2>Representative layout evidence</h2>`;
+const evidence = findImages(EVIDENCE_DIR);
+if (evidence.length === 0) {
+  html += `<p class="skip">Representative layout capture was unavailable for this shard.</p>`;
+} else {
+  html += `<p>Successful-release checkpoints captured after the functional suite. They are representative review evidence, not a replacement for the behavioural assertions above.</p>`;
+  for (const img of evidence.sort()) {
+    const src = b64(img);
+    if (src) {
+      html += `<p><strong>${esc(evidenceLabel(img))}</strong></p>`;
+      html += `<img class="screenshot" src="${src}">`;
+    }
+  }
+}
 
+html += `<h2>Failure screenshots</h2>`;
 const screenshots = findImages(RESULTS_DIR);
 if (screenshots.length === 0) {
-  html += `<p class="skip">No screenshots captured (tests may have all passed).</p>`;
+  html += `<p class="skip">No failure screenshots captured.</p>`;
 } else {
-  html += `<p>${screenshots.length} screenshot(s) captured:</p>`;
+  html += `<p>${screenshots.length} failure screenshot(s) captured:</p>`;
   for (const img of screenshots.slice(0, 30)) {
     const src = b64(img);
     if (src) {

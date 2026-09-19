@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { chromium, type Browser, type Page } from "playwright";
+import { chromium, webkit, type Browser, type Page } from "playwright";
 import {
   VncSessionService,
   type VncSocketData,
@@ -506,3 +506,117 @@ browserTest(
   },
   15000,
 );
+
+for (const engine of ["chromium", "webkit"] as const)
+  browserTest(
+    `real ${engine} desktop: narrow embedded pane, history overlay, clipboard and resize`,
+    async () => {
+      const ownBrowser =
+        engine === "webkit" ? await webkit.launch({ headless: true }) : null;
+      const page = await (ownBrowser || browser).newPage({
+        viewport: { width: 1440, height: 900 },
+      });
+      page.setDefaultTimeout(10000);
+      try {
+        await page.goto(base);
+        await page.locator("[data-vnc-connect-form]").waitFor();
+        await page.evaluate(() => {
+          const root = document.getElementById("vnc-root")!;
+          root.style.cssText =
+            "position:absolute;right:0;top:40px;width:360px;height:420px;";
+        });
+        await page
+          .getByRole("button", { name: "Connect", exact: true })
+          .click();
+        await connected(page);
+        expect(
+          await page.locator("[data-vnc-session-chrome]").isVisible(),
+        ).toBe(false);
+        await controls(page);
+        await page
+          .getByRole("button", { name: "Connections & history" })
+          .click();
+        await page.getByRole("button", { name: "Return to desktop" }).waitFor();
+        expect(
+          await page.locator("[data-vnc-history] .vnc-history-row").count(),
+        ).toBe(1);
+        for (const width of [900, 360, 280]) {
+          await page.evaluate((w) => {
+            document.getElementById("vnc-root")!.style.width = w + "px";
+          }, width);
+          const geometry = await page
+            .locator(".vnc-manager")
+            .evaluate((manager) => {
+              const host = (
+                manager.querySelector("[data-vnc-direct-host]") as HTMLElement
+              ).getBoundingClientRect();
+              const form = manager
+                .querySelector(".vnc-connect-panel")!
+                .getBoundingClientRect();
+              const saved = manager
+                .querySelector(".vnc-saved-panel")!
+                .getBoundingClientRect();
+              return {
+                overflow: manager.scrollWidth - manager.clientWidth,
+                hostWidth: host.width,
+                formBottom: form.bottom,
+                savedTop: saved.top,
+              };
+            });
+          expect(geometry.overflow).toBeLessThanOrEqual(1);
+          expect(geometry.hostWidth).toBeGreaterThan(120);
+          if (width < 720)
+            expect(geometry.savedTop).toBeGreaterThanOrEqual(
+              geometry.formBottom,
+            );
+        }
+        await capture(page, engine + "-narrow-overlay");
+        await page.getByRole("button", { name: "Return to desktop" }).click();
+        await connected(page);
+        await controls(page);
+        await page.getByText("Clipboard", { exact: true }).click();
+        expect(
+          await page
+            .locator("[data-vnc-session-chrome]")
+            .evaluate((e) => e.scrollWidth <= e.clientWidth),
+        ).toBe(true);
+        await page
+          .locator("[data-vnc-clipboard]")
+          .fill("narrow-pane-clipboard");
+        await page.getByRole("button", { name: "Send to remote" }).click();
+        await page.waitForTimeout(400);
+        expect(await command(["xprop", "-root", "CUT_BUFFER0"])).toContain(
+          '"narrow-pane-clipboard"',
+        );
+        await page.locator("[data-vnc-session-chrome]").evaluate((e) => {
+          e.scrollTop = 0;
+        });
+        await capture(page, engine + "-narrow-controls");
+        await page
+          .getByRole("button", { name: "Disconnect", exact: true })
+          .click();
+        await page
+          .getByRole("button", { name: "Reconnect", exact: true })
+          .click();
+        await connected(page);
+        expect(
+          await page.locator("[data-vnc-session-chrome]").isVisible(),
+        ).toBe(false);
+        const rects = await page.locator("canvas").evaluate((canvas) => {
+          const pane = document
+            .querySelector(".vnc-pane-shell")!
+            .getBoundingClientRect();
+          const r = canvas.getBoundingClientRect();
+          return {
+            fits: r.width <= pane.width + 1 && r.height <= pane.height + 1,
+          };
+        });
+        expect(rects.fits).toBe(true);
+        await capture(page, engine + "-narrow-framebuffer");
+      } finally {
+        await page.close();
+        await ownBrowser?.close();
+      }
+    },
+    35000,
+  );

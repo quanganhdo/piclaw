@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { rmSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import * as syntax from "@babel/types";
 import { basename, dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -14,11 +15,19 @@ import {
 } from "../../src/service-effects/earendil-harness-v3-compatibility/manifest.js";
 import type { PiclawToolContext } from "../../src/service-effects/contracts/execution-context-resolver.js";
 import { ensureTypeScriptCompilerExecutable } from "../../scripts/repo-dev-command.js";
-import { collectModuleSpecifiers } from "./fixtures/typescript-syntax-oracle.js";
+import {
+  collectModuleSpecifiers,
+  forEachSyntaxChild,
+  literalString,
+  parseTypeScriptSource,
+  propertyKeyName,
+  syntaxText,
+} from "./fixtures/typescript-syntax-oracle.js";
 import {
   EARENDIL_HARNESS_DIRECT_OPERATIONS,
   readInstalledEarendilAgentCoreVersion,
 } from "./fixtures/earendil-harness-direct-probe.js";
+import { SELECTED_HARNESS_EVIDENCE_LINKS } from "./fixtures/earendil-harness-selected-catalogue.js";
 
 type _PublicSelectedContracts = [AgentHarnessConstructor, Events, Storage, SessionMutation, UsageRow, AgentHarnessOptions<PiclawToolContext>, AgentHarnessTool<PiclawToolContext>];
 type _CompileOnlyDirectAssignments = EarendilDirectAssignments;
@@ -76,6 +85,99 @@ function expectDeepFrozen(value: unknown): void {
   if (!value || typeof value !== "object") return;
   expect(Object.isFrozen(value)).toBe(true);
   for (const child of Object.values(value)) expectDeepFrozen(child);
+}
+
+function activeTestNames(path: string, source: string): readonly string[] {
+  const parsed = parseTypeScriptSource(path, source);
+  const names: string[] = [];
+  type RegistrationRoot = "describe" | "it" | "test";
+  interface RegistrationModifier {
+    readonly name: string;
+    readonly arguments?: syntax.CallExpression["arguments"];
+  }
+  interface RegistrationChain {
+    readonly root: RegistrationRoot;
+    readonly modifiers: readonly RegistrationModifier[];
+  }
+  const registrationChain = (node: syntax.Node | null | undefined): RegistrationChain | null => {
+    if (syntax.isIdentifier(node) && (node.name === "test" || node.name === "it" || node.name === "describe")) {
+      return { root: node.name, modifiers: [] };
+    }
+    if (syntax.isMemberExpression(node) && !node.computed) {
+      const chain = registrationChain(node.object);
+      const name = propertyKeyName(node.property);
+      return chain && name ? { ...chain, modifiers: [...chain.modifiers, { name }] } : null;
+    }
+    if (syntax.isCallExpression(node)) {
+      const chain = registrationChain(node.callee);
+      if (!chain || chain.modifiers.length === 0) return chain;
+      const modifiers = [...chain.modifiers];
+      const last = modifiers.at(-1);
+      if (!last || last.arguments) throw new SyntaxError(`Ambiguous registration modifier call: ${path}`);
+      modifiers[modifiers.length - 1] = { ...last, arguments: node.arguments };
+      return { ...chain, modifiers };
+    }
+    if (syntax.isTaggedTemplateExpression(node)) {
+      const chain = registrationChain(node.tag);
+      if (!chain || chain.modifiers.length === 0) return chain;
+      const modifiers = [...chain.modifiers];
+      const last = modifiers.at(-1);
+      if (!last || last.arguments) throw new SyntaxError(`Ambiguous registration modifier template: ${path}`);
+      modifiers[modifiers.length - 1] = { ...last, arguments: [] };
+      return { ...chain, modifiers };
+    }
+    return null;
+  };
+  const staticBoolean = (modifier: RegistrationModifier): boolean => {
+    const value = modifier.arguments?.[0];
+    if (value && value.type !== "SpreadElement" && value.type !== "ArgumentPlaceholder"
+      && syntax.isBooleanLiteral(value)) return value.value;
+    throw new SyntaxError(`Dynamic ${modifier.name} registration is not closed evidence: ${path}`);
+  };
+  const registration = (node: syntax.CallExpression): { root: RegistrationRoot; disabled: boolean } | null => {
+    const chain = registrationChain(node.callee);
+    if (!chain) return null;
+    const last = chain.modifiers.at(-1);
+    if (last && ["each", "if", "onlyIf", "skipIf", "todoIf"].includes(last.name) && !last.arguments) return null;
+    let disabled = false;
+    for (const modifier of chain.modifiers) {
+      if (modifier.name === "only" || modifier.name === "onlyIf") {
+        throw new SyntaxError(`Focused ${chain.root} registration is not closed evidence: ${path}`);
+      }
+      if (modifier.name === "skip" || modifier.name === "todo") disabled = true;
+      else if (modifier.name === "skipIf" || modifier.name === "todoIf") disabled ||= staticBoolean(modifier);
+      else if (modifier.name === "if") disabled ||= !staticBoolean(modifier);
+      else if (modifier.name !== "each") {
+        throw new SyntaxError(`Unknown ${chain.root}.${modifier.name} registration modifier: ${path}`);
+      }
+    }
+    return { root: chain.root, disabled };
+  };
+  const registrationName = (node: syntax.Node): string | null => {
+    const literal = literalString(node);
+    if (literal !== null) return literal;
+    if (!syntax.isTemplateLiteral(node)) return null;
+    return node.quasis.map((quasi, index) => {
+      const text = quasi.value.cooked ?? quasi.value.raw;
+      const expression = node.expressions[index];
+      return expression ? `${text}\${${syntaxText(parsed, expression)}}` : text;
+    }).join("");
+  };
+  const visit = (node: syntax.Node, disabled: boolean): void => {
+    const currentCall = syntax.isCallExpression(node) ? node : null;
+    const current = currentCall ? registration(currentCall) : null;
+    if (current && current.root !== "describe" && !current.disabled && !disabled && currentCall && currentCall.arguments.length > 0) {
+      const first = currentCall.arguments[0];
+      if (first.type !== "SpreadElement" && first.type !== "ArgumentPlaceholder") {
+        const name = registrationName(first);
+        if (name !== null) names.push(name);
+      }
+    }
+    const childDisabled = disabled || current?.disabled === true;
+    forEachSyntaxChild(node, (child) => visit(child, childDisabled));
+  };
+  visit(parsed.program, false);
+  return Object.freeze(names);
 }
 
 describe("latent Earendil Harness v3 compatibility evidence", () => {
@@ -200,11 +302,70 @@ describe("latent Earendil Harness v3 compatibility evidence", () => {
     expect(await readInstalledEarendilAgentCoreVersion()).toBe("0.85.1");
   });
 
+  test("maps every selected HC row and status to exact active public test registrations", () => {
+    const evidenceFiles = [
+      "earendil-harness-selected-semantics.test.ts",
+      "earendil-harness-broader-semantics.test.ts",
+      "earendil-jsonl-process-loss.test.ts",
+      "earendil-session-backend-conformance.test.ts",
+    ];
+    const registered = evidenceFiles.flatMap((name) => {
+      const path = resolve(import.meta.dir, name);
+      return activeTestNames(path, readFileSync(path, "utf8"));
+    });
+    const selected = EARENDIL_HARNESS_V3_COMPATIBILITY_MANIFEST.selected.capabilities;
+    expect(SELECTED_HARNESS_EVIDENCE_LINKS.map((link) => [link.id, link.status])).toEqual(
+      selected.map((capability) => [capability.id, capability.status]),
+    );
+    for (const link of SELECTED_HARNESS_EVIDENCE_LINKS) {
+      expect(link.tests.length).toBeGreaterThan(0);
+      for (const testName of link.tests) expect(registered.filter((name) => name === testName)).toHaveLength(1);
+    }
+    expect(readdirSync(resolve(import.meta.dir, "fixtures")).filter((name) => name.startsWith("earendil-")).sort()).toContain(
+      "earendil-harness-deterministic-controls.ts",
+    );
+  });
+
+  test("active test extraction rejects textual and disabled evidence while retaining templates", () => {
+    const source = [
+      '// test("comment-only evidence", () => {});',
+      'test.skip("skipped evidence", () => {});',
+      'it.todo("todo evidence", () => {});',
+      'describe.skip("disabled", () => { test("nested disabled evidence", () => {}); });',
+      'describe.skip.each([[1]])("disabled %s", () => { test("nested skipped-each evidence", () => {}); });',
+      'describe.skipIf(true)("conditional disabled", () => { test("nested skip-if evidence", () => {}); });',
+      'describe.skipIf(false)("conditional active", () => { test("nested conditional active evidence", () => {}); });',
+      'test.skip("disabled callback", () => { test("nested skipped-test evidence", () => {}); });',
+      'test("active evidence", () => {});',
+      'test(`active template ${value}`, () => {});',
+      'test.each([[1]])("active parameterized $value", () => {});',
+      'test.each`value\\n${1}`("active tagged parameterized %s", () => {});',
+    ].join("\n");
+    expect(activeTestNames("synthetic-evidence.test.ts", source)).toEqual([
+      "nested conditional active evidence",
+      "active evidence",
+      'active template ${value}',
+      "active parameterized $value",
+      "active tagged parameterized %s",
+    ]);
+    expect(() => activeTestNames("focused-test.ts", 'test.only("focused", () => {});')).toThrow(/Focused test/);
+    expect(() => activeTestNames("focused-chain.ts", 'test.only.each([[1]])("focused %s", () => {});')).toThrow(/Focused test/);
+    expect(() => activeTestNames("focused-describe.ts", 'describe.each([[1]]).only("focused %s", () => { test("nested", () => {}); });')).toThrow(/Focused describe/);
+    expect(() => activeTestNames("dynamic-skip.ts", 'describe.skipIf(flag)("ambiguous", () => { test("nested", () => {}); });')).toThrow(/Dynamic skipIf/);
+  });
+
   test("selected-release partial HC coverage never counts as full promotion", () => {
     const selected = EARENDIL_HARNESS_V3_COMPATIBILITY_MANIFEST.selected;
     expect(selected.version).toBe("0.85.1");
-    expect(selected.capabilities).toHaveLength(20);
-    expect(selected.capabilities.every((c) => c.status === "partial" || c.status === "unverified")).toBe(true);
+    const selectedIds: readonly string[] = selected.capabilities.map((capability) => capability.id);
+    expect(selectedIds).toEqual(
+      Array.from({ length: 25 }, (_, index) => `HC-${String(index + 1).padStart(3, "0")}`),
+    );
+    expect(selected.capabilities).toHaveLength(25);
+    expect(selected.capabilities.filter((capability) => capability.status === "partial")).toHaveLength(24);
+    expect(selected.capabilities.filter((capability) => capability.status === "unsupported").map((capability) => capability.id)).toEqual(["HC-024"]);
+    const statuses: readonly string[] = selected.capabilities.map((capability) => capability.status);
+    expect(statuses).not.toContain("pass");
     expect(selected.productionActivation).toBe(false);
     expect(selected.watchSession.status).toBe("unsupported");
   });

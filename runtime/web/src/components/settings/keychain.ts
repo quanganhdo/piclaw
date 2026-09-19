@@ -15,9 +15,24 @@ function formatDate(iso) {
 }
 
 const TYPE_OPTIONS = ['secret', 'token', 'password', 'basic'];
+let keychainInstanceId = 0;
 
 export function KeychainSection({ filter = '' }) {
     const { t: tr } = useTranslation();
+    const fieldPrefixRef = useRef(null);
+    if (!fieldPrefixRef.current) fieldPrefixRef.current = `settings-keychain-${++keychainInstanceId}`;
+    const fieldPrefix = fieldPrefixRef.current;
+    const fieldId = (name) => `${fieldPrefix}-keychain-${name}`;
+    const addButtonRef = useRef(null);
+    const revealButtonRefs = useRef(new Map());
+    const deleteButtonRefs = useRef(new Map());
+    const noteButtonRefs = useRef(new Map());
+    const confirmButtonRef = useRef(null);
+    const pendingFocusRef = useRef(null);
+    const [announcement, setAnnouncement] = useState('');
+    const restoreFocus = (kind, name = null) => { pendingFocusRef.current = { kind, name }; };
+    const closeReveal = (name) => { restoreFocus('reveal', name); setRevealState(null); };
+
     const [entries, setEntries] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -49,7 +64,7 @@ export function KeychainSection({ filter = '' }) {
             } else {
                 setError(data?.error || tr('settings.keychain.loadFailed'));
             }
-        } catch (e) {
+        } catch {
             setError(tr('settings.keychain.loadFailed'));
         } finally {
             setLoading(false);
@@ -78,6 +93,8 @@ export function KeychainSection({ filter = '' }) {
             });
             const data = await resp.json();
             if (data?.ok) {
+                restoreFocus('add');
+                setAnnouncement('Keychain entry saved.');
                 setAddName(''); setAddSecret(''); setAddUsername(''); setAddUserNote(''); setAddAgentNote(''); setAddType('secret'); setShowAdd(false);
                 await fetchEntries();
             } else { setError(data?.error || tr('settings.keychain.addFailed')); }
@@ -94,6 +111,8 @@ export function KeychainSection({ filter = '' }) {
             });
             const data = await resp.json();
             if (data?.ok) {
+                restoreFocus('add');
+                setAnnouncement('Keychain entry deleted.');
                 setConfirmDelete(null);
                 setRevealState(s => s?.name === name ? null : s);
                 await fetchEntries();
@@ -116,6 +135,8 @@ export function KeychainSection({ filter = '' }) {
             });
             const data = await resp.json();
             if (data?.ok) {
+                restoreFocus('notes', name);
+                setAnnouncement('Keychain notes saved.');
                 setNoteDrafts(prev => {
                     const next = { ...(prev || {}) };
                     delete next[name];
@@ -146,6 +167,8 @@ export function KeychainSection({ filter = '' }) {
             });
             const data = await resp.json();
             if (data?.ok) {
+                restoreFocus('reveal', name);
+                setAnnouncement('Secret revealed.');
                 setRevealState({ name, phase: 'revealed', secret: data.secret, username: data.username, masterPassword });
             } else if (data?.needs_master_password) {
                 setRevealState(prev => ({
@@ -197,6 +220,26 @@ export function KeychainSection({ filter = '' }) {
         }
     }, []);
 
+    useEffect(() => {
+        if (loading || !pendingFocusRef.current) return;
+        const target = pendingFocusRef.current;
+        const frame = requestAnimationFrame(() => {
+            pendingFocusRef.current = null;
+            const refs = target.kind === 'reveal' ? revealButtonRefs : target.kind === 'delete' ? deleteButtonRefs : noteButtonRefs;
+            const element = target.kind === 'add' ? addButtonRef.current : refs.current.get(target.name);
+            const focusTarget = target.kind === 'notes' && element?.disabled
+                ? element.parentElement?.querySelector('textarea')
+                : element;
+            (focusTarget?.isConnected && !focusTarget.disabled ? focusTarget : addButtonRef.current)?.focus();
+        });
+        return () => cancelAnimationFrame(frame);
+    }, [loading, showAdd, revealState, confirmDelete, entries]);
+    useEffect(() => {
+        if (!confirmDelete) return;
+        const frame = requestAnimationFrame(() => confirmButtonRef.current?.focus());
+        return () => cancelAnimationFrame(frame);
+    }, [confirmDelete]);
+
     useEffect(() => { if (showAdd) requestAnimationFrame(() => nameRef.current?.focus()); }, [showAdd]);
 
     const lf = filter.toLowerCase();
@@ -215,10 +258,11 @@ export function KeychainSection({ filter = '' }) {
 
     return html`
         <div class="settings-section">
+            <div role="status" aria-live="polite" aria-atomic="true">${announcement}</div>
             ${error && html`
                 <div class="settings-keychain-error" role="alert">
                     ${error}
-                    <button class="settings-keychain-dismiss" onClick=${() => setError(null)}>✕</button>
+                    <button class="settings-keychain-dismiss" aria-label="Dismiss keychain error" onClick=${() => setError(null)}>✕</button>
                 </div>
             `}
             <div class="settings-keychain-toolbar" style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
@@ -232,27 +276,27 @@ export function KeychainSection({ filter = '' }) {
                         <span>${tr('settings.keychain.revealSuffix')}</span>
                     </span>
                 </span>
-                <button class="settings-keychain-add-btn" onClick=${() => setShowAdd(!showAdd)}>
+                <button ref=${addButtonRef} class="settings-keychain-add-btn" aria-expanded=${showAdd} aria-controls=${fieldId('add-form')} onClick=${() => { if (showAdd) restoreFocus('add'); setShowAdd(!showAdd); }}>
                     ${showAdd ? tr('settings.keychain.cancel') : tr('settings.keychain.addEntry')}
                 </button>
             </div>
 
             ${showAdd && html`
-                <div class="settings-keychain-add-form">
+                <div id=${fieldId('add-form')} class="settings-keychain-add-form" role="group" aria-label="Add keychain entry" aria-busy=${saving}>
                     <div class="settings-keychain-add-row">
-                        <input ref=${nameRef} type="text" placeholder=${tr('settings.keychain.namePlaceholder')}
+                        <input ref=${nameRef} type="text" aria-label="Entry name" required aria-invalid=${addName.length > 0 && !addName.trim() ? 'true' : undefined} placeholder=${tr('settings.keychain.namePlaceholder')}
                             value=${addName} onInput=${e => setAddName(e.target.value)}
                             class="settings-keychain-input" />
-                        <select value=${addType} onChange=${e => setAddType(e.target.value)}
+                        <select aria-label="Entry type" value=${addType} onChange=${e => setAddType(e.target.value)}
                             class="settings-keychain-select">
                             ${TYPE_OPTIONS.map(t => html`<option value=${t}>${t}</option>`)}
                         </select>
                     </div>
                     <div class="settings-keychain-add-row">
-                        <input type="password" placeholder=${tr('settings.keychain.secretPlaceholder')}
+                        <input type="password" aria-label="Entry secret" required placeholder=${tr('settings.keychain.secretPlaceholder')}
                             value=${addSecret} onInput=${e => setAddSecret(e.target.value)}
                             class="settings-keychain-input settings-keychain-secret" />
-                        <input type="text" placeholder=${tr('settings.keychain.usernamePlaceholder')}
+                        <input type="text" aria-label="Entry username" placeholder=${tr('settings.keychain.usernamePlaceholder')}
                             value=${addUsername} onInput=${e => setAddUsername(e.target.value)}
                             class="settings-keychain-input" style="max-width:200px" />
                         <button class="settings-keychain-save-btn" onClick=${handleAdd}
@@ -261,10 +305,10 @@ export function KeychainSection({ filter = '' }) {
                         </button>
                     </div>
                     <div class="settings-keychain-add-row" style="align-items:stretch">
-                        <textarea placeholder=${tr('settings.keychain.userNotePlaceholder')}
+                        <textarea aria-label=${tr('settings.keychain.userNote')} placeholder=${tr('settings.keychain.userNotePlaceholder')}
                             value=${addUserNote} onInput=${e => setAddUserNote(e.target.value)}
                             class="settings-keychain-input" rows="2" style="resize:vertical; min-height:56px"></textarea>
-                        <textarea placeholder=${tr('settings.keychain.agentNotePlaceholder')}
+                        <textarea aria-label=${tr('settings.keychain.agentNote')} placeholder=${tr('settings.keychain.agentNotePlaceholder')}
                             value=${addAgentNote} onInput=${e => setAddAgentNote(e.target.value)}
                             class="settings-keychain-input" rows="2" style="resize:vertical; min-height:56px"></textarea>
                     </div>
@@ -306,7 +350,7 @@ export function KeychainSection({ filter = '' }) {
                                 <td class="settings-keychain-env">${e.envVar ? html`<code>$${e.envVar}</code>` : '—'}</td>
                                 <td class="settings-keychain-date">${formatDate(e.updatedAt)}</td>
                                 <td class="settings-keychain-actions">
-                                    <button class=${`settings-keychain-reveal-btn${isRevealed ? ' active' : ''}`}
+                                    <button ref=${node => { if (node) revealButtonRefs.current.set(e.name, node); else revealButtonRefs.current.delete(e.name); }} aria-label=${`${isRevealed ? tr('settings.keychain.hideSecret') : tr('settings.keychain.revealSecret')}: ${e.name}`} aria-expanded=${Boolean(rs)} class=${`settings-keychain-reveal-btn${isRevealed ? ' active' : ''}`}
                                         onClick=${() => handleRevealClick(e.name)}
                                         title=${isRevealed ? tr('settings.keychain.hideSecret') : tr('settings.keychain.revealSecret')}>
                                         ${isRevealed
@@ -317,11 +361,11 @@ export function KeychainSection({ filter = '' }) {
                                     ${confirmDelete === e.name
                                         ? html`
                                             <span class="settings-keychain-confirm">${tr('settings.keychain.deleteQ')}
-                                                <button class="settings-keychain-confirm-yes" onClick=${() => handleDelete(e.name)}>${tr('settings.keychain.yes')}</button>
-                                                <button class="settings-keychain-confirm-no" onClick=${() => setConfirmDelete(null)}>${tr('settings.keychain.no')}</button>
+                                                <button ref=${confirmButtonRef} aria-label=${`Delete ${e.name}`} class="settings-keychain-confirm-yes" onClick=${() => handleDelete(e.name)}>${tr('settings.keychain.yes')}</button>
+                                                <button class="settings-keychain-confirm-no" onClick=${() => { restoreFocus('delete', e.name); setConfirmDelete(null); }}>${tr('settings.keychain.no')}</button>
                                             </span>
                                         `
-                                        : html`<button class="settings-keychain-delete-btn" onClick=${() => setConfirmDelete(e.name)} title=${tr('settings.keychain.deleteTitle')}>🗑</button>`
+                                        : html`<button ref=${node => { if (node) deleteButtonRefs.current.set(e.name, node); else deleteButtonRefs.current.delete(e.name); }} aria-label=${`Delete ${e.name}`} class="settings-keychain-delete-btn" onClick=${() => setConfirmDelete(e.name)} title=${tr('settings.keychain.deleteTitle')}>🗑</button>`
                                     }
                                 </td>
                             </tr>
@@ -340,7 +384,7 @@ export function KeychainSection({ filter = '' }) {
                                                 value=${agentNote}
                                                 onInput=${ev => setNoteDraft(e.name, 'agentNote', ev.target.value)}></textarea>
                                         </label>
-                                        <button class="settings-keychain-save-btn" style="margin-top:20px" disabled=${!notesDirty || notesSaving} onClick=${() => handleSaveNotes(e)}>
+                                        <button ref=${node => { if (node) noteButtonRefs.current.set(e.name, node); else noteButtonRefs.current.delete(e.name); }} aria-label=${`${tr('settings.keychain.saveNotes')}: ${e.name}`} class="settings-keychain-save-btn" style="margin-top:20px" disabled=${!notesDirty || notesSaving} onClick=${() => handleSaveNotes(e)}>
                                             ${notesSaving ? tr('settings.keychain.saving') : tr('settings.keychain.saveNotes')}
                                         </button>
                                     </div>
@@ -351,17 +395,17 @@ export function KeychainSection({ filter = '' }) {
                                     <td colspan="5">
                                         <div class="settings-keychain-prompt">
                                             <span class="settings-keychain-prompt-label">${tr('settings.keychain.masterPassword')}</span>
-                                            <input ref=${passwordRef} type="password" autocomplete="off"
+                                            <input ref=${passwordRef} aria-label=${tr('settings.keychain.masterPassword')} aria-invalid=${rs?.error ? 'true' : undefined} aria-describedby=${rs?.error ? fieldId('reveal-error') : undefined} type="password" autocomplete="off"
                                                 placeholder=${tr('settings.keychain.masterPasswordPlaceholder')}
                                                 class="settings-keychain-prompt-input"
                                                 value=${rs?.masterPassword || ''}
                                                 onInput=${ev => setRevealState(s => ({ ...s, masterPassword: ev.target.value }))}
-                                                onKeyDown=${ev => { if (ev.key === 'Enter') handlePasswordSubmit(e.name); if (ev.key === 'Escape') setRevealState(null); }}
+                                                onKeyDown=${ev => { if (ev.key === 'Enter') handlePasswordSubmit(e.name); if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); closeReveal(e.name); } }}
                                             />
                                             <button class="settings-keychain-prompt-submit" onClick=${() => handlePasswordSubmit(e.name)}
                                                 disabled=${!(rs?.masterPassword)}>${tr('settings.keychain.unlock')}</button>
-                                            <button class="settings-keychain-prompt-cancel" onClick=${() => setRevealState(null)}>${tr('settings.keychain.cancel')}</button>
-                                            ${rs?.error && html`<span class="settings-keychain-prompt-error">${rs.error}</span>`}
+                                            <button class="settings-keychain-prompt-cancel" onClick=${() => closeReveal(e.name)}>${tr('settings.keychain.cancel')}</button>
+                                            ${rs?.error && html`<span id=${fieldId('reveal-error')} class="settings-keychain-prompt-error" role="alert">${rs.error}</span>`}
                                         </div>
                                     </td>
                                 </tr>
@@ -371,17 +415,17 @@ export function KeychainSection({ filter = '' }) {
                                     <td colspan="5">
                                         <div class="settings-keychain-prompt">
                                             <span class="settings-keychain-prompt-label">${tr('settings.keychain.totpCode')}</span>
-                                            <input ref=${totpRef} type="text" inputmode="numeric" autocomplete="one-time-code"
+                                            <input ref=${totpRef} aria-label=${tr('settings.keychain.totpCode')} aria-invalid=${rs?.error ? 'true' : undefined} aria-describedby=${rs?.error ? fieldId('reveal-error') : undefined} type="text" inputmode="numeric" autocomplete="one-time-code"
                                                 maxlength="6" placeholder="000000"
                                                 class="settings-keychain-prompt-input" style="width:90px;text-align:center;letter-spacing:0.15em"
                                                 value=${rs?.totpCode || ''}
                                                 onInput=${ev => setRevealState(s => ({ ...s, totpCode: ev.target.value.replace(/\\D/g, '').slice(0, 6) }))}
-                                                onKeyDown=${ev => { if (ev.key === 'Enter') handleTotpSubmit(e.name); if (ev.key === 'Escape') setRevealState(null); }}
+                                                onKeyDown=${ev => { if (ev.key === 'Enter') handleTotpSubmit(e.name); if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); closeReveal(e.name); } }}
                                             />
                                             <button class="settings-keychain-prompt-submit" onClick=${() => handleTotpSubmit(e.name)}
                                                 disabled=${(rs?.totpCode || '').length < 6}>${tr('settings.keychain.verify')}</button>
-                                            <button class="settings-keychain-prompt-cancel" onClick=${() => setRevealState(null)}>${tr('settings.keychain.cancel')}</button>
-                                            ${rs?.error && html`<span class="settings-keychain-prompt-error">${rs.error}</span>`}
+                                            <button class="settings-keychain-prompt-cancel" onClick=${() => closeReveal(e.name)}>${tr('settings.keychain.cancel')}</button>
+                                            ${rs?.error && html`<span id=${fieldId('reveal-error')} class="settings-keychain-prompt-error" role="alert">${rs.error}</span>`}
                                         </div>
                                     </td>
                                 </tr>
@@ -413,7 +457,7 @@ export function KeychainSection({ filter = '' }) {
                             ${isError && html`
                                 <tr class="settings-keychain-reveal-row" key=${e.name + '-error'}>
                                     <td colspan="5">
-                                        <div class="settings-keychain-reveal-panel" style="color: var(--error-color, #e55)">${rs.error}</div>
+                                        <div class="settings-keychain-reveal-panel" role="alert" style="color: var(--error-color, #e55)">${rs.error}</div>
                                     </td>
                                 </tr>
                             `}

@@ -22,6 +22,7 @@ jobs:
       matrix:
         include:
           - stage: core-compose-and-sessions
+            capture_evidence: true
             specs: >-
               steps/favicon-branding.spec.ts
               steps/us01-morning-triage.spec.ts
@@ -170,6 +171,16 @@ jobs:
           PICLAW_E2E_INTERNAL_SECRET: ${{ env.PICLAW_INTERNAL_SECRET }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Capture representative release layouts
+        if: always() && matrix.capture_evidence
+        run: bun run scripts/capture-release-evidence.ts
+        working-directory: tests/e2e
+        env:
+          PICLAW_E2E_DISPOSABLE: '1'
+          PICLAW_E2E_URL: http://localhost:3000
+          PICLAW_INTERNAL_SECRET: ${{ env.PICLAW_INTERNAL_SECRET }}
+          PICLAW_E2E_INTERNAL_SECRET: ${{ env.PICLAW_INTERNAL_SECRET }}
+
       - name: Generate PDF report
         if: always()
         run: bun run report
@@ -184,6 +195,7 @@ jobs:
             tests/e2e/reports/piclaw-e2e-report.pdf
             tests/e2e/reports/piclaw-e2e-report.html
             tests/e2e/reports/results.json
+            tests/e2e/reports/evidence/
           retention-days: 7
 
       - name: Upload test results
