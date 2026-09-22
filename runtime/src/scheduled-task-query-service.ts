@@ -7,6 +7,7 @@
 
 import { getDb } from "./db.js";
 import { getBudgetCap } from "./db/budget-limits.js";
+import { scheduledBudgetReadiness, type ScheduledBudgetReadiness } from "./budget/scheduled-readiness.js";
 import type { ScheduledTask, TaskRunLog } from "./types.js";
 
 const TASK_STATUS_VALUES = new Set(["active", "paused", "completed"] as const);
@@ -55,6 +56,7 @@ export interface ScheduledTaskInspectionRecord {
   budget_usd: number | null;
   budget_cap_enabled: boolean;
   budget_cap_revision: number | null;
+  budget_readiness: ScheduledBudgetReadiness;
   prompt_summary: string | null;
   command_summary: string | null;
   summary: string;
@@ -168,6 +170,7 @@ function mapTaskRow(row: ScheduledTask, includeLatestRunLog: boolean, includeRun
     budget_usd: budgetCap ? budgetCap.amount / 1_000_000 : null,
     budget_cap_enabled: Boolean(budgetCap?.enabled),
     budget_cap_revision: budgetCap?.revision ?? null,
+    budget_readiness: scheduledBudgetReadiness(row),
     prompt_summary: summary.prompt_summary,
     command_summary: summary.command_summary,
     summary: summary.summary,

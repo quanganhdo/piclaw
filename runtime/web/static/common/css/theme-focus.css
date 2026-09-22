@@ -1,0 +1,49 @@
+/* Shared focus contract: never fall back to the browser's blue ring/selection.
+ * Keep invalid borders and skin geometry; only the focus indicator is unified.
+ * Does not cross iframe/shadow roots or restyle OS-owned select popups. */
+:root :is(input, textarea, select, [contenteditable="true"]) {
+    caret-color: var(--accent-color);
+    accent-color: var(--accent-color);
+}
+:root :is(input, textarea, select, [contenteditable="true"], .custom-select__trigger):focus:not(:where(.compose-input-wrapper textarea, .chat__input)),
+:root :is(button, a[href], [role="button"], [role="combobox"], [role="listbox"], [tabindex]:not([tabindex="-1"])):focus-visible:not(:where(.compose-input-wrapper textarea, .chat__input)) {
+    outline: 2px solid var(--focus-ring, var(--accent-color)) !important;
+    outline-offset: 2px;
+}
+/* Overlay the existing field border rather than drawing a second contour
+ * outside it. Button/link keyboard indicators retain their separate offset. */
+:root :is(input, textarea, select, [contenteditable="true"], .custom-select__trigger):focus {
+    outline-offset: -2px !important;
+}
+:root:not([data-color-theme="synthwave-84-full"][data-synthwave-glow="on"]) :is(input, textarea, select, [contenteditable="true"], .custom-select__trigger):focus {
+    box-shadow: none !important;
+}
+/* The composer is one compound control. Its outer frame owns focus;
+ * the text field keeps the skin's borderless surface and themed caret. */
+:root :is(.compose-input-wrapper, .chat__compose-container):focus-within {
+    outline: 2px solid var(--compose-focus-color, var(--focus-ring, var(--accent-color))) !important;
+    outline-offset: -2px !important;
+}
+:root:not([data-color-theme="synthwave-84-full"][data-synthwave-glow="on"]) :is(.compose-input-wrapper, .chat__compose-container):focus-within {
+    box-shadow: none;
+}
+:root :is(.compose-input-wrapper textarea, textarea.chat__input) {
+    outline: none !important;
+    border: 0 !important;
+    box-shadow: none !important;
+}
+:root ::selection {
+    background: var(--accent-color);
+    color: var(--accent-contrast-text);
+    text-shadow: none;
+}
+@media (forced-colors: active) {
+    :root :is(input, textarea, select, [contenteditable="true"], .custom-select__trigger):focus:not(:where(.compose-input-wrapper textarea, .chat__input)),
+    :root :is(button, a[href], [role="button"], [role="combobox"], [role="listbox"], [tabindex]:not([tabindex="-1"])):focus-visible:not(:where(.compose-input-wrapper textarea, .chat__input)) {
+        outline-color: Highlight !important;
+    }
+    :root :is(.compose-input-wrapper, .chat__compose-container):focus-within {
+        outline-color: Highlight !important;
+    }
+    :root ::selection { background: Highlight; color: HighlightText; }
+}

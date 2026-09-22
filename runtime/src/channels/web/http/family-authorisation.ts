@@ -1,6 +1,7 @@
 import type Database from "bun:sqlite";
 import type { AuthenticatedPrincipal } from "../../../core/access-types.js";
 import { getDb } from "../../../db/connection.js";
+import { handlePickerPins } from "../handlers/picker-pins.js";
 import { getMessageByRowIdFromDatabase, getThinkingContentForChat, updateMessageAnnotationsInDatabase } from "../../../db/messages.js";
 import { ChatAccessDenied, resolveAuthorisedChat } from "../../../db/session-ownership.js";
 import type { WebChannelLike } from "../core/web-channel-contracts.js";
@@ -52,6 +53,7 @@ function selector(url: URL, key: string): string | undefined {
 export function createSseAuthorisation(database: Database, principal: AuthenticatedPrincipal, chatJid: string): SseAuthorisation {
   const target = resolveAuthorisedChat(database, principal, chatJid, "session.read");
   return Object.freeze({
+    userId: principal.userId,
     chatJid: target.chatJid,
     isAuthorised: () => {
       const login = database.query("SELECT user_id, expires_at FROM web_sessions WHERE session_id = ?")
@@ -115,6 +117,7 @@ export async function handleFamilyRequest(channel: WebChannelLike, req: Request,
   if (!principal || principal.mode !== "family-shared" || principal.kind !== "user") return channel.json({ error: "Unauthorized" }, 401);
   const bindingFailure = enforceBrowserBinding(req, principal);
   if (bindingFailure) return bindingFailure;
+  if (path === "/agent/picker-pins") return handlePickerPins(req, channel, principal);
   if (path === "/auth/logout") {
     // Logout always pins the login; a stale tab must not revoke a replacement account.
     if (req.method !== "POST" || !req.headers.has("x-piclaw-account-id") || !req.headers.has("x-piclaw-login-id")
@@ -224,13 +227,13 @@ export async function handleFamilyRequest(channel: WebChannelLike, req: Request,
     } catch (error) { if (error instanceof ChatAccessDenied) return deny(); throw error; }
   }
   const media = path.match(/^\/media\/([1-9]\d*)(?:\/(thumbnail|info))?$/);
-  if (req.method === "GET" && media) {
+  if ((req.method === "GET" || (req.method === "HEAD" && media?.[2] !== "info")) && media) {
     try {
       const id = Number(media[1]);
       // Deliberately ignore caller-selected chat/owner parameters; resolve stored message links.
       authoriseOwnedMedia(getDb(), principal, id);
       if (media[2] === "info") return channel.json(readOwnedMediaInfo(getDb(), principal, id));
-      return handleMedia(channel, id, media[2] === "thumbnail");
+      return handleMedia(channel, id, media[2] === "thumbnail", req);
     } catch (error) { if (error instanceof ChatAccessDenied) return deny(); throw error; }
   }
   if (req.method === "GET" && path === "/agent/branch-download") {

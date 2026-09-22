@@ -1,0 +1,36 @@
+/* One token-to-role contract for chat code blocks and the CodeMirror editor.
+ * Do not collapse numbers/booleans/labels, or functions/variable definitions.
+ */
+:root[data-color-theme] :is(.post-content pre code, .cm-editor .cm-content) {
+    color: var(--text-code);
+}
+:root[data-color-theme] :is(.post-content pre, .cm-editor .cm-scroller) {
+    background-color: var(--bg-code);
+}
+:root :is(.cm-editor, .post-content) .tok-keyword { color: var(--syntax-keyword) !important; }
+:root :is(.cm-editor, .post-content) .tok-string { color: var(--syntax-string) !important; }
+:root :is(.cm-editor, .post-content) .tok-regexp { color: var(--syntax-regexp) !important; }
+:root :is(.cm-editor, .post-content) .tok-number { color: var(--syntax-number) !important; }
+:root :is(.cm-editor, .post-content) .tok-bool { color: var(--syntax-bool) !important; }
+:root :is(.cm-editor, .post-content) .tok-atom { color: var(--syntax-atom) !important; }
+:root :is(.cm-editor, .post-content) .tok-labelName { color: var(--syntax-label) !important; }
+:root :is(.cm-editor, .post-content) .tok-variableName { color: var(--syntax-variable) !important; }
+:root :is(.cm-editor, .post-content) .tok-variableName.tok-definition { color: var(--syntax-definition) !important; }
+:root :is(.cm-editor, .post-content) .tok-variableName.tok-local { color: var(--syntax-local) !important; }
+:root :is(.cm-editor, .post-content) .tok-variableName2 { color: var(--syntax-variable2) !important; }
+:root :is(.cm-editor, .post-content) .tok-propertyName { color: var(--syntax-property) !important; }
+:root :is(.cm-editor, .post-content) .tok-propertyName.tok-definition { color: var(--syntax-propertyDefinition) !important; }
+:root :is(.cm-editor, .post-content) :is(.tok-variableName, .tok-propertyName).tok-function { color: var(--syntax-function) !important; }
+:root :is(.cm-editor, .post-content) .tok-typeName { color: var(--syntax-type) !important; }
+:root :is(.cm-editor, .post-content) .tok-className { color: var(--syntax-class) !important; }
+:root :is(.cm-editor, .post-content) .tok-namespace { color: var(--syntax-namespace) !important; }
+:root :is(.cm-editor, .post-content) .tok-macroName { color: var(--syntax-macro) !important; }
+:root :is(.cm-editor, .post-content) .tok-comment { color: var(--syntax-comment) !important; }
+:root :is(.cm-editor, .post-content) .tok-meta { color: var(--syntax-meta) !important; }
+:root :is(.cm-editor, .post-content) .tok-operator { color: var(--syntax-operator) !important; }
+:root :is(.cm-editor, .post-content) .tok-punctuation { color: var(--syntax-punctuation) !important; }
+:root :is(.cm-editor, .post-content) .tok-link { color: var(--syntax-link) !important; }
+:root :is(.cm-editor, .post-content) .tok-heading { color: var(--syntax-heading) !important; }
+:root :is(.cm-editor, .post-content) .tok-invalid { color: var(--syntax-invalid) !important; }
+:root :is(.cm-editor, .post-content) .tok-deleted { color: var(--syntax-deleted) !important; }
+:root :is(.cm-editor, .post-content) .tok-inserted { color: var(--syntax-inserted) !important; }

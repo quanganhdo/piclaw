@@ -142,8 +142,8 @@ export async function searchWorkspace(params: WorkspaceSearchParams): Promise<Wo
     const prefix = scope === "notes" ? "notes/%" : scope === "skills" ? ".pi/skills/%" : null;
 
     const stmt = prefix
-      ? "SELECT path, size_bytes, mtime_ms, snippet(workspace_fts, 0, '[', ']', '…', 12) as snippet FROM workspace_fts WHERE workspace_fts MATCH ? AND path LIKE ? ORDER BY bm25(workspace_fts) LIMIT ? OFFSET ?"
-      : "SELECT path, size_bytes, mtime_ms, snippet(workspace_fts, 0, '[', ']', '…', 12) as snippet FROM workspace_fts WHERE workspace_fts MATCH ? ORDER BY bm25(workspace_fts) LIMIT ? OFFSET ?";
+      ? "SELECT path, size_bytes, mtime_ms, snippet(workspace_fts, 0, '[', ']', '…', 12) as snippet FROM workspace_fts WHERE workspace_fts MATCH ? AND path LIKE ? ORDER BY bm25(workspace_fts), path COLLATE BINARY LIMIT ? OFFSET ?"
+      : "SELECT path, size_bytes, mtime_ms, snippet(workspace_fts, 0, '[', ']', '…', 12) as snippet FROM workspace_fts WHERE workspace_fts MATCH ? ORDER BY bm25(workspace_fts), path COLLATE BINARY LIMIT ? OFFSET ?";
 
     const rows = prefix
       ? (db.prepare(stmt).all(ftsQuery, prefix, limit, offset) as WorkspaceSearchRow[])
@@ -152,6 +152,11 @@ export async function searchWorkspace(params: WorkspaceSearchParams): Promise<Wo
     access.validate();return { rows, limit, offset };
   } catch (error) {
     access.validate();if(error instanceof WorkspaceIndexAccessDenied)throw error;
+    // Only invalid FTS syntax may fall back. Operational/schema failures must
+    // not look like successful (but semantically different) search results.
+    if ((error as { code?: string })?.code !== 'SQLITE_ERROR' || !/fts5: syntax error|unterminated string|malformed MATCH expression|fts5: (?:unterminated|unknown special query)/i.test(String((error as Error)?.message))) {
+      return { rows: [], limit, offset, error: "Workspace search failed." };
+    }
     // FTS query failed even after sanitization — fall back to LIKE.
     try {
       const prefix = scope === "notes" ? "notes/%" : scope === "skills" ? ".pi/skills/%" : null;
@@ -162,7 +167,7 @@ export async function searchWorkspace(params: WorkspaceSearchParams): Promise<Wo
       const conditions = prefix ? `${likeClauses} AND workspace_files.path LIKE ?` : likeClauses;
       const params_arr = prefix ? [...terms, prefix] : terms;
 
-      const sql = `SELECT workspace_files.path AS path, workspace_files.size_bytes AS size_bytes, workspace_files.mtime_ms AS mtime_ms, substr(workspace_fts.content, 1, 200) as snippet FROM workspace_files JOIN workspace_fts ON workspace_fts.path = workspace_files.path WHERE ${conditions} LIMIT ? OFFSET ?`;
+      const sql = `SELECT workspace_files.path AS path, workspace_files.size_bytes AS size_bytes, workspace_files.mtime_ms AS mtime_ms, substr(workspace_fts.content, 1, 200) as snippet FROM workspace_files JOIN workspace_fts ON workspace_fts.path = workspace_files.path WHERE ${conditions} ORDER BY workspace_files.path COLLATE BINARY LIMIT ? OFFSET ?`;
       const rows = db.prepare(sql).all(...params_arr, limit, offset) as WorkspaceSearchRow[];
       access.validate();return { rows, limit, offset };
     } catch (error) {

@@ -541,3 +541,15 @@ test('refreshCurrentView refreshes timeline only on main view and always refresh
   });
   expect(calls).toEqual(['model', 'active', 'branches', 'queue', 'context', 'autoresearch']);
 });
+
+test('a slow context fetch cannot overwrite newer same-generation streamed usage',async()=>{
+ const {getContextUsageRevision}=await import('../../web/src/ui/app-status-refresh-orchestration');
+ let usage:any=reconcileContextUsageForChat('chat-race',null,{tokens:100,percent:1,contextWindow:10000,sessionGeneration:'same'},{authoritative:true});
+ let release!:(value:any)=>void;
+ const pending=refreshContextUsageForChat({currentChatJid:'chat-race',activeChatJidRef:{current:'chat-race'},getAgentContext:()=>new Promise(r=>{release=r;}),setContextUsage:next=>{usage=typeof next==='function'?next(usage):next;}});
+ const before=getContextUsageRevision('chat-race');
+ usage=reconcileContextUsageForChat('chat-race',usage,{tokens:900,percent:9,contextWindow:10000,sessionGeneration:'same'});
+ expect(getContextUsageRevision('chat-race')).toBeGreaterThan(before);
+ release({tokens:200,percent:2,contextWindow:10000,sessionGeneration:'same'});await pending;
+ expect(usage.tokens).toBe(900);
+});

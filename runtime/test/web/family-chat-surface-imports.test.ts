@@ -9,7 +9,10 @@ test('standard and family modes mount the same production chat component tree', 
   expect(source('ui/app-main-shell-render.ts')).toContain("import { ChatSurface } from '../components/chat-surface.js'");
   expect(source('family-chat-surface.ts')).toContain("import { ChatSurface } from './components/chat-surface.js'");
 
+  expect(source('ui/app-main-shell-render.ts')).toContain('currentChatJid=${currentChatJid}');
+  expect(source('family-chat-surface.ts')).toContain('currentChatJid=${value.currentChatJid}');
   const shared = source('components/chat-surface.ts');
+  expect(shared).toContain('key=${currentChatJid}');
   for (const component of ['Timeline', 'AgentStatus', 'ComposeBox', 'AgentRequestModal']) {
     expect(shared).toContain(`<${'${'}${component}}`);
   }

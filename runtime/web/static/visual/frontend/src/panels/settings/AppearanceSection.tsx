@@ -1,5 +1,6 @@
+import { applyThemeFromEvent, selectLocalTheme, getThemeModePreference, setThemeModePreference } from '../../../../../../src/ui/theme';
 import { useSignal } from "@preact/signals";
-import { useRef } from "preact/hooks";
+import { useRef, useEffect } from "preact/hooks";
 import { type SettingsData, type SettingsSectionProps } from "./types";
 import { AvatarSection } from "./AvatarSection";
 import { registerSettingsPane } from "./pane-registry";
@@ -15,41 +16,6 @@ import {
 } from "../../utils/theme-importer";
 import { safeGetItem, safeSetItem, safeRemoveItem } from "../../utils/storage";
 
-function ThemeCard({
-  theme,
-  active,
-  onClick,
-}: {
-  theme: BundledTheme;
-  active: boolean;
-  onClick: () => void;
-}) {
-  const [bg, text, accent, secondary] = theme.swatches;
-  return (
-    <button
-      className={`vscode-theme-card${active ? " vscode-theme-card--active" : ""}`}
-      onClick={onClick}
-      title={`Apply ${theme.name}`}
-      type="button"
-    >
-      <div className="vscode-theme-card__preview" style={{ background: bg }}>
-        <div className="vscode-theme-card__swatch" style={{ background: secondary }} />
-        <div className="vscode-theme-card__swatch" style={{ background: accent }} />
-        <div className="vscode-theme-card__swatch" style={{ background: text }} />
-      </div>
-      <div className="vscode-theme-card__label">
-        {theme.name}
-        {active && (
-          <i className="codicon codicon-check vscode-theme-card__check" />
-        )}
-      </div>
-      <div className="vscode-theme-card__badge">
-        {theme.type === "light" ? "☀" : "🌙"}
-      </div>
-    </button>
-  );
-}
-
 export function AppearanceSection({
   data,
   onSaveGeneral,
@@ -58,13 +24,24 @@ export function AppearanceSection({
   onSaveGeneral: (field: string, value: unknown) => void;
 }) {
   const uiTint = useSignal(data.uiTint ?? "");
-  const themes = data.themes ?? [];
 
   // Current active custom theme name (stored in localStorage key piclaw_custom_theme_name)
   const LS_NAME_KEY = "piclaw_custom_theme_name";
   const activeThemeName = useSignal<string | null>(
-    safeGetItem(LS_NAME_KEY)
+    Object.keys(getSavedThemeVars()).length ? safeGetItem(LS_NAME_KEY) : BUNDLED_THEMES.find(t => t.id === (document.documentElement.dataset.colorTheme || data.uiTheme))?.name || null
   );
+  const mode = useSignal(getThemeModePreference());
+
+  useEffect(() => {
+    const sync = () => {
+      if (document.documentElement.dataset.customTheme === 'true') return;
+      activeThemeName.value = BUNDLED_THEMES.find(t=>t.id === document.documentElement.dataset.colorTheme)?.name || null;
+      uiTint.value = document.documentElement.dataset.tint || '';
+      mode.value = getThemeModePreference();
+    };
+    window.addEventListener('piclaw-theme-change',sync);
+    return () => window.removeEventListener('piclaw-theme-change',sync);
+  }, []);
 
   // Pending import state
   const pendingVars = useSignal<Record<string, string> | null>(null);
@@ -73,7 +50,9 @@ export function AppearanceSection({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function applyBundled(theme: BundledTheme) {
-    saveTheme(theme.vars);
+    resetTheme();
+    selectLocalTheme(theme.id);
+    onSaveGeneral("uiTheme", theme.id);
     safeSetItem(LS_NAME_KEY, theme.name);
     activeThemeName.value = theme.name;
     importStatus.value = `Applied "${theme.name}" ✓`;
@@ -83,6 +62,8 @@ export function AppearanceSection({
 
   function handleReset() {
     resetTheme();
+    selectLocalTheme('default');
+    onSaveGeneral('uiTheme', 'default');
     safeRemoveItem(LS_NAME_KEY);
     activeThemeName.value = null;
     importStatus.value = "Reset to default ✓";
@@ -137,7 +118,8 @@ export function AppearanceSection({
       const current = activeThemeName.value;
       if (current) {
         const bt = BUNDLED_THEMES.find((t) => t.name === current);
-        if (bt) applyTheme(bt.vars);
+        if (bt) { resetTheme(); selectLocalTheme(bt.id); }
+        else resetTheme();
       } else {
         resetTheme();
       }
@@ -152,9 +134,10 @@ export function AppearanceSection({
 
       {/* Theme selector */}
       <div className="settings-panel__field">
-        <label className="settings-panel__label">Theme</label>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <label htmlFor="appearance-theme" className="settings-panel__label">Theme</label>
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap:'wrap', gap: '10px', maxWidth:'100%' }}>
           <CustomSelect
+            id="appearance-theme"
             value={activeThemeName.value || ''}
             options={[
               { value: '', label: 'Default' },
@@ -181,15 +164,22 @@ export function AppearanceSection({
         </div>
       </div>
 
-      {/* Tint color */}
+      <div className="settings-panel__field">
+        <label className="settings-panel__label" htmlFor="appearance-mode">Automatic theme mode</label>
+        <select id="appearance-mode" className="settings-panel__select" value={mode.value} onChange={e => { mode.value=e.currentTarget.value; setThemeModePreference(mode.value as 'auto'|'light'|'dark'); }}><option value="auto">Follow system</option><option value="light">Light</option><option value="dark">Dark</option></select>
+        <p className="settings-panel__description">For Default, Solarized and GitHub in this browser. Named Light/Dark themes keep their mode.</p>
+      </div>
+      {/* Tint color — Default only; named palettes keep their authored accents. */}
       <div className="settings-panel__field">
         <label className="settings-panel__label">Tint color</label>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <input
             type="color"
+            aria-label="Default theme tint"
             value={uiTint.value || '#1d9bf0'}
             onInput={(e) => {
               uiTint.value = (e.target as HTMLInputElement).value;
+              if (!activeThemeName.value) applyThemeFromEvent({theme:"default",tint:uiTint.value});
               onSaveGeneral("uiTint", uiTint.value);
             }}
             style={{ width: '28px', height: '28px', border: '1px solid var(--border)', borderRadius: '4px', cursor: 'pointer', background: 'transparent', padding: 0 }}
@@ -200,7 +190,7 @@ export function AppearanceSection({
               type="button"
               className="settings-panel__btn settings-panel__btn--secondary"
               style={{ padding: '2px 8px', fontSize: '11px' }}
-              onClick={() => { uiTint.value = ''; onSaveGeneral("uiTint", null); }}
+              onClick={() => { uiTint.value = ''; if(!activeThemeName.value) applyThemeFromEvent({theme:'default',tint:null}); onSaveGeneral("uiTint", null); }}
             >
               Clear
             </button>

@@ -1,3 +1,4 @@
+import { startPickerPinSync } from './ui/picker-pin-sync.js';
 import { ChatSurface } from './components/chat-surface.js';
 import { rewriteOwnedMediaUrl } from './components/post.js';
 import { FamilyApi } from './family-api.js';
@@ -52,6 +53,7 @@ export class FamilyChatSurface {
   private readonly postCapabilities: Record<string, unknown>;
   private readonly preferenceRuntime: EventTarget & { localStorage: { getItem: (key: string) => string | null; setItem: (key: string, value: string) => void } };
   private stopped = false;
+  private readonly pinSync: ReturnType<typeof startPickerPinSync>;
   private pending: { chatJid: string; content: string; mediaIds: number[]; requestId: string } | null = null;
   private renderSetter: ((value: FamilyChatSurfaceSnapshot) => void) | null = null;
   private readonly composeBrowserStorage: { getItem: (key: string) => string | null; setItem: (key: string, value: string) => void };
@@ -79,6 +81,7 @@ export class FamilyChatSurface {
     const runtime = new EventTarget() as FamilyChatSurface['preferenceRuntime'];
     runtime.localStorage = { getItem: key => preferences.get(key) ?? null, setItem: (key, value) => { preferences.set(key, value); } };
     this.preferenceRuntime = runtime;
+    this.pinSync = startPickerPinSync({runtime,request:(method,body)=>api.request('/agent/picker-pins',method,body),onError:message=>{ const el=document.getElementById('family-error');if(el)el.textContent=message; }});
     this.composeBrowserStorage = {
       getItem: key => composeState.get(key) ?? null,
       setItem: (key, value) => { composeState.set(key, value); },
@@ -102,6 +105,8 @@ export class FamilyChatSurface {
     render(html`<${FamilyChatSurfaceView} owner=${this} />`, this.host);
   }
 
+  refreshPins(): void { void this.pinSync.refresh(); }
+
   readSnapshot(): FamilyChatSurfaceSnapshot { return this.snapshot; }
   bindRender(setter: (value: FamilyChatSurfaceSnapshot) => void): void { this.renderSetter = setter; }
 
@@ -122,6 +127,7 @@ export class FamilyChatSurface {
   stop(): void {
     if (this.stopped) return;
     this.stopped = true;
+    this.pinSync.stop();
     this.pending = null; this.floatingWidget = null; this.attachmentPreview = null;
     this.renderSetter = null;
     render(null, this.host);
@@ -216,6 +222,7 @@ export class FamilyChatSurface {
       >Preview for family memory</button>`;
     };
     return html`<${ChatSurface}
+      currentChatJid=${value.currentChatJid}
       timelineId="timeline"
       composeId="compose-form"
       posts=${value.posts}

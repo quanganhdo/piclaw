@@ -1,5 +1,13 @@
 # Evidence register
 
+## Published 0.87.0 candidate
+
+| Evidence | Scope / state |
+|---|---|
+| [Stable Harness candidate](earendil-0870-harness-candidate.md) | Packed 0.87.0 publication coordinates, public-export fingerprints, 28-test HC-001–HC-023 partial receipt, compile blockers and unchanged activation limits; candidate is not installed or selected |
+| [Streaming-fork evidence](earendil-0870-streaming-fork.md) | Public 0.87.0 conformance: 15 Memory + 15 JSONL executions pass; HC-025 remains partial because SQLite and cross-process host ownership are unproved |
+| [Experimental Pico3 assessment](earendil-0870-pico3-assessment.md) | Export/source/test inventory, authority mapping and HC/PC gaps; go for a disposable fake-provider spike, no-go for production adoption |
+
 ## Published 0.85.1 follow-up
 
 | Evidence | Scope / state |

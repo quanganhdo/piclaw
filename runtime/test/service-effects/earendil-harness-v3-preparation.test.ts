@@ -38,6 +38,7 @@ import type {
   EarendilV3ResultShape,
   EarendilV3RuntimeWatchSessionStubShape,
   EarendilV3SelectionGateShape,
+  EarendilV3PublishedCandidateGateShape,
   EarendilV3SessionRepoShape,
   EarendilV3ShellExecOptionsShape,
   EarendilV3ShellOutputUpdateShape,
@@ -181,6 +182,29 @@ describe("selected 0.85.1 Harness v3 preparation contract", () => {
     expect(exact<Equal<PublicReturn, StubReturn> extends false ? true : false>()).toBeTrue();
     expect(exact<Equal<EarendilV3HarnessActivationBlockShape["publicContract"], EarendilV3PublicWatchSessionShape>>()).toBeTrue();
     expect(exact<Equal<EarendilV3HarnessActivationBlockShape["selectedRuntimeStub"], EarendilV3RuntimeWatchSessionStubShape>>()).toBeTrue();
+  });
+
+  test("records published 0.87 separately from the installed selection gate", () => {
+    const gate: EarendilV3PublishedCandidateGateShape = {
+      installedVersion: "0.85.1",
+      candidateVersion: "0.87.0",
+      candidateReleaseCommit: "16787ad5b2dc748047f314ca1bfe7708f30f54f3",
+      assessmentScope: "published_candidate_not_installed",
+      compileStatus: "blocked_on_1377_and_1378",
+      semanticStatus: "partial_HC_001_through_HC_023_and_HC_025",
+      watchSession: "runtime_slice_not_implemented",
+      rawStorage: "stable_constructors_not_exported",
+      streamingFork: "memory_and_jsonl_pass_sqlite_pending",
+      experimentalPico3: "excluded_to_1376",
+      promotionIssues: [1377, 1378, 1379, 1380, 1381],
+      harnessActivation: "blocked",
+      productionImporter: "forbidden",
+    };
+    expect(gate.installedVersion).toBe("0.85.1");
+    expect(gate.candidateVersion).toBe("0.87.0");
+    expect(gate.assessmentScope).toBe("published_candidate_not_installed");
+    expect(gate.promotionIssues).toEqual([1377, 1378, 1379, 1380, 1381]);
+    expect(gate.harnessActivation).toBe("blocked");
   });
 
   test("records installed 0.85.1 while isolating historical 0.85.0 and gating Harness deployment", () => {

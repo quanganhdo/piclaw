@@ -15,6 +15,7 @@ import { runCompactionWithTimeout } from "./agent-pool/compaction.js";
 import { createSessionManagerPersistencePort, type SessionEntryAppendPort, type SessionManagerLike } from "./agent-pool/session-persistence.js";
 import { createLogger, debugSuppressedError } from "./utils/logger.js";
 import { writeMergedSessionArchive } from "./session-archive.js";
+import { getSessionThinkingPolicy, THINKING_POLICY_ENTRY } from "./agent-pool/thinking-policy.js";
 
 const log = createLogger("session-rotation");
 
@@ -160,6 +161,7 @@ export async function seedRotatedSession(
     sessionName?: string;
     model?: RotationModel | null;
     thinkingLevel?: ThinkingLevel | null;
+    preferredThinkingLevel?: ThinkingLevel | null;
   }
 ): Promise<void> {
   const persistence = "getEntries" in sessionManager
@@ -168,6 +170,7 @@ export async function seedRotatedSession(
   if (options.sessionName?.trim()) await persistence.appendSessionInfo(options.sessionName.trim());
   if (options.model) await persistence.appendModelChange(options.model.provider, options.model.modelId);
   if (options.thinkingLevel) await persistence.appendThinkingLevelChange(options.thinkingLevel);
+  if (options.preferredThinkingLevel) await persistence.appendCustomEntry(THINKING_POLICY_ENTRY, { preferred: options.preferredThinkingLevel });
 
   const carried = collectCarriedSummary(context.messages);
   if (carried.summary) await persistence.appendCompaction(carried.summary, "rotated-context", carried.tokensBefore);
@@ -264,6 +267,7 @@ export async function seedEmergencyRotatedSession(
     sessionName?: string;
     model?: RotationModel | null;
     thinkingLevel?: ThinkingLevel | null;
+    preferredThinkingLevel?: ThinkingLevel | null;
     reason?: string | null;
     previousSessionFile?: string | null;
     archivePath?: string | null;
@@ -275,6 +279,7 @@ export async function seedEmergencyRotatedSession(
   if (options.sessionName?.trim()) await persistence.appendSessionInfo(options.sessionName.trim());
   if (options.model) await persistence.appendModelChange(options.model.provider, options.model.modelId);
   if (options.thinkingLevel) await persistence.appendThinkingLevelChange(options.thinkingLevel);
+  if (options.preferredThinkingLevel) await persistence.appendCustomEntry(THINKING_POLICY_ENTRY, { preferred: options.preferredThinkingLevel });
 
   const emergency = buildEmergencyRotationSummary(context, options);
   await persistence.appendCompaction(emergency.summary, "emergency-rotation", emergency.tokensBefore);
@@ -489,6 +494,7 @@ export async function rotateSession(
     ? { provider: session.model.provider, modelId: session.model.id }
     : context.model;
   const currentThinkingLevel = session.thinkingLevel ?? context.thinkingLevel ?? null;
+  const preferredThinkingLevel = getSessionThinkingPolicy(session)?.preferred_level ?? currentThinkingLevel;
   const currentSessionName = session.sessionName?.trim() || undefined;
 
   let archived = false;
@@ -510,6 +516,7 @@ export async function rotateSession(
             sessionName: currentSessionName,
             model: currentModel,
             thinkingLevel: currentThinkingLevel,
+            preferredThinkingLevel,
             reason: emergencyReason,
             previousSessionFile,
             archivePath,
@@ -520,6 +527,7 @@ export async function rotateSession(
           sessionName: currentSessionName,
           model: currentModel,
           thinkingLevel: currentThinkingLevel,
+          preferredThinkingLevel,
         });
       },
     });

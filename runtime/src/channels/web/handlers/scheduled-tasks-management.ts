@@ -1,6 +1,6 @@
 import type { WebChannelLike } from "../core/web-channel-contracts.js";
-import { deleteTask, getBudgetCap, getTaskById, saveBudgetCap, setBudgetCapEnabled, updateTask } from "../../../db.js";
-import { parseBudgetDecimalMicros } from "../../../budget/amount.js";
+import { deleteTask, getBudgetCap, getDb, getTaskById, saveBudgetCap, setBudgetCapEnabled, updateTask } from "../../../db.js";
+import { parseScheduledBudgetMicros } from "../../../budget/amount.js";
 import { getScheduledTaskInspection, listScheduledTasks } from "../../../scheduled-task-query-service.js";
 import type { ScheduledTask } from "../../../types.js";
 
@@ -83,12 +83,15 @@ export async function handleScheduledTasksManagementAction(channel: WebChannelLi
     return mutationError(channel, action || "unknown", "Unsupported scheduled task action.", 400);
   }
   const allowedKeys = action === "set_budget"
-    ? new Set(["action", "id", "budget_usd", "enabled", "confirm_revision", "allow_internal"])
+    ? new Set(["action", "id", "budget_usd", "enabled", "confirm_revision", "confirm_zero_budget", "allow_internal"])
     : new Set(["action", "id", "allow_internal"]);
   if (Object.keys(body).some((key) => !allowedKeys.has(key))) {
     return mutationError(channel, action, "Scheduled task request contains unsupported fields.", 400);
   }
 
+  // Include receipt projection in the mutation transaction. A failed read must
+  // not report failure after a durable budget/task change has committed.
+  return getDb().transaction(() => {
   const loaded = getMutableTask(channel, action, id, allowInternal);
   if (loaded instanceof Response) return loaded;
   const task = loaded;
@@ -105,8 +108,9 @@ export async function handleScheduledTasksManagementAction(channel: WebChannelLi
       setBudgetCapEnabled(existing.id, false);
     } else {
       let amount: number;
-      try { amount = parseBudgetDecimalMicros(body.budget_usd); }
+      try { amount = parseScheduledBudgetMicros(body.budget_usd); }
       catch (error) { return mutationError(channel, action, error instanceof Error ? error.message : String(error), 400, { id }); }
+      if (amount === 0 && body.confirm_zero_budget !== true) return mutationError(channel, action, "A zero task cap blocks model execution. Disable the cap for no task-specific limit, or confirm_zero_budget=true to acknowledge zero.", 409, { id, requires_zero_acknowledgement: true });
       saveBudgetCap({
         id: existing?.id ?? `scheduled-cap:${id}`,
         scope: "scheduled_run",
@@ -133,4 +137,5 @@ export async function handleScheduledTasksManagementAction(channel: WebChannelLi
 
   const updated = getScheduledTaskInspection(id, { include_latest_run_log: true, include_run_logs: true });
   return json(channel, { ok: true, action, id, task: updated, old_status: task.status, new_status: updated?.status ?? null });
+  }).immediate();
 }

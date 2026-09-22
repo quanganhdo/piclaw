@@ -59,7 +59,7 @@ test("the original SVG identity belongs to shared image acceptance, not a source
   expect(stableIds(classic)).toEqual(Array.from({ length: 28 }, (_, i) => `@ux-original-${String(i + 1).padStart(3, "0")}`));
   expect(stableIds(planned)).toEqual([
     "@ux-original-029",
-    ...Array.from({ length: 7 }, (_, i) => `@ux-svg-${String(i + 1).padStart(3, "0")}`),
+    ...Array.from({ length: 9 }, (_, i) => `@ux-svg-${String(i + 1).padStart(3, "0")}`),
   ]);
   expect(planned.split(/^\s*Feature:/m)[0]).toContain("@issue-1325");
 });

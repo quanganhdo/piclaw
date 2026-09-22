@@ -88,7 +88,7 @@ describe("session persistence sanitizer", () => {
     }
   });
 
-  test("pre-compaction trimming carries model and high thinking state across cold hydration", () => {
+  test.each(["high", "off"] as const)("pre-compaction trimming carries model, effective %s and preferred high across cold hydration", (effective) => {
     const tempRoot = mkdtempSync(join(tmpdir(), "piclaw-session-trim-thinking-"));
     const sessionDir = join(tempRoot, "session");
     const workspaceDir = process.env.PICLAW_WORKSPACE || "/workspace";
@@ -96,7 +96,8 @@ describe("session persistence sanitizer", () => {
     try {
       const seed = SessionManager.create(workspaceDir, sessionDir);
       seed.appendModelChange("openai-codex", "gpt-5.6-sol");
-      seed.appendThinkingLevelChange("high");
+      seed.appendThinkingLevelChange(effective);
+      seed.appendCustomEntry('piclaw.thinking-policy.v1', { preferred: 'high' });
       for (let index = 0; index < 8; index += 1) {
         seed.appendMessage({
           role: "user",
@@ -133,9 +134,10 @@ describe("session persistence sanitizer", () => {
         provider: "openai-codex",
         modelId: "gpt-5.6-sol",
       });
-      expect(carriedThinking).toMatchObject({ type: "thinking_level_change", thinkingLevel: "high" });
+      expect(carriedThinking).toMatchObject({ type: "thinking_level_change", thinkingLevel: effective });
+      expect(entries.find(entry => entry.id === 'trim-thinking-preference')?.data).toEqual({ preferred: 'high' });
       expect(resumed.model).toEqual({ provider: "openai-codex", modelId: "gpt-5.6-sol" });
-      expect(resumed.thinkingLevel).toBe("high");
+      expect(resumed.thinkingLevel).toBe(effective);
       expect(resumed.messages.some((message: any) => JSON.stringify(message.content ?? "").includes("retained user request"))).toBe(true);
       expect(trimmedText).not.toContain("discarded-0-");
     } finally {

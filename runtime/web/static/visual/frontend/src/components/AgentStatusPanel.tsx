@@ -159,16 +159,27 @@ export function AgentStatusPanel() {
     setOutputState((prev) => ({ ...prev, text: outputBufferRef.current }));
   }, []);
 
+  // OutputPanel also derives its elapsed label during this render. Keep the
+  // clock while any visible elapsed label needs it, not while idle/dismissed.
+  const showElapsed = Boolean(
+    (draft.text && !draft.dismissed) || (thought.text && !thought.dismissed)
+    || (tools.length > 0 && !toolsDismissed)
+    || (output.text && !output.dismissed && outputMeta.startedAt),
+  );
   useEffect(() => {
-    const interval = setInterval(() => {
+    if (!showElapsed) return;
+    const updateElapsed = () => {
+      const now = Date.now();
       setElapsed({
-        draft: draftStartRef.current ? Math.floor((Date.now() - draftStartRef.current) / 1000) : 0,
-        thought: thoughtStartRef.current ? Math.floor((Date.now() - thoughtStartRef.current) / 1000) : 0,
-        tools: toolsStartRef.current ? Math.floor((Date.now() - toolsStartRef.current) / 1000) : 0,
+        draft: draftStartRef.current ? Math.floor((now - draftStartRef.current) / 1000) : 0,
+        thought: thoughtStartRef.current ? Math.floor((now - thoughtStartRef.current) / 1000) : 0,
+        tools: toolsStartRef.current ? Math.floor((now - toolsStartRef.current) / 1000) : 0,
       });
-    }, 1000);
+    };
+    updateElapsed();
+    const interval = setInterval(updateElapsed, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [showElapsed]);
 
   // Tick nowMs every second when any tool has an active retry countdown
   useEffect(() => {

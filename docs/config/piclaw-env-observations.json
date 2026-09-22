@@ -87,7 +87,7 @@
       "semanticReaderOccurrences": 69
     },
     "docsDeploy": {
-      "referencedNames": 129,
+      "referencedNames": 136,
       "directReaderNames": 16,
       "directReaderOccurrences": 32,
       "helperReaderNames": 0,
@@ -1200,6 +1200,7 @@
           "semanticReaders": 4,
           "files": [
             "runtime/scripts/benchmark-cold-session.ts",
+            "runtime/scripts/note-retrieval-baseline.ts",
             "runtime/scripts/test-filesystem-isolation.ts",
             "scripts/audit-baseline-quality-deterministic.ts",
             "scripts/audit-piclaw-env-surface.ts",
@@ -1250,6 +1251,7 @@
             "Makefile",
             "docs/compaction-models-and-deadlines.md",
             "docs/configuration.md",
+            "docs/design/local-note-retrieval-lifecycle-tests.md",
             "docs/development.md",
             "docs/development/testing-and-linting-flow-presentation-2026-04-18.html",
             "package.json"
@@ -1264,6 +1266,7 @@
           "files": [
             "runtime/scripts/benchmark-cold-session.ts",
             "runtime/scripts/controlled-test-runner.ts",
+            "runtime/scripts/note-retrieval-baseline.ts",
             "runtime/scripts/test-filesystem-isolation.ts",
             "scripts/audit-baseline-quality-deterministic.ts",
             "scripts/audit-core-config-keychain-coverage.sh",
@@ -1367,7 +1370,8 @@
           "helperReaders": 0,
           "semanticReaders": 1,
           "files": [
-            "runtime/scripts/benchmark-cold-session.ts"
+            "runtime/scripts/benchmark-cold-session.ts",
+            "runtime/scripts/note-retrieval-baseline.ts"
           ],
           "readerFiles": [
             "runtime/scripts/benchmark-cold-session.ts"
@@ -2168,6 +2172,100 @@
           "files": [
             "runtime/src/core/config-runtime.ts",
             "runtime/src/core/config-sources.ts"
+          ],
+          "readerFiles": []
+        }
+      }
+    },
+    {
+      "name": "PICLAW_IDLE_BASELINE_ASSETS",
+      "scopes": {
+        "docsDeploy": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "docs/performance/browser-idle-cpu-1352.md",
+            "docs/performance/browser-ui-snapshot-1352.md"
+          ],
+          "readerFiles": []
+        }
+      }
+    },
+    {
+      "name": "PICLAW_IDLE_CASES",
+      "scopes": {
+        "docsDeploy": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "docs/performance/browser-idle-cpu-1352.md",
+            "docs/performance/browser-idle-status-clock-1352.md",
+            "docs/performance/browser-ui-snapshot-1352.md"
+          ],
+          "readerFiles": []
+        }
+      }
+    },
+    {
+      "name": "PICLAW_IDLE_HEADED",
+      "scopes": {
+        "docsDeploy": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "docs/performance/browser-idle-cpu-1352.md"
+          ],
+          "readerFiles": []
+        }
+      }
+    },
+    {
+      "name": "PICLAW_IDLE_MEASURE_MS",
+      "scopes": {
+        "docsDeploy": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "docs/performance/browser-idle-cpu-1352.md"
+          ],
+          "readerFiles": []
+        }
+      }
+    },
+    {
+      "name": "PICLAW_IDLE_PROFILE",
+      "scopes": {
+        "docsDeploy": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "docs/performance/browser-idle-cpu-1352.md",
+            "docs/performance/browser-ui-snapshot-1352.md"
+          ],
+          "readerFiles": []
+        }
+      }
+    },
+    {
+      "name": "PICLAW_IDLE_SETTLE_MS",
+      "scopes": {
+        "docsDeploy": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "docs/performance/browser-idle-cpu-1352.md"
           ],
           "readerFiles": []
         }
@@ -3842,6 +3940,23 @@
       }
     },
     {
+      "name": "PICLAW_RUN_IDLE_CPU_PROFILE",
+      "scopes": {
+        "docsDeploy": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "docs/performance/browser-idle-cpu-1352.md",
+            "docs/performance/browser-idle-status-clock-1352.md",
+            "docs/performance/browser-ui-snapshot-1352.md"
+          ],
+          "readerFiles": []
+        }
+      }
+    },
+    {
       "name": "PICLAW_RUN_OPTIONAL_BROWSER_TESTS",
       "scopes": {
         "docsDeploy": {
@@ -3851,6 +3966,10 @@
           "semanticReaders": 0,
           "files": [
             ".github/workflows/ci.yml",
+            "docs/audio-attachment-preview.md",
+            "docs/performance/browser-idle-cpu-1352.md",
+            "docs/performance/browser-idle-status-clock-1352.md",
+            "docs/performance/browser-ui-snapshot-1352.md",
             "docs/reviews/picker-button-parity.md",
             "docs/reviews/vnc-narrow-pane.md",
             "package.json"
@@ -5061,6 +5180,7 @@
           "semanticReaders": 5,
           "files": [
             "runtime/scripts/benchmark-cold-session.ts",
+            "runtime/scripts/note-retrieval-baseline.ts",
             "runtime/scripts/test-filesystem-isolation.ts",
             "scripts/audit-baseline-quality-deterministic.ts",
             "scripts/audit-piclaw-env-surface.ts",
@@ -7565,6 +7685,7 @@
           "semanticReaders": 3,
           "files": [
             "runtime/scripts/benchmark-cold-session.ts",
+            "runtime/scripts/note-retrieval-baseline.ts",
             "runtime/scripts/test-filesystem-isolation.ts",
             "scripts/audit-baseline-quality-deterministic.ts",
             "scripts/audit-piclaw-env-surface.ts",

@@ -38,7 +38,19 @@ The equivalent single-user command forms remain available:
 
 Task caps bind to the current active work unless `work=<work-id>` is supplied. Provider account references are derived from the active credential and are never shown in status. Revising an existing cap requires `confirm=true`; it retains the current window and existing spend.
 
-The `schedule_task` and `scheduled_tasks` tools also accept `budget_usd` when creating an agent task. This creates an opt-in per-run cap. **Settings → Scheduled Tasks** is the single UI source of truth for inspecting, setting, revising and disabling that per-run cap; the Budget pane links there instead of duplicating the editor. Shell tasks reject `budget_usd` because Piclaw does not invent model spend for shell execution.
+The `schedule_task` and `scheduled_tasks` tools accept `budget_usd` when creating an agent task. Omit it for **no task-specific cap**: with no applicable enabled budgets, budget admission allows the task without a positive cap, budget approval, pricing/quota evidence or an allowance record. Disabled caps do not block this path. Normal task, model and authorization checks still apply.
+
+Positive caps accept at most six decimal places in USD (one microdollar minimum). Unsupported precision is rejected without rounding a positive amount to zero. An explicit zero blocks model execution and requires `confirm_zero_budget: true`; it never means unlimited. Settings shows the same warning before applying zero, and cancelling makes no write. Existing zero caps retain their enforcement. Deliberately disable a cap to remove it; the runtime never silently weakens a user limit.
+
+Creation returns `schedule_accepted` separately from `budget_readiness`: mode, status, check time, known blockers and next steps. Inspection and both Settings skins expose the same advisory snapshot. An inherited/short model with provider guards is `check_at_run` until its provider is resolved. This is not future-execution approval: all applicable limits are checked again at execution. The snapshot creates no synthetic work, allowance or usage/window records and makes no provider call.
+
+Recurring runs get fresh per-run work scopes, while instance/provider limits still apply when no task cap exists. **Settings → Scheduled Tasks** remains the single editor for task caps; the Budget pane links there. The existing Settings route edits task budgets and lifecycle, not task creation. Shell tasks reject `budget_usd` because Piclaw does not invent model spend for shell execution.
+
+### Scheduled budget-stop delivery
+
+A scheduled budget stop records an error in the task's run history before notification delivery. Its pending decision is bound to that run's originating chat and task ID. The runtime sends a short timeline notice directly to that chat, without an agent/provider call or repeating the task. A failed send stays pending and is retried by the existing scheduler poll, in bounded batches of 20; failed batches rotate so one unreachable chat cannot starve all later notices.
+
+Only a confirmed timeline send marks the decision delivered. Lost acknowledgements or a failure to record delivery can produce a duplicate notice: this is at-least-once delivery, not exactly-once. Local concurrent drains are coalesced. Access mode, workspace, execution identity and database are rechecked before and after each send. Notices contain no task prompt, raw provider error, credentials or full budget details. A task's muted/notify flag concerns successful-output Pushover nudges; it does not suppress budget-failure timeline notices. No failure nudge or recurring timer is added. The scheduler waits at most five seconds for a notification batch, using one non-rejecting one-shot deadline; the actual transport call keeps its in-flight lock until it settles. A permanently unsettled transport can therefore block later notices until recovery/restart, but it cannot indefinitely hold task completion or normal scheduler polling. Releasing that lock without cancellation support would risk overlapping uncertain sends.
 
 ## Pauses and approvals
 

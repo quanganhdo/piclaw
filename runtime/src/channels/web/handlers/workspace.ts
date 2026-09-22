@@ -74,8 +74,15 @@ export function handleWorkspaceStat(req: Request): Response {
       mtime: formatMtime(stats),
       size: stats.size,
     }, 200);
-  } catch {
-    return jsonResponse({ error: "File not found" }, 404);
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT" || code === "ENOTDIR") {
+      return jsonResponse({ error: "File not found", code: "FILE_NOT_FOUND" }, 404);
+    }
+    if (code === "EACCES" || code === "EPERM") {
+      return jsonResponse({ error: "File access denied" }, 403);
+    }
+    return jsonResponse({ error: "Unable to inspect file" }, 500);
   }
 }
 

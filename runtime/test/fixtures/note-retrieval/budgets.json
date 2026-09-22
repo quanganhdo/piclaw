@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "status": "proposed-after-baseline; approval required before ranking changes",
+  "appliesTo": "this frozen synthetic corpus and comparable local isolated runner only",
+  "quality": {
+    "fileRecallAt5MinimumPerSplit": 1,
+    "fileMrrAt5MinimumPerSplit": 0.93,
+    "filePrecisionAt5MinimumPerSplit": 0.59,
+    "futureUnanswerableFalsePositiveRateMaximum": 0.25,
+    "futureCitationCorrectnessMinimum": 1,
+    "futureSameMetadataEditDetected": true,
+    "futureIdenticalScoreRebuildOrderStable": true
+  },
+  "resource": {
+    "toolResponseBytesMaximum": 4096,
+    "estimatedTokensAt4BytesMaximum": 1024,
+    "warmQueryP95MsMaximum": 10,
+    "freshProcessFirstQueryMsMaximum": 50,
+    "smallInitialRefreshMsMaximum": 2000,
+    "largeInitialRefreshMsMaximum": 30000,
+    "largeIncrementalRefreshMsMaximum": 30000,
+    "indexOwnedBytesPerSourceByteMaximum": 2,
+    "smallIndexOwnedBytesMaximum": 131072,
+    "runtimeRssBytesMaximum": 268435456
+  },
+  "rules": [
+    "Proposed thresholds follow two baseline builds; not statistically calibrated production SLAs.",
+    "Baseline fails the future uncertainty/freshness requirements and has no citation capability; never mark those gates passing.",
+    "File-level section coverage is an optimistic upper bound, not section localisation or citation correctness.",
+    "Cold means fresh process/SQLite connection; the OS cache is not flushed.",
+    "Performance budgets are reported, not machine-independent CI timing assertions.",
+    "A new ranking release must evaluate both fixed splits; do not tune held-out labels or silently relax thresholds."
+  ]
+}

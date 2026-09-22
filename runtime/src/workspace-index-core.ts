@@ -57,7 +57,7 @@ const DEFAULT_EXTS = new Set([
   ".env",
 ]);
 
-const activeIndexScopes = new Set<WorkspaceSearchScope>();
+const activeIndexScopes = new Map<WorkspaceSearchScope, string[]>();
 
 const clampNumber = (value: number | undefined, fallback: number, min: number, max: number): number => {
   if (!Number.isFinite(value)) return fallback;
@@ -150,22 +150,24 @@ function aggressivelyReleaseWorkspaceIndexMemory(): void {
   }
 }
 
-async function walkFiles(root: string,validate:()=>void): Promise<string[]> {
+async function walkFiles(root: string, validate: () => void, allowMissingRoot = true): Promise<string[]> {
   const files: string[] = [];
+  let entries;
   try {
-    validate();const entries = await fs.readdir(root, { withFileTypes: true });validate();
-    for (const entry of entries) {
-      const full = path.join(root, entry.name);
-      if (entry.isDirectory()) {
-        if (entry.name === "node_modules" || entry.name === ".git" || entry.name === ".cache" || entry.name === "generated") continue;
-        files.push(...(await walkFiles(full,validate)));validate();
-      } else if (entry.isFile()) {
-        files.push(full);
-      }
-    }
+    validate(); entries = await fs.readdir(root, { withFileTypes: true }); validate();
   } catch (error) {
-    validate();if(error instanceof WorkspaceIndexAccessDenied)throw error;
-    return files;
+    validate();
+    if (allowMissingRoot && (error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw error;
+  }
+  // Do not catch descendant failures at an optional-root boundary: a subtree
+  // disappearing mid-walk is not evidence that the entire root is absent.
+  for (const entry of entries) {
+    const full = path.join(root, entry.name);
+    if (entry.isDirectory()) {
+      if (["node_modules", ".git", ".cache", "generated"].includes(entry.name)) continue;
+      files.push(...await walkFiles(full, validate, false)); validate();
+    } else if (entry.isFile()) files.push(full);
   }
   return files;
 }
@@ -280,6 +282,18 @@ async function indexWorkspace(roots: string[], maxBytes: number,validate:()=>voi
   const seen = new Set<string>();
   const now = new Date().toISOString();
   const rootPrefixes = rootsToPrefixes(roots);
+  // FTS path is UNINDEXED. Resolve rowids once rather than scanning the whole
+  // virtual table for every unchanged file during content verification.
+  const indexedRows = new Map<string, { rowid: number; count: number }>();
+  for (const row of db.prepare("SELECT rowid, path FROM workspace_fts").all() as Array<{ rowid: number; path: string }>) {
+    const existing = indexedRows.get(row.path);
+    indexedRows.set(row.path, { rowid: row.rowid, count: (existing?.count ?? 0) + 1 });
+  }
+  const removeFile = db.transaction((relativePath: string) => {
+    validate();
+    db.prepare("DELETE FROM workspace_fts WHERE path = ?").run(relativePath);
+    db.prepare("DELETE FROM workspace_files WHERE path = ?").run(relativePath);
+  });
   let processedFileCount = 0;
 
   for (const root of roots) {
@@ -291,24 +305,50 @@ async function indexWorkspace(roots: string[], maxBytes: number,validate:()=>voi
       try {
         validate();const stat = await fs.stat(file);validate();
         if (stat.size > maxBytes) {
-          db.prepare("DELETE FROM workspace_fts WHERE path = ?").run(rel);
-          db.prepare("DELETE FROM workspace_files WHERE path = ?").run(rel);
+          removeFile(rel);
           continue;
         }
 
         seen.add(rel);
         const existing = db.prepare("SELECT mtime_ms, size_bytes FROM workspace_files WHERE path = ?").get(rel) as { mtime_ms: number; size_bytes: number } | undefined;
         const mtimeMs = Math.round(stat.mtimeMs);
+        // Metadata is a hint, not content identity: editors can restore mtime
+        // after an equal-length rewrite. Verify against the text already in FTS
+        // so existing databases need no hash backfill or schema migration.
+        const handle = await fs.open(file, 'r');
+        let content: string;
+        try {
+          validate();
+          // Read at most the admitted size plus a growth sentinel. A file that
+          // grows after stat cannot allocate an unbounded readFile buffer.
+          const buffer = Buffer.alloc(stat.size + 1);
+          let size = 0;
+          while (size < buffer.length) {
+            const read = await handle.read(buffer, size, buffer.length - size, null);validate();
+            if (!read.bytesRead) break;
+            size += read.bytesRead;
+          }
+          const after = await handle.stat();validate();
+          const current = await fs.stat(file);validate();
+          if (size !== stat.size || after.size !== stat.size || after.mtimeMs !== stat.mtimeMs || after.ctimeMs !== stat.ctimeMs || after.ino !== stat.ino || after.dev !== stat.dev || current.ino !== after.ino || current.dev !== after.dev || current.size !== after.size || current.mtimeMs !== after.mtimeMs || current.ctimeMs !== after.ctimeMs) {
+            throw new Error('Workspace source changed during refresh.');
+          }
+          content = buffer.subarray(0, size).toString('utf8');
+        } finally { await handle.close(); }
+        validate();
         if (existing && existing.mtime_ms === mtimeMs && existing.size_bytes === stat.size) {
-          continue;
+          const row = indexedRows.get(rel);
+          const indexed = row?.count !== 1 ? undefined : db.prepare("SELECT content FROM workspace_fts WHERE rowid = ?").get(row.rowid) as { content: string } | undefined;
+          if (indexed?.content === content) continue;
         }
-
-        let content = await fs.readFile(file, "utf8");validate();
-        db.prepare("DELETE FROM workspace_fts WHERE path = ?").run(rel);
-        db.prepare("INSERT INTO workspace_fts (content, path, mtime_ms, size_bytes) VALUES (?, ?, ?, ?)").run(content, rel, mtimeMs, stat.size);
-        db.prepare(
-          "INSERT INTO workspace_files (path, mtime_ms, size_bytes, indexed_at) VALUES (?, ?, ?, ?) ON CONFLICT(path) DO UPDATE SET mtime_ms = excluded.mtime_ms, size_bytes = excluded.size_bytes, indexed_at = excluded.indexed_at",
-        ).run(rel, mtimeMs, stat.size, now);
+        db.transaction(() => {
+          validate();
+          db.prepare("DELETE FROM workspace_fts WHERE path = ?").run(rel);
+          db.prepare("INSERT INTO workspace_fts (content, path, mtime_ms, size_bytes) VALUES (?, ?, ?, ?)").run(content, rel, mtimeMs, stat.size);
+          db.prepare(
+            "INSERT INTO workspace_files (path, mtime_ms, size_bytes, indexed_at) VALUES (?, ?, ?, ?) ON CONFLICT(path) DO UPDATE SET mtime_ms = excluded.mtime_ms, size_bytes = excluded.size_bytes, indexed_at = excluded.indexed_at",
+          ).run(rel, mtimeMs, stat.size, now);
+        })();
         content = "";
         processedFileCount += 1;
         if (processedFileCount % AGGRESSIVE_WORKSPACE_INDEX_GC_EVERY_FILES === 0) {
@@ -316,21 +356,22 @@ async function indexWorkspace(roots: string[], maxBytes: number,validate:()=>voi
         }
       } catch (err) {
         validate();if(err instanceof WorkspaceIndexAccessDenied)throw err;
-        debugSuppressedError(log, "Workspace index skipped an unreadable file.", err, {
+        log.warn("Workspace index could not verify a file; refresh failed.", {
+          err,
           operation: "workspace_search.refresh.read_file",
           path: rel,
         });
+        throw err;
       }
     }
   }
 
-  validate();const existingPaths = db.prepare("SELECT path FROM workspace_files").all() as Array<{ path: string }>;
+  validate();const existingPaths = db.prepare("SELECT path FROM workspace_files UNION SELECT path FROM workspace_fts").all() as Array<{ path: string }>;
   for (const row of existingPaths) {
     const inScope = rootPrefixes.some((prefix) => prefix === "" || row.path.startsWith(prefix));
     if (!inScope) continue;
     if (!seen.has(row.path)) {
-      db.prepare("DELETE FROM workspace_fts WHERE path = ?").run(row.path);
-      db.prepare("DELETE FROM workspace_files WHERE path = ?").run(row.path);
+      removeFile(row.path);
     }
   }
 
@@ -389,7 +430,20 @@ export async function refreshWorkspaceIndex(params?: { scope?: WorkspaceSearchSc
   const maxBytes = clampNumber(params?.max_kb, 512, 16, 2048) * 1024;
   const previous = getStatusRow(scope);
 
-  activeIndexScopes.add(scope);
+  // Guard actual root overlap, not every active scope: notes and skills can
+  // refresh independently, and configured all-roots need not contain either.
+  // Separate processes retain the existing SQLite concurrency contract.
+  const overlaps = (left: string, right: string) => {
+    const contains = (parent: string, child: string) => {
+      const relative = path.relative(parent, child);
+      return !relative || (relative !== '..' && !relative.startsWith('..' + path.sep) && !path.isAbsolute(relative));
+    };
+    return contains(path.resolve(left), path.resolve(right)) || contains(path.resolve(right), path.resolve(left));
+  };
+  if (activeIndexScopes.has(scope) || [...activeIndexScopes.values()].some(activeRoots => activeRoots.some(activeRoot => roots.some(root => overlaps(activeRoot, root))))) {
+    throw new Error("Workspace index refresh already active for overlapping roots.");
+  }
+  activeIndexScopes.set(scope, roots);
   try {
     upsertStatus(scope, "indexing", roots, {
       lastIndexedAt: previous?.last_indexed_at ?? null,

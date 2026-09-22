@@ -8,7 +8,7 @@ The selected implementation target is **published 0.85.1 in Piclaw's existing co
 |---|---|---|
 | Historical production baseline | `ad922bdaac40b3a5119aa3017a10ee63897e318b`, exact Earendil 0.84.4 | A/B migration and rollback baseline; current loop has since moved to 0.85.1 |
 | Selected published candidate | 0.85.1, `d981de1229ef899957bbe968bc8dcda02a21f477` | Current-loop migration and its public compatibility evidence |
-| Separate planning tip | `e4c75a73222ae2c72abb5f5314fa35ee8effc508` | Independent source comparison only; 85 commits / 387 files / +25797/-9291 beyond release |
+| Separate planning tip | `e4c75a73222ae2c72abb5f5314fa35ee8effc508` | Historical independent source comparison only; later-release assessment now uses published 0.87.0 |
 | Earlier dev / #8963 capture | `d14d6b22327d545d6a253f932165b63e48d7f9c8` | Historical 1 September assessment, not the active candidate |
 | Earlier release negatives | 0.84.1 / 0.84.4; rejected 0.85.0 | Preserve original observations, fingerprints and failure reasons |
 
@@ -20,8 +20,8 @@ The original assessment installed a coding-agent-only consumer with Bun, then im
 |---|---|---|
 | A — [#1330](https://github.com/rcarmo/piclaw/pull/1330) | Package admission and provider/API/model catalogue comparison | Merged as `2b79ad809` |
 | B — [#1331](https://github.com/rcarmo/piclaw/pull/1331) | Atomic exact 0.85.1 current-loop/ExecutionEnv/tool/fake migration; direct selected-release assignments, basic positive compatibility and public Memory/JSONL SessionRepo conformance | Merged as `a1a8bdcac`; installed current loop uses 0.85.1, Harness inactive |
-| C — [#1332](https://github.com/rcarmo/piclaw/issues/1332) | Broader deterministic Models/tools/fault controls and real-constructor HC-001–HC-025 evidence | In progress; 24 partial, HC-024 unsupported, no full promotion or activation |
-| D — [#1333](https://github.com/rcarmo/piclaw/issues/1333) | Reassess relevant tip-only changes after a later coherent published release | Deferred; no tip source bump or backport implied |
+| C — [#1332](https://github.com/rcarmo/piclaw/issues/1332) | Broader deterministic Models/tools/fault controls and real-constructor HC-001–HC-025 evidence | Complete: 24 partial, HC-024 unsupported, no full promotion or activation |
+| D — [#1333](https://github.com/rcarmo/piclaw/issues/1333) / [#1374](https://github.com/rcarmo/piclaw/issues/1374) | Reassess relevant later-release changes against a coherent publication | Published 0.87.0 candidate recorded separately from installed 0.85.1; promotion depends on #1377–#1381 |
 
 PR B's tested partial HC cases remain migration evidence. PR C extends them through a closed 25-row map while recording every unproved remainder. No selected row is relabelled as a full pass. Nothing in A–D authorises a production Harness importer, barrel, registration, activation flag or new authority boundary.
 

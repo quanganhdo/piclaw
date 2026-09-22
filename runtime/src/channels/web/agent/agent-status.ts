@@ -53,7 +53,7 @@ export interface AgentStatusContext {
     chatJid: string
   ): Promise<{ tokens: number | null; contextWindow: number | null; percent: number | null; sessionGeneration?: string } | null>;
   getTokenUsageForChat(chatJid: string): AgentTokenUsageContext | null;
-  getAvailableModels(chatJid: string): Promise<unknown>;
+  getAvailableModels(chatJid: string, options?: { includeProviderDiagnostics?: boolean; includeCatalogue?: boolean }): Promise<unknown>;
   getProviderReadyCompletedForInstance(): boolean;
   getAddonApiHealthSnapshot?: typeof getAddonApiHealthSnapshot;
   getMcpStartupDiagnostics?: typeof getMcpStartupDiagnostics;
@@ -334,4 +334,34 @@ export async function handleAgentModelsRequest(req: Request, ctx: AgentStatusCon
     name: "agent_models",
     durationMs,
   });
+}
+
+/** Opt-in UI status envelope. Existing status clients keep their response shape.
+ * Family routes validate query allowlists before this operator-only handler. */
+export async function handleAgentUiSnapshotRequest(req: Request, ctx: AgentStatusContext, extra: {
+  getSystemMetrics(): Promise<unknown>;
+  getAgentName(): string;
+}): Promise<Response> {
+  const chatJid = resolveChatJid(req, ctx.defaultChatJid);
+  const { result, durationMs } = await measureAsync(async () => {
+    const status = buildAgentStatusSnapshot(chatJid, ctx);
+    const sections = await Promise.allSettled([
+      ctx.getAvailableModels(chatJid, { includeCatalogue: false, includeProviderDiagnostics: false }),
+      buildAgentContextSnapshot(chatJid, ctx),
+      extra.getSystemMetrics(),
+    ]);
+    const [model, context, metrics] = sections;
+    return ctx.json({
+      status,
+      model: model.status === 'fulfilled' ? {
+        ...(model.value as Record<string, unknown>),
+        oobe: { provider_ready_completed_instance: ctx.getProviderReadyCompletedForInstance() },
+      } : null,
+      context: context.status === 'fulfilled' ? context.value : null,
+      metrics: metrics.status === 'fulfilled' ? metrics.value : null,
+      agent_name: extra.getAgentName(),
+      errors: sections.flatMap((section, index) => section.status === 'rejected' ? [['model','context','metrics'][index]] : []),
+    });
+  });
+  return appendServerTiming(result, { name: 'agent_ui_snapshot', durationMs });
 }

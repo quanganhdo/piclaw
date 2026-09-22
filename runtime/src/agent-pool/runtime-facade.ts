@@ -16,6 +16,7 @@ import { formatThinkingLevelForDisplay, getAvailableThinkingLevelsForModel, reso
 import { buildSessionTreeSnapshot } from "../agent-control/session-tree-snapshot.js";
 import { getLatestTokenUsageModel } from "../db.js";
 import { requireOwnedSessionExecution } from "./owned-session-access.js";
+import { getSessionThinkingPolicy } from './thinking-policy.js';
 
 import { SESSIONS_DIR } from "../core/config.js";
 import { detectChannel } from "../router.js";
@@ -259,6 +260,8 @@ export interface AvailableModelOption {
 
 /** Shape returned by available-model inspection. */
 export interface AvailableModelsResult {
+  available_model_count?: number;
+  thinking_policy?: ReturnType<typeof getSessionThinkingPolicy>;
   current: string | null;
   models: string[];
   model_options: AvailableModelOption[];
@@ -403,7 +406,7 @@ export class AgentRuntimeFacade {
 
   async getAvailableModels(
     chatJid: string,
-    options: { includeProviderUsage?: boolean; includeProviderDiagnostics?: boolean } = {},
+    options: { includeProviderUsage?: boolean; includeProviderDiagnostics?: boolean; includeCatalogue?: boolean } = {},
   ): Promise<AvailableModelsResult> {
     // Passive UI refreshes should not hydrate a cold runtime just to render
     // model state for the picker.
@@ -415,7 +418,12 @@ export class AgentRuntimeFacade {
       (session as (AgentSession & { settingsManager?: SettingsManager }) | null)?.settingsManager ?? this.options.settingsManager,
     );
     const available = scopedModels.models;
-    const modelOptions = available.map((model) => {
+    const currentModel = session?.model ? `${session.model.provider}/${session.model.id}` : persistedState.current;
+    // Status polling needs only the current model, not a catalogue projection.
+    const selected = options.includeCatalogue === false
+      ? available.filter(model => `${model.provider}/${model.id}` === currentModel)
+      : available;
+    const modelOptions = selected.map((model) => {
       const thinkingLevels = getAvailableThinkingLevelsForModel(model as Model<any>);
       return {
         label: `${model.provider}/${model.id}`,
@@ -440,7 +448,6 @@ export class AgentRuntimeFacade {
       };
     });
     const models = modelOptions.map((model) => model.label);
-    const currentModel = session?.model ? `${session.model.provider}/${session.model.id}` : persistedState.current;
     const currentModelOption = currentModel ? modelOptions.find((model) => model.label === currentModel) ?? null : null;
     const currentModelDescriptor = session?.model
       ?? (currentModel ? available.find((model) => `${model.provider}/${model.id}` === currentModel) ?? null : null);
@@ -475,10 +482,12 @@ export class AgentRuntimeFacade {
     const latestResponseModel = normalizeTokenUsageModelLabel(latestUsageModel?.response_model);
     return {
       current: currentModel,
+      ...(options.includeCatalogue === false ? { available_model_count: available.length } : {}),
       models,
       model_options: modelOptions,
       thinking_level: thinkingLevel,
       thinking_level_label: thinkingLevelLabel,
+      thinking_policy: session ? getSessionThinkingPolicy(session) : null,
       supports_thinking: supportsThinking,
       available_thinking_levels: availableThinkingLevels,
       available_thinking_level_labels: availableThinkingLevelLabels,

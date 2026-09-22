@@ -39,9 +39,18 @@ export function mergeVisualLiveContext(
     contextWindow?: number | null;
     percent?: number | null;
     cacheUsage?: AgentContext["cacheUsage"];
+    sessionGeneration?: string | null;
   },
+  options: { authoritative?: boolean } = {},
 ): AgentContext {
+  if (previous?.sessionGeneration && live.sessionGeneration !== previous.sessionGeneration && !options.authoritative) return previous;
+  if (live.sessionGeneration && live.sessionGeneration !== previous?.sessionGeneration) {
+    return { tokens: live.tokens ?? null, contextWindow: live.contextWindow ?? 0,
+      percent: live.percent ?? null, cacheUsage: live.cacheUsage ?? previous?.cacheUsage ?? null,
+      sessionGeneration: live.sessionGeneration };
+  }
   return {
+    ...(previous?.sessionGeneration ? { sessionGeneration: previous.sessionGeneration } : {}),
     tokens: live.tokens ?? previous?.tokens ?? null,
     contextWindow: live.contextWindow ?? previous?.contextWindow ?? 0,
     percent: live.percent ?? previous?.percent ?? null,

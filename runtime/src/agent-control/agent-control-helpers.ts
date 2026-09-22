@@ -113,7 +113,6 @@ export function setSessionThinkingLevelCompat(session: AgentSession, level: stri
     agent?: { state?: { thinkingLevel?: string } };
     thinkingLevel?: string;
     sessionManager?: { appendThinkingLevelChange?: (thinkingLevel: string) => unknown };
-    settingsManager?: { setDefaultThinkingLevel?: (thinkingLevel: string) => unknown };
     supportsThinking?: () => boolean;
     _emit?: (event: { type: string; level: string }) => unknown;
     _extensionRunner?: { emit?: (event: { type: string; level: string; previousLevel: string | null }) => unknown };
@@ -128,9 +127,6 @@ export function setSessionThinkingLevelCompat(session: AgentSession, level: stri
 
   if (previousLevel !== forcedLevel) {
     anySession.sessionManager?.appendThinkingLevelChange?.(forcedLevel);
-    if (anySession.supportsThinking?.() || forcedLevel !== "off") {
-      anySession.settingsManager?.setDefaultThinkingLevel?.(forcedLevel);
-    }
     anySession._emit?.({ type: "thinking_level_changed", level: forcedLevel });
     void anySession._extensionRunner?.emit?.({ type: "thinking_level_select", level: forcedLevel, previousLevel });
   }

@@ -9,6 +9,7 @@
  */
 
 import { readFileSync, statSync } from "fs";
+import { resolveAudioContentType } from "../../../utils/audio-media.js";
 import { basename, extname } from "path";
 import { createMedia, createMediaInDatabase, getMediaById, getMediaInfoById } from "../../../db/media.js";
 import type Database from "bun:sqlite";
@@ -113,7 +114,8 @@ export class MediaService {
       };
     }
 
-    const detectedContentType = normalizeContentType(file.type, inferContentTypeFromPath(file.name || "upload"));
+    const detectedContentType = resolveAudioContentType(file.type, file.name)
+      || normalizeContentType(file.type, inferContentTypeFromPath(file.name || "upload"));
 
     const arrayBuffer = await file.arrayBuffer();
     const data = new Uint8Array(arrayBuffer);
@@ -179,7 +181,8 @@ export class MediaService {
       };
     }
 
-    const detectedContentType = normalizeContentType(contentTypeOverride, inferContentTypeFromPath(filePath));
+    const detectedContentType = resolveAudioContentType(contentTypeOverride, filenameOverride || filePath)
+      || normalizeContentType(contentTypeOverride, inferContentTypeFromPath(filePath));
 
     let data: Uint8Array;
     try {
@@ -228,7 +231,7 @@ export class MediaService {
     const blob = thumbnail && media.thumbnail ? media.thumbnail : media.data;
     const buffer = blob.buffer.slice(blob.byteOffset, blob.byteOffset + blob.byteLength) as ArrayBuffer;
     const body = new Blob([buffer], { type: media.content_type });
-    return { status: 200, body, contentType: media.content_type, filename: media.filename };
+    return { status: 200, body, contentType: resolveAudioContentType(media.content_type, media.filename) || media.content_type, filename: media.filename };
   }
 
   getInfo(id: number): { status: number; body: unknown } {

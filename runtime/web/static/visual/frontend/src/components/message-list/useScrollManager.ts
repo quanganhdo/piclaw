@@ -1,3 +1,4 @@
+import { bindSvgImageThemes } from '../../../../../../src/utils/svg-images';
 import { useRef, useCallback, useEffect } from "preact/hooks";
 import { buildChatUrl } from "../../api/chat-jid";
 import { copyToClipboard } from "../../utils/clipboard";
@@ -12,6 +13,7 @@ const log = createLogger("MessageList");
 
 /** Own delegated copy listeners/timers for both ordinary and SVG-source code blocks. */
 export function bindCodeCopyButtons(container: HTMLElement): () => void {
+  const stopSvgThemes = bindSvgImageThemes(container);
   const timers = new Set<ReturnType<typeof setTimeout>>();
   let disposed = false;
   const handler = async (event: Event) => {
@@ -32,7 +34,7 @@ export function bindCodeCopyButtons(container: HTMLElement): () => void {
     timers.add(timer);
   };
   container.addEventListener("click", handler);
-  return () => { disposed = true; container.removeEventListener("click", handler); timers.forEach(clearTimeout); };
+  return () => { disposed = true; stopSvgThemes(); container.removeEventListener("click", handler); timers.forEach(clearTimeout); };
 }
 
 /**

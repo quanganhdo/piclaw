@@ -1,6 +1,7 @@
 import { afterEach, expect, test } from 'bun:test';
 
 import { paneRegistry } from '../../web/src/panes/pane-registry.js';
+import * as api from '../../web/src/api.js';
 import { registerAppPaneExtensions, resolveAppApiSurface } from '../../web/src/ui/app-shell-bootstrap.js';
 
 const registeredByTest = new Set<string>();
@@ -26,6 +27,12 @@ test('registerAppPaneExtensions does not register addon-owned kanban/mindmap pan
   expect(paneRegistry.get('editor')).toBeTruthy();
   expect(paneRegistry.get('mindmap-editor')).toBeUndefined();
   expect(paneRegistry.get('kanban-editor')).toBeUndefined();
+});
+
+test('resolveAppApiSurface exposes the compact model reader used by MainApp', () => {
+  const surface = resolveAppApiSurface(api);
+  expect(surface.getAgentModelState).toBe(api.getAgentModelState);
+  expect(surface.getAgentModelState).not.toBe(surface.getAgentModels);
 });
 
 test('resolveAppApiSurface exposes archived branch purge API', () => {

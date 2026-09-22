@@ -1,3 +1,4 @@
+import { terminalThemeFromCss } from '../../../../../src/ui/theme-terminal';
 import { useEffect, useRef, useState } from "preact/hooks";
 import { Terminal as XtermTerminal } from "../../../../common/js/vendor/xterm/xterm.mjs";
 import { FitAddon as XtermFitAddon } from "../../../../common/js/vendor/xterm/addon-fit.mjs";
@@ -10,6 +11,9 @@ type TerminalDimensions = { cols: number; rows: number };
 type Disposable = { dispose: () => void };
 
 interface TerminalInstance {
+  options: { theme?: TerminalTheme };
+  rows: number;
+  refresh(start: number, end: number): void;
   open(container: HTMLElement): void;
   write(data: string): void;
   resize(cols: number, rows: number): void;
@@ -24,34 +28,6 @@ interface FitAddonInstance {
   proposeDimensions(): TerminalDimensions | undefined;
   dispose?(): void;
 }
-
-// Catppuccin Mocha theme colors matching theme.ts dark theme
-const CATPPUCCIN_MOCHA_THEME: TerminalTheme = {
-  foreground: "#cdd6f4",
-  background: "#11111b",
-  cursor: "#f5e0dc",
-  cursorAccent: "#11111b",
-  selectionBackground: "#45475a",
-  selectionForeground: "#cdd6f4",
-  // Normal colors
-  black: "#45475a",
-  red: "#f38ba8",
-  green: "#a6e3a1",
-  yellow: "#f9e2af",
-  blue: "#89b4fa",
-  magenta: "#f5c2e7",
-  cyan: "#94e2d5",
-  white: "#bac2de",
-  // Bright colors
-  brightBlack: "#585b70",
-  brightRed: "#f38ba8",
-  brightGreen: "#a6e3a1",
-  brightYellow: "#f9e2af",
-  brightBlue: "#89b4fa",
-  brightMagenta: "#f5c2e7",
-  brightCyan: "#94e2d5",
-  brightWhite: "#a6adc8",
-};
 
 interface TerminalSessionInfo {
   ws_path: string;
@@ -85,6 +61,13 @@ export function TerminalComponent() {
     let fitAddon: FitAddonInstance | null = null;
     let ws: WebSocket | null = null;
     let resizeObserver: ResizeObserver | null = null;
+    const refreshTheme = () => {
+      const active = terminalRef.current;
+      if (!mountedRef.current || !active) return;
+      active.options.theme = terminalThemeFromCss();
+      active.refresh(0, Math.max(0, active.rows - 1));
+    };
+    window.addEventListener('piclaw-theme-change', refreshTheme);
 
     async function setup() {
       if (!containerRef.current || !mountedRef.current) return;
@@ -119,7 +102,7 @@ export function TerminalComponent() {
       const nextTerminal = new XtermTerminal({
         fontFamily: '"JetBrains Mono NF", monospace',
         fontSize: 13,
-        theme: CATPPUCCIN_MOCHA_THEME,
+        theme: terminalThemeFromCss(),
         cursorBlink: true,
         cursorStyle: "block",
         scrollback: 5000,
@@ -266,6 +249,7 @@ export function TerminalComponent() {
 
     return () => {
       mountedRef.current = false;
+      window.removeEventListener('piclaw-theme-change', refreshTheme);
       if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
       if (ws) {
         ws.close();

@@ -42,6 +42,7 @@ import { createBuiltinExtensionFactories } from "../extensions/index.js";
 import { readAccessConfig } from '../core/config-access.js';
 import { requireOwnedSessionExecution } from './owned-session-access.js';
 import { familySessionModelOptions } from './family-model-defaults.js';
+import { installSessionThinkingPolicy, readThinkingPreference, THINKING_POLICY_ENTRY } from './thinking-policy.js';
 import { getDb } from '../db/connection.js';
 import { readOwnedForkSeed } from '../db/owned-forks.js';
 import { createFamilyBuiltinTools, createFamilyToolCallGuard } from './family-builtin-tools.js';
@@ -406,12 +407,19 @@ export function trimPreCompactionEntries(sessionDir: string): void {
   }
   let effectiveModel: { provider: string; modelId: string; timestamp?: string } | null = null;
   let effectiveThinking: { thinkingLevel: string; timestamp?: string } | null = null;
+  let effectivePreference: { preferred: string; timestamp?: string } | null = null;
   let ancestorId = typeof parsedEntries[keptIdx]?.parentId === "string" ? parsedEntries[keptIdx].parentId : null;
   const visited = new Set<string>();
-  while (ancestorId && !visited.has(ancestorId) && (!effectiveModel || !effectiveThinking)) {
+  while (ancestorId && !visited.has(ancestorId) && (!effectiveModel || !effectiveThinking || !effectivePreference)) {
     visited.add(ancestorId);
     const ancestor = entriesById.get(ancestorId);
     if (!ancestor) break;
+    if (!effectivePreference && ancestor.type === 'custom' && ancestor.customType === THINKING_POLICY_ENTRY && typeof ancestor.data?.preferred === 'string') {
+      effectivePreference = { preferred: ancestor.data.preferred, timestamp: ancestor.timestamp };
+    }
+    if (!effectivePreference && ancestor.type === 'thinking_level_change' && typeof ancestor.thinkingLevel === 'string') {
+      effectivePreference = { preferred: ancestor.thinkingLevel, timestamp: ancestor.timestamp };
+    }
     if (!effectiveThinking && ancestor.type === "thinking_level_change" && typeof ancestor.thinkingLevel === "string") {
       effectiveThinking = { thinkingLevel: ancestor.thinkingLevel, timestamp: ancestor.timestamp };
     }
@@ -455,6 +463,14 @@ export function trimPreCompactionEntries(sessionDir: string): void {
       timestamp: effectiveThinking.timestamp ?? new Date().toISOString(),
       thinkingLevel: effectiveThinking.thinkingLevel,
     });
+    carriedParentId = id;
+  }
+
+  if (effectivePreference) {
+    const id = makeCarriedId('thinking-preference');
+    carriedEntries.push({ type: 'custom', id, parentId: carriedParentId,
+      timestamp: effectivePreference.timestamp ?? new Date().toISOString(),
+      customType: THINKING_POLICY_ENTRY, data: { preferred: effectivePreference.preferred } });
     carriedParentId = id;
   }
 
@@ -623,10 +639,14 @@ export async function createSessionInDir(
       diagnostics: [],
     };
 
+    const restoredBranch = sessionManager.getBranch();
+    const restoredThinkingPreference = readThinkingPreference(restoredBranch);
+    const recordedThinking = readThinkingPreference(restoredBranch.filter(entry => entry.type === 'thinking_level_change'));
     const result = await createAgentSessionFromServices({
       services,
       sessionManager,
       sessionStartEvent,
+      ...(recordedThinking !== null ? { thinkingLevel: recordedThinking } : {}),
       ...(mode === 'family-shared' ? familySessionModelOptions(options.chatJid!, sessionManager, options.modelRuntime, options.settingsManager) : {}),
       // Do not pass `tools` here — pi-coding-agent ≥0.68 treats it as an
       // allowlist that silently blocks every extension tool not listed.
@@ -655,6 +675,8 @@ export async function createSessionInDir(
       ...normalizeResourceDiagnostics(resourceLoader.getThemes().diagnostics ?? []),
     ];
     services.diagnostics = diagnostics;
+
+    installSessionThinkingPolicy(result.session, restoredThinkingPreference);
 
     // Disable upstream auto-compaction — piclaw manages compaction at safe
     // boundaries via maybeAutoCompactSessionBeforePrompt and recovery paths.

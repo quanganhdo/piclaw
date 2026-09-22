@@ -811,3 +811,7 @@ test('resolveUiOnlyCommandNotice surfaces only read-only thinking queries and le
     command: { message: 'Model set to openai/gpt-5.' },
   })).toBeNull();
 });
+
+test('compact snapshot model count keeps the picker accessible without a selected model',()=>{
+ expect(resolveComposeModelPickerState(null,{current:null,model_options:[],available_model_count:5})).toEqual({showPicker:true,label:'Select model',hasAvailableModels:true});
+});

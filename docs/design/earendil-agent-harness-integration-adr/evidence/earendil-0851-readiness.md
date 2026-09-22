@@ -15,7 +15,7 @@ The current-runtime migration was merged and the running Piclaw service now uses
 
 The [A/B/C/D sequence](earendil-0851-work-sequence.md) keeps PR B focused on the atomic current-loop migration, selected-release assignments/basic positive compatibility and public Memory/JSONL SessionRepo conformance. Already-tested partial HC cases stay in B; no history rewrite or removal of evidence is required.
 
-[PR C work](https://github.com/rcarmo/piclaw/issues/1332) adds broader deterministic real-Harness evidence. Its [current result](earendil-0851-hc-evidence.md) is 24 partial rows and one unsupported row, never full promotion or activation. [PR D work](https://github.com/rcarmo/piclaw/issues/1333) reassesses tip-only changes after a later coherent release. Rui accepted the SessionRepo evidence scope and authorised the [executed canary](earendil-0851-canary-result.md).
+[PR C work](https://github.com/rcarmo/piclaw/issues/1332) completed broader deterministic real-Harness evidence. Its [result](earendil-0851-hc-evidence.md) is 24 partial rows and one unsupported row, never full promotion or activation. [PR D work](https://github.com/rcarmo/piclaw/issues/1333) now has a [published 0.87.0 candidate assessment](earendil-0870-harness-candidate.md), kept separate from installed 0.85.1 authority. Rui accepted the SessionRepo evidence scope and authorised the [executed canary](earendil-0851-canary-result.md).
 
 ## Implemented migration
 

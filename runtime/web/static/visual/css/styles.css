@@ -19,3 +19,10 @@
 @import "./settings.css";
 @import "../../common/css/settings-addon-buttons.css";
 @import "../../common/css/settings-addon-controls.css";
+
+@import url("../../common/css/theme-syntax.css");
+@import url("../../common/css/theme-effects.css");
+
+@import url("../../common/css/theme-focus.css");
+@import url("../../common/css/synthwave-full.css");
+@import url("../../common/css/workspace-theme.css");

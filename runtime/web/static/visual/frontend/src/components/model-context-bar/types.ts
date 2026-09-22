@@ -33,6 +33,7 @@ export interface TokenUsageSummary {
 }
 
 export interface AgentContext {
+  sessionGeneration?: string | null;
   tokens: number | null;
   contextWindow: number;
   percent: number | null;

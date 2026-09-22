@@ -115,3 +115,22 @@ Feature: Render bounded model-generated SVG as an image within a message
     When the complete safe fence arrives and the message is later reloaded
     Then the completed fence has one image and one source-copy action
     And repeated rendering does not duplicate images, listeners or controls
+
+  @ux-svg-008
+  Scenario: Theme SVG defaults without replacing authored colours
+    Given a safe SVG fence contains unstyled fills, currentColor and explicit paints
+    When I select a palette in either skin
+    Then missing foregrounds and supported SVG theme tokens use the selected palette
+    And authored colours, gradients and the exact copy source remain unchanged
+    When I choose a fixed light or dark preview background
+    Then that preview keeps its chosen surface across theme changes
+    And unsafe elements, styles, URLs and arbitrary variables remain rejected
+
+  @ux-svg-009
+  Scenario: Align Mermaid and workspace SVG viewer surfaces with the host
+    Given my selected palette differs from the operating-system colour scheme
+    Then Mermaid uses the selected palette and makes no external font requests
+    And existing Mermaid SVG changes colour without layout regeneration
+    And the workspace image viewer follows its parent palette
+    When I choose a viewer background or zoom
+    Then the source image URL and bytes remain unchanged

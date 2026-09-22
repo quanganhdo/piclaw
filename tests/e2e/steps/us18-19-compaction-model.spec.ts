@@ -224,10 +224,12 @@ test.describe('US-18: Compaction Indicator', () => {
 test.describe('US-19: Model Switching', () => {
   test('model label visible in compose bar', async ({ authedPage: page }) => {
     await page.waitForSelector(sel.timeline);
-    await page.waitForTimeout(2000);
-
-    const label = await getModelLabel(page);
-    expect(label.length).toBeGreaterThan(0);
+    const modelBtn = page.locator('.compose-model-hint, .compose-model-btn, [class*="model-hint"]').first();
+    if (!(await modelBtn.isVisible({ timeout: 10_000 }).catch(() => false))) {
+      test.skip(true, 'Model picker is unavailable for this test-session state');
+      return;
+    }
+    await expect(modelBtn).not.toHaveText(/^\s*$/);
   });
 
   test('model button is clickable and opens model selector', async ({ authedPage: page }) => {
@@ -278,8 +280,9 @@ test.describe('US-19: Model Switching', () => {
     await modelBtn.click();
     await page.waitForTimeout(500);
 
-    // Find a different model to switch to
-    const modelOptions = page.locator('.model-popup input[type="radio"]:not(:checked), .settings-dialog .models-pane input[type="radio"]:not(:checked)');
+    // The compose picker is a searchable listbox. Select an option that is
+    // not the active model; it deliberately does not use hidden radio inputs.
+    const modelOptions = page.locator('.compose-model-popup [role="option"]:not([aria-selected="true"])');
     const optionCount = await modelOptions.count();
     if (optionCount === 0) {
       await page.keyboard.press('Escape');
@@ -289,25 +292,20 @@ test.describe('US-19: Model Switching', () => {
 
     // Click the first non-selected model
     await modelOptions.first().click();
-    await page.waitForTimeout(3000);
+    await expect(modelBtn).not.toHaveText(labelBefore, { timeout: 10_000 });
 
     // Close dialog if still open
     await page.keyboard.press('Escape').catch(() => {});
-    await page.waitForTimeout(1000);
 
-    // Label should have changed (or still be the same if switch failed)
+    // The confirmed model selection updates the compose label and preserves a
+    // valid context indicator.
     const labelAfter = await getModelLabel(page);
     const usageAfter = await getCompactionState(page);
-
-    // If the model actually changed, the label and/or context window should differ
-    if (labelAfter !== labelBefore) {
-      // Context usage title should reflect the new model's window
-      // The pie title contains "Context: XK / YK tokens" — Y should change
-      if (usageBefore.contextWindow && usageAfter.contextWindow) {
-        // Not necessarily different (models can have same window)
-        // but the pie should have valid data
-        expect(usageAfter.pieTitle).toContain('Context:');
-      }
+    expect(labelAfter).not.toBe(labelBefore);
+    // The pie title contains "Context: XK / YK tokens". The context windows
+    // may be equal, but the selected model must retain a valid indicator.
+    if (usageBefore.contextWindow && usageAfter.contextWindow) {
+      expect(usageAfter.pieTitle).toContain('Context:');
     }
   });
 

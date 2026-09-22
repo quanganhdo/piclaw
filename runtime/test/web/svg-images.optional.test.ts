@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, test } from 'bun:test';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { chromium, webkit, type Browser, type Page } from 'playwright';
 
@@ -20,7 +20,12 @@ beforeAll(async () => {
         import { renderMarkdown as visual } from ${JSON.stringify(resolve(repo, 'runtime/web/static/visual/frontend/src/utils/markdown-pipeline.ts'))};
         import { bindCodeCopyButtons } from ${JSON.stringify(resolve(repo, 'runtime/web/static/visual/frontend/src/components/message-list/useScrollManager.ts'))};
         import { sanitizeSvgImage, SVG_IMAGE_LIMITS } from ${JSON.stringify(resolve(repo, 'runtime/web/src/utils/svg-images.ts'))};
-        Object.assign(window, { svgTest: { ...classicSvgTest, visual, bindCodeCopyButtons, sanitizeSvgImage, limits: SVG_IMAGE_LIMITS } });
+        import { initTheme, selectLocalTheme } from ${JSON.stringify(resolve(repo, 'runtime/web/src/ui/theme.ts'))};
+        import { WEB_THEME_PRESETS } from ${JSON.stringify(resolve(repo, 'runtime/src/core/ui-theme-catalogue.ts'))};
+        import { renderMermaidDiagrams as classicMermaid } from ${JSON.stringify(resolve(repo, 'runtime/web/src/markdown.ts'))};
+        import { renderMermaidDiagrams as visualMermaid } from ${JSON.stringify(resolve(repo, 'runtime/web/static/visual/frontend/src/utils/mermaid-render.ts'))};
+        import { importVSCodeTheme, applyTheme, resetTheme } from ${JSON.stringify(resolve(repo, 'runtime/web/static/visual/frontend/src/utils/theme-importer.ts'))};
+        Object.assign(window, { svgTest: { ...classicSvgTest, visual, bindCodeCopyButtons, sanitizeSvgImage, initTheme,selectLocalTheme,importVSCodeTheme,applyTheme,resetTheme,presets:WEB_THEME_PRESETS,classicMermaid,visualMermaid,limits: SVG_IMAGE_LIMITS } });
       ` }));
       build.onResolve({ filter: /^#editor-vendor\/codemirror$/ }, () => ({ path: resolve(repo, 'runtime/extensions/viewers/editor/vendor/codemirror.js') }));
       build.onLoad({ filter: /\/web\/src\/components\/post\.ts$/ }, (args) => ({ loader: 'ts', contents: readFileSync(args.path, 'utf8') + '\nexport const classicSvgTest = { classic: renderMarkdown, enhanceCodeBlocks };' }));
@@ -40,6 +45,7 @@ async function fixture(run: (page: Page, requests: string[], dialogs: string[]) 
   page.on('dialog', async d => { dialogs.push(d.message()); await d.dismiss(); });
   try {
     await page.setContent('<!doctype html><html><body><button id="focus">Focus sentinel</button><main id="post" style="width:280px"></main></body></html>');
+    await page.evaluate(() => { const values=new Map<string,string>();Object.defineProperty(window,'localStorage',{configurable:true,value:{getItem:(key:string)=>values.get(key)||null,setItem:(key:string,value:string)=>values.set(key,value),removeItem:(key:string)=>values.delete(key)}}); });
     await page.addStyleTag({ content: readFileSync(resolve(repo, 'runtime/web/src/styles/svg-images.css'), 'utf8') });
     await page.addScriptTag({ content: readFileSync(resolve(repo, 'node_modules/marked/lib/marked.umd.js'), 'utf8') });
     await page.addScriptTag({ content: bundle });
@@ -281,4 +287,80 @@ browserTest('cache is bounded, invalid results are reused and non-SVG messages d
     });
     expect(result).toEqual({ordinary:0,invalidCalls:1,reparsed:1});
   });
+});
+
+for (const skin of ['classic','visual']) browserTest(`${skin}: SVG defaults, explicit paints, live palettes and preview surfaces agree`,async()=>{
+  await fixture(async(page)=>{
+    await page.emulateMedia({colorScheme:'dark'});
+    const result=await page.evaluate((skin)=>{
+      const api=(window as any).svgTest,post=document.getElementById('post')!;
+      api.initTheme({skin});api.selectLocalTheme('paper');
+      const source='<svg viewBox="0 0 240 120"><title>Theme defaults</title><rect x="5" y="5" width="40" height="40"/><rect x="60" y="5" width="40" height="40" fill="currentColor"/><rect x="110" y="5" width="40" height="40" fill="#e04020"/><rect x="160" y="5" width="40" height="40" fill="var(--svg-accent)"/><text x="8" y="80">Theme text</text></svg>\n';
+      post.innerHTML=api[skin]('\x60\x60\x60svg\n'+source+'\x60\x60\x60',null);
+      (window as any).svgCleanup=skin==='classic'?api.enhanceCodeBlocks(post):api.bindCodeCopyButtons(post);
+      const img=post.querySelector('img')!;
+      const parse=()=>new DOMParser().parseFromString(atob(img.src.split(',')[1]),'image/svg+xml');
+      const probe=document.createElement('span');document.body.append(probe);const color=(name:string)=>{probe.style.color='var('+name+')';return getComputedStyle(probe).color;};
+      const failures:string[]=[];
+      for(const preset of api.presets){api.selectLocalTheme(preset.id);const doc=parse();if(doc.documentElement.getAttribute('color')!==color('--text-primary'))failures.push(preset.id+' foreground');if(doc.documentElement.getAttribute('fill')!=='currentColor')failures.push('default');if(doc.querySelectorAll('rect')[2].getAttribute('fill')!=='#e04020')failures.push('authored changed');if(doc.querySelectorAll('rect')[3].getAttribute('fill')!==color('--accent-color'))failures.push(preset.id+' accent');}
+      probe.remove();api.selectLocalTheme('paper');return {failures,source,src:img.src,paperMode:document.documentElement.dataset.theme};
+    },skin);
+    expect(result.failures).toEqual([]);expect(result.paperMode).toBe('light');
+    await page.locator('.model-svg-surface').selectOption('dark');
+    const dark=await page.locator('.model-svg-image').getAttribute('src');expect(dark).not.toBe(result.src);
+    await page.evaluate(()=>(window as any).svgTest.selectLocalTheme('as400'));
+    expect(await page.locator('.model-svg-image').getAttribute('src')).toBe(dark);
+    await page.locator('.model-svg-surface').selectOption('theme');
+    expect(await page.locator('.model-svg-image').getAttribute('src')).not.toBe(dark);
+    await page.locator('.model-svg-surface').selectOption('light');
+    expect(await page.locator('.model-svg-image').evaluate(e=>getComputedStyle(e).backgroundColor)).toBe('rgb(255, 255, 255)');
+    // Cleanup removes listeners; detached content cannot keep parsing on theme changes.
+    const before=await page.locator('.model-svg-image').getAttribute('src');await page.evaluate(()=>(window as any).svgCleanup());
+    await page.evaluate(()=>(window as any).svgTest.selectLocalTheme('synthwave-84-full'));expect(await page.locator('.model-svg-image').getAttribute('src')).toBe(before);
+  });
+},30000);
+
+for(const skin of ['classic','visual']) browserTest(`${skin}: actual Mermaid SVG follows selected palette, not OS, without rerender`,async()=>{
+  await fixture(async(page)=>{
+    await page.addScriptTag({content:readFileSync(resolve(repo,'runtime/web/static/common/js/vendor/beautiful-mermaid.js'),'utf8')});
+    await page.emulateMedia({colorScheme:'dark'});
+    const result=await page.evaluate(async(skin)=>{
+      const api=(window as any).svgTest,post=document.getElementById('post')!;
+      api.initTheme({skin});api.selectLocalTheme('paper');post.innerHTML=api[skin]('\x60\x60\x60mermaid\ngraph LR\nA[Input] --> B[Output]\n\x60\x60\x60',null);
+      await api[skin+'Mermaid'](post);
+      const svg=post.querySelector('svg')!;if(!svg)throw Error(post.innerHTML);const text=svg.querySelector('text')!;const initial=getComputedStyle(text).fill;
+      api.selectLocalTheme('as400');const changed=getComputedStyle(text).fill;
+      const probe=document.createElement('span');probe.style.color='var(--text-primary)';document.body.append(probe);const expected=getComputedStyle(probe).color;probe.remove();
+      return {initial,changed,expected,same:svg===post.querySelector('svg'),source:svg.outerHTML,labels:svg.textContent};
+    },skin);
+    expect(result.initial).not.toBe(result.changed);expect(result.changed).toBe(result.expected);expect(result.same).toBe(true);expect(result.labels).toContain('Input');expect(result.source).toContain('--text-primary');
+  });
+},30000);
+
+for(const skin of ['classic','visual']) browserTest(`${skin}: rasterized SVG defaults and authored paints survive surface/import changes`,async()=>{
+ await fixture(async(page)=>{
+  await page.evaluate((skin)=>{
+   const api=(window as any).svgTest,post=document.getElementById('post')!;api.initTheme({skin});api.selectLocalTheme('paper');
+   post.innerHTML=api[skin]('\x60\x60\x60svg\n<svg width="120" height="40"><rect width="40" height="40"/><rect x="40" width="40" height="40" fill="#ff3300"/><rect x="80" width="40" height="40" fill="var(--svg-accent)"/></svg>\n\x60\x60\x60',null);
+   (window as any).svgCleanup=skin==='classic'?api.enhanceCodeBlocks(post):api.bindCodeCopyButtons(post);
+  },skin);
+  const pixels=()=>page.evaluate(async()=>{const image=document.querySelector<HTMLImageElement>('.model-svg-image')!;await image.decode();const canvas=document.createElement('canvas');canvas.width=120;canvas.height=40;const c=canvas.getContext('2d')!;c.drawImage(image,0,0);return [20,60,100].map(x=>Array.from(c.getImageData(x,20,1,1).data));});
+  const light=await pixels();expect(light[1]).toEqual([255,51,0,255]);
+  await page.evaluate(()=>(window as any).svgTest.selectLocalTheme('as400'));const green=await pixels();expect(green[0][0]).toBe(0);expect(green[0][2]).toBe(0);expect(green[1]).toEqual(light[1]);expect(green[0]).not.toEqual(light[0]);
+  await page.evaluate(()=>{const a=(window as any).svgTest;a.applyTheme(a.importVSCodeTheme({type:'dark',colors:{'editor.background':'#121212','editor.foreground':'#ccddee',focusBorder:'#faab22'}}));});
+  expect((await pixels())[2]).toEqual([250,171,34,255]);
+  await page.locator('.model-svg-surface').selectOption('light');expect((await pixels())[0]).toEqual([24,33,43,255]);
+  await page.evaluate(()=>{const a=(window as any).svgTest;a.resetTheme();a.selectLocalTheme('synthwave-84-full');});
+  await page.locator('.model-svg-surface').selectOption('theme');
+  const dir=resolve(repo,'.artifacts/svg-themes');mkdirSync(dir,{recursive:true});
+  await page.locator('#post').screenshot({path:resolve(dir,`${process.env.PICLAW_OPTIONAL_BROWSER||'chromium'}-${skin}-theme-svg.png`)});
+  await page.evaluate(()=>(window as any).svgCleanup());
+ });
+},30000);
+
+browserTest('theme tokens are a finite safe paint set; authored root colours and gradient references win',async()=>{
+ await fixture(async(page)=>{
+  const result=await page.evaluate(()=>{const a=(window as any).svgTest;a.initTheme({skin:'classic'});a.selectLocalTheme('as400');const src='<svg color="#123456" fill="#abcdef"><defs><linearGradient id="g"><stop stop-color="var(--svg-accent)"/></linearGradient></defs><rect fill="url(#g)"/><path stroke="var(--arbitrary)"/><circle fill="var(--svg-accent, url(https://bad.invalid))"/></svg>';const out=a.sanitizeSvgImage(src);const xml=atob(out.src.split(',')[1]);return {xml,docColor:new DOMParser().parseFromString(xml,'image/svg+xml').documentElement.getAttribute('color')};});
+  expect(result.docColor).toBe('#123456');expect(result.xml).toContain('fill="#abcdef"');expect(result.xml).toContain('url(#g)');expect(result.xml).not.toMatch(/var\(|bad.invalid|arbitrary/);
+ });
 });

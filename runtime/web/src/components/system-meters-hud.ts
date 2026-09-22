@@ -1,5 +1,6 @@
 import { html, useEffect, useMemo, useState } from '../vendor/preact-htm.js';
 import { getSystemMetrics } from '../api.js';
+import { AGENT_UI_POLL_MS } from '../ui/agent-ui-snapshot.js';
 import { METERS_COLLAPSED_EVENT_NAME, METERS_EVENT_NAME, applyMetersCollapsed, readStoredMetersCollapsed, readStoredMetersEnabled } from '../ui/meters.js';
 import { renderDisclosureTriangle } from '../ui/disclosure-triangle.js';
 
@@ -209,7 +210,7 @@ export function SystemMetersHud({ mode = 'overlay' }) {
         timer = window.setInterval(() => {
             if (document?.visibilityState === 'hidden') return;
             void refresh();
-        }, Math.max(1000, Number(metrics.sample_interval_ms) || 2000));
+        }, AGENT_UI_POLL_MS);
 
         return () => {
             cancelled = true;

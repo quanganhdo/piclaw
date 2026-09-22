@@ -1,5 +1,5 @@
 import { html, useState, useEffect, useCallback, useMemo, useRef } from '../../vendor/preact-htm.js';
-import { applyOutputPad, applyThemeFromEvent } from '../../ui/theme.js';
+import { applyOutputPad, applyThemeFromEvent, getThemeModePreference, setThemeModePreference } from '../../ui/theme.js';
 import { LanguageSwitcher } from '../language-switcher.js';
 import { useTranslation } from '../../utils/i18n.js';
 
@@ -21,6 +21,7 @@ export function ThemeSection({ themes, colorKeys, settingsData, setStatus, merge
     const { t: tr } = useTranslation();
     const [currentTheme, setCurrentTheme] = useState('default');
     const [currentTint, setCurrentTint] = useState('');
+    const [mode, setMode] = useState(getThemeModePreference);
     const [outputPad, setOutputPad] = useState(0);
     const [saving, setSaving] = useState(false);
     const savedSnapshotRef = useRef('');
@@ -102,7 +103,7 @@ export function ThemeSection({ themes, colorKeys, settingsData, setStatus, merge
     const presets = themes || [];
 
     return html`
-        <div class="settings-section">
+        <div class="settings-section settings-appearance">
             <div class="settings-row settings-language-row">
                 <${LanguageSwitcher} variant="inline" />
             </div>
@@ -158,26 +159,28 @@ export function ThemeSection({ themes, colorKeys, settingsData, setStatus, merge
                 </div>
             </div>
 
+            <div class="settings-appearance-mode">
+                <label for="appearance-mode">Automatic theme mode</label>
+                <div class="settings-appearance-mode-control">
+                    <select id="appearance-mode" value=${mode} aria-describedby="appearance-mode-hint" onChange=${e=>{setMode(e.target.value);setThemeModePreference(e.target.value);}}><option value="auto">Follow system</option><option value="light">Light</option><option value="dark">Dark</option></select>
+                    <p id="appearance-mode-hint" class="settings-hint">For Default, Solarized and GitHub in this browser. Named Light/Dark themes keep their mode.</p>
+                </div>
+            </div>
             <table class="settings-table settings-borderless settings-theme-table">
+                <colgroup><col class="settings-theme-select-col" /><col /><col class="settings-theme-mode-col" /><col class="settings-theme-palette-col" /></colgroup>
                 <thead>
-                    <tr>
-                        <th></th><th>Theme</th><th>Mode</th>
-                        ${keys.map(k => html`<th class="settings-swatch-header">${k.replace(/([A-Z])/g, ' $1').trim()}</th>`)}
-                    </tr>
+                    <tr><th scope="col"><span class="sr-only">Selected</span></th><th scope="col">Theme</th><th scope="col" class="settings-theme-mode-cell">Mode</th><th scope="col">Palette</th></tr>
                 </thead>
                 <tbody>
                     ${presets.filter(t => t.name !== 'default').map(t => html`
                         <tr class=${t.name === currentTheme ? 'settings-row-active' : ''}
                             style="cursor:pointer" onClick=${() => applyLocal(t.name, '')}>
-                            <td><input type="radio" name="settings-theme" checked=${t.name === currentTheme} onChange=${() => applyLocal(t.name, '')} /></td>
+                            <td><input type="radio" aria-label=${t.label} name="settings-theme" checked=${t.name === currentTheme} onChange=${() => applyLocal(t.name, '')} /></td>
                             <td><strong>${t.label}</strong></td>
-                            <td>${t.mode}</td>
-                            ${keys.map(k => {
-                                const c = t.colors?.[k];
-                                return html`<td class="settings-swatch-cell">
-                                    ${c ? html`<span class="settings-color-swatch" style=${'background:' + c} title=${c}></span>` : '\u2014'}
-                                </td>`;
-                            })}
+                            <td class="settings-theme-mode-cell">${t.mode}</td>
+                            <td><span class="settings-theme-palette" role="img" aria-label=${`${t.label} palette`}>
+                                ${keys.map(k => { const c=t.colors?.[k]; return c ? html`<span style=${'background:' + c} title=${`${k.replace(/([A-Z])/g, ' $1').trim()}: ${c}`}></span>` : null; })}
+                            </span></td>
                         </tr>
                     `)}
                 </tbody>

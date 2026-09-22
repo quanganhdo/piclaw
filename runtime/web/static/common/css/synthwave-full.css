@@ -1,0 +1,134 @@
+/* Full is an expressive sibling, not a replacement for normal SynthWave.
+ * Bright cores + layered coloured halos adapt upstream SynthWave '84 token glow.
+ * The slow pulse/accent sweep is Piclaw-specific. No timers or RAF loop.
+ */
+:root[data-color-theme="synthwave-84-full"][data-synthwave-glow="on"] :is(.token.keyword, .hljs-keyword, .tok-keyword, .cm-keyword) {
+    --synth-core: #f4eee4;
+    --synth-halo: #f39f05;
+    --synth-edge: #393a33;
+}
+:root[data-color-theme="synthwave-84-full"][data-synthwave-glow="on"] :is(.token.string, .hljs-string, .tok-string, .cm-string) {
+    --synth-core: #ffe8cf;
+    --synth-halo: #ff8b39;
+    --synth-edge: #301809;
+}
+:root[data-color-theme="synthwave-84-full"][data-synthwave-glow="on"] :is(.token.number, .hljs-number, .tok-number, .cm-number, .tok-typeName, .hljs-type) {
+    --synth-core: #fdfdfd;
+    --synth-halo: #03edf9;
+    --synth-edge: #001716;
+}
+:root[data-color-theme="synthwave-84-full"][data-synthwave-glow="on"] :is(.token.function, .hljs-title, .tok-function, .tok-definition, .tok-propertyName) {
+    --synth-core: #fff5fb;
+    --synth-halo: #ff2bad;
+    --synth-edge: #100c0f;
+}
+:root[data-color-theme="synthwave-84-full"][data-synthwave-glow="on"] :is(.tok-bool, .tok-atom, .hljs-literal, .tok-inserted) {
+    --synth-core: #bcffdf;
+    --synth-halo: #72f1b8;
+    --synth-edge: #10271d;
+}
+:root[data-color-theme="synthwave-84-full"][data-synthwave-glow="on"] :is(.tok-deleted, .tok-invalid, .hljs-deletion) {
+    --synth-core: #fff5f6;
+    --synth-halo: #fc1f2c;
+    --synth-edge: #210509;
+}
+:root[data-color-theme="synthwave-84-full"][data-synthwave-glow="on"] :is(
+    .token.keyword, .hljs-keyword, .tok-keyword, .cm-keyword,
+    .token.string, .hljs-string, .tok-string, .cm-string,
+    .token.number, .hljs-number, .tok-number, .cm-number, .tok-typeName, .hljs-type,
+    .token.function, .hljs-title, .tok-function, .tok-definition, .tok-propertyName,
+    .tok-bool, .tok-atom, .hljs-literal, .tok-inserted, .tok-deleted, .tok-invalid, .hljs-deletion
+) {
+    /* Match the real .post-content/.cm-editor syntax rules, which use !important. */
+    color: var(--synth-core) !important;
+    text-shadow: 0 0 2px var(--synth-edge),
+        0 0 5px color-mix(in srgb, var(--synth-halo) 85%, transparent),
+        0 0 12px color-mix(in srgb, var(--synth-halo) 70%, transparent),
+        0 0 25px color-mix(in srgb, var(--synth-halo) 45%, transparent);
+    animation: synthwave-full-neon 5.5s ease-in-out infinite;
+}
+@keyframes synthwave-full-neon {
+    0%, 100% { text-shadow: 0 0 2px var(--synth-edge), 0 0 5px color-mix(in srgb, var(--synth-halo) 65%, transparent), 0 0 12px color-mix(in srgb, var(--synth-halo) 45%, transparent), 0 0 25px color-mix(in srgb, var(--synth-halo) 25%, transparent); }
+    50% { text-shadow: 0 0 2px var(--synth-edge), 0 0 5px var(--synth-halo), 0 0 15px color-mix(in srgb, var(--synth-halo) 85%, transparent), 0 0 32px color-mix(in srgb, var(--synth-halo) 55%, transparent); }
+}
+:root[data-color-theme="synthwave-84-full"][data-synthwave-glow="on"] :is(.send-btn, .chat__send-btn, .compose-send-btn, .settings-panel__provider-btn--primary) {
+    position: relative;
+    isolation: isolate;
+    box-shadow: 0 0 4px #ff7edb, 0 0 15px #ff2bad99, 0 0 28px #ff2bad44;
+}
+:root[data-color-theme="synthwave-84-full"][data-synthwave-glow="on"] :is(.send-btn, .chat__send-btn, .compose-send-btn, .settings-panel__provider-btn--primary)::after {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border: 1px solid #36f9f6;
+    border-radius: inherit;
+    box-shadow: 0 0 8px #36f9f6, 0 0 18px #ff2bad88;
+    pointer-events: none;
+    opacity: 0.2;
+    animation: synthwave-full-accent 4.8s ease-in-out infinite;
+}
+@keyframes synthwave-full-accent { 0%, 100% { opacity: 0.2; } 50% { opacity: 0.9; } }
+:root[data-color-theme="synthwave-84-full"][data-synthwave-glow="on"] :is(.tab-bar__tab--active, .chat-tabs__tab--active) {
+    border-bottom-color: #36f9f6;
+    box-shadow: inset 0 -1px 0 #36f9f6, 0 4px 12px -5px #ff2bad;
+}
+/* Full means the whole interface: inherited neon text reaches prose, labels,
+ * pickers and toolbar icons. Token-specific cores above still win for code. */
+:root[data-color-theme="synthwave-84-full"][data-synthwave-glow="on"] body {
+    text-shadow: 0 0 2px #fff5fb66, 0 0 8px #ff2badbb, 0 0 18px #36f9f680;
+    animation: synthwave-full-ui 6s ease-in-out infinite;
+}
+:root[data-color-theme="synthwave-84-full"][data-synthwave-glow="on"] :is(button, input, textarea, select, [contenteditable="true"]) {
+    text-shadow: inherit;
+}
+@keyframes synthwave-full-ui {
+    0%, 100% { text-shadow: 0 0 2px #fff5fb66, 0 0 8px #ff2badbb, 0 0 18px #36f9f680; }
+    50% { text-shadow: 0 0 3px #fff5fb99, 0 0 12px #ff2badee, 0 0 26px #36f9f6bb; }
+}
+:root[data-color-theme="synthwave-84-full"][data-synthwave-glow="on"] :is(.compose-input-wrapper, .chat__compose-container) {
+    --compose-focus-color: #36f9f6;
+    border-color: #ff7edb;
+    background-image: repeating-linear-gradient(0deg, transparent 0 3px, #36f9f609 3px 4px), linear-gradient(110deg, #ff2bad18, transparent 45%, #36f9f612);
+    box-shadow: 0 0 4px #ff7edb, 0 0 14px #ff2bad99, 0 0 32px #36f9f666, inset 0 0 18px #ff2bad22;
+    animation: synthwave-full-compose 4.8s ease-in-out infinite;
+}
+@keyframes synthwave-full-compose {
+    0%, 100% { box-shadow: 0 0 4px #ff7edb, 0 0 14px #ff2bad99, 0 0 32px #36f9f666, inset 0 0 18px #ff2bad22; }
+    50% { box-shadow: 0 0 4px #36f9f6, 0 0 22px #ff2baddd, 0 0 46px #36f9f699, inset 0 0 24px #36f9f622; }
+}
+:root[data-color-theme="synthwave-84-full"][data-synthwave-glow="on"] :is(.compose-input-wrapper, .chat__compose-container):focus-within {
+    border-color: #36f9f6;
+}
+:root[data-color-theme="synthwave-84-full"][data-synthwave-glow="on"] :is(.compose-session-popup, .compose-model-catalogue, .model-picker, .session-pill__dropdown, .custom-select__dropdown, .settings-modal, .modal-dialog, .command-palette) {
+    border-color: #ff7edb;
+    box-shadow: 0 0 4px #ff7edb99, 0 0 18px #ff2bad88, 0 0 35px #36f9f655;
+}
+:root[data-color-theme="synthwave-84-full"][data-synthwave-glow="on"] :is(input, textarea, select, [contenteditable="true"], .custom-select__trigger):focus,
+:root[data-color-theme="synthwave-84-full"][data-synthwave-glow="on"] :is(button, a[href], [role="button"], [role="combobox"], [role="listbox"], [tabindex]:not([tabindex="-1"])):focus-visible {
+    box-shadow: 0 0 5px #ff7edb, 0 0 14px #ff2badbb, 0 0 26px #36f9f699;
+}
+:root[data-color-theme="synthwave-84-full"][data-synthwave-glow="on"] :is(.tab-item.active, .tab--active, .tab-bar__tab--active, .chat-tabs__tab--active, .activity-bar__btn--active, .compose-agent-chip.active, .custom-select__option--active, .model-picker__item--active, .compose-model-catalogue-option.selected) {
+    box-shadow: inset 0 -2px 0 #36f9f6, 0 0 12px #ff2bad99;
+}
+
+/* Full motion is event-paused when hidden, not driven by a JS render loop. */
+:root[data-theme-motion="paused"][data-color-theme="synthwave-84-full"] :is(body, .compose-input-wrapper, .chat__compose-container, [class*="tok-"], [class*="hljs-"], [class*="cm-"], .token),
+:root[data-theme-motion="paused"][data-color-theme="synthwave-84-full"] :is(.send-btn, .chat__send-btn, .compose-send-btn, .settings-panel__provider-btn--primary)::after {
+    animation-play-state: paused !important;
+}
+@media (prefers-reduced-motion: reduce) {
+    :root[data-color-theme="synthwave-84-full"] :is(body, .compose-input-wrapper, .chat__compose-container, [class*="tok-"], [class*="hljs-"], [class*="cm-"], .token),
+    :root[data-color-theme="synthwave-84-full"] :is(.send-btn, .chat__send-btn, .compose-send-btn, .settings-panel__provider-btn--primary)::after {
+        animation: none !important;
+    }
+}
+@media (forced-colors: active) {
+    :root[data-color-theme="synthwave-84-full"] :is(body, body *) {
+        color: CanvasText !important;
+        background-image: none !important;
+        text-shadow: none !important;
+        box-shadow: none !important;
+        animation: none !important;
+    }
+    :root[data-color-theme="synthwave-84-full"] :is(.send-btn, .chat__send-btn, .compose-send-btn, .settings-panel__provider-btn--primary)::after { display: none; animation: none; }
+}

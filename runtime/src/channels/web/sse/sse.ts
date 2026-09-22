@@ -63,6 +63,7 @@ const MAX_SSE_CLIENTS = 50;
 /** Server-created subscription authority; never populated from request payloads. */
 export interface SseAuthorisation {
   readonly chatJid: string;
+  readonly userId?: string;
   readonly isAuthorised: () => boolean;
   readonly project?: (eventType: string, data: unknown) => unknown | null;
 }
@@ -173,6 +174,14 @@ export function broadcastEvent(channel: SseClientContainer, eventType: string, d
 
   for (const client of channel.clients) {
     if (!revalidateSseClient(channel, client)) continue;
+    if (eventType === 'picker_pins_changed') {
+      const payload = data as { user_id?: string; operator?: boolean };
+      const allowed = client.authorisation ? Boolean(client.authorisation.userId && payload?.user_id === client.authorisation.userId) : payload?.operator === true;
+      if (!allowed) continue;
+      try { client.controller.enqueue(encoder.encode('event: picker_pins_changed\ndata: {}\n\n')); }
+      catch { clearInterval(client.heartbeat); channel.clients.delete(client); }
+      continue;
+    }
     // No global broadcast payloads or unknown event types are approved for family clients.
     if (client.authorisation && (!eventChatJid || !requiresChatScopedDelivery(eventType))) continue;
     if (eventChatJid && client.chatJid !== eventChatJid) {

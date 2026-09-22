@@ -23,6 +23,7 @@ const OPENCODE_BASE_URL = process.env.OPENCODE_BASE_URL;
 if (!OPENCODE_BASE_URL) throw new Error('Set OPENCODE_BASE_URL explicitly; no external provider is selected by default.');
 const OPENCODE_API_KEY = process.env.OPENCODE_API_KEY || ""; // optional — free models work without a key
 const OPENCODE_MODEL = process.env.OPENCODE_MODEL || "mimo-v2.5-free";
+const OPENCODE_ALTERNATE_MODEL = process.env.OPENCODE_ALTERNATE_MODEL || `${OPENCODE_MODEL}-alt`;
 const OPENCODE_PROVIDER_ID = "opencode-zen";
 
 const PI_AGENT_DIR = fixture.profile;
@@ -87,6 +88,15 @@ modelsData.providers[OPENCODE_PROVIDER_ID] = {
     {
       id: OPENCODE_MODEL,
       name: `OpenCode ZEN ${OPENCODE_MODEL}`,
+      input: ["text"],
+      reasoning: true,
+      contextWindow: 128000,
+      maxTokens: 4096,
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+    },
+    {
+      id: OPENCODE_ALTERNATE_MODEL,
+      name: `OpenCode ZEN ${OPENCODE_ALTERNATE_MODEL}`,
       input: ["text"],
       reasoning: true,
       contextWindow: 128000,
@@ -196,5 +206,6 @@ try {
 console.log("\n✓ E2E test instance configured successfully.");
 console.log(`  Provider: ${OPENCODE_PROVIDER_ID}`);
 console.log(`  Model: ${OPENCODE_MODEL}`);
+console.log(`  Alternate model: ${OPENCODE_ALTERNATE_MODEL}`);
 console.log(`  Base URL: ${OPENCODE_BASE_URL}`);
 console.log("\nReady to run E2E tests.");

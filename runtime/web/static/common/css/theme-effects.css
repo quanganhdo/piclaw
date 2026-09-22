@@ -1,0 +1,23 @@
+/* Theme-specific decoration. Static, opt-out, and never applied to ordinary prose. */
+:root[data-color-theme="synthwave-84"][data-synthwave-glow="on"] :is(.token.keyword, .hljs-keyword, .tok-keyword, .cm-keyword) {
+    text-shadow: 0 0 2px color-mix(in srgb, var(--syn-keyword) 60%, transparent), 0 0 8px color-mix(in srgb, var(--syn-keyword) 40%, transparent);
+}
+:root[data-color-theme="synthwave-84"][data-synthwave-glow="on"] :is(.token.string, .hljs-string, .tok-string, .cm-string) {
+    text-shadow: 0 0 2px color-mix(in srgb, var(--syn-string) 60%, transparent), 0 0 8px color-mix(in srgb, var(--syn-string) 40%, transparent);
+}
+:root[data-color-theme="synthwave-84"][data-synthwave-glow="on"] :is(.token.number, .hljs-number, .tok-number, .cm-number) {
+    text-shadow: 0 0 2px color-mix(in srgb, var(--syn-number) 70%, transparent), 0 0 8px color-mix(in srgb, var(--syn-number) 50%, transparent);
+}
+:root[data-color-theme="synthwave-84"][data-synthwave-glow="on"] :is(.compose-send-btn, .send-btn, .chat__send-btn, .settings-panel__provider-btn--primary) {
+    box-shadow: 0 0 5px color-mix(in srgb, var(--accent-color) 50%, transparent), 0 0 14px color-mix(in srgb, var(--accent-color) 25%, transparent);
+}
+/* Shared roles supply contrast-safe foregrounds without changing skin layout. */
+:root[data-color-theme] :is(.settings-panel__env-add-btn, .settings-panel__save-btn):hover {
+    color: var(--accent-foreground);
+}
+@media (forced-colors: active) {
+    :root[data-synthwave-glow="on"] :is(.token, [class*="hljs-"], [class*="tok-"], [class*="cm-"], .compose-send-btn, .send-btn, .chat__send-btn, .settings-panel__provider-btn--primary) {
+        text-shadow: none !important;
+        box-shadow: none !important;
+    }
+}

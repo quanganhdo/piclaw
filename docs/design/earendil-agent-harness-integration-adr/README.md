@@ -12,11 +12,11 @@ This ADR proposes a future service-plane coordinator around Earendil Harness. Th
 | Assessment baseline | Piclaw `v2.13.2` |
 | Baseline commit | `0afd3ae645c423bed82deef80c343bcaa6f31d4d` |
 | Earendil runtime selection | The existing current loop now runs exact published `0.85.1`; Harness remains inactive |
-| Earendil released evidence | 0.85.1 at `d981de1229ef899957bbe968bc8dcda02a21f477`; supported root imports and selected public compatibility are validated, Harness activation is absent |
-| Earendil planning tip | `main` at `e4c75a73222ae2c72abb5f5314fa35ee8effc508`; separate planning evidence only, no tip-only APIs admitted |
+| Earendil released evidence | Installed 0.85.1 at `d981de1229ef899957bbe968bc8dcda02a21f477`; published-candidate 0.87.0 at `16787ad5b2dc748047f314ca1bfe7708f30f54f3`; neither record activates Harness |
+| Earendil planning tip | `main` at `e4c75a73222ae2c72abb5f5314fa35ee8effc508`; historical planning evidence only, superseded for release-candidate assessment by published 0.87.0 |
 | Historical implementation capture | `dev` / draft #8963 at `d14d6b22327d545d6a253f932165b63e48d7f9c8`; spec blob `c7c18c74730d4971f8ca004924e44c7fbe236f25`, SHA-256 `1b200eb7b4255d5afd71e17bb4cf54f82e2c5d1d1e24ae87ba97363838251785` |
-| Evidence timestamps | Original capture: 2026-09-01 18:30 UTC; release-pinned follow-up: 2026-09-17; observations apply only to their recorded revisions |
-| Document state | A admission and B current-loop migration merged; C broader inactive HC evidence in progress; D later-release reassessment deferred. Harness architecture approval remains explicit |
+| Evidence timestamps | Original capture: 2026-09-01 18:30 UTC; 0.85.1 follow-up: 2026-09-17–18; 0.87.0 candidate assessment: 2026-09-21; observations apply only to their recorded revisions |
+| Document state | A/B merged; C broader inactive HC evidence complete; D produced a published 0.87.0 candidate assessment. The installed selection remains 0.85.1 and Harness architecture approval remains explicit |
 | Production changes | Current-loop dependencies select `0.85.1`; no production Harness importer, activation or authority change |
 | Final decision | Proposed: select direct Earendil adoption with a selected-version test implementation first |
 
@@ -66,6 +66,8 @@ The original assessment produced this ADR, evidence tables and a proposed semant
 - [Published 0.85.1 A/B/C/D work sequence](evidence/earendil-0851-work-sequence.md)
 - [Current-loop migration readiness and receipts](evidence/earendil-0851-readiness.md)
 - [Broader inactive HC evidence](evidence/earendil-0851-hc-evidence.md)
+- [Published 0.87.0 stable Harness candidate evidence](evidence/earendil-0870-harness-candidate.md)
+- [Published 0.87.0 experimental Pico3 assessment](evidence/earendil-0870-pico3-assessment.md)
 - [Canary procedure](evidence/earendil-0851-canary.md) and [executed piclaw-test receipt](evidence/earendil-0851-canary-result.md)
 - [Evidence register](evidence/README.md)
   - [Piclaw v2.13.2 capability matrix](evidence/current-capability-matrix.md)

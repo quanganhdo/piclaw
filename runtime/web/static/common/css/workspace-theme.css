@@ -1,0 +1,46 @@
+/* Workspace surfaces and charts share the selected palette in both skins. */
+:root :is(.workspace-row:hover, .file-tree__item:hover) { background: var(--bg-hover); }
+:root :is(.workspace-row.selected, .file-tree__item--selected) { background: var(--accent-soft); }
+:root :is(.workspace-row.selected:hover, .file-tree__item--selected:hover) { background: var(--accent-soft-strong); }
+:root :is(.workspace-node-icon.folder, .file-tree__item--dir .file-tree__icon, .workspace__folder-icon) { color: var(--accent-color); }
+:root .file-tree__item--file .file-tree__icon,
+:root .file-tree__item--file .file-tree__icon::before { color: var(--text-secondary); }
+.system-meters-row.cpu { --meter-color: var(--chart-1); }
+.system-meters-row.ram { --meter-color: var(--chart-2); }
+.system-meters-row.swap { --meter-color: var(--chart-4); }
+.system-meters-row.buf { --meter-color: var(--chart-3); }
+.system-meters-row.rss { --meter-color: var(--chart-6); }
+.system-meters-row.vram { --meter-color: var(--chart-5); }
+:root .system-meters-row .system-meters-spark path { stroke: var(--meter-color); }
+/* Visual normally shows inline stats, but shared meter HUDs/popouts use the
+ * same sparkline contract when mounted under either skin. */
+:root[data-color-theme="synthwave-84"][data-synthwave-glow="on"] .system-meters-spark {
+    filter: drop-shadow(0 0 2px var(--meter-color)) drop-shadow(0 0 5px var(--meter-color));
+}
+:root[data-color-theme="synthwave-84-full"][data-synthwave-glow="on"] .system-meters-spark {
+    filter: drop-shadow(0 0 2px var(--meter-color)) drop-shadow(0 0 6px var(--meter-color)) drop-shadow(0 0 11px var(--meter-color));
+    animation: synthwave-meter-neon 5.5s ease-in-out infinite;
+}
+:root[data-color-theme="synthwave-84-full"][data-synthwave-glow="on"] :is(.system-meters-card, .workspace-folder-starburst, .workspace__sunburst, .workspace__folder-chart) {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 4px var(--accent-color), 0 0 14px var(--accent-soft-strong);
+}
+:root[data-color-theme="synthwave-84-full"][data-synthwave-glow="on"] :is(.workspace-folder-starburst-segment, .workspace__sunburst path, .workspace__folder-chart circle) {
+    filter: drop-shadow(0 0 2px var(--accent-color));
+}
+@keyframes synthwave-meter-neon {
+    0%, 100% { filter: drop-shadow(0 0 2px var(--meter-color)) drop-shadow(0 0 6px var(--meter-color)) drop-shadow(0 0 11px var(--meter-color)); }
+    50% { filter: drop-shadow(0 0 3px var(--meter-color)) drop-shadow(0 0 9px var(--meter-color)) drop-shadow(0 0 18px var(--meter-color)); }
+}
+:root[data-theme-motion="paused"] .system-meters-spark { animation-play-state: paused !important; }
+@media (prefers-reduced-motion: reduce) {
+    :root .system-meters-spark { animation: none !important; }
+}
+@media (forced-colors: active) {
+    :root :is(.system-meters-card, .workspace-folder-starburst, .workspace__sunburst, .workspace__folder-chart) { box-shadow: none !important; }
+    :root .system-meters-spark,
+    :root :is(.workspace-folder-starburst-segment, .workspace__sunburst path, .workspace__folder-chart circle) { filter: none !important; animation: none !important; }
+    :root .system-meters-spark path { stroke: CanvasText !important; }
+    :root :is(.workspace-row.selected, .file-tree__item--selected) { background: Highlight; color: HighlightText; }
+    :root :is(.workspace-row.selected .workspace-label, .file-tree__item--selected .file-tree__name) { color: HighlightText; }
+}

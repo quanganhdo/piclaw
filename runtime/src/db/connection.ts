@@ -27,6 +27,7 @@ import { initializeAuthFactorSchema } from "./auth-factors-schema.js";
 import { initializeAuthLabelsSchema } from "./auth-labels-schema.js";
 import { initializeFamilyToolRestrictions } from './family-tool-restrictions.js';
 import { initializeAccountPreferences } from './account-preferences.js';
+import { initializePickerPins } from './picker-pins.js';
 import { initializeAccountAvatars } from './account-avatar.js';
 import { initializeAccountModelDefaults } from './account-model-defaults.js';
 import { initializeFamilyScheduledGrants } from './family-scheduled-grants-schema.js';
@@ -1009,6 +1010,7 @@ export function initDatabase(): void {
   initializeAuthLabelsSchema(db);
   initializeFamilyToolRestrictions(db);
   initializeAccountPreferences(db);
+  initializePickerPins(db);
   initializeAccountAvatars(db);
   initializeAccountModelDefaults(db);
   initializeFamilyScheduledGrants(db);

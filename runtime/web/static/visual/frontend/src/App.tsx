@@ -1,3 +1,4 @@
+import { startPickerPinSync } from '../../../../src/ui/picker-pin-sync';
 import { isSafeExtensionUrl } from "./utils/isSafeExtensionUrl";
 import { useCallback, useRef, useEffect } from "preact/hooks";
 import { useSignal } from "@preact/signals";
@@ -7,6 +8,7 @@ import { Sidebar } from "./components/Sidebar";
 import { TabBar } from "./components/TabBar";
 import { SystemStats, formatClock } from "./components/SystemStats";
 import { ModelContextBar } from "./components/ModelContextBar";
+import { useStatusPolling } from "./components/model-context-bar/useStatusPolling";
 import { SessionPill } from "./components/SessionPill";
 import { AddonHealthBadge } from "./components/AddonHealthBadge";
 import { CommandPalette } from "./components/CommandPalette";
@@ -36,6 +38,9 @@ const activateOnEnterOrSpace = (e: KeyboardEvent, handler: () => void) => {
 };
 
 function AppContent() {
+  useEffect(() => { const sync = startPickerPinSync({onError:message=>window.dispatchEvent(new CustomEvent("piclaw:status-flash",{detail:{message,type:"error"}}))}); return () => sync.stop(); }, []);
+  // Desktop and mobile bars coexist in the DOM; CSS visibility is not a lifecycle.
+  const modelStatus = useStatusPolling();
   const themeControl = useThemeControl();
   const connectionStatus = useConnectionStatus();
   const layout = useLayoutPersistence();
@@ -316,14 +321,14 @@ function AppContent() {
           )}
           <SessionPill />
           <AddonHealthBadge onOpenAddons={handleOpenAddons} />
-          <ModelContextBar />
+          <ModelContextBar polling={modelStatus} />
           {statusFlash.value && (
             <span className={`status-bar__flash status-bar__flash--${statusFlash.value.type}`} role="status" aria-live="polite">
               {statusFlash.value.message}
             </span>
           )}
           <span className="status-bar__right">
-            <SystemStats />
+            <SystemStats stats={modelStatus.systemMetrics.value} isStale={modelStatus.metricsError.value} />
             {!terminalVisible.value && (
               <span
                 className="status-bar__terminal-btn"
@@ -342,7 +347,7 @@ function AppContent() {
         {/* Mobile bottom toolbar */}
         <div className="mobile-toolbar">
           <SessionPill />
-          <span className="mobile-toolbar__model-slot"><ModelContextBar /></span>
+          <span className="mobile-toolbar__model-slot"><ModelContextBar polling={modelStatus} /></span>
           <button
             type="button"
             className="mobile-toolbar__terminal-btn"

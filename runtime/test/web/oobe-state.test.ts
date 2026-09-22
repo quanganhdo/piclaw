@@ -80,3 +80,8 @@ test('resolveOobePanelState suppresses the panel in pane-popout mode and before 
     modelPayload: { models: [] },
   }).kind).toBe('hidden');
 });
+
+test('compact passive model snapshot retains OOBE readiness without a catalogue', () => {
+  expect(countAvailableModels({current:null,models:[],model_options:[],available_model_count:5})).toBe(5);
+  expect(resolveOobePanelState({modelPayload:{current:null,models:[],available_model_count:5},modelsLoaded:true}).kind).toBe('hidden');
+});

@@ -603,7 +603,7 @@ export class AgentPool {
   }
 
   /** Return available model labels and current model for a chat session. */
-  async getAvailableModels(chatJid: string, options: { includeProviderUsage?: boolean; includeProviderDiagnostics?: boolean } = {}): Promise<AvailableModelsResult> {
+  async getAvailableModels(chatJid: string, options: { includeProviderUsage?: boolean; includeProviderDiagnostics?: boolean; includeCatalogue?: boolean } = {}): Promise<AvailableModelsResult> {
     return this.runtimeFacade.getAvailableModels(chatJid, options);
   }
 

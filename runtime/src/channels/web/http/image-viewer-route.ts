@@ -29,12 +29,19 @@ function generateImageViewerPage(): string {
 <title>Image Viewer</title>
 <style>
   * { box-sizing: border-box; }
+  :root { color-scheme:light; --viewer-bg:#ffffff; --viewer-fg:#18212b; --viewer-muted:#536171; --viewer-panel:#f3f5f7; --viewer-border:#b6bec8; --viewer-accent:#0969da; }
+  @media (prefers-color-scheme:dark) { :root { color-scheme:dark; --viewer-bg:#171b22; --viewer-fg:#e6edf3; --viewer-muted:#a2afbf; --viewer-panel:#242b36; --viewer-border:#586577; --viewer-accent:#79c0ff; } }
+  :root[data-image-surface="light"] img { background:#ffffff; color-scheme:light; }
+  :root[data-image-surface="dark"] img { background:#171b22; color-scheme:dark; }
+  :root[data-image-surface="transparent"] img { background:transparent; }
+
   html, body {
     width: 100%;
     height: 100%;
     margin: 0;
     overflow: hidden;
-    background: #1e1e1e;
+    background: var(--viewer-bg);
+    color: var(--viewer-fg);
     font-family: system-ui, -apple-system, sans-serif;
   }
   .stage {
@@ -58,40 +65,43 @@ function generateImageViewerPage(): string {
     max-width: none; max-height: none;
     transform-origin: center center;
     border-radius: 2px;
-    background: white;
+    background: var(--viewer-bg);
   }
   /* Hover toolbar — top-right */
   #toolbar-trigger { position: fixed; top: 0; right: 0; width: 140px; height: 24px; z-index: 99; }
   #toolbar {
     position: fixed; top: 0; right: 0; z-index: 100;
     display: flex; gap: 4px; padding: 6px 8px;
-    background: rgba(30,30,30,0.92); border-bottom-left-radius: 6px;
+    background: var(--viewer-panel); border-bottom-left-radius: 6px;
     backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
     opacity: 0; transition: opacity 0.2s;
   }
-  #toolbar-trigger:hover + #toolbar, #toolbar:hover { opacity: 1; }
-  #toolbar button {
+  #toolbar-trigger:hover + #toolbar, #toolbar:hover, #toolbar:focus-within { opacity: 1; }
+  @media (hover:none) { #toolbar { opacity:1; } }
+  #toolbar button, #toolbar select {
     display: inline-flex; align-items: center; justify-content: center;
     min-width: 28px; height: 24px; padding: 0 6px;
-    border: none; border-radius: 3px; background: rgba(255,255,255,0.08);
-    color: #ccc; font: 12px system-ui, sans-serif; cursor: pointer;
+    border: none; border-radius: 3px; background: var(--viewer-bg);
+    color: var(--viewer-fg); font: 12px system-ui, sans-serif; cursor: pointer;
   }
-  #toolbar button:hover { background: rgba(255,255,255,0.15); color: #fff; }
-  #toolbar .zoom-label { font-size: 11px; color: #999; min-width: 36px; text-align: center; line-height: 24px; }
+  #toolbar button:hover { background:var(--viewer-border); }
+  #toolbar :is(button,select):focus-visible { outline:2px solid var(--viewer-accent); outline-offset:2px; }
+  #toolbar .zoom-label { font-size: 11px; color: var(--viewer-muted); min-width: 36px; text-align: center; line-height: 24px; }
   .empty {
     display: flex; width: 100%; height: 100%;
     align-items: center; justify-content: center;
-    color: #888; font-size: 14px; padding: 24px; text-align: center;
+    color: var(--viewer-muted); font-size: 14px; padding: 24px; text-align: center;
   }
 </style>
 </head>
 <body>
 <div id="toolbar-trigger"></div>
 <div id="toolbar">
-  <button id="zoomOut">−</button>
+  <select id="imageSurface" aria-label="Image background"><option value="theme">Theme</option><option value="light">Light</option><option value="dark">Dark</option><option value="transparent">Transparent</option></select>
+  <button aria-label="Zoom out" id="zoomOut">−</button>
   <span class="zoom-label" id="zoomLabel">100%</span>
-  <button id="zoomIn">+</button>
-  <button id="zoomReset">1:1</button>
+  <button aria-label="Zoom in" id="zoomIn">+</button>
+  <button aria-label="Reset zoom" id="zoomReset">1:1</button>
 </div>
 <div id="stage" class="stage"><div class="inner"></div></div>
 <script>
@@ -99,6 +109,28 @@ function generateImageViewerPage(): string {
   'use strict';
   var params = new URLSearchParams(location.search);
   var path = params.get('path') || '';
+  document.getElementById('imageSurface').addEventListener('change', function (event) {
+    document.documentElement.dataset.imageSurface = event.target.value;
+  });
+  function syncParentTheme() {
+    if (parent === window) return;
+    try {
+      var root = parent.document.documentElement;
+      var style = parent.getComputedStyle(root);
+      var names = {'--viewer-bg':'--bg-primary','--viewer-fg':'--text-primary','--viewer-muted':'--text-secondary','--viewer-panel':'--bg-secondary','--viewer-border':'--border-color','--viewer-accent':'--accent-color'};
+      Object.keys(names).forEach(function (key) { var value = style.getPropertyValue(names[key]).trim(); if (value && CSS.supports('color', value)) document.documentElement.style.setProperty(key, value); });
+      var scheme = root.style.colorScheme || root.dataset.theme;
+      if (scheme === 'light' || scheme === 'dark') document.documentElement.style.colorScheme = scheme;
+    } catch (error) { console.debug('Image viewer parent theme unavailable.', error); }
+  }
+  syncParentTheme();
+  try {
+    if (parent !== window) {
+      parent.addEventListener('piclaw-theme-change', syncParentTheme);
+      window.addEventListener('pagehide', function () { parent.removeEventListener('piclaw-theme-change', syncParentTheme); }, {once:true});
+    }
+  } catch (error) { console.debug('Image viewer parent listener unavailable.', error); }
+
   var stageEl = document.getElementById('stage');
 
   if (!path) {

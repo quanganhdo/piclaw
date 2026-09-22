@@ -56,6 +56,7 @@ export class FamilyRealtime {
     applyModelState: (payload: any) => void;
     changed: (snapshot: FamilyRealtimeSnapshot) => void;
     invalidated: () => void;
+    pinsChanged?: () => void;
     revalidate: (chatJid: string) => Promise<void>;
   }) {}
 
@@ -71,10 +72,12 @@ export class FamilyRealtime {
     source.onopen = () => {
       if (!this.current(source, generation)) return;
       this.patch({ connectionStatus: 'connected' });
+      this.options.pinsChanged?.();
       void this.options.revalidate(chatJid).catch((error: any) => {
         if (this.current(source, generation) && [401, 403, 409].includes(Number(error?.status))) this.options.invalidated();
       });
     };
+    source.addEventListener('picker_pins_changed', () => { if (this.current(source,generation)) this.options.pinsChanged?.(); });
     source.onerror = () => {
       if (!this.current(source, generation)) return;
       this.patch({ connectionStatus: 'disconnected' });

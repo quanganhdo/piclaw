@@ -6,6 +6,7 @@ import {
   handleAgentContextRequest,
   handleAgentModelsRequest,
   handleAgentStatusRequest,
+  handleAgentUiSnapshotRequest,
 } from "../agent/agent-status.js";
 import { handleAgentDebugRequest } from "../agent/agent-debug.js";
 import { handleAgentCommandsRequest } from "../agent/agent-commands.js";
@@ -145,7 +146,13 @@ export class WebChannelEndpointFacadeService {
     return await handleInternalPostRequest(req, this.options.endpointContexts.postMutations());
   }
 
-  handleAgentStatus(req: Request): Response {
+  handleAgentStatus(req: Request): Response | Promise<Response> {
+    if (new URL(req.url).searchParams.get("ui") === "1") {
+      return handleAgentUiSnapshotRequest(req, this.options.endpointContexts.agentStatus(), {
+        getSystemMetrics: async () => this.handleSystemMetrics().json(),
+        getAgentName: () => this.options.getIdentitySnapshot().assistantName,
+      });
+    }
     return handleAgentStatusRequest(req, this.options.endpointContexts.agentStatus());
   }
 

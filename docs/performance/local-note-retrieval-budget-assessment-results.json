@@ -1,0 +1,4077 @@
+{
+  "schema": 1,
+  "measuredCommit": "2e2fd03a1765767e1d42c4ddcf71221056b6e6b3",
+  "workingTreeModified": true,
+  "corpusCommit": "2b21a5c09b1e31244a58fb1ba175b854762b2989",
+  "productionBaseline": "dc577cbb89b97ccc5d43f5e49f539ecec056897d",
+  "repeatsPerQuery": 5,
+  "rankingStable": true,
+  "rebuildChecks": [
+    {
+      "scale": 0,
+      "rankingStable": true,
+      "identicalScoreTieStable": true
+    },
+    {
+      "scale": 500,
+      "rankingStable": true,
+      "identicalScoreTieStable": true
+    }
+  ],
+  "reports": [
+    {
+      "repetition": 0,
+      "schema": 1,
+      "mode": "build",
+      "scale": 0,
+      "versions": {
+        "bun": "1.4.1",
+        "sqlite": "3.53.2"
+      },
+      "scope": "notes",
+      "matchMode": "or",
+      "scoring": "file-level hits; section coverage optimistic upper bound; no citation capability",
+      "results": [
+        {
+          "id": "dev-storage",
+          "paths": [
+            "notes/decisions.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# Decisions\n\n## [Lantern] storage\n[Lantern] stores event receipts in [SQLite]. PostgreSQL was rejected…",
+            "# Unrelated maintenance\n\n## Lamps\nThe storage room has a paper [lantern] beside the…"
+          ],
+          "bytes": 721,
+          "estimatedTokensAt4Bytes": 181,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-retention",
+          "paths": [
+            "notes/decisions.md",
+            "notes/noise.md",
+            "notes/harbor.md",
+            "notes/long-notebook.md"
+          ],
+          "snippets": [
+            "…[Lantern] retention\n[Lantern] retains [diagnostic] [receipts] for fourteen days. Backups retain [receipts]…",
+            "# Unrelated maintenance\n\n## Lamps\nThe storage room has a paper [lantern] beside the…",
+            "…s confirmation.\n\n## Export\nHarbor exports [receipts] as JSON Lines and does not…",
+            "…Meridian retention\nMeridian retains task [receipts] for forty-five days; application logs…"
+          ],
+          "bytes": 1331,
+          "estimatedTokensAt4Bytes": 333,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-preference",
+          "paths": [
+            "notes/preferences.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# Fictional preferences\n\n## [Reports]\n[Mira] prefers concise [reports] with numbered recommendations and explicit…",
+            "…The words parser, recovery and [reports] appear in this vocabulary exercise.\nThere…"
+          ],
+          "bytes": 747,
+          "estimatedTokensAt4Bytes": 187,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-chronology",
+          "paths": [
+            "notes/chronology.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "…04 with seven synthetic accounts.\n\n## [Launch]\n[Kestrel] launched on 2030-04-19…",
+            "…beside the kettle.\n\n## Birds\nA [kestrel] appeared near the northern gate on…"
+          ],
+          "bytes": 673,
+          "estimatedTokensAt4Bytes": 169,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-before-after",
+          "paths": [
+            "notes/chronology.md",
+            "notes/noise.md",
+            "notes/long-notebook.md",
+            "notes/preferences.md",
+            "notes/harbor.md"
+          ],
+          "snippets": [
+            "…On 2030-05-02 the [maintenance] window moved from Monday to [Thursday].\n",
+            "# Unrelated [maintenance]\n\n## Lamps\nThe storage room has a paper lantern beside the…",
+            "…synthetic [maintenance] notes discuss labels, shelves and packing lists without specifying a…",
+            "…estimates.\n\n## Meetings\nThe team reserves Friday mornings for [maintenance], not customer meetings.\n",
+            "# Harbor [maintenance]\n\n## Rotation\nHarbor rotates its signing key every ninety days in…"
+          ],
+          "bytes": 1605,
+          "estimatedTokensAt4Bytes": 402,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-identifier",
+          "paths": [
+            "notes/identifiers.md"
+          ],
+          "snippets": [
+            "# Build identifiers\n\n## Recovery job\nThe recovery job identifier is [RCV-204-B]…"
+          ],
+          "bytes": 394,
+          "estimatedTokensAt4Bytes": 99,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-duplicate-parser",
+          "paths": [
+            "notes/duplicate-headings.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# Deployment notebook\n\n## [Rollback]\nThe [parser] [rollback] restores schema version 3 and replays…",
+            "…on Thursday.\n\n## Samples\nThe words [parser], recovery and reports appear in this…"
+          ],
+          "bytes": 731,
+          "estimatedTokensAt4Bytes": 183,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-duplicate-gateway",
+          "paths": [
+            "notes/duplicate-headings.md"
+          ],
+          "snippets": [
+            "…Rollback\nThe [gateway] rollback changes the upstream pool to [amber] and drains…"
+          ],
+          "bytes": 410,
+          "estimatedTokensAt4Bytes": 103,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-multisection",
+          "paths": [
+            "notes/duplicate-headings.md"
+          ],
+          "snippets": [
+            "# Deployment notebook\n\n## [Rollback]\nThe parser [rollback] restores schema version 3 and replays…"
+          ],
+          "bytes": 442,
+          "estimatedTokensAt4Bytes": 111,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-unanswerable-lexical",
+          "paths": [
+            "notes/chronology.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# [Kestrel] chronology\n\n## Pilot\n[Kestrel] started its pilot on 2030-03-04 with…",
+            "…beside the kettle.\n\n## Birds\nA [kestrel] appeared near the northern gate on…"
+          ],
+          "bytes": 667,
+          "estimatedTokensAt4Bytes": 167,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-unanswerable-empty",
+          "paths": [],
+          "snippets": [],
+          "bytes": 108,
+          "estimatedTokensAt4Bytes": 27,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-paraphrase",
+          "paths": [
+            "notes/preferences.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# Fictional preferences\n\n## [Reports]\nMira prefers concise [reports] with numbered [recommendations] and explicit…",
+            "…The words parser, recovery and [reports] appear in this vocabulary exercise.\nThere…"
+          ],
+          "bytes": 747,
+          "estimatedTokensAt4Bytes": 187,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-current",
+          "paths": [
+            "notes/cedar-current.md",
+            "notes/cedar-old.md"
+          ],
+          "snippets": [
+            "# [Cedar] policy — current\n\n## Retries\nCurrent [Cedar] [retry] [limit]: three attempts, effective 2030…",
+            "…before 2030-06-10 the [Cedar] [retry] [limit] was nine attempts.\nDo…"
+          ],
+          "bytes": 711,
+          "estimatedTokensAt4Bytes": 178,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-history",
+          "paths": [
+            "notes/cedar-old.md",
+            "notes/cedar-current.md"
+          ],
+          "snippets": [
+            "…[SUPERSEDED]: before 2030-06-10 the [Cedar] retry limit was [nine] attempts…",
+            "…This decision replaces the previous [nine]-attempt policy.\n\n## Backoff\n[Cedar] waits two…"
+          ],
+          "bytes": 699,
+          "estimatedTokensAt4Bytes": 175,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-backoff",
+          "paths": [
+            "notes/cedar-current.md",
+            "notes/cedar-old.md"
+          ],
+          "snippets": [
+            "…previous nine-attempt policy.\n\n## Backoff\n[Cedar] [waits] two [seconds] between retry attempts.\n",
+            "…before 2030-06-10 the [Cedar] retry limit was nine attempts.\nDo…"
+          ],
+          "bytes": 689,
+          "estimatedTokensAt4Bytes": 173,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-preference",
+          "paths": [
+            "notes/harbor.md"
+          ],
+          "snippets": [
+            "…[Rotation] is manual and requires a second operator's [confirmation].\n\n## Export\n[Harbor]…"
+          ],
+          "bytes": 410,
+          "estimatedTokensAt4Bytes": 103,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-export",
+          "paths": [
+            "notes/harbor.md",
+            "notes/atlas.md"
+          ],
+          "snippets": [
+            "…s confirmation.\n\n## Export\n[Harbor] exports receipts as [JSON] [Lines] and does not…",
+            "…supports plain UTF-8 Markdown and [JSON] [Lines] for its import fixture.\n"
+          ],
+          "bytes": 659,
+          "estimatedTokensAt4Bytes": 165,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-limits",
+          "paths": [
+            "notes/atlas.md"
+          ],
+          "snippets": [
+            "…[attachments] per message, each at most eight [mebibytes].\n\n## Identifier\nThe [Atlas] repair…"
+          ],
+          "bytes": 414,
+          "estimatedTokensAt4Bytes": 104,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-identifier",
+          "paths": [
+            "notes/atlas.md"
+          ],
+          "snippets": [
+            "…Atlas repair command is [atlas-repair-7f2]. It rebuilds only disposable indexes…"
+          ],
+          "bytes": 382,
+          "estimatedTokensAt4Bytes": 96,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-unicode",
+          "paths": [
+            "notes/unicode-crlf.md"
+          ],
+          "snippets": [
+            "…[café] uses São Tomé labels and keeps the [café] ledger in [UTF]…"
+          ],
+          "bytes": 374,
+          "estimatedTokensAt4Bytes": 94,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-long",
+          "paths": [
+            "notes/long-notebook.md"
+          ],
+          "snippets": [
+            "…The [restore] validation checks the [manifest] digest before publishing any files.\n\n## Meridian…"
+          ],
+          "bytes": 436,
+          "estimatedTokensAt4Bytes": 109,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-retention",
+          "paths": [
+            "notes/decisions.md",
+            "notes/harbor.md",
+            "notes/long-notebook.md"
+          ],
+          "snippets": [
+            "# Decisions\n\n## Lantern storage\nLantern stores event [receipts] in SQLite. PostgreSQL was rejected…",
+            "…s confirmation.\n\n## Export\nHarbor exports [receipts] as JSON Lines and does not…",
+            "…publishing any files.\n\n## [Meridian] retention\n[Meridian] retains task [receipts] for forty-five…"
+          ],
+          "bytes": 1047,
+          "estimatedTokensAt4Bytes": 262,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-unanswerable-overlap",
+          "paths": [
+            "notes/harbor.md"
+          ],
+          "snippets": [
+            "# [Harbor] maintenance\n\n## Rotation\n[Harbor] rotates its signing key every ninety days in…"
+          ],
+          "bytes": 404,
+          "estimatedTokensAt4Bytes": 101,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-unanswerable-empty",
+          "paths": [],
+          "snippets": [],
+          "bytes": 108,
+          "estimatedTokensAt4Bytes": 27,
+          "repeatStable": true
+        },
+        {
+          "id": "tie-checks",
+          "order": [
+            "notes/tie-a.md",
+            "notes/tie-b.md"
+          ],
+          "repeatStable": true,
+          "contract": "equal BM25 scores use binary path order"
+        },
+        {
+          "id": "incremental-checks",
+          "editVisible": true,
+          "addVisible": true,
+          "deleteVisible": true,
+          "sameMetadataEditDetected": true,
+          "sameMetadataPreserved": true,
+          "sourceChangedWhileIndexUnchanged": false,
+          "databaseBeforeMutations": 1581056
+        }
+      ],
+      "metrics": {
+        "development": {
+          "queries": 12,
+          "answerable": 10,
+          "unanswerable": 2,
+          "fileRecall": 1,
+          "sectionCoverageUpperBound": 1,
+          "mrr": 1,
+          "filePrecision": 0.595,
+          "unanswerableFalsePositiveRate": 0.5,
+          "meanResponseBytes": 714.6666666666666,
+          "maxResponseBytes": 1605,
+          "citationCorrectness": null,
+          "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+        },
+        "heldOut": {
+          "queries": 12,
+          "answerable": 10,
+          "unanswerable": 2,
+          "fileRecall": 1,
+          "sectionCoverageUpperBound": 1,
+          "mrr": 0.9333333333333333,
+          "filePrecision": 0.7333333333333333,
+          "unanswerableFalsePositiveRate": 0.5,
+          "meanResponseBytes": 527.75,
+          "maxResponseBytes": 1047,
+          "citationCorrectness": null,
+          "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+        }
+      },
+      "qualityAtK": {
+        "1": {
+          "development": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 1,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 714.6666666666666,
+            "maxResponseBytes": 1605,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          },
+          "heldOut": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 0.9,
+            "sectionCoverageUpperBound": 0.9,
+            "mrr": 0.9,
+            "filePrecision": 0.9,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 527.75,
+            "maxResponseBytes": 1047,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          }
+        },
+        "3": {
+          "development": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 0.6166666666666666,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 714.6666666666666,
+            "maxResponseBytes": 1605,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          },
+          "heldOut": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 0.9333333333333333,
+            "filePrecision": 0.7333333333333333,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 527.75,
+            "maxResponseBytes": 1047,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          }
+        },
+        "5": {
+          "development": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 0.595,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 714.6666666666666,
+            "maxResponseBytes": 1605,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          },
+          "heldOut": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 0.9333333333333333,
+            "filePrecision": 0.7333333333333333,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 527.75,
+            "maxResponseBytes": 1047,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          }
+        }
+      },
+      "latency": {
+        "firstQueryMs": 1.0673459999998158,
+        "firstPassP50Ms": 0.20263000000068132,
+        "firstPassP95Ms": 0.4064989999997124,
+        "warmP50Ms": 0.19532299999991665,
+        "warmP95Ms": 0.31886300000041956,
+        "samples": 120,
+        "coldDefinition": "fresh-process SQLite reopen; OS page cache NOT flushed"
+      },
+      "timings": {
+        "initialRefreshMs": 233.21677299999965,
+        "noChangeRefreshMs": 41.944712999999865,
+        "editRefreshMs": 53.84789300000011,
+        "addRefreshMs": 68.56995000000006,
+        "deleteRefreshMs": 59.2430089999998
+      },
+      "index": {
+        "files": 12,
+        "sourceBytes": 15277,
+        "databaseLogicalBytes": 1593344,
+        "indexOwnedBytes": 53248,
+        "applicationDatabaseBeforeIndexBytes": 1560576
+      },
+      "memory": {
+        "rssBytes": 77021184
+      }
+    },
+    {
+      "repetition": 0,
+      "schema": 1,
+      "mode": "reopen",
+      "scale": 0,
+      "versions": {
+        "bun": "1.4.1",
+        "sqlite": "3.53.2"
+      },
+      "scope": "notes",
+      "matchMode": "or",
+      "scoring": "file-level hits; section coverage optimistic upper bound; no citation capability",
+      "results": [
+        {
+          "id": "dev-storage",
+          "paths": [
+            "notes/decisions.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# Decisions\n\n## [Lantern] storage\n[Lantern] stores event receipts in [SQLite]. PostgreSQL was rejected…",
+            "# Unrelated maintenance\n\n## Lamps\nThe storage room has a paper [lantern] beside the…"
+          ],
+          "bytes": 721,
+          "estimatedTokensAt4Bytes": 181,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-retention",
+          "paths": [
+            "notes/decisions.md",
+            "notes/noise.md",
+            "notes/harbor.md",
+            "notes/long-notebook.md"
+          ],
+          "snippets": [
+            "…[Lantern] retention\n[Lantern] retains [diagnostic] [receipts] for fourteen days. Backups retain [receipts]…",
+            "# Unrelated maintenance\n\n## Lamps\nThe storage room has a paper [lantern] beside the…",
+            "…s confirmation.\n\n## Export\nHarbor exports [receipts] as JSON Lines and does not…",
+            "…Meridian retention\nMeridian retains task [receipts] for forty-five days; application logs…"
+          ],
+          "bytes": 1331,
+          "estimatedTokensAt4Bytes": 333,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-preference",
+          "paths": [
+            "notes/preferences.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# Fictional preferences\n\n## [Reports]\n[Mira] prefers concise [reports] with numbered recommendations and explicit…",
+            "…The words parser, recovery and [reports] appear in this vocabulary exercise.\nThere…"
+          ],
+          "bytes": 747,
+          "estimatedTokensAt4Bytes": 187,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-chronology",
+          "paths": [
+            "notes/chronology.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "…04 with seven synthetic accounts.\n\n## [Launch]\n[Kestrel] launched on 2030-04-19…",
+            "…beside the kettle.\n\n## Birds\nA [kestrel] appeared near the northern gate on…"
+          ],
+          "bytes": 673,
+          "estimatedTokensAt4Bytes": 169,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-before-after",
+          "paths": [
+            "notes/chronology.md",
+            "notes/noise.md",
+            "notes/long-notebook.md",
+            "notes/preferences.md",
+            "notes/harbor.md"
+          ],
+          "snippets": [
+            "…On 2030-05-02 the [maintenance] window moved from Monday to [Thursday].\n",
+            "# Unrelated [maintenance]\n\n## Lamps\nThe storage room has a paper lantern beside the…",
+            "…synthetic [maintenance] notes discuss labels, shelves and packing lists without specifying a…",
+            "…estimates.\n\n## Meetings\nThe team reserves Friday mornings for [maintenance], not customer meetings.\n",
+            "# Harbor [maintenance]\n\n## Rotation\nHarbor rotates its signing key every ninety days in…"
+          ],
+          "bytes": 1605,
+          "estimatedTokensAt4Bytes": 402,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-identifier",
+          "paths": [
+            "notes/identifiers.md"
+          ],
+          "snippets": [
+            "# Build identifiers\n\n## Recovery job\nThe recovery job identifier is [RCV-204-B]…"
+          ],
+          "bytes": 394,
+          "estimatedTokensAt4Bytes": 99,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-duplicate-parser",
+          "paths": [
+            "notes/duplicate-headings.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# Deployment notebook\n\n## [Rollback]\nThe [parser] [rollback] restores schema version 3 and replays…",
+            "…on Thursday.\n\n## Samples\nThe words [parser], recovery and reports appear in this…"
+          ],
+          "bytes": 731,
+          "estimatedTokensAt4Bytes": 183,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-duplicate-gateway",
+          "paths": [
+            "notes/duplicate-headings.md"
+          ],
+          "snippets": [
+            "…Rollback\nThe [gateway] rollback changes the upstream pool to [amber] and drains…"
+          ],
+          "bytes": 410,
+          "estimatedTokensAt4Bytes": 103,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-multisection",
+          "paths": [
+            "notes/duplicate-headings.md"
+          ],
+          "snippets": [
+            "# Deployment notebook\n\n## [Rollback]\nThe parser [rollback] restores schema version 3 and replays…"
+          ],
+          "bytes": 442,
+          "estimatedTokensAt4Bytes": 111,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-unanswerable-lexical",
+          "paths": [
+            "notes/chronology.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# [Kestrel] chronology\n\n## Pilot\n[Kestrel] started its pilot on 2030-03-04 with…",
+            "…beside the kettle.\n\n## Birds\nA [kestrel] appeared near the northern gate on…"
+          ],
+          "bytes": 667,
+          "estimatedTokensAt4Bytes": 167,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-unanswerable-empty",
+          "paths": [],
+          "snippets": [],
+          "bytes": 108,
+          "estimatedTokensAt4Bytes": 27,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-paraphrase",
+          "paths": [
+            "notes/preferences.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# Fictional preferences\n\n## [Reports]\nMira prefers concise [reports] with numbered [recommendations] and explicit…",
+            "…The words parser, recovery and [reports] appear in this vocabulary exercise.\nThere…"
+          ],
+          "bytes": 747,
+          "estimatedTokensAt4Bytes": 187,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-current",
+          "paths": [
+            "notes/cedar-current.md",
+            "notes/cedar-old.md"
+          ],
+          "snippets": [
+            "# [Cedar] policy — current\n\n## Retries\nCurrent [Cedar] [retry] [limit]: three attempts, effective 2030…",
+            "…before 2030-06-10 the [Cedar] [retry] [limit] was nine attempts.\nDo…"
+          ],
+          "bytes": 711,
+          "estimatedTokensAt4Bytes": 178,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-history",
+          "paths": [
+            "notes/cedar-old.md",
+            "notes/cedar-current.md"
+          ],
+          "snippets": [
+            "…[SUPERSEDED]: before 2030-06-10 the [Cedar] retry limit was [nine] attempts…",
+            "…This decision replaces the previous [nine]-attempt policy.\n\n## Backoff\n[Cedar] waits two…"
+          ],
+          "bytes": 699,
+          "estimatedTokensAt4Bytes": 175,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-backoff",
+          "paths": [
+            "notes/cedar-current.md",
+            "notes/cedar-old.md"
+          ],
+          "snippets": [
+            "…previous nine-attempt policy.\n\n## Backoff\n[Cedar] [waits] two [seconds] between retry attempts.\n",
+            "…before 2030-06-10 the [Cedar] retry limit was nine attempts.\nDo…"
+          ],
+          "bytes": 689,
+          "estimatedTokensAt4Bytes": 173,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-preference",
+          "paths": [
+            "notes/harbor.md"
+          ],
+          "snippets": [
+            "…[Rotation] is manual and requires a second operator's [confirmation].\n\n## Export\n[Harbor]…"
+          ],
+          "bytes": 410,
+          "estimatedTokensAt4Bytes": 103,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-export",
+          "paths": [
+            "notes/harbor.md",
+            "notes/atlas.md"
+          ],
+          "snippets": [
+            "…s confirmation.\n\n## Export\n[Harbor] exports receipts as [JSON] [Lines] and does not…",
+            "…supports plain UTF-8 Markdown and [JSON] [Lines] for its import fixture.\n"
+          ],
+          "bytes": 659,
+          "estimatedTokensAt4Bytes": 165,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-limits",
+          "paths": [
+            "notes/atlas.md"
+          ],
+          "snippets": [
+            "…[attachments] per message, each at most eight [mebibytes].\n\n## Identifier\nThe [Atlas] repair…"
+          ],
+          "bytes": 414,
+          "estimatedTokensAt4Bytes": 104,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-identifier",
+          "paths": [
+            "notes/atlas.md"
+          ],
+          "snippets": [
+            "…Atlas repair command is [atlas-repair-7f2]. It rebuilds only disposable indexes…"
+          ],
+          "bytes": 382,
+          "estimatedTokensAt4Bytes": 96,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-unicode",
+          "paths": [
+            "notes/unicode-crlf.md"
+          ],
+          "snippets": [
+            "…[café] uses São Tomé labels and keeps the [café] ledger in [UTF]…"
+          ],
+          "bytes": 374,
+          "estimatedTokensAt4Bytes": 94,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-long",
+          "paths": [
+            "notes/long-notebook.md"
+          ],
+          "snippets": [
+            "…The [restore] validation checks the [manifest] digest before publishing any files.\n\n## Meridian…"
+          ],
+          "bytes": 436,
+          "estimatedTokensAt4Bytes": 109,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-retention",
+          "paths": [
+            "notes/decisions.md",
+            "notes/harbor.md",
+            "notes/long-notebook.md"
+          ],
+          "snippets": [
+            "# Decisions\n\n## Lantern storage\nLantern stores event [receipts] in SQLite. PostgreSQL was rejected…",
+            "…s confirmation.\n\n## Export\nHarbor exports [receipts] as JSON Lines and does not…",
+            "…publishing any files.\n\n## [Meridian] retention\n[Meridian] retains task [receipts] for forty-five…"
+          ],
+          "bytes": 1047,
+          "estimatedTokensAt4Bytes": 262,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-unanswerable-overlap",
+          "paths": [
+            "notes/harbor.md"
+          ],
+          "snippets": [
+            "# [Harbor] maintenance\n\n## Rotation\n[Harbor] rotates its signing key every ninety days in…"
+          ],
+          "bytes": 404,
+          "estimatedTokensAt4Bytes": 101,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-unanswerable-empty",
+          "paths": [],
+          "snippets": [],
+          "bytes": 108,
+          "estimatedTokensAt4Bytes": 27,
+          "repeatStable": true
+        }
+      ],
+      "metrics": {
+        "development": {
+          "queries": 12,
+          "answerable": 10,
+          "unanswerable": 2,
+          "fileRecall": 1,
+          "sectionCoverageUpperBound": 1,
+          "mrr": 1,
+          "filePrecision": 0.595,
+          "unanswerableFalsePositiveRate": 0.5,
+          "meanResponseBytes": 714.6666666666666,
+          "maxResponseBytes": 1605,
+          "citationCorrectness": null,
+          "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+        },
+        "heldOut": {
+          "queries": 12,
+          "answerable": 10,
+          "unanswerable": 2,
+          "fileRecall": 1,
+          "sectionCoverageUpperBound": 1,
+          "mrr": 0.9333333333333333,
+          "filePrecision": 0.7333333333333333,
+          "unanswerableFalsePositiveRate": 0.5,
+          "meanResponseBytes": 527.75,
+          "maxResponseBytes": 1047,
+          "citationCorrectness": null,
+          "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+        }
+      },
+      "qualityAtK": {
+        "1": {
+          "development": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 1,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 714.6666666666666,
+            "maxResponseBytes": 1605,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          },
+          "heldOut": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 0.9,
+            "sectionCoverageUpperBound": 0.9,
+            "mrr": 0.9,
+            "filePrecision": 0.9,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 527.75,
+            "maxResponseBytes": 1047,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          }
+        },
+        "3": {
+          "development": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 0.6166666666666666,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 714.6666666666666,
+            "maxResponseBytes": 1605,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          },
+          "heldOut": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 0.9333333333333333,
+            "filePrecision": 0.7333333333333333,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 527.75,
+            "maxResponseBytes": 1047,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          }
+        },
+        "5": {
+          "development": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 0.595,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 714.6666666666666,
+            "maxResponseBytes": 1605,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          },
+          "heldOut": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 0.9333333333333333,
+            "filePrecision": 0.7333333333333333,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 527.75,
+            "maxResponseBytes": 1047,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          }
+        }
+      },
+      "latency": {
+        "firstQueryMs": 1.5576680000000067,
+        "firstPassP50Ms": 0.1925460000000072,
+        "firstPassP95Ms": 0.38733299999999815,
+        "warmP50Ms": 0.17408399999999347,
+        "warmP95Ms": 0.3209049999999962,
+        "samples": 120,
+        "coldDefinition": "fresh-process SQLite reopen; OS page cache NOT flushed"
+      },
+      "timings": {},
+      "index": {
+        "files": 12,
+        "sourceBytes": 15277,
+        "databaseLogicalBytes": 1593344,
+        "indexOwnedBytes": 53248,
+        "applicationDatabaseBeforeIndexBytes": null
+      },
+      "memory": {
+        "rssBytes": 64929792
+      }
+    },
+    {
+      "repetition": 0,
+      "schema": 1,
+      "mode": "build",
+      "scale": 500,
+      "versions": {
+        "bun": "1.4.1",
+        "sqlite": "3.53.2"
+      },
+      "scope": "notes",
+      "matchMode": "or",
+      "scoring": "file-level hits; section coverage optimistic upper bound; no citation capability",
+      "results": [
+        {
+          "id": "dev-storage",
+          "paths": [
+            "notes/decisions.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# Decisions\n\n## [Lantern] storage\n[Lantern] stores event receipts in [SQLite]. PostgreSQL was rejected…",
+            "# Unrelated maintenance\n\n## Lamps\nThe storage room has a paper [lantern] beside the…"
+          ],
+          "bytes": 721,
+          "estimatedTokensAt4Bytes": 181,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-retention",
+          "paths": [
+            "notes/decisions.md",
+            "notes/noise.md",
+            "notes/harbor.md",
+            "notes/long-notebook.md"
+          ],
+          "snippets": [
+            "…[Lantern] retention\n[Lantern] retains [diagnostic] [receipts] for fourteen days. Backups retain [receipts]…",
+            "# Unrelated maintenance\n\n## Lamps\nThe storage room has a paper [lantern] beside the…",
+            "…s confirmation.\n\n## Export\nHarbor exports [receipts] as JSON Lines and does not…",
+            "…Meridian retention\nMeridian retains task [receipts] for forty-five days; application logs…"
+          ],
+          "bytes": 1331,
+          "estimatedTokensAt4Bytes": 333,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-preference",
+          "paths": [
+            "notes/preferences.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# Fictional preferences\n\n## [Reports]\n[Mira] prefers concise [reports] with numbered recommendations and explicit…",
+            "…The words parser, recovery and [reports] appear in this vocabulary exercise.\nThere…"
+          ],
+          "bytes": 747,
+          "estimatedTokensAt4Bytes": 187,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-chronology",
+          "paths": [
+            "notes/chronology.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "…04 with seven synthetic accounts.\n\n## [Launch]\n[Kestrel] launched on 2030-04-19…",
+            "…beside the kettle.\n\n## Birds\nA [kestrel] appeared near the northern gate on…"
+          ],
+          "bytes": 673,
+          "estimatedTokensAt4Bytes": 169,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-before-after",
+          "paths": [
+            "notes/chronology.md",
+            "notes/noise.md",
+            "notes/long-notebook.md",
+            "notes/preferences.md",
+            "notes/harbor.md"
+          ],
+          "snippets": [
+            "…On 2030-05-02 the [maintenance] window moved from Monday to [Thursday].\n",
+            "# Unrelated [maintenance]\n\n## Lamps\nThe storage room has a paper lantern beside the…",
+            "…synthetic [maintenance] notes discuss labels, shelves and packing lists without specifying a…",
+            "…estimates.\n\n## Meetings\nThe team reserves Friday mornings for [maintenance], not customer meetings.\n",
+            "# Harbor [maintenance]\n\n## Rotation\nHarbor rotates its signing key every ninety days in…"
+          ],
+          "bytes": 1605,
+          "estimatedTokensAt4Bytes": 402,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-identifier",
+          "paths": [
+            "notes/identifiers.md"
+          ],
+          "snippets": [
+            "# Build identifiers\n\n## Recovery job\nThe recovery job identifier is [RCV-204-B]…"
+          ],
+          "bytes": 394,
+          "estimatedTokensAt4Bytes": 99,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-duplicate-parser",
+          "paths": [
+            "notes/duplicate-headings.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# Deployment notebook\n\n## [Rollback]\nThe [parser] [rollback] restores schema version 3 and replays…",
+            "…on Thursday.\n\n## Samples\nThe words [parser], recovery and reports appear in this…"
+          ],
+          "bytes": 731,
+          "estimatedTokensAt4Bytes": 183,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-duplicate-gateway",
+          "paths": [
+            "notes/duplicate-headings.md"
+          ],
+          "snippets": [
+            "…Rollback\nThe [gateway] rollback changes the upstream pool to [amber] and drains…"
+          ],
+          "bytes": 410,
+          "estimatedTokensAt4Bytes": 103,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-multisection",
+          "paths": [
+            "notes/duplicate-headings.md"
+          ],
+          "snippets": [
+            "# Deployment notebook\n\n## [Rollback]\nThe parser [rollback] restores schema version 3 and replays…"
+          ],
+          "bytes": 442,
+          "estimatedTokensAt4Bytes": 111,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-unanswerable-lexical",
+          "paths": [
+            "notes/chronology.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# [Kestrel] chronology\n\n## Pilot\n[Kestrel] started its pilot on 2030-03-04 with…",
+            "…beside the kettle.\n\n## Birds\nA [kestrel] appeared near the northern gate on…"
+          ],
+          "bytes": 667,
+          "estimatedTokensAt4Bytes": 167,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-unanswerable-empty",
+          "paths": [],
+          "snippets": [],
+          "bytes": 108,
+          "estimatedTokensAt4Bytes": 27,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-paraphrase",
+          "paths": [
+            "notes/preferences.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# Fictional preferences\n\n## [Reports]\nMira prefers concise [reports] with numbered [recommendations] and explicit…",
+            "…The words parser, recovery and [reports] appear in this vocabulary exercise.\nThere…"
+          ],
+          "bytes": 747,
+          "estimatedTokensAt4Bytes": 187,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-current",
+          "paths": [
+            "notes/cedar-current.md",
+            "notes/cedar-old.md"
+          ],
+          "snippets": [
+            "# [Cedar] policy — current\n\n## Retries\nCurrent [Cedar] [retry] [limit]: three attempts, effective 2030…",
+            "…before 2030-06-10 the [Cedar] [retry] [limit] was nine attempts.\nDo…"
+          ],
+          "bytes": 711,
+          "estimatedTokensAt4Bytes": 178,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-history",
+          "paths": [
+            "notes/cedar-old.md",
+            "notes/cedar-current.md"
+          ],
+          "snippets": [
+            "…[SUPERSEDED]: before 2030-06-10 the [Cedar] retry limit was [nine] attempts…",
+            "…This decision replaces the previous [nine]-attempt policy.\n\n## Backoff\n[Cedar] waits two…"
+          ],
+          "bytes": 699,
+          "estimatedTokensAt4Bytes": 175,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-backoff",
+          "paths": [
+            "notes/cedar-current.md",
+            "notes/cedar-old.md"
+          ],
+          "snippets": [
+            "…previous nine-attempt policy.\n\n## Backoff\n[Cedar] [waits] two [seconds] between retry attempts.\n",
+            "…before 2030-06-10 the [Cedar] retry limit was nine attempts.\nDo…"
+          ],
+          "bytes": 689,
+          "estimatedTokensAt4Bytes": 173,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-preference",
+          "paths": [
+            "notes/harbor.md"
+          ],
+          "snippets": [
+            "…[Rotation] is manual and requires a second operator's [confirmation].\n\n## Export\n[Harbor]…"
+          ],
+          "bytes": 410,
+          "estimatedTokensAt4Bytes": 103,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-export",
+          "paths": [
+            "notes/harbor.md",
+            "notes/atlas.md"
+          ],
+          "snippets": [
+            "…s confirmation.\n\n## Export\n[Harbor] exports receipts as [JSON] [Lines] and does not…",
+            "…supports plain UTF-8 Markdown and [JSON] [Lines] for its import fixture.\n"
+          ],
+          "bytes": 659,
+          "estimatedTokensAt4Bytes": 165,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-limits",
+          "paths": [
+            "notes/atlas.md"
+          ],
+          "snippets": [
+            "…[attachments] per message, each at most eight [mebibytes].\n\n## Identifier\nThe [Atlas] repair…"
+          ],
+          "bytes": 414,
+          "estimatedTokensAt4Bytes": 104,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-identifier",
+          "paths": [
+            "notes/atlas.md"
+          ],
+          "snippets": [
+            "…Atlas repair command is [atlas-repair-7f2]. It rebuilds only disposable indexes…"
+          ],
+          "bytes": 382,
+          "estimatedTokensAt4Bytes": 96,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-unicode",
+          "paths": [
+            "notes/unicode-crlf.md"
+          ],
+          "snippets": [
+            "…[café] uses São Tomé labels and keeps the [café] ledger in [UTF]…"
+          ],
+          "bytes": 374,
+          "estimatedTokensAt4Bytes": 94,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-long",
+          "paths": [
+            "notes/long-notebook.md"
+          ],
+          "snippets": [
+            "…The [restore] validation checks the [manifest] digest before publishing any files.\n\n## Meridian…"
+          ],
+          "bytes": 436,
+          "estimatedTokensAt4Bytes": 109,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-retention",
+          "paths": [
+            "notes/long-notebook.md",
+            "notes/decisions.md",
+            "notes/harbor.md"
+          ],
+          "snippets": [
+            "…publishing any files.\n\n## [Meridian] retention\n[Meridian] retains task [receipts] for forty-five…",
+            "# Decisions\n\n## Lantern storage\nLantern stores event [receipts] in SQLite. PostgreSQL was rejected…",
+            "…s confirmation.\n\n## Export\nHarbor exports [receipts] as JSON Lines and does not…"
+          ],
+          "bytes": 1047,
+          "estimatedTokensAt4Bytes": 262,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-unanswerable-overlap",
+          "paths": [
+            "notes/harbor.md"
+          ],
+          "snippets": [
+            "# [Harbor] maintenance\n\n## Rotation\n[Harbor] rotates its signing key every ninety days in…"
+          ],
+          "bytes": 404,
+          "estimatedTokensAt4Bytes": 101,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-unanswerable-empty",
+          "paths": [],
+          "snippets": [],
+          "bytes": 108,
+          "estimatedTokensAt4Bytes": 27,
+          "repeatStable": true
+        },
+        {
+          "id": "tie-checks",
+          "order": [
+            "notes/tie-a.md",
+            "notes/tie-b.md"
+          ],
+          "repeatStable": true,
+          "contract": "equal BM25 scores use binary path order"
+        },
+        {
+          "id": "incremental-checks",
+          "editVisible": true,
+          "addVisible": true,
+          "deleteVisible": true,
+          "sameMetadataEditDetected": true,
+          "sameMetadataPreserved": true,
+          "sourceChangedWhileIndexUnchanged": false,
+          "databaseBeforeMutations": 6610944
+        }
+      ],
+      "metrics": {
+        "development": {
+          "queries": 12,
+          "answerable": 10,
+          "unanswerable": 2,
+          "fileRecall": 1,
+          "sectionCoverageUpperBound": 1,
+          "mrr": 1,
+          "filePrecision": 0.595,
+          "unanswerableFalsePositiveRate": 0.5,
+          "meanResponseBytes": 714.6666666666666,
+          "maxResponseBytes": 1605,
+          "citationCorrectness": null,
+          "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+        },
+        "heldOut": {
+          "queries": 12,
+          "answerable": 10,
+          "unanswerable": 2,
+          "fileRecall": 1,
+          "sectionCoverageUpperBound": 1,
+          "mrr": 1,
+          "filePrecision": 0.7333333333333333,
+          "unanswerableFalsePositiveRate": 0.5,
+          "meanResponseBytes": 527.75,
+          "maxResponseBytes": 1047,
+          "citationCorrectness": null,
+          "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+        }
+      },
+      "qualityAtK": {
+        "1": {
+          "development": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 1,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 714.6666666666666,
+            "maxResponseBytes": 1605,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          },
+          "heldOut": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 1,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 527.75,
+            "maxResponseBytes": 1047,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          }
+        },
+        "3": {
+          "development": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 0.6166666666666666,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 714.6666666666666,
+            "maxResponseBytes": 1605,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          },
+          "heldOut": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 0.7333333333333333,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 527.75,
+            "maxResponseBytes": 1047,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          }
+        },
+        "5": {
+          "development": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 0.595,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 714.6666666666666,
+            "maxResponseBytes": 1605,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          },
+          "heldOut": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 0.7333333333333333,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 527.75,
+            "maxResponseBytes": 1047,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          }
+        }
+      },
+      "latency": {
+        "firstQueryMs": 0.9105920000001788,
+        "firstPassP50Ms": 0.1623440000003029,
+        "firstPassP95Ms": 0.36125299999912386,
+        "warmP50Ms": 0.14787499999874854,
+        "warmP95Ms": 0.24893299999894225,
+        "samples": 120,
+        "coldDefinition": "fresh-process SQLite reopen; OS page cache NOT flushed"
+      },
+      "timings": {
+        "initialRefreshMs": 8160.5406760000005,
+        "noChangeRefreshMs": 257.79300499999954,
+        "editRefreshMs": 170.6843229999995,
+        "addRefreshMs": 153.7451349999992,
+        "deleteRefreshMs": 144.31200399999943
+      },
+      "index": {
+        "files": 512,
+        "sourceBytes": 3852667,
+        "databaseLogicalBytes": 6610944,
+        "indexOwnedBytes": 4751360,
+        "applicationDatabaseBeforeIndexBytes": 1560576
+      },
+      "memory": {
+        "rssBytes": 86908928
+      }
+    },
+    {
+      "repetition": 0,
+      "schema": 1,
+      "mode": "reopen",
+      "scale": 500,
+      "versions": {
+        "bun": "1.4.1",
+        "sqlite": "3.53.2"
+      },
+      "scope": "notes",
+      "matchMode": "or",
+      "scoring": "file-level hits; section coverage optimistic upper bound; no citation capability",
+      "results": [
+        {
+          "id": "dev-storage",
+          "paths": [
+            "notes/decisions.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# Decisions\n\n## [Lantern] storage\n[Lantern] stores event receipts in [SQLite]. PostgreSQL was rejected…",
+            "# Unrelated maintenance\n\n## Lamps\nThe storage room has a paper [lantern] beside the…"
+          ],
+          "bytes": 721,
+          "estimatedTokensAt4Bytes": 181,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-retention",
+          "paths": [
+            "notes/decisions.md",
+            "notes/noise.md",
+            "notes/harbor.md",
+            "notes/long-notebook.md"
+          ],
+          "snippets": [
+            "…[Lantern] retention\n[Lantern] retains [diagnostic] [receipts] for fourteen days. Backups retain [receipts]…",
+            "# Unrelated maintenance\n\n## Lamps\nThe storage room has a paper [lantern] beside the…",
+            "…s confirmation.\n\n## Export\nHarbor exports [receipts] as JSON Lines and does not…",
+            "…Meridian retention\nMeridian retains task [receipts] for forty-five days; application logs…"
+          ],
+          "bytes": 1331,
+          "estimatedTokensAt4Bytes": 333,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-preference",
+          "paths": [
+            "notes/preferences.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# Fictional preferences\n\n## [Reports]\n[Mira] prefers concise [reports] with numbered recommendations and explicit…",
+            "…The words parser, recovery and [reports] appear in this vocabulary exercise.\nThere…"
+          ],
+          "bytes": 747,
+          "estimatedTokensAt4Bytes": 187,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-chronology",
+          "paths": [
+            "notes/chronology.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "…04 with seven synthetic accounts.\n\n## [Launch]\n[Kestrel] launched on 2030-04-19…",
+            "…beside the kettle.\n\n## Birds\nA [kestrel] appeared near the northern gate on…"
+          ],
+          "bytes": 673,
+          "estimatedTokensAt4Bytes": 169,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-before-after",
+          "paths": [
+            "notes/chronology.md",
+            "notes/noise.md",
+            "notes/long-notebook.md",
+            "notes/preferences.md",
+            "notes/harbor.md"
+          ],
+          "snippets": [
+            "…On 2030-05-02 the [maintenance] window moved from Monday to [Thursday].\n",
+            "# Unrelated [maintenance]\n\n## Lamps\nThe storage room has a paper lantern beside the…",
+            "…synthetic [maintenance] notes discuss labels, shelves and packing lists without specifying a…",
+            "…estimates.\n\n## Meetings\nThe team reserves Friday mornings for [maintenance], not customer meetings.\n",
+            "# Harbor [maintenance]\n\n## Rotation\nHarbor rotates its signing key every ninety days in…"
+          ],
+          "bytes": 1605,
+          "estimatedTokensAt4Bytes": 402,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-identifier",
+          "paths": [
+            "notes/identifiers.md"
+          ],
+          "snippets": [
+            "# Build identifiers\n\n## Recovery job\nThe recovery job identifier is [RCV-204-B]…"
+          ],
+          "bytes": 394,
+          "estimatedTokensAt4Bytes": 99,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-duplicate-parser",
+          "paths": [
+            "notes/duplicate-headings.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# Deployment notebook\n\n## [Rollback]\nThe [parser] [rollback] restores schema version 3 and replays…",
+            "…on Thursday.\n\n## Samples\nThe words [parser], recovery and reports appear in this…"
+          ],
+          "bytes": 731,
+          "estimatedTokensAt4Bytes": 183,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-duplicate-gateway",
+          "paths": [
+            "notes/duplicate-headings.md"
+          ],
+          "snippets": [
+            "…Rollback\nThe [gateway] rollback changes the upstream pool to [amber] and drains…"
+          ],
+          "bytes": 410,
+          "estimatedTokensAt4Bytes": 103,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-multisection",
+          "paths": [
+            "notes/duplicate-headings.md"
+          ],
+          "snippets": [
+            "# Deployment notebook\n\n## [Rollback]\nThe parser [rollback] restores schema version 3 and replays…"
+          ],
+          "bytes": 442,
+          "estimatedTokensAt4Bytes": 111,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-unanswerable-lexical",
+          "paths": [
+            "notes/chronology.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# [Kestrel] chronology\n\n## Pilot\n[Kestrel] started its pilot on 2030-03-04 with…",
+            "…beside the kettle.\n\n## Birds\nA [kestrel] appeared near the northern gate on…"
+          ],
+          "bytes": 667,
+          "estimatedTokensAt4Bytes": 167,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-unanswerable-empty",
+          "paths": [],
+          "snippets": [],
+          "bytes": 108,
+          "estimatedTokensAt4Bytes": 27,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-paraphrase",
+          "paths": [
+            "notes/preferences.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# Fictional preferences\n\n## [Reports]\nMira prefers concise [reports] with numbered [recommendations] and explicit…",
+            "…The words parser, recovery and [reports] appear in this vocabulary exercise.\nThere…"
+          ],
+          "bytes": 747,
+          "estimatedTokensAt4Bytes": 187,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-current",
+          "paths": [
+            "notes/cedar-current.md",
+            "notes/cedar-old.md"
+          ],
+          "snippets": [
+            "# [Cedar] policy — current\n\n## Retries\nCurrent [Cedar] [retry] [limit]: three attempts, effective 2030…",
+            "…before 2030-06-10 the [Cedar] [retry] [limit] was nine attempts.\nDo…"
+          ],
+          "bytes": 711,
+          "estimatedTokensAt4Bytes": 178,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-history",
+          "paths": [
+            "notes/cedar-old.md",
+            "notes/cedar-current.md"
+          ],
+          "snippets": [
+            "…[SUPERSEDED]: before 2030-06-10 the [Cedar] retry limit was [nine] attempts…",
+            "…This decision replaces the previous [nine]-attempt policy.\n\n## Backoff\n[Cedar] waits two…"
+          ],
+          "bytes": 699,
+          "estimatedTokensAt4Bytes": 175,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-backoff",
+          "paths": [
+            "notes/cedar-current.md",
+            "notes/cedar-old.md"
+          ],
+          "snippets": [
+            "…previous nine-attempt policy.\n\n## Backoff\n[Cedar] [waits] two [seconds] between retry attempts.\n",
+            "…before 2030-06-10 the [Cedar] retry limit was nine attempts.\nDo…"
+          ],
+          "bytes": 689,
+          "estimatedTokensAt4Bytes": 173,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-preference",
+          "paths": [
+            "notes/harbor.md"
+          ],
+          "snippets": [
+            "…[Rotation] is manual and requires a second operator's [confirmation].\n\n## Export\n[Harbor]…"
+          ],
+          "bytes": 410,
+          "estimatedTokensAt4Bytes": 103,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-export",
+          "paths": [
+            "notes/harbor.md",
+            "notes/atlas.md"
+          ],
+          "snippets": [
+            "…s confirmation.\n\n## Export\n[Harbor] exports receipts as [JSON] [Lines] and does not…",
+            "…supports plain UTF-8 Markdown and [JSON] [Lines] for its import fixture.\n"
+          ],
+          "bytes": 659,
+          "estimatedTokensAt4Bytes": 165,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-limits",
+          "paths": [
+            "notes/atlas.md"
+          ],
+          "snippets": [
+            "…[attachments] per message, each at most eight [mebibytes].\n\n## Identifier\nThe [Atlas] repair…"
+          ],
+          "bytes": 414,
+          "estimatedTokensAt4Bytes": 104,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-identifier",
+          "paths": [
+            "notes/atlas.md"
+          ],
+          "snippets": [
+            "…Atlas repair command is [atlas-repair-7f2]. It rebuilds only disposable indexes…"
+          ],
+          "bytes": 382,
+          "estimatedTokensAt4Bytes": 96,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-unicode",
+          "paths": [
+            "notes/unicode-crlf.md"
+          ],
+          "snippets": [
+            "…[café] uses São Tomé labels and keeps the [café] ledger in [UTF]…"
+          ],
+          "bytes": 374,
+          "estimatedTokensAt4Bytes": 94,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-long",
+          "paths": [
+            "notes/long-notebook.md"
+          ],
+          "snippets": [
+            "…The [restore] validation checks the [manifest] digest before publishing any files.\n\n## Meridian…"
+          ],
+          "bytes": 436,
+          "estimatedTokensAt4Bytes": 109,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-retention",
+          "paths": [
+            "notes/long-notebook.md",
+            "notes/decisions.md",
+            "notes/harbor.md"
+          ],
+          "snippets": [
+            "…publishing any files.\n\n## [Meridian] retention\n[Meridian] retains task [receipts] for forty-five…",
+            "# Decisions\n\n## Lantern storage\nLantern stores event [receipts] in SQLite. PostgreSQL was rejected…",
+            "…s confirmation.\n\n## Export\nHarbor exports [receipts] as JSON Lines and does not…"
+          ],
+          "bytes": 1047,
+          "estimatedTokensAt4Bytes": 262,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-unanswerable-overlap",
+          "paths": [
+            "notes/harbor.md"
+          ],
+          "snippets": [
+            "# [Harbor] maintenance\n\n## Rotation\n[Harbor] rotates its signing key every ninety days in…"
+          ],
+          "bytes": 404,
+          "estimatedTokensAt4Bytes": 101,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-unanswerable-empty",
+          "paths": [],
+          "snippets": [],
+          "bytes": 108,
+          "estimatedTokensAt4Bytes": 27,
+          "repeatStable": true
+        }
+      ],
+      "metrics": {
+        "development": {
+          "queries": 12,
+          "answerable": 10,
+          "unanswerable": 2,
+          "fileRecall": 1,
+          "sectionCoverageUpperBound": 1,
+          "mrr": 1,
+          "filePrecision": 0.595,
+          "unanswerableFalsePositiveRate": 0.5,
+          "meanResponseBytes": 714.6666666666666,
+          "maxResponseBytes": 1605,
+          "citationCorrectness": null,
+          "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+        },
+        "heldOut": {
+          "queries": 12,
+          "answerable": 10,
+          "unanswerable": 2,
+          "fileRecall": 1,
+          "sectionCoverageUpperBound": 1,
+          "mrr": 1,
+          "filePrecision": 0.7333333333333333,
+          "unanswerableFalsePositiveRate": 0.5,
+          "meanResponseBytes": 527.75,
+          "maxResponseBytes": 1047,
+          "citationCorrectness": null,
+          "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+        }
+      },
+      "qualityAtK": {
+        "1": {
+          "development": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 1,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 714.6666666666666,
+            "maxResponseBytes": 1605,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          },
+          "heldOut": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 1,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 527.75,
+            "maxResponseBytes": 1047,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          }
+        },
+        "3": {
+          "development": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 0.6166666666666666,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 714.6666666666666,
+            "maxResponseBytes": 1605,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          },
+          "heldOut": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 0.7333333333333333,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 527.75,
+            "maxResponseBytes": 1047,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          }
+        },
+        "5": {
+          "development": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 0.595,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 714.6666666666666,
+            "maxResponseBytes": 1605,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          },
+          "heldOut": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 0.7333333333333333,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 527.75,
+            "maxResponseBytes": 1047,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          }
+        }
+      },
+      "latency": {
+        "firstQueryMs": 1.6190579999999954,
+        "firstPassP50Ms": 0.2175320000000056,
+        "firstPassP95Ms": 0.4414850000000001,
+        "warmP50Ms": 0.1928169999999909,
+        "warmP95Ms": 0.33807000000000187,
+        "samples": 120,
+        "coldDefinition": "fresh-process SQLite reopen; OS page cache NOT flushed"
+      },
+      "timings": {},
+      "index": {
+        "files": 512,
+        "sourceBytes": 3852667,
+        "databaseLogicalBytes": 6610944,
+        "indexOwnedBytes": 4751360,
+        "applicationDatabaseBeforeIndexBytes": null
+      },
+      "memory": {
+        "rssBytes": 68595712
+      }
+    },
+    {
+      "repetition": 1,
+      "schema": 1,
+      "mode": "build",
+      "scale": 0,
+      "versions": {
+        "bun": "1.4.1",
+        "sqlite": "3.53.2"
+      },
+      "scope": "notes",
+      "matchMode": "or",
+      "scoring": "file-level hits; section coverage optimistic upper bound; no citation capability",
+      "results": [
+        {
+          "id": "dev-storage",
+          "paths": [
+            "notes/decisions.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# Decisions\n\n## [Lantern] storage\n[Lantern] stores event receipts in [SQLite]. PostgreSQL was rejected…",
+            "# Unrelated maintenance\n\n## Lamps\nThe storage room has a paper [lantern] beside the…"
+          ],
+          "bytes": 721,
+          "estimatedTokensAt4Bytes": 181,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-retention",
+          "paths": [
+            "notes/decisions.md",
+            "notes/noise.md",
+            "notes/harbor.md",
+            "notes/long-notebook.md"
+          ],
+          "snippets": [
+            "…[Lantern] retention\n[Lantern] retains [diagnostic] [receipts] for fourteen days. Backups retain [receipts]…",
+            "# Unrelated maintenance\n\n## Lamps\nThe storage room has a paper [lantern] beside the…",
+            "…s confirmation.\n\n## Export\nHarbor exports [receipts] as JSON Lines and does not…",
+            "…Meridian retention\nMeridian retains task [receipts] for forty-five days; application logs…"
+          ],
+          "bytes": 1331,
+          "estimatedTokensAt4Bytes": 333,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-preference",
+          "paths": [
+            "notes/preferences.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# Fictional preferences\n\n## [Reports]\n[Mira] prefers concise [reports] with numbered recommendations and explicit…",
+            "…The words parser, recovery and [reports] appear in this vocabulary exercise.\nThere…"
+          ],
+          "bytes": 747,
+          "estimatedTokensAt4Bytes": 187,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-chronology",
+          "paths": [
+            "notes/chronology.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "…04 with seven synthetic accounts.\n\n## [Launch]\n[Kestrel] launched on 2030-04-19…",
+            "…beside the kettle.\n\n## Birds\nA [kestrel] appeared near the northern gate on…"
+          ],
+          "bytes": 673,
+          "estimatedTokensAt4Bytes": 169,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-before-after",
+          "paths": [
+            "notes/chronology.md",
+            "notes/noise.md",
+            "notes/long-notebook.md",
+            "notes/preferences.md",
+            "notes/harbor.md"
+          ],
+          "snippets": [
+            "…On 2030-05-02 the [maintenance] window moved from Monday to [Thursday].\n",
+            "# Unrelated [maintenance]\n\n## Lamps\nThe storage room has a paper lantern beside the…",
+            "…synthetic [maintenance] notes discuss labels, shelves and packing lists without specifying a…",
+            "…estimates.\n\n## Meetings\nThe team reserves Friday mornings for [maintenance], not customer meetings.\n",
+            "# Harbor [maintenance]\n\n## Rotation\nHarbor rotates its signing key every ninety days in…"
+          ],
+          "bytes": 1605,
+          "estimatedTokensAt4Bytes": 402,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-identifier",
+          "paths": [
+            "notes/identifiers.md"
+          ],
+          "snippets": [
+            "# Build identifiers\n\n## Recovery job\nThe recovery job identifier is [RCV-204-B]…"
+          ],
+          "bytes": 394,
+          "estimatedTokensAt4Bytes": 99,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-duplicate-parser",
+          "paths": [
+            "notes/duplicate-headings.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# Deployment notebook\n\n## [Rollback]\nThe [parser] [rollback] restores schema version 3 and replays…",
+            "…on Thursday.\n\n## Samples\nThe words [parser], recovery and reports appear in this…"
+          ],
+          "bytes": 731,
+          "estimatedTokensAt4Bytes": 183,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-duplicate-gateway",
+          "paths": [
+            "notes/duplicate-headings.md"
+          ],
+          "snippets": [
+            "…Rollback\nThe [gateway] rollback changes the upstream pool to [amber] and drains…"
+          ],
+          "bytes": 410,
+          "estimatedTokensAt4Bytes": 103,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-multisection",
+          "paths": [
+            "notes/duplicate-headings.md"
+          ],
+          "snippets": [
+            "# Deployment notebook\n\n## [Rollback]\nThe parser [rollback] restores schema version 3 and replays…"
+          ],
+          "bytes": 442,
+          "estimatedTokensAt4Bytes": 111,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-unanswerable-lexical",
+          "paths": [
+            "notes/chronology.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# [Kestrel] chronology\n\n## Pilot\n[Kestrel] started its pilot on 2030-03-04 with…",
+            "…beside the kettle.\n\n## Birds\nA [kestrel] appeared near the northern gate on…"
+          ],
+          "bytes": 667,
+          "estimatedTokensAt4Bytes": 167,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-unanswerable-empty",
+          "paths": [],
+          "snippets": [],
+          "bytes": 108,
+          "estimatedTokensAt4Bytes": 27,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-paraphrase",
+          "paths": [
+            "notes/preferences.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# Fictional preferences\n\n## [Reports]\nMira prefers concise [reports] with numbered [recommendations] and explicit…",
+            "…The words parser, recovery and [reports] appear in this vocabulary exercise.\nThere…"
+          ],
+          "bytes": 747,
+          "estimatedTokensAt4Bytes": 187,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-current",
+          "paths": [
+            "notes/cedar-current.md",
+            "notes/cedar-old.md"
+          ],
+          "snippets": [
+            "# [Cedar] policy — current\n\n## Retries\nCurrent [Cedar] [retry] [limit]: three attempts, effective 2030…",
+            "…before 2030-06-10 the [Cedar] [retry] [limit] was nine attempts.\nDo…"
+          ],
+          "bytes": 711,
+          "estimatedTokensAt4Bytes": 178,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-history",
+          "paths": [
+            "notes/cedar-old.md",
+            "notes/cedar-current.md"
+          ],
+          "snippets": [
+            "…[SUPERSEDED]: before 2030-06-10 the [Cedar] retry limit was [nine] attempts…",
+            "…This decision replaces the previous [nine]-attempt policy.\n\n## Backoff\n[Cedar] waits two…"
+          ],
+          "bytes": 699,
+          "estimatedTokensAt4Bytes": 175,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-backoff",
+          "paths": [
+            "notes/cedar-current.md",
+            "notes/cedar-old.md"
+          ],
+          "snippets": [
+            "…previous nine-attempt policy.\n\n## Backoff\n[Cedar] [waits] two [seconds] between retry attempts.\n",
+            "…before 2030-06-10 the [Cedar] retry limit was nine attempts.\nDo…"
+          ],
+          "bytes": 689,
+          "estimatedTokensAt4Bytes": 173,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-preference",
+          "paths": [
+            "notes/harbor.md"
+          ],
+          "snippets": [
+            "…[Rotation] is manual and requires a second operator's [confirmation].\n\n## Export\n[Harbor]…"
+          ],
+          "bytes": 410,
+          "estimatedTokensAt4Bytes": 103,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-export",
+          "paths": [
+            "notes/harbor.md",
+            "notes/atlas.md"
+          ],
+          "snippets": [
+            "…s confirmation.\n\n## Export\n[Harbor] exports receipts as [JSON] [Lines] and does not…",
+            "…supports plain UTF-8 Markdown and [JSON] [Lines] for its import fixture.\n"
+          ],
+          "bytes": 659,
+          "estimatedTokensAt4Bytes": 165,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-limits",
+          "paths": [
+            "notes/atlas.md"
+          ],
+          "snippets": [
+            "…[attachments] per message, each at most eight [mebibytes].\n\n## Identifier\nThe [Atlas] repair…"
+          ],
+          "bytes": 414,
+          "estimatedTokensAt4Bytes": 104,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-identifier",
+          "paths": [
+            "notes/atlas.md"
+          ],
+          "snippets": [
+            "…Atlas repair command is [atlas-repair-7f2]. It rebuilds only disposable indexes…"
+          ],
+          "bytes": 382,
+          "estimatedTokensAt4Bytes": 96,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-unicode",
+          "paths": [
+            "notes/unicode-crlf.md"
+          ],
+          "snippets": [
+            "…[café] uses São Tomé labels and keeps the [café] ledger in [UTF]…"
+          ],
+          "bytes": 374,
+          "estimatedTokensAt4Bytes": 94,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-long",
+          "paths": [
+            "notes/long-notebook.md"
+          ],
+          "snippets": [
+            "…The [restore] validation checks the [manifest] digest before publishing any files.\n\n## Meridian…"
+          ],
+          "bytes": 436,
+          "estimatedTokensAt4Bytes": 109,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-retention",
+          "paths": [
+            "notes/decisions.md",
+            "notes/harbor.md",
+            "notes/long-notebook.md"
+          ],
+          "snippets": [
+            "# Decisions\n\n## Lantern storage\nLantern stores event [receipts] in SQLite. PostgreSQL was rejected…",
+            "…s confirmation.\n\n## Export\nHarbor exports [receipts] as JSON Lines and does not…",
+            "…publishing any files.\n\n## [Meridian] retention\n[Meridian] retains task [receipts] for forty-five…"
+          ],
+          "bytes": 1047,
+          "estimatedTokensAt4Bytes": 262,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-unanswerable-overlap",
+          "paths": [
+            "notes/harbor.md"
+          ],
+          "snippets": [
+            "# [Harbor] maintenance\n\n## Rotation\n[Harbor] rotates its signing key every ninety days in…"
+          ],
+          "bytes": 404,
+          "estimatedTokensAt4Bytes": 101,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-unanswerable-empty",
+          "paths": [],
+          "snippets": [],
+          "bytes": 108,
+          "estimatedTokensAt4Bytes": 27,
+          "repeatStable": true
+        },
+        {
+          "id": "tie-checks",
+          "order": [
+            "notes/tie-a.md",
+            "notes/tie-b.md"
+          ],
+          "repeatStable": true,
+          "contract": "equal BM25 scores use binary path order"
+        },
+        {
+          "id": "incremental-checks",
+          "editVisible": true,
+          "addVisible": true,
+          "deleteVisible": true,
+          "sameMetadataEditDetected": true,
+          "sameMetadataPreserved": true,
+          "sourceChangedWhileIndexUnchanged": false,
+          "databaseBeforeMutations": 1585152
+        }
+      ],
+      "metrics": {
+        "development": {
+          "queries": 12,
+          "answerable": 10,
+          "unanswerable": 2,
+          "fileRecall": 1,
+          "sectionCoverageUpperBound": 1,
+          "mrr": 1,
+          "filePrecision": 0.595,
+          "unanswerableFalsePositiveRate": 0.5,
+          "meanResponseBytes": 714.6666666666666,
+          "maxResponseBytes": 1605,
+          "citationCorrectness": null,
+          "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+        },
+        "heldOut": {
+          "queries": 12,
+          "answerable": 10,
+          "unanswerable": 2,
+          "fileRecall": 1,
+          "sectionCoverageUpperBound": 1,
+          "mrr": 0.9333333333333333,
+          "filePrecision": 0.7333333333333333,
+          "unanswerableFalsePositiveRate": 0.5,
+          "meanResponseBytes": 527.75,
+          "maxResponseBytes": 1047,
+          "citationCorrectness": null,
+          "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+        }
+      },
+      "qualityAtK": {
+        "1": {
+          "development": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 1,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 714.6666666666666,
+            "maxResponseBytes": 1605,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          },
+          "heldOut": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 0.9,
+            "sectionCoverageUpperBound": 0.9,
+            "mrr": 0.9,
+            "filePrecision": 0.9,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 527.75,
+            "maxResponseBytes": 1047,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          }
+        },
+        "3": {
+          "development": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 0.6166666666666666,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 714.6666666666666,
+            "maxResponseBytes": 1605,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          },
+          "heldOut": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 0.9333333333333333,
+            "filePrecision": 0.7333333333333333,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 527.75,
+            "maxResponseBytes": 1047,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          }
+        },
+        "5": {
+          "development": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 0.595,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 714.6666666666666,
+            "maxResponseBytes": 1605,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          },
+          "heldOut": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 0.9333333333333333,
+            "filePrecision": 0.7333333333333333,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 527.75,
+            "maxResponseBytes": 1047,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          }
+        }
+      },
+      "latency": {
+        "firstQueryMs": 1.6204379999999219,
+        "firstPassP50Ms": 0.20081100000015795,
+        "firstPassP95Ms": 0.7239190000000235,
+        "warmP50Ms": 0.18912300000010873,
+        "warmP95Ms": 0.49574399999983143,
+        "samples": 120,
+        "coldDefinition": "fresh-process SQLite reopen; OS page cache NOT flushed"
+      },
+      "timings": {
+        "initialRefreshMs": 194.1360149999996,
+        "noChangeRefreshMs": 36.708530999999766,
+        "editRefreshMs": 57.323001000000204,
+        "addRefreshMs": 61.97245000000021,
+        "deleteRefreshMs": 55.5929100000003
+      },
+      "index": {
+        "files": 12,
+        "sourceBytes": 15277,
+        "databaseLogicalBytes": 1593344,
+        "indexOwnedBytes": 53248,
+        "applicationDatabaseBeforeIndexBytes": 1560576
+      },
+      "memory": {
+        "rssBytes": 71888896
+      }
+    },
+    {
+      "repetition": 1,
+      "schema": 1,
+      "mode": "reopen",
+      "scale": 0,
+      "versions": {
+        "bun": "1.4.1",
+        "sqlite": "3.53.2"
+      },
+      "scope": "notes",
+      "matchMode": "or",
+      "scoring": "file-level hits; section coverage optimistic upper bound; no citation capability",
+      "results": [
+        {
+          "id": "dev-storage",
+          "paths": [
+            "notes/decisions.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# Decisions\n\n## [Lantern] storage\n[Lantern] stores event receipts in [SQLite]. PostgreSQL was rejected…",
+            "# Unrelated maintenance\n\n## Lamps\nThe storage room has a paper [lantern] beside the…"
+          ],
+          "bytes": 721,
+          "estimatedTokensAt4Bytes": 181,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-retention",
+          "paths": [
+            "notes/decisions.md",
+            "notes/noise.md",
+            "notes/harbor.md",
+            "notes/long-notebook.md"
+          ],
+          "snippets": [
+            "…[Lantern] retention\n[Lantern] retains [diagnostic] [receipts] for fourteen days. Backups retain [receipts]…",
+            "# Unrelated maintenance\n\n## Lamps\nThe storage room has a paper [lantern] beside the…",
+            "…s confirmation.\n\n## Export\nHarbor exports [receipts] as JSON Lines and does not…",
+            "…Meridian retention\nMeridian retains task [receipts] for forty-five days; application logs…"
+          ],
+          "bytes": 1331,
+          "estimatedTokensAt4Bytes": 333,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-preference",
+          "paths": [
+            "notes/preferences.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# Fictional preferences\n\n## [Reports]\n[Mira] prefers concise [reports] with numbered recommendations and explicit…",
+            "…The words parser, recovery and [reports] appear in this vocabulary exercise.\nThere…"
+          ],
+          "bytes": 747,
+          "estimatedTokensAt4Bytes": 187,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-chronology",
+          "paths": [
+            "notes/chronology.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "…04 with seven synthetic accounts.\n\n## [Launch]\n[Kestrel] launched on 2030-04-19…",
+            "…beside the kettle.\n\n## Birds\nA [kestrel] appeared near the northern gate on…"
+          ],
+          "bytes": 673,
+          "estimatedTokensAt4Bytes": 169,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-before-after",
+          "paths": [
+            "notes/chronology.md",
+            "notes/noise.md",
+            "notes/long-notebook.md",
+            "notes/preferences.md",
+            "notes/harbor.md"
+          ],
+          "snippets": [
+            "…On 2030-05-02 the [maintenance] window moved from Monday to [Thursday].\n",
+            "# Unrelated [maintenance]\n\n## Lamps\nThe storage room has a paper lantern beside the…",
+            "…synthetic [maintenance] notes discuss labels, shelves and packing lists without specifying a…",
+            "…estimates.\n\n## Meetings\nThe team reserves Friday mornings for [maintenance], not customer meetings.\n",
+            "# Harbor [maintenance]\n\n## Rotation\nHarbor rotates its signing key every ninety days in…"
+          ],
+          "bytes": 1605,
+          "estimatedTokensAt4Bytes": 402,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-identifier",
+          "paths": [
+            "notes/identifiers.md"
+          ],
+          "snippets": [
+            "# Build identifiers\n\n## Recovery job\nThe recovery job identifier is [RCV-204-B]…"
+          ],
+          "bytes": 394,
+          "estimatedTokensAt4Bytes": 99,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-duplicate-parser",
+          "paths": [
+            "notes/duplicate-headings.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# Deployment notebook\n\n## [Rollback]\nThe [parser] [rollback] restores schema version 3 and replays…",
+            "…on Thursday.\n\n## Samples\nThe words [parser], recovery and reports appear in this…"
+          ],
+          "bytes": 731,
+          "estimatedTokensAt4Bytes": 183,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-duplicate-gateway",
+          "paths": [
+            "notes/duplicate-headings.md"
+          ],
+          "snippets": [
+            "…Rollback\nThe [gateway] rollback changes the upstream pool to [amber] and drains…"
+          ],
+          "bytes": 410,
+          "estimatedTokensAt4Bytes": 103,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-multisection",
+          "paths": [
+            "notes/duplicate-headings.md"
+          ],
+          "snippets": [
+            "# Deployment notebook\n\n## [Rollback]\nThe parser [rollback] restores schema version 3 and replays…"
+          ],
+          "bytes": 442,
+          "estimatedTokensAt4Bytes": 111,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-unanswerable-lexical",
+          "paths": [
+            "notes/chronology.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# [Kestrel] chronology\n\n## Pilot\n[Kestrel] started its pilot on 2030-03-04 with…",
+            "…beside the kettle.\n\n## Birds\nA [kestrel] appeared near the northern gate on…"
+          ],
+          "bytes": 667,
+          "estimatedTokensAt4Bytes": 167,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-unanswerable-empty",
+          "paths": [],
+          "snippets": [],
+          "bytes": 108,
+          "estimatedTokensAt4Bytes": 27,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-paraphrase",
+          "paths": [
+            "notes/preferences.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# Fictional preferences\n\n## [Reports]\nMira prefers concise [reports] with numbered [recommendations] and explicit…",
+            "…The words parser, recovery and [reports] appear in this vocabulary exercise.\nThere…"
+          ],
+          "bytes": 747,
+          "estimatedTokensAt4Bytes": 187,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-current",
+          "paths": [
+            "notes/cedar-current.md",
+            "notes/cedar-old.md"
+          ],
+          "snippets": [
+            "# [Cedar] policy — current\n\n## Retries\nCurrent [Cedar] [retry] [limit]: three attempts, effective 2030…",
+            "…before 2030-06-10 the [Cedar] [retry] [limit] was nine attempts.\nDo…"
+          ],
+          "bytes": 711,
+          "estimatedTokensAt4Bytes": 178,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-history",
+          "paths": [
+            "notes/cedar-old.md",
+            "notes/cedar-current.md"
+          ],
+          "snippets": [
+            "…[SUPERSEDED]: before 2030-06-10 the [Cedar] retry limit was [nine] attempts…",
+            "…This decision replaces the previous [nine]-attempt policy.\n\n## Backoff\n[Cedar] waits two…"
+          ],
+          "bytes": 699,
+          "estimatedTokensAt4Bytes": 175,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-backoff",
+          "paths": [
+            "notes/cedar-current.md",
+            "notes/cedar-old.md"
+          ],
+          "snippets": [
+            "…previous nine-attempt policy.\n\n## Backoff\n[Cedar] [waits] two [seconds] between retry attempts.\n",
+            "…before 2030-06-10 the [Cedar] retry limit was nine attempts.\nDo…"
+          ],
+          "bytes": 689,
+          "estimatedTokensAt4Bytes": 173,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-preference",
+          "paths": [
+            "notes/harbor.md"
+          ],
+          "snippets": [
+            "…[Rotation] is manual and requires a second operator's [confirmation].\n\n## Export\n[Harbor]…"
+          ],
+          "bytes": 410,
+          "estimatedTokensAt4Bytes": 103,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-export",
+          "paths": [
+            "notes/harbor.md",
+            "notes/atlas.md"
+          ],
+          "snippets": [
+            "…s confirmation.\n\n## Export\n[Harbor] exports receipts as [JSON] [Lines] and does not…",
+            "…supports plain UTF-8 Markdown and [JSON] [Lines] for its import fixture.\n"
+          ],
+          "bytes": 659,
+          "estimatedTokensAt4Bytes": 165,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-limits",
+          "paths": [
+            "notes/atlas.md"
+          ],
+          "snippets": [
+            "…[attachments] per message, each at most eight [mebibytes].\n\n## Identifier\nThe [Atlas] repair…"
+          ],
+          "bytes": 414,
+          "estimatedTokensAt4Bytes": 104,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-identifier",
+          "paths": [
+            "notes/atlas.md"
+          ],
+          "snippets": [
+            "…Atlas repair command is [atlas-repair-7f2]. It rebuilds only disposable indexes…"
+          ],
+          "bytes": 382,
+          "estimatedTokensAt4Bytes": 96,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-unicode",
+          "paths": [
+            "notes/unicode-crlf.md"
+          ],
+          "snippets": [
+            "…[café] uses São Tomé labels and keeps the [café] ledger in [UTF]…"
+          ],
+          "bytes": 374,
+          "estimatedTokensAt4Bytes": 94,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-long",
+          "paths": [
+            "notes/long-notebook.md"
+          ],
+          "snippets": [
+            "…The [restore] validation checks the [manifest] digest before publishing any files.\n\n## Meridian…"
+          ],
+          "bytes": 436,
+          "estimatedTokensAt4Bytes": 109,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-retention",
+          "paths": [
+            "notes/decisions.md",
+            "notes/harbor.md",
+            "notes/long-notebook.md"
+          ],
+          "snippets": [
+            "# Decisions\n\n## Lantern storage\nLantern stores event [receipts] in SQLite. PostgreSQL was rejected…",
+            "…s confirmation.\n\n## Export\nHarbor exports [receipts] as JSON Lines and does not…",
+            "…publishing any files.\n\n## [Meridian] retention\n[Meridian] retains task [receipts] for forty-five…"
+          ],
+          "bytes": 1047,
+          "estimatedTokensAt4Bytes": 262,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-unanswerable-overlap",
+          "paths": [
+            "notes/harbor.md"
+          ],
+          "snippets": [
+            "# [Harbor] maintenance\n\n## Rotation\n[Harbor] rotates its signing key every ninety days in…"
+          ],
+          "bytes": 404,
+          "estimatedTokensAt4Bytes": 101,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-unanswerable-empty",
+          "paths": [],
+          "snippets": [],
+          "bytes": 108,
+          "estimatedTokensAt4Bytes": 27,
+          "repeatStable": true
+        }
+      ],
+      "metrics": {
+        "development": {
+          "queries": 12,
+          "answerable": 10,
+          "unanswerable": 2,
+          "fileRecall": 1,
+          "sectionCoverageUpperBound": 1,
+          "mrr": 1,
+          "filePrecision": 0.595,
+          "unanswerableFalsePositiveRate": 0.5,
+          "meanResponseBytes": 714.6666666666666,
+          "maxResponseBytes": 1605,
+          "citationCorrectness": null,
+          "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+        },
+        "heldOut": {
+          "queries": 12,
+          "answerable": 10,
+          "unanswerable": 2,
+          "fileRecall": 1,
+          "sectionCoverageUpperBound": 1,
+          "mrr": 0.9333333333333333,
+          "filePrecision": 0.7333333333333333,
+          "unanswerableFalsePositiveRate": 0.5,
+          "meanResponseBytes": 527.75,
+          "maxResponseBytes": 1047,
+          "citationCorrectness": null,
+          "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+        }
+      },
+      "qualityAtK": {
+        "1": {
+          "development": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 1,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 714.6666666666666,
+            "maxResponseBytes": 1605,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          },
+          "heldOut": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 0.9,
+            "sectionCoverageUpperBound": 0.9,
+            "mrr": 0.9,
+            "filePrecision": 0.9,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 527.75,
+            "maxResponseBytes": 1047,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          }
+        },
+        "3": {
+          "development": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 0.6166666666666666,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 714.6666666666666,
+            "maxResponseBytes": 1605,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          },
+          "heldOut": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 0.9333333333333333,
+            "filePrecision": 0.7333333333333333,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 527.75,
+            "maxResponseBytes": 1047,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          }
+        },
+        "5": {
+          "development": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 0.595,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 714.6666666666666,
+            "maxResponseBytes": 1605,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          },
+          "heldOut": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 0.9333333333333333,
+            "filePrecision": 0.7333333333333333,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 527.75,
+            "maxResponseBytes": 1047,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          }
+        }
+      },
+      "latency": {
+        "firstQueryMs": 1.5322929999999957,
+        "firstPassP50Ms": 0.18394999999999584,
+        "firstPassP95Ms": 0.3980590000000035,
+        "warmP50Ms": 0.16777999999999338,
+        "warmP95Ms": 0.3149530000000027,
+        "samples": 120,
+        "coldDefinition": "fresh-process SQLite reopen; OS page cache NOT flushed"
+      },
+      "timings": {},
+      "index": {
+        "files": 12,
+        "sourceBytes": 15277,
+        "databaseLogicalBytes": 1593344,
+        "indexOwnedBytes": 53248,
+        "applicationDatabaseBeforeIndexBytes": null
+      },
+      "memory": {
+        "rssBytes": 65105920
+      }
+    },
+    {
+      "repetition": 1,
+      "schema": 1,
+      "mode": "build",
+      "scale": 500,
+      "versions": {
+        "bun": "1.4.1",
+        "sqlite": "3.53.2"
+      },
+      "scope": "notes",
+      "matchMode": "or",
+      "scoring": "file-level hits; section coverage optimistic upper bound; no citation capability",
+      "results": [
+        {
+          "id": "dev-storage",
+          "paths": [
+            "notes/decisions.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# Decisions\n\n## [Lantern] storage\n[Lantern] stores event receipts in [SQLite]. PostgreSQL was rejected…",
+            "# Unrelated maintenance\n\n## Lamps\nThe storage room has a paper [lantern] beside the…"
+          ],
+          "bytes": 721,
+          "estimatedTokensAt4Bytes": 181,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-retention",
+          "paths": [
+            "notes/decisions.md",
+            "notes/noise.md",
+            "notes/harbor.md",
+            "notes/long-notebook.md"
+          ],
+          "snippets": [
+            "…[Lantern] retention\n[Lantern] retains [diagnostic] [receipts] for fourteen days. Backups retain [receipts]…",
+            "# Unrelated maintenance\n\n## Lamps\nThe storage room has a paper [lantern] beside the…",
+            "…s confirmation.\n\n## Export\nHarbor exports [receipts] as JSON Lines and does not…",
+            "…Meridian retention\nMeridian retains task [receipts] for forty-five days; application logs…"
+          ],
+          "bytes": 1331,
+          "estimatedTokensAt4Bytes": 333,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-preference",
+          "paths": [
+            "notes/preferences.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# Fictional preferences\n\n## [Reports]\n[Mira] prefers concise [reports] with numbered recommendations and explicit…",
+            "…The words parser, recovery and [reports] appear in this vocabulary exercise.\nThere…"
+          ],
+          "bytes": 747,
+          "estimatedTokensAt4Bytes": 187,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-chronology",
+          "paths": [
+            "notes/chronology.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "…04 with seven synthetic accounts.\n\n## [Launch]\n[Kestrel] launched on 2030-04-19…",
+            "…beside the kettle.\n\n## Birds\nA [kestrel] appeared near the northern gate on…"
+          ],
+          "bytes": 673,
+          "estimatedTokensAt4Bytes": 169,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-before-after",
+          "paths": [
+            "notes/chronology.md",
+            "notes/noise.md",
+            "notes/long-notebook.md",
+            "notes/preferences.md",
+            "notes/harbor.md"
+          ],
+          "snippets": [
+            "…On 2030-05-02 the [maintenance] window moved from Monday to [Thursday].\n",
+            "# Unrelated [maintenance]\n\n## Lamps\nThe storage room has a paper lantern beside the…",
+            "…synthetic [maintenance] notes discuss labels, shelves and packing lists without specifying a…",
+            "…estimates.\n\n## Meetings\nThe team reserves Friday mornings for [maintenance], not customer meetings.\n",
+            "# Harbor [maintenance]\n\n## Rotation\nHarbor rotates its signing key every ninety days in…"
+          ],
+          "bytes": 1605,
+          "estimatedTokensAt4Bytes": 402,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-identifier",
+          "paths": [
+            "notes/identifiers.md"
+          ],
+          "snippets": [
+            "# Build identifiers\n\n## Recovery job\nThe recovery job identifier is [RCV-204-B]…"
+          ],
+          "bytes": 394,
+          "estimatedTokensAt4Bytes": 99,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-duplicate-parser",
+          "paths": [
+            "notes/duplicate-headings.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# Deployment notebook\n\n## [Rollback]\nThe [parser] [rollback] restores schema version 3 and replays…",
+            "…on Thursday.\n\n## Samples\nThe words [parser], recovery and reports appear in this…"
+          ],
+          "bytes": 731,
+          "estimatedTokensAt4Bytes": 183,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-duplicate-gateway",
+          "paths": [
+            "notes/duplicate-headings.md"
+          ],
+          "snippets": [
+            "…Rollback\nThe [gateway] rollback changes the upstream pool to [amber] and drains…"
+          ],
+          "bytes": 410,
+          "estimatedTokensAt4Bytes": 103,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-multisection",
+          "paths": [
+            "notes/duplicate-headings.md"
+          ],
+          "snippets": [
+            "# Deployment notebook\n\n## [Rollback]\nThe parser [rollback] restores schema version 3 and replays…"
+          ],
+          "bytes": 442,
+          "estimatedTokensAt4Bytes": 111,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-unanswerable-lexical",
+          "paths": [
+            "notes/chronology.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# [Kestrel] chronology\n\n## Pilot\n[Kestrel] started its pilot on 2030-03-04 with…",
+            "…beside the kettle.\n\n## Birds\nA [kestrel] appeared near the northern gate on…"
+          ],
+          "bytes": 667,
+          "estimatedTokensAt4Bytes": 167,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-unanswerable-empty",
+          "paths": [],
+          "snippets": [],
+          "bytes": 108,
+          "estimatedTokensAt4Bytes": 27,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-paraphrase",
+          "paths": [
+            "notes/preferences.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# Fictional preferences\n\n## [Reports]\nMira prefers concise [reports] with numbered [recommendations] and explicit…",
+            "…The words parser, recovery and [reports] appear in this vocabulary exercise.\nThere…"
+          ],
+          "bytes": 747,
+          "estimatedTokensAt4Bytes": 187,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-current",
+          "paths": [
+            "notes/cedar-current.md",
+            "notes/cedar-old.md"
+          ],
+          "snippets": [
+            "# [Cedar] policy — current\n\n## Retries\nCurrent [Cedar] [retry] [limit]: three attempts, effective 2030…",
+            "…before 2030-06-10 the [Cedar] [retry] [limit] was nine attempts.\nDo…"
+          ],
+          "bytes": 711,
+          "estimatedTokensAt4Bytes": 178,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-history",
+          "paths": [
+            "notes/cedar-old.md",
+            "notes/cedar-current.md"
+          ],
+          "snippets": [
+            "…[SUPERSEDED]: before 2030-06-10 the [Cedar] retry limit was [nine] attempts…",
+            "…This decision replaces the previous [nine]-attempt policy.\n\n## Backoff\n[Cedar] waits two…"
+          ],
+          "bytes": 699,
+          "estimatedTokensAt4Bytes": 175,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-backoff",
+          "paths": [
+            "notes/cedar-current.md",
+            "notes/cedar-old.md"
+          ],
+          "snippets": [
+            "…previous nine-attempt policy.\n\n## Backoff\n[Cedar] [waits] two [seconds] between retry attempts.\n",
+            "…before 2030-06-10 the [Cedar] retry limit was nine attempts.\nDo…"
+          ],
+          "bytes": 689,
+          "estimatedTokensAt4Bytes": 173,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-preference",
+          "paths": [
+            "notes/harbor.md"
+          ],
+          "snippets": [
+            "…[Rotation] is manual and requires a second operator's [confirmation].\n\n## Export\n[Harbor]…"
+          ],
+          "bytes": 410,
+          "estimatedTokensAt4Bytes": 103,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-export",
+          "paths": [
+            "notes/harbor.md",
+            "notes/atlas.md"
+          ],
+          "snippets": [
+            "…s confirmation.\n\n## Export\n[Harbor] exports receipts as [JSON] [Lines] and does not…",
+            "…supports plain UTF-8 Markdown and [JSON] [Lines] for its import fixture.\n"
+          ],
+          "bytes": 659,
+          "estimatedTokensAt4Bytes": 165,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-limits",
+          "paths": [
+            "notes/atlas.md"
+          ],
+          "snippets": [
+            "…[attachments] per message, each at most eight [mebibytes].\n\n## Identifier\nThe [Atlas] repair…"
+          ],
+          "bytes": 414,
+          "estimatedTokensAt4Bytes": 104,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-identifier",
+          "paths": [
+            "notes/atlas.md"
+          ],
+          "snippets": [
+            "…Atlas repair command is [atlas-repair-7f2]. It rebuilds only disposable indexes…"
+          ],
+          "bytes": 382,
+          "estimatedTokensAt4Bytes": 96,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-unicode",
+          "paths": [
+            "notes/unicode-crlf.md"
+          ],
+          "snippets": [
+            "…[café] uses São Tomé labels and keeps the [café] ledger in [UTF]…"
+          ],
+          "bytes": 374,
+          "estimatedTokensAt4Bytes": 94,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-long",
+          "paths": [
+            "notes/long-notebook.md"
+          ],
+          "snippets": [
+            "…The [restore] validation checks the [manifest] digest before publishing any files.\n\n## Meridian…"
+          ],
+          "bytes": 436,
+          "estimatedTokensAt4Bytes": 109,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-retention",
+          "paths": [
+            "notes/long-notebook.md",
+            "notes/decisions.md",
+            "notes/harbor.md"
+          ],
+          "snippets": [
+            "…publishing any files.\n\n## [Meridian] retention\n[Meridian] retains task [receipts] for forty-five…",
+            "# Decisions\n\n## Lantern storage\nLantern stores event [receipts] in SQLite. PostgreSQL was rejected…",
+            "…s confirmation.\n\n## Export\nHarbor exports [receipts] as JSON Lines and does not…"
+          ],
+          "bytes": 1047,
+          "estimatedTokensAt4Bytes": 262,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-unanswerable-overlap",
+          "paths": [
+            "notes/harbor.md"
+          ],
+          "snippets": [
+            "# [Harbor] maintenance\n\n## Rotation\n[Harbor] rotates its signing key every ninety days in…"
+          ],
+          "bytes": 404,
+          "estimatedTokensAt4Bytes": 101,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-unanswerable-empty",
+          "paths": [],
+          "snippets": [],
+          "bytes": 108,
+          "estimatedTokensAt4Bytes": 27,
+          "repeatStable": true
+        },
+        {
+          "id": "tie-checks",
+          "order": [
+            "notes/tie-a.md",
+            "notes/tie-b.md"
+          ],
+          "repeatStable": true,
+          "contract": "equal BM25 scores use binary path order"
+        },
+        {
+          "id": "incremental-checks",
+          "editVisible": true,
+          "addVisible": true,
+          "deleteVisible": true,
+          "sameMetadataEditDetected": true,
+          "sameMetadataPreserved": true,
+          "sourceChangedWhileIndexUnchanged": false,
+          "databaseBeforeMutations": 6606848
+        }
+      ],
+      "metrics": {
+        "development": {
+          "queries": 12,
+          "answerable": 10,
+          "unanswerable": 2,
+          "fileRecall": 1,
+          "sectionCoverageUpperBound": 1,
+          "mrr": 1,
+          "filePrecision": 0.595,
+          "unanswerableFalsePositiveRate": 0.5,
+          "meanResponseBytes": 714.6666666666666,
+          "maxResponseBytes": 1605,
+          "citationCorrectness": null,
+          "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+        },
+        "heldOut": {
+          "queries": 12,
+          "answerable": 10,
+          "unanswerable": 2,
+          "fileRecall": 1,
+          "sectionCoverageUpperBound": 1,
+          "mrr": 1,
+          "filePrecision": 0.7333333333333333,
+          "unanswerableFalsePositiveRate": 0.5,
+          "meanResponseBytes": 527.75,
+          "maxResponseBytes": 1047,
+          "citationCorrectness": null,
+          "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+        }
+      },
+      "qualityAtK": {
+        "1": {
+          "development": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 1,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 714.6666666666666,
+            "maxResponseBytes": 1605,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          },
+          "heldOut": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 1,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 527.75,
+            "maxResponseBytes": 1047,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          }
+        },
+        "3": {
+          "development": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 0.6166666666666666,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 714.6666666666666,
+            "maxResponseBytes": 1605,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          },
+          "heldOut": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 0.7333333333333333,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 527.75,
+            "maxResponseBytes": 1047,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          }
+        },
+        "5": {
+          "development": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 0.595,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 714.6666666666666,
+            "maxResponseBytes": 1605,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          },
+          "heldOut": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 0.7333333333333333,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 527.75,
+            "maxResponseBytes": 1047,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          }
+        }
+      },
+      "latency": {
+        "firstQueryMs": 1.5385750000004919,
+        "firstPassP50Ms": 0.17186100000071747,
+        "firstPassP95Ms": 0.6344710000012128,
+        "warmP50Ms": 0.1719489999995858,
+        "warmP95Ms": 0.49710899999990943,
+        "samples": 120,
+        "coldDefinition": "fresh-process SQLite reopen; OS page cache NOT flushed"
+      },
+      "timings": {
+        "initialRefreshMs": 8081.589609999999,
+        "noChangeRefreshMs": 174.7921810000007,
+        "editRefreshMs": 178.29860499999995,
+        "addRefreshMs": 172.3342530000009,
+        "deleteRefreshMs": 153.90105500000027
+      },
+      "index": {
+        "files": 512,
+        "sourceBytes": 3852667,
+        "databaseLogicalBytes": 6606848,
+        "indexOwnedBytes": 4751360,
+        "applicationDatabaseBeforeIndexBytes": 1560576
+      },
+      "memory": {
+        "rssBytes": 83529728
+      }
+    },
+    {
+      "repetition": 1,
+      "schema": 1,
+      "mode": "reopen",
+      "scale": 500,
+      "versions": {
+        "bun": "1.4.1",
+        "sqlite": "3.53.2"
+      },
+      "scope": "notes",
+      "matchMode": "or",
+      "scoring": "file-level hits; section coverage optimistic upper bound; no citation capability",
+      "results": [
+        {
+          "id": "dev-storage",
+          "paths": [
+            "notes/decisions.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# Decisions\n\n## [Lantern] storage\n[Lantern] stores event receipts in [SQLite]. PostgreSQL was rejected…",
+            "# Unrelated maintenance\n\n## Lamps\nThe storage room has a paper [lantern] beside the…"
+          ],
+          "bytes": 721,
+          "estimatedTokensAt4Bytes": 181,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-retention",
+          "paths": [
+            "notes/decisions.md",
+            "notes/noise.md",
+            "notes/harbor.md",
+            "notes/long-notebook.md"
+          ],
+          "snippets": [
+            "…[Lantern] retention\n[Lantern] retains [diagnostic] [receipts] for fourteen days. Backups retain [receipts]…",
+            "# Unrelated maintenance\n\n## Lamps\nThe storage room has a paper [lantern] beside the…",
+            "…s confirmation.\n\n## Export\nHarbor exports [receipts] as JSON Lines and does not…",
+            "…Meridian retention\nMeridian retains task [receipts] for forty-five days; application logs…"
+          ],
+          "bytes": 1331,
+          "estimatedTokensAt4Bytes": 333,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-preference",
+          "paths": [
+            "notes/preferences.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# Fictional preferences\n\n## [Reports]\n[Mira] prefers concise [reports] with numbered recommendations and explicit…",
+            "…The words parser, recovery and [reports] appear in this vocabulary exercise.\nThere…"
+          ],
+          "bytes": 747,
+          "estimatedTokensAt4Bytes": 187,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-chronology",
+          "paths": [
+            "notes/chronology.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "…04 with seven synthetic accounts.\n\n## [Launch]\n[Kestrel] launched on 2030-04-19…",
+            "…beside the kettle.\n\n## Birds\nA [kestrel] appeared near the northern gate on…"
+          ],
+          "bytes": 673,
+          "estimatedTokensAt4Bytes": 169,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-before-after",
+          "paths": [
+            "notes/chronology.md",
+            "notes/noise.md",
+            "notes/long-notebook.md",
+            "notes/preferences.md",
+            "notes/harbor.md"
+          ],
+          "snippets": [
+            "…On 2030-05-02 the [maintenance] window moved from Monday to [Thursday].\n",
+            "# Unrelated [maintenance]\n\n## Lamps\nThe storage room has a paper lantern beside the…",
+            "…synthetic [maintenance] notes discuss labels, shelves and packing lists without specifying a…",
+            "…estimates.\n\n## Meetings\nThe team reserves Friday mornings for [maintenance], not customer meetings.\n",
+            "# Harbor [maintenance]\n\n## Rotation\nHarbor rotates its signing key every ninety days in…"
+          ],
+          "bytes": 1605,
+          "estimatedTokensAt4Bytes": 402,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-identifier",
+          "paths": [
+            "notes/identifiers.md"
+          ],
+          "snippets": [
+            "# Build identifiers\n\n## Recovery job\nThe recovery job identifier is [RCV-204-B]…"
+          ],
+          "bytes": 394,
+          "estimatedTokensAt4Bytes": 99,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-duplicate-parser",
+          "paths": [
+            "notes/duplicate-headings.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# Deployment notebook\n\n## [Rollback]\nThe [parser] [rollback] restores schema version 3 and replays…",
+            "…on Thursday.\n\n## Samples\nThe words [parser], recovery and reports appear in this…"
+          ],
+          "bytes": 731,
+          "estimatedTokensAt4Bytes": 183,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-duplicate-gateway",
+          "paths": [
+            "notes/duplicate-headings.md"
+          ],
+          "snippets": [
+            "…Rollback\nThe [gateway] rollback changes the upstream pool to [amber] and drains…"
+          ],
+          "bytes": 410,
+          "estimatedTokensAt4Bytes": 103,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-multisection",
+          "paths": [
+            "notes/duplicate-headings.md"
+          ],
+          "snippets": [
+            "# Deployment notebook\n\n## [Rollback]\nThe parser [rollback] restores schema version 3 and replays…"
+          ],
+          "bytes": 442,
+          "estimatedTokensAt4Bytes": 111,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-unanswerable-lexical",
+          "paths": [
+            "notes/chronology.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# [Kestrel] chronology\n\n## Pilot\n[Kestrel] started its pilot on 2030-03-04 with…",
+            "…beside the kettle.\n\n## Birds\nA [kestrel] appeared near the northern gate on…"
+          ],
+          "bytes": 667,
+          "estimatedTokensAt4Bytes": 167,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-unanswerable-empty",
+          "paths": [],
+          "snippets": [],
+          "bytes": 108,
+          "estimatedTokensAt4Bytes": 27,
+          "repeatStable": true
+        },
+        {
+          "id": "dev-paraphrase",
+          "paths": [
+            "notes/preferences.md",
+            "notes/noise.md"
+          ],
+          "snippets": [
+            "# Fictional preferences\n\n## [Reports]\nMira prefers concise [reports] with numbered [recommendations] and explicit…",
+            "…The words parser, recovery and [reports] appear in this vocabulary exercise.\nThere…"
+          ],
+          "bytes": 747,
+          "estimatedTokensAt4Bytes": 187,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-current",
+          "paths": [
+            "notes/cedar-current.md",
+            "notes/cedar-old.md"
+          ],
+          "snippets": [
+            "# [Cedar] policy — current\n\n## Retries\nCurrent [Cedar] [retry] [limit]: three attempts, effective 2030…",
+            "…before 2030-06-10 the [Cedar] [retry] [limit] was nine attempts.\nDo…"
+          ],
+          "bytes": 711,
+          "estimatedTokensAt4Bytes": 178,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-history",
+          "paths": [
+            "notes/cedar-old.md",
+            "notes/cedar-current.md"
+          ],
+          "snippets": [
+            "…[SUPERSEDED]: before 2030-06-10 the [Cedar] retry limit was [nine] attempts…",
+            "…This decision replaces the previous [nine]-attempt policy.\n\n## Backoff\n[Cedar] waits two…"
+          ],
+          "bytes": 699,
+          "estimatedTokensAt4Bytes": 175,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-backoff",
+          "paths": [
+            "notes/cedar-current.md",
+            "notes/cedar-old.md"
+          ],
+          "snippets": [
+            "…previous nine-attempt policy.\n\n## Backoff\n[Cedar] [waits] two [seconds] between retry attempts.\n",
+            "…before 2030-06-10 the [Cedar] retry limit was nine attempts.\nDo…"
+          ],
+          "bytes": 689,
+          "estimatedTokensAt4Bytes": 173,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-preference",
+          "paths": [
+            "notes/harbor.md"
+          ],
+          "snippets": [
+            "…[Rotation] is manual and requires a second operator's [confirmation].\n\n## Export\n[Harbor]…"
+          ],
+          "bytes": 410,
+          "estimatedTokensAt4Bytes": 103,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-export",
+          "paths": [
+            "notes/harbor.md",
+            "notes/atlas.md"
+          ],
+          "snippets": [
+            "…s confirmation.\n\n## Export\n[Harbor] exports receipts as [JSON] [Lines] and does not…",
+            "…supports plain UTF-8 Markdown and [JSON] [Lines] for its import fixture.\n"
+          ],
+          "bytes": 659,
+          "estimatedTokensAt4Bytes": 165,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-limits",
+          "paths": [
+            "notes/atlas.md"
+          ],
+          "snippets": [
+            "…[attachments] per message, each at most eight [mebibytes].\n\n## Identifier\nThe [Atlas] repair…"
+          ],
+          "bytes": 414,
+          "estimatedTokensAt4Bytes": 104,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-identifier",
+          "paths": [
+            "notes/atlas.md"
+          ],
+          "snippets": [
+            "…Atlas repair command is [atlas-repair-7f2]. It rebuilds only disposable indexes…"
+          ],
+          "bytes": 382,
+          "estimatedTokensAt4Bytes": 96,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-unicode",
+          "paths": [
+            "notes/unicode-crlf.md"
+          ],
+          "snippets": [
+            "…[café] uses São Tomé labels and keeps the [café] ledger in [UTF]…"
+          ],
+          "bytes": 374,
+          "estimatedTokensAt4Bytes": 94,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-long",
+          "paths": [
+            "notes/long-notebook.md"
+          ],
+          "snippets": [
+            "…The [restore] validation checks the [manifest] digest before publishing any files.\n\n## Meridian…"
+          ],
+          "bytes": 436,
+          "estimatedTokensAt4Bytes": 109,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-retention",
+          "paths": [
+            "notes/long-notebook.md",
+            "notes/decisions.md",
+            "notes/harbor.md"
+          ],
+          "snippets": [
+            "…publishing any files.\n\n## [Meridian] retention\n[Meridian] retains task [receipts] for forty-five…",
+            "# Decisions\n\n## Lantern storage\nLantern stores event [receipts] in SQLite. PostgreSQL was rejected…",
+            "…s confirmation.\n\n## Export\nHarbor exports [receipts] as JSON Lines and does not…"
+          ],
+          "bytes": 1047,
+          "estimatedTokensAt4Bytes": 262,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-unanswerable-overlap",
+          "paths": [
+            "notes/harbor.md"
+          ],
+          "snippets": [
+            "# [Harbor] maintenance\n\n## Rotation\n[Harbor] rotates its signing key every ninety days in…"
+          ],
+          "bytes": 404,
+          "estimatedTokensAt4Bytes": 101,
+          "repeatStable": true
+        },
+        {
+          "id": "eval-unanswerable-empty",
+          "paths": [],
+          "snippets": [],
+          "bytes": 108,
+          "estimatedTokensAt4Bytes": 27,
+          "repeatStable": true
+        }
+      ],
+      "metrics": {
+        "development": {
+          "queries": 12,
+          "answerable": 10,
+          "unanswerable": 2,
+          "fileRecall": 1,
+          "sectionCoverageUpperBound": 1,
+          "mrr": 1,
+          "filePrecision": 0.595,
+          "unanswerableFalsePositiveRate": 0.5,
+          "meanResponseBytes": 714.6666666666666,
+          "maxResponseBytes": 1605,
+          "citationCorrectness": null,
+          "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+        },
+        "heldOut": {
+          "queries": 12,
+          "answerable": 10,
+          "unanswerable": 2,
+          "fileRecall": 1,
+          "sectionCoverageUpperBound": 1,
+          "mrr": 1,
+          "filePrecision": 0.7333333333333333,
+          "unanswerableFalsePositiveRate": 0.5,
+          "meanResponseBytes": 527.75,
+          "maxResponseBytes": 1047,
+          "citationCorrectness": null,
+          "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+        }
+      },
+      "qualityAtK": {
+        "1": {
+          "development": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 1,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 714.6666666666666,
+            "maxResponseBytes": 1605,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          },
+          "heldOut": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 1,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 527.75,
+            "maxResponseBytes": 1047,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          }
+        },
+        "3": {
+          "development": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 0.6166666666666666,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 714.6666666666666,
+            "maxResponseBytes": 1605,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          },
+          "heldOut": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 0.7333333333333333,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 527.75,
+            "maxResponseBytes": 1047,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          }
+        },
+        "5": {
+          "development": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 0.595,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 714.6666666666666,
+            "maxResponseBytes": 1605,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          },
+          "heldOut": {
+            "queries": 12,
+            "answerable": 10,
+            "unanswerable": 2,
+            "fileRecall": 1,
+            "sectionCoverageUpperBound": 1,
+            "mrr": 1,
+            "filePrecision": 0.7333333333333333,
+            "unanswerableFalsePositiveRate": 0.5,
+            "meanResponseBytes": 527.75,
+            "maxResponseBytes": 1047,
+            "citationCorrectness": null,
+            "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+          }
+        }
+      },
+      "latency": {
+        "firstQueryMs": 1.6749200000000002,
+        "firstPassP50Ms": 0.21044799999999952,
+        "firstPassP95Ms": 0.4165530000000075,
+        "warmP50Ms": 0.19002600000000314,
+        "warmP95Ms": 0.3451259999999934,
+        "samples": 120,
+        "coldDefinition": "fresh-process SQLite reopen; OS page cache NOT flushed"
+      },
+      "timings": {},
+      "index": {
+        "files": 512,
+        "sourceBytes": 3852667,
+        "databaseLogicalBytes": 6606848,
+        "indexOwnedBytes": 4751360,
+        "applicationDatabaseBeforeIndexBytes": null
+      },
+      "memory": {
+        "rssBytes": 68075520
+      }
+    }
+  ],
+  "budgetSha256": "47b5e08e912c33e5b5ba4f8440fead6b0ec6cdd1f3ba8e73196d049419f2b02b",
+  "budgetAssessment": {
+    "schema": 1,
+    "budgetVersion": 1,
+    "budgetStatus": "proposed-after-baseline; approval required before ranking changes",
+    "scope": "this frozen synthetic corpus and comparable local isolated runner only",
+    "completeFixtureMatrix": true,
+    "allBudgetsSatisfied": false,
+    "acceptance": "not inferred from execution; thresholds remain in their recorded approval state",
+    "counts": {
+      "pass": 15,
+      "fail": 1,
+      "unsupported": 1,
+      "insufficient_evidence": 0
+    },
+    "checks": [
+      {
+        "id": "fileRecallAt5MinimumPerSplit",
+        "threshold": 1,
+        "observed": 1,
+        "samples": 16,
+        "detail": "Worst split/run; file-level scores, not passage citation quality.",
+        "status": "pass"
+      },
+      {
+        "id": "fileMrrAt5MinimumPerSplit",
+        "threshold": 0.93,
+        "observed": 0.9333333333333333,
+        "samples": 16,
+        "detail": "Worst split/run; file-level scores, not passage citation quality.",
+        "status": "pass"
+      },
+      {
+        "id": "filePrecisionAt5MinimumPerSplit",
+        "threshold": 0.59,
+        "observed": 0.595,
+        "samples": 16,
+        "detail": "Worst split/run; file-level scores, not passage citation quality.",
+        "status": "pass"
+      },
+      {
+        "id": "futureUnanswerableFalsePositiveRateMaximum",
+        "threshold": 0.25,
+        "observed": 0.5,
+        "samples": 16,
+        "detail": "Returning lexical hits to an unanswerable query counts as a false positive.",
+        "status": "fail"
+      },
+      {
+        "id": "futureCitationCorrectnessMinimum",
+        "threshold": 1,
+        "observed": null,
+        "samples": 0,
+        "detail": "File-level search does not emit revision-bound line citations.",
+        "status": "unsupported"
+      },
+      {
+        "id": "futureSameMetadataEditDetected",
+        "threshold": true,
+        "observed": true,
+        "samples": 4,
+        "detail": "All four build probes; exact same-size/same-mtime fixture.",
+        "status": "pass"
+      },
+      {
+        "id": "futureIdenticalScoreRebuildOrderStable",
+        "threshold": true,
+        "observed": true,
+        "samples": 2,
+        "detail": "Both size cases must compare independent builds, not only repeated reads.",
+        "status": "pass"
+      },
+      {
+        "id": "toolResponseBytesMaximum",
+        "threshold": 4096,
+        "observed": 1605,
+        "samples": 192,
+        "detail": "",
+        "status": "pass"
+      },
+      {
+        "id": "estimatedTokensAt4BytesMaximum",
+        "threshold": 1024,
+        "observed": 402,
+        "samples": 192,
+        "detail": "Byte/4 estimate, not tokenizer output.",
+        "status": "pass"
+      },
+      {
+        "id": "warmQueryP95MsMaximum",
+        "threshold": 10,
+        "observed": 0.49710899999990943,
+        "samples": 8,
+        "detail": "Comparable local runner only; reported, not a portable CI timing gate.",
+        "status": "pass"
+      },
+      {
+        "id": "freshProcessFirstQueryMsMaximum",
+        "threshold": 50,
+        "observed": 1.6749200000000002,
+        "samples": 4,
+        "detail": "Fresh process/SQLite connection; OS cache not flushed.",
+        "status": "pass"
+      },
+      {
+        "id": "smallInitialRefreshMsMaximum",
+        "threshold": 2000,
+        "observed": 233.21677299999965,
+        "samples": 2,
+        "detail": "",
+        "status": "pass"
+      },
+      {
+        "id": "largeInitialRefreshMsMaximum",
+        "threshold": 30000,
+        "observed": 8160.5406760000005,
+        "samples": 2,
+        "detail": "",
+        "status": "pass"
+      },
+      {
+        "id": "largeIncrementalRefreshMsMaximum",
+        "threshold": 30000,
+        "observed": 257.79300499999954,
+        "samples": 8,
+        "detail": "",
+        "status": "pass"
+      },
+      {
+        "id": "indexOwnedBytesPerSourceByteMaximum",
+        "threshold": 2,
+        "observed": 1.2332651641058,
+        "samples": 4,
+        "detail": "Index-owned SQLite pages; not total store/WAL size.",
+        "status": "pass"
+      },
+      {
+        "id": "smallIndexOwnedBytesMaximum",
+        "threshold": 131072,
+        "observed": 53248,
+        "samples": 4,
+        "detail": "",
+        "status": "pass"
+      },
+      {
+        "id": "runtimeRssBytesMaximum",
+        "threshold": 268435456,
+        "observed": 86908928,
+        "samples": 8,
+        "detail": "Sampled RSS near worker end; no peak RSS guarantee.",
+        "status": "pass"
+      }
+    ]
+  }
+}

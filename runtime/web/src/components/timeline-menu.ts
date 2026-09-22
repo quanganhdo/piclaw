@@ -13,7 +13,7 @@ import {
     persistPwaDisplayScalePercent,
     readStoredPwaDisplayScalePercent,
 } from '../ui/pwa-display-scale.js';
-import { getRecentFiles } from '../ui/recent-files.js';
+import { getRecentFiles, openRecentFile } from '../ui/recent-files.js';
 import { LanguageSwitcher } from './language-switcher.js';
 import { useTranslation } from '../utils/i18n.js';
 
@@ -203,7 +203,7 @@ export function TimelineMenu({
                         ${recent.map((path) => {
                             const label = path.split('/').pop() || path;
                             return html`
-                                <button class="workspace-menu-item workspace-menu-recent-item" role="menuitem" title=${path} onClick=${() => run(() => openEditor?.(path))}>${label}</button>
+                                <button class="workspace-menu-item workspace-menu-recent-item" role="menuitem" title=${path} onClick=${() => run(() => openRecentFile(path, openEditor))}>${label}</button>
                             `;
                         })}
                     `;

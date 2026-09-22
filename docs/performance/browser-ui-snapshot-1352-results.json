@@ -1,0 +1,1202 @@
+{
+  "base": "5ca0b16cff917234051d8b504060905897a6284e",
+  "metric": "CDP TaskDuration main-thread busy equivalent, not OS CPU",
+  "runs": [
+    {
+      "stage": "before",
+      "browserVersion": "151.0.7922.34",
+      "settleMs": 30000,
+      "measureMs": 60000,
+      "profileEnabled": false,
+      "generatedAt": "2026-09-21T09:13:35.873Z",
+      "results": [
+        {
+          "id": "blank",
+          "theme": null,
+          "skin": "blank",
+          "traffic": false,
+          "instrument": true,
+          "posts": 0,
+          "taskCpuEquivalentPercent": 0.01132,
+          "durations": {
+            "TaskDuration": 0.006792,
+            "ScriptDuration": 0,
+            "LayoutDuration": 0,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 0,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 0,
+            "interval": 0,
+            "raf": 0,
+            "mutations": 0,
+            "mutationNodes": 0
+          },
+          "requestCounts": {},
+          "requestTotal": 0,
+          "errors": [],
+          "unhandled": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "visual-idle",
+          "theme": "default",
+          "skin": "visual",
+          "traffic": false,
+          "instrument": true,
+          "posts": 10,
+          "taskCpuEquivalentPercent": 0.14307499999999995,
+          "durations": {
+            "TaskDuration": 0.08584499999999998,
+            "ScriptDuration": 0.00905,
+            "LayoutDuration": 0.00019199999999999998,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 1,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 1,
+            "interval": 108,
+            "raf": 0,
+            "mutations": 1,
+            "mutationNodes": 0
+          },
+          "requestCounts": {
+            "GET /agent/status": 24,
+            "GET /agent/models": 24,
+            "GET /agent/roster": 24,
+            "GET /agent/context": 12,
+            "GET /agent/system-metrics": 6
+          },
+          "requestTotal": 90,
+          "errors": [],
+          "unhandled": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "visual-minimal",
+          "theme": "default",
+          "skin": "visual",
+          "traffic": true,
+          "instrument": true,
+          "posts": 10,
+          "taskCpuEquivalentPercent": 0.14681999999999998,
+          "durations": {
+            "TaskDuration": 0.08809199999999999,
+            "ScriptDuration": 0.009252000000000002,
+            "LayoutDuration": 0.00017200000000000006,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 1,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 0,
+            "interval": 109,
+            "raf": 0,
+            "mutations": 1,
+            "mutationNodes": 0
+          },
+          "requestCounts": {
+            "GET /agent/status": 24,
+            "GET /agent/models": 24,
+            "GET /agent/roster": 24,
+            "GET /agent/context": 12,
+            "GET /agent/system-metrics": 6
+          },
+          "requestTotal": 90,
+          "errors": [],
+          "unhandled": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "visual-control",
+          "theme": "default",
+          "skin": "visual",
+          "traffic": false,
+          "instrument": false,
+          "posts": 10,
+          "taskCpuEquivalentPercent": 0.13660666666666668,
+          "durations": {
+            "TaskDuration": 0.08196400000000001,
+            "ScriptDuration": 0.00833,
+            "LayoutDuration": 0.000194,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 1,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 0,
+            "interval": 0,
+            "raf": 0,
+            "mutations": 0,
+            "mutationNodes": 0
+          },
+          "requestCounts": {
+            "GET /agent/status": 24,
+            "GET /agent/models": 24,
+            "GET /agent/roster": 24,
+            "GET /agent/context": 12,
+            "GET /agent/system-metrics": 6
+          },
+          "requestTotal": 90,
+          "errors": [],
+          "unhandled": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "visual-mobile",
+          "theme": "default",
+          "skin": "visual",
+          "traffic": false,
+          "instrument": true,
+          "posts": 10,
+          "taskCpuEquivalentPercent": 0.14670666666666665,
+          "durations": {
+            "TaskDuration": 0.08802399999999999,
+            "ScriptDuration": 0.009136,
+            "LayoutDuration": 0.000165,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 1,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 0,
+            "interval": 109,
+            "raf": 0,
+            "mutations": 1,
+            "mutationNodes": 0
+          },
+          "requestCounts": {
+            "GET /agent/status": 24,
+            "GET /agent/models": 24,
+            "GET /agent/roster": 24,
+            "GET /agent/context": 12,
+            "GET /agent/system-metrics": 6
+          },
+          "requestTotal": 90,
+          "errors": [],
+          "unhandled": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "visual-full",
+          "theme": "synthwave-84-full",
+          "skin": "visual",
+          "traffic": false,
+          "instrument": true,
+          "posts": 10,
+          "taskCpuEquivalentPercent": 46.395916666666665,
+          "durations": {
+            "TaskDuration": 27.83755,
+            "ScriptDuration": 0.008564,
+            "LayoutDuration": 3.4416930000000003,
+            "RecalcStyleDuration": 15.70272,
+            "LayoutCount": 3586,
+            "RecalcStyleCount": 3586
+          },
+          "counts": {
+            "timeout": 1,
+            "interval": 108,
+            "raf": 0,
+            "mutations": 1,
+            "mutationNodes": 0
+          },
+          "requestCounts": {
+            "GET /agent/status": 24,
+            "GET /agent/models": 24,
+            "GET /agent/roster": 24,
+            "GET /agent/context": 12,
+            "GET /agent/system-metrics": 6
+          },
+          "requestTotal": 90,
+          "errors": [],
+          "unhandled": [],
+          "animations": [
+            {
+              "playState": "running",
+              "name": "synthwave-full-ui",
+              "iterations": null
+            },
+            {
+              "playState": "running",
+              "name": "synthwave-full-compose",
+              "iterations": null
+            },
+            {
+              "playState": "running",
+              "name": "synthwave-full-accent",
+              "iterations": null
+            }
+          ],
+          "visibility": "visible"
+        }
+      ]
+    },
+    {
+      "stage": "after",
+      "browserVersion": "151.0.7922.34",
+      "settleMs": 30000,
+      "measureMs": 60000,
+      "profileEnabled": false,
+      "generatedAt": "2026-09-21T09:24:30.556Z",
+      "results": [
+        {
+          "id": "blank",
+          "theme": null,
+          "skin": "blank",
+          "traffic": false,
+          "instrument": true,
+          "posts": 0,
+          "taskCpuEquivalentPercent": 0.01187,
+          "durations": {
+            "TaskDuration": 0.007122,
+            "ScriptDuration": 0,
+            "LayoutDuration": 0,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 0,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 0,
+            "interval": 0,
+            "raf": 0,
+            "mutations": 0,
+            "mutationNodes": 0
+          },
+          "requestCounts": {},
+          "requestTotal": 0,
+          "errors": [],
+          "unhandled": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "visual-idle",
+          "theme": "default",
+          "skin": "visual",
+          "traffic": false,
+          "instrument": true,
+          "posts": 10,
+          "taskCpuEquivalentPercent": 0.11852833333333332,
+          "durations": {
+            "TaskDuration": 0.071117,
+            "ScriptDuration": 0.0068909999999999996,
+            "LayoutDuration": 0.00017299999999999998,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 1,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 0,
+            "interval": 91,
+            "raf": 0,
+            "mutations": 1,
+            "mutationNodes": 0
+          },
+          "requestCounts": {
+            "GET /agent/status": 12,
+            "GET /agent/models": 12,
+            "GET /agent/roster": 12,
+            "GET /agent/system-metrics": 6,
+            "GET /agent/context": 6
+          },
+          "requestTotal": 48,
+          "errors": [],
+          "unhandled": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "visual-minimal",
+          "theme": "default",
+          "skin": "visual",
+          "traffic": true,
+          "instrument": true,
+          "posts": 10,
+          "taskCpuEquivalentPercent": 0.12580000000000002,
+          "durations": {
+            "TaskDuration": 0.07548000000000002,
+            "ScriptDuration": 0.007370000000000001,
+            "LayoutDuration": 0.00017699999999999997,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 1,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 1,
+            "interval": 90,
+            "raf": 0,
+            "mutations": 1,
+            "mutationNodes": 0
+          },
+          "requestCounts": {
+            "GET /agent/status": 12,
+            "GET /agent/models": 12,
+            "GET /agent/roster": 12,
+            "GET /agent/system-metrics": 6,
+            "GET /agent/context": 6
+          },
+          "requestTotal": 48,
+          "errors": [],
+          "unhandled": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "visual-control",
+          "theme": "default",
+          "skin": "visual",
+          "traffic": false,
+          "instrument": false,
+          "posts": 10,
+          "taskCpuEquivalentPercent": 0.11049999999999999,
+          "durations": {
+            "TaskDuration": 0.0663,
+            "ScriptDuration": 0.006249,
+            "LayoutDuration": 0.00014200000000000004,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 1,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 0,
+            "interval": 0,
+            "raf": 0,
+            "mutations": 0,
+            "mutationNodes": 0
+          },
+          "requestCounts": {
+            "GET /agent/status": 12,
+            "GET /agent/models": 12,
+            "GET /agent/roster": 12,
+            "GET /agent/system-metrics": 6,
+            "GET /agent/context": 6
+          },
+          "requestTotal": 48,
+          "errors": [],
+          "unhandled": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "visual-mobile",
+          "theme": "default",
+          "skin": "visual",
+          "traffic": false,
+          "instrument": true,
+          "posts": 10,
+          "taskCpuEquivalentPercent": 0.11626833333333332,
+          "durations": {
+            "TaskDuration": 0.06976099999999999,
+            "ScriptDuration": 0.006272,
+            "LayoutDuration": 0.00018199999999999998,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 1,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 0,
+            "interval": 91,
+            "raf": 0,
+            "mutations": 1,
+            "mutationNodes": 0
+          },
+          "requestCounts": {
+            "GET /agent/status": 12,
+            "GET /agent/models": 12,
+            "GET /agent/roster": 12,
+            "GET /agent/system-metrics": 6,
+            "GET /agent/context": 6
+          },
+          "requestTotal": 48,
+          "errors": [],
+          "unhandled": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "visual-full",
+          "theme": "synthwave-84-full",
+          "skin": "visual",
+          "traffic": false,
+          "instrument": true,
+          "posts": 10,
+          "taskCpuEquivalentPercent": 46.86467333333334,
+          "durations": {
+            "TaskDuration": 28.118804000000004,
+            "ScriptDuration": 0.007026999999999999,
+            "LayoutDuration": 3.4435070000000003,
+            "RecalcStyleDuration": 15.694529000000001,
+            "LayoutCount": 3588,
+            "RecalcStyleCount": 3588
+          },
+          "counts": {
+            "timeout": 1,
+            "interval": 90,
+            "raf": 0,
+            "mutations": 1,
+            "mutationNodes": 0
+          },
+          "requestCounts": {
+            "GET /agent/status": 12,
+            "GET /agent/models": 12,
+            "GET /agent/roster": 12,
+            "GET /agent/system-metrics": 6,
+            "GET /agent/context": 6
+          },
+          "requestTotal": 48,
+          "errors": [],
+          "unhandled": [],
+          "animations": [
+            {
+              "playState": "running",
+              "name": "synthwave-full-ui",
+              "iterations": null
+            },
+            {
+              "playState": "running",
+              "name": "synthwave-full-compose",
+              "iterations": null
+            },
+            {
+              "playState": "running",
+              "name": "synthwave-full-accent",
+              "iterations": null
+            }
+          ],
+          "visibility": "visible"
+        }
+      ]
+    },
+    {
+      "stage": "baseline-repeat",
+      "browserVersion": "151.0.7922.34",
+      "settleMs": 30000,
+      "measureMs": 60000,
+      "profileEnabled": false,
+      "generatedAt": "2026-09-21T09:59:27.957Z",
+      "results": [
+        {
+          "id": "classic-idle",
+          "theme": "default",
+          "skin": "classic",
+          "traffic": false,
+          "instrument": true,
+          "posts": 10,
+          "taskCpuEquivalentPercent": 0.10864666666666667,
+          "durations": {
+            "TaskDuration": 0.065188,
+            "ScriptDuration": 0.008839,
+            "LayoutDuration": 0,
+            "RecalcStyleDuration": 0.00014000000000000004,
+            "LayoutCount": 0,
+            "RecalcStyleCount": 8
+          },
+          "counts": {
+            "timeout": 10,
+            "interval": 164,
+            "raf": 8,
+            "mutations": 14,
+            "mutationNodes": 0
+          },
+          "requestCounts": {
+            "GET /agent/models": 13,
+            "GET /agent/context": 14,
+            "POST /agent/push/presence": 4,
+            "GET /workspace/index-status": 1,
+            "GET /agent/active-chats": 2,
+            "GET /agent/branches": 4,
+            "GET /agent/queue-state": 2,
+            "GET /timeline": 2,
+            "GET /agent/status": 2,
+            "GET /agent/autoresearch/status": 2
+          },
+          "requestTotal": 46,
+          "errors": [],
+          "unhandled": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "visual-idle",
+          "theme": "default",
+          "skin": "visual",
+          "traffic": false,
+          "instrument": true,
+          "posts": 10,
+          "taskCpuEquivalentPercent": 0.13389666666666666,
+          "durations": {
+            "TaskDuration": 0.08033799999999999,
+            "ScriptDuration": 0.007502,
+            "LayoutDuration": 0.00016699999999999994,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 1,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 0,
+            "interval": 109,
+            "raf": 0,
+            "mutations": 1,
+            "mutationNodes": 0
+          },
+          "requestCounts": {
+            "GET /agent/status": 24,
+            "GET /agent/models": 24,
+            "GET /agent/roster": 24,
+            "GET /agent/context": 12,
+            "GET /agent/system-metrics": 6
+          },
+          "requestTotal": 90,
+          "errors": [],
+          "unhandled": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "classic-minimal",
+          "theme": "default",
+          "skin": "classic",
+          "traffic": true,
+          "instrument": true,
+          "posts": 10,
+          "taskCpuEquivalentPercent": 0.07617166666666668,
+          "durations": {
+            "TaskDuration": 0.04570300000000001,
+            "ScriptDuration": 0.005656999999999999,
+            "LayoutDuration": 0,
+            "RecalcStyleDuration": 0.00006199999999999999,
+            "LayoutCount": 0,
+            "RecalcStyleCount": 4
+          },
+          "counts": {
+            "timeout": 4,
+            "interval": 165,
+            "raf": 4,
+            "mutations": 7,
+            "mutationNodes": 0
+          },
+          "requestCounts": {
+            "GET /agent/models": 12,
+            "GET /agent/context": 13,
+            "POST /agent/push/presence": 4,
+            "GET /workspace/index-status": 1,
+            "GET /agent/active-chats": 1,
+            "GET /agent/branches": 2,
+            "GET /agent/queue-state": 1,
+            "GET /timeline": 1,
+            "GET /agent/status": 1,
+            "GET /agent/autoresearch/status": 1
+          },
+          "requestTotal": 37,
+          "errors": [],
+          "unhandled": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "visual-minimal",
+          "theme": "default",
+          "skin": "visual",
+          "traffic": true,
+          "instrument": true,
+          "posts": 10,
+          "taskCpuEquivalentPercent": 0.150455,
+          "durations": {
+            "TaskDuration": 0.090273,
+            "ScriptDuration": 0.009522000000000001,
+            "LayoutDuration": 0.00016799999999999996,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 1,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 0,
+            "interval": 109,
+            "raf": 0,
+            "mutations": 1,
+            "mutationNodes": 0
+          },
+          "requestCounts": {
+            "GET /agent/status": 24,
+            "GET /agent/models": 24,
+            "GET /agent/roster": 24,
+            "GET /agent/context": 12,
+            "GET /agent/system-metrics": 6
+          },
+          "requestTotal": 90,
+          "errors": [],
+          "unhandled": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "visual-control",
+          "theme": "default",
+          "skin": "visual",
+          "traffic": false,
+          "instrument": false,
+          "posts": 10,
+          "taskCpuEquivalentPercent": 0.142285,
+          "durations": {
+            "TaskDuration": 0.08537099999999999,
+            "ScriptDuration": 0.009092000000000001,
+            "LayoutDuration": 0.00022600000000000007,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 1,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 0,
+            "interval": 0,
+            "raf": 0,
+            "mutations": 0,
+            "mutationNodes": 0
+          },
+          "requestCounts": {
+            "GET /agent/status": 24,
+            "GET /agent/models": 24,
+            "GET /agent/roster": 24,
+            "GET /agent/context": 12,
+            "GET /agent/system-metrics": 6
+          },
+          "requestTotal": 90,
+          "errors": [],
+          "unhandled": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "visual-mobile",
+          "theme": "default",
+          "skin": "visual",
+          "traffic": false,
+          "instrument": true,
+          "posts": 10,
+          "taskCpuEquivalentPercent": 0.13517666666666664,
+          "durations": {
+            "TaskDuration": 0.08110599999999998,
+            "ScriptDuration": 0.008436,
+            "LayoutDuration": 0.00018400000000000003,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 1,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 0,
+            "interval": 109,
+            "raf": 0,
+            "mutations": 1,
+            "mutationNodes": 0
+          },
+          "requestCounts": {
+            "GET /agent/status": 24,
+            "GET /agent/models": 24,
+            "GET /agent/roster": 24,
+            "GET /agent/context": 12,
+            "GET /agent/system-metrics": 6
+          },
+          "requestTotal": 90,
+          "errors": [],
+          "unhandled": [],
+          "animations": [],
+          "visibility": "visible"
+        }
+      ]
+    },
+    {
+      "stage": "snapshot-repeat",
+      "browserVersion": "151.0.7922.34",
+      "settleMs": 30000,
+      "measureMs": 60000,
+      "profileEnabled": false,
+      "generatedAt": "2026-09-21T10:08:30.283Z",
+      "results": [
+        {
+          "id": "classic-idle",
+          "theme": "default",
+          "skin": "classic",
+          "traffic": false,
+          "instrument": true,
+          "posts": 10,
+          "taskCpuEquivalentPercent": 0.11466166666666666,
+          "durations": {
+            "TaskDuration": 0.068797,
+            "ScriptDuration": 0.011600999999999998,
+            "LayoutDuration": 0,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 0,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 11,
+            "interval": 164,
+            "raf": 9,
+            "mutations": 0,
+            "mutationNodes": 0
+          },
+          "requestCounts": {
+            "GET /agent/status": 12,
+            "POST /agent/push/presence": 4,
+            "GET /workspace/index-status": 1,
+            "GET /agent/active-chats": 2,
+            "GET /agent/branches": 4,
+            "GET /agent/queue-state": 2,
+            "GET /timeline": 2,
+            "GET /agent/autoresearch/status": 2
+          },
+          "requestTotal": 29,
+          "errors": [],
+          "unhandled": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "visual-idle",
+          "theme": "default",
+          "skin": "visual",
+          "traffic": false,
+          "instrument": true,
+          "posts": 10,
+          "taskCpuEquivalentPercent": 0.09493166666666666,
+          "durations": {
+            "TaskDuration": 0.056958999999999996,
+            "ScriptDuration": 0.005364999999999999,
+            "LayoutDuration": 0.00023600000000000004,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 1,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 0,
+            "interval": 79,
+            "raf": 0,
+            "mutations": 1,
+            "mutationNodes": 0
+          },
+          "requestCounts": {
+            "GET /agent/status": 12
+          },
+          "requestTotal": 12,
+          "errors": [],
+          "unhandled": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "classic-minimal",
+          "theme": "default",
+          "skin": "classic",
+          "traffic": true,
+          "instrument": true,
+          "posts": 10,
+          "taskCpuEquivalentPercent": 0.07421833333333333,
+          "durations": {
+            "TaskDuration": 0.044531,
+            "ScriptDuration": 0.006142,
+            "LayoutDuration": 0,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 0,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 4,
+            "interval": 165,
+            "raf": 4,
+            "mutations": 0,
+            "mutationNodes": 0
+          },
+          "requestCounts": {
+            "GET /agent/status": 12,
+            "POST /agent/push/presence": 4,
+            "GET /workspace/index-status": 1,
+            "GET /agent/active-chats": 1,
+            "GET /agent/branches": 2,
+            "GET /agent/queue-state": 1,
+            "GET /timeline": 1,
+            "GET /agent/autoresearch/status": 1
+          },
+          "requestTotal": 23,
+          "errors": [],
+          "unhandled": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "visual-minimal",
+          "theme": "default",
+          "skin": "visual",
+          "traffic": true,
+          "instrument": true,
+          "posts": 10,
+          "taskCpuEquivalentPercent": 0.09476833333333334,
+          "durations": {
+            "TaskDuration": 0.05686100000000001,
+            "ScriptDuration": 0.005788,
+            "LayoutDuration": 0.00017199999999999995,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 1,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 0,
+            "interval": 79,
+            "raf": 0,
+            "mutations": 1,
+            "mutationNodes": 0
+          },
+          "requestCounts": {
+            "GET /agent/status": 12
+          },
+          "requestTotal": 12,
+          "errors": [],
+          "unhandled": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "visual-control",
+          "theme": "default",
+          "skin": "visual",
+          "traffic": false,
+          "instrument": false,
+          "posts": 10,
+          "taskCpuEquivalentPercent": 0.09131166666666667,
+          "durations": {
+            "TaskDuration": 0.054787,
+            "ScriptDuration": 0.004945000000000001,
+            "LayoutDuration": 0.00017800000000000004,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 1,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 0,
+            "interval": 0,
+            "raf": 0,
+            "mutations": 0,
+            "mutationNodes": 0
+          },
+          "requestCounts": {
+            "GET /agent/status": 12
+          },
+          "requestTotal": 12,
+          "errors": [],
+          "unhandled": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "visual-mobile",
+          "theme": "default",
+          "skin": "visual",
+          "traffic": false,
+          "instrument": true,
+          "posts": 10,
+          "taskCpuEquivalentPercent": 0.08744500000000001,
+          "durations": {
+            "TaskDuration": 0.052467,
+            "ScriptDuration": 0.005142,
+            "LayoutDuration": 0.0001879999999999998,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 1,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 1,
+            "interval": 78,
+            "raf": 0,
+            "mutations": 1,
+            "mutationNodes": 0
+          },
+          "requestCounts": {
+            "GET /agent/status": 12
+          },
+          "requestTotal": 12,
+          "errors": [],
+          "unhandled": [],
+          "animations": [],
+          "visibility": "visible"
+        }
+      ]
+    },
+    {
+      "stage": "snapshot-final",
+      "browserVersion": "151.0.7922.34",
+      "settleMs": 30000,
+      "measureMs": 60000,
+      "profileEnabled": true,
+      "generatedAt": "2026-09-21T10:28:27.312Z",
+      "results": [
+        {
+          "id": "classic-idle",
+          "theme": "default",
+          "skin": "classic",
+          "traffic": false,
+          "instrument": true,
+          "posts": 10,
+          "taskCpuEquivalentPercent": 0.8492966666666666,
+          "durations": {
+            "TaskDuration": 0.509578,
+            "ScriptDuration": 0.007712999999999999,
+            "LayoutDuration": 0,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 0,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 10,
+            "interval": 164,
+            "raf": 8,
+            "mutations": 0,
+            "mutationNodes": 0
+          },
+          "requestCounts": {
+            "GET /agent/status": 12,
+            "POST /agent/push/presence": 4,
+            "GET /workspace/index-status": 1,
+            "GET /agent/active-chats": 2,
+            "GET /agent/branches": 4,
+            "GET /agent/queue-state": 2,
+            "GET /timeline": 2,
+            "GET /agent/autoresearch/status": 2
+          },
+          "requestTotal": 29,
+          "errors": [],
+          "unhandled": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "visual-idle",
+          "theme": "default",
+          "skin": "visual",
+          "traffic": false,
+          "instrument": true,
+          "posts": 10,
+          "taskCpuEquivalentPercent": 0.3064516666666667,
+          "durations": {
+            "TaskDuration": 0.183871,
+            "ScriptDuration": 0.0053620000000000004,
+            "LayoutDuration": 0.00017299999999999998,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 1,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 1,
+            "interval": 78,
+            "raf": 0,
+            "mutations": 1,
+            "mutationNodes": 0
+          },
+          "requestCounts": {
+            "GET /agent/status": 12
+          },
+          "requestTotal": 12,
+          "errors": [],
+          "unhandled": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "classic-long",
+          "theme": "default",
+          "skin": "classic",
+          "traffic": true,
+          "instrument": true,
+          "posts": 200,
+          "taskCpuEquivalentPercent": 0.38582500000000003,
+          "durations": {
+            "TaskDuration": 0.231495,
+            "ScriptDuration": 0.006456999999999999,
+            "LayoutDuration": 0,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 0,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 4,
+            "interval": 165,
+            "raf": 4,
+            "mutations": 0,
+            "mutationNodes": 0
+          },
+          "requestCounts": {
+            "GET /agent/status": 12,
+            "POST /agent/push/presence": 4,
+            "GET /workspace/index-status": 1,
+            "GET /agent/active-chats": 1,
+            "GET /agent/branches": 2,
+            "GET /agent/queue-state": 1,
+            "GET /timeline": 1,
+            "GET /agent/autoresearch/status": 1
+          },
+          "requestTotal": 23,
+          "errors": [],
+          "unhandled": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "visual-long",
+          "theme": "default",
+          "skin": "visual",
+          "traffic": true,
+          "instrument": true,
+          "posts": 200,
+          "taskCpuEquivalentPercent": 0.34885666666666665,
+          "durations": {
+            "TaskDuration": 0.209314,
+            "ScriptDuration": 0.006019000000000002,
+            "LayoutDuration": 0.00019900000000000126,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 1,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 1,
+            "interval": 78,
+            "raf": 0,
+            "mutations": 1,
+            "mutationNodes": 0
+          },
+          "requestCounts": {
+            "GET /agent/status": 12
+          },
+          "requestTotal": 12,
+          "errors": [],
+          "unhandled": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "visual-full",
+          "theme": "synthwave-84-full",
+          "skin": "visual",
+          "traffic": false,
+          "instrument": true,
+          "posts": 10,
+          "taskCpuEquivalentPercent": 54.00053333333332,
+          "durations": {
+            "TaskDuration": 32.400319999999994,
+            "ScriptDuration": 0.006303999999999999,
+            "LayoutDuration": 3.8398660000000007,
+            "RecalcStyleDuration": 17.897275999999998,
+            "LayoutCount": 3510,
+            "RecalcStyleCount": 3510
+          },
+          "counts": {
+            "timeout": 0,
+            "interval": 79,
+            "raf": 0,
+            "mutations": 1,
+            "mutationNodes": 0
+          },
+          "requestCounts": {
+            "GET /agent/status": 12
+          },
+          "requestTotal": 12,
+          "errors": [],
+          "unhandled": [],
+          "animations": [
+            {
+              "playState": "running",
+              "name": "synthwave-full-ui",
+              "iterations": null
+            },
+            {
+              "playState": "running",
+              "name": "synthwave-full-compose",
+              "iterations": null
+            },
+            {
+              "playState": "running",
+              "name": "synthwave-full-accent",
+              "iterations": null
+            }
+          ],
+          "visibility": "visible"
+        },
+        {
+          "id": "classic-hidden-simulated",
+          "theme": "default",
+          "skin": "classic",
+          "traffic": true,
+          "instrument": true,
+          "posts": 10,
+          "taskCpuEquivalentPercent": 0.41405666666666663,
+          "durations": {
+            "TaskDuration": 0.248434,
+            "ScriptDuration": 0.006960000000000001,
+            "LayoutDuration": 0,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 0,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 6,
+            "interval": 165,
+            "raf": 5,
+            "mutations": 0,
+            "mutationNodes": 0
+          },
+          "requestCounts": {
+            "POST /workspace/visibility": 1,
+            "GET /agent/status": 12,
+            "POST /agent/push/presence": 4,
+            "GET /workspace/index-status": 1,
+            "GET /agent/active-chats": 1,
+            "GET /agent/branches": 2,
+            "GET /agent/queue-state": 1,
+            "GET /timeline": 1,
+            "GET /agent/autoresearch/status": 1
+          },
+          "requestTotal": 24,
+          "errors": [],
+          "unhandled": [],
+          "animations": [],
+          "visibility": "hidden"
+        },
+        {
+          "id": "visual-hidden-simulated",
+          "theme": "default",
+          "skin": "visual",
+          "traffic": true,
+          "instrument": true,
+          "posts": 10,
+          "taskCpuEquivalentPercent": 0.3512283333333333,
+          "durations": {
+            "TaskDuration": 0.210737,
+            "ScriptDuration": 0.006044000000000001,
+            "LayoutDuration": 0.00016199999999999998,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 1,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 0,
+            "interval": 79,
+            "raf": 0,
+            "mutations": 1,
+            "mutationNodes": 0
+          },
+          "requestCounts": {
+            "GET /agent/status": 12
+          },
+          "requestTotal": 12,
+          "errors": [],
+          "unhandled": [],
+          "animations": [],
+          "visibility": "hidden"
+        }
+      ]
+    }
+  ]
+}

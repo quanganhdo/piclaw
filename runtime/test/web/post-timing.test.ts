@@ -20,7 +20,7 @@ test('formatAgentReplyDuration keeps reply timings compact', () => {
   expect(formatAgentReplyDuration(null)).toBe(null);
 });
 
-test('formatAgentTokenStats keeps each token category on a bounded line', () => {
+test('formatAgentTokenStats packs categories into two native-tooltip lines without omitting details', () => {
   expect(formatAgentTokenStats({
     input_tokens: 1000,
     output_tokens: 234,
@@ -29,12 +29,8 @@ test('formatAgentTokenStats keeps each token category on a bounded line', () => 
     cache_write_tokens: 25,
     total_tokens: 1309,
   })).toBe([
-    'Tokens: 1,309 total',
-    'Input: 1,000',
-    'Output: 234',
-    'Reasoning: 40',
-    'Cache read: 50',
-    'Cache write: 25',
+    'Tokens: 1,309 total · Input: 1,000 · Output: 234',
+    'Reasoning: 40 · Cache read: 50 · Cache write: 25',
   ].join('\n'));
   expect(formatAgentTokenStats(null)).toBe(null);
 });
@@ -68,10 +64,12 @@ test('buildPostTimeTooltip includes persisted agent timing and token stats when 
   const tooltip = buildPostTimeTooltip(post);
   expect(tooltip).toContain('Sent');
   expect(tooltip).toContain('Agent reply took 38s');
-  expect(tooltip).toContain('Tokens: 1,309 total\nInput: 1,000\nOutput: 234\nCache read: 50\nCache write: 25');
+  expect(tooltip).toContain('Tokens: 1,309 total · Input: 1,000 · Output: 234\nCache read: 50 · Cache write: 25');
   expect(tooltip).toContain('Provider-reported cost: $0.0012');
   expect(tooltip).toContain('Started');
-  expect(tooltip.split('\n').every((line) => line.length < 80)).toBe(true);
+  expect(tooltip.split('\n')).toHaveLength(5);
+  expect(tooltip).not.toMatch(/…|\.\.\./);
+  expect(tooltip.split('\n').every((line) => line.length < 120)).toBe(true);
 });
 
 test('buildPostTimeTooltip labels catalogue estimates without inventing missing cost', () => {

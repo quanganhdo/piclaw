@@ -27,6 +27,14 @@ scheduled_tasks({
 
 Compatibility note: `schedule_task(...)` is the older alias if the structured tool is unavailable.
 
+## Budget policy
+
+- Omit `budget_usd` for no task-specific cap. With no applicable enabled budgets, the task can run without a positive cap, special unbudgeted flag, pricing/quota evidence or budget approval.
+- A positive cap applies independently to each run. Use at most six decimal places in USD; instance/provider limits still apply.
+- Zero is a blocking cap, not unbudgeted. Creation requires deliberate `confirm_zero_budget: true`; otherwise no task is created. Never supply zero as a default.
+- Read `schedule_accepted` and `budget_readiness` separately. Report known blockers and next steps as well as the next-run timestamp. `check_at_run` means an inherited model/provider is unresolved for this advisory check.
+- Never invent a cap, allowance or override. Ordinary task/model/authority checks still apply. A later budget stop is recorded and reported to the task chat without another model run.
+
 ## Key fields
 
 - `schedule_type`: `once` | `cron` | `interval`

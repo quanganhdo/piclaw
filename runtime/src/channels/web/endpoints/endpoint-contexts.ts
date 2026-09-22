@@ -57,7 +57,7 @@ export interface AgentStatusContextDeps extends JsonLike {
     chatJid: string
   ): Promise<{ tokens: number | null; contextWindow: number | null; percent: number | null; sessionGeneration?: string } | null>;
   getTokenUsageForChat(chatJid: string): AgentTokenUsageContext | null;
-  getAvailableModels(chatJid: string): Promise<unknown>;
+  getAvailableModels(chatJid: string, options?: { includeProviderDiagnostics?: boolean; includeCatalogue?: boolean }): Promise<unknown>;
   getProviderReadyCompletedForInstance(): boolean;
 }
 

@@ -1,4 +1,5 @@
 import { html, useCallback, useEffect, useMemo, useRef, useState } from '../vendor/preact-htm.js';
+import { workspaceChartColor } from '../ui/workspace-chart-colors.js';
 import { renderDisclosureTriangle } from '../ui/disclosure-triangle.js';
 import { useTranslation } from '../utils/i18n.js';
 import { LanguageSwitcher } from './language-switcher.js';
@@ -42,7 +43,7 @@ import {
     persistPwaDisplayScalePercent,
     readStoredPwaDisplayScalePercent,
 } from '../ui/pwa-display-scale.js';
-import { getRecentFiles } from '../ui/recent-files.js';
+import { getRecentFiles, openRecentFile } from '../ui/recent-files.js';
 
 const isHiddenNode = (node) => {
     if (!node || !node.name) return false;
@@ -219,26 +220,6 @@ function buildFolderSizeHierarchy(node, depth = 0) {
     return out;
 }
 
-function detectDarkTheme() {
-    if (typeof window === 'undefined' || typeof document === 'undefined') return false;
-    const root = document.documentElement;
-    const body = document.body;
-    const rootTheme = root?.getAttribute?.('data-theme')?.toLowerCase?.() || '';
-    if (rootTheme === 'dark') return true;
-    if (rootTheme === 'light') return false;
-    if (root?.classList?.contains('dark') || body?.classList?.contains('dark')) return true;
-    if (root?.classList?.contains('light') || body?.classList?.contains('light')) return false;
-    return Boolean(window.matchMedia?.('(prefers-color-scheme: dark)')?.matches);
-}
-
-function segmentColorFromAngle(startAngle, depth, isDarkTheme) {
-    // Daisy-like palette: hue follows segment angle; depth controls saturation/lightness.
-    const hue = ((((startAngle + Math.PI / 2) * 180) / Math.PI) + 360) % 360;
-    const sat = isDarkTheme ? Math.max(30, 70 - depth * 10) : Math.max(34, 66 - depth * 8);
-    const light = isDarkTheme ? Math.min(70, 45 + depth * 5) : Math.min(60, 42 + depth * 4);
-    return `hsl(${hue.toFixed(1)} ${sat}% ${light}%)`;
-}
-
 function polar(cx, cy, radius, angle) {
     return {
         x: cx + radius * Math.cos(angle),
@@ -272,7 +253,7 @@ const STARBURST_RINGS = {
     4: [92, 112],
 };
 
-function buildStarburstSegments(rootNode, baseSize, isDarkTheme) {
+function buildStarburstSegments(rootNode, baseSize) {
     const segments = [];
     const legend = [];
     const baseTotal = Math.max(0, Number(baseSize) || 0);
@@ -296,7 +277,7 @@ function buildStarburstSegments(rootNode, baseSize, isDarkTheme) {
 
             const ring = STARBURST_RINGS[depth];
             if (ring) {
-                const color = segmentColorFromAngle(childStart, depth, isDarkTheme);
+                const color = workspaceChartColor(child.path, depth - 1);
                 segments.push({
                     key: child.path,
                     path: child.path,
@@ -342,13 +323,13 @@ function findHierarchyNode(root, targetPath) {
     return null;
 }
 
-function buildFallbackStarburst(label, pathBase, size, isDarkTheme) {
+function buildFallbackStarburst(label, pathBase, size) {
     if (!size || size <= 0) return { segments: [], legend: [] };
     const ring = STARBURST_RINGS[1];
     if (!ring) return { segments: [], legend: [] };
     const start = -Math.PI / 2;
     const end = (Math.PI * 3) / 2;
-    const color = segmentColorFromAngle(start, 1, isDarkTheme);
+    const color = workspaceChartColor(pathBase || label);
     const keyBase = pathBase || '.';
     const key = `${keyBase}/[files]`;
     return {
@@ -379,15 +360,15 @@ function buildFallbackStarburst(label, pathBase, size, isDarkTheme) {
     };
 }
 
-function createFolderStarburstPayload(root, truncated = false, isDarkTheme = false) {
+function createFolderStarburstPayload(root, truncated = false) {
     if (!root) return null;
     const totalSize = computeSubtreeBytes(root);
     const hierarchy = buildFolderSizeHierarchy(root, 0);
     const baseSize = hierarchy.size || totalSize;
-    let { segments, legend } = buildStarburstSegments(hierarchy, baseSize, isDarkTheme);
+    let { segments, legend } = buildStarburstSegments(hierarchy, baseSize);
 
     if (!segments.length && baseSize > 0) {
-        const fallback = buildFallbackStarburst('[files]', hierarchy.path, baseSize, isDarkTheme);
+        const fallback = buildFallbackStarburst('[files]', hierarchy.path, baseSize);
         segments = fallback.segments;
         legend = fallback.legend;
     }
@@ -398,7 +379,6 @@ function createFolderStarburstPayload(root, truncated = false, isDarkTheme = fal
         segments,
         legend,
         truncated,
-        isDarkTheme,
     };
 }
 
@@ -429,12 +409,12 @@ function FolderStarburstChart({ payload }) {
 
     const baseSize = zoomRoot?.size || payload.totalSize || 0;
     const { segments, legend } = useMemo(() => {
-        const computed = buildStarburstSegments(zoomRoot, baseSize, payload.isDarkTheme);
+        const computed = buildStarburstSegments(zoomRoot, baseSize);
         if (computed.segments.length > 0) return computed;
         if (baseSize <= 0) return computed;
         const label = zoomRoot?.children?.length ? 'Total' : '[files]';
-        return buildFallbackStarburst(label, zoomRoot?.path || payload?.root?.path || '.', baseSize, payload.isDarkTheme);
-    }, [zoomRoot, baseSize, payload.isDarkTheme, payload?.root?.path]);
+        return buildFallbackStarburst(label, zoomRoot?.path || payload?.root?.path || '.', baseSize);
+    }, [zoomRoot, baseSize, payload?.root?.path]);
 
     const [animatedSegments, setAnimatedSegments] = useState(segments);
     const prevSegmentsRef = useRef(new Map());
@@ -697,7 +677,6 @@ export function WorkspaceExplorer({
     const [workspaceIndexStatus, setWorkspaceIndexStatus] = useState(null);
     const [workspaceReindexing, setWorkspaceReindexing] = useState(false);
     const [workspaceClientSettings, setWorkspaceClientSettings] = useState(() => readWorkspaceClientSettings());
-    const [isDarkTheme,  setIsDarkTheme]   = useState(() => detectDarkTheme());
     const [explorerScale, setExplorerScale] = useState(() => resolveWorkspaceScale({
         stored: getLocalStorageItem(WORKSPACE_SCALE_STORAGE_KEY),
         ...readWorkspaceScaleEnvironment(),
@@ -945,38 +924,6 @@ export function WorkspaceExplorer({
     useEffect(() => { selectedPathRef.current = selectedPath; }, [selectedPath]);
     useEffect(() => { renamingPathRef.current = renamingPath; }, [renamingPath]);
     useEffect(() => { previewRef.current = preview; }, [preview]);
-
-    useEffect(() => {
-        if (typeof window === 'undefined' || typeof document === 'undefined') return;
-
-        const syncTheme = () => setIsDarkTheme(detectDarkTheme());
-        syncTheme();
-
-        const media = window.matchMedia?.('(prefers-color-scheme: dark)');
-        const onMediaChange = () => syncTheme();
-        if (media?.addEventListener) media.addEventListener('change', onMediaChange);
-        else if (media?.addListener) media.addListener(onMediaChange);
-
-        const observer = typeof MutationObserver !== 'undefined'
-            ? new MutationObserver(() => syncTheme())
-            : null;
-        observer?.observe(document.documentElement, {
-            attributes: true,
-            attributeFilter: ['class', 'data-theme'],
-        });
-        if (document.body) {
-            observer?.observe(document.body, {
-                attributes: true,
-                attributeFilter: ['class', 'data-theme'],
-            });
-        }
-
-        return () => {
-            if (media?.removeEventListener) media.removeEventListener('change', onMediaChange);
-            else if (media?.removeListener) media.removeListener(onMediaChange);
-            observer?.disconnect();
-        };
-    }, []);
 
     useEffect(() => {
         if (!renamingPath) return;
@@ -1523,7 +1470,7 @@ export function WorkspaceExplorer({
         if (cached?.root) {
             cache.delete(cacheKey);
             cache.set(cacheKey, cached);
-            const payload = createFolderStarburstPayload(cached.root, Boolean(cached.truncated), isDarkTheme);
+            const payload = createFolderStarburstPayload(cached.root, Boolean(cached.truncated));
             if (payload) {
                 folderChartPayloadRef.current = payload;
                 folderChartPathRef.current = selectedPath;
@@ -1547,7 +1494,7 @@ export function WorkspaceExplorer({
                     if (!oldest) break;
                     cache.delete(oldest);
                 }
-                const payload = createFolderStarburstPayload(entry.root, entry.truncated, isDarkTheme);
+                const payload = createFolderStarburstPayload(entry.root, entry.truncated);
                 folderChartPayloadRef.current = payload;
                 folderChartPathRef.current = selectedPath;
                 setFolderChart({ loading: false, error: null, payload, disabled: false });
@@ -1556,7 +1503,7 @@ export function WorkspaceExplorer({
                 if (selectedPathRef.current !== fetchPath) return;
                 setFolderChart({ loading: false, error: err?.message || 'Failed to load folder size chart', payload: lastPath === selectedPath ? lastPayload : null, disabled: false });
             });
-    }, [selectedPath, selectedIsDir, showHidden, isDarkTheme, folderPreviewDepth]);
+    }, [selectedPath, selectedIsDir, showHidden, folderPreviewDepth]);
 
     const canEdit = Boolean(preview && preview.kind === 'text' && !selectedIsDir && (!preview.size || preview.size <= 256 * 1024));
     const editTitle = canEdit
@@ -2451,7 +2398,7 @@ export function WorkspaceExplorer({
                                         ${recent.map((path) => {
                                             const label = path.split('/').pop() || path;
                                             return html`
-                                                <button class="workspace-menu-item workspace-menu-recent-item" role="menuitem" title=${path} onClick=${() => runMenuAction(() => onOpenEditorRef.current?.(path))}>${label}</button>
+                                                <button class="workspace-menu-item workspace-menu-recent-item" role="menuitem" title=${path} onClick=${() => runMenuAction(() => openRecentFile(path, onOpenEditorRef.current))}>${label}</button>
                                             `;
                                         })}
                                     `;

@@ -1,3 +1,9 @@
+import {
+  resolveVSCodeSyntax,
+  type VSCodeSyntaxTheme,
+} from "../../../../../../src/core/theme-syntax";
+import { paletteVariables } from "../../../../../src/ui/theme-palette";
+import { reapplyStoredTheme } from "../../../../../src/ui/theme";
 /**
  * VS Code theme importer — maps VS Code color keys to our CSS custom properties
  * and handles persistence via safe storage wrappers.
@@ -49,7 +55,7 @@ const VSCODE_TO_CSS: Record<string, string> = {
   "menu.border": "--border",
 
   // Accent / focus
-  "focusBorder": "--accent",
+  focusBorder: "--accent",
   "button.background": "--accent",
   "progressBar.background": "--accent",
   "list.highlightForeground": "--accent",
@@ -60,7 +66,7 @@ const VSCODE_TO_CSS: Record<string, string> = {
   "editor.selectionBackground": "--accent",
 
   // Semantic colors
-  "errorForeground": "--error",
+  errorForeground: "--error",
   "editorError.foreground": "--error",
   "inputValidation.errorBorder": "--error",
   "editorWarning.foreground": "--warning",
@@ -103,59 +109,16 @@ const VSCODE_TO_CSS: Record<string, string> = {
   "terminal.background": "--bg-terminal",
 };
 
-/** Token scope → our syntax highlight CSS var */
-const TOKEN_SCOPE_TO_CSS: Record<string, string> = {
-  "keyword": "--syn-keyword",
-  "keyword.control": "--syn-keyword",
-  "keyword.operator": "--syn-operator",
-  "constant.numeric": "--syn-number",
-  "constant.language": "--syn-atom",
-  "string": "--syn-string",
-  "string.quoted": "--syn-string",
-  "comment": "--syn-comment",
-  "comment.line": "--syn-comment",
-  "comment.block": "--syn-comment",
-  "variable": "--syn-variable",
-  "variable.other": "--syn-variable",
-  "variable.parameter": "--syn-variable",
-  "entity.name.function": "--syn-definition",
-  "entity.name.type": "--syn-type",
-  "entity.name.class": "--syn-type",
-  "entity.other.attribute-name": "--syn-property",
-  "support.function": "--syn-definition",
-  "support.type": "--syn-type",
-  "support.class": "--syn-type",
-  "storage.type": "--syn-keyword",
-  "storage.modifier": "--syn-keyword",
-  "meta.preprocessor": "--syn-macro",
-  "meta.tag": "--syn-punctuation",
-  "punctuation": "--syn-punctuation",
-  "markup.heading": "--syn-heading",
-  "markup.inline.raw": "--syn-string",
-  "markup.deleted": "--syn-deleted",
-  "markup.inserted": "--syn-inserted",
-  "invalid": "--syn-invalid",
-};
-
-export interface VSCodeThemeJSON {
+export interface VSCodeThemeJSON extends VSCodeSyntaxTheme {
   name?: string;
-  type?: "dark" | "light";
-  colors?: Record<string, string>;
-  tokenColors?: Array<{
-    name?: string;
-    scope?: string | string[];
-    settings?: {
-      foreground?: string;
-      background?: string;
-      fontStyle?: string;
-    };
-  }>;
 }
 
 /**
  * Parse a VS Code theme JSON and return a map of CSS custom property → value.
  */
-export function importVSCodeTheme(json: VSCodeThemeJSON): Record<string, string> {
+export function importVSCodeTheme(
+  json: VSCodeThemeJSON,
+): Record<string, string> {
   const result: Record<string, string> = {};
 
   const colors = json.colors ?? {};
@@ -168,24 +131,28 @@ export function importVSCodeTheme(json: VSCodeThemeJSON): Record<string, string>
     }
   }
 
-  // Map token colors (syntax highlighting)
-  if (Array.isArray(json.tokenColors)) {
-    for (const rule of json.tokenColors) {
-      const scopes = Array.isArray(rule.scope)
-        ? rule.scope
-        : typeof rule.scope === "string"
-        ? rule.scope.split(",").map((s) => s.trim())
-        : [];
-
-      for (const scope of scopes) {
-        const cssVar = TOKEN_SCOPE_TO_CSS[scope];
-        if (cssVar && rule.settings?.foreground && !result[cssVar]) {
-          result[cssVar] = normalizeColor(rule.settings.foreground);
-        }
-      }
-    }
+  if (
+    Object.keys(result).length ||
+    json.tokenColors?.length ||
+    Object.keys(json.semanticTokenColors || {}).length
+  ) {
+    const resolved = resolveVSCodeSyntax(json);
+    result["--text-code"] = resolved.foreground;
+    result["--bg-code"] =
+      result["--bg"] ||
+      (json.type === "light" || json.type === "hcLight"
+        ? "#ffffff"
+        : "#1e1e2e");
+    for (const [key, value] of Object.entries(resolved.syntax))
+      result[`--syn-${key}`] = normalizeColor(value);
   }
 
+  if (!Object.keys(result).length) return result;
+  const dark =
+    json.type === "dark" ||
+    json.type === "hc" ||
+    (!json.type && inferMode(result) === "dark");
+  result["--piclaw-theme-mode"] = dark ? "dark" : "light";
   return result;
 }
 
@@ -203,47 +170,133 @@ function normalizeColor(val: string): string {
   return val;
 }
 
-/** Apply a CSS var map to document.documentElement */
+function inferMode(vars: Record<string, string>): "light" | "dark" {
+  const bg = vars["--bg"] || "#1e1e2e";
+  const match = /^#([0-9a-f]{6})$/i.exec(bg);
+  if (!match) return "dark";
+  const n = parseInt(match[1], 16);
+  return 0.2126 * ((n >> 16) & 255) +
+    0.7152 * ((n >> 8) & 255) +
+    0.0722 * (n & 255) >
+    150
+    ? "light"
+    : "dark";
+}
 export function applyTheme(vars: Record<string, string>): void {
-  // Remove any previous injected theme style
-  const existing = document.getElementById('piclaw-theme-override');
-  if (existing) existing.remove();
-
-  // Inject a <style> block with :root overrides — wins over stylesheet :root
-  const css = `:root { ${Object.entries(vars).map(([k, v]) => `${k}: ${v} !important`).join('; ')} }`;
-  const style = document.createElement('style');
-  style.id = 'piclaw-theme-override';
-  style.textContent = css;
+  vars = Object.fromEntries(
+    Object.entries(vars).filter(([key, value]) =>
+      key === "--piclaw-theme-mode"
+        ? value === "light" || value === "dark"
+        : typeof value === "string" &&
+          CSS.supports("color", value) &&
+          !/[;{}]/.test(value),
+    ),
+  );
+  document.getElementById("piclaw-theme-override")?.remove();
+  const mode =
+    vars["--piclaw-theme-mode"] === "light"
+      ? "light"
+      : vars["--piclaw-theme-mode"] === "dark"
+        ? "dark"
+        : inferMode(vars);
+  const text = vars["--text"] || (mode === "dark" ? "#e7e9ea" : "#24292f");
+  const syntax = Object.fromEntries(
+    Object.entries(vars)
+      .filter(([k]) => k.startsWith("--syn-"))
+      .map(([k, v]) => [k.slice(6), v]),
+  );
+  const complete = paletteVariables(
+    {
+      bgPrimary: vars["--bg"] || (mode === "dark" ? "#1e1e2e" : "#ffffff"),
+      bgSecondary:
+        vars["--bg-sidebar"] ||
+        vars["--bg"] ||
+        (mode === "dark" ? "#16181c" : "#f6f8fa"),
+      bgHover:
+        vars["--bg-elevated"] ||
+        vars["--bg-sidebar"] ||
+        vars["--bg"] ||
+        (mode === "dark" ? "#16181c" : "#f6f8fa"),
+      textPrimary: text,
+      codeForeground: vars["--text-code"] || text,
+      codeBackground:
+        vars["--bg-code"] ||
+        vars["--bg"] ||
+        (mode === "dark" ? "#1e1e2e" : "#ffffff"),
+      textSecondary: vars["--text-muted"] || text,
+      borderColor: vars["--border"] || "#718096",
+      accent: vars["--accent"] || "#1d9bf0",
+      danger: vars["--error"] || "#e65050",
+      success: vars["--success"] || "#00ba7c",
+      warning: vars["--warning"] || "#b58900",
+      syntax,
+    },
+    mode,
+  );
+  // Only palette keys, with CSS colour values; imported content cannot inject stylesheet syntax.
+  const allowed = new Set([...Object.keys(complete), "--term-fg"]);
+  const safe = Object.fromEntries(
+    Object.entries(vars).filter(
+      ([key, value]) =>
+        allowed.has(key) &&
+        typeof value === "string" &&
+        CSS.supports("color", value) &&
+        !/[;{}]/.test(value),
+    ),
+  );
+  // Explicit ANSI colours may be kept; UI text/aliases remain the contrast-adjusted complete map.
+  const ansi = Object.fromEntries(
+    Object.entries(safe).filter(
+      ([key]) =>
+        key.startsWith("--term-") ||
+        [
+          "--bg-terminal",
+          "--bg-status",
+          "--input-bg",
+          "--input-border",
+          "--handle",
+          "--handle-hover",
+        ].includes(key),
+    ),
+  );
+  const values = { ...complete, ...ansi };
+  const style = document.createElement("style");
+  style.id = "piclaw-theme-override";
+  style.textContent =
+    ":root {" +
+    Object.entries(values)
+      .filter(([, v]) => CSS.supports("color", v) && !/[;{}]/.test(v))
+      .map(([k, v]) => k + ":" + v + " !important")
+      .join(";") +
+    "}";
   document.head.appendChild(style);
+  const root = document.documentElement;
+  root.dataset.customTheme = "true";
+  root.dataset.theme = mode;
+  root.dataset.synthwaveGlow = "off";
+  root.classList.toggle("light", mode === "light");
+  root.classList.toggle("dark", mode === "dark");
+  root.style.colorScheme = mode;
+  root.style.background = values["--bg"];
+  document.body.style.background = values["--bg"];
+  window.dispatchEvent(
+    new CustomEvent("piclaw-theme-change", { detail: { mode, custom: true } }),
+  );
 }
-
-/** Remove all custom properties set by applyTheme / loadSavedTheme */
 export function resetTheme(): void {
-  const existing = document.getElementById('piclaw-theme-override');
-  if (existing) existing.remove();
+  document.getElementById("piclaw-theme-override")?.remove();
+  document.documentElement.dataset.customTheme = "false";
   safeRemoveItem(LS_KEY);
+  reapplyStoredTheme();
 }
-
-/** Read saved theme vars from localStorage (returns empty object if none) */
-function loadSavedThemeVars(): Record<string, string> {
-  return safeParseJSON<Record<string, string>>(LS_KEY, {});
-}
-
-/** Load and apply the persisted theme from localStorage */
 export function loadSavedTheme(): void {
-  const vars = loadSavedThemeVars();
-  if (Object.keys(vars).length > 0) {
-    applyTheme(vars);
-  }
+  const vars = getSavedThemeVars();
+  if (Object.keys(vars).length) applyTheme(vars);
 }
-
-/** Persist a CSS var map to localStorage and apply it */
 export function saveTheme(vars: Record<string, string>): void {
   safeSetItem(LS_KEY, JSON.stringify(vars));
   applyTheme(vars);
 }
-
-/** Return the currently saved theme vars (for display/editing) */
 export function getSavedThemeVars(): Record<string, string> {
-  return loadSavedThemeVars();
+  return safeParseJSON<Record<string, string>>(LS_KEY, {});
 }

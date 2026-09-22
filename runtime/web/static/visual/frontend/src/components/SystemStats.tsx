@@ -1,9 +1,5 @@
-import { useEffect } from "preact/hooks";
-import { useSignal, useComputed } from "@preact/signals";
 import { formatBytesCompact } from "../utils/format";
 
-import { createLogger } from "../utils/logger";
-const log = createLogger("SystemStats");
 
 
 interface StatsData {
@@ -105,49 +101,16 @@ function StatsBar({ stats, isStale }: { stats: StatsData | null; isStale: boolea
   );
 }
 
-export function SystemStats() {
-  const stats = useSignal<StatsData | null>(null);
-  const statsError = useSignal(false);
-  const lastStatsSuccess = useSignal(0);
-  const statsPollTick = useSignal(0);
-  const isStale = useComputed(() => {
-    void statsPollTick.value;
-    return statsError.value && lastStatsSuccess.value > 0 && Date.now() - lastStatsSuccess.value > 15000;
-  });
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const res = await fetch("/agent/system-metrics");
-        if (res.ok) {
-          stats.value = await res.json() as StatsData;
-          statsError.value = false;
-          lastStatsSuccess.value = Date.now();
-          statsPollTick.value += 1;
-        } else {
-          statsError.value = true;
-          statsPollTick.value += 1;
-        }
-      } catch (err) {
-        log.warn("fetch failed:", err);
-        statsError.value = true;
-        statsPollTick.value += 1;
-      }
-    };
-    fetchStats();
-    const interval = setInterval(fetchStats, 10_000);
-    return () => clearInterval(interval);
-  }, [stats]);
-
+export function SystemStats({ stats, isStale }: { stats: StatsData | null; isStale: boolean }) {
   return (
     <span className="sys-stats-bar">
       {/* Inline metrics for wide screens */}
       <span className="sys-stats-bar__inline">
-        <StatsDisplay stats={stats.value} isStale={isStale.value} />
+        <StatsDisplay stats={stats} isStale={isStale} />
       </span>
       {/* Stats bar for narrow screens */}
       <span className="sys-stats-bar__compact">
-        <StatsBar stats={stats.value} isStale={isStale.value} />
+        <StatsBar stats={stats} isStale={isStale} />
       </span>
     </span>
   );

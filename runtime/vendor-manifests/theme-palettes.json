@@ -1,0 +1,192 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-09-20",
+  "scope": "Colour values and scoped SynthWave Full halo formulas adapted to Piclaw roles; no upstream runtime injection/observer code or runtime network fetching.",
+  "sources": [
+    {
+      "repository": "https://github.com/catppuccin/palette",
+      "sourceUrl": "https://raw.githubusercontent.com/catppuccin/palette/main/palette.json",
+      "sourceSha256": "4bc114bb6b3c9a9c9e156564aa84625aef32c5da514d9dd431cf1fcad433a05f",
+      "licence": "MIT",
+      "licenceFile": "docs/licenses/theme-palettes.txt",
+      "adaptation": "UI metadata/ANSI contrast guards; authored code and syntax roles preserved; original accent mapping noted in docs/theme-palettes.md"
+    },
+    {
+      "repository": "https://github.com/sainnhe/everforest",
+      "sourceUrl": "https://raw.githubusercontent.com/sainnhe/everforest/master/autoload/everforest.vim",
+      "sourceSha256": "4ddab3c8d96e29310a21441a797e69a2c520ec074db9c20a7eaea866d8b5a8c4",
+      "licence": "MIT",
+      "licenceFile": "docs/licenses/theme-palettes.txt",
+      "adaptation": "UI metadata/ANSI contrast guards; authored code and syntax roles preserved; original accent mapping noted in docs/theme-palettes.md"
+    },
+    {
+      "repository": "https://github.com/rose-pine/palette",
+      "sourceUrl": "https://raw.githubusercontent.com/rose-pine/palette/main/palette.json",
+      "sourceSha256": "8b71546357c65ee23715e77f144d914e5f415f44f3ef3b0179bbe1f17d69211d",
+      "licence": "MIT",
+      "licenceFile": "docs/licenses/theme-palettes.txt",
+      "adaptation": "UI metadata/ANSI contrast guards; authored code and syntax roles preserved; original accent mapping noted in docs/theme-palettes.md"
+    },
+    {
+      "repository": "https://github.com/wesbos/cobalt2-vscode",
+      "sourceUrl": "https://raw.githubusercontent.com/wesbos/cobalt2-vscode/master/theme/cobalt2.json",
+      "sourceSha256": "9f5862db4e9424f65f5b7a3a36b70c2e66374fd8fbfd67b42c18480f7231a71e",
+      "licence": "MIT",
+      "licenceFile": "docs/licenses/theme-palettes.txt",
+      "adaptation": "UI metadata/ANSI contrast guards; authored code and syntax roles preserved; original accent mapping noted in docs/theme-palettes.md"
+    },
+    {
+      "repository": "https://github.com/robb0wen/synthwave-vscode",
+      "sourceUrl": "https://raw.githubusercontent.com/robb0wen/synthwave-vscode/master/themes/synthwave-color-theme.json",
+      "sourceSha256": "cc2361fa174b34f5c8b17ecc6b7a3d64040677c50936bff2f955000ae84e999b",
+      "licence": "MIT",
+      "licenceFile": "docs/licenses/theme-palettes.txt",
+      "adaptation": "UI metadata/ANSI contrast guards; authored code and syntax roles preserved; original accent mapping noted in docs/theme-palettes.md",
+      "effectReference": {
+        "sourceUrl": "https://raw.githubusercontent.com/robb0wen/synthwave-vscode/master/src/js/theme_template.js",
+        "sourceSha256": "3ee59bb9ebf6c6316985565e760636e434a4f9a0b2f62c1512a48b7f774a1844",
+        "adaptation": "Full maps bright core/layered halos to Piclaw syntax roles; slow pulse and accent animations are Piclaw-specific. Existing MIT notice retained."
+      }
+    },
+    {
+      "id": "turbo-pascal",
+      "repository": "https://github.com/jsolarz/Modern-Turbo-UI-Color-Scheme",
+      "revision": "a577d1b7cdf8b9622a47ee50e17572f39d92ce69",
+      "sourceUrl": "https://raw.githubusercontent.com/jsolarz/Modern-Turbo-UI-Color-Scheme/a577d1b7cdf8b9622a47ee50e17572f39d92ce69/vscode/themes/borland-turbo-pascal-original-color-theme.json",
+      "sourceSha256": "2c893741e422359191b28091c66071ef9a27f4df5311a01281c4016995326c07",
+      "catalogueUrl": "https://vscodethemes.com/e/ionis.modern-turbo-pascal-ui/borland-turbo-pascal-original",
+      "catalogueStatus": 200,
+      "licence": "MIT",
+      "licenceFile": "docs/licenses/theme-palettes.txt",
+      "adaptation": "Source-derived palette and resolved semantic/TextMate syntax; UI/ANSI contrast guards are separate from preserved code colours. Turbo Pascal treated as dark blue; Tokyo Light as light regardless of inconsistent source type metadata."
+    },
+    {
+      "id": "lumon",
+      "repository": "https://github.com/OldJobobo/lumon-theme.vscode",
+      "revision": "3ae3621478aa4bffe2fd34f514195fb86d797bf7",
+      "sourceUrl": "https://raw.githubusercontent.com/OldJobobo/lumon-theme.vscode/3ae3621478aa4bffe2fd34f514195fb86d797bf7/themes/lumon-color-theme.json",
+      "sourceSha256": "7472d8bc39f6f87466c9551ad818ea1252ceb72d8e819143d02ac474ce99fe36",
+      "catalogueUrl": "https://vscodethemes.com/e/oldjobobo.lumon-theme/lumon",
+      "catalogueStatus": 200,
+      "licence": "MIT",
+      "licenceFile": "docs/licenses/theme-palettes.txt",
+      "adaptation": "Source-derived palette and resolved semantic/TextMate syntax; UI/ANSI contrast guards are separate from preserved code colours. Turbo Pascal treated as dark blue; Tokyo Light as light regardless of inconsistent source type metadata."
+    },
+    {
+      "id": "as400",
+      "repository": "https://github.com/jordandiazdiaz/as400-cursor",
+      "revision": "18fa422922e9786d8bf4144a79f34098c9458482",
+      "sourceUrl": "https://raw.githubusercontent.com/jordandiazdiaz/as400-cursor/18fa422922e9786d8bf4144a79f34098c9458482/themes/as400-green-screen.json",
+      "sourceSha256": "e61bcab597cdc46b580df7276e511e3e54c51dea9dda4b3e2dfa10a610677dc3",
+      "catalogueUrl": "https://vscodethemes.com/e/jordan-diaz-dev.as400-cursor/as-400-green-screen-5250",
+      "catalogueStatus": 200,
+      "licence": "MIT",
+      "licenceFile": "docs/licenses/theme-palettes.txt",
+      "adaptation": "User-requested strict phosphor green adaptation: replace source red/yellow/cyan and mixed-green syntax with green/black, including all ANSI roles and overlays. Labels/icons/intensity retain status meaning. Contrast guards preserve hue."
+    },
+    {
+      "id": "noctis",
+      "repository": "https://github.com/liviuschera/noctis",
+      "revision": "4a82370b2c064e36726c23e94f27ed3782bd6ecd",
+      "sourceUrl": "https://raw.githubusercontent.com/liviuschera/noctis/4a82370b2c064e36726c23e94f27ed3782bd6ecd/themes/noctis.json",
+      "sourceSha256": "31cea9faeb7c0d96277b7f57487a119ee98844a4f9169187e91bf8a8cd0c9b17",
+      "catalogueUrl": "https://vscodethemes.com/e/liviuschera.noctis/noctis",
+      "catalogueStatus": 200,
+      "licence": "MIT",
+      "licenceFile": "docs/licenses/theme-palettes.txt",
+      "adaptation": "Source-derived palette and resolved semantic/TextMate syntax; UI/ANSI contrast guards are separate from preserved code colours. Turbo Pascal treated as dark blue; Tokyo Light as light regardless of inconsistent source type metadata."
+    },
+    {
+      "id": "noctis-lux",
+      "repository": "https://github.com/liviuschera/noctis",
+      "revision": "4a82370b2c064e36726c23e94f27ed3782bd6ecd",
+      "sourceUrl": "https://raw.githubusercontent.com/liviuschera/noctis/4a82370b2c064e36726c23e94f27ed3782bd6ecd/themes/lux.json",
+      "sourceSha256": "adfc405f421f039cf908b7e8402ee300e303698ba7475bd3206803bec0f95534",
+      "catalogueUrl": "https://vscodethemes.com/e/liviuschera.noctis/noctis-lux",
+      "catalogueStatus": 200,
+      "licence": "MIT",
+      "licenceFile": "docs/licenses/theme-palettes.txt",
+      "adaptation": "Source-derived palette and resolved semantic/TextMate syntax; UI/ANSI contrast guards are separate from preserved code colours. Turbo Pascal treated as dark blue; Tokyo Light as light regardless of inconsistent source type metadata."
+    },
+    {
+      "id": "tokyo-night",
+      "repository": "https://github.com/tokyo-night/tokyo-night-vscode-theme",
+      "revision": "7c0f11eaef322f293621ca7befe462214b7ea468",
+      "sourceUrl": "https://raw.githubusercontent.com/tokyo-night/tokyo-night-vscode-theme/7c0f11eaef322f293621ca7befe462214b7ea468/themes/tokyo-night-color-theme.json",
+      "sourceSha256": "e08d77c898ead9ed129dc18ff4f841e2353477e69ccd6fa7d0610561c31da4d8",
+      "catalogueUrl": "https://vscodethemes.com/e/enkia.tokyo-night/tokyo-night",
+      "catalogueStatus": 200,
+      "licence": "MIT",
+      "licenceFile": "docs/licenses/theme-palettes.txt",
+      "adaptation": "Source-derived palette and resolved semantic/TextMate syntax; UI/ANSI contrast guards are separate from preserved code colours. Turbo Pascal treated as dark blue; Tokyo Light as light regardless of inconsistent source type metadata."
+    },
+    {
+      "id": "tokyo-night-storm",
+      "repository": "https://github.com/tokyo-night/tokyo-night-vscode-theme",
+      "revision": "7c0f11eaef322f293621ca7befe462214b7ea468",
+      "sourceUrl": "https://raw.githubusercontent.com/tokyo-night/tokyo-night-vscode-theme/7c0f11eaef322f293621ca7befe462214b7ea468/themes/tokyo-night-storm-color-theme.json",
+      "sourceSha256": "d190b57f2fa662233adc5c8f6e7aeac15330452a0569a2086b979b92b7ce6cea",
+      "catalogueUrl": "https://vscodethemes.com/e/enkia.tokyo-night/tokyo-night-storm",
+      "catalogueStatus": 200,
+      "licence": "MIT",
+      "licenceFile": "docs/licenses/theme-palettes.txt",
+      "adaptation": "Source-derived palette and resolved semantic/TextMate syntax; UI/ANSI contrast guards are separate from preserved code colours. Turbo Pascal treated as dark blue; Tokyo Light as light regardless of inconsistent source type metadata."
+    },
+    {
+      "id": "tokyo-night-light",
+      "repository": "https://github.com/tokyo-night/tokyo-night-vscode-theme",
+      "revision": "7c0f11eaef322f293621ca7befe462214b7ea468",
+      "sourceUrl": "https://raw.githubusercontent.com/tokyo-night/tokyo-night-vscode-theme/7c0f11eaef322f293621ca7befe462214b7ea468/themes/tokyo-night-light-color-theme.json",
+      "sourceSha256": "80273128d232d645cbdf8b5bb8c7c7dfddb9f8825588117cdf84c3a98724b050",
+      "catalogueUrl": "https://vscodethemes.com/e/enkia.tokyo-night/tokyo-night-light",
+      "catalogueStatus": 200,
+      "licence": "MIT",
+      "licenceFile": "docs/licenses/theme-palettes.txt",
+      "adaptation": "Source-derived palette and resolved semantic/TextMate syntax; UI/ANSI contrast guards are separate from preserved code colours. Turbo Pascal treated as dark blue; Tokyo Light as light regardless of inconsistent source type metadata."
+    },
+    {
+      "id": "nord",
+      "repository": "https://github.com/nordtheme/visual-studio-code",
+      "revision": "8ead09822c02d0d49d0f764104505e5a34d3689f",
+      "sourceUrl": "https://raw.githubusercontent.com/nordtheme/visual-studio-code/8ead09822c02d0d49d0f764104505e5a34d3689f/themes/nord-color-theme.json",
+      "sourceSha256": "cd15e5a0c2edb2e373196ed2ab0f0d90c0eccc61f82c37131a4efc3be2ca8061",
+      "catalogueUrl": "https://vscodethemes.com/e/arcticicestudio.nord-visual-studio-code/nord",
+      "catalogueStatus": 200,
+      "licence": "MIT",
+      "licenceFile": "docs/licenses/theme-palettes.txt",
+      "adaptation": "Source-derived palette and resolved semantic/TextMate syntax; UI/ANSI contrast guards are separate from preserved code colours. Turbo Pascal treated as dark blue; Tokyo Light as light regardless of inconsistent source type metadata."
+    },
+    {
+      "id": "bearded-arc",
+      "repository": "https://github.com/BeardedBear/bearded-theme",
+      "revision": "01455843a944ec51216b373a13bd620fbea92e5a",
+      "sourceUrl": "https://raw.githubusercontent.com/BeardedBear/bearded-theme/01455843a944ec51216b373a13bd620fbea92e5a/themes/bearded-theme-arc.json",
+      "sourceSha256": "5b2ff42af0082e4f93e413cb4172c41f0afd7391034afe27b78027db183923bf",
+      "catalogueUrl": "https://vscodethemes.com/e/BeardedBear.beardedtheme/bearded-theme-arc",
+      "catalogueStatus": 200,
+      "licence": "MIT",
+      "note": "Historical MIT snapshot; current upstream relicensed GPL-3.0. Do not update blindly.",
+      "licenceFile": "docs/licenses/theme-palettes.txt",
+      "adaptation": "Source-derived palette and resolved semantic/TextMate syntax; UI/ANSI contrast guards are separate from preserved code colours. Turbo Pascal treated as dark blue; Tokyo Light as light regardless of inconsistent source type metadata."
+    },
+    {
+      "repository": "https://github.com/catppuccin/palette",
+      "version": "1.8.0",
+      "catalogueUrl": "https://vscodethemes.com/e/Catppuccin.catppuccin-vsc/catppuccin-frappe",
+      "sourceSha256": "4bc114bb6b3c9a9c9e156564aa84625aef32c5da514d9dd431cf1fcad433a05f",
+      "licence": "MIT",
+      "licenceFile": "docs/licenses/theme-palettes.txt",
+      "adaptation": "Adds Frappe and Macchiato to existing Latte/Mocha. Source palette1.8.0."
+    }
+  ],
+  "syntaxPolicy": {
+    "resolver": "runtime/src/core/theme-syntax.ts",
+    "precedence": "Generic semantic foregrounds, then specific TextMate scopes/last equal match, then explicit documented fallback roles",
+    "codeColours": "Authored code foreground/background and syntax are not UI-contrast remapped",
+    "audit": "docs/reviews/theme-syntax-audit.md",
+    "exceptions": [
+      "User-requested strictly green AS400 transformation",
+      "Intentional SynthWave Full neon foregrounds"
+    ]
+  }
+}

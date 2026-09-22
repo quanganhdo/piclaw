@@ -1,0 +1,1191 @@
+{
+  "base": "96452acbc60b5b330d197dfc01914f1c6c1fff27",
+  "runs": [
+    {
+      "stage": "before",
+      "corpusCommit": "2b21a5c09b1e31244a58fb1ba175b854762b2989",
+      "productionBaseline": "dc577cbb89b97ccc5d43f5e49f539ecec056897d",
+      "measuredCommit": "7e3eddcd5c00f493584a11a6dfc474c34829ac7e",
+      "workingTreeModified": false,
+      "rebuildChecks": [
+        {
+          "scale": 0,
+          "rankingStable": true,
+          "identicalScoreTieStable": false
+        },
+        {
+          "scale": 500,
+          "rankingStable": true,
+          "identicalScoreTieStable": false
+        }
+      ],
+      "reports": [
+        {
+          "mode": "build",
+          "scale": 0,
+          "repetition": 0,
+          "versions": {
+            "bun": "1.4.1",
+            "sqlite": "3.53.2"
+          },
+          "metrics": {
+            "development": {
+              "queries": 12,
+              "answerable": 10,
+              "unanswerable": 2,
+              "fileRecall": 1,
+              "sectionCoverageUpperBound": 1,
+              "mrr": 1,
+              "filePrecision": 0.595,
+              "unanswerableFalsePositiveRate": 0.5,
+              "meanResponseBytes": 714.6666666666666,
+              "maxResponseBytes": 1605,
+              "citationCorrectness": null,
+              "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+            },
+            "heldOut": {
+              "queries": 12,
+              "answerable": 10,
+              "unanswerable": 2,
+              "fileRecall": 1,
+              "sectionCoverageUpperBound": 1,
+              "mrr": 0.9333333333333333,
+              "filePrecision": 0.7333333333333333,
+              "unanswerableFalsePositiveRate": 0.5,
+              "meanResponseBytes": 527.75,
+              "maxResponseBytes": 1047,
+              "citationCorrectness": null,
+              "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+            }
+          },
+          "latency": {
+            "firstQueryMs": 1.0380439999998998,
+            "firstPassP50Ms": 0.19435299999986455,
+            "firstPassP95Ms": 0.3915839999999662,
+            "warmP50Ms": 0.18949500000007902,
+            "warmP95Ms": 0.30632199999990917,
+            "samples": 120,
+            "coldDefinition": "fresh-process SQLite reopen; OS page cache NOT flushed"
+          },
+          "timings": {
+            "initialRefreshMs": 350.1049710000002,
+            "noChangeRefreshMs": 25.58592099999987,
+            "editRefreshMs": 74.56669099999999,
+            "addRefreshMs": 363.87465699999984,
+            "deleteRefreshMs": 202.70180599999958
+          },
+          "index": {
+            "files": 12,
+            "sourceBytes": 15277,
+            "databaseLogicalBytes": 1568768,
+            "indexOwnedBytes": 53248,
+            "applicationDatabaseBeforeIndexBytes": 1536000
+          },
+          "memory": {
+            "rssBytes": 66297856
+          },
+          "ties": {
+            "id": "tie-checks",
+            "order": [
+              "notes/tie-a.md",
+              "notes/tie-b.md"
+            ],
+            "repeatStable": true,
+            "contract": "observed only; baseline SQL has no secondary tie-break"
+          },
+          "incremental": {
+            "id": "incremental-checks",
+            "editVisible": true,
+            "addVisible": true,
+            "deleteVisible": true,
+            "sameMetadataEditDetected": false,
+            "sameMetadataPreserved": true,
+            "sourceChangedWhileIndexUnchanged": true,
+            "databaseBeforeMutations": 1556480
+          }
+        },
+        {
+          "mode": "reopen",
+          "scale": 0,
+          "repetition": 0,
+          "versions": {
+            "bun": "1.4.1",
+            "sqlite": "3.53.2"
+          },
+          "metrics": {
+            "development": {
+              "queries": 12,
+              "answerable": 10,
+              "unanswerable": 2,
+              "fileRecall": 1,
+              "sectionCoverageUpperBound": 1,
+              "mrr": 1,
+              "filePrecision": 0.595,
+              "unanswerableFalsePositiveRate": 0.5,
+              "meanResponseBytes": 714.6666666666666,
+              "maxResponseBytes": 1605,
+              "citationCorrectness": null,
+              "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+            },
+            "heldOut": {
+              "queries": 12,
+              "answerable": 10,
+              "unanswerable": 2,
+              "fileRecall": 1,
+              "sectionCoverageUpperBound": 1,
+              "mrr": 0.9333333333333333,
+              "filePrecision": 0.7333333333333333,
+              "unanswerableFalsePositiveRate": 0.5,
+              "meanResponseBytes": 527.75,
+              "maxResponseBytes": 1047,
+              "citationCorrectness": null,
+              "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+            }
+          },
+          "latency": {
+            "firstQueryMs": 1.6101310000000097,
+            "firstPassP50Ms": 0.21734500000000878,
+            "firstPassP95Ms": 0.43892600000000925,
+            "warmP50Ms": 0.19889200000000073,
+            "warmP95Ms": 0.34926700000001176,
+            "samples": 120,
+            "coldDefinition": "fresh-process SQLite reopen; OS page cache NOT flushed"
+          },
+          "timings": {},
+          "index": {
+            "files": 12,
+            "sourceBytes": 15277,
+            "databaseLogicalBytes": 1568768,
+            "indexOwnedBytes": 53248,
+            "applicationDatabaseBeforeIndexBytes": null
+          },
+          "memory": {
+            "rssBytes": 64425984
+          }
+        },
+        {
+          "mode": "build",
+          "scale": 500,
+          "repetition": 0,
+          "versions": {
+            "bun": "1.4.1",
+            "sqlite": "3.53.2"
+          },
+          "metrics": {
+            "development": {
+              "queries": 12,
+              "answerable": 10,
+              "unanswerable": 2,
+              "fileRecall": 1,
+              "sectionCoverageUpperBound": 1,
+              "mrr": 1,
+              "filePrecision": 0.595,
+              "unanswerableFalsePositiveRate": 0.5,
+              "meanResponseBytes": 714.6666666666666,
+              "maxResponseBytes": 1605,
+              "citationCorrectness": null,
+              "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+            },
+            "heldOut": {
+              "queries": 12,
+              "answerable": 10,
+              "unanswerable": 2,
+              "fileRecall": 1,
+              "sectionCoverageUpperBound": 1,
+              "mrr": 1,
+              "filePrecision": 0.7333333333333333,
+              "unanswerableFalsePositiveRate": 0.5,
+              "meanResponseBytes": 527.75,
+              "maxResponseBytes": 1047,
+              "citationCorrectness": null,
+              "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+            }
+          },
+          "latency": {
+            "firstQueryMs": 1.465862000000925,
+            "firstPassP50Ms": 0.17129399999976158,
+            "firstPassP95Ms": 0.6284019999984594,
+            "warmP50Ms": 0.15820800000074087,
+            "warmP95Ms": 0.4382580000019516,
+            "samples": 120,
+            "coldDefinition": "fresh-process SQLite reopen; OS page cache NOT flushed"
+          },
+          "timings": {
+            "initialRefreshMs": 14556.208627000002,
+            "noChangeRefreshMs": 53.92765100000179,
+            "editRefreshMs": 93.80382599999939,
+            "addRefreshMs": 83.5564779999986,
+            "deleteRefreshMs": 91.50358499999857
+          },
+          "index": {
+            "files": 512,
+            "sourceBytes": 3852667,
+            "databaseLogicalBytes": 6582272,
+            "indexOwnedBytes": 4747264,
+            "applicationDatabaseBeforeIndexBytes": 1536000
+          },
+          "memory": {
+            "rssBytes": 81899520
+          },
+          "ties": {
+            "id": "tie-checks",
+            "order": [
+              "notes/tie-a.md",
+              "notes/tie-b.md"
+            ],
+            "repeatStable": true,
+            "contract": "observed only; baseline SQL has no secondary tie-break"
+          },
+          "incremental": {
+            "id": "incremental-checks",
+            "editVisible": true,
+            "addVisible": true,
+            "deleteVisible": true,
+            "sameMetadataEditDetected": false,
+            "sameMetadataPreserved": true,
+            "sourceChangedWhileIndexUnchanged": true,
+            "databaseBeforeMutations": 6582272
+          }
+        },
+        {
+          "mode": "reopen",
+          "scale": 500,
+          "repetition": 0,
+          "versions": {
+            "bun": "1.4.1",
+            "sqlite": "3.53.2"
+          },
+          "metrics": {
+            "development": {
+              "queries": 12,
+              "answerable": 10,
+              "unanswerable": 2,
+              "fileRecall": 1,
+              "sectionCoverageUpperBound": 1,
+              "mrr": 1,
+              "filePrecision": 0.595,
+              "unanswerableFalsePositiveRate": 0.5,
+              "meanResponseBytes": 714.6666666666666,
+              "maxResponseBytes": 1605,
+              "citationCorrectness": null,
+              "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+            },
+            "heldOut": {
+              "queries": 12,
+              "answerable": 10,
+              "unanswerable": 2,
+              "fileRecall": 1,
+              "sectionCoverageUpperBound": 1,
+              "mrr": 1,
+              "filePrecision": 0.7333333333333333,
+              "unanswerableFalsePositiveRate": 0.5,
+              "meanResponseBytes": 527.75,
+              "maxResponseBytes": 1047,
+              "citationCorrectness": null,
+              "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+            }
+          },
+          "latency": {
+            "firstQueryMs": 1.7352770000000106,
+            "firstPassP50Ms": 0.2241679999999917,
+            "firstPassP95Ms": 0.4490369999999899,
+            "warmP50Ms": 0.20531599999999628,
+            "warmP95Ms": 0.35070000000000334,
+            "samples": 120,
+            "coldDefinition": "fresh-process SQLite reopen; OS page cache NOT flushed"
+          },
+          "timings": {},
+          "index": {
+            "files": 512,
+            "sourceBytes": 3852667,
+            "databaseLogicalBytes": 6582272,
+            "indexOwnedBytes": 4747264,
+            "applicationDatabaseBeforeIndexBytes": null
+          },
+          "memory": {
+            "rssBytes": 67932160
+          }
+        },
+        {
+          "mode": "build",
+          "scale": 0,
+          "repetition": 1,
+          "versions": {
+            "bun": "1.4.1",
+            "sqlite": "3.53.2"
+          },
+          "metrics": {
+            "development": {
+              "queries": 12,
+              "answerable": 10,
+              "unanswerable": 2,
+              "fileRecall": 1,
+              "sectionCoverageUpperBound": 1,
+              "mrr": 1,
+              "filePrecision": 0.595,
+              "unanswerableFalsePositiveRate": 0.5,
+              "meanResponseBytes": 714.6666666666666,
+              "maxResponseBytes": 1605,
+              "citationCorrectness": null,
+              "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+            },
+            "heldOut": {
+              "queries": 12,
+              "answerable": 10,
+              "unanswerable": 2,
+              "fileRecall": 1,
+              "sectionCoverageUpperBound": 1,
+              "mrr": 0.9333333333333333,
+              "filePrecision": 0.7333333333333333,
+              "unanswerableFalsePositiveRate": 0.5,
+              "meanResponseBytes": 527.75,
+              "maxResponseBytes": 1047,
+              "citationCorrectness": null,
+              "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+            }
+          },
+          "latency": {
+            "firstQueryMs": 1.025861999999961,
+            "firstPassP50Ms": 0.2079119999998511,
+            "firstPassP95Ms": 0.45460499999990134,
+            "warmP50Ms": 0.19014300000026196,
+            "warmP95Ms": 0.3240930000001754,
+            "samples": 120,
+            "coldDefinition": "fresh-process SQLite reopen; OS page cache NOT flushed"
+          },
+          "timings": {
+            "initialRefreshMs": 313.7265520000001,
+            "noChangeRefreshMs": 18.564050999999836,
+            "editRefreshMs": 55.496493999999984,
+            "addRefreshMs": 56.18631699999969,
+            "deleteRefreshMs": 55.07625499999995
+          },
+          "index": {
+            "files": 12,
+            "sourceBytes": 15277,
+            "databaseLogicalBytes": 1568768,
+            "indexOwnedBytes": 53248,
+            "applicationDatabaseBeforeIndexBytes": 1536000
+          },
+          "memory": {
+            "rssBytes": 70983680
+          },
+          "ties": {
+            "id": "tie-checks",
+            "order": [
+              "notes/tie-b.md",
+              "notes/tie-a.md"
+            ],
+            "repeatStable": true,
+            "contract": "observed only; baseline SQL has no secondary tie-break"
+          },
+          "incremental": {
+            "id": "incremental-checks",
+            "editVisible": true,
+            "addVisible": true,
+            "deleteVisible": true,
+            "sameMetadataEditDetected": false,
+            "sameMetadataPreserved": true,
+            "sourceChangedWhileIndexUnchanged": true,
+            "databaseBeforeMutations": 1556480
+          }
+        },
+        {
+          "mode": "reopen",
+          "scale": 0,
+          "repetition": 1,
+          "versions": {
+            "bun": "1.4.1",
+            "sqlite": "3.53.2"
+          },
+          "metrics": {
+            "development": {
+              "queries": 12,
+              "answerable": 10,
+              "unanswerable": 2,
+              "fileRecall": 1,
+              "sectionCoverageUpperBound": 1,
+              "mrr": 1,
+              "filePrecision": 0.595,
+              "unanswerableFalsePositiveRate": 0.5,
+              "meanResponseBytes": 714.6666666666666,
+              "maxResponseBytes": 1605,
+              "citationCorrectness": null,
+              "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+            },
+            "heldOut": {
+              "queries": 12,
+              "answerable": 10,
+              "unanswerable": 2,
+              "fileRecall": 1,
+              "sectionCoverageUpperBound": 1,
+              "mrr": 0.9333333333333333,
+              "filePrecision": 0.7333333333333333,
+              "unanswerableFalsePositiveRate": 0.5,
+              "meanResponseBytes": 527.75,
+              "maxResponseBytes": 1047,
+              "citationCorrectness": null,
+              "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+            }
+          },
+          "latency": {
+            "firstQueryMs": 1.9125429999999994,
+            "firstPassP50Ms": 0.19486999999999455,
+            "firstPassP95Ms": 0.38654900000000225,
+            "warmP50Ms": 0.18943299999999397,
+            "warmP95Ms": 0.34031799999999635,
+            "samples": 120,
+            "coldDefinition": "fresh-process SQLite reopen; OS page cache NOT flushed"
+          },
+          "timings": {},
+          "index": {
+            "files": 12,
+            "sourceBytes": 15277,
+            "databaseLogicalBytes": 1568768,
+            "indexOwnedBytes": 53248,
+            "applicationDatabaseBeforeIndexBytes": null
+          },
+          "memory": {
+            "rssBytes": 65355776
+          }
+        },
+        {
+          "mode": "build",
+          "scale": 500,
+          "repetition": 1,
+          "versions": {
+            "bun": "1.4.1",
+            "sqlite": "3.53.2"
+          },
+          "metrics": {
+            "development": {
+              "queries": 12,
+              "answerable": 10,
+              "unanswerable": 2,
+              "fileRecall": 1,
+              "sectionCoverageUpperBound": 1,
+              "mrr": 1,
+              "filePrecision": 0.595,
+              "unanswerableFalsePositiveRate": 0.5,
+              "meanResponseBytes": 714.6666666666666,
+              "maxResponseBytes": 1605,
+              "citationCorrectness": null,
+              "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+            },
+            "heldOut": {
+              "queries": 12,
+              "answerable": 10,
+              "unanswerable": 2,
+              "fileRecall": 1,
+              "sectionCoverageUpperBound": 1,
+              "mrr": 1,
+              "filePrecision": 0.7333333333333333,
+              "unanswerableFalsePositiveRate": 0.5,
+              "meanResponseBytes": 527.75,
+              "maxResponseBytes": 1047,
+              "citationCorrectness": null,
+              "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+            }
+          },
+          "latency": {
+            "firstQueryMs": 1.4588160000021162,
+            "firstPassP50Ms": 0.3344099999994796,
+            "firstPassP95Ms": 0.617353000001458,
+            "warmP50Ms": 0.31869100000039907,
+            "warmP95Ms": 0.4672229999996489,
+            "samples": 120,
+            "coldDefinition": "fresh-process SQLite reopen; OS page cache NOT flushed"
+          },
+          "timings": {
+            "initialRefreshMs": 14205.298030000002,
+            "noChangeRefreshMs": 64.70051899999817,
+            "editRefreshMs": 95.91777100000036,
+            "addRefreshMs": 107.11165400000027,
+            "deleteRefreshMs": 103.40772899999865
+          },
+          "index": {
+            "files": 512,
+            "sourceBytes": 3852667,
+            "databaseLogicalBytes": 6590464,
+            "indexOwnedBytes": 4747264,
+            "applicationDatabaseBeforeIndexBytes": 1536000
+          },
+          "memory": {
+            "rssBytes": 79482880
+          },
+          "ties": {
+            "id": "tie-checks",
+            "order": [
+              "notes/tie-b.md",
+              "notes/tie-a.md"
+            ],
+            "repeatStable": true,
+            "contract": "observed only; baseline SQL has no secondary tie-break"
+          },
+          "incremental": {
+            "id": "incremental-checks",
+            "editVisible": true,
+            "addVisible": true,
+            "deleteVisible": true,
+            "sameMetadataEditDetected": false,
+            "sameMetadataPreserved": true,
+            "sourceChangedWhileIndexUnchanged": true,
+            "databaseBeforeMutations": 6590464
+          }
+        },
+        {
+          "mode": "reopen",
+          "scale": 500,
+          "repetition": 1,
+          "versions": {
+            "bun": "1.4.1",
+            "sqlite": "3.53.2"
+          },
+          "metrics": {
+            "development": {
+              "queries": 12,
+              "answerable": 10,
+              "unanswerable": 2,
+              "fileRecall": 1,
+              "sectionCoverageUpperBound": 1,
+              "mrr": 1,
+              "filePrecision": 0.595,
+              "unanswerableFalsePositiveRate": 0.5,
+              "meanResponseBytes": 714.6666666666666,
+              "maxResponseBytes": 1605,
+              "citationCorrectness": null,
+              "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+            },
+            "heldOut": {
+              "queries": 12,
+              "answerable": 10,
+              "unanswerable": 2,
+              "fileRecall": 1,
+              "sectionCoverageUpperBound": 1,
+              "mrr": 1,
+              "filePrecision": 0.7333333333333333,
+              "unanswerableFalsePositiveRate": 0.5,
+              "meanResponseBytes": 527.75,
+              "maxResponseBytes": 1047,
+              "citationCorrectness": null,
+              "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+            }
+          },
+          "latency": {
+            "firstQueryMs": 1.6670510000000007,
+            "firstPassP50Ms": 0.23064100000000565,
+            "firstPassP95Ms": 0.4257519999999886,
+            "warmP50Ms": 0.200491999999997,
+            "warmP95Ms": 0.3390540000000044,
+            "samples": 120,
+            "coldDefinition": "fresh-process SQLite reopen; OS page cache NOT flushed"
+          },
+          "timings": {},
+          "index": {
+            "files": 512,
+            "sourceBytes": 3852667,
+            "databaseLogicalBytes": 6590464,
+            "indexOwnedBytes": 4747264,
+            "applicationDatabaseBeforeIndexBytes": null
+          },
+          "memory": {
+            "rssBytes": 67211264
+          }
+        }
+      ]
+    },
+    {
+      "stage": "after",
+      "corpusCommit": "2b21a5c09b1e31244a58fb1ba175b854762b2989",
+      "productionBaseline": "dc577cbb89b97ccc5d43f5e49f539ecec056897d",
+      "measuredCommit": "96452acbc60b5b330d197dfc01914f1c6c1fff27",
+      "workingTreeModified": true,
+      "rebuildChecks": [
+        {
+          "scale": 0,
+          "rankingStable": true,
+          "identicalScoreTieStable": true
+        },
+        {
+          "scale": 500,
+          "rankingStable": true,
+          "identicalScoreTieStable": true
+        }
+      ],
+      "reports": [
+        {
+          "mode": "build",
+          "scale": 0,
+          "repetition": 0,
+          "versions": {
+            "bun": "1.4.1",
+            "sqlite": "3.53.2"
+          },
+          "metrics": {
+            "development": {
+              "queries": 12,
+              "answerable": 10,
+              "unanswerable": 2,
+              "fileRecall": 1,
+              "sectionCoverageUpperBound": 1,
+              "mrr": 1,
+              "filePrecision": 0.595,
+              "unanswerableFalsePositiveRate": 0.5,
+              "meanResponseBytes": 714.6666666666666,
+              "maxResponseBytes": 1605,
+              "citationCorrectness": null,
+              "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+            },
+            "heldOut": {
+              "queries": 12,
+              "answerable": 10,
+              "unanswerable": 2,
+              "fileRecall": 1,
+              "sectionCoverageUpperBound": 1,
+              "mrr": 0.9333333333333333,
+              "filePrecision": 0.7333333333333333,
+              "unanswerableFalsePositiveRate": 0.5,
+              "meanResponseBytes": 527.75,
+              "maxResponseBytes": 1047,
+              "citationCorrectness": null,
+              "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+            }
+          },
+          "latency": {
+            "firstQueryMs": 1.0222499999999854,
+            "firstPassP50Ms": 0.21693299999969895,
+            "firstPassP95Ms": 0.60268300000007,
+            "warmP50Ms": 0.1994989999993777,
+            "warmP95Ms": 0.33126700000048004,
+            "samples": 120,
+            "coldDefinition": "fresh-process SQLite reopen; OS page cache NOT flushed"
+          },
+          "timings": {
+            "initialRefreshMs": 211.41111999999976,
+            "noChangeRefreshMs": 33.617551000000276,
+            "editRefreshMs": 50.960667999999714,
+            "addRefreshMs": 51.595870000000104,
+            "deleteRefreshMs": 44.98135000000002
+          },
+          "index": {
+            "files": 12,
+            "sourceBytes": 15277,
+            "databaseLogicalBytes": 1593344,
+            "indexOwnedBytes": 53248,
+            "applicationDatabaseBeforeIndexBytes": 1560576
+          },
+          "memory": {
+            "rssBytes": 73322496
+          },
+          "ties": {
+            "id": "tie-checks",
+            "order": [
+              "notes/tie-a.md",
+              "notes/tie-b.md"
+            ],
+            "repeatStable": true,
+            "contract": "equal BM25 scores use binary path order"
+          },
+          "incremental": {
+            "id": "incremental-checks",
+            "editVisible": true,
+            "addVisible": true,
+            "deleteVisible": true,
+            "sameMetadataEditDetected": true,
+            "sameMetadataPreserved": true,
+            "sourceChangedWhileIndexUnchanged": false,
+            "databaseBeforeMutations": 1581056
+          }
+        },
+        {
+          "mode": "reopen",
+          "scale": 0,
+          "repetition": 0,
+          "versions": {
+            "bun": "1.4.1",
+            "sqlite": "3.53.2"
+          },
+          "metrics": {
+            "development": {
+              "queries": 12,
+              "answerable": 10,
+              "unanswerable": 2,
+              "fileRecall": 1,
+              "sectionCoverageUpperBound": 1,
+              "mrr": 1,
+              "filePrecision": 0.595,
+              "unanswerableFalsePositiveRate": 0.5,
+              "meanResponseBytes": 714.6666666666666,
+              "maxResponseBytes": 1605,
+              "citationCorrectness": null,
+              "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+            },
+            "heldOut": {
+              "queries": 12,
+              "answerable": 10,
+              "unanswerable": 2,
+              "fileRecall": 1,
+              "sectionCoverageUpperBound": 1,
+              "mrr": 0.9333333333333333,
+              "filePrecision": 0.7333333333333333,
+              "unanswerableFalsePositiveRate": 0.5,
+              "meanResponseBytes": 527.75,
+              "maxResponseBytes": 1047,
+              "citationCorrectness": null,
+              "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+            }
+          },
+          "latency": {
+            "firstQueryMs": 1.5978819999999985,
+            "firstPassP50Ms": 0.18797199999998782,
+            "firstPassP95Ms": 0.3888780000000054,
+            "warmP50Ms": 0.17070200000000568,
+            "warmP95Ms": 0.3147699999999958,
+            "samples": 120,
+            "coldDefinition": "fresh-process SQLite reopen; OS page cache NOT flushed"
+          },
+          "timings": {},
+          "index": {
+            "files": 12,
+            "sourceBytes": 15277,
+            "databaseLogicalBytes": 1593344,
+            "indexOwnedBytes": 53248,
+            "applicationDatabaseBeforeIndexBytes": null
+          },
+          "memory": {
+            "rssBytes": 64335872
+          }
+        },
+        {
+          "mode": "build",
+          "scale": 500,
+          "repetition": 0,
+          "versions": {
+            "bun": "1.4.1",
+            "sqlite": "3.53.2"
+          },
+          "metrics": {
+            "development": {
+              "queries": 12,
+              "answerable": 10,
+              "unanswerable": 2,
+              "fileRecall": 1,
+              "sectionCoverageUpperBound": 1,
+              "mrr": 1,
+              "filePrecision": 0.595,
+              "unanswerableFalsePositiveRate": 0.5,
+              "meanResponseBytes": 714.6666666666666,
+              "maxResponseBytes": 1605,
+              "citationCorrectness": null,
+              "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+            },
+            "heldOut": {
+              "queries": 12,
+              "answerable": 10,
+              "unanswerable": 2,
+              "fileRecall": 1,
+              "sectionCoverageUpperBound": 1,
+              "mrr": 1,
+              "filePrecision": 0.7333333333333333,
+              "unanswerableFalsePositiveRate": 0.5,
+              "meanResponseBytes": 527.75,
+              "maxResponseBytes": 1047,
+              "citationCorrectness": null,
+              "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+            }
+          },
+          "latency": {
+            "firstQueryMs": 1.4835060000004887,
+            "firstPassP50Ms": 0.16319100000146136,
+            "firstPassP95Ms": 0.5998030000009749,
+            "warmP50Ms": 0.14948899999944842,
+            "warmP95Ms": 0.40229399999952875,
+            "samples": 120,
+            "coldDefinition": "fresh-process SQLite reopen; OS page cache NOT flushed"
+          },
+          "timings": {
+            "initialRefreshMs": 7623.917421,
+            "noChangeRefreshMs": 192.96100099999967,
+            "editRefreshMs": 167.1949509999995,
+            "addRefreshMs": 167.3972219999996,
+            "deleteRefreshMs": 141.92614200000025
+          },
+          "index": {
+            "files": 512,
+            "sourceBytes": 3852667,
+            "databaseLogicalBytes": 6602752,
+            "indexOwnedBytes": 4751360,
+            "applicationDatabaseBeforeIndexBytes": 1560576
+          },
+          "memory": {
+            "rssBytes": 85061632
+          },
+          "ties": {
+            "id": "tie-checks",
+            "order": [
+              "notes/tie-a.md",
+              "notes/tie-b.md"
+            ],
+            "repeatStable": true,
+            "contract": "equal BM25 scores use binary path order"
+          },
+          "incremental": {
+            "id": "incremental-checks",
+            "editVisible": true,
+            "addVisible": true,
+            "deleteVisible": true,
+            "sameMetadataEditDetected": true,
+            "sameMetadataPreserved": true,
+            "sourceChangedWhileIndexUnchanged": false,
+            "databaseBeforeMutations": 6602752
+          }
+        },
+        {
+          "mode": "reopen",
+          "scale": 500,
+          "repetition": 0,
+          "versions": {
+            "bun": "1.4.1",
+            "sqlite": "3.53.2"
+          },
+          "metrics": {
+            "development": {
+              "queries": 12,
+              "answerable": 10,
+              "unanswerable": 2,
+              "fileRecall": 1,
+              "sectionCoverageUpperBound": 1,
+              "mrr": 1,
+              "filePrecision": 0.595,
+              "unanswerableFalsePositiveRate": 0.5,
+              "meanResponseBytes": 714.6666666666666,
+              "maxResponseBytes": 1605,
+              "citationCorrectness": null,
+              "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+            },
+            "heldOut": {
+              "queries": 12,
+              "answerable": 10,
+              "unanswerable": 2,
+              "fileRecall": 1,
+              "sectionCoverageUpperBound": 1,
+              "mrr": 1,
+              "filePrecision": 0.7333333333333333,
+              "unanswerableFalsePositiveRate": 0.5,
+              "meanResponseBytes": 527.75,
+              "maxResponseBytes": 1047,
+              "citationCorrectness": null,
+              "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+            }
+          },
+          "latency": {
+            "firstQueryMs": 1.6193179999999927,
+            "firstPassP50Ms": 0.24663300000000277,
+            "firstPassP95Ms": 0.6377630000000067,
+            "warmP50Ms": 0.2267530000000022,
+            "warmP95Ms": 0.5118709999999993,
+            "samples": 120,
+            "coldDefinition": "fresh-process SQLite reopen; OS page cache NOT flushed"
+          },
+          "timings": {},
+          "index": {
+            "files": 512,
+            "sourceBytes": 3852667,
+            "databaseLogicalBytes": 6602752,
+            "indexOwnedBytes": 4751360,
+            "applicationDatabaseBeforeIndexBytes": null
+          },
+          "memory": {
+            "rssBytes": 69349376
+          }
+        },
+        {
+          "mode": "build",
+          "scale": 0,
+          "repetition": 1,
+          "versions": {
+            "bun": "1.4.1",
+            "sqlite": "3.53.2"
+          },
+          "metrics": {
+            "development": {
+              "queries": 12,
+              "answerable": 10,
+              "unanswerable": 2,
+              "fileRecall": 1,
+              "sectionCoverageUpperBound": 1,
+              "mrr": 1,
+              "filePrecision": 0.595,
+              "unanswerableFalsePositiveRate": 0.5,
+              "meanResponseBytes": 714.6666666666666,
+              "maxResponseBytes": 1605,
+              "citationCorrectness": null,
+              "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+            },
+            "heldOut": {
+              "queries": 12,
+              "answerable": 10,
+              "unanswerable": 2,
+              "fileRecall": 1,
+              "sectionCoverageUpperBound": 1,
+              "mrr": 0.9333333333333333,
+              "filePrecision": 0.7333333333333333,
+              "unanswerableFalsePositiveRate": 0.5,
+              "meanResponseBytes": 527.75,
+              "maxResponseBytes": 1047,
+              "citationCorrectness": null,
+              "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+            }
+          },
+          "latency": {
+            "firstQueryMs": 1.477378999999928,
+            "firstPassP50Ms": 0.19829000000027008,
+            "firstPassP95Ms": 1.1721480000001065,
+            "warmP50Ms": 0.18898200000012366,
+            "warmP95Ms": 0.2940490000000864,
+            "samples": 120,
+            "coldDefinition": "fresh-process SQLite reopen; OS page cache NOT flushed"
+          },
+          "timings": {
+            "initialRefreshMs": 196.4614919999999,
+            "noChangeRefreshMs": 29.777324000000135,
+            "editRefreshMs": 47.65361500000017,
+            "addRefreshMs": 55.395586000000094,
+            "deleteRefreshMs": 51.363570000000436
+          },
+          "index": {
+            "files": 12,
+            "sourceBytes": 15277,
+            "databaseLogicalBytes": 1593344,
+            "indexOwnedBytes": 53248,
+            "applicationDatabaseBeforeIndexBytes": 1560576
+          },
+          "memory": {
+            "rssBytes": 72048640
+          },
+          "ties": {
+            "id": "tie-checks",
+            "order": [
+              "notes/tie-a.md",
+              "notes/tie-b.md"
+            ],
+            "repeatStable": true,
+            "contract": "equal BM25 scores use binary path order"
+          },
+          "incremental": {
+            "id": "incremental-checks",
+            "editVisible": true,
+            "addVisible": true,
+            "deleteVisible": true,
+            "sameMetadataEditDetected": true,
+            "sameMetadataPreserved": true,
+            "sourceChangedWhileIndexUnchanged": false,
+            "databaseBeforeMutations": 1585152
+          }
+        },
+        {
+          "mode": "reopen",
+          "scale": 0,
+          "repetition": 1,
+          "versions": {
+            "bun": "1.4.1",
+            "sqlite": "3.53.2"
+          },
+          "metrics": {
+            "development": {
+              "queries": 12,
+              "answerable": 10,
+              "unanswerable": 2,
+              "fileRecall": 1,
+              "sectionCoverageUpperBound": 1,
+              "mrr": 1,
+              "filePrecision": 0.595,
+              "unanswerableFalsePositiveRate": 0.5,
+              "meanResponseBytes": 714.6666666666666,
+              "maxResponseBytes": 1605,
+              "citationCorrectness": null,
+              "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+            },
+            "heldOut": {
+              "queries": 12,
+              "answerable": 10,
+              "unanswerable": 2,
+              "fileRecall": 1,
+              "sectionCoverageUpperBound": 1,
+              "mrr": 0.9333333333333333,
+              "filePrecision": 0.7333333333333333,
+              "unanswerableFalsePositiveRate": 0.5,
+              "meanResponseBytes": 527.75,
+              "maxResponseBytes": 1047,
+              "citationCorrectness": null,
+              "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+            }
+          },
+          "latency": {
+            "firstQueryMs": 1.6548739999999924,
+            "firstPassP50Ms": 0.214193999999992,
+            "firstPassP95Ms": 0.4182969999999955,
+            "warmP50Ms": 0.20685500000000445,
+            "warmP95Ms": 0.3518399999999957,
+            "samples": 120,
+            "coldDefinition": "fresh-process SQLite reopen; OS page cache NOT flushed"
+          },
+          "timings": {},
+          "index": {
+            "files": 12,
+            "sourceBytes": 15277,
+            "databaseLogicalBytes": 1593344,
+            "indexOwnedBytes": 53248,
+            "applicationDatabaseBeforeIndexBytes": null
+          },
+          "memory": {
+            "rssBytes": 65208320
+          }
+        },
+        {
+          "mode": "build",
+          "scale": 500,
+          "repetition": 1,
+          "versions": {
+            "bun": "1.4.1",
+            "sqlite": "3.53.2"
+          },
+          "metrics": {
+            "development": {
+              "queries": 12,
+              "answerable": 10,
+              "unanswerable": 2,
+              "fileRecall": 1,
+              "sectionCoverageUpperBound": 1,
+              "mrr": 1,
+              "filePrecision": 0.595,
+              "unanswerableFalsePositiveRate": 0.5,
+              "meanResponseBytes": 714.6666666666666,
+              "maxResponseBytes": 1605,
+              "citationCorrectness": null,
+              "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+            },
+            "heldOut": {
+              "queries": 12,
+              "answerable": 10,
+              "unanswerable": 2,
+              "fileRecall": 1,
+              "sectionCoverageUpperBound": 1,
+              "mrr": 1,
+              "filePrecision": 0.7333333333333333,
+              "unanswerableFalsePositiveRate": 0.5,
+              "meanResponseBytes": 527.75,
+              "maxResponseBytes": 1047,
+              "citationCorrectness": null,
+              "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+            }
+          },
+          "latency": {
+            "firstQueryMs": 1.5446659999997792,
+            "firstPassP50Ms": 0.16715500000100292,
+            "firstPassP95Ms": 0.6231759999991482,
+            "warmP50Ms": 0.15749900000082562,
+            "warmP95Ms": 0.4523040000003675,
+            "samples": 120,
+            "coldDefinition": "fresh-process SQLite reopen; OS page cache NOT flushed"
+          },
+          "timings": {
+            "initialRefreshMs": 8101.951591999999,
+            "noChangeRefreshMs": 171.67865600000005,
+            "editRefreshMs": 178.3158569999996,
+            "addRefreshMs": 159.794081,
+            "deleteRefreshMs": 170.70170899999903
+          },
+          "index": {
+            "files": 512,
+            "sourceBytes": 3852667,
+            "databaseLogicalBytes": 6598656,
+            "indexOwnedBytes": 4751360,
+            "applicationDatabaseBeforeIndexBytes": 1560576
+          },
+          "memory": {
+            "rssBytes": 84135936
+          },
+          "ties": {
+            "id": "tie-checks",
+            "order": [
+              "notes/tie-a.md",
+              "notes/tie-b.md"
+            ],
+            "repeatStable": true,
+            "contract": "equal BM25 scores use binary path order"
+          },
+          "incremental": {
+            "id": "incremental-checks",
+            "editVisible": true,
+            "addVisible": true,
+            "deleteVisible": true,
+            "sameMetadataEditDetected": true,
+            "sameMetadataPreserved": true,
+            "sourceChangedWhileIndexUnchanged": false,
+            "databaseBeforeMutations": 6598656
+          }
+        },
+        {
+          "mode": "reopen",
+          "scale": 500,
+          "repetition": 1,
+          "versions": {
+            "bun": "1.4.1",
+            "sqlite": "3.53.2"
+          },
+          "metrics": {
+            "development": {
+              "queries": 12,
+              "answerable": 10,
+              "unanswerable": 2,
+              "fileRecall": 1,
+              "sectionCoverageUpperBound": 1,
+              "mrr": 1,
+              "filePrecision": 0.595,
+              "unanswerableFalsePositiveRate": 0.5,
+              "meanResponseBytes": 714.6666666666666,
+              "maxResponseBytes": 1605,
+              "citationCorrectness": null,
+              "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+            },
+            "heldOut": {
+              "queries": 12,
+              "answerable": 10,
+              "unanswerable": 2,
+              "fileRecall": 1,
+              "sectionCoverageUpperBound": 1,
+              "mrr": 1,
+              "filePrecision": 0.7333333333333333,
+              "unanswerableFalsePositiveRate": 0.5,
+              "meanResponseBytes": 527.75,
+              "maxResponseBytes": 1047,
+              "citationCorrectness": null,
+              "citationSupport": "unsupported: baseline has no chunk revision or line citation"
+            }
+          },
+          "latency": {
+            "firstQueryMs": 1.628315999999998,
+            "firstPassP50Ms": 0.22227799999998865,
+            "firstPassP95Ms": 1.1101749999999981,
+            "warmP50Ms": 0.1933440000000104,
+            "warmP95Ms": 0.33479799999999216,
+            "samples": 120,
+            "coldDefinition": "fresh-process SQLite reopen; OS page cache NOT flushed"
+          },
+          "timings": {},
+          "index": {
+            "files": 512,
+            "sourceBytes": 3852667,
+            "databaseLogicalBytes": 6598656,
+            "indexOwnedBytes": 4751360,
+            "applicationDatabaseBeforeIndexBytes": null
+          },
+          "memory": {
+            "rssBytes": 66822144
+          }
+        }
+      ]
+    }
+  ]
+}

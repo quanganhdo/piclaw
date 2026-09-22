@@ -7,7 +7,7 @@ import { createUser, getUser, updateUser } from "../../../src/db/users.js";
 import { ensureChatBranch } from "../../../src/db/chat-branches.js";
 import { storeChatMetadata, storeMessage } from "../../../src/db/messages.js";
 import { assignRootOwner, provisionUserHome } from "../../../src/db/session-ownership.js";
-import { createWebSession, revokeUserWebSessions } from "../../../src/db/web-sessions.js";
+import { createWebSession, getWebSession, revokeUserWebSessions } from "../../../src/db/web-sessions.js";
 import { WebAuthGateway } from "../../../src/channels/web/auth/auth-gateway.js";
 import { TotpFailureTracker } from "../../../src/channels/web/auth/totp-failure-tracker.js";
 import { WebauthnChallengeTracker } from "../../../src/channels/web/auth/webauthn-challenges.js";
@@ -393,4 +393,34 @@ test("family dispatcher serves pinned push routes and a public notification work
     expect((await router.handle(direct("/agent/push/vapid-public-key", null, pins))).status).toBe(401);
     expect((await router.handle(direct("/family-sw.js", null))).status).toBe(200);
   });
+});
+
+test("family status rejects operator-only UI snapshot query", async () => {
+  const response = await router.handle(request('/agent/status?chat_jid=web%3Aalice&ui=1'));
+  expect(response.status).toBe(403);
+  expect(await response.text()).not.toContain('metrics');
+});
+
+test('picker pins bind to account/login and never cross ownership boundaries', async()=>{
+  const events:Array<{type:string;payload:unknown}>=[];
+  channel.broadcastEvent=(type:string,payload:unknown)=>events.push({type,payload});
+  const call=(path:string,method='GET',body?:unknown,user=alice,token='alice-token')=>router.handle(new Request('https://family.local'+path,{method,headers:{cookie:`piclaw_session=${token}`,origin:'https://family.local','x-piclaw-account-id':user,'x-piclaw-login-id':getWebSession(token)!.session_id!,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})}));
+  const a=await (await call('/agent/picker-pins')).json();
+  expect(a.models).toEqual([]);
+  expect((await call('/agent/picker-pins','POST',{action:'set',kind:'session',key:'web:bob',pinned:true})).status).toBe(403);
+  const own=await call('/agent/picker-pins','POST',{action:'set',kind:'session',key:'web:alice',pinned:true});expect(own.status).toBe(200);expect((await own.json()).sessions).toEqual(['web:alice']);
+  const bobPins=await (await call('/agent/picker-pins','GET',undefined,bob,'bob-token')).json();expect(bobPins.sessions).toEqual([]);expect(bobPins.scope).not.toBe(a.scope);
+  const forged=await call('/agent/picker-pins','GET',undefined,bob,'alice-token');expect(forged.status).toBe(409);
+  const unbound=await router.handle(request('/agent/picker-pins'));expect(unbound.status).toBe(409);
+  const cross=await router.handle(new Request('https://family.local/agent/picker-pins',{method:'POST',headers:{cookie:'piclaw_session=alice-token',origin:'https://evil.invalid','x-piclaw-account-id':alice,'x-piclaw-login-id':getWebSession('alice-token')!.session_id!,'Content-Type':'application/json'},body:JSON.stringify({action:'set',kind:'model',key:'test/a',pinned:true})}));expect(cross.status).toBe(403);
+  expect(events).toEqual([{type:'picker_pins_changed',payload:{user_id:alice}}]);
+});
+
+test('pin writes revalidate account after streamed body and reject oversized bodies',async()=>{
+ const login=getWebSession('alice-token')!.session_id!;channel.broadcastEvent=()=>{throw Error('Must not broadcast');};
+ const headers={cookie:'piclaw_session=alice-token',origin:'https://family.local','x-piclaw-account-id':alice,'x-piclaw-login-id':login,'Content-Type':'application/json'};
+ const huge=await router.handle(new Request('https://family.local/agent/picker-pins',{method:'POST',headers,body:'x'.repeat(300001)}));expect(huge.status).toBe(400);
+ const body=new ReadableStream({pull(controller){revokeUserWebSessions(alice);controller.enqueue(new TextEncoder().encode(JSON.stringify({action:'set',kind:'model',key:'test/a',pinned:true})));controller.close();}});
+ const response=await router.handle(new Request('https://family.local/agent/picker-pins',{method:'POST',headers,body,duplex:'half'} as RequestInit));expect(response.status).not.toBe(200);
+ expect(getDb().query('SELECT count(*) AS n FROM picker_pins').get()).toEqual({n:0});
 });

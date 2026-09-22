@@ -18,6 +18,8 @@ import { estimateContextTokensFromSession, noteCompactionSuccess, runCompactionW
 import { buildTargetContextCompactionInstructions } from "../../extensions/smart-compaction.js";
 import { applyTokenEstimateSafetyMultiplier, getContextWindowFromModel, getEffectiveContextWindow, getSystemPromptOverheadTokens, getUnknownModelContextWindow } from "../../utils/context-window-budget.js";
 
+import { getSessionThinkingPolicy } from "../../agent-pool/thinking-policy.js";
+
 const log = createLogger("agent-control.model");
 
 function formatCompactTokens(value: number | null | undefined): string {
@@ -289,6 +291,8 @@ export async function handleThinking(session: AgentSession, _modelRegistry: Mode
       `Current thinking${effortNote} level: ${formatThinkingLevelForDisplay(session.thinkingLevel, session.model)}.`,
       `Available levels: ${formatAvailableLevels(available, session.model)}.`,
     ];
+    const policy = getSessionThinkingPolicy(session);
+    if (policy) lines.push(`Session preference: ${policy.preferred_level}. Effective default: ${policy.defaults.level ?? 'SDK default'} (${policy.defaults.source}).`);
     if (!session.supportsThinking()) {
       lines.push("Thinking is off for this model.");
     }

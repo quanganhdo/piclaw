@@ -492,6 +492,7 @@ export function renderMainShell(options: MainShellRenderOptions): any {
         `}
         <${SettingsDialogLoader} />
         <${ChatSurface}
+          currentChatJid=${currentChatJid}
           posts=${posts}
           hasMore=${isMainTimelineView ? hasMore : false}
           onLoadMore=${isMainTimelineView ? loadMore : undefined}

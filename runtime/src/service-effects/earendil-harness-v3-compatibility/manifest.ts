@@ -77,11 +77,133 @@ export interface HistoricalEarendilHarnessCompatibilityManifest {
   readonly promotionCriteria: readonly Readonly<{ id: `PG-0${number}`; requirement: string }>[];
 }
 
+export type EarendilPublishedCandidateStatus = "partial" | "unsupported" | "unverified";
+
+export interface EarendilPublishedCandidateCapability {
+  readonly id: `HC-0${string}`;
+  readonly status: EarendilPublishedCandidateStatus;
+  readonly evidence: string;
+}
+
+export interface EarendilPublishedCandidateAssessment {
+  readonly version: "0.87.0";
+  readonly commit: "16787ad5b2dc748047f314ca1bfe7708f30f54f3";
+  readonly selection: "published_candidate_not_installed";
+  readonly packages: readonly EarendilPackageEvidence[];
+  readonly fingerprints: readonly EarendilReleaseFingerprint[];
+  readonly publicSurface: Readonly<{
+    stableImports: "pass";
+    executionEnvAssignment: "blocked_open_text_line_reader";
+    watchSession: "runtime_slice_not_implemented";
+    rawStorageConstructors: "not_exported_from_stable_session_barrel";
+    streamingForkConformance: "memory_and_jsonl_pass_sqlite_pending";
+    experimentalPico3: "assessed_separately_no_production_adoption";
+  }>;
+  readonly admissionReceipt: Readonly<{
+    node: "22.19.0";
+    bun: "1.4.1";
+    packages: 6;
+    providerFactoryCalls: 0;
+    rootExports: "pass";
+    sourceOnlyDeepPaths: "rejected";
+    inheritedSecrets: false;
+    offlineRequested: true;
+    telemetry: "disabled";
+    networkSandboxed: false;
+  }>;
+  readonly semanticReceipt: Readonly<{
+    environment: "disposable_exact_0_87_0_package_family";
+    tests: 28;
+    assertions: 340;
+    failures: 0;
+    coverage: "HC-001_through_HC-023_existing_public_cases";
+    evidenceLinks: "selected_exact_active_registrations_reexecuted";
+  }>;
+  readonly streamingForkReceipt: Readonly<{
+    environment: "disposable_exact_0_87_0_package_family";
+    uniqueCases: 15;
+    memoryExecutions: 15;
+    jsonlExecutions: 15;
+    failures: 0;
+    sqlite: "pending_upstream_support";
+    hostOwnership: "unproved";
+    caseIds: readonly string[];
+  }>;
+  readonly compileReceipt: Readonly<{
+    status: "blocked";
+    blockers: readonly Readonly<{ issue: 1377 | 1378; boundary: string }>[];
+  }>;
+  readonly capabilities: readonly EarendilPublishedCandidateCapability[];
+  readonly promotionIssues: readonly (1377 | 1378 | 1379 | 1380 | 1381)[];
+  readonly productionActivation: false;
+}
+
+export type EarendilPico3AssessmentStatus = "partial" | "unsupported" | "unverified";
+
+export interface EarendilPico3AssessmentCase {
+  readonly id: `HC-0${string}` | `PC-0${string}`;
+  readonly status: EarendilPico3AssessmentStatus;
+  readonly evidence: string;
+}
+
+export interface EarendilPico3ExperimentalAssessment {
+  readonly version: "0.87.0";
+  readonly commit: "16787ad5b2dc748047f314ca1bfe7708f30f54f3";
+  readonly export: "@earendil-works/pi-agent-core/experimental/pico3";
+  readonly selection: "experimental_assessment_only";
+  readonly engine: ">=22.19.0";
+  readonly runtimeSha256: "ce575fbbbd66e9bcb67ff0b6be483c5baefd1750cb10adaa1d73aedb9d66eafe";
+  readonly declarationSha256: "1ef74b8615a31ec9eed49cfd9fa657b68958af82f1b6c480dfb40d65703a6d72";
+  readonly runtimeExports: 30;
+  readonly packedConsumer: Readonly<{
+    node: "22.19.0";
+    bun: "1.4.1";
+    runtimeImports: "pass";
+    declarationProbe: "pass_with_declared_optional_mcp_peer";
+    closureCaveat: "google_genai_optional_peer_required_for_strict_full_dependency_check";
+  }>;
+  readonly implementation: Readonly<{
+    durableCore: "conversations_entries_tasks_inputs_and_chord_documents";
+    scheduler: "automatic_after_resume";
+    storage: readonly ["MemoryStorage", "JsonlStorage"];
+    sqlite: "not_implemented";
+    processOwnership: "one_process_per_storage";
+    watch: "snapshot_plus_binding_local_revision_bounded_256";
+    chordBridge: "implemented";
+    designParity: "document_contains_proposed_unexported_shapes";
+  }>;
+  readonly testReceipt: Readonly<{
+    source: "tagged_v0_87_0_source_with_published_pi_ai_dist";
+    runner: "vitest_4_1_9";
+    files: 22;
+    tests: 191;
+    failures: 0;
+  }>;
+  readonly authorities: Readonly<{
+    serviceWorkStore: "retained_piclaw";
+    terminalSettlementStore: "retained_piclaw";
+    serviceOutboxStore: "retained_piclaw";
+    scheduledRunStore: "retained_piclaw";
+    agentProjectionSink: "retained_piclaw";
+  }>;
+  readonly harnessCases: readonly EarendilPico3AssessmentCase[];
+  readonly piclawCases: readonly EarendilPico3AssessmentCase[];
+  readonly recommendation: Readonly<{
+    disposableSpike: "go";
+    productionAdoption: "no_go";
+    reason: "missing_piclaw_boundary_evidence_sqlite_host_fencing_and_api_stability";
+  }>;
+  readonly productionImport: false;
+  readonly productionActivation: false;
+}
+
 export interface EarendilHarnessCompatibilityManifest {
-  readonly schemaVersion: 3;
+  readonly schemaVersion: 5;
   readonly authority: Readonly<{ currentRuntimeVersion: "0.85.1"; harnessActivation: "latent_only"; unsupportedCountsAsPass: false }>;
   readonly historical: HistoricalEarendilHarnessCompatibilityManifest;
   readonly selected: typeof SELECTED_RELEASE;
+  readonly publishedCandidate: EarendilPublishedCandidateAssessment;
+  readonly experimentalPico3: EarendilPico3ExperimentalAssessment;
 }
 
 export type EarendilManifestIssueCode =
@@ -743,11 +865,739 @@ const SELECTED_RELEASE = {
   "productionActivation": false
 } as const;
 
+const PUBLISHED_CANDIDATE = {
+  "version": "0.87.0",
+  "commit": "16787ad5b2dc748047f314ca1bfe7708f30f54f3",
+  "selection": "published_candidate_not_installed",
+  "packages": [
+    {
+      "name": "@earendil-works/chord",
+      "version": "0.87.0",
+      "integrity": "sha512-t8QOTf0GTHrsDSfcdtXuA9RCkh6mnR4l25N0SM/sgH7Ih25jH4tGXNbkGs9MWpV5xTu9MRPj4A7Zn1UEwQm9+g==",
+      "shasum": "b033dc0d576114e2b36e95d3cb50f8301ddf7bfd",
+      "gitHead": "16787ad5b2dc748047f314ca1bfe7708f30f54f3",
+      "engine": ">=22.19.0",
+      "installation": "transitive",
+      "exports": [
+        ".",
+        "./bundler",
+        "./context",
+        "./delta",
+        "./node",
+        "./package.json"
+      ],
+      "internalDependencies": []
+    },
+    {
+      "name": "@earendil-works/pi-agent-core",
+      "version": "0.87.0",
+      "integrity": "sha512-c5b2FMdJ7C++HBa6AyBmusdf96gdgRqpF7J+UCq2yVGB28UETJvJ190HkgDWUaLPnOQQPbanjKMAm/TgRmFE2w==",
+      "shasum": "cd8ec116e33c38e2dd551030fb83654bf5ce33af",
+      "gitHead": "16787ad5b2dc748047f314ca1bfe7708f30f54f3",
+      "engine": ">=22.19.0",
+      "installation": "direct",
+      "exports": [
+        ".",
+        "./experimental/pico3",
+        "./harness/context",
+        "./harness/env/nodejs",
+        "./harness/runtime/reducer",
+        "./harness/session",
+        "./harness/session/testing",
+        "./node",
+        "./package.json"
+      ],
+      "internalDependencies": [
+        {
+          "name": "@earendil-works/chord",
+          "range": "^0.87.0"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "range": "^0.87.0"
+        },
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "range": "^0.87.0"
+        }
+      ]
+    },
+    {
+      "name": "@earendil-works/pi-ai",
+      "version": "0.87.0",
+      "integrity": "sha512-lbRm+EMY6Jx3l+HLpbqbm9Yrhkc5u7EffLk2id+zJQEoBuR5I+tijGiZU8zlnuuCclmQOgH0PVjL9PLbeqJ9MQ==",
+      "shasum": "e81ec36ab4e9f44bafa2c980c7ec3cf8cda32f8d",
+      "gitHead": "16787ad5b2dc748047f314ca1bfe7708f30f54f3",
+      "engine": ">=22.19.0",
+      "installation": "direct",
+      "exports": [
+        ".",
+        "./api/*",
+        "./bedrock-provider",
+        "./bun-oauth",
+        "./compat",
+        "./oauth",
+        "./providers/*",
+        "./utils/*"
+      ],
+      "internalDependencies": [
+        {
+          "name": "@earendil-works/pi-telemetry",
+          "range": "^0.87.0"
+        }
+      ]
+    },
+    {
+      "name": "@earendil-works/pi-coding-agent",
+      "version": "0.87.0",
+      "integrity": "sha512-S9JJVGHya/h0e0M+zwPTB6RkPe7PmLLqfBUTssFYW5mxAti6oZEILn4jvaUImENRC3U9RwXAB6H4gw8xj2J0GQ==",
+      "shasum": "908417741052a4ef12d9b9a8c0acb98a51ce9d87",
+      "gitHead": "16787ad5b2dc748047f314ca1bfe7708f30f54f3",
+      "engine": ">=22.19.0",
+      "installation": "direct",
+      "exports": [
+        ".",
+        "./client",
+        "./experimental/plugin",
+        "./rpc-entry"
+      ],
+      "internalDependencies": [
+        {
+          "name": "@earendil-works/chord",
+          "range": "^0.87.0"
+        },
+        {
+          "name": "@earendil-works/pi-agent-core",
+          "range": "^0.87.0"
+        },
+        {
+          "name": "@earendil-works/pi-ai",
+          "range": "^0.87.0"
+        },
+        {
+          "name": "@earendil-works/pi-tui",
+          "range": "^0.87.0"
+        }
+      ]
+    },
+    {
+      "name": "@earendil-works/pi-telemetry",
+      "version": "0.87.0",
+      "integrity": "sha512-IEUMnV6mgHyOMfAxa4CKXoBKKfHM8KxNjbXWM4Bps/iLJcFMf8hQsEZ+95VnVTc7C0cU77Rmdxt773C35jb5AA==",
+      "shasum": "3d63532659b3904f784c03daa8a3fb90be8f7746",
+      "gitHead": "16787ad5b2dc748047f314ca1bfe7708f30f54f3",
+      "engine": ">=22.19.0",
+      "installation": "transitive",
+      "exports": [
+        ".",
+        "./testing"
+      ],
+      "internalDependencies": []
+    },
+    {
+      "name": "@earendil-works/pi-tui",
+      "version": "0.87.0",
+      "integrity": "sha512-7gTC0XOgQfVWg4yGxwHINBpCnGl9p4KEC7PXIc8gAwc/cyxSW4VuFQrp+r1YD3oM+rBkoepKwAt6w6+VJ7BCaw==",
+      "shasum": "bdfa9b094b6d59628d92c55b485b01fd281c6284",
+      "gitHead": "16787ad5b2dc748047f314ca1bfe7708f30f54f3",
+      "engine": ">=22.19.0",
+      "installation": "transitive",
+      "exports": [],
+      "internalDependencies": []
+    }
+  ],
+  "fingerprints": [
+    {
+      "package": "@earendil-works/pi-agent-core",
+      "subpath": ".",
+      "kind": "runtime",
+      "sha256": "4a551a8b128525e90f3da827f5c459a6f6ba39796c63b2ba73d0f0bfb7be9e72"
+    },
+    {
+      "package": "@earendil-works/pi-agent-core",
+      "subpath": ".",
+      "kind": "declaration",
+      "sha256": "3ce94af0dcd9a9f82cdb2e6aa213222e29b42401367eb6c31c747fee02364611"
+    },
+    {
+      "package": "@earendil-works/pi-agent-core",
+      "subpath": "./node",
+      "kind": "runtime",
+      "sha256": "84c03ea93b7c4a6a656a3f560c1301ed825ca2f97ce919e16ee52bd13d88f28c"
+    },
+    {
+      "package": "@earendil-works/pi-agent-core",
+      "subpath": "./node",
+      "kind": "declaration",
+      "sha256": "eeb8d9441cb120cb5b0f86dc884e8df4c8e129a5f0a8d7d505da9a7186946686"
+    },
+    {
+      "package": "@earendil-works/pi-agent-core",
+      "subpath": "./harness/context",
+      "kind": "runtime",
+      "sha256": "3c6f154b1fd181967991b6df371e55eb2e52e834591b56bec928805cff54b143"
+    },
+    {
+      "package": "@earendil-works/pi-agent-core",
+      "subpath": "./harness/context",
+      "kind": "declaration",
+      "sha256": "8cddbf79a46b2b79f337d08b59049918be74d0efbdadbbf9c476c1af53e52eca"
+    },
+    {
+      "package": "@earendil-works/pi-agent-core",
+      "subpath": "./harness/env/nodejs",
+      "kind": "runtime",
+      "sha256": "f197648dc272eb1065deb02467ebb7cc07d020ad1c30cfd8adab26dddd3ff150"
+    },
+    {
+      "package": "@earendil-works/pi-agent-core",
+      "subpath": "./harness/env/nodejs",
+      "kind": "declaration",
+      "sha256": "8b892fd9130551cff8cf7bcf29baed12fbc3543a6f08bdb959701831df162e75"
+    },
+    {
+      "package": "@earendil-works/pi-agent-core",
+      "subpath": "./harness/session",
+      "kind": "runtime",
+      "sha256": "fab2c9c5eb32d52e4fff468dba4c6adbe33bf3ec23bfa642eba7aa712d537ac7"
+    },
+    {
+      "package": "@earendil-works/pi-agent-core",
+      "subpath": "./harness/session",
+      "kind": "declaration",
+      "sha256": "3deac15e45b9839c4406f522ea18f75d3f5b0953217fd84eaabe5d17a9e6cf97"
+    },
+    {
+      "package": "@earendil-works/pi-agent-core",
+      "subpath": "./harness/session/testing",
+      "kind": "runtime",
+      "sha256": "b6603b5a993e6eb678fb49352126138556e57a3963af7e000eec03f304ab02c4"
+    },
+    {
+      "package": "@earendil-works/pi-agent-core",
+      "subpath": "./harness/session/testing",
+      "kind": "declaration",
+      "sha256": "961fc28330bcffc231c14b3c3d3b5a247f3df9e13f6156e411dc791db152118e"
+    },
+    {
+      "package": "@earendil-works/pi-ai",
+      "subpath": ".",
+      "kind": "runtime",
+      "sha256": "4eee4d99e3eaf82e28826808136b2eede4184c3fb697328cbfc32db3360a8540"
+    },
+    {
+      "package": "@earendil-works/pi-ai",
+      "subpath": ".",
+      "kind": "declaration",
+      "sha256": "dd340daff435715950e104d1983cf013bef83c66e66b4e7b895360c1e8f4ec94"
+    },
+    {
+      "package": "@earendil-works/pi-coding-agent",
+      "subpath": ".",
+      "kind": "runtime",
+      "sha256": "1e3601da1e18a7be4dfdcc625d7a7fb942cc095a5d737bb1b70211af33b61e05"
+    },
+    {
+      "package": "@earendil-works/pi-coding-agent",
+      "subpath": ".",
+      "kind": "declaration",
+      "sha256": "1e89f64c284248e8004bc040be1b8d886f20c158091d4e466cb130fa9d13d458"
+    }
+  ],
+  "publicSurface": {
+    "stableImports": "pass",
+    "executionEnvAssignment": "blocked_open_text_line_reader",
+    "watchSession": "runtime_slice_not_implemented",
+    "rawStorageConstructors": "not_exported_from_stable_session_barrel",
+    "streamingForkConformance": "memory_and_jsonl_pass_sqlite_pending",
+    "experimentalPico3": "assessed_separately_no_production_adoption"
+  },
+  "admissionReceipt": {
+    "node": "22.19.0",
+    "bun": "1.4.1",
+    "packages": 6,
+    "providerFactoryCalls": 0,
+    "rootExports": "pass",
+    "sourceOnlyDeepPaths": "rejected",
+    "inheritedSecrets": false,
+    "offlineRequested": true,
+    "telemetry": "disabled",
+    "networkSandboxed": false
+  },
+  "semanticReceipt": {
+    "environment": "disposable_exact_0_87_0_package_family",
+    "tests": 28,
+    "assertions": 340,
+    "failures": 0,
+    "coverage": "HC-001_through_HC-023_existing_public_cases",
+    "evidenceLinks": "selected_exact_active_registrations_reexecuted"
+  },
+  "streamingForkReceipt": {
+    "environment": "disposable_exact_0_87_0_package_family",
+    "uniqueCases": 15,
+    "memoryExecutions": 15,
+    "jsonlExecutions": 15,
+    "failures": 0,
+    "sqlite": "pending_upstream_support",
+    "hostOwnership": "unproved",
+    "caseIds": [
+      "branch fork application state (closed source) / excludes deleted/reappended and untouched application lists",
+      "branch fork application state (closed source) / excludes overwritten and unchanged application values",
+      "branch fork application state (open source) / excludes deleted/reappended and untouched application lists",
+      "branch fork application state (open source) / excludes overwritten and unchanged application values",
+      "fork application lists (closed source) / tree fork continues asc pagination using source cursors",
+      "fork application lists (closed source) / tree fork continues desc pagination using source cursors",
+      "fork application lists (closed source) / tree fork copies lists at distinct addresses",
+      "fork application lists (closed source) / tree fork copies only survivors after list deletion and reappend",
+      "fork application lists (closed source) / tree fork preserves list element sequences including gaps",
+      "fork application lists (open source) / tree fork continues asc pagination using source cursors",
+      "fork application lists (open source) / tree fork continues desc pagination using source cursors",
+      "fork application lists (open source) / tree fork copies lists at distinct addresses",
+      "fork application lists (open source) / tree fork copies only survivors after list deletion and reappend",
+      "fork application lists (open source) / tree fork preserves list element sequences including gaps",
+      "fork lane validation / ignores malformed unrelated lanes"
+    ]
+  },
+  "compileReceipt": {
+    "status": "blocked",
+    "blockers": [
+      {
+        "issue": 1377,
+        "boundary": "TranscriptContext and transcript-declared tool state replace pre-0.86 provider context fields."
+      },
+      {
+        "issue": 1378,
+        "boundary": "ExecutionEnv requires openTextLineReader across current, SSH and fake adapters."
+      }
+    ]
+  },
+  "capabilities": [
+    {
+      "id": "HC-001",
+      "status": "partial",
+      "evidence": "The existing deterministic public-boundary cases passed under the disposable exact 0.87.0 package family; the selected 0.85.1 unproved remainder still applies."
+    },
+    {
+      "id": "HC-002",
+      "status": "partial",
+      "evidence": "The existing deterministic public-boundary cases passed under the disposable exact 0.87.0 package family; the selected 0.85.1 unproved remainder still applies."
+    },
+    {
+      "id": "HC-003",
+      "status": "partial",
+      "evidence": "The existing deterministic public-boundary cases passed under the disposable exact 0.87.0 package family; the selected 0.85.1 unproved remainder still applies."
+    },
+    {
+      "id": "HC-004",
+      "status": "partial",
+      "evidence": "The existing deterministic public-boundary cases passed under the disposable exact 0.87.0 package family; the selected 0.85.1 unproved remainder still applies."
+    },
+    {
+      "id": "HC-005",
+      "status": "partial",
+      "evidence": "The existing deterministic public-boundary cases passed under the disposable exact 0.87.0 package family; the selected 0.85.1 unproved remainder still applies."
+    },
+    {
+      "id": "HC-006",
+      "status": "partial",
+      "evidence": "The existing deterministic public-boundary cases passed under the disposable exact 0.87.0 package family; the selected 0.85.1 unproved remainder still applies."
+    },
+    {
+      "id": "HC-007",
+      "status": "partial",
+      "evidence": "The existing deterministic public-boundary cases passed under the disposable exact 0.87.0 package family; the selected 0.85.1 unproved remainder still applies."
+    },
+    {
+      "id": "HC-008",
+      "status": "partial",
+      "evidence": "The existing deterministic public-boundary cases passed under the disposable exact 0.87.0 package family; the selected 0.85.1 unproved remainder still applies."
+    },
+    {
+      "id": "HC-009",
+      "status": "partial",
+      "evidence": "The existing deterministic public-boundary cases passed under the disposable exact 0.87.0 package family; the selected 0.85.1 unproved remainder still applies."
+    },
+    {
+      "id": "HC-010",
+      "status": "partial",
+      "evidence": "The existing deterministic public-boundary cases passed under the disposable exact 0.87.0 package family; the selected 0.85.1 unproved remainder still applies."
+    },
+    {
+      "id": "HC-011",
+      "status": "partial",
+      "evidence": "The existing deterministic public-boundary cases passed under the disposable exact 0.87.0 package family; the selected 0.85.1 unproved remainder still applies."
+    },
+    {
+      "id": "HC-012",
+      "status": "partial",
+      "evidence": "The existing deterministic public-boundary cases passed under the disposable exact 0.87.0 package family; the selected 0.85.1 unproved remainder still applies."
+    },
+    {
+      "id": "HC-013",
+      "status": "partial",
+      "evidence": "The existing deterministic public-boundary cases passed under the disposable exact 0.87.0 package family; the selected 0.85.1 unproved remainder still applies."
+    },
+    {
+      "id": "HC-014",
+      "status": "partial",
+      "evidence": "The existing deterministic public-boundary cases passed under the disposable exact 0.87.0 package family; the selected 0.85.1 unproved remainder still applies."
+    },
+    {
+      "id": "HC-015",
+      "status": "partial",
+      "evidence": "The existing deterministic public-boundary cases passed under the disposable exact 0.87.0 package family; the selected 0.85.1 unproved remainder still applies."
+    },
+    {
+      "id": "HC-016",
+      "status": "partial",
+      "evidence": "The existing deterministic public-boundary cases passed under the disposable exact 0.87.0 package family; the selected 0.85.1 unproved remainder still applies."
+    },
+    {
+      "id": "HC-017",
+      "status": "partial",
+      "evidence": "The existing deterministic public-boundary cases passed under the disposable exact 0.87.0 package family; the selected 0.85.1 unproved remainder still applies."
+    },
+    {
+      "id": "HC-018",
+      "status": "partial",
+      "evidence": "The existing deterministic public-boundary cases passed under the disposable exact 0.87.0 package family; the selected 0.85.1 unproved remainder still applies."
+    },
+    {
+      "id": "HC-019",
+      "status": "partial",
+      "evidence": "The existing deterministic public-boundary cases passed under the disposable exact 0.87.0 package family; the selected 0.85.1 unproved remainder still applies."
+    },
+    {
+      "id": "HC-020",
+      "status": "partial",
+      "evidence": "The existing deterministic public-boundary cases passed under the disposable exact 0.87.0 package family; the selected 0.85.1 unproved remainder still applies."
+    },
+    {
+      "id": "HC-021",
+      "status": "partial",
+      "evidence": "The existing deterministic public-boundary cases passed under the disposable exact 0.87.0 package family; the selected 0.85.1 unproved remainder still applies."
+    },
+    {
+      "id": "HC-022",
+      "status": "partial",
+      "evidence": "The existing deterministic public-boundary cases passed under the disposable exact 0.87.0 package family; the selected 0.85.1 unproved remainder still applies."
+    },
+    {
+      "id": "HC-023",
+      "status": "partial",
+      "evidence": "The existing deterministic public-boundary cases passed under the disposable exact 0.87.0 package family; the selected 0.85.1 unproved remainder still applies."
+    },
+    {
+      "id": "HC-024",
+      "status": "unsupported",
+      "evidence": "The stable harness/session barrel still exports neither MemoryStorage nor JsonlStorage, so downstream raw Storage migration fault injection remains unsupported without private imports."
+    },
+    {
+      "id": "HC-025",
+      "status": "partial",
+      "evidence": "Public 0.87.0 streaming-fork conformance passes 15 Memory and 15 JSONL executions across 15 unique application-list, branch-state and malformed-lane cases. SQLite streaming-fork support and cross-process host ownership remain unproved."
+    }
+  ],
+  "promotionIssues": [
+    1377,
+    1378,
+    1379,
+    1380,
+    1381
+  ],
+  "productionActivation": false
+} as const satisfies EarendilPublishedCandidateAssessment;
+
+
+const EXPERIMENTAL_PICO3 = {
+  "version": "0.87.0",
+  "commit": "16787ad5b2dc748047f314ca1bfe7708f30f54f3",
+  "export": "@earendil-works/pi-agent-core/experimental/pico3",
+  "selection": "experimental_assessment_only",
+  "engine": ">=22.19.0",
+  "runtimeSha256": "ce575fbbbd66e9bcb67ff0b6be483c5baefd1750cb10adaa1d73aedb9d66eafe",
+  "declarationSha256": "1ef74b8615a31ec9eed49cfd9fa657b68958af82f1b6c480dfb40d65703a6d72",
+  "runtimeExports": 30,
+  "packedConsumer": {
+    "node": "22.19.0",
+    "bun": "1.4.1",
+    "runtimeImports": "pass",
+    "declarationProbe": "pass_with_declared_optional_mcp_peer",
+    "closureCaveat": "google_genai_optional_peer_required_for_strict_full_dependency_check"
+  },
+  "implementation": {
+    "durableCore": "conversations_entries_tasks_inputs_and_chord_documents",
+    "scheduler": "automatic_after_resume",
+    "storage": [
+      "MemoryStorage",
+      "JsonlStorage"
+    ],
+    "sqlite": "not_implemented",
+    "processOwnership": "one_process_per_storage",
+    "watch": "snapshot_plus_binding_local_revision_bounded_256",
+    "chordBridge": "implemented",
+    "designParity": "document_contains_proposed_unexported_shapes"
+  },
+  "testReceipt": {
+    "source": "tagged_v0_87_0_source_with_published_pi_ai_dist",
+    "runner": "vitest_4_1_9",
+    "files": 22,
+    "tests": 191,
+    "failures": 0
+  },
+  "authorities": {
+    "serviceWorkStore": "retained_piclaw",
+    "terminalSettlementStore": "retained_piclaw",
+    "serviceOutboxStore": "retained_piclaw",
+    "scheduledRunStore": "retained_piclaw",
+    "agentProjectionSink": "retained_piclaw"
+  },
+  "harnessCases": [
+    {
+      "id": "HC-001",
+      "status": "partial",
+      "evidence": "send/requestId persists one input and generation task before provider execution; terminal input/entry outcome is retained."
+    },
+    {
+      "id": "HC-002",
+      "status": "partial",
+      "evidence": "tool tasks persist the finalized call and replay checkpoint before invocation, then append one result and join through post_tools."
+    },
+    {
+      "id": "HC-003",
+      "status": "partial",
+      "evidence": "parallel tool tasks settle independently and post_tools joins their terminal outcomes in source-call order."
+    },
+    {
+      "id": "HC-004",
+      "status": "partial",
+      "evidence": "reopened safe tools replay only when persisted and current declarations both remain safe."
+    },
+    {
+      "id": "HC-005",
+      "status": "partial",
+      "evidence": "reopened unsafe tools synthesize an interrupted result and do not invoke the external tool again."
+    },
+    {
+      "id": "HC-006",
+      "status": "partial",
+      "evidence": "busy input with whenBusy=steer is durably queued and placed at a post-tools/final boundary."
+    },
+    {
+      "id": "HC-007",
+      "status": "partial",
+      "evidence": "busy follow-up input is durably queued and placed at an eligible final boundary."
+    },
+    {
+      "id": "HC-008",
+      "status": "unsupported",
+      "evidence": "The exported SendInput supports steer/followUp/reject only; no next-run queue mode is implemented."
+    },
+    {
+      "id": "HC-009",
+      "status": "partial",
+      "evidence": "task abort marks persist before invocation cancellation; scheduler joins run execution before the abort closure settles."
+    },
+    {
+      "id": "HC-010",
+      "status": "partial",
+      "evidence": "manual/threshold/overflow collapse uses durable tasks, captured prefixes, retries and atomic summary/head publication."
+    },
+    {
+      "id": "HC-011",
+      "status": "partial",
+      "evidence": "generation and collapse retries persist attempt policy, retry timestamp and attempt progression."
+    },
+    {
+      "id": "HC-012",
+      "status": "partial",
+      "evidence": "deferred provider handles and poll times are durable; reopen resumes polling and abort performs best-effort cancellation."
+    },
+    {
+      "id": "HC-013",
+      "status": "partial",
+      "evidence": "Memory/JSONL reopen restores pending/running tasks, documents, inputs and exact referenced entries without task-history folding."
+    },
+    {
+      "id": "HC-014",
+      "status": "partial",
+      "evidence": "atomicity, hardening and JSONL recovery tests reject malformed or incomplete committed state rather than repairing silently."
+    },
+    {
+      "id": "HC-015",
+      "status": "partial",
+      "evidence": "conversation scope checks, ownership subtrees, namespace tokens and one owning Session per Storage enforce in-process isolation."
+    },
+    {
+      "id": "HC-016",
+      "status": "partial",
+      "evidence": "suspend joins local invocations and closes storage without terminalizing durable tasks; reopen resumes them."
+    },
+    {
+      "id": "HC-017",
+      "status": "unsupported",
+      "evidence": "The published implementation auto-dispatches after resume(); it does not expose the explicit gated/manual drive contract required by HC-017."
+    },
+    {
+      "id": "HC-018",
+      "status": "partial",
+      "evidence": "typed hooks, snapshot-first watches, bounded buffering and commit-granular envelopes are implemented and tested."
+    },
+    {
+      "id": "HC-019",
+      "status": "partial",
+      "evidence": "provider/tool usage is persisted in strict-JSON entries and outcomes, but no independent UsageRow ledger/totals parity is proved."
+    },
+    {
+      "id": "HC-020",
+      "status": "partial",
+      "evidence": "deferred handles survive reopen with explicit polling and cancellation behavior."
+    },
+    {
+      "id": "HC-021",
+      "status": "unsupported",
+      "evidence": "Pico3 uses committed in-flight checkpoints and invocation leases but has no Gate.admit primitive or site-completeness evidence."
+    },
+    {
+      "id": "HC-022",
+      "status": "partial",
+      "evidence": "in-flight checkpoints distinguish unknown provider/tool/process outcomes and apply kind-specific retry, adoption or interruption policy."
+    },
+    {
+      "id": "HC-023",
+      "status": "partial",
+      "evidence": "one scheduler invocation claim owns each task in process; duplicate writable cross-process authority is outside the implementation."
+    },
+    {
+      "id": "HC-024",
+      "status": "unsupported",
+      "evidence": "No storage-version migration surface, SQLite backend or open-operation migration fault suite is exported."
+    },
+    {
+      "id": "HC-025",
+      "status": "partial",
+      "evidence": "Memory and JSONL history/reopen tests pass; SQLite, migration and cross-process host ownership are absent."
+    }
+  ],
+  "piclawCases": [
+    {
+      "id": "PC-001",
+      "status": "unverified",
+      "evidence": "Ordinary accepted message: Pico3 self-tests do not execute Piclaw ServiceWorkStore, TerminalSettlementStore, ServiceOutboxStore, ScheduledRunStore or AgentProjectionSink boundaries."
+    },
+    {
+      "id": "PC-002",
+      "status": "unverified",
+      "evidence": "Exact steer: Pico3 self-tests do not execute Piclaw ServiceWorkStore, TerminalSettlementStore, ServiceOutboxStore, ScheduledRunStore or AgentProjectionSink boundaries."
+    },
+    {
+      "id": "PC-003",
+      "status": "unverified",
+      "evidence": "Stale steer: Pico3 self-tests do not execute Piclaw ServiceWorkStore, TerminalSettlementStore, ServiceOutboxStore, ScheduledRunStore or AgentProjectionSink boundaries."
+    },
+    {
+      "id": "PC-004",
+      "status": "unverified",
+      "evidence": "Exact cancellation: Pico3 self-tests do not execute Piclaw ServiceWorkStore, TerminalSettlementStore, ServiceOutboxStore, ScheduledRunStore or AgentProjectionSink boundaries."
+    },
+    {
+      "id": "PC-005",
+      "status": "unverified",
+      "evidence": "Stale cancellation: Pico3 self-tests do not execute Piclaw ServiceWorkStore, TerminalSettlementStore, ServiceOutboxStore, ScheduledRunStore or AgentProjectionSink boundaries."
+    },
+    {
+      "id": "PC-006",
+      "status": "unverified",
+      "evidence": "Late completion after cancellation: Pico3 self-tests do not execute Piclaw ServiceWorkStore, TerminalSettlementStore, ServiceOutboxStore, ScheduledRunStore or AgentProjectionSink boundaries."
+    },
+    {
+      "id": "PC-007",
+      "status": "unverified",
+      "evidence": "Terminal commit fault matrix: Pico3 self-tests do not execute Piclaw ServiceWorkStore, TerminalSettlementStore, ServiceOutboxStore, ScheduledRunStore or AgentProjectionSink boundaries."
+    },
+    {
+      "id": "PC-008",
+      "status": "unverified",
+      "evidence": "Restart with open run: Pico3 self-tests do not execute Piclaw ServiceWorkStore, TerminalSettlementStore, ServiceOutboxStore, ScheduledRunStore or AgentProjectionSink boundaries."
+    },
+    {
+      "id": "PC-009",
+      "status": "unverified",
+      "evidence": "Pending steer restart: Pico3 self-tests do not execute Piclaw ServiceWorkStore, TerminalSettlementStore, ServiceOutboxStore, ScheduledRunStore or AgentProjectionSink boundaries."
+    },
+    {
+      "id": "PC-010",
+      "status": "unverified",
+      "evidence": "Protected hand-off: Pico3 self-tests do not execute Piclaw ServiceWorkStore, TerminalSettlementStore, ServiceOutboxStore, ScheduledRunStore or AgentProjectionSink boundaries."
+    },
+    {
+      "id": "PC-011",
+      "status": "unverified",
+      "evidence": "Mutation containment: Pico3 self-tests do not execute Piclaw ServiceWorkStore, TerminalSettlementStore, ServiceOutboxStore, ScheduledRunStore or AgentProjectionSink boundaries."
+    },
+    {
+      "id": "PC-012",
+      "status": "unverified",
+      "evidence": "Scheduler agent task: Pico3 self-tests do not execute Piclaw ServiceWorkStore, TerminalSettlementStore, ServiceOutboxStore, ScheduledRunStore or AgentProjectionSink boundaries."
+    },
+    {
+      "id": "PC-013",
+      "status": "unverified",
+      "evidence": "Scheduler shell task: Pico3 self-tests do not execute Piclaw ServiceWorkStore, TerminalSettlementStore, ServiceOutboxStore, ScheduledRunStore or AgentProjectionSink boundaries."
+    },
+    {
+      "id": "PC-014",
+      "status": "unverified",
+      "evidence": "Stale SSE generation: Pico3 self-tests do not execute Piclaw ServiceWorkStore, TerminalSettlementStore, ServiceOutboxStore, ScheduledRunStore or AgentProjectionSink boundaries."
+    },
+    {
+      "id": "PC-015",
+      "status": "unverified",
+      "evidence": "Mobile Abort: Pico3 self-tests do not execute Piclaw ServiceWorkStore, TerminalSettlementStore, ServiceOutboxStore, ScheduledRunStore or AgentProjectionSink boundaries."
+    },
+    {
+      "id": "PC-016",
+      "status": "unverified",
+      "evidence": "Protected evidence: Pico3 self-tests do not execute Piclaw ServiceWorkStore, TerminalSettlementStore, ServiceOutboxStore, ScheduledRunStore or AgentProjectionSink boundaries."
+    },
+    {
+      "id": "PC-017",
+      "status": "unverified",
+      "evidence": "Maintenance failure: Pico3 self-tests do not execute Piclaw ServiceWorkStore, TerminalSettlementStore, ServiceOutboxStore, ScheduledRunStore or AgentProjectionSink boundaries."
+    },
+    {
+      "id": "PC-018",
+      "status": "unverified",
+      "evidence": "Trusted internal input: Pico3 self-tests do not execute Piclaw ServiceWorkStore, TerminalSettlementStore, ServiceOutboxStore, ScheduledRunStore or AgentProjectionSink boundaries."
+    },
+    {
+      "id": "PC-019",
+      "status": "unverified",
+      "evidence": "Cross-session steer: Pico3 self-tests do not execute Piclaw ServiceWorkStore, TerminalSettlementStore, ServiceOutboxStore, ScheduledRunStore or AgentProjectionSink boundaries."
+    },
+    {
+      "id": "PC-020",
+      "status": "unverified",
+      "evidence": "Goal/checkpoint race: Pico3 self-tests do not execute Piclaw ServiceWorkStore, TerminalSettlementStore, ServiceOutboxStore, ScheduledRunStore or AgentProjectionSink boundaries."
+    }
+  ],
+  "recommendation": {
+    "disposableSpike": "go",
+    "productionAdoption": "no_go",
+    "reason": "missing_piclaw_boundary_evidence_sqlite_host_fencing_and_api_stability"
+  },
+  "productionImport": false,
+  "productionActivation": false
+} as const satisfies EarendilPico3ExperimentalAssessment;
+
+
 const RAW_MANIFEST = {
-  schemaVersion: 3,
+  schemaVersion: 5,
   authority: { currentRuntimeVersion: "0.85.1", harnessActivation: "latent_only", unsupportedCountsAsPass: false },
   historical: HISTORICAL_MANIFEST,
   selected: SELECTED_RELEASE,
+  publishedCandidate: PUBLISHED_CANDIDATE,
+  experimentalPico3: EXPERIMENTAL_PICO3,
 } as const satisfies EarendilHarnessCompatibilityManifest;
 
 const CANONICAL_MANIFEST = deepFreeze(RAW_MANIFEST);

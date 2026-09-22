@@ -1,3 +1,4 @@
+import { readSessionPickerPreferences, togglePinnedSessionChatJid, SESSION_PICKER_PREFERENCES_EVENT } from '../../../../../src/ui/session-picker-preferences';
 import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { getChatJid, persistChatJid } from "../api/chat-jid";
 import { updateActiveSessionHandle } from "../api/agent-identity";
@@ -26,6 +27,8 @@ function statusTone(entry: SessionEntry, activeChatJid: string): "current" | "ac
 
 export function SessionPill() {
   const [isOpen, setIsOpen] = useState(false);
+  const [pins,setPins] = useState(() => readSessionPickerPreferences().pinnedChatJids);
+  useEffect(() => {const refresh = () => setPins(readSessionPickerPreferences().pinnedChatJids);window.addEventListener(SESSION_PICKER_PREFERENCES_EVENT,refresh);window.addEventListener('storage',refresh);return () => {window.removeEventListener(SESSION_PICKER_PREFERENCES_EVENT,refresh);window.removeEventListener('storage',refresh);};}, []);
   const [sessions, setSessions] = useState<SessionEntry[]>([]);
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [actionBusy, setActionBusy] = useState<string | null>(null);
@@ -188,14 +191,14 @@ export function SessionPill() {
             {status === "loading" && <div className="session-pill__empty">Loading sessions…</div>}
             {status === "error" && <div className="session-pill__empty">Failed to load sessions.</div>}
             {status === "idle" && sessions.length === 0 && <div className="session-pill__empty">No sessions</div>}
-            {status === "idle" && sessions.map((entry) => {
+            {status === "idle" && [...sessions].sort((a,b) => Number(b.jid === activeChatJid)-Number(a.jid === activeChatJid) || Number(pins.includes(b.jid) && !b.archived)-Number(pins.includes(a.jid) && !a.archived)).map((entry) => {
               const tone = statusTone(entry, activeChatJid);
               const isCurrent = tone === "current";
 
               return (
+                <div key={entry.jid} className="session-pill__row">
                 <button
                   type="button"
-                  key={entry.jid}
                   className={`session-pill__item${isCurrent ? " session-pill__item--active" : ""}${tone === "archived" ? " session-pill__item--archived" : ""}`}
                   onClick={() => {
                     setIsOpen(false);
@@ -256,6 +259,8 @@ export function SessionPill() {
                     </>
                   )}
                 </button>
+                {!entry.archived && <button type="button" className="session-pill__pin" aria-label={`${pins.includes(entry.jid)?'Unpin':'Pin'} session ${chatName(entry)}`} aria-pressed={pins.includes(entry.jid)} onClick={(e)=>{e.stopPropagation();setPins(togglePinnedSessionChatJid(entry.jid).pinnedChatJids);}}><i className={`codicon codicon-${pins.includes(entry.jid)?'pinned':'pin'}`} aria-hidden="true"/></button>}
+                </div>
               );
             })}
           </div>

@@ -1,8 +1,8 @@
+import { workspaceChartColor } from "../../../../../../src/ui/workspace-chart-colors";
 import { useState, useCallback, useRef, useEffect } from "preact/hooks";
 import type { TreeNode } from "../../components/FileTree";
 import {
   buildFolderChartSegments,
-  DOT_COLORS,
   type ChildInfo,
   type FolderChartSegment,
 } from "../workspace-panel-helpers";
@@ -32,15 +32,6 @@ interface SunburstNode {
   type: "dir" | "file";
   size: number | null;
   children?: SunburstNode[];
-}
-
-function nameHash(name: string): number {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < name.length; i++) {
-    h ^= name.charCodeAt(i);
-    h = (h * 0x01000193) >>> 0;
-  }
-  return h;
 }
 
 function polarToCartesian(cx: number, cy: number, r: number, angleDeg: number) {
@@ -99,7 +90,7 @@ function buildArcSegments(
   ring: number,
   startAngle: number,
   endAngle: number,
-  parentHue?: number
+  parentPath?: string
 ): ArcSegment[] {
   if (ring >= RING_SPECS.length) return [];
   const { innerR, outerR } = RING_SPECS[ring];
@@ -127,9 +118,8 @@ function buildArcSegments(
       continue;
     }
     const segEnd = angle + segRange;
-    const hue = ring === 0 ? nameHash(node.name) % 360 : (parentHue ?? nameHash(node.name) % 360);
-    const lightness = ring === 0 ? 58 : ring === 1 ? 46 : 36;
-    const color = `hsl(${hue}, 68%, ${lightness}%)`;
+    const branchPath = parentPath || node.path;
+    const color = workspaceChartColor(branchPath, ring);
 
     segments.push({
       d: describeArc(SB_CX, SB_CY, innerR, outerR, angle, segEnd),
@@ -140,7 +130,7 @@ function buildArcSegments(
     });
 
     if (node.children?.length) {
-      segments.push(...buildArcSegments(node.children, ring + 1, angle, segEnd, hue));
+      segments.push(...buildArcSegments(node.children, ring + 1, angle, segEnd, branchPath));
     }
 
     angle = segEnd + GAP_DEG;
@@ -169,7 +159,7 @@ function SunburstChart({ root, totalSize }: SunburstChartProps) {
             cy={SB_CY}
             r={(spec.innerR + spec.outerR) / 2}
             fill="none"
-            stroke="rgba(255,255,255,0.04)"
+            stroke="var(--border-color)"
             strokeWidth={spec.outerR - spec.innerR}
           />
         ))}
@@ -179,7 +169,7 @@ function SunburstChart({ root, totalSize }: SunburstChartProps) {
             key={i}
             d={arc.d}
             fill={arc.color}
-            stroke="rgba(0,0,0,0.35)"
+            stroke="var(--bg-primary)"
             strokeWidth="0.6"
             opacity="0.92"
           >
@@ -187,7 +177,7 @@ function SunburstChart({ root, totalSize }: SunburstChartProps) {
           </path>
         ))}
         {/* Center circle */}
-        <circle cx={SB_CX} cy={SB_CY} r="35" fill="rgba(20,20,30,0.88)" />
+        <circle cx={SB_CX} cy={SB_CY} r="35" fill="var(--bg-secondary)" />
         {/* Center text — use foreignObject for reliable centering */}
         <foreignObject x={SB_CX - 35} y={SB_CY - 18} width="70" height="36">
           <div className="workspace__sunburst-center">
@@ -479,18 +469,18 @@ export function FolderPreview({ node, onMutate }: FolderPreviewProps) {
 
           {viewMode === "list" ? (
             <div className="workspace__folder-breakdown">
-              {visible.map((child, i) => {
+              {visible.map((child) => {
                 const pct = total > 0 && child.size !== null
                   ? ((child.size / total) * 100).toFixed(0)
                   : null;
-                const color = DOT_COLORS[i % DOT_COLORS.length];
+                const color = workspaceChartColor(child.path);
                 return (
                   <div key={child.path} className="workspace__folder-breakdown-item">
                     <svg className="workspace__folder-breakdown-dot" viewBox="0 0 8 8" aria-hidden="true">
                       <circle cx="4" cy="4" r="4" fill={color} />
                     </svg>
                     <span className="workspace__folder-breakdown-name" title={child.name}>
-                      {child.type === "dir" ? "📁 " : ""}{child.name}
+                      {child.type === "dir" && <span className="codicon codicon-folder workspace__folder-icon" aria-hidden="true"/>}{child.name}
                     </span>
                     <span className={`workspace__folder-breakdown-size${child.type === "dir" ? " workspace__folder-breakdown-size--dir" : ""}`}>
                       {child.size !== null ? formatBytes(child.size) : "—"}
@@ -521,7 +511,7 @@ export function FolderPreview({ node, onMutate }: FolderPreviewProps) {
                 <>
                   <div className="workspace__folder-chart">
                     <svg viewBox="0 0 120 120" aria-label="Folder size chart">
-                      <circle cx="60" cy="60" r="44" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="18" />
+                      <circle cx="60" cy="60" r="44" fill="none" stroke="var(--border-color)" strokeWidth="18" />
                       {chartSegments.map((segment, index) => renderChartSegment(segment, index, chartSegments))}
                     </svg>
                     <div className="workspace__folder-chart-center">

@@ -82,5 +82,7 @@ export function togglePinnedSessionChatJid(
   const pinned = new Set(current.pinnedChatJids);
   if (pinned.has(normalizedChatJid)) pinned.delete(normalizedChatJid);
   else pinned.add(normalizedChatJid);
-  return writeSessionPickerPreferences({ pinnedChatJids: Array.from(pinned) }, runtime);
+  const next = writeSessionPickerPreferences({ pinnedChatJids: Array.from(pinned) }, runtime);
+  runtime?.dispatchEvent?.(new CustomEvent('piclaw:picker-pin-write', {detail:{kind:'session',key:normalizedChatJid,pinned:pinned.has(normalizedChatJid)}}));
+  return next;
 }

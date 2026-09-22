@@ -1,15 +1,10 @@
+import { workspaceChartColor } from "../../../../../src/ui/workspace-chart-colors";
 const CODE_EXTS = new Set([
   "ts", "tsx", "js", "jsx", "json", "css", "html", "py", "sh",
   "yaml", "yml", "toml", "txt", "xml", "env", "ini", "conf", "scss",
 ]);
 const MARKDOWN_EXTS = new Set(["md", "mdx"]);
 const IMAGE_EXTS = new Set(["png", "jpg", "jpeg", "gif", "webp", "svg"]);
-
-export const DOT_COLORS = [
-  "#4fc1ff", "#a8cc8c", "#f4b942", "#e06c75",
-  "#c678dd", "#56b6c2", "#e5c07b", "#61afef",
-  "#98c379", "#e06c75",
-];
 
 export interface ChildInfo {
   name: string;
@@ -88,7 +83,7 @@ export function buildFolderChartSegments(
   const remainder = sorted.slice(top.length).reduce((sum, child) => sum + (child.size ?? 0), 0);
 
   const segments: FolderChartSegment[] = top.map((child, index) => ({
-    color: DOT_COLORS[index % DOT_COLORS.length],
+    color: workspaceChartColor(child.path),
     label: child.type === "dir" ? `📁 ${child.name}` : child.name,
     pct: ((child.size ?? 0) / total) * 100,
     size: child.size ?? 0,
@@ -97,7 +92,7 @@ export function buildFolderChartSegments(
 
   if (remainder > 0) {
     segments.push({
-      color: "rgba(255,255,255,0.28)",
+      color: "var(--text-secondary)",
       label: "Other",
       pct: (remainder / total) * 100,
       size: remainder,

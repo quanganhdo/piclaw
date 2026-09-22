@@ -113,7 +113,9 @@ export function togglePinnedModelKey(
   const pinned = new Set(current.pinnedKeys);
   if (pinned.has(normalizedKey)) pinned.delete(normalizedKey);
   else pinned.add(normalizedKey);
-  return writeModelCataloguePreferences({ ...current, pinnedKeys: Array.from(pinned) }, runtime);
+  const next = writeModelCataloguePreferences({ ...current, pinnedKeys: Array.from(pinned) }, runtime);
+  runtime?.dispatchEvent?.(new CustomEvent('piclaw:picker-pin-write', {detail:{kind:'model',key:normalizedKey,pinned:pinned.has(normalizedKey)}}));
+  return next;
 }
 
 export function recordRecentModelKey(

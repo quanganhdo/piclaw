@@ -4,6 +4,8 @@ import { HighlightPopup } from "./HighlightPopup";
 import { serializeSelection, applyHighlights, clearHighlights, HIGHLIGHT_COLORS, type HighlightRange } from "../../utils/highlight-serializer";
 import { ImageLightbox } from "../ImageLightbox";
 import { AttachmentChip } from "../AttachmentChip";
+import { MediaAttachment } from "../MediaAttachment";
+import { resolveAudioContentType } from "../../../../../../../src/utils/audio-media.js";
 import { DelimitedTable } from "./DelimitedTable";
 import { isDelimitedFile } from "../../utils/delimited-preview";
 import { renderMarkdown } from "../../utils/markdown-pipeline";
@@ -455,10 +457,19 @@ export function MessageItem({
         {!isUser && contentBlocks.some((b: Record<string, unknown>) => b.type === "file") && (
           <div className="message-list__attachments">
             {contentBlocks
-              .filter((b: Record<string, unknown>) => b.type === "file")
+              // The producer pairs media_ids with image AND file blocks in order.
+              .filter((b: Record<string, unknown>) => b.type === "file" || b.type === "image")
               .map((b: Record<string, unknown>, i: number) => {
                 const filename = String(b.filename ?? b.name ?? "file");
                 const mediaId = interaction.media_ids?.[i];
+                if (b.type === "image") {
+                  return mediaId ? <img key={mediaId} className="message-list__media-img" src={`/media/${mediaId}`} alt={filename}
+                    loading="lazy" onClick={() => setLightboxSrc(`/media/${mediaId}`)} /> : null;
+                }
+                const contentType = String(b.mime_type ?? b.content_type ?? "");
+                if (mediaId && resolveAudioContentType(contentType, filename)) {
+                  return <AttachmentChip key={mediaId} mediaId={mediaId} filename={filename} contentType={contentType} />;
+                }
                 return (
                   <>
                   <span key={i} className="attachment-chip">
@@ -588,13 +599,7 @@ export function MessageItem({
         {interaction.media_ids && interaction.media_ids.length > 0 && !contentBlocks.some((b: Record<string, unknown>) => b.type === "file") && (
           <div className="message-list__media" onClick={handleContentClick}>
             {interaction.media_ids.map((id) => (
-              <img
-                key={id}
-                className="message-list__media-img"
-                src={`/media/${id}`}
-                alt="attachment"
-                loading="lazy"
-              />
+              <MediaAttachment key={id} mediaId={id} />
             ))}
           </div>
         )}

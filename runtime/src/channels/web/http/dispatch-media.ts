@@ -16,7 +16,7 @@ export interface MediaDispatchChannel extends MediaResponseContext {
   /** Optional override for POST `/media/upload` requests. */
   handleMediaUpload?(req: Request): Promise<Response>;
   /** Optional override for GET `/media/:id` and thumbnail binary routes. */
-  handleMedia?(id: number, thumbnail: boolean): Response;
+  handleMedia?(id: number, thumbnail: boolean, req?: Request): Response;
   /** Optional override for GET `/media/:id/info` metadata route. */
   handleMediaInfo?(id: number): Response;
 }
@@ -37,10 +37,10 @@ export async function handleMediaRoutes(
     return await (channel.handleMediaUpload?.(req) ?? handleMediaUpload(channel, req));
   }
 
-  if (req.method === "GET" && pathname.startsWith("/media/") && pathname.endsWith("/thumbnail")) {
+  if ((req.method === "GET" || req.method === "HEAD") && pathname.startsWith("/media/") && pathname.endsWith("/thumbnail")) {
     const id = channel.parseOptionalInt(pathname.replace("/media/", "").replace("/thumbnail", ""));
     if (!id) return channel.json({ error: "Media not found" }, 404);
-    return channel.handleMedia?.(id, true) ?? handleMedia(channel, id, true);
+    return channel.handleMedia?.(id, true, req) ?? handleMedia(channel, id, true, req);
   }
 
   if (req.method === "GET" && pathname.startsWith("/media/") && pathname.endsWith("/info")) {
@@ -49,10 +49,10 @@ export async function handleMediaRoutes(
     return channel.handleMediaInfo?.(id) ?? handleMediaInfo(channel, id);
   }
 
-  if (req.method === "GET" && pathname.startsWith("/media/")) {
+  if ((req.method === "GET" || req.method === "HEAD") && pathname.startsWith("/media/")) {
     const id = channel.parseOptionalInt(pathname.replace("/media/", ""));
     if (!id) return channel.json({ error: "Media not found" }, 404);
-    return channel.handleMedia?.(id, false) ?? handleMedia(channel, id, false);
+    return channel.handleMedia?.(id, false, req) ?? handleMedia(channel, id, false, req);
   }
 
   return null;

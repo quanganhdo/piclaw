@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "hashes": {
+    "corpus.json": "46e0f5e112cd711e4f28c32133d4ff05562597bb63da7d2f6b600b8b03ae5bca",
+    "notes/atlas.md": "6f8bb483add2b382db5a2a369abbad9253e7286368c9c94aa19fef1c1891364c",
+    "notes/cedar-current.md": "1ac7faeb32c34c60728d310278081e64e4cd5aab00424f50b11a1c061b803885",
+    "notes/cedar-old.md": "c712365dea93fba6f7318c9be116eeae1c00a12746ffbb2f259f5655b180e098",
+    "notes/chronology.md": "2660c5509698c8b852fe7ec4ddbfecb8ea0af25e6526c22fd00deb618236edcf",
+    "notes/decisions.md": "adab88417b9ebbdf084b1958f4211667c727ee79ba863d6eb8a29911c137a050",
+    "notes/duplicate-headings.md": "bedb72539a7f687e34378202229a9f05c0cc5fdf8ea385bc2fceb72075788ff2",
+    "notes/harbor.md": "b478bf5b048fe8c3b9c98a92a45b3660d4562d953bedb9c36e304917b554cfd8",
+    "notes/identifiers.md": "c2fcc66b19141bdccc7645170aa8421be82c9a366c42aeb74e523521c277b87b",
+    "notes/long-notebook.md": "99ac0791de0aff5694c3a4227878cd03382ef71004ac8e7f8e3f726c8fbc9e18",
+    "notes/noise.md": "c705bb8b13f77fc1a2f156b97768ac463ebd04dd8d380ec7f0708367cceb78f0",
+    "notes/preferences.md": "52024843664cfde8852488fbc443f6c376dbc9044a6453c4cb0df3b38b52c71f",
+    "notes/unicode-crlf.md": "058d6314a9a15f2925d103fa05077b793dcaa939921523a41e77c0c4a4ec54e2"
+  }
+}

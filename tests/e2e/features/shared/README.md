@@ -16,3 +16,11 @@ Import `tests/e2e/features/shared/**/*.feature` together with either the Classic
 - An eight-entry cache holds at most 2 MiB of estimated UTF-16 strings (input plus result). No DOM nodes are cached. Repeated unchanged valid/invalid SVG avoids XML parsing; large entries evict old entries. Ordinary messages take a fast path.
 
 Source-only tests from #1324 are replaced by desired rendering tests. No server process, network service or new runtime dependency performs validation.
+
+## Theme palettes
+
+`theme-palettes.feature` defines six shared palette/mode/Monokai/glow/import/terminal
+scenarios. Executable coverage is in `runtime/test/web/shared-themes.test.ts` and
+`runtime/test/web/shared-themes.playwright.optional.test.ts`; the latter mounts
+actual Appearance components and xterm against disposable fixture APIs/sockets.
+These scenarios do not change a live instance theme.

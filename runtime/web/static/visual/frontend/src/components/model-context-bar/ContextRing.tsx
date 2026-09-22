@@ -21,7 +21,7 @@ export function ContextRing({ tokens, contextWindow, onClick }: ContextRingProps
       tabIndex={0}
       onClick={onClick}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onClick(e); } }}
-      title={`Context: ${tokensK}/${totalK} (${p.toFixed(0)}%) \u2014 click to compact`}
+      title={`Context: ${tokensK} / ${totalK} tokens (${p.toFixed(0)}%)\nCompact context`}
     >
       <svg width="12" height="12" viewBox="0 0 12 12">
         <circle cx="6" cy="6" r="5" fill={color} opacity="0.9" />

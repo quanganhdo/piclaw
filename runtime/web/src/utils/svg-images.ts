@@ -1,3 +1,4 @@
+import { readSvgPalette, type SvgPalette, type SvgSurface } from '../ui/svg-theme.js';
 /** Bounded, deliberately small SVG image subset. Never insert model SVG into the host DOM. */
 export const SVG_IMAGE_LIMITS = Object.freeze({ bytes: 256 * 1024, nodes: 2048, depth: 32, dimension: 2048 });
 const NS = 'http://www.w3.org/2000/svg';
@@ -64,24 +65,26 @@ const CACHE_ENTRIES = 8;
 const CACHE_BYTES = 2 * 1024 * 1024;
 let cacheBytes = 0;
 
-export function sanitizeSvgImage(source: string): SvgImage | null {
+export function sanitizeSvgImage(source: string, surface: SvgSurface = 'theme'): SvgImage | null {
   if (source.length > SVG_IMAGE_LIMITS.bytes) return null;
-  const hit = cache.get(source);
-  if (hit) { cache.delete(source); cache.set(source, hit); return hit.image; }
-  const image = parseSvgImage(source);
-  const size = 2 * (source.length + (image?.src.length || 0) + (image?.label.length || 0));
+  const palette = readSvgPalette(surface);
+  const key = JSON.stringify(palette) + source;
+  const hit = cache.get(key);
+  if (hit) { cache.delete(key); cache.set(key, hit); return hit.image; }
+  const image = parseSvgImage(source, palette);
+  const size = 2 * (key.length + (image?.src.length || 0) + (image?.label.length || 0));
   if (size <= CACHE_BYTES) {
     while (cache.size >= CACHE_ENTRIES || cacheBytes + size > CACHE_BYTES) {
       const oldest = cache.keys().next().value!;
       cacheBytes -= cache.get(oldest)!.size;
       cache.delete(oldest);
     }
-    cache.set(source, { image, size }); cacheBytes += size;
+    cache.set(key, { image, size }); cacheBytes += size;
   }
   return image;
 }
 
-function parseSvgImage(source: string): SvgImage | null {
+function parseSvgImage(source: string, palette: SvgPalette): SvgImage | null {
   // Check cheap code-unit bound before allocating encoded bytes or invoking XML parsing.
   if (source.length > SVG_IMAGE_LIMITS.bytes || new TextEncoder().encode(source).byteLength > SVG_IMAGE_LIMITS.bytes) return null;
   if (/<!\s*(?:DOCTYPE|ENTITY)|<\?/i.test(source)) return null;
@@ -113,7 +116,12 @@ function parseSvgImage(source: string): SvgImage | null {
     const definition = inDefinition || ['defs', 'clipPath', 'linearGradient', 'radialGradient'].includes(input.localName);
     for (const attr of Array.from(input.attributes)) {
       if (attr.namespaceURI || attr.prefix) continue;
-      const name = attr.name, value = attr.value.trim();
+      const name = attr.name;
+      let value = attr.value.trim();
+      if (['fill','stroke','color','stop-color'].includes(name)) {
+        const token = value.match(/^var\(--svg-(background|foreground|muted|accent|border|surface|success|warning|danger)\)$/);
+        if (token) value = palette[token[1] as keyof SvgPalette];
+      }
       if (!safeAttribute(name, value)) continue;
       const ref = value.match(FRAGMENT);
       if (ref) {
@@ -142,6 +150,8 @@ function parseSvgImage(source: string): SvgImage | null {
     if (!(ref.name === 'clip-path' ? tag === 'clipPath' : tag === 'linearGradient' || tag === 'radialGradient')) ref.element.removeAttribute(ref.name);
   }
   const clean = output.documentElement;
+  if (!clean.hasAttribute('color')) clean.setAttribute('color', palette.foreground);
+  if (!clean.hasAttribute('fill')) clean.setAttribute('fill', 'currentColor');
   const box = numbers(clean.getAttribute('viewBox') || '');
   const dimension = (name: string, fallback: number) => {
     const raw = clean.getAttribute(name)?.replace(/px$/, '') || '';
@@ -194,7 +204,7 @@ export function renderSvgFences(
     replacements.push(options.sanitize === false && end < lines.length
       ? source
       : image
-        ? `<div class="model-svg-block"><img class="model-svg-image" src="${image.src}" alt="${escapeSvgSource(image.label)}"><details class="model-svg-source"><summary>SVG source</summary>${code}</details></div>`
+        ? `<div class="model-svg-block" data-svg-surface="theme"><div class="model-svg-controls"><label>SVG background <select class="model-svg-surface" aria-label="SVG background"><option value="theme">Theme</option><option value="light">Light</option><option value="dark">Dark</option></select></label></div><img class="model-svg-image" src="${image.src}" alt="${escapeSvgSource(image.label)}"><details class="model-svg-source"><summary>SVG source</summary>${code}</details></div>`
         : code);
     i = end; last = end + 1; fence = null;
   }
@@ -204,4 +214,24 @@ export function renderSvgFences(
   // Unpredictable markers cannot collide with model text or raw-HTML attributes.
   const html = renderMarkdown(output.join(''));
   return html.replace(new RegExp(`(?:<p>)?${prefix}(\\d+)END(?:<\\/p>)?`, 'g'), (_match, index) => replacements[Number(index)]);
+}
+
+/** Host-created controls only. Read source from the existing exact-copy block;
+ * never inject model SVG into host DOM, even when changing preview surfaces. */
+export function bindSvgImageThemes(container:HTMLElement):()=>void {
+  const blocks=Array.from(container.querySelectorAll<HTMLElement>('.model-svg-block'));
+  if(!blocks.length)return()=>{};
+  const refresh=(block:HTMLElement)=>{
+    const surface=block.dataset.svgSurface as SvgSurface;
+    const image=block.querySelector<HTMLImageElement>('.model-svg-image');
+    const code=block.querySelector<HTMLElement>('[data-svg-source], .code-block__copy[data-code]');
+    if(!image||!code)return;
+    const next=sanitizeSvgImage(decodeSvgSource(code.dataset.svgSource||code.dataset.code||''),surface);
+    if(next&&image.getAttribute('src')!==next.src)image.src=next.src;
+  };
+  const onTheme=()=>blocks.forEach(block=>{if(block.dataset.svgSurface==='theme')refresh(block);});
+  const onChange=(event:Event)=>{const select=event.target as HTMLSelectElement;if(!select?.matches('.model-svg-surface'))return;const block=select.closest<HTMLElement>('.model-svg-block');if(!block||!['theme','light','dark'].includes(select.value))return;block.dataset.svgSurface=select.value;refresh(block);};
+  container.addEventListener('change',onChange);window.addEventListener('piclaw-theme-change',onTheme);
+  onTheme();
+  return()=>{container.removeEventListener('change',onChange);window.removeEventListener('piclaw-theme-change',onTheme);};
 }

@@ -1,3 +1,4 @@
+import { bindSvgImageThemes } from '../utils/svg-images.js';
 import { html, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from '../vendor/preact-htm.js';
 import { useTranslation } from '../utils/i18n.js';
 import { getMediaInfo, getMediaUrl, getThumbnailUrl, submitAdaptiveCardAction } from '../api.js';
@@ -248,13 +249,14 @@ export function formatAgentTokenStats(usage) {
     const cacheWrite = readUsageNumber(usage, 'cache_write_tokens');
     const total = readUsageNumber(usage, 'total_tokens') || input + output + cacheRead + cacheWrite;
     if (!total && !input && !output && !reasoning && !cacheRead && !cacheWrite) return null;
-    const lines = [`Tokens: ${formatCount(total)} total`];
-    if (input) lines.push(`Input: ${formatCount(input)}`);
-    if (output) lines.push(`Output: ${formatCount(output)}`);
-    if (reasoning) lines.push(`Reasoning: ${formatCount(reasoning)}`);
-    if (cacheRead) lines.push(`Cache read: ${formatCount(cacheRead)}`);
-    if (cacheWrite) lines.push(`Cache write: ${formatCount(cacheWrite)}`);
-    return lines.join('\n');
+    const totals = [`Tokens: ${formatCount(total)} total`];
+    if (input) totals.push(`Input: ${formatCount(input)}`);
+    if (output) totals.push(`Output: ${formatCount(output)}`);
+    const details = [];
+    if (reasoning) details.push(`Reasoning: ${formatCount(reasoning)}`);
+    if (cacheRead) details.push(`Cache read: ${formatCount(cacheRead)}`);
+    if (cacheWrite) details.push(`Cache write: ${formatCount(cacheWrite)}`);
+    return [totals.join(' · '), details.join(' · ')].filter(Boolean).join('\n');
 }
 
 function readUsageCost(usage, key) {
@@ -279,7 +281,7 @@ export function buildPostTimeTooltip(post, timingBlock = extractAgentTimingBlock
     const sent = formatTimestamp(post?.timestamp);
     const parts = [`Sent ${sent}`];
     const duration = formatAgentReplyDuration(timingBlock?.duration_ms);
-    if (duration) parts.push(`Agent reply took ${duration}`);
+    if (duration) parts[0] += ` · Agent reply took ${duration}`;
     const tokenStats = formatAgentTokenStats(timingBlock?.usage);
     if (tokenStats) parts.push(tokenStats);
     const cost = formatAgentCost(timingBlock?.usage);
@@ -1120,7 +1122,7 @@ function enhanceCodeBlocks(container) {
     if (blocks.length === 0) return () => {};
 
     const resetTimers = new Map();
-    const cleanups = [];
+    const cleanups = [bindSvgImageThemes(container)];
 
     const handleDocumentCopy = (event) => {
         const selection = window.getSelection?.();

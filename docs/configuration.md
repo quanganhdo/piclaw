@@ -106,7 +106,7 @@ Bootstrap environment variables are reviewed as an allowlist in the inventory. T
 
 ### Timeline SVG sanitization
 
-`domains.web.sanitizeSvgFences` controls rendering of fenced `svg` blocks in timeline Markdown for the whole instance. It defaults to `true`: Piclaw accepts a bounded, conservative SVG subset and renders it as a static image, preserving the original source in a disclosure. This prevents model-provided SVG from executing or interacting with the host page.
+`domains.web.sanitizeSvgFences` controls rendering of fenced `svg` blocks in timeline Markdown for the whole instance. It defaults to `true`: Piclaw accepts a bounded, conservative SVG subset and renders it as a static image, preserving the original source in a disclosure. This prevents model-provided SVG from executing or interacting with the host page. Unstyled fills and `currentColor` use the selected palette; Theme/Light/Dark preview surfaces preserve explicit source paints. See [SVG theme alignment](svg-theme-alignment.md) for supported paint tokens and viewer limits.
 
 Set it to `false` only when you trust the authors of timeline SVG and require interactive SVG content such as tooltips, click handlers, links, or authored CSS. In that mode, complete fenced SVG source is inserted inline after Markdown rendering, so its interactive markup runs with the authority available to the PiClaw page. Reload open browser tabs after changing this setting; messages then render consistently under the new instance policy.
 

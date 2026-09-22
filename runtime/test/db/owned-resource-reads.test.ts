@@ -101,3 +101,27 @@ test("HTTP media and transcript reads are no-store and cannot be redirected by f
   expect((await req("/agent/branch-download")).status).toBe(403);
   expect((await req(`/agent/branch-download?chat_jid=${bob.homeChatJid}`)).status).toBe(403);
 });
+
+
+test("HTTP media Range and HEAD authorise before exposing bytes or size", async () => {
+  const json = (body: unknown, status = 200) => Response.json(body, { status });
+  const gateway = new WebAuthGateway({ accessMode: "family-shared", passkeyMode: "", totpSecret: "", internalSecret: "secret", hasTls: true, sessionTtlSeconds: 3600 }, { json, challenges: new WebauthnChallengeTracker(), failureTracker: new TotpFailureTracker() });
+  const router = new RequestRouterService({ json, authGateway: gateway } as any, "family-shared");
+  const mine = media(alice.homeChatJid!, "audio/wav"), foreign = media(bob.homeChatJid!, "audio/wav");
+  const req = (id: number, method: string) => router.handle(new Request(`https://family.local/media/${id}?chat_jid=${alice.homeChatJid}&owner=${alice.userId}`, { method, headers: { cookie: `piclaw_session=token-${alice.userId}`, Range: "bytes=1-2" } }));
+  for (const method of ["GET", "HEAD"]) {
+    const owned = await req(mine, method);
+    expect(owned.status).toBe(method === "HEAD" ? 200 : 206);
+    expect(owned.headers.get("accept-ranges")).toBe("bytes");
+    expect(owned.headers.get("content-length")).toBe(method === "HEAD" ? "4" : "2");
+    expect(await owned.text()).toBe(method === "HEAD" ? "" : "at");
+    const forbidden = await req(foreign, method), missing = await req(999999, method);
+    expect(forbidden.status).toBe(403); expect(missing.status).toBe(403);
+    for (const response of [forbidden, missing]) {
+      expect(response.headers.get("accept-ranges")).toBeNull();
+      expect(response.headers.get("content-range")).toBeNull();
+      expect(response.headers.get("content-length")).toBeNull();
+    }
+    expect(await forbidden.text()).toBe(await missing.text());
+  }
+});

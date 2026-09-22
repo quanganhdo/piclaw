@@ -24,13 +24,14 @@ import { hostname } from "node:os";
 import Database from "bun:sqlite";
 
 import { WORKSPACE_DIR, getRuntimeTimingConfig } from "./core/config.js";
+import { drainScheduledBudgetNotifications } from "./budget/scheduled-notifications.js";
 import { readAccessConfig } from "./core/config-access.js";
 import { getExecutionIdentity } from "./core/execution-context.js";
 import { formatRecoverySummary } from "./agent-pool/automatic-recovery.js";
 import { DREAM_TASK_ID, parseDreamPromptToken, runDreamAgentTurn, runDreamMaintenance } from "./dream.js";
 import { computeNextRun } from "./task-scheduler-utils.js";
 import type { AgentPool } from "./agent-pool.js";
-import { applyScheduledRunToTask, getDb, getTaskById, logTaskRun, markBudgetDecisionNotified, updateTaskAfterRun } from "./db.js";
+import { applyScheduledRunToTask, getDb, getTaskById, logTaskRun, updateTaskAfterRun } from "./db.js";
 import { AgentQueue } from "./queue.js";
 import { detectChannel, formatOutbound } from "./router.js";
 import { checkPendingShutdown } from "./runtime/shutdown-registry.js";
@@ -343,6 +344,7 @@ async function executeScheduledTask(
   let error: string | null = null;
   let loggedResult: string | null = null;
   let loggedError: string | null = null;
+  let budgetBlocked = false;
   try {
     const kind = task.task_kind === "internal"
       ? "internal"
@@ -417,15 +419,10 @@ async function executeScheduledTask(
           if (out.status === "error") {
             error = out.error || "Unknown";
             loggedError = appendRecoverySummary(error, recoverySummary);
-            if (out.failureCategory === "provider_budget") {
-              const notice = `Scheduled task ${task.id} stopped by budget policy.\n${error}`;
-              await deps.sendMessage("web:default", formatOutbound(notice, detectChannel("web:default")), { forceRoot: true, source: "scheduled" });
-              const pending = getDb().prepare(`SELECT id FROM budget_decisions
-                WHERE work_id=? AND notification_status='pending' ORDER BY created_at DESC,id DESC LIMIT 1`)
-                .get(budgetWorkId) as { id: string } | undefined;
-              if (pending) markBudgetDecisionNotified(pending.id);
-              if (!mayContinue()) return unsupportedScheduledRun();
-            }
+            budgetBlocked = out.failureCategory === "provider_budget";
+            // The budget decision persists its own pending notification identity.
+            // Delivery happens after the run log below so a send failure cannot
+            // erase the blocked/error execution receipt.
           } else {
             loggedResult = appendRecoverySummary(out.result, recoverySummary);
             if (out.result) {
@@ -482,6 +479,8 @@ async function executeScheduledTask(
       checkPendingShutdown(task.chat_jid);
     }
   }
+
+  if (budgetBlocked) await drainScheduledBudgetNotifications(deps);
 
   return {
     status: error ? "error" : "success",
@@ -931,6 +930,8 @@ async function runClaimedScheduledTask(
 export async function pollScheduledRunsOnce(deps: SchedulerDeps, store: ScheduledRunStore): Promise<void> {
   if (!canRunLegacyScheduledWork()) return;
   schedulerMetrics.polls += 1;
+  await drainScheduledBudgetNotifications(deps);
+  if (!canRunLegacyScheduledWork()) return;
   const now = new Date().toISOString();
   schedulerMetrics.lastPollAt = now;
   reconcileExpiredScheduledAgentSources(now);

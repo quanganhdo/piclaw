@@ -39,6 +39,8 @@ Start with [getting started](getting-started.md) for installation, first chat, a
 - [Development](development.md), [repository workflow](../AGENTS.md), [CI flows](ci-flows.md) and [release process](release.md)
 - [Architecture](architecture.md), [runtime flows](runtime-flows.md) and [runtime stream sessions](runtime-stream-sessions.md)
 - [Pipelined compaction](pipelined-compaction.md)
+- [Local note retrieval contract](design/local-note-retrieval-contract.md) — accepted access, freshness and citation rules; [lifecycle and implementation test map](design/local-note-retrieval-lifecycle-tests.md); no new tools enabled
+- [Local note retrieval baseline](performance/local-note-retrieval-baseline.md) — synthetic file-search evaluation, measured limits and proposed release budgets; [current budget assessment](performance/local-note-retrieval-budget-assessment.md) separates passing, failing and unsupported targets
 - [Add-on runtime API](addon-runtime-api.md)
 - [Web pane extensions](web-pane-extensions.md) and [extension UI contract](extension-ui-contract.md)
 - [Vendored widget libraries](vendored-widget-libraries.md)

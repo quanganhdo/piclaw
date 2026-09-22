@@ -1,0 +1,2 @@
+# Exact BOM/CRLF bytes are part of this citation fixture; never normalize them.
+notes/unicode-crlf.md -text whitespace=cr-at-eol

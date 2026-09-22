@@ -4,6 +4,7 @@
 
 import { recordAppPerfRequest } from './ui/app-perf-tracing.js';
 import { resolveScreenSizeHint } from './ui/screen-size-hint.js';
+import { getAgentUiSnapshot, currentUiChatJid } from './ui/agent-ui-snapshot.js';
 
 export { uploadMedia, uploadWorkspaceFile } from './ui/upload-transfers.js';
 
@@ -166,7 +167,9 @@ export async function getThread(threadId, chatJid = null) {
 }
 
 export async function getSystemMetrics() {
-    return request('/agent/system-metrics');
+    const snapshot = await getAgentUiSnapshot();
+    if (!snapshot.metrics) throw new Error('System metrics unavailable');
+    return snapshot.metrics;
 }
 
 export async function getBudgetSettings(chatJid = null) {
@@ -204,6 +207,7 @@ export async function updateScheduledTask(action, id, options: ApiOptions = {}) 
             ...(options?.budgetUsd !== undefined ? { budget_usd: options.budgetUsd } : {}),
             ...(options?.enabled !== undefined ? { enabled: options.enabled } : {}),
             ...(options?.confirmRevision !== undefined ? { confirm_revision: options.confirmRevision } : {}),
+            ...(options?.confirmZeroBudget === true ? { confirm_zero_budget: true } : {}),
         }),
     });
 }
@@ -504,8 +508,7 @@ export async function getAgents() {
  * Get current agent status
  */
 export async function getAgentStatus(chatJid = null) {
-    const query = chatJid ? `?chat_jid=${encodeURIComponent(chatJid)}` : '';
-    return deduplicatedGet(`/agent/status${query}`);
+    return (await getAgentUiSnapshot(chatJid || currentUiChatJid())).status;
 }
 
 /**
@@ -513,8 +516,16 @@ export async function getAgentStatus(chatJid = null) {
  * Returns null fields when the session has no usage data yet.
  */
 export async function getAgentContext(chatJid = null) {
-    const query = chatJid ? `?chat_jid=${encodeURIComponent(chatJid)}` : '';
-    return deduplicatedGet(`/agent/context${query}`);
+    const snapshot = await getAgentUiSnapshot(chatJid || currentUiChatJid());
+    if (!snapshot.context) throw new Error('Context unavailable');
+    return snapshot.context;
+}
+
+/** Passive model badge refresh; full catalogue is still fetched on demand. */
+export async function getAgentModelState(chatJid = null) {
+    const snapshot = await getAgentUiSnapshot(chatJid || currentUiChatJid());
+    if (!snapshot.model) throw new Error('Model state unavailable');
+    return snapshot.model;
 }
 
 /**
@@ -1095,6 +1106,7 @@ export class SSEClient {
         bindJsonEvent('agent_thought_delta');
         bindJsonEvent('agent_preview_consumed');
         bindJsonEvent('model_changed');
+        bindJsonEvent('picker_pins_changed');
         bindJsonEvent('ui_theme');
         bindJsonEvent('ui_meters');
 

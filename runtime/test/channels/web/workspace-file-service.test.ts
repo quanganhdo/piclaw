@@ -6,7 +6,7 @@
 
 import { expect, test } from "bun:test";
 import "../../helpers.js";
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "fs";
 import { isAbsolute, join, relative } from "path";
 import { tmpdir } from "os";
 import { gzipSync } from "zlib";
@@ -358,4 +358,27 @@ test("uploadChunk assembles a file atomically", async () => {
   } finally {
     cleanup();
   }
+});
+
+
+test('workspace stat distinguishes confirmed absence from permission and other failures', async () => {
+  const { prefix, base, cleanup } = setupWorkspaceDir();
+  const denied = join(base, 'denied');
+  const request = (path: string) => handleWorkspaceStat(new Request('http://localhost/workspace/stat?path=' + encodeURIComponent(path)));
+  try {
+    writeFileSync(join(base, 'present.md'), 'present');
+    expect(request(prefix + '/present.md').status).toBe(200);
+    for (const path of [prefix + '/missing.md', prefix + '/present.md/child']) {
+      const response = request(path); expect(response.status).toBe(404);
+      expect(await response.json()).toMatchObject({ code: 'FILE_NOT_FOUND' });
+    }
+    expect(request('../outside').status).toBe(400);
+    mkdirSync(denied); writeFileSync(join(denied, 'secret.md'), 'secret'); chmodSync(denied, 0);
+    if (process.getuid?.() !== 0) {
+      const response = request(prefix + '/denied/secret.md');
+      expect(response.status).toBe(403); expect((await response.json()).code).toBeUndefined();
+    }
+    const overlong = request(prefix + '/' + 'x'.repeat(300));
+    expect(overlong.status).toBe(500); expect((await overlong.json()).code).toBeUndefined();
+  } finally { chmodSync(denied, 0o700); cleanup(); }
 });

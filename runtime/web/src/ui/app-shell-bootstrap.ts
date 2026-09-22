@@ -108,6 +108,7 @@ export function resolveAppApiSurface(apiNamespace: Record<string, any> = api): A
     getAgentThought: apiNamespace.getAgentThought,
     setAgentThoughtVisibility: apiNamespace.setAgentThoughtVisibility,
     getAgentStatus: apiNamespace.getAgentStatus,
+    getAgentModelState: apiNamespace.getAgentModelState,
     getWorkspaceFile: apiNamespace.getWorkspaceFile,
     getThread: apiNamespace.getThread,
     getTimeline: apiNamespace.getTimeline,

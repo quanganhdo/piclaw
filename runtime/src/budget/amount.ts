@@ -11,6 +11,17 @@ export function parseBudgetDecimalMicros(value: unknown, options: { positive?: b
   return result;
 }
 
+/** Accept tool JSON numbers or UI decimals without rounding a positive cap to zero. */
+export function parseScheduledBudgetMicros(value: unknown): number {
+  if (typeof value === "number") {
+    if (!Number.isFinite(value) || value < 0) throw new Error("Budget must be a finite non-negative amount.");
+    // JS stringification uses exponent notation below 1e-6; these amounts cannot
+    // be represented in the stored microdollar unit and must never become zero.
+    return parseBudgetDecimalMicros(String(value));
+  }
+  return parseBudgetDecimalMicros(value);
+}
+
 export function formatBudgetMicros(value: number): string {
   if (!Number.isSafeInteger(value)) return "unknown";
   const sign = value < 0 ? "-" : "";

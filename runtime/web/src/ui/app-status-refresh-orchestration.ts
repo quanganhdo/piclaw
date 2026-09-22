@@ -17,6 +17,8 @@ type StateSetter<T> = (next: T | ((prev: T) => T)) => void;
 // generation-less values are ignored rather than migrated as current usage.
 const CONTEXT_STORAGE_PREFIX = 'piclaw:ctx:';
 const contextSessionGenerations = new Map<string, string>();
+const contextUsageRevisions = new Map<string, number>();
+export function getContextUsageRevision(chatJid: string): number { return contextUsageRevisions.get(chatJid) ?? 0; }
 
 function finiteOrNull(value: unknown): number | null {
   if (value == null) return null;
@@ -128,16 +130,23 @@ export function reconcileContextUsageForChat(
     reset?: boolean;
     requireKnown?: boolean;
     expectedSessionGeneration?: string | null;
+    expectedRevision?: number;
   } = {},
 ): Record<string, unknown> | null {
   const next = normalizeContextUsage(incoming);
   if (!chatJid || !next) return normalizeContextUsage(previous);
+  if (options.expectedRevision !== undefined && options.expectedRevision !== getContextUsageRevision(chatJid)) return normalizeContextUsage(previous);
+  const merge = () => {
+    const result = mergeContextUsage(previous, next);
+    if (!haveSameContextUsage(previous, result)) contextUsageRevisions.set(chatJid, getContextUsageRevision(chatJid) + 1);
+    return result;
+  };
   const incomingGeneration = stringOrNull(next.sessionGeneration);
   const knownGeneration = getContextSessionGeneration(chatJid);
   if (!incomingGeneration) {
     return knownGeneration || options.requireKnown
       ? normalizeContextUsage(previous)
-      : mergeContextUsage(previous, next);
+      : merge();
   }
   if (Object.prototype.hasOwnProperty.call(options, 'expectedSessionGeneration')
     && knownGeneration !== (options.expectedSessionGeneration ?? null)) {
@@ -150,11 +159,12 @@ export function reconcileContextUsageForChat(
   if (!knownGeneration || options.authoritative || options.reset) {
     contextSessionGenerations.set(chatJid, incomingGeneration);
   }
-  return mergeContextUsage(previous, next);
+  return merge();
 }
 
 export function resetContextSessionGenerationsForTests(): void {
   contextSessionGenerations.clear();
+  contextUsageRevisions.clear();
 }
 
 export function haveSameContextUsage(a: unknown, b: unknown): boolean {
@@ -274,6 +284,7 @@ export async function refreshContextUsageForChat(options: RefreshContextUsageFor
 
   const targetChatJid = currentChatJid;
   const expectedSessionGeneration = getContextSessionGeneration(targetChatJid);
+  const expectedRevision = getContextUsageRevision(targetChatJid);
   try {
     const contextPayload = normalizeContextUsage(await getAgentContext(targetChatJid));
     if (activeChatJidRef.current !== targetChatJid) return;
@@ -281,6 +292,7 @@ export async function refreshContextUsageForChat(options: RefreshContextUsageFor
       const merged = reconcileContextUsageForChat(targetChatJid, prev, contextPayload, {
         authoritative: true,
         expectedSessionGeneration,
+        expectedRevision,
       });
       if (haveSameContextUsage(prev, merged)) return prev;
       persistContextUsage(targetChatJid, merged);

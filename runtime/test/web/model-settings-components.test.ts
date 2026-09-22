@@ -65,9 +65,10 @@ test('confirmed Settings switches synchronise badges before context refresh', ()
     expect(dispatch).toBeGreaterThan(-1);
     expect(backgroundRefresh).toBeGreaterThan(dispatch);
   }
-  expect(visualStatusSource).toContain('agentStatus.value = {');
-  expect(visualStatusSource).toContain('modelContextWindow.value = currentOpt.context_window');
-  expect(visualStatusSource).toContain('statusAbort.current?.abort()');
+  expect(visualStatusSource).toContain('mergeModelStatePayload(previous, payload)');
+  expect(visualStatusSource).toContain('modelContextWindow.value = windowSize');
+  expect(visualStatusSource).toContain('invalidateAgentUiSnapshot(getChatJid())');
+  expect(visualStatusSource).toContain('statusVersion.current += 1');
 });
 
 test('Settings only scrolls selected rows after explicit keyboard navigation', () => {

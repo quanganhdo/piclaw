@@ -427,7 +427,7 @@ function withAlpha(hexColor, alphaHex) {
 export function buildTerminalTheme(runtimeWindow = window, runtimeDocument = document) {
   const isDark = detectDarkTheme(runtimeWindow, runtimeDocument);
   const palette = isDark ? DARK_TERMINAL_PALETTE : LIGHT_TERMINAL_PALETTE;
-  const background = readThemeVar("--bg-primary", isDark ? "#000000" : "#ffffff", runtimeDocument);
+  const background = readThemeVar("--bg-terminal", readThemeVar("--bg-primary", isDark ? "#000000" : "#ffffff", runtimeDocument), runtimeDocument);
   const themeTextPrimary = readThemeVar("--text-primary", isDark ? "#e7e9ea" : "#0f1419", runtimeDocument);
   const foreground = ensureTerminalColorContrast(background, themeTextPrimary || getHighestContrastTextColor(background), 7);
   const accent = readThemeVar("--accent-color", "#1d9bf0", runtimeDocument);
@@ -443,21 +443,21 @@ export function buildTerminalTheme(runtimeWindow = window, runtimeDocument = doc
     cursorAccent: background,
     selectionBackground,
     selectionForeground: foreground,
-    black: ensureTerminalColorContrast(background, hover, 3),
-    red: ensureTerminalColorContrast(background, danger, 4.5),
-    green: ensureTerminalColorContrast(background, success, 4.5),
-    yellow: ensureTerminalColorContrast(background, palette.yellow, 4.5),
-    blue: ensureTerminalColorContrast(background, accent, 4.5),
-    magenta: ensureTerminalColorContrast(background, palette.magenta, 4.5),
-    cyan: ensureTerminalColorContrast(background, palette.cyan, 4.5),
+    black: ensureTerminalColorContrast(background, readThemeVar("--term-black", hover, runtimeDocument), 3),
+    red: ensureTerminalColorContrast(background, readThemeVar("--term-red", danger, runtimeDocument), 4.5),
+    green: ensureTerminalColorContrast(background, readThemeVar("--term-green", success, runtimeDocument), 4.5),
+    yellow: ensureTerminalColorContrast(background, readThemeVar("--term-yellow", palette.yellow, runtimeDocument), 4.5),
+    blue: ensureTerminalColorContrast(background, readThemeVar("--term-blue", accent, runtimeDocument), 4.5),
+    magenta: ensureTerminalColorContrast(background, readThemeVar("--term-magenta", palette.magenta, runtimeDocument), 4.5),
+    cyan: ensureTerminalColorContrast(background, readThemeVar("--term-cyan", palette.cyan, runtimeDocument), 4.5),
     white: foreground,
-    brightBlack: ensureTerminalColorContrast(background, palette.brightBlack, 3),
-    brightRed: ensureTerminalColorContrast(background, palette.brightRed, 4.5),
-    brightGreen: ensureTerminalColorContrast(background, palette.brightGreen, 4.5),
-    brightYellow: ensureTerminalColorContrast(background, palette.brightYellow, 4.5),
-    brightBlue: ensureTerminalColorContrast(background, palette.brightBlue, 4.5),
-    brightMagenta: ensureTerminalColorContrast(background, palette.brightMagenta, 4.5),
-    brightCyan: ensureTerminalColorContrast(background, palette.brightCyan, 4.5),
+    brightBlack: ensureTerminalColorContrast(background, readThemeVar("--term-bright-black", palette.brightBlack, runtimeDocument), 3),
+    brightRed: ensureTerminalColorContrast(background, readThemeVar("--term-bright-red", palette.brightRed, runtimeDocument), 4.5),
+    brightGreen: ensureTerminalColorContrast(background, readThemeVar("--term-bright-green", palette.brightGreen, runtimeDocument), 4.5),
+    brightYellow: ensureTerminalColorContrast(background, readThemeVar("--term-bright-yellow", palette.brightYellow, runtimeDocument), 4.5),
+    brightBlue: ensureTerminalColorContrast(background, readThemeVar("--term-bright-blue", palette.brightBlue, runtimeDocument), 4.5),
+    brightMagenta: ensureTerminalColorContrast(background, readThemeVar("--term-bright-magenta", palette.brightMagenta, runtimeDocument), 4.5),
+    brightCyan: ensureTerminalColorContrast(background, readThemeVar("--term-bright-cyan", palette.brightCyan, runtimeDocument), 4.5),
     brightWhite: foreground,
   };
 }

@@ -165,7 +165,7 @@ export function createWebChannelEndpointContexts(
               : null;
           },
           getTokenUsageForChat,
-          getAvailableModels: (chatJid) => channel.agentPool.getAvailableModels(chatJid),
+          getAvailableModels: (chatJid, modelOptions) => channel.agentPool.getAvailableModels(chatJid, modelOptions),
           getProviderReadyCompletedForInstance: () => isProviderReadyOobeCompletedForInstance(),
         });
       }

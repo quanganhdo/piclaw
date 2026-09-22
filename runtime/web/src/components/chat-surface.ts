@@ -17,6 +17,7 @@ export interface ChatSurfaceProps {
 export function ChatSurface(props: ChatSurfaceProps) {
   const {
     posts,
+    currentChatJid,
     hasMore = false,
     onLoadMore,
     timelineRef,
@@ -70,6 +71,7 @@ export function ChatSurface(props: ChatSurfaceProps) {
 
   return html`
     <${Timeline}
+      key=${currentChatJid}
       posts=${posts}
       hasMore=${hasMore}
       onLoadMore=${onLoadMore}

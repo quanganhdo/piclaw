@@ -14,6 +14,17 @@ const posts = (content = "Alice private text") => ({ posts: [{ id: 1, timestamp:
 async function fixture(page: Page) {
   const state = { identity: principal(), calls: [] as Array<{ path: string; headers: Record<string, string>; body: any }> };
   await page.route("**/auth/me", route => route.fulfill({ json: state.identity }));
+  const pinState = new Map<string,{scope:string;revision:number;models:string[];sessions:string[]}>();
+  await page.route('**/agent/picker-pins', route => {
+    const user=state.identity.principal.userId;
+    const pins=pinState.get(user) ?? {scope:'fixture-pins-'+user,revision:0,models:[],sessions:[]};
+    const request=route.request();
+    if(request.method()==='POST') {
+      const body=request.postDataJSON();
+      if(body.action==='set') { const key=body.kind==='model'?'models':'sessions';const next=new Set(pins[key]);if(body.pinned)next.add(body.key);else next.delete(body.key);pins[key]=[...next];pins.revision++; }
+    }
+    pinState.set(user,pins);return route.fulfill({json:pins});
+  });
   await page.route('**/account/avatar', route => route.fulfill({ json: { user_id: state.identity.principal.userId, revision: 0, present: false, can_edit: true } }));
   await page.route('**/account/model-defaults', route => route.fulfill({ json: modelDefaultsSnapshot() }));
   await page.route('**/account/preferences', route => route.fulfill({ json: { user_id: state.identity.principal.userId, preferences: { revision: 0, theme: 'system', response_guidance: '' }, defaults: { theme: 'system', response_guidance: '' }, can_edit: true } }));

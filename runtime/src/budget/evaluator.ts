@@ -1,4 +1,5 @@
 import type Database from "bun:sqlite";
+import { resolveCalendarWindow } from "./calendar.js";
 
 import { ensureBudgetCapWindow, getBudgetWork, listBudgetCaps } from "../db/budget-limits.js";
 import { getDb } from "../db/connection.js";
@@ -105,12 +106,29 @@ export function evaluateBudget(input: {
   providerEvidence?: BudgetProviderEvidence[];
   providerId?: string;
 }, database: Database = getDb()): BudgetDecision {
-  const nowDate = input.now ?? new Date();
-  const now = nowDate.toISOString();
   const work = getBudgetWork(input.workId, database);
   if (!work) throw new Error(`Unknown budget work: ${input.workId}`);
   const ancestors = ancestorIds(work.id, database);
   const descendants = descendantIds(work.id, database);
+  return evaluateWork(input, work, ancestors, descendants, database, false);
+}
+
+/** Advisory check for a fresh scheduled run; never creates work, windows or allowances. */
+export function evaluateScheduledBudget(input: {
+  scheduledTaskId: string;
+  now?: Date;
+  providerEvidence?: BudgetProviderEvidence[];
+  providerId?: string;
+}, database: Database = getDb()): BudgetDecision {
+  const work = { id: `scheduled-preview:${input.scheduledTaskId}`, execution_kind: "scheduled", scheduled_task_id: input.scheduledTaskId };
+  return evaluateWork(input, work, [], [], database, true);
+}
+
+function evaluateWork(input: { now?: Date; providerEvidence?: BudgetProviderEvidence[]; providerId?: string },
+  work: { id: string; execution_kind: string; scheduled_task_id: string | null },
+  ancestors: string[], descendants: string[], database: Database, readOnly: boolean): BudgetDecision {
+  const nowDate = input.now ?? new Date();
+  const now = nowDate.toISOString();
   const caps = applicableCaps(work.id, ancestors, work.scheduled_task_id, input.providerId, database);
   const warningsOnly = hasWarningsOnly(ancestors, now, database);
   const blockers: BudgetBlocker[] = [];
@@ -119,9 +137,15 @@ export function evaluateBudget(input: {
     let windowId: string;
     let total: UsageTotal;
     if (cap.scope === "instance_daily" || cap.scope === "instance_monthly") {
-      const window = ensureBudgetCapWindow(cap, database, nowDate);
-      windowId = window.window_id;
-      total = usageTotal({ startsAt: window.starts_at, endsAt: window.ends_at }, database);
+      if (readOnly) {
+        const window = resolveCalendarWindow(cap.scope === "instance_daily" ? "daily" : "monthly", cap.timezone || "UTC", nowDate);
+        windowId = window.id;
+        total = usageTotal({ startsAt: window.startsAt, endsAt: window.endsAt }, database);
+      } else {
+        const window = ensureBudgetCapWindow(cap, database, nowDate);
+        windowId = window.window_id;
+        total = usageTotal({ startsAt: window.starts_at, endsAt: window.ends_at }, database);
+      }
     } else if (cap.scope === "task") {
       windowId = `work:${cap.work_id}:r${cap.revision}`;
       total = usageTotal({ workIds: descendantIds(cap.work_id!, database) }, database);

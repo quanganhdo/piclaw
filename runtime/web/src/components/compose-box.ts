@@ -363,8 +363,8 @@ function ContextPie({ usage, onCompact, compactionLabel = '', compactionTitle = 
     const activeCompactionLabel = typeof compactionLabel === 'string' ? compactionLabel.trim() : '';
     const activeCompactionTitle = typeof compactionTitle === 'string' ? compactionTitle.trim() : '';
     const title = activeCompactionLabel
-        ? `${label} — ${activeCompactionTitle || 'Smart compaction'} · ${activeCompactionLabel}`
-        : `${label} — ${compactLabel}`;
+        ? `${label}\n${activeCompactionTitle || 'Smart compaction'} · ${activeCompactionLabel}`
+        : `${label}\n${compactLabel}`;
 
     // Pie arc: SVG circle with stroke-dasharray trick.
     // Circle circumference = 2πr = 2π×9 ≈ 56.55
@@ -381,7 +381,6 @@ function ContextPie({ usage, onCompact, compactionLabel = '', compactionTitle = 
             class=${`compose-context-pie icon-btn${activeCompactionLabel ? ' is-compacting' : ''}`}
             type="button"
             title=${title}
-            data-tooltip=${title}
             aria-label=${title}
             disabled=${!canCompact}
             onClick=${(e) => {
@@ -655,7 +654,7 @@ export function resolveComposeModelPickerState(activeModel, agentModelsPayload) 
         };
     }
 
-    const hasAvailableModels = normalizeModelPickerOptions(agentModelsPayload).length > 0;
+    const hasAvailableModels = normalizeModelPickerOptions(agentModelsPayload).length > 0 || Number(agentModelsPayload?.available_model_count) > 0;
     return {
         showPicker: hasAvailableModels,
         label: hasAvailableModels ? 'Select model' : '',
@@ -1143,6 +1142,9 @@ export function QueuedFollowupStack({
 /**
  * Compose box component
  */
+// Stable default for the mention effect; a fresh [] on each render feeds it again.
+const EMPTY_CHAT_AGENTS = Object.freeze([]);
+
 export function ComposeBox({
     onPost,
     onFocus,
@@ -1183,7 +1185,7 @@ export function ComposeBox({
     onSubmitIntercept,
     onMessageResponse,
     isAgentActive = false,
-    activeChatAgents = [],
+    activeChatAgents = EMPTY_CHAT_AGENTS,
     currentChatJid = 'web:default',
     connectionStatus = 'connected',
     stateAccessFailed = false,
@@ -1510,8 +1512,8 @@ export function ComposeBox({
         : resolvedSubmitButtonState;
     const abortButtonState = resolveComposeAbortButtonState(isAgentActive, statusNoticeIsCompaction);
 
-    const mentionAgents = (Array.isArray(activeChatAgents) ? activeChatAgents : [])
-        .filter((chat) => !chat?.archived_at);
+    const mentionAgents = useMemo(() => (Array.isArray(activeChatAgents) ? activeChatAgents : EMPTY_CHAT_AGENTS)
+        .filter((chat) => !chat?.archived_at), [activeChatAgents]);
     const currentSessionAgent = (() => {
         for (const chat of Array.isArray(activeChatAgents) ? activeChatAgents : []) {
             const chatJid = typeof chat?.chat_jid === 'string' ? chat.chat_jid.trim() : '';

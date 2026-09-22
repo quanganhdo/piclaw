@@ -12,6 +12,7 @@ export interface OobePanelState {
 
 export function countAvailableModels(payload: Record<string, unknown> | null | undefined): number {
   if (!payload || typeof payload !== 'object') return 0;
+  if (Number.isSafeInteger(payload.available_model_count) && Number(payload.available_model_count) >= 0) return Number(payload.available_model_count);
 
   const modelOptions = Array.isArray((payload as any).model_options)
     ? (payload as any).model_options.filter(Boolean)

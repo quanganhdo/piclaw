@@ -1,4 +1,4 @@
-import { html, useEffect, useMemo, useRef, useState } from '../vendor/preact-htm.js';
+import { html, useEffect, useLayoutEffect, useMemo, useRef, useState } from '../vendor/preact-htm.js';
 import { useTranslation } from '../utils/i18n.js';
 import { BodyPortal } from './body-portal.js';
 import { getMediaBlob, getMediaUrl } from '../api.js';
@@ -118,6 +118,28 @@ function buildFrameUrl(mediaId, filename, previewKind) {
     return null;
 }
 
+// Own the native element inside the portal so teardown always captures the player.
+function AudioPlayer({ mediaId, filename }) {
+    const audioRef = useRef(null);
+    const [audioError, setAudioError] = useState(false);
+    useEffect(() => {
+        const player = audioRef.current;
+        return () => {
+            if (!player) return;
+            player.pause();
+            player.removeAttribute('src');
+            player.load();
+        };
+    }, []);
+    return html`<div class="attachment-preview-audio-shell">
+        <audio ref=${audioRef} aria-label=${filename} onError=${() => setAudioError(true)}
+            class="attachment-preview-audio" src=${getMediaUrl(mediaId)} controls preload="metadata">
+            Your browser does not support audio playback. Download the file to listen to it.
+        </audio>
+        ${audioError && html`<p role="alert">Unable to play this audio. The file may be damaged or its format unsupported by your browser. Download the file to listen to it.</p>`}
+    </div>`;
+}
+
 export function AttachmentPreviewModal({ mediaId, info, onClose }) {
     const { t } = useTranslation();
     const filename = info?.filename || `attachment-${mediaId}`;
@@ -132,6 +154,24 @@ export function AttachmentPreviewModal({ mediaId, info, onClose }) {
     const [error, setError] = useState(null);
     const [maximized, setMaximized] = useState(false);
     const markdownContainerRef = useRef(null);
+    const [modalElement, setModalElement] = useState(null);
+    useLayoutEffect(() => {
+        if (!modalElement || previewKind !== 'audio') return;
+        const previousFocus = document.activeElement;
+        modalElement.querySelector('.attachment-preview-close')?.focus();
+        const trapFocus = (event) => {
+            if (event.key !== 'Tab') return;
+            const targets = Array.from(modalElement.querySelectorAll('a[href], button, audio[controls]'));
+            const first = targets[0], last = targets[targets.length - 1];
+            if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+            else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+        };
+        modalElement.addEventListener('keydown', trapFocus);
+        return () => {
+            modalElement.removeEventListener('keydown', trapFocus);
+            if (previousFocus?.isConnected) previousFocus.focus();
+        };
+    }, [modalElement, previewKind]);
     const previewLanguage = useMemo(() => previewLanguageFromAttachment(info, filename), [info, filename]);
     const previewLanguageLabel = useMemo(() => previewLanguage ? normalizeCodeLanguageLabel(previewLanguage) : null, [previewLanguage]);
     const metadata = useMemo(() => buildMetadata(info, !isMarkdown ? previewLanguageLabel : null, archivePreview, delimitedPreview), [info, isMarkdown, previewLanguageLabel, archivePreview, delimitedPreview]);
@@ -231,7 +271,7 @@ export function AttachmentPreviewModal({ mediaId, info, onClose }) {
     return html`
         <${BodyPortal} className="attachment-preview-portal-root">
             <div class=${buildAttachmentPreviewModalClassName(maximized)} onClick=${onClose}>
-                <div class="attachment-preview-shell" onClick=${(e) => { e.stopPropagation(); }}>
+                <div ref=${setModalElement} class="attachment-preview-shell" role="dialog" aria-modal="true" aria-label=${filename} onClick=${(e) => { e.stopPropagation(); }}>
                     <div class="attachment-preview-header">
                         <div class="attachment-preview-heading">
                             <div class="attachment-preview-title">${filename}</div>
@@ -275,6 +315,9 @@ export function AttachmentPreviewModal({ mediaId, info, onClose }) {
                         ${!loading && error && html`<div class="attachment-preview-state">${error}</div>`}
                         ${!loading && !error && previewKind === 'image' && html`
                             <img class="attachment-preview-image" src=${getMediaUrl(mediaId)} alt=${filename} />
+                        `}
+                        ${!loading && !error && previewKind === 'audio' && html`
+                            <${AudioPlayer} key=${mediaId} mediaId=${mediaId} filename=${filename} />
                         `}
                         ${!loading && !error && previewKind === 'video' && html`
                             <video class="attachment-preview-video" src=${getMediaUrl(mediaId)} controls autoplay style="max-width:100%;max-height:100%;" />

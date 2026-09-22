@@ -13,6 +13,7 @@ import type { ImageContent, Message, TextContent } from "@earendil-works/pi-ai";
 import type { AgentSession, SessionContext, SessionEntry, SessionManager } from "@earendil-works/pi-coding-agent";
 
 import { seedRotatedSession } from "../session-rotation.js";
+import { getSessionThinkingPolicy, readThinkingPreference, THINKING_POLICY_ENTRY } from './thinking-policy.js';
 import { ensureSessionDir } from "./session.js";
 import { createSessionManagerPersistencePort, getSessionPersistencePort, type SessionEntryAppendPort, type SessionManagerLike } from "./session-persistence.js";
 
@@ -31,6 +32,7 @@ export interface DeferredBranchSeed {
   sessionName: string | null;
   model: { provider: string; modelId: string } | null;
   thinkingLevel: ThinkingLevel | null;
+  preferredThinkingLevel?: ThinkingLevel | null;
   mode: "stable_branch" | "rotated_context";
   branchEntries?: SeedBranchEntry[];
   context?: SessionContext;
@@ -139,6 +141,8 @@ export async function createDeferredBranchSeed(
     sessionName: options.sessionName?.trim() || null,
     model,
     thinkingLevel,
+    preferredThinkingLevel: stableSeed ? readThinkingPreference(stableSeed.branchEntries)
+      : getSessionThinkingPolicy(sourceSession)?.preferred_level ?? thinkingLevel,
     mode: stableSeed ? "stable_branch" : "rotated_context",
     ...(stableSeed ? { branchEntries: cloneSeedValue(stableSeed.branchEntries) } : { context: cloneSeedValue(sourceContext ?? undefined) }),
   };
@@ -199,12 +203,14 @@ export async function seedSessionManagerFromDeferredBranchSeed(
       sessionName: seed.sessionName || undefined,
       model: seed.model,
       thinkingLevel: seed.thinkingLevel,
+      preferredThinkingLevel: seed.preferredThinkingLevel,
     });
     return;
   }
   if (seed.sessionName?.trim()) await persistence.appendSessionInfo(seed.sessionName.trim());
   if (seed.model) await persistence.appendModelChange(seed.model.provider, seed.model.modelId);
   if (seed.thinkingLevel) await persistence.appendThinkingLevelChange(seed.thinkingLevel);
+  if (seed.preferredThinkingLevel) await persistence.appendCustomEntry(THINKING_POLICY_ENTRY, { preferred: seed.preferredThinkingLevel });
 }
 
 function getDeferredBranchSeedPath(chatJid: string): string {

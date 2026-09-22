@@ -89,6 +89,13 @@ test("AgentRuntimeFacade reports available models and context usage", async () =
   fixture.pool.set("web:default", { runtime: createRuntime(session), lastUsed: Date.now() });
 
   const available = await fixture.facade.getAvailableModels("web:default");
+  const compact = await fixture.facade.getAvailableModels("web:default", { includeCatalogue: false, includeProviderDiagnostics: false });
+  expect(compact.models).toEqual(['openai/gpt-test']);
+  expect(compact.model_options).toHaveLength(1);
+  expect(compact.available_model_count).toBe(2);
+  expect(compact.current).toBe(available.current);
+  expect(compact.thinking_level).toBe(available.thinking_level);
+  expect(compact.provider_diagnostics.providers).toEqual([]);
   expect(refreshCalls).toBe(0);
   expect(available.current).toBe("openai/gpt-test");
   expect(available.models).toEqual(["openai/gpt-test", "anthropic/claude-test"]);

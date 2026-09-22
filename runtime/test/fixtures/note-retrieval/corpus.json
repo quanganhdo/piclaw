@@ -1,0 +1,347 @@
+{
+  "version": 1,
+  "provenance": "Entirely synthetic authored notes and manually selected relevance/citation ranges; no user data. Freeze before any baseline run. Questions are descriptions; query strings are fixed tool inputs.",
+  "queries": [
+    {
+      "id": "dev-storage",
+      "split": "development",
+      "category": "decision",
+      "question": "What storage engine did Lantern choose?",
+      "query": "Lantern SQLite",
+      "relevant": [
+        {
+          "path": "notes/decisions.md",
+          "lineStart": 3,
+          "lineEnd": 5,
+          "quote": "## Lantern storage\nLantern stores event receipts in SQLite. PostgreSQL was rejected for its offline-only deployment.\nThe storage decision was accepted on 2030-02-08 by the fictional design group."
+        }
+      ]
+    },
+    {
+      "id": "dev-retention",
+      "split": "development",
+      "category": "decision",
+      "question": "How long are Lantern diagnostic receipts kept?",
+      "query": "Lantern diagnostic receipts",
+      "relevant": [
+        {
+          "path": "notes/decisions.md",
+          "lineStart": 7,
+          "lineEnd": 8,
+          "quote": "## Lantern retention\nLantern retains diagnostic receipts for fourteen days. Backups retain receipts for thirty days."
+        }
+      ]
+    },
+    {
+      "id": "dev-preference",
+      "split": "development",
+      "category": "preference",
+      "question": "What report style does Mira prefer?",
+      "query": "Mira reports",
+      "relevant": [
+        {
+          "path": "notes/preferences.md",
+          "lineStart": 3,
+          "lineEnd": 5,
+          "quote": "## Reports\nMira prefers concise reports with numbered recommendations and explicit uncertainty.\nUse British spelling. Do not replace missing measurements with confident estimates."
+        }
+      ]
+    },
+    {
+      "id": "dev-chronology",
+      "split": "development",
+      "category": "chronology",
+      "question": "When did Kestrel launch?",
+      "query": "Kestrel launch",
+      "relevant": [
+        {
+          "path": "notes/chronology.md",
+          "lineStart": 6,
+          "lineEnd": 7,
+          "quote": "## Launch\nKestrel launched on 2030-04-19 after the recovery drill passed."
+        }
+      ]
+    },
+    {
+      "id": "dev-before-after",
+      "split": "development",
+      "category": "chronology",
+      "question": "Which maintenance day replaced Monday?",
+      "query": "maintenance Thursday",
+      "relevant": [
+        {
+          "path": "notes/chronology.md",
+          "lineStart": 9,
+          "lineEnd": 10,
+          "quote": "## Change\nOn 2030-05-02 the maintenance window moved from Monday to Thursday."
+        }
+      ]
+    },
+    {
+      "id": "dev-identifier",
+      "split": "development",
+      "category": "exact-identifier",
+      "question": "Which job restores the blue test queue?",
+      "query": "\"RCV-204-B\"",
+      "relevant": [
+        {
+          "path": "notes/identifiers.md",
+          "lineStart": 3,
+          "lineEnd": 4,
+          "quote": "## Recovery job\nThe recovery job identifier is RCV-204-B. It restores the blue test queue."
+        }
+      ]
+    },
+    {
+      "id": "dev-duplicate-parser",
+      "split": "development",
+      "category": "duplicate-heading",
+      "question": "How is the parser rolled back?",
+      "query": "parser rollback",
+      "relevant": [
+        {
+          "path": "notes/duplicate-headings.md",
+          "lineStart": 3,
+          "lineEnd": 4,
+          "quote": "## Rollback\nThe parser rollback restores schema version 3 and replays the fixture journal."
+        }
+      ]
+    },
+    {
+      "id": "dev-duplicate-gateway",
+      "split": "development",
+      "category": "duplicate-heading",
+      "question": "How is the gateway rolled back?",
+      "query": "gateway amber",
+      "relevant": [
+        {
+          "path": "notes/duplicate-headings.md",
+          "lineStart": 6,
+          "lineEnd": 7,
+          "quote": "## Rollback\nThe gateway rollback changes the upstream pool to amber and drains pending requests."
+        }
+      ]
+    },
+    {
+      "id": "dev-multisection",
+      "split": "development",
+      "category": "multi-answer",
+      "question": "Find both rollback instructions.",
+      "query": "rollback",
+      "relevant": [
+        {
+          "path": "notes/duplicate-headings.md",
+          "lineStart": 3,
+          "lineEnd": 4,
+          "quote": "## Rollback\nThe parser rollback restores schema version 3 and replays the fixture journal."
+        },
+        {
+          "path": "notes/duplicate-headings.md",
+          "lineStart": 6,
+          "lineEnd": 7,
+          "quote": "## Rollback\nThe gateway rollback changes the upstream pool to amber and drains pending requests."
+        }
+      ]
+    },
+    {
+      "id": "dev-unanswerable-lexical",
+      "split": "development",
+      "category": "unanswerable-overlap",
+      "question": "What is the Kestrel support phone number?",
+      "query": "Kestrel support phone number",
+      "relevant": []
+    },
+    {
+      "id": "dev-unanswerable-empty",
+      "split": "development",
+      "category": "unanswerable-no-overlap",
+      "question": "What does the quasar protocol require?",
+      "query": "quasar zephyrcode",
+      "relevant": []
+    },
+    {
+      "id": "dev-paraphrase",
+      "split": "development",
+      "category": "paraphrase",
+      "question": "How should uncertainty appear in reports?",
+      "query": "uncertain recommendations reports",
+      "relevant": [
+        {
+          "path": "notes/preferences.md",
+          "lineStart": 3,
+          "lineEnd": 5,
+          "quote": "## Reports\nMira prefers concise reports with numbered recommendations and explicit uncertainty.\nUse British spelling. Do not replace missing measurements with confident estimates."
+        }
+      ]
+    },
+    {
+      "id": "eval-current",
+      "split": "held-out",
+      "category": "conflicting-current",
+      "question": "What is the current Cedar retry limit?",
+      "query": "Cedar retry limit",
+      "relevant": [
+        {
+          "path": "notes/cedar-current.md",
+          "lineStart": 3,
+          "lineEnd": 5,
+          "quote": "## Retries\nCurrent Cedar retry limit: three attempts, effective 2030-06-10.\nThis decision replaces the previous nine-attempt policy."
+        }
+      ],
+      "conflictingPaths": [
+        "notes/cedar-old.md"
+      ]
+    },
+    {
+      "id": "eval-history",
+      "split": "held-out",
+      "category": "historical-policy",
+      "question": "What was Cedar retry policy before June 10?",
+      "query": "Cedar superseded nine",
+      "relevant": [
+        {
+          "path": "notes/cedar-old.md",
+          "lineStart": 3,
+          "lineEnd": 5,
+          "quote": "## Retries\nSUPERSEDED: before 2030-06-10 the Cedar retry limit was nine attempts.\nDo not use this obsolete value for current operations; use the current Cedar policy."
+        }
+      ]
+    },
+    {
+      "id": "eval-backoff",
+      "split": "held-out",
+      "category": "decision",
+      "question": "How long does Cedar wait between retries?",
+      "query": "Cedar waits seconds",
+      "relevant": [
+        {
+          "path": "notes/cedar-current.md",
+          "lineStart": 7,
+          "lineEnd": 8,
+          "quote": "## Backoff\nCedar waits two seconds between retry attempts."
+        }
+      ]
+    },
+    {
+      "id": "eval-preference",
+      "split": "held-out",
+      "category": "policy",
+      "question": "How is Harbor key rotation approved?",
+      "query": "Harbor rotation confirmation",
+      "relevant": [
+        {
+          "path": "notes/harbor.md",
+          "lineStart": 3,
+          "lineEnd": 5,
+          "quote": "## Rotation\nHarbor rotates its signing key every ninety days in the synthetic test environment.\nRotation is manual and requires a second operator's confirmation."
+        }
+      ]
+    },
+    {
+      "id": "eval-export",
+      "split": "held-out",
+      "category": "format",
+      "question": "Which format does Harbor export?",
+      "query": "Harbor JSON Lines",
+      "relevant": [
+        {
+          "path": "notes/harbor.md",
+          "lineStart": 7,
+          "lineEnd": 8,
+          "quote": "## Export\nHarbor exports receipts as JSON Lines and does not export private key material."
+        }
+      ]
+    },
+    {
+      "id": "eval-limits",
+      "split": "held-out",
+      "category": "limits",
+      "question": "What are Atlas attachment count and size limits?",
+      "query": "Atlas attachments mebibytes",
+      "relevant": [
+        {
+          "path": "notes/atlas.md",
+          "lineStart": 3,
+          "lineEnd": 4,
+          "quote": "## Limits\nAtlas accepts at most twelve attachments per message, each at most eight mebibytes."
+        }
+      ]
+    },
+    {
+      "id": "eval-identifier",
+      "split": "held-out",
+      "category": "exact-identifier",
+      "question": "What is the Atlas index repair command?",
+      "query": "\"atlas-repair-7f2\"",
+      "relevant": [
+        {
+          "path": "notes/atlas.md",
+          "lineStart": 6,
+          "lineEnd": 7,
+          "quote": "## Identifier\nThe Atlas repair command is atlas-repair-7f2. It rebuilds only disposable indexes."
+        }
+      ]
+    },
+    {
+      "id": "eval-unicode",
+      "split": "held-out",
+      "category": "unicode-crlf-bom",
+      "question": "How are café ledger labels encoded?",
+      "query": "\"café\" \"UTF-8\"",
+      "relevant": [
+        {
+          "path": "notes/unicode-crlf.md",
+          "lineStart": 3,
+          "lineEnd": 4,
+          "quote": "## Café\nThe fictional café uses São Tomé labels and keeps the café ledger in UTF-8."
+        }
+      ]
+    },
+    {
+      "id": "eval-long",
+      "split": "held-out",
+      "category": "long-multi-topic",
+      "question": "What checks must an Orchard restore perform?",
+      "query": "Orchard restore manifest",
+      "relevant": [
+        {
+          "path": "notes/long-notebook.md",
+          "lineStart": 98,
+          "lineEnd": 100,
+          "quote": "## Orchard restore\nOrchard restores require the sealed recovery token and an isolated destination.\nThe restore validation checks the manifest digest before publishing any files."
+        }
+      ]
+    },
+    {
+      "id": "eval-retention",
+      "split": "held-out",
+      "category": "long-multi-topic",
+      "question": "How long are Meridian task receipts retained?",
+      "query": "Meridian receipts",
+      "relevant": [
+        {
+          "path": "notes/long-notebook.md",
+          "lineStart": 102,
+          "lineEnd": 103,
+          "quote": "## Meridian retention\nMeridian retains task receipts for forty-five days; application logs remain seven days."
+        }
+      ]
+    },
+    {
+      "id": "eval-unanswerable-overlap",
+      "split": "held-out",
+      "category": "unanswerable-overlap",
+      "question": "What is the Harbor monthly cloud bill?",
+      "query": "Harbor monthly cloud bill",
+      "relevant": []
+    },
+    {
+      "id": "eval-unanswerable-empty",
+      "split": "held-out",
+      "category": "unanswerable-no-overlap",
+      "question": "What is the nebula routing password?",
+      "query": "nebula zygomatic",
+      "relevant": []
+    }
+  ]
+}

@@ -64,8 +64,8 @@ test('family partial refresh and stale paths never touch personal index or statu
 });
 
 test('mode change across legacy read await rejects without stale SQL content or failed-status mutation',async()=>{
-  await file('notes/users/alice/MEMORY.md','PERSONAL');const read=fs.readFile;
-  const spy=spyOn(fs,'readFile').mockImplementation((async(...args:any[])=>{const content=await Reflect.apply(read,fs,args);config('family-shared');return content;}) as any);
+  await file('notes/users/alice/MEMORY.md','PERSONAL');const open=fs.open;
+  const spy=spyOn(fs,'open').mockImplementation((async(...args:any[])=>{const handle=await Reflect.apply(open,fs,args),read=handle.read.bind(handle);handle.read=(async(...parts:any[])=>{const value=await Reflect.apply(read,handle,parts);config('family-shared');return value;}) as any;return handle;}) as any);
   try{await expect(refreshWorkspaceIndex()).rejects.toBeInstanceOf(WorkspaceIndexAccessDenied);}finally{spy.mockRestore();}
   expect(getDb().query('SELECT count(*) n FROM workspace_fts').get()).toEqual({n:0});expect(getWorkspaceIndexStatus().state).toBe('never_indexed');expect((await searchWorkspace({query:'PERSONAL'})).rows).toEqual([]);
   config('single-user');await refreshWorkspaceIndex();expect(getWorkspaceIndexStatus().state).toBe('ready');
@@ -136,4 +136,14 @@ test('legacy initial status failure releases active scope and permits a clean su
   await file('notes/a.md','alpha');getDb().exec("CREATE TRIGGER fail_initial_status BEFORE INSERT ON workspace_index_status BEGIN SELECT RAISE(ABORT,'status failed'); END");
   await expect(refreshWorkspaceIndex({scope:'notes'})).rejects.toThrow('status failed');getDb().exec('DROP TRIGGER fail_initial_status');
   expect(getWorkspaceIndexStatus({scope:'notes'}).state).toBe('never_indexed');await refreshWorkspaceIndex({scope:'notes'});expect(getWorkspaceIndexStatus({scope:'notes'}).state).toBe('ready');
+});
+
+test('family equal-score FTS pages sort by binary path and ignore legacy/private rows',async()=>{
+ config('family-shared');
+ for(const name of ['z.md','A.md','a.md'])getDb().query('INSERT INTO family_workspace_fts(content,path,mtime_ms,size_bytes) VALUES (?,?,1,12)').run('stabletie family','notes/family/'+name);
+ getDb().query('INSERT INTO workspace_fts(content,path) VALUES (?,?)').run('stabletie family','notes/private.md');
+ getDb().query('INSERT INTO family_workspace_fts(content,path) VALUES (?,?)').run('stabletie family','notes/users/alice/private.md');
+ const expected=['notes/family/A.md','notes/family/a.md','notes/family/z.md'];
+ expect((await searchWorkspace({query:'stabletie',scope:'notes'})).rows.map(row=>row.path)).toEqual(expected);
+ expect((await searchWorkspace({query:'stabletie',scope:'notes',limit:1,offset:1})).rows.map(row=>row.path)).toEqual([expected[1]]);
 });

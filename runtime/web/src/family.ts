@@ -169,6 +169,7 @@ async function start(): Promise<void> {
       },
     });
     realtime = new FamilyRealtime({
+      pinsChanged: () => chatSurface?.refreshPins(),
       sseUrl: chat => api!.sseUrl(chat),
       getStatus: chat => api!.request(`/agent/status?chat_jid=${encodeURIComponent(chat)}`),
       getContext: chat => api!.request(`/agent/context?chat_jid=${encodeURIComponent(chat)}`),

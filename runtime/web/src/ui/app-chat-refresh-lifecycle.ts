@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from '../vendor/preact-htm.js';
+import { useCallback, useEffect, useRef } from '../vendor/preact-htm.js';
 import {
   applyModelStatePayload,
   loadAgentsBootstrap,
@@ -9,6 +9,7 @@ import {
 } from './app-auth-bootstrap.js';
 import {
   getContextSessionGeneration,
+  getContextUsageRevision,
   haveSameContextUsage,
   normalizeContextUsage,
   persistContextUsage,
@@ -25,6 +26,7 @@ import {
 } from './app-perf-tracing.js';
 import { prewarmTimelineSnapshots, resolveRecentTimelinePrewarmChatJids } from './app-timeline-cache.js';
 import { getTimeline } from '../api.js';
+import { mergeModelStatePayload } from './app-model-state.js';
 import {
   noteAppChatActivation,
   runCoalescedAppRefresh,
@@ -200,7 +202,13 @@ export function useChatRefreshLifecycle(options: UseChatRefreshLifecycleOptions)
     });
   }, [appShellRef, loadAgents, readStoredNumber, sidebarWidthRef]);
 
+  const modelStateRef = useRef<{ chatJid: string; payload: any; revision: number }>({ chatJid: currentChatJid, payload: null, revision: 0 });
+  const activatedChatRef = useRef<string | null>(null);
   const applyModelState = useCallback((payload: any) => {
+    if (!payload || activeChatJidRef.current !== currentChatJid) return;
+    const previous = modelStateRef.current.chatJid === currentChatJid ? modelStateRef.current.payload : null;
+    payload = mergeModelStatePayload(previous, payload);
+    modelStateRef.current = { chatJid: currentChatJid, payload, revision: modelStateRef.current.revision + 1 };
     applyModelStatePayload({
       payload,
       setActiveModel,
@@ -210,7 +218,7 @@ export function useChatRefreshLifecycle(options: UseChatRefreshLifecycleOptions)
       setAgentModelsPayload,
       setHasLoadedAgentModels,
     });
-  }, [setActiveModel, setActiveModelUsage, setActiveThinkingLevel, setAgentModelsPayload, setHasLoadedAgentModels, setSupportsThinking]);
+  }, [currentChatJid, activeChatJidRef, setActiveModel, setActiveModelUsage, setActiveThinkingLevel, setAgentModelsPayload, setHasLoadedAgentModels, setSupportsThinking]);
 
   const getThreadSwitchTraceId = useCallback(() => getActiveAppPerfTraceId('thread-switch', currentChatJid), [currentChatJid]);
 
@@ -227,7 +235,9 @@ export function useChatRefreshLifecycle(options: UseChatRefreshLifecycleOptions)
         }
 
         const targetChatJid = currentChatJid;
+        const revision = modelStateRef.current.revision;
         const expectedSessionGeneration = getContextSessionGeneration(targetChatJid);
+        const expectedRevision = getContextUsageRevision(targetChatJid);
         try {
           const [modelPayload, contextPayloadRaw] = await Promise.all([
             (async () => {
@@ -249,6 +259,7 @@ export function useChatRefreshLifecycle(options: UseChatRefreshLifecycleOptions)
           ]);
 
           if (activeChatJidRef.current && activeChatJidRef.current !== targetChatJid) return null;
+          if (revision !== modelStateRef.current.revision) return null;
           applyModelState(modelPayload);
 
           const contextPayload = normalizeContextUsage(contextPayloadRaw);
@@ -256,6 +267,7 @@ export function useChatRefreshLifecycle(options: UseChatRefreshLifecycleOptions)
             const merged = reconcileContextUsageForChat(targetChatJid, prev, contextPayload, {
               authoritative: true,
               expectedSessionGeneration,
+              expectedRevision,
             });
             if (haveSameContextUsage(prev, merged)) return prev;
             persistContextUsage(targetChatJid, merged);
@@ -263,7 +275,8 @@ export function useChatRefreshLifecycle(options: UseChatRefreshLifecycleOptions)
           });
         } catch {
           if (activeChatJidRef.current && activeChatJidRef.current !== targetChatJid) return null;
-          applyModelState(null);
+          // A failed/omitted snapshot is not an explicit selection clear.
+          // Keep this chat's last successful metadata until recovery.
         }
 
         const activeTraceId = traceId || getThreadSwitchTraceId();
@@ -281,6 +294,11 @@ export function useChatRefreshLifecycle(options: UseChatRefreshLifecycleOptions)
   }, [activeChatJidRef, applyModelState, currentChatJid, getAgentContext, getAgentModels, getThreadSwitchTraceId, setContextUsage]);
 
   useEffect(() => {
+    // Callback identities may change on a same-chat rerender. Only a real
+    // activation may clear the display, not an otherwise unrelated render.
+    if (activatedChatRef.current === currentChatJid) return;
+    activatedChatRef.current = currentChatJid;
+    modelStateRef.current = { chatJid: currentChatJid, payload: null, revision: modelStateRef.current.revision + 1 };
     noteAppChatActivation({ chatJid: currentChatJid });
 
     // Reset model/context state immediately so stale values from the

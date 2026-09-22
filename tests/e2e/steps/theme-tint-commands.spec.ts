@@ -138,9 +138,9 @@ test.describe('/theme command', () => {
     // Visual: background changed back
     expect(bgRestored).not.toBe(bgDark);
 
-    // Default theme clears CSS variables (uses stylesheet defaults)
-    // bgPrimary should be null/empty since clearCssVariables() runs for untinted default
-    expect(restored.bgPrimary).toBeFalsy();
+    // The shared palette system explicitly applies default semantic variables,
+    // rather than relying on skin stylesheet fallbacks.
+    expect(restored.bgPrimary).toBe('#ffffff');
 
     // localStorage
     expect(restored.storedTheme).toBe('default');
@@ -280,8 +280,8 @@ test.describe('/tint command on default theme', () => {
     expect(cleared.dataTint).toBe('');
     expect(cleared.dataColorTheme).toBe('default');
 
-    // Untinted default clears CSS variables
-    expect(cleared.bgPrimary).toBeFalsy();
+    // Untinted default restores the explicit shared default palette.
+    expect(cleared.bgPrimary).toBe('#ffffff');
 
     expect(cleared.storedTint === '' || cleared.storedTint === null).toBe(true);
 

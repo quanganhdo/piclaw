@@ -1233,59 +1233,7 @@
 [data-theme="light"] .tok-labelName { color: #986801; }
 [data-theme="light"] .tok-url { color: #4078f2; }
 
-/* Theme-driven syntax token overrides shared by editor and rendered markdown. */
-.cm-editor .tok-keyword,
-.post-content .tok-keyword { color: var(--syntax-keyword) !important; }
-.cm-editor .tok-atom,
-.cm-editor .tok-bool,
-.cm-editor .tok-number,
-.cm-editor .tok-labelName,
-.post-content .tok-atom,
-.post-content .tok-bool,
-.post-content .tok-number,
-.post-content .tok-labelName { color: var(--syntax-literal) !important; }
-.cm-editor .tok-string,
-.cm-editor .tok-string2,
-.post-content .tok-string,
-.post-content .tok-string2 { color: var(--syntax-string) !important; }
-.cm-editor .tok-variableName,
-.post-content .tok-variableName { color: var(--syntax-variable) !important; }
-.cm-editor .tok-variableName.tok-definition,
-.post-content .tok-variableName.tok-definition { color: var(--syntax-variable-definition) !important; }
-.cm-editor .tok-variableName.tok-local,
-.post-content .tok-variableName.tok-local { color: var(--syntax-variable-local) !important; }
-.cm-editor .tok-variableName2,
-.post-content .tok-variableName2 { color: var(--syntax-variable-special) !important; }
-.cm-editor .tok-typeName,
-.cm-editor .tok-namespace,
-.cm-editor .tok-className,
-.post-content .tok-typeName,
-.post-content .tok-namespace,
-.post-content .tok-className { color: var(--syntax-type) !important; }
-.cm-editor .tok-macroName,
-.post-content .tok-macroName { color: var(--syntax-macro) !important; }
-.cm-editor .tok-propertyName,
-.post-content .tok-propertyName { color: var(--syntax-property) !important; }
-.cm-editor .tok-propertyName.tok-definition,
-.post-content .tok-propertyName.tok-definition { color: var(--syntax-variable-definition) !important; }
-.cm-editor .tok-comment,
-.post-content .tok-comment { color: var(--syntax-comment) !important; }
-.cm-editor .tok-meta,
-.post-content .tok-meta { color: var(--syntax-meta) !important; }
-.cm-editor .tok-operator,
-.post-content .tok-operator { color: var(--syntax-operator) !important; }
-.cm-editor .tok-punctuation,
-.post-content .tok-punctuation { color: var(--syntax-punctuation) !important; }
-.cm-editor .tok-link,
-.cm-editor .tok-url,
-.post-content .tok-link,
-.post-content .tok-url { color: var(--syntax-link) !important; }
-.cm-editor .tok-inserted,
-.post-content .tok-inserted { color: var(--syntax-inserted) !important; }
-.cm-editor .tok-deleted,
-.post-content .tok-deleted { color: var(--syntax-deleted) !important; }
-.cm-editor .tok-invalid,
-.post-content .tok-invalid { color: var(--syntax-invalid) !important; }
+/* Shared chat/editor role colours are defined in common/css/theme-syntax.css. */
 
 .workspace-loading,
 .workspace-error {

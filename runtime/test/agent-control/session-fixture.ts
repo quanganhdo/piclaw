@@ -324,6 +324,7 @@ export class TestAgentControlSession {
         appendThinkingLevelChange: (thinkingLevel: string) => recorded.push(["thinking_level_change", thinkingLevel]),
         appendCompaction: (summary: string, firstKeptEntryId: string, tokensBefore: number) => recorded.push(["compaction", summary, firstKeptEntryId, tokensBefore]),
         appendCustomMessageEntry: (customType: string, content: unknown, display: boolean, details: unknown) => recorded.push(["custom_message", customType, content, display, details]),
+        appendCustomEntry: (customType: string, data: unknown) => recorded.push(["custom", customType, data]),
         appendMessage: (message: unknown) => recorded.push(["message", message]),
       });
     }

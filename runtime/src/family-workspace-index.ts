@@ -94,12 +94,12 @@ export async function refreshFamilyWorkspaceIndex(params?:{scope?:string;max_kb?
 export function searchFamilyWorkspaceIndex(query:string,scope:WorkspaceSearchScope,limit:number,offset:number):WorkspaceSearchResult {
   const ctx=context(),prefix=prefixOf(familyWorkspaceScope(scope)),filter=prefix?' AND path LIKE ?':" AND (path LIKE 'notes/family/%' OR path LIKE '.pi/skills/%')",filterArgs=prefix?[prefix]:[];
   const fts=prepareFtsQuery(query,getSearchMatchMode());if(!fts)return {rows:[],limit,offset,error:'Query is empty after sanitization.'};
-  try{ctx.validate();const rows=ctx.db.query(`SELECT path,size_bytes,mtime_ms,snippet(family_workspace_fts,0,'[',']','…',12) as snippet FROM family_workspace_fts WHERE family_workspace_fts MATCH ?${filter} ORDER BY bm25(family_workspace_fts) LIMIT ? OFFSET ?`).all(fts,...filterArgs,limit,offset) as WorkspaceSearchRow[];ctx.validate();return {rows,limit,offset};}
+  try{ctx.validate();const rows=ctx.db.query(`SELECT path,size_bytes,mtime_ms,snippet(family_workspace_fts,0,'[',']','…',12) as snippet FROM family_workspace_fts WHERE family_workspace_fts MATCH ?${filter} ORDER BY bm25(family_workspace_fts), path COLLATE BINARY LIMIT ? OFFSET ?`).all(fts,...filterArgs,limit,offset) as WorkspaceSearchRow[];ctx.validate();return {rows,limit,offset};}
   catch(error){ctx.validate();if(error instanceof WorkspaceIndexAccessDenied)throw error;
     // Operational/schema errors must not silently turn into a different query.
     if((error as {code?:string})?.code!=='SQLITE_ERROR'||!/fts5: syntax error|unterminated string|malformed MATCH expression|fts5: (?:unterminated|unknown special query)/i.test(String((error as Error)?.message)))return {rows:[],limit,offset,error:'Workspace search failed.'};
     const terms=extractFtsFallbackTerms(query,{dropFtsKeywords:isFtsOperatorQuery(query)}).map(term=>`%${term}%`);if(!terms.length)return {rows:[],limit,offset,error:'No searchable terms.'};
-    try{ctx.validate();const rows=ctx.db.query(`SELECT path,size_bytes,mtime_ms,substr(content,1,200) as snippet FROM family_workspace_fts WHERE ${terms.map(()=>"content LIKE ? COLLATE NOCASE").join(' AND ')}${filter} ORDER BY path LIMIT ? OFFSET ?`).all(...terms,...filterArgs,limit,offset) as WorkspaceSearchRow[];ctx.validate();return {rows,limit,offset};}
+    try{ctx.validate();const rows=ctx.db.query(`SELECT path,size_bytes,mtime_ms,substr(content,1,200) as snippet FROM family_workspace_fts WHERE ${terms.map(()=>"content LIKE ? COLLATE NOCASE").join(' AND ')}${filter} ORDER BY path COLLATE BINARY LIMIT ? OFFSET ?`).all(...terms,...filterArgs,limit,offset) as WorkspaceSearchRow[];ctx.validate();return {rows,limit,offset};}
     catch(error){ctx.validate();if(error instanceof WorkspaceIndexAccessDenied)throw error;return {rows:[],limit,offset,error:'Workspace search failed (invalid query?).'};}
   }
 }

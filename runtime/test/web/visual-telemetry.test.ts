@@ -140,3 +140,14 @@ test("visual model pricing omits unavailable rates instead of claiming zero", ()
     cache_write_per_million: null,
   })).toBe("in $2.5 / out $10 per 1M");
 });
+
+test('visual context clears old-generation meters but preserves independent usage telemetry',()=>{
+ const cacheUsage={latest:{inputTokens:10}};
+ expect(mergeVisualLiveContext({tokens:12000,percent:60,contextWindow:20000,sessionGeneration:'old',cacheUsage},{tokens:null,percent:null,contextWindow:100000,sessionGeneration:'new'},{authoritative:true})).toEqual({tokens:null,percent:null,contextWindow:100000,sessionGeneration:'new',cacheUsage});
+});
+
+test('old-generation pushed context cannot resurrect superseded meters',()=>{
+ const current={tokens:10,percent:.01,contextWindow:100000,sessionGeneration:'new'};
+ expect(mergeVisualLiveContext(current,{tokens:900,percent:9,contextWindow:10000,sessionGeneration:'old'})).toBe(current);
+ expect(mergeVisualLiveContext(current,{tokens:900,percent:9,contextWindow:10000})).toBe(current);
+});

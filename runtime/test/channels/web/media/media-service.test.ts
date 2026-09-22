@@ -119,3 +119,37 @@ test("createFromPath promotes text-like .sb files to text/plain", async () => {
 
   unlinkSync(mediaPath);
 });
+
+
+test("audio upload and path MIME agree with preview and inline serving", async () => {
+  const { getAttachmentPreviewKind } = await import("../../../../web/src/ui/attachment-preview.js");
+  const { handleMedia } = await import("../../../../src/channels/web/handlers/media.js");
+  const service = new MediaService();
+  const channel = { json: (body: unknown, status = 200) => Response.json(body, { status }) };
+  for (const [extension, type] of [["mp3", "audio/mpeg"], ["m4a", "audio/mp4"], ["aac", "audio/aac"], ["flac", "audio/flac"], ["opus", "audio/ogg"], ["oga", "audio/ogg"], ["weba", "audio/webm"], ["wav", "audio/wav"]]) {
+    const filename = "fixture." + extension;
+    const mediaPath = join(process.env.PICLAW_DATA!, filename);
+    writeFileSync(mediaPath, "fixture audio bytes");
+    try {
+      for (const inputType of ["", "application/octet-stream"]) {
+        const upload = await service.createFromFile(new File(["fixture audio bytes"], filename, { type: inputType }));
+        const path = await service.createFromPath(mediaPath, inputType);
+        for (const result of [upload, path]) {
+          const body = result.body as { id: number; contentType: string };
+          expect(body.contentType).toBe(type);
+          const info = service.getInfo(body.id).body as { content_type: string; filename: string };
+          expect(info.content_type).toBe(type); expect(getAttachmentPreviewKind(info.content_type, info.filename)).toBe("audio");
+          const response = handleMedia(channel, body.id, false);
+          expect(response.headers.get("content-type")).toBe(type); expect(response.headers.get("content-disposition")).toBeNull();
+        }
+      }
+    } finally { unlinkSync(mediaPath); }
+  }
+  for (const [alias, expected] of [["audio/x-wav", "audio/wav"], ["audio/x-m4a", "audio/mp4"], ["audio/x-flac", "audio/flac"], ["audio/mp3", "audio/mpeg"]]) {
+    const upload = await service.createFromFile(new File(["bytes"], "unknown.bin", { type: alias }));
+    expect((upload.body as { contentType: string }).contentType).toBe(expected);
+  }
+  const unsafe = await service.createFromFile(new File(["<html>"], "fake.wav", { type: "text/html" }));
+  expect((unsafe.body as { contentType: string }).contentType.split(";")[0]).toBe("text/html");
+  expect(getAttachmentPreviewKind("text/html", "fake.wav")).not.toBe("audio");
+});

@@ -184,7 +184,7 @@ export class WebChannelHttpSurfaceService {
     return await this.channel.endpointFacade.handlePost(req, isReply);
   }
 
-  handleAgentStatus(req: Request): Response {
+  handleAgentStatus(req: Request): Response | Promise<Response> {
     return this.channel.endpointFacade.handleAgentStatus(req);
   }
 

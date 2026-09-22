@@ -3,6 +3,7 @@
  */
 
 import type { WebChannelLike } from "../core/web-channel-contracts.js";
+import { handlePickerPins } from "../handlers/picker-pins.js";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { getVersion } from "../../../cli.js";
@@ -62,6 +63,8 @@ interface ExactAgentRoute {
 }
 
 const EXACT_AGENT_ROUTES: ExactAgentRoute[] = [
+  { method: "GET", path: "/agent/picker-pins", handle: (channel,req) => handlePickerPins(req,channel) },
+  { method: "POST", path: "/agent/picker-pins", handle: (channel,req) => handlePickerPins(req,channel) },
   {
     method: "GET",
     path: "/agent/thought",

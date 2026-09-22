@@ -1,0 +1,2476 @@
+{
+  "baseline_commit": "4a2e07259ea411cda1d620044a5689132661dac3",
+  "measurement": "100 * delta(CDP Performance.TaskDuration) / measurement_seconds; not OS CPU percentage",
+  "fixture_limitations": [
+    "Synthetic notes and controlled EventSource; application HTTP polling remains active.",
+    "Minimal events: heartbeat + unchanged context_usage every5s. initial_attribution minimal cases used an incorrect agent_status shape and are excluded from the main comparison.",
+    "Hidden is an app-handler simulation, not native throttling.",
+    "Headless Linux Chromium, desktop1366x820; no reporter-device/battery/GPU claim."
+  ],
+  "baseline_bundle_sha256": "16adb2845e0d817547aa34930340eb93a5b1908b403ee80fdd5bd6019f71f1f8",
+  "sets": {
+    "before": {
+      "generatedAt": "2026-09-20T17:02:45.890Z",
+      "engine": "Chromium/headless",
+      "browserVersion": "151.0.7922.34",
+      "settleMs": 30000,
+      "measureMs": 60000,
+      "profileEnabled": false,
+      "useBaselineAssets": true,
+      "results": [
+        {
+          "id": "classic-idle",
+          "skin": "classic",
+          "posts": 10,
+          "traffic": false,
+          "instrument": true,
+          "taskCpuEquivalentPercent": 2.958641666666667,
+          "durations": {
+            "TaskDuration": 1.775185,
+            "ScriptDuration": 0.295794,
+            "LayoutDuration": 0,
+            "RecalcStyleDuration": 0.05826,
+            "LayoutCount": 0,
+            "RecalcStyleCount": 3600
+          },
+          "counts": {
+            "timeout": 3602,
+            "interval": 164,
+            "raf": 3600,
+            "mutations": 3614,
+            "mutationNodes": 0
+          },
+          "origins": [
+            {
+              "origin": "requestAnimationFrame::    at O_ (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:1:12679)\n    at Mn.diffed (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:2:2156)\n    at lp (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:1:7342)",
+              "callbacks": 3600
+            },
+            {
+              "origin": "setTimeout::    at n (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:1:12638)\n    at <anonymous>:54:11",
+              "callbacks": 3600
+            },
+            {
+              "origin": "setInterval:750:    at Object.__ (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:5868:84924)\n    at sp (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 80
+            },
+            {
+              "origin": "setInterval:1000:    at Object.__ (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:5862:20726)\n    at sp (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 60
+            },
+            {
+              "origin": "setInterval:5000:    at Object.__ (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:5862:33440)\n    at sp (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 12
+            },
+            {
+              "origin": "setInterval:15000:    at Object.__ (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:5868:58512)\n    at sp (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 4
+            },
+            {
+              "origin": "setInterval:15000:    at zc.startStaleMonitor (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:6:14087)\n    at r.onopen (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:6:15469)\n    at <anonymous>:24:24",
+              "callbacks": 3
+            },
+            {
+              "origin": "setInterval:30000:    at Object.__ (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:2154:10204)\n    at sp (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 2
+            },
+            {
+              "origin": "setInterval:60000:    at Object.__ (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:5089:12898)\n    at sp (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 1
+            },
+            {
+              "origin": "setInterval:60000:    at c (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:5862:28991)\n    at aU (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:5862:29073)\n    at Object.__ (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:5862:33264)",
+              "callbacks": 1
+            },
+            {
+              "origin": "setInterval:60000:    at Object.__ (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:5862:58469)\n    at sp (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 1
+            },
+            {
+              "origin": "setTimeout:1000:    at zc.scheduleReconnect (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:6:17164)\n    at zc.forceReconnect (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:6:14628)\n    at http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:6:14339",
+              "callbacks": 1
+            }
+          ],
+          "targets": [
+            {
+              "target": "DIV.compose-model-meta-subline:characterData",
+              "mutations": 3614
+            }
+          ],
+          "requests": [
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /workspace/index-status",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/active-chats",
+            "GET /agent/branches",
+            "GET /agent/branches",
+            "GET /agent/queue-state",
+            "GET /timeline",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/autoresearch/status",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /timeline",
+            "GET /agent/status",
+            "GET /agent/queue-state",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/active-chats",
+            "GET /agent/branches",
+            "GET /agent/branches",
+            "GET /agent/autoresearch/status",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context"
+          ],
+          "unhandled": [],
+          "errors": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "classic-minimal",
+          "skin": "classic",
+          "posts": 10,
+          "traffic": true,
+          "instrument": true,
+          "taskCpuEquivalentPercent": 2.9581866666666667,
+          "durations": {
+            "TaskDuration": 1.774912,
+            "ScriptDuration": 0.291841,
+            "LayoutDuration": 0,
+            "RecalcStyleDuration": 0.060415,
+            "LayoutCount": 0,
+            "RecalcStyleCount": 3601
+          },
+          "counts": {
+            "timeout": 3601,
+            "interval": 165,
+            "raf": 3601,
+            "mutations": 3608,
+            "mutationNodes": 0
+          },
+          "origins": [
+            {
+              "origin": "requestAnimationFrame::    at O_ (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:1:12679)\n    at Mn.diffed (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:2:2156)\n    at lp (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:1:7342)",
+              "callbacks": 3601
+            },
+            {
+              "origin": "setTimeout::    at n (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:1:12638)\n    at <anonymous>:54:11",
+              "callbacks": 3601
+            },
+            {
+              "origin": "setInterval:750:    at Object.__ (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:5868:84924)\n    at sp (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 80
+            },
+            {
+              "origin": "setInterval:1000:    at Object.__ (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:5862:20726)\n    at sp (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 60
+            },
+            {
+              "origin": "setInterval:5000:    at Object.__ (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:5862:33440)\n    at sp (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 12
+            },
+            {
+              "origin": "setInterval:15000:    at Object.__ (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:5868:58512)\n    at sp (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 4
+            },
+            {
+              "origin": "setInterval:15000:    at zc.startStaleMonitor (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:6:14087)\n    at r.onopen (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:6:15469)\n    at <anonymous>:24:24",
+              "callbacks": 4
+            },
+            {
+              "origin": "setInterval:30000:    at Object.__ (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:2154:10204)\n    at sp (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 2
+            },
+            {
+              "origin": "setInterval:60000:    at Object.__ (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:5089:12898)\n    at sp (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 1
+            },
+            {
+              "origin": "setInterval:60000:    at c (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:5862:28991)\n    at aU (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:5862:29073)\n    at Object.__ (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:5862:33264)",
+              "callbacks": 1
+            },
+            {
+              "origin": "setInterval:60000:    at Object.__ (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:5862:58469)\n    at sp (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 1
+            }
+          ],
+          "targets": [
+            {
+              "target": "DIV.compose-model-meta-subline:characterData",
+              "mutations": 3608
+            }
+          ],
+          "requests": [
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /workspace/index-status",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/active-chats",
+            "GET /agent/branches",
+            "GET /agent/branches",
+            "GET /agent/queue-state",
+            "GET /timeline",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/autoresearch/status",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context"
+          ],
+          "unhandled": [],
+          "errors": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "visual-minimal",
+          "skin": "visual",
+          "posts": 10,
+          "traffic": true,
+          "instrument": true,
+          "taskCpuEquivalentPercent": 0.14991166666666667,
+          "durations": {
+            "TaskDuration": 0.089947,
+            "ScriptDuration": 0.011576999999999999,
+            "LayoutDuration": 0.00018499999999999997,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 1,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 1,
+            "interval": 108,
+            "raf": 0,
+            "mutations": 1,
+            "mutationNodes": 0
+          },
+          "origins": [
+            {
+              "origin": "setInterval:1000:    at Object.__ (http://127.0.0.1:38145/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:82:8329)\n    at qa (http://127.0.0.1:38145/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 60
+            },
+            {
+              "origin": "setInterval:5000:    at Object.__ (http://127.0.0.1:38145/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:4:2706)\n    at qa (http://127.0.0.1:38145/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 24
+            },
+            {
+              "origin": "setInterval:10000:    at Object.__ (http://127.0.0.1:38145/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:4:2783)\n    at qa (http://127.0.0.1:38145/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 12
+            },
+            {
+              "origin": "setInterval:10000:    at Object.__ (http://127.0.0.1:38145/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:82:12912)\n    at qa (http://127.0.0.1:38145/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 6
+            },
+            {
+              "origin": "setInterval:10000:    at Object.__ (http://127.0.0.1:38145/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:30077)\n    at qa (http://127.0.0.1:38145/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 6
+            },
+            {
+              "origin": "setTimeout:44795:    at Object.__ (http://127.0.0.1:38145/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:154:25991)\n    at qa (http://127.0.0.1:38145/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 1
+            }
+          ],
+          "targets": [
+            {
+              "target": "SPAN.tab-bar__clock:characterData",
+              "mutations": 1
+            }
+          ],
+          "requests": [
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster"
+          ],
+          "unhandled": [],
+          "errors": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "classic-long",
+          "skin": "classic",
+          "posts": 200,
+          "traffic": true,
+          "instrument": true,
+          "taskCpuEquivalentPercent": 3.4984116666666667,
+          "durations": {
+            "TaskDuration": 2.099047,
+            "ScriptDuration": 0.32395300000000005,
+            "LayoutDuration": 0,
+            "RecalcStyleDuration": 0.06754,
+            "LayoutCount": 0,
+            "RecalcStyleCount": 3600
+          },
+          "counts": {
+            "timeout": 3600,
+            "interval": 165,
+            "raf": 3600,
+            "mutations": 3607,
+            "mutationNodes": 0
+          },
+          "origins": [
+            {
+              "origin": "requestAnimationFrame::    at O_ (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:1:12679)\n    at Mn.diffed (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:2:2156)\n    at lp (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:1:7342)",
+              "callbacks": 3600
+            },
+            {
+              "origin": "setTimeout::    at n (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:1:12638)\n    at <anonymous>:54:11",
+              "callbacks": 3600
+            },
+            {
+              "origin": "setInterval:750:    at Object.__ (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:5868:84924)\n    at sp (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 80
+            },
+            {
+              "origin": "setInterval:1000:    at Object.__ (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:5862:20726)\n    at sp (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 60
+            },
+            {
+              "origin": "setInterval:5000:    at Object.__ (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:5862:33440)\n    at sp (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 12
+            },
+            {
+              "origin": "setInterval:15000:    at Object.__ (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:5868:58512)\n    at sp (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 4
+            },
+            {
+              "origin": "setInterval:15000:    at zc.startStaleMonitor (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:6:14087)\n    at r.onopen (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:6:15469)\n    at <anonymous>:24:24",
+              "callbacks": 4
+            },
+            {
+              "origin": "setInterval:30000:    at Object.__ (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:2154:10204)\n    at sp (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 2
+            },
+            {
+              "origin": "setInterval:60000:    at Object.__ (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:5089:12898)\n    at sp (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 1
+            },
+            {
+              "origin": "setInterval:60000:    at c (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:5862:28991)\n    at aU (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:5862:29073)\n    at Object.__ (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:5862:33264)",
+              "callbacks": 1
+            },
+            {
+              "origin": "setInterval:60000:    at Object.__ (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:5862:58469)\n    at sp (http://127.0.0.1:38145/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 1
+            }
+          ],
+          "targets": [
+            {
+              "target": "DIV.compose-model-meta-subline:characterData",
+              "mutations": 3607
+            }
+          ],
+          "requests": [
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /workspace/index-status",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/active-chats",
+            "GET /agent/branches",
+            "GET /agent/branches",
+            "GET /agent/queue-state",
+            "GET /timeline",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/autoresearch/status",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context"
+          ],
+          "unhandled": [],
+          "errors": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "visual-long",
+          "skin": "visual",
+          "posts": 200,
+          "traffic": true,
+          "instrument": true,
+          "taskCpuEquivalentPercent": 0.15852833333333333,
+          "durations": {
+            "TaskDuration": 0.095117,
+            "ScriptDuration": 0.010236000000000002,
+            "LayoutDuration": 0.00018899999999999999,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 1,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 1,
+            "interval": 108,
+            "raf": 0,
+            "mutations": 1,
+            "mutationNodes": 0
+          },
+          "origins": [
+            {
+              "origin": "setInterval:1000:    at Object.__ (http://127.0.0.1:38145/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:82:8329)\n    at qa (http://127.0.0.1:38145/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 60
+            },
+            {
+              "origin": "setInterval:5000:    at Object.__ (http://127.0.0.1:38145/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:4:2706)\n    at qa (http://127.0.0.1:38145/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 24
+            },
+            {
+              "origin": "setInterval:10000:    at Object.__ (http://127.0.0.1:38145/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:4:2783)\n    at qa (http://127.0.0.1:38145/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 12
+            },
+            {
+              "origin": "setInterval:10000:    at Object.__ (http://127.0.0.1:38145/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:82:12912)\n    at qa (http://127.0.0.1:38145/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 6
+            },
+            {
+              "origin": "setInterval:10000:    at Object.__ (http://127.0.0.1:38145/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:30077)\n    at qa (http://127.0.0.1:38145/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 6
+            },
+            {
+              "origin": "setTimeout:44311:    at Object.__ (http://127.0.0.1:38145/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:154:25991)\n    at qa (http://127.0.0.1:38145/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 1
+            }
+          ],
+          "targets": [
+            {
+              "target": "SPAN.tab-bar__clock:characterData",
+              "mutations": 1
+            }
+          ],
+          "requests": [
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster"
+          ],
+          "unhandled": [],
+          "errors": [],
+          "animations": [],
+          "visibility": "visible"
+        }
+      ]
+    },
+    "after": {
+      "generatedAt": "2026-09-20T17:12:03.903Z",
+      "engine": "Chromium/headless",
+      "browserVersion": "151.0.7922.34",
+      "settleMs": 30000,
+      "measureMs": 60000,
+      "profileEnabled": false,
+      "useBaselineAssets": false,
+      "results": [
+        {
+          "id": "blank",
+          "skin": "blank",
+          "posts": 0,
+          "traffic": false,
+          "instrument": true,
+          "taskCpuEquivalentPercent": 0.016463333333333337,
+          "durations": {
+            "TaskDuration": 0.009878000000000001,
+            "ScriptDuration": 0,
+            "LayoutDuration": 0,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 0,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 0,
+            "interval": 0,
+            "raf": 0,
+            "mutations": 0,
+            "mutationNodes": 0
+          },
+          "origins": [],
+          "targets": [],
+          "requests": [],
+          "unhandled": [],
+          "errors": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "classic-idle",
+          "skin": "classic",
+          "posts": 10,
+          "traffic": false,
+          "instrument": true,
+          "taskCpuEquivalentPercent": 0.09997166666666667,
+          "durations": {
+            "TaskDuration": 0.059983,
+            "ScriptDuration": 0.008456,
+            "LayoutDuration": 0,
+            "RecalcStyleDuration": 0.000129,
+            "LayoutCount": 0,
+            "RecalcStyleCount": 8
+          },
+          "counts": {
+            "timeout": 10,
+            "interval": 164,
+            "raf": 8,
+            "mutations": 15,
+            "mutationNodes": 0
+          },
+          "origins": [
+            {
+              "origin": "setInterval:750:    at Object.__ (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:5868:84924)\n    at sp (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 80
+            },
+            {
+              "origin": "setInterval:1000:    at Object.__ (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:5862:20726)\n    at sp (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 60
+            },
+            {
+              "origin": "setInterval:5000:    at Object.__ (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:5862:33440)\n    at sp (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 12
+            },
+            {
+              "origin": "requestAnimationFrame::    at N_ (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:1:12679)\n    at Mn.diffed (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:2:2156)\n    at lp (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:1:7342)",
+              "callbacks": 8
+            },
+            {
+              "origin": "setTimeout::    at n (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:1:12638)\n    at <anonymous>:54:11",
+              "callbacks": 8
+            },
+            {
+              "origin": "setInterval:15000:    at Object.__ (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:5868:58512)\n    at sp (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 4
+            },
+            {
+              "origin": "setInterval:15000:    at zc.startStaleMonitor (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:6:14087)\n    at r.onopen (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:6:15469)\n    at <anonymous>:24:24",
+              "callbacks": 3
+            },
+            {
+              "origin": "setInterval:30000:    at Object.__ (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:2154:10204)\n    at sp (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 2
+            },
+            {
+              "origin": "setInterval:60000:    at Object.__ (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:5089:12898)\n    at sp (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 1
+            },
+            {
+              "origin": "setInterval:60000:    at c (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:5862:28991)\n    at lU (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:5862:29073)\n    at Object.__ (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:5862:33264)",
+              "callbacks": 1
+            },
+            {
+              "origin": "setInterval:60000:    at Object.__ (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:5862:58469)\n    at sp (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 1
+            },
+            {
+              "origin": "setTimeout:1000:    at zc.scheduleReconnect (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:6:17164)\n    at zc.forceReconnect (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:6:14628)\n    at http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:6:14339",
+              "callbacks": 1
+            }
+          ],
+          "targets": [
+            {
+              "target": "DIV.compose-model-meta-subline:characterData",
+              "mutations": 15
+            }
+          ],
+          "requests": [
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /workspace/index-status",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/active-chats",
+            "GET /agent/branches",
+            "GET /agent/branches",
+            "GET /agent/queue-state",
+            "GET /timeline",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/autoresearch/status",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /timeline",
+            "GET /agent/status",
+            "GET /agent/queue-state",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/active-chats",
+            "GET /agent/branches",
+            "GET /agent/branches",
+            "GET /agent/autoresearch/status",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context"
+          ],
+          "unhandled": [],
+          "errors": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "visual-idle",
+          "skin": "visual",
+          "posts": 10,
+          "traffic": false,
+          "instrument": true,
+          "taskCpuEquivalentPercent": 0.14703833333333333,
+          "durations": {
+            "TaskDuration": 0.088223,
+            "ScriptDuration": 0.010188,
+            "LayoutDuration": 0.00017999999999999998,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 1,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 1,
+            "interval": 108,
+            "raf": 0,
+            "mutations": 1,
+            "mutationNodes": 0
+          },
+          "origins": [
+            {
+              "origin": "setInterval:1000:    at Object.__ (http://127.0.0.1:42313/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:82:8329)\n    at qa (http://127.0.0.1:42313/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 60
+            },
+            {
+              "origin": "setInterval:5000:    at Object.__ (http://127.0.0.1:42313/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:4:2706)\n    at qa (http://127.0.0.1:42313/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 24
+            },
+            {
+              "origin": "setInterval:10000:    at Object.__ (http://127.0.0.1:42313/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:4:2783)\n    at qa (http://127.0.0.1:42313/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 12
+            },
+            {
+              "origin": "setInterval:10000:    at Object.__ (http://127.0.0.1:42313/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:82:12912)\n    at qa (http://127.0.0.1:42313/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 6
+            },
+            {
+              "origin": "setInterval:10000:    at Object.__ (http://127.0.0.1:42313/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:30077)\n    at qa (http://127.0.0.1:42313/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 6
+            },
+            {
+              "origin": "setTimeout:56982:    at Object.__ (http://127.0.0.1:42313/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:154:25991)\n    at qa (http://127.0.0.1:42313/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 1
+            }
+          ],
+          "targets": [
+            {
+              "target": "SPAN.tab-bar__clock:characterData",
+              "mutations": 1
+            }
+          ],
+          "requests": [
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster"
+          ],
+          "unhandled": [],
+          "errors": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "classic-minimal",
+          "skin": "classic",
+          "posts": 10,
+          "traffic": true,
+          "instrument": true,
+          "taskCpuEquivalentPercent": 0.07463,
+          "durations": {
+            "TaskDuration": 0.044778,
+            "ScriptDuration": 0.0057610000000000005,
+            "LayoutDuration": 0,
+            "RecalcStyleDuration": 0.0000710000000000001,
+            "LayoutCount": 0,
+            "RecalcStyleCount": 4
+          },
+          "counts": {
+            "timeout": 4,
+            "interval": 165,
+            "raf": 4,
+            "mutations": 7,
+            "mutationNodes": 0
+          },
+          "origins": [
+            {
+              "origin": "setInterval:750:    at Object.__ (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:5868:84924)\n    at sp (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 80
+            },
+            {
+              "origin": "setInterval:1000:    at Object.__ (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:5862:20726)\n    at sp (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 60
+            },
+            {
+              "origin": "setInterval:5000:    at Object.__ (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:5862:33440)\n    at sp (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 12
+            },
+            {
+              "origin": "requestAnimationFrame::    at N_ (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:1:12679)\n    at Mn.diffed (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:2:2156)\n    at lp (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:1:7342)",
+              "callbacks": 4
+            },
+            {
+              "origin": "setTimeout::    at n (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:1:12638)\n    at <anonymous>:54:11",
+              "callbacks": 4
+            },
+            {
+              "origin": "setInterval:15000:    at Object.__ (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:5868:58512)\n    at sp (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 4
+            },
+            {
+              "origin": "setInterval:15000:    at zc.startStaleMonitor (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:6:14087)\n    at r.onopen (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:6:15469)\n    at <anonymous>:24:24",
+              "callbacks": 4
+            },
+            {
+              "origin": "setInterval:30000:    at Object.__ (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:2154:10204)\n    at sp (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 2
+            },
+            {
+              "origin": "setInterval:60000:    at Object.__ (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:5089:12898)\n    at sp (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 1
+            },
+            {
+              "origin": "setInterval:60000:    at c (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:5862:28991)\n    at lU (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:5862:29073)\n    at Object.__ (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:5862:33264)",
+              "callbacks": 1
+            },
+            {
+              "origin": "setInterval:60000:    at Object.__ (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:5862:58469)\n    at sp (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 1
+            }
+          ],
+          "targets": [
+            {
+              "target": "DIV.compose-model-meta-subline:characterData",
+              "mutations": 7
+            }
+          ],
+          "requests": [
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /workspace/index-status",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/active-chats",
+            "GET /agent/branches",
+            "GET /agent/branches",
+            "GET /agent/queue-state",
+            "GET /timeline",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/autoresearch/status",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context"
+          ],
+          "unhandled": [],
+          "errors": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "classic-long",
+          "skin": "classic",
+          "posts": 200,
+          "traffic": true,
+          "instrument": true,
+          "taskCpuEquivalentPercent": 0.08696333333333334,
+          "durations": {
+            "TaskDuration": 0.052178,
+            "ScriptDuration": 0.0062120000000000005,
+            "LayoutDuration": 0,
+            "RecalcStyleDuration": 0.000067,
+            "LayoutCount": 0,
+            "RecalcStyleCount": 4
+          },
+          "counts": {
+            "timeout": 4,
+            "interval": 165,
+            "raf": 4,
+            "mutations": 7,
+            "mutationNodes": 0
+          },
+          "origins": [
+            {
+              "origin": "setInterval:750:    at Object.__ (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:5868:84924)\n    at sp (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 80
+            },
+            {
+              "origin": "setInterval:1000:    at Object.__ (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:5862:20726)\n    at sp (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 60
+            },
+            {
+              "origin": "setInterval:5000:    at Object.__ (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:5862:33440)\n    at sp (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 12
+            },
+            {
+              "origin": "requestAnimationFrame::    at N_ (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:1:12679)\n    at Mn.diffed (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:2:2156)\n    at lp (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:1:7342)",
+              "callbacks": 4
+            },
+            {
+              "origin": "setTimeout::    at n (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:1:12638)\n    at <anonymous>:54:11",
+              "callbacks": 4
+            },
+            {
+              "origin": "setInterval:15000:    at Object.__ (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:5868:58512)\n    at sp (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 4
+            },
+            {
+              "origin": "setInterval:15000:    at zc.startStaleMonitor (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:6:14087)\n    at r.onopen (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:6:15469)\n    at <anonymous>:24:24",
+              "callbacks": 4
+            },
+            {
+              "origin": "setInterval:30000:    at Object.__ (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:2154:10204)\n    at sp (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 2
+            },
+            {
+              "origin": "setInterval:60000:    at Object.__ (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:5089:12898)\n    at sp (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 1
+            },
+            {
+              "origin": "setInterval:60000:    at c (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:5862:28991)\n    at lU (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:5862:29073)\n    at Object.__ (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:5862:33264)",
+              "callbacks": 1
+            },
+            {
+              "origin": "setInterval:60000:    at Object.__ (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:5862:58469)\n    at sp (http://127.0.0.1:42313/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 1
+            }
+          ],
+          "targets": [
+            {
+              "target": "DIV.compose-model-meta-subline:characterData",
+              "mutations": 7
+            }
+          ],
+          "requests": [
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /workspace/index-status",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/active-chats",
+            "GET /agent/branches",
+            "GET /agent/branches",
+            "GET /agent/queue-state",
+            "GET /timeline",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/autoresearch/status",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context"
+          ],
+          "unhandled": [],
+          "errors": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "classic-control",
+          "skin": "classic",
+          "posts": 10,
+          "traffic": false,
+          "instrument": false,
+          "taskCpuEquivalentPercent": 0.09827166666666666,
+          "durations": {
+            "TaskDuration": 0.058962999999999995,
+            "ScriptDuration": 0.0074519999999999986,
+            "LayoutDuration": 0,
+            "RecalcStyleDuration": 0.00013600000000000005,
+            "LayoutCount": 0,
+            "RecalcStyleCount": 8
+          },
+          "counts": {
+            "timeout": 0,
+            "interval": 0,
+            "raf": 0,
+            "mutations": 0,
+            "mutationNodes": 0
+          },
+          "origins": [],
+          "targets": [],
+          "requests": [
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /workspace/index-status",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/active-chats",
+            "GET /agent/branches",
+            "GET /agent/branches",
+            "GET /agent/queue-state",
+            "GET /timeline",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/autoresearch/status",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /timeline",
+            "GET /agent/status",
+            "GET /agent/queue-state",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/active-chats",
+            "GET /agent/branches",
+            "GET /agent/branches",
+            "GET /agent/autoresearch/status",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context"
+          ],
+          "unhandled": [],
+          "errors": [],
+          "animations": [],
+          "visibility": "visible"
+        }
+      ]
+    },
+    "visibility_and_motion": {
+      "generatedAt": "2026-09-20T17:15:30.620Z",
+      "engine": "Chromium/headless",
+      "browserVersion": "151.0.7922.34",
+      "settleMs": 5000,
+      "measureMs": 20000,
+      "profileEnabled": false,
+      "useBaselineAssets": false,
+      "results": [
+        {
+          "id": "classic-motion",
+          "skin": "classic",
+          "posts": 10,
+          "traffic": false,
+          "instrument": true,
+          "motion": "no-preference",
+          "taskCpuEquivalentPercent": 0.04188000000000001,
+          "durations": {
+            "TaskDuration": 0.008376000000000001,
+            "ScriptDuration": 0.0015990000000000006,
+            "LayoutDuration": 0,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 0,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 0,
+            "interval": 53,
+            "raf": 0,
+            "mutations": 0,
+            "mutationNodes": 0
+          },
+          "origins": [
+            {
+              "origin": "setInterval:750:    at Object.__ (http://127.0.0.1:41387/static/classic/dist/app.bundle.js?v=683c14134891:5868:84924)\n    at sp (http://127.0.0.1:41387/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 27
+            },
+            {
+              "origin": "setInterval:1000:    at Object.__ (http://127.0.0.1:41387/static/classic/dist/app.bundle.js?v=683c14134891:5862:20726)\n    at sp (http://127.0.0.1:41387/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 20
+            },
+            {
+              "origin": "setInterval:5000:    at Object.__ (http://127.0.0.1:41387/static/classic/dist/app.bundle.js?v=683c14134891:5862:33440)\n    at sp (http://127.0.0.1:41387/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 4
+            },
+            {
+              "origin": "setInterval:15000:    at Object.__ (http://127.0.0.1:41387/static/classic/dist/app.bundle.js?v=683c14134891:5868:58512)\n    at sp (http://127.0.0.1:41387/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 1
+            },
+            {
+              "origin": "setInterval:15000:    at zc.startStaleMonitor (http://127.0.0.1:41387/static/classic/dist/app.bundle.js?v=683c14134891:6:14087)\n    at r.onopen (http://127.0.0.1:41387/static/classic/dist/app.bundle.js?v=683c14134891:6:15469)\n    at <anonymous>:24:24",
+              "callbacks": 1
+            }
+          ],
+          "targets": [],
+          "requests": [
+            "GET /agent/models",
+            "GET /agent/context",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context"
+          ],
+          "unhandled": [],
+          "errors": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "visual-motion",
+          "skin": "visual",
+          "posts": 10,
+          "traffic": false,
+          "instrument": true,
+          "motion": "no-preference",
+          "taskCpuEquivalentPercent": 0.13204500000000002,
+          "durations": {
+            "TaskDuration": 0.026409000000000002,
+            "ScriptDuration": 0.0031260000000000003,
+            "LayoutDuration": 0,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 0,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 0,
+            "interval": 36,
+            "raf": 0,
+            "mutations": 0,
+            "mutationNodes": 0
+          },
+          "origins": [
+            {
+              "origin": "setInterval:1000:    at Object.__ (http://127.0.0.1:41387/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:82:8329)\n    at qa (http://127.0.0.1:41387/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 20
+            },
+            {
+              "origin": "setInterval:5000:    at Object.__ (http://127.0.0.1:41387/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:4:2706)\n    at qa (http://127.0.0.1:41387/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 8
+            },
+            {
+              "origin": "setInterval:10000:    at Object.__ (http://127.0.0.1:41387/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:4:2783)\n    at qa (http://127.0.0.1:41387/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 4
+            },
+            {
+              "origin": "setInterval:10000:    at Object.__ (http://127.0.0.1:41387/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:82:12912)\n    at qa (http://127.0.0.1:41387/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 2
+            },
+            {
+              "origin": "setInterval:10000:    at Object.__ (http://127.0.0.1:41387/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:30077)\n    at qa (http://127.0.0.1:41387/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 2
+            }
+          ],
+          "targets": [],
+          "requests": [
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster"
+          ],
+          "unhandled": [],
+          "errors": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "classic-hidden-simulated",
+          "skin": "classic",
+          "posts": 10,
+          "traffic": true,
+          "instrument": true,
+          "hidden": true,
+          "taskCpuEquivalentPercent": 0.04836,
+          "durations": {
+            "TaskDuration": 0.009672,
+            "ScriptDuration": 0.0019890000000000003,
+            "LayoutDuration": 0,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 0,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 1,
+            "interval": 53,
+            "raf": 0,
+            "mutations": 0,
+            "mutationNodes": 0
+          },
+          "origins": [
+            {
+              "origin": "setInterval:750:    at Object.__ (http://127.0.0.1:41387/static/classic/dist/app.bundle.js?v=683c14134891:5868:84924)\n    at sp (http://127.0.0.1:41387/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 27
+            },
+            {
+              "origin": "setInterval:1000:    at Object.__ (http://127.0.0.1:41387/static/classic/dist/app.bundle.js?v=683c14134891:5862:20726)\n    at sp (http://127.0.0.1:41387/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 20
+            },
+            {
+              "origin": "setInterval:5000:    at Object.__ (http://127.0.0.1:41387/static/classic/dist/app.bundle.js?v=683c14134891:5862:33440)\n    at sp (http://127.0.0.1:41387/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 4
+            },
+            {
+              "origin": "setTimeout:2000:    at http://127.0.0.1:41387/static/classic/dist/app.bundle.js?v=683c14134891:5089:12742\n    at HTMLDocument.ne (http://127.0.0.1:41387/static/classic/dist/app.bundle.js?v=683c14134891:5089:13246)\n    at eval (eval at evaluate (:311:30), <anonymous>:4:20)",
+              "callbacks": 1
+            },
+            {
+              "origin": "setInterval:15000:    at Object.__ (http://127.0.0.1:41387/static/classic/dist/app.bundle.js?v=683c14134891:5868:58512)\n    at sp (http://127.0.0.1:41387/static/classic/dist/app.bundle.js?v=683c14134891:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 1
+            },
+            {
+              "origin": "setInterval:15000:    at zc.startStaleMonitor (http://127.0.0.1:41387/static/classic/dist/app.bundle.js?v=683c14134891:6:14087)\n    at r.onopen (http://127.0.0.1:41387/static/classic/dist/app.bundle.js?v=683c14134891:6:15469)\n    at <anonymous>:24:24",
+              "callbacks": 1
+            }
+          ],
+          "targets": [],
+          "requests": [
+            "POST /workspace/visibility",
+            "GET /agent/models",
+            "GET /agent/context",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context"
+          ],
+          "unhandled": [],
+          "errors": [],
+          "animations": [],
+          "visibility": "hidden"
+        },
+        {
+          "id": "visual-hidden-simulated",
+          "skin": "visual",
+          "posts": 10,
+          "traffic": true,
+          "instrument": true,
+          "hidden": true,
+          "taskCpuEquivalentPercent": 0.127265,
+          "durations": {
+            "TaskDuration": 0.025453,
+            "ScriptDuration": 0.002848,
+            "LayoutDuration": 0,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 0,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 0,
+            "interval": 36,
+            "raf": 0,
+            "mutations": 0,
+            "mutationNodes": 0
+          },
+          "origins": [
+            {
+              "origin": "setInterval:1000:    at Object.__ (http://127.0.0.1:41387/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:82:8329)\n    at qa (http://127.0.0.1:41387/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 20
+            },
+            {
+              "origin": "setInterval:5000:    at Object.__ (http://127.0.0.1:41387/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:4:2706)\n    at qa (http://127.0.0.1:41387/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 8
+            },
+            {
+              "origin": "setInterval:10000:    at Object.__ (http://127.0.0.1:41387/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:4:2783)\n    at qa (http://127.0.0.1:41387/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 4
+            },
+            {
+              "origin": "setInterval:10000:    at Object.__ (http://127.0.0.1:41387/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:82:12912)\n    at qa (http://127.0.0.1:41387/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 2
+            },
+            {
+              "origin": "setInterval:10000:    at Object.__ (http://127.0.0.1:41387/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:30077)\n    at qa (http://127.0.0.1:41387/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 2
+            }
+          ],
+          "targets": [],
+          "requests": [
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster"
+          ],
+          "unhandled": [],
+          "errors": [],
+          "animations": [],
+          "visibility": "hidden"
+        }
+      ]
+    },
+    "initial_attribution": {
+      "generatedAt": "2026-09-20T16:46:28.666Z",
+      "engine": "Chromium/headless",
+      "settleMs": 30000,
+      "measureMs": 60000,
+      "profileEnabled": false,
+      "results": [
+        {
+          "id": "blank",
+          "skin": "blank",
+          "posts": 0,
+          "traffic": false,
+          "instrument": true,
+          "taskCpuEquivalentPercent": 0.016368333333333332,
+          "durations": {
+            "TaskDuration": 0.009821,
+            "ScriptDuration": 0,
+            "LayoutDuration": 0,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 0,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 0,
+            "interval": 0,
+            "raf": 0,
+            "mutations": 0,
+            "mutationNodes": 0
+          },
+          "origins": [],
+          "targets": [],
+          "requests": [],
+          "unhandled": [],
+          "errors": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "classic-idle",
+          "skin": "classic",
+          "posts": 10,
+          "traffic": false,
+          "instrument": true,
+          "taskCpuEquivalentPercent": 2.994218333333334,
+          "durations": {
+            "TaskDuration": 1.7965310000000003,
+            "ScriptDuration": 0.298891,
+            "LayoutDuration": 0,
+            "RecalcStyleDuration": 0.05860599999999999,
+            "LayoutCount": 0,
+            "RecalcStyleCount": 3601
+          },
+          "counts": {
+            "timeout": 3603,
+            "interval": 164,
+            "raf": 3601,
+            "mutations": 3615,
+            "mutationNodes": 0
+          },
+          "origins": [
+            {
+              "origin": "requestAnimationFrame::    at O_ (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:1:12679)\n    at Mn.diffed (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:2:2156)\n    at lp (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:1:7342)",
+              "callbacks": 3601
+            },
+            {
+              "origin": "setTimeout::    at n (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:1:12638)\n    at <anonymous>:54:11",
+              "callbacks": 3601
+            },
+            {
+              "origin": "setInterval:750:    at Object.__ (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:5868:84924)\n    at sp (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 80
+            },
+            {
+              "origin": "setInterval:1000:    at Object.__ (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:5862:20726)\n    at sp (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 60
+            },
+            {
+              "origin": "setInterval:5000:    at Object.__ (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:5862:33440)\n    at sp (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 12
+            },
+            {
+              "origin": "setInterval:15000:    at Object.__ (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:5868:58512)\n    at sp (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 4
+            },
+            {
+              "origin": "setInterval:15000:    at zc.startStaleMonitor (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:6:14087)\n    at r.onopen (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:6:15469)\n    at <anonymous>:24:24",
+              "callbacks": 3
+            },
+            {
+              "origin": "setInterval:30000:    at Object.__ (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:2154:10204)\n    at sp (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 2
+            },
+            {
+              "origin": "setInterval:60000:    at Object.__ (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:5089:12898)\n    at sp (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 1
+            },
+            {
+              "origin": "setInterval:60000:    at c (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:5862:28991)\n    at aU (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:5862:29073)\n    at Object.__ (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:5862:33264)",
+              "callbacks": 1
+            },
+            {
+              "origin": "setInterval:60000:    at Object.__ (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:5862:58469)\n    at sp (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 1
+            },
+            {
+              "origin": "setTimeout:1000:    at zc.scheduleReconnect (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:6:17164)\n    at zc.forceReconnect (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:6:14628)\n    at http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:6:14339",
+              "callbacks": 1
+            }
+          ],
+          "targets": [
+            {
+              "target": "DIV.compose-model-meta-subline:characterData",
+              "mutations": 3615
+            }
+          ],
+          "requests": [
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /workspace/index-status",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/active-chats",
+            "GET /agent/branches",
+            "GET /agent/branches",
+            "GET /agent/queue-state",
+            "GET /timeline",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/autoresearch/status",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /timeline",
+            "GET /agent/status",
+            "GET /agent/queue-state",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/active-chats",
+            "GET /agent/branches",
+            "GET /agent/branches",
+            "GET /agent/autoresearch/status",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context"
+          ],
+          "unhandled": [],
+          "errors": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "visual-idle",
+          "skin": "visual",
+          "posts": 10,
+          "traffic": false,
+          "instrument": true,
+          "taskCpuEquivalentPercent": 0.13779000000000002,
+          "durations": {
+            "TaskDuration": 0.08267400000000001,
+            "ScriptDuration": 0.008977,
+            "LayoutDuration": 0.00014900000000000004,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 1,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 1,
+            "interval": 108,
+            "raf": 0,
+            "mutations": 1,
+            "mutationNodes": 0
+          },
+          "origins": [
+            {
+              "origin": "setInterval:1000:    at Object.__ (http://127.0.0.1:44637/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:82:8329)\n    at qa (http://127.0.0.1:44637/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 60
+            },
+            {
+              "origin": "setInterval:5000:    at Object.__ (http://127.0.0.1:44637/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:4:2706)\n    at qa (http://127.0.0.1:44637/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 24
+            },
+            {
+              "origin": "setInterval:10000:    at Object.__ (http://127.0.0.1:44637/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:4:2783)\n    at qa (http://127.0.0.1:44637/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 12
+            },
+            {
+              "origin": "setInterval:10000:    at Object.__ (http://127.0.0.1:44637/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:82:12912)\n    at qa (http://127.0.0.1:44637/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 6
+            },
+            {
+              "origin": "setInterval:10000:    at Object.__ (http://127.0.0.1:44637/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:30077)\n    at qa (http://127.0.0.1:44637/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 6
+            },
+            {
+              "origin": "setTimeout:32335:    at Object.__ (http://127.0.0.1:44637/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:154:25991)\n    at qa (http://127.0.0.1:44637/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 1
+            }
+          ],
+          "targets": [
+            {
+              "target": "SPAN.tab-bar__clock:characterData",
+              "mutations": 1
+            }
+          ],
+          "requests": [
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster"
+          ],
+          "unhandled": [],
+          "errors": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "classic-minimal",
+          "skin": "classic",
+          "posts": 10,
+          "traffic": true,
+          "instrument": true,
+          "taskCpuEquivalentPercent": 3.413816666666667,
+          "durations": {
+            "TaskDuration": 2.04829,
+            "ScriptDuration": 0.30232899999999996,
+            "LayoutDuration": 0.0032070000000000006,
+            "RecalcStyleDuration": 0.07117200000000001,
+            "LayoutCount": 24,
+            "RecalcStyleCount": 3642
+          },
+          "counts": {
+            "timeout": 3624,
+            "interval": 151,
+            "raf": 3672,
+            "mutations": 3806,
+            "mutationNodes": 48
+          },
+          "origins": [
+            {
+              "origin": "requestAnimationFrame::    at O_ (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:1:12679)\n    at Mn.diffed (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:2:2156)\n    at lp (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:1:7342)",
+              "callbacks": 3600
+            },
+            {
+              "origin": "setTimeout::    at n (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:1:12638)\n    at <anonymous>:54:11",
+              "callbacks": 3600
+            },
+            {
+              "origin": "setInterval:750:    at Object.__ (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:5868:84924)\n    at sp (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 80
+            },
+            {
+              "origin": "setInterval:1000:    at Object.__ (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:5862:20726)\n    at sp (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 48
+            },
+            {
+              "origin": "requestAnimationFrame::    at d (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:5862:27685)\n    at k (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:5862:27887)\n    at wR (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:5862:28656)",
+              "callbacks": 24
+            },
+            {
+              "origin": "requestAnimationFrame::    at d (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:5862:27685)\n    at C (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:5862:27962)\n    at wR (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:5862:28677)",
+              "callbacks": 24
+            },
+            {
+              "origin": "setTimeout:0:    at g (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:5862:27760)\n    at http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:5862:27983\n    at <anonymous>:54:11",
+              "callbacks": 24
+            },
+            {
+              "origin": "requestAnimationFrame::    at d (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:5862:27685)\n    at http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:5862:27908\n    at <anonymous>:54:11",
+              "callbacks": 24
+            },
+            {
+              "origin": "setInterval:5000:    at Object.__ (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:5862:33440)\n    at sp (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 12
+            },
+            {
+              "origin": "setInterval:15000:    at Object.__ (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:5868:58512)\n    at sp (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 4
+            },
+            {
+              "origin": "setInterval:15000:    at zc.startStaleMonitor (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:6:14087)\n    at r.onopen (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:6:15469)\n    at <anonymous>:24:24",
+              "callbacks": 4
+            },
+            {
+              "origin": "setInterval:30000:    at Object.__ (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:2154:10204)\n    at sp (http://127.0.0.1:44637/static/classic/dist/app.bundle.js?v=3d8dd22735bb:1:12815)\n    at Array.some (<anonymous>)",
+              "callbacks": 2
+            }
+          ],
+          "targets": [
+            {
+              "target": "DIV.compose-model-meta-subline:characterData",
+              "mutations": 3686
+            },
+            {
+              "target": "DIV.container:childList",
+              "mutations": 24
+            },
+            {
+              "target": "DIV.compose-send-stack:childList",
+              "mutations": 24
+            },
+            {
+              "target": "BUTTON.icon-btn send-btn queue-mode:class",
+              "mutations": 12
+            },
+            {
+              "target": "BUTTON.icon-btn send-btn queue-mode:title",
+              "mutations": 12
+            },
+            {
+              "target": "BUTTON.icon-btn send-btn queue-mode:aria-label",
+              "mutations": 12
+            },
+            {
+              "target": "BUTTON.icon-btn send-btn:class",
+              "mutations": 12
+            },
+            {
+              "target": "BUTTON.icon-btn send-btn:title",
+              "mutations": 12
+            },
+            {
+              "target": "BUTTON.icon-btn send-btn:aria-label",
+              "mutations": 12
+            }
+          ],
+          "requests": [
+            "GET /timeline",
+            "GET /agent/active-chats",
+            "GET /agent/branches",
+            "GET /agent/branches",
+            "GET /agent/queue-state",
+            "GET /agent/context",
+            "GET /agent/autoresearch/status",
+            "GET /agent/status",
+            "GET /timeline",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /timeline",
+            "GET /agent/active-chats",
+            "GET /agent/branches",
+            "GET /agent/branches",
+            "GET /agent/queue-state",
+            "GET /agent/context",
+            "GET /agent/autoresearch/status",
+            "GET /agent/status",
+            "GET /timeline",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /timeline",
+            "GET /agent/active-chats",
+            "GET /agent/branches",
+            "GET /agent/branches",
+            "GET /agent/queue-state",
+            "GET /agent/context",
+            "GET /agent/autoresearch/status",
+            "GET /agent/status",
+            "GET /timeline",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /timeline",
+            "GET /agent/active-chats",
+            "GET /agent/branches",
+            "GET /agent/branches",
+            "GET /agent/queue-state",
+            "GET /agent/context",
+            "GET /agent/autoresearch/status",
+            "GET /agent/status",
+            "GET /timeline",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /timeline",
+            "GET /agent/active-chats",
+            "GET /agent/branches",
+            "GET /agent/branches",
+            "GET /agent/queue-state",
+            "GET /agent/context",
+            "GET /agent/autoresearch/status",
+            "GET /agent/status",
+            "GET /timeline",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /timeline",
+            "GET /agent/active-chats",
+            "GET /agent/branches",
+            "GET /agent/branches",
+            "GET /agent/queue-state",
+            "GET /agent/context",
+            "GET /agent/autoresearch/status",
+            "GET /agent/status",
+            "GET /timeline",
+            "GET /workspace/index-status",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /timeline",
+            "GET /agent/active-chats",
+            "GET /agent/branches",
+            "GET /agent/branches",
+            "GET /agent/queue-state",
+            "GET /agent/context",
+            "GET /agent/autoresearch/status",
+            "GET /agent/status",
+            "GET /timeline",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /timeline",
+            "GET /agent/active-chats",
+            "GET /agent/branches",
+            "GET /agent/branches",
+            "GET /agent/queue-state",
+            "GET /agent/context",
+            "GET /agent/autoresearch/status",
+            "GET /agent/status",
+            "GET /timeline",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /timeline",
+            "GET /agent/active-chats",
+            "GET /agent/branches",
+            "GET /agent/branches",
+            "GET /agent/queue-state",
+            "GET /agent/context",
+            "GET /agent/autoresearch/status",
+            "GET /agent/status",
+            "GET /timeline",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /timeline",
+            "GET /agent/active-chats",
+            "GET /agent/branches",
+            "GET /agent/branches",
+            "GET /agent/queue-state",
+            "GET /agent/context",
+            "GET /agent/autoresearch/status",
+            "GET /agent/status",
+            "GET /timeline",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /timeline",
+            "GET /agent/active-chats",
+            "GET /agent/branches",
+            "GET /agent/branches",
+            "GET /agent/queue-state",
+            "GET /agent/context",
+            "GET /agent/autoresearch/status",
+            "GET /agent/status",
+            "GET /timeline",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /timeline",
+            "GET /agent/active-chats",
+            "GET /agent/branches",
+            "GET /agent/branches",
+            "GET /agent/queue-state",
+            "GET /agent/context",
+            "GET /agent/autoresearch/status",
+            "GET /agent/status",
+            "GET /timeline",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context"
+          ],
+          "unhandled": [],
+          "errors": [],
+          "animations": [
+            {
+              "playState": "running",
+              "iterations": 1
+            },
+            {
+              "playState": "running",
+              "name": "fadeIn",
+              "iterations": 1
+            }
+          ],
+          "visibility": "visible"
+        },
+        {
+          "id": "visual-minimal",
+          "skin": "visual",
+          "posts": 10,
+          "traffic": true,
+          "instrument": true,
+          "taskCpuEquivalentPercent": 0.16674166666666668,
+          "durations": {
+            "TaskDuration": 0.10004500000000001,
+            "ScriptDuration": 0.015063,
+            "LayoutDuration": 0.000167,
+            "RecalcStyleDuration": 0,
+            "LayoutCount": 1,
+            "RecalcStyleCount": 0
+          },
+          "counts": {
+            "timeout": 25,
+            "interval": 108,
+            "raf": 0,
+            "mutations": 1,
+            "mutationNodes": 0
+          },
+          "origins": [
+            {
+              "origin": "setInterval:1000:    at Object.__ (http://127.0.0.1:44637/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:82:8329)\n    at qa (http://127.0.0.1:44637/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 60
+            },
+            {
+              "origin": "setInterval:5000:    at Object.__ (http://127.0.0.1:44637/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:4:2706)\n    at qa (http://127.0.0.1:44637/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 24
+            },
+            {
+              "origin": "setTimeout:500:    at v (http://127.0.0.1:44637/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:4:4302)\n    at QuietEventSource.<anonymous> (http://127.0.0.1:44637/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:82:67693)\n    at <anonymous>:37:67",
+              "callbacks": 24
+            },
+            {
+              "origin": "setInterval:10000:    at Object.__ (http://127.0.0.1:44637/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:4:2783)\n    at qa (http://127.0.0.1:44637/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 12
+            },
+            {
+              "origin": "setInterval:10000:    at Object.__ (http://127.0.0.1:44637/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:82:12912)\n    at qa (http://127.0.0.1:44637/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 6
+            },
+            {
+              "origin": "setInterval:10000:    at Object.__ (http://127.0.0.1:44637/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:30077)\n    at qa (http://127.0.0.1:44637/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 6
+            },
+            {
+              "origin": "setTimeout:31749:    at Object.__ (http://127.0.0.1:44637/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:154:25991)\n    at qa (http://127.0.0.1:44637/static/visual/dist/app.bundle.js?v=__APP_ASSET_VERSION__:1:13259)\n    at Array.some (<anonymous>)",
+              "callbacks": 1
+            }
+          ],
+          "targets": [
+            {
+              "target": "SPAN.tab-bar__clock:characterData",
+              "mutations": 1
+            }
+          ],
+          "requests": [
+            "GET /agent/context",
+            "GET /agent/context",
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/context",
+            "GET /agent/context",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/context",
+            "GET /agent/context",
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/context",
+            "GET /agent/context",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/context",
+            "GET /agent/context",
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/context",
+            "GET /agent/context",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/context",
+            "GET /agent/context",
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/context",
+            "GET /agent/context",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/context",
+            "GET /agent/context",
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/context",
+            "GET /agent/context",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/context",
+            "GET /agent/context",
+            "GET /agent/status",
+            "GET /agent/status",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster",
+            "GET /agent/context",
+            "GET /agent/context",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/system-metrics",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/models",
+            "GET /agent/roster",
+            "GET /agent/roster"
+          ],
+          "unhandled": [],
+          "errors": [],
+          "animations": [],
+          "visibility": "visible"
+        },
+        {
+          "id": "classic-control",
+          "skin": "classic",
+          "posts": 10,
+          "traffic": false,
+          "instrument": false,
+          "taskCpuEquivalentPercent": 2.348126666666667,
+          "durations": {
+            "TaskDuration": 1.4088760000000002,
+            "ScriptDuration": 0.118554,
+            "LayoutDuration": 0,
+            "RecalcStyleDuration": 0.058918000000000005,
+            "LayoutCount": 0,
+            "RecalcStyleCount": 3600
+          },
+          "counts": {
+            "timeout": 0,
+            "interval": 0,
+            "raf": 0,
+            "mutations": 0,
+            "mutationNodes": 0
+          },
+          "origins": [],
+          "targets": [],
+          "requests": [
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /workspace/index-status",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/active-chats",
+            "GET /agent/branches",
+            "GET /agent/branches",
+            "GET /agent/queue-state",
+            "GET /timeline",
+            "GET /agent/status",
+            "GET /agent/context",
+            "GET /agent/autoresearch/status",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /timeline",
+            "GET /agent/status",
+            "GET /agent/queue-state",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/active-chats",
+            "GET /agent/branches",
+            "GET /agent/branches",
+            "GET /agent/autoresearch/status",
+            "GET /agent/models",
+            "GET /agent/context",
+            "GET /agent/models",
+            "GET /agent/context",
+            "POST /agent/push/presence",
+            "GET /agent/models",
+            "GET /agent/context"
+          ],
+          "unhandled": [],
+          "errors": [],
+          "animations": [],
+          "visibility": "visible"
+        }
+      ]
+    }
+  }
+}

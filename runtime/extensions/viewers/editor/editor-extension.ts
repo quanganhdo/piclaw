@@ -1,3 +1,4 @@
+import { themeClassHighlighter } from "./syntax-highlighter.js";
 /**
  * editor-extension.ts — Standalone editor pane extension.
  *
@@ -40,7 +41,6 @@ import {
     indentOnInput,
     indentUnit,
     tags,
-    classHighlighter,
     shell,
     keymap,
     indentWithTab,
@@ -652,7 +652,7 @@ export class StandaloneEditorInstance implements PaneInstance {
             ...(enableRichFeatures ? [indentOnInput()] : []),
             ...(this.isMarkdownFile() ? [] : [closeBrackets()]),
             ...(enableRichFeatures ? [autocompletion({ activateOnTyping: false })] : []),
-            ...(enableRichFeatures ? [syntaxHighlighting(headingStyle), syntaxHighlighting(classHighlighter)] : []),
+            ...(enableRichFeatures ? [syntaxHighlighting(headingStyle), syntaxHighlighting(themeClassHighlighter)] : []),
             search(),
             searchRevealExtension,
             this.vimCompartment.of([]), // vim loaded async after mount
@@ -704,7 +704,7 @@ export class StandaloneEditorInstance implements PaneInstance {
             this.baselineWhitespaceCompartment.of(enableRichFeatures && this.shouldApplyWhitespaceMarkers() ? highlightWhitespace() : []),
             this.baselineThemeCompartment.of(isDark ? githubDark : githubLight),
             this.baselineAccentCompartment.of(this.buildAccentTheme()),
-            ...(enableRichFeatures ? [EditorView.lineWrapping, syntaxHighlighting(headingStyle), syntaxHighlighting(classHighlighter)] : []),
+            ...(enableRichFeatures ? [EditorView.lineWrapping, syntaxHighlighting(headingStyle), syntaxHighlighting(themeClassHighlighter)] : []),
             EditorState.readOnly.of(true),
             EditorView.editable.of(false),
             this.buildSharedEditorTheme(),

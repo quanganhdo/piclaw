@@ -1,3 +1,4 @@
+import { MERMAID_THEME_COLORS, stripMermaidFontImports } from '../../../../../src/ui/svg-theme';
 /**
  * Post-render mermaid diagram processing.
  * Lazy-loads beautiful-mermaid vendor bundle on first use.
@@ -115,11 +116,6 @@ function roundPolylineCorners(svgString: string, radius = 6): string {
   );
 }
 
-/** Detect dark mode */
-function isDarkMode(): boolean {
-  return window.matchMedia?.("(prefers-color-scheme: dark)").matches !== false;
-}
-
 /** Lazy-load beautiful-mermaid vendor bundle */
 let loadPromise: Promise<void> | null = null;
 function ensureMermaidLoaded(): Promise<void> {
@@ -158,16 +154,15 @@ export async function renderMermaidDiagrams(container: HTMLElement): Promise<voi
   const bm = window.beautifulMermaid;
   if (!bm?.renderMermaid) return;
 
-  const dark = isDarkMode();
-  const theme = dark ? bm.THEMES["tokyo-night"] : bm.THEMES["github-light"];
+  const theme = MERMAID_THEME_COLORS;
 
   for (const el of pending) {
     try {
       const encoded = (el as HTMLElement).dataset.mermaid;
       const raw = fromBase64(encoded || "");
       const code = decodeEntitiesDeep(raw, 2);
-      let svg = await bm.renderMermaid(code, { ...theme, transparent: true });
-      svg = roundPolylineCorners(svg);
+      let svg = await bm.renderMermaid(code, { ...theme, font: 'system-ui', transparent: true });
+      svg = stripMermaidFontImports(roundPolylineCorners(svg));
       el.innerHTML = sanitizeSvg(svg);
       el.removeAttribute("data-mermaid");
     } catch (e: unknown) {

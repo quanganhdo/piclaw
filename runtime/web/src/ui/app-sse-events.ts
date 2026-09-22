@@ -46,6 +46,7 @@ import {
 import { isAppChatActivationRecent } from './app-refresh-coordination.js';
 import {
   getContextSessionGeneration,
+  getContextUsageRevision,
   haveSameContextUsage,
   normalizeContextUsage,
   persistContextUsage,
@@ -745,6 +746,7 @@ export function handleAppSseEvent(
     applyModelState(data);
     const targetChatJid = currentChatJid;
     const expectedSessionGeneration = getContextSessionGeneration(targetChatJid);
+    const expectedRevision = getContextUsageRevision(targetChatJid);
     getAgentContext(targetChatJid)
       .then((contextPayload) => {
         if (activeChatJidRef.current !== targetChatJid) return;
@@ -753,6 +755,7 @@ export function handleAppSseEvent(
           const merged = reconcileContextUsageForChat(targetChatJid, prev, nextContextUsage, {
             authoritative: true,
             expectedSessionGeneration,
+            expectedRevision,
           });
           if (haveSameContextUsage(prev, merged)) return prev;
           persistContextUsage(targetChatJid, merged);

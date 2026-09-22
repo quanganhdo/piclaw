@@ -2,6 +2,7 @@ import { highlightCodeToHtml } from './utils/code-highlighting.js';
 import { getThemeMode } from './ui/theme.js';
 import { sanitizeQmdHref } from './qmd-links.js';
 import { sanitizeVaultHref } from './vault-links.js';
+import { MERMAID_THEME_COLORS, stripMermaidFontImports } from './ui/svg-theme.js';
 import { renderSvgFences, escapeSvgSource, encodeSvgSource } from './utils/svg-images.js';
 
 declare const katex: { renderToString: (tex: string, options?: Record<string, unknown>) => string };
@@ -844,9 +845,8 @@ export function isMermaidSourceAllowedForScopedRendering(source: string): boolea
 export async function renderMermaidDiagrams(container, options: MarkdownOptions = {}) {
     if (!window.beautifulMermaid) return;
 
-    const { renderMermaid, THEMES } = window.beautifulMermaid;
-    const isDark = getThemeMode() === 'dark';
-    const theme = isDark ? THEMES['tokyo-night'] : THEMES['github-light'];
+    const { renderMermaid } = window.beautifulMermaid;
+    const theme = MERMAID_THEME_COLORS;
 
     const pending = container.querySelectorAll('.mermaid-container[data-mermaid]');
     for (const el of pending) {
@@ -857,8 +857,8 @@ export async function renderMermaidDiagrams(container, options: MarkdownOptions 
             if (typeof options.rewriteImageSrc === 'function' && !isMermaidSourceAllowedForScopedRendering(code)) {
                 throw new Error('External Mermaid resources are unavailable in this view.');
             }
-            let svg = await renderMermaid(code, { ...theme, transparent: true });
-            svg = roundPolylineCorners(svg);
+            let svg = await renderMermaid(code, { ...theme, font: 'system-ui', transparent: true });
+            svg = stripMermaidFontImports(roundPolylineCorners(svg));
             el.innerHTML = typeof options.rewriteImageSrc === 'function'
                 ? sanitizeHtml(svg, options)
                 : svg;

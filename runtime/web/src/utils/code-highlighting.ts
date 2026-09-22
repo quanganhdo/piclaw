@@ -1,5 +1,5 @@
+import { themeClassHighlighter } from "../../../extensions/viewers/editor/syntax-highlighter.js";
 import {
-  classHighlighter,
   highlightTree,
   StreamLanguage,
   cssLanguage,
@@ -548,7 +548,7 @@ export function highlightCodeToHtml(code: string, lang: string): string {
   const tokens: TokenSegment[] = [];
   try {
     const tree = parser.parse(code);
-    highlightTree(tree, classHighlighter, (from, to, cls) => {
+    highlightTree(tree, themeClassHighlighter, (from, to, cls) => {
       if (!cls || from >= to) return;
       tokens.push({ from, to, cls });
     });
@@ -581,7 +581,7 @@ export function highlightCodeLinesAsHtml(code: string, lang: string): string[] {
   const tokens: TokenSegment[] = [];
   try {
     const tree = parser.parse(code);
-    highlightTree(tree, classHighlighter, (from, to, cls) => {
+    highlightTree(tree, themeClassHighlighter, (from, to, cls) => {
       if (!cls || from >= to) return;
       tokens.push({ from, to, cls });
     });

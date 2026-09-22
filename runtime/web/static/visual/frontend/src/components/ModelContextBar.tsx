@@ -1,7 +1,7 @@
 import { useRef } from "preact/hooks";
 import { useComputed } from "@preact/signals";
 import { useDismissableLayer } from "../hooks/useDismissableLayer";
-import { useStatusPolling } from "./model-context-bar/useStatusPolling";
+import type { UseStatusPollingResult } from "./model-context-bar/useStatusPolling";
 import { useCompaction } from "./model-context-bar/useCompaction";
 import { useModelPicker } from "./model-context-bar/useModelPicker";
 import { ModelPicker } from "./model-context-bar/ModelPicker";
@@ -10,13 +10,13 @@ import { ContextRing } from "./model-context-bar/ContextRing";
 import { providerConfigured } from "../app/providerState";
 import { formatVisualLatestRunUsage, formatVisualProviderUsage } from "./model-context-bar/telemetry";
 
-export function ModelContextBar() {
+export function ModelContextBar({ polling }: { polling: UseStatusPollingResult }) {
   const {
     agentStatus, agentContext, isStale,
     currentModel, currentThinkingLevel, modelContextWindow,
-    providerUsage,
+    providerUsage, modelSelectionKnown,
     fetchContext,
-  } = useStatusPolling();
+  } = polling;
 
   const { isCompacting, compactElapsed, handleCompact } = useCompaction(fetchContext);
 
@@ -32,8 +32,8 @@ export function ModelContextBar() {
     return agentContext.value?.percent ?? (w > 0 ? (t / w) * 100 : 0);
   });
 
-  const modelName = agentStatus.value?.data?.model ?? currentModel.value ?? "";
-  const thinkingLevel = agentStatus.value?.data?.thinking_level || currentThinkingLevel.value || "";
+  const modelName = modelSelectionKnown.value ? currentModel.value ?? "" : agentStatus.value?.data?.model ?? "";
+  const thinkingLevel = modelSelectionKnown.value ? currentThinkingLevel.value : agentStatus.value?.data?.thinking_level || "";
   const activeModel = currentModel.value ?? modelName;
   const providerUsageMeta = formatVisualProviderUsage(providerUsage.value);
   const latestRunUsageMeta = formatVisualLatestRunUsage(agentContext.value, activeModel || null);
