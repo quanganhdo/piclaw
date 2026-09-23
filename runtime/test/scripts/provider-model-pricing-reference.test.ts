@@ -10,13 +10,13 @@ describe("provider/model pricing reference", () => {
     });
     expect(resolveProviderModelPricing("deepseek", "deepseek-v4-flash")).toMatchObject({
       canonicalModel: "DeepSeek V4 Flash (native)",
-      inputPerMTok: 0.14,
-      cacheReadPerMTok: 0.0028,
+      inputPerMTok: 0.15,
+      cacheReadPerMTok: 0.003,
     });
     expect(resolveProviderModelPricing("openrouter", "deepseek/deepseek-v4-flash")).toMatchObject({
       canonicalModel: "DeepSeek V4 Flash (OpenRouter)",
-      inputPerMTok: 0.08358,
-      outputPerMTok: 0.16716,
+      inputPerMTok: 0.049,
+      outputPerMTok: 0.098,
     });
   });
 
@@ -89,6 +89,27 @@ describe("provider/model pricing reference", () => {
     expect(resolveProviderModelPricing("github-copilot", "gpt-5.6-sol").inputPerMTok).toBe(4);
     expect(resolveProviderModelPricing("openrouter", "openai/gpt-5.6-sol").inputPerMTok).toBe(2);
     expect(resolveProviderModelPricing("openai-codex", "gpt-5.6-sol").outputPerMTok).toBe(20);
+  });
+
+  test("refreshes September 22 launches without assuming Copilot availability", () => {
+    expect(resolveProviderModelPricing("openai", "gpt-6-sol")).toMatchObject({ inputPerMTok: 2, outputPerMTok: 10, cacheReadPerMTok: 0.2, cacheWritePerMTok: 2.5 });
+    expect(resolveProviderModelPricing("openai", "gpt-6-luna")).toMatchObject({ inputPerMTok: 0.1, outputPerMTok: 0.5, cacheReadPerMTok: 0.01, cacheWritePerMTok: 0.125 });
+    expect(resolveProviderModelPricing("github-copilot", "gpt-6-sol").basis).toContain("Unpriced");
+    expect(resolveProviderModelPricing("anthropic", "claude-opus-5-5")).toMatchObject({ inputPerMTok: 4, outputPerMTok: 20, cacheReadPerMTok: 0.2, cacheWritePerMTok: 5 });
+    expect(resolveProviderModelPricing("anthropic", "claude-opus-5.5-fast")).toMatchObject({ inputPerMTok: 8, outputPerMTok: 40, cacheReadPerMTok: 0.4, cacheWritePerMTok: 10 });
+    expect(resolveProviderModelPricing("github-copilot", "claude-sonnet-5")).toMatchObject({ inputPerMTok: 2, outputPerMTok: 10 });
+    expect(resolveProviderModelPricing("anthropic", "claude-fable-5-1").cacheReadPerMTok).toBe(0.25);
+  });
+
+  test("preserves peer route differences and explicitly dated fallbacks", () => {
+    expect(resolveProviderModelPricing("xai", "grok-4.5").cacheReadPerMTok).toBe(0.3);
+    expect(resolveProviderModelPricing("github-copilot", "grok-4.5").cacheReadPerMTok).toBe(0.5);
+    expect(resolveProviderModelPricing("google", "gemini-3.8-flash")).toMatchObject({ inputPerMTok: 0.75, outputPerMTok: 3.75 });
+    expect(resolveProviderModelPricing("zai", "glm-5.3-flash")).toMatchObject({ inputPerMTok: 0.15, outputPerMTok: 0.5, cacheReadPerMTok: 0.03 });
+    expect(resolveProviderModelPricing("groq", "openai/gpt-oss-120b")).toMatchObject({ inputPerMTok: 0.15, outputPerMTok: 0.6 });
+    expect(resolveProviderModelPricing("moonshot", "kimi-k3").cacheWritePerMTok).toBe(3);
+    expect(resolveProviderModelPricing("azure-foundry", "deepseek-v4-flash").notes).toContain("not reverified");
+    expect(resolveProviderModelPricing("groq", "openai/gpt-oss-120b").notes).toContain("ordinary input fallback");
   });
 
   test("prices local inference at zero metered API cost", () => {

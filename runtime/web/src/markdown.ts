@@ -4,6 +4,7 @@ import { sanitizeQmdHref } from './qmd-links.js';
 import { sanitizeVaultHref } from './vault-links.js';
 import { MERMAID_THEME_COLORS, stripMermaidFontImports } from './ui/svg-theme.js';
 import { renderSvgFences, escapeSvgSource, encodeSvgSource } from './utils/svg-images.js';
+import { linkifyChatReferences } from './ui/chat-reference-links.js';
 
 declare const katex: { renderToString: (tex: string, options?: Record<string, unknown>) => string };
 declare const marked: { parse: (text: string, options?: Record<string, unknown>) => string };
@@ -24,6 +25,7 @@ type MarkdownOptions = {
     allowDataImage?: boolean;
     sanitize?: boolean;
     rewriteImageSrc?: (src: string) => string;
+    projectRepository?: string | null;
 };
 
 /** Regex matching HTTP/HTTPS URLs in message text. */
@@ -606,41 +608,8 @@ export function renderMath(html_content) {
 /**
  * Linkify hashtags in rendered HTML, avoiding links/code blocks.
  */
-function linkifyHashtagsInHtml(html_content) {
-    if (!html_content) return html_content;
-    const doc = new DOMParser().parseFromString(html_content, 'text/html');
-    const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
-    const nodes: Text[] = [];
-    let node;
-    while ((node = walker.nextNode())) {
-        nodes.push(node);
-    }
-    for (const textNode of nodes) {
-        const value = textNode.nodeValue;
-        if (!value) continue;
-        HASHTAG_REGEX.lastIndex = 0;
-        if (!HASHTAG_REGEX.test(value)) continue;
-        HASHTAG_REGEX.lastIndex = 0;
-        const parent = textNode.parentElement;
-        if (parent && (parent.closest('a') || parent.closest('code') || parent.closest('pre'))) continue;
-        const parts = value.split(HASHTAG_REGEX);
-        if (parts.length <= 1) continue;
-        const fragment = doc.createDocumentFragment();
-        parts.forEach((part, idx) => {
-            if (idx % 2 === 1) {
-                const link = doc.createElement('a');
-                link.setAttribute('href', '#');
-                link.className = 'hashtag';
-                link.setAttribute('data-hashtag', part);
-                link.textContent = `#${part}`;
-                fragment.appendChild(link);
-            } else {
-                fragment.appendChild(doc.createTextNode(part));
-            }
-        });
-        textNode.parentNode?.replaceChild(fragment, textNode);
-    }
-    return doc.body.innerHTML;
+export function linkifyHashtagsInHtml(html: string, repositoryUrl: string | null = null): string {
+    return linkifyChatReferences(html, repositoryUrl);
 }
 
 /**
@@ -741,7 +710,7 @@ function renderMarkdownBody(text: string, options: MarkdownOptions): string {
     html_content = renderMath(html_content);
 
     // Process hashtags without breaking links
-    html_content = linkifyHashtagsInHtml(html_content);
+    html_content = linkifyHashtagsInHtml(html_content, options.projectRepository);
 
     // Transform GitHub-style admonitions (> [!NOTE], > [!TIP], etc.)
     html_content = transformAdmonitions(html_content);

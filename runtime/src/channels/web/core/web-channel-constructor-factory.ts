@@ -6,6 +6,7 @@ import {
   getWebServerConfig,
 } from "../../../core/config.js";
 import { getChatCursor, getDb, replaceMessageContent } from "../../../db.js";
+import { getChatProject } from "../../../db/chat-project.js";
 import { handlePost as handlePostRequest } from "../handlers/posts.js";
 import { handleAgentMessage as handleAgentMessageRequest } from "../handlers/agent.js";
 import {
@@ -366,6 +367,7 @@ export function createWebChannelConstructorFactory(
     handlePostRequest: (req, isReply, chatJid) => deps.handlePostRequest(channel, req, isReply, chatJid),
     listActiveChats: () => channel.agentPool.listActiveChats(),
     listKnownChats: resolveListKnownChats(channel.agentPool),
+    getProjectRepository: (chatJid) => getChatProject(chatJid),
   });
 
   const controlPlaneService = deps.createControlPlaneService(channel, {

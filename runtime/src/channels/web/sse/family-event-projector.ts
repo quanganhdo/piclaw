@@ -1,3 +1,4 @@
+import { projectPublicBranding } from "./public-branding.js";
 import { projectFamilyAgentStatusData } from "../http/family-agent-status.js";
 
 const allowed = new Set([
@@ -34,6 +35,7 @@ function projectCoreBlocks(value: unknown): unknown[] | undefined {
 
 /** Per-client allowlist: no extension, widget, MCP, workspace, provider, or runtime diagnostics. */
 export function projectFamilySseEvent(eventType: string, data: unknown): unknown | null {
+  if (eventType === "profile_update") return projectPublicBranding(data);
   if (!allowed.has(eventType) || !data || typeof data !== "object" || Array.isArray(data)) return null;
   const input = data as Record<string, unknown>;
   if (eventType === "agent_status") return copyAllowed(projectFamilyAgentStatusData(input) as Record<string, unknown>);

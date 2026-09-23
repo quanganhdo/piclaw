@@ -274,6 +274,16 @@ function buildWidgetBootstrapScript(widget: any): string {
   let pendingHostEnvelope = null;
   let pendingHostEnvelopeFrame = 0;
   let lastDispatchedEnvelopeKey = null;
+  let hostFrame = null;
+  let hostStateObserver = null;
+  let hostStatePoll = 0;
+  let hostStatePaused = false;
+  const scheduleFrame = typeof requestAnimationFrame === 'function'
+    ? requestAnimationFrame
+    : (cb) => setTimeout(cb, 0);
+  const cancelFrame = typeof cancelAnimationFrame === 'function'
+    ? cancelAnimationFrame
+    : clearTimeout;
 
   function getEnvelopeKey(data) {
     try {
@@ -327,18 +337,15 @@ function buildWidgetBootstrapScript(widget: any): string {
   }
 
   function scheduleHostEnvelope(data) {
-    if (!data) return;
+    if (!data || hostStatePaused) return;
     pendingHostEnvelope = data;
     if (pendingHostEnvelopeFrame) return;
-    const schedule = typeof requestAnimationFrame === 'function'
-      ? requestAnimationFrame
-      : (cb) => setTimeout(cb, 0);
-    pendingHostEnvelopeFrame = schedule(flushHostEnvelope);
+    pendingHostEnvelopeFrame = scheduleFrame(flushHostEnvelope);
   }
 
   function readWindowNameState() {
     try {
-      const raw = window.name || '';
+      const raw = (hostFrame ? hostFrame.getAttribute('name') : window.name) || '';
       if (!raw || raw === lastWindowName || !raw.startsWith(windowNamePrefix)) return;
       lastWindowName = raw;
       const payload = JSON.parse(raw.slice(windowNamePrefix.length));
@@ -353,6 +360,42 @@ function buildWidgetBootstrapScript(widget: any): string {
     } catch {
       /* expected: host window.name payload can be absent or mid-update while polling. */
     }
+  }
+
+  function startHostStateSync() {
+    if (hostStateObserver || hostStatePoll) return;
+    hostStatePaused = false;
+    try {
+      // The host writes iframe.name. Observe that attribute: browsers need not
+      // copy later attribute changes into the child window.name property.
+      // WebKit reports a security error for frameElement in opaque frames,
+      // even when the access is caught. Those frames use the existing poll.
+      hostFrame = window.origin === 'null' ? null : window.frameElement;
+      if (hostFrame && typeof MutationObserver === 'function') {
+        hostStateObserver = new MutationObserver(readWindowNameState);
+        hostStateObserver.observe(hostFrame, { attributes: true, attributeFilter: ['name'] });
+      }
+    } catch {
+      // expected: an opaque/cross-origin parent may prevent frame access.
+      hostStateObserver?.disconnect();
+      hostStateObserver = null;
+      hostFrame = null;
+    }
+    if (!hostStateObserver) hostStatePoll = setInterval(readWindowNameState, 250);
+    readWindowNameState();
+  }
+
+  function stopHostStateSync() {
+    hostStatePaused = true;
+    hostStateObserver?.disconnect();
+    hostStateObserver = null;
+    hostFrame = null;
+    if (hostStatePoll) clearInterval(hostStatePoll);
+    hostStatePoll = 0;
+    if (pendingHostEnvelopeFrame) cancelFrame(pendingHostEnvelopeFrame);
+    pendingHostEnvelopeFrame = 0;
+    pendingHostEnvelope = null;
+    lastWindowName = null;
   }
 
   window.piclawWidget = {
@@ -373,11 +416,12 @@ function buildWidgetBootstrapScript(widget: any): string {
   });
 
   function announceReady() {
-    readWindowNameState();
+    startHostStateSync();
     post('widget.ready', { title: document.title || meta.title || 'Generated widget' });
   }
 
-  setInterval(readWindowNameState, 250);
+  window.addEventListener('pagehide', stopHostStateSync);
+  window.addEventListener('pageshow', startHostStateSync);
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', announceReady, { once: true });

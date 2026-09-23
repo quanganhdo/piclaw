@@ -17,6 +17,7 @@ import {
   setUserName,
 } from "../../core/config.js";
 import { updateUserConfig } from "../agent-control-helpers.js";
+import { ensureAvatarCache } from "../../channels/web/media/avatar-service.js";
 import { splitArgs } from "../parser-utils.js";
 
 const CLEAR_VALUES = ["clear", "none", "off", "default"];
@@ -61,11 +62,11 @@ export async function handleUserAvatar(_session: AgentSession, command: UserAvat
   const trimmed = command.avatar.trim();
   const normalized = trimmed.toLowerCase();
   const nextAvatar = CLEAR_VALUES.includes(normalized) ? null : trimmed;
-  const updated = updateUserConfig({
-    avatar: nextAvatar,
-    avatarBackground: nextAvatar === null ? null : undefined,
-  });
-  const effective = updated.avatar || getIdentityConfig().userAvatar || "";
+  const effective = nextAvatar || "";
+  if (effective) {
+    try { await ensureAvatarCache("user", effective, { refresh: true }); }
+    catch (error) { return { status: "error", message: `User avatar unchanged: ${error instanceof Error ? error.message : String(error)}` }; }
+  }
   setUserAvatar(effective);
 
   if (nextAvatar === null) {

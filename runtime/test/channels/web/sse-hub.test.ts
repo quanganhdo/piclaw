@@ -23,3 +23,16 @@ test('pin invalidation reaches only the matching account or operator, independen
   hub.broadcast('unknown_global',{operator:true});expect(received.a).toHaveLength(1);
  }finally{hub.closeAll();}
 });
+
+test('global branding is projected even without an optional family projector, and revoked clients receive nothing', () => {
+  const hub = new SseHub(); const received: Record<string,string[]> = {family:[],operator:[],revoked:[]};
+  for (const key of Object.keys(received)) hub.clients.add({controller:{enqueue:(bytes:Uint8Array)=>received[key].push(new TextDecoder().decode(bytes)),close:()=>{}},heartbeat:setInterval(()=>{},60000),chatJid:'web:'+key,...(key==='operator'?{}:{authorisation:{chatJid:'web:'+key,userId:key,isAuthorised:()=>key!=='revoked'}})} as any);
+  try {
+    hub.broadcast('profile_update',{agent_id:'default',agent_name:'Public name',agent_avatar:'/avatar/agent?v=abc',user_name:'Private user',user_avatar:'/private/user',config:{secret:'private'}});
+    expect(received.family).toEqual(['event: profile_update\ndata: {"agent_id":"default","agent_name":"Public name","agent_avatar":"/avatar/agent?v=abc"}\n\n']);
+    expect(received.operator[0]).toContain('Private user'); expect(received.revoked).toEqual([]);
+    hub.broadcast('profile_update',{agent_id:'private-branch',agent_name:'Private branch',agent_avatar:'/avatar/agent?v=abc'}); expect(received.family).toHaveLength(1);
+    hub.broadcast('profile_update',{agent_name:'Missing identity'}); expect(received.family).toHaveLength(1);
+    hub.broadcast('unknown_global',{secret:'never'}); expect(received.family).toHaveLength(1);
+  } finally { hub.closeAll(); }
+});

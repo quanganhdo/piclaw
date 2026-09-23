@@ -10,6 +10,7 @@ const log = createLogger("web.manifest");
 export interface ManifestIconMeta {
   updatedAt?: string;
   contentType?: string;
+  revision?: string;
 }
 
 /** Dependencies required for building the dynamic web app manifest response. */
@@ -29,10 +30,10 @@ function buildDefaultManifestIcons(): Array<{ src: string; sizes: string; type: 
 }
 
 function buildAvatarManifestIcons(version: string): Array<{ src: string; sizes: string; type: string; purpose?: string }> {
-  return [
-    { src: `/avatar/agent?format=png&size=192&v=${version}`, sizes: "192x192", type: "image/png", purpose: "any maskable" },
-    { src: `/avatar/agent?format=png&size=512&v=${version}`, sizes: "512x512", type: "image/png", purpose: "any maskable" },
-  ];
+  return [192, 512].flatMap(size => [
+    { src: `/avatar/agent?format=png&size=${size}&v=${version}`, sizes: `${size}x${size}`, type: "image/png", purpose: "any" },
+    { src: `/avatar/agent?format=png&size=${size}&purpose=maskable&v=${version}`, sizes: `${size}x${size}`, type: "image/png", purpose: "maskable" },
+  ]);
 }
 
 /** Build and return the web app manifest JSON (or HEAD headers only). */
@@ -45,7 +46,7 @@ export async function handleManifestRequest(req: Request, ctx: ManifestRequestCo
     try {
       const meta = await ctx.ensureAvatarCache("agent", ctx.assistantAvatar);
       if (meta) {
-        const versionSource = meta.updatedAt || new Date().toISOString();
+        const versionSource = meta.revision || meta.updatedAt || new Date().toISOString();
         const version = encodeURIComponent(versionSource);
         icons = buildAvatarManifestIcons(version);
       }
@@ -59,6 +60,8 @@ export async function handleManifestRequest(req: Request, ctx: ManifestRequestCo
 
   const manifest = {
     name: baseName,
+    // Public instance branding, also used by family/Visual hydration.
+    piclaw_avatar: icons[0]?.src.startsWith("/avatar/agent") ? icons[0].src : null,
     short_name: baseName,
     description: "Slack-like interface for coding agents",
     start_url: "/",

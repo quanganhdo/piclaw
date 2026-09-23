@@ -6145,11 +6145,13 @@ body {
 }
 
 /* Hashtag links */
-a.hashtag {
+a.hashtag,
+a.project-reference {
   color: var(--accent);
   text-decoration: none;
 }
-a.hashtag:hover {
+a.hashtag:hover,
+a.project-reference:hover {
   text-decoration: underline;
 }
 

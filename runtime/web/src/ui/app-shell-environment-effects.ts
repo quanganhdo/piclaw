@@ -1,3 +1,5 @@
+import { applyBrandingIconLinks, avatarRevision } from './instance-branding.js';
+export { applyBrandingIconLinks } from './instance-branding.js';
 import { useCallback, useEffect, useRef } from '../vendor/preact-htm.js';
 import { setLocalStorageItem } from '../utils/storage.js';
 import {
@@ -112,30 +114,6 @@ export function scheduleResumeLayoutSettling(
     }
     element.classList.remove(RESUME_LAYOUT_SETTLING_CLASS);
   };
-}
-
-export function applyBrandingIconLinks(
-  documentLike: { getElementById?: (id: string) => any } | null | undefined,
-  version: string | number,
-): void {
-  if (!documentLike?.getElementById) return;
-  const buster = encodeURIComponent(String(version || '0'));
-  const nextById: Record<string, string> = {
-    'dynamic-manifest': `/manifest.json?v=${buster}`,
-    'dynamic-favicon': `/favicon.ico?v=${buster}`,
-    'dynamic-apple-touch-icon': `/apple-touch-icon.png?v=${buster}`,
-    'dynamic-apple-touch-icon-180': `/apple-touch-icon-180x180.png?v=${buster}`,
-    'dynamic-apple-touch-icon-167': `/apple-touch-icon-167x167.png?v=${buster}`,
-    'dynamic-apple-touch-icon-152': `/apple-touch-icon-152x152.png?v=${buster}`,
-    'dynamic-apple-touch-icon-precomposed': `/apple-touch-icon-precomposed.png?v=${buster}`,
-  };
-
-  for (const [id, href] of Object.entries(nextById)) {
-    const link = documentLike.getElementById(id);
-    if (link && link.href !== href) {
-      link.href = href;
-    }
-  }
 }
 
 export function useAppShellEnvironmentEffects(options: UseAppShellEnvironmentEffectsOptions) {
@@ -259,7 +237,7 @@ export function useAppShellEnvironmentEffects(options: UseAppShellEnvironmentEff
     const avatarKey = avatarUrl ? `${avatarUrl}|${avatarVersion || ''}` : '';
     if (brandingRef.current.avatarBase !== avatarKey) {
       brandingRef.current.avatarBase = avatarKey;
-      const buster = avatarVersion || Date.now();
+      const buster = avatarVersion || avatarRevision(avatarUrl);
       applyBrandingIconLinks(document, buster);
     }
   }, [applyDocumentTitle, brandingRef]);

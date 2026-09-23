@@ -49,6 +49,7 @@ export interface Interaction {
   media_ids?: number[];
   created_at: string;
   data?: Record<string, unknown>;
+  project_repository?: { repository_url: string | null; source_branch_id: string | null; revision: string | null };
 }
 
 export interface TimelineResponse {

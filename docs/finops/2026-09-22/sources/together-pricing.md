@@ -1,0 +1,519 @@
+INFERENCE
+
+*   [
+
+    Serverless Inference
+
+    ](#serverless-inference)[
+
+    Provisioned Throughput
+
+    ](#provisioned-throughput)[
+
+    Dedicated Inference
+
+    ](#dedicated-inference)
+
+Compute
+
+*   [
+
+    GPU Clusters
+
+    ](#gpu-clusters)[
+
+    Sandbox
+
+    ](#sandbox)[
+
+    Managed Storage
+
+    ](#manage-storage)
+
+Model Shaping
+
+*   [
+
+    Fine-Tuning
+
+    ](#fine-tuning)
+
+Need help choosing?
+
+Our team can help you find the best fit for your needs.
+
+[
+
+Contact us
+
+](/contact-sales)
+
+Pricing
+
+# Pricing
+
+## Serverless Inference
+
+Most teams start with serverless inference and move to dedicated endpoints at scale.
+
+[
+
+Chat
+
+](#)[
+
+Vision
+
+](#)[
+
+Image
+
+](#)[
+
+Audio
+
+](#)[
+
+Video
+
+](#)[
+
+Transcribe
+
+](#)[
+
+Embeddings
+
+](#)[
+
+Rerank
+
+](#)[
+
+Moderation
+
+](#)
+
+Thank you! Your submission has been received!
+
+Oops! Something went wrong while submitting the form.
+
+Price per 1M tokens
+
+Batch API price
+
+| Model | Input | output |
+| --- | --- | --- |
+| MiniMax M3 | $0.30$0.06 (cached) | $1.20 |
+| Kimi K3 | $3.00$0.30 (cached) | $15.00 |
+| Qwen3.8-2.4T-A95B | $2.00$0.25 (cached) | $6.00 |
+| Muse Glimmer 30B | $0.35$0.04 (cached) | $1.50 |
+| DeepSeek V4 Pro 0813 | $1.32$0.13 (cached) | $3.96 |
+| GLM-5.3 | $1.40$0.26 (cached) | $4.40 |
+| GLM-5.3-Flash | $0.15$0.03 (cached) | $0.50 |
+| DeepSeek V4.1 Flash | $0.30$0.006 (cached) | $1.20 |
+| Gemma 4 31B | $0.39 | $0.97 |
+| Qwen3.7-Plus | $0.32 | $1.28 |
+| GLM-5.2 | $1.40$0.26 (cached) | $4.40 |
+| Ternary Bonsai 27B | $0.00 | $0.00 |
+| Inkling | $1.00$0.17 (cached) | $4.05 |
+| DeepSeek V4 Flash 0731 | $0.14$0.03 (cached) | $0.28 |
+| Qwen3.8 Flash | $0.15 | $0.47 |
+| Qwen3.7-Max | $2.50$0.25 (cached) | $7.50 |
+| gpt-oss-120B | $0.15 | $0.60 |
+| Qwen3.5-397B-A17B | $0.60$0.35 (cached) | $3.60 |
+| Qwen3.5 9B | $0.17 | $0.25 |
+| Cogito v2.1 671B | $1.25 | $1.25 |
+| Rnj-1 Instruct | $0.15 | $0.15 |
+| Llama 3.3 70B | $1.04 | $1.04 |
+| MiniMax M2.7 | $0.30$0.06 (cached) | $1.20 |
+| Qwen3.6-Plus | $0.50 | $3.00 |
+| Qwen2.5 7B Instruct Turbo | $0.30 | $0.30 |
+| Llama 3 8B Instruct Lite | $0.14 | $0.14 |
+| Qwen3 235B A22B Instruct 2507 FP8 Throughput | $0.20 | $0.60 |
+
+Displayed prices refer to the lowest resolution/duration settings. Actual prices might vary.
+
+Price per 1M tokens
+
+| Model | Input | output |
+| --- | --- | --- |
+| MiniMax M3 | $0.30 | $1.20 |
+| Kimi K3 | $3.00 | $15.00 |
+| Qwen3.8-2.4T-A95B | $2.00 | $6.00 |
+| Muse Glimmer 30B | $0.35 | $1.50 |
+| GLM-5.3-Flash | $0.15 | $0.50 |
+| DeepSeek V4.1 Flash | $0.30 | $1.20 |
+| Gemma 4 31B | $0.39 | $0.97 |
+| Qwen3.7-Plus | $0.32 | $1.28 |
+| Ternary Bonsai 27B | $0.00 | $0.00 |
+| Inkling | $1.00 | $4.05 |
+| Qwen3.8 Flash | $0.15 | $0.47 |
+| Qwen3.5 9B | $0.17 | $0.25 |
+| Qwen3.6-Plus | $0.50 | $3.00 |
+
+Displayed prices refer to the lowest resolution/duration settings. Actual prices might vary.
+
+| Model | Price per mp | Price per iMAGE | Default steps |
+| --- | --- | --- | --- |
+| Qwen3.7-Plus | - | - | - |
+| GPT Image 2 | - | $0.053 | - |
+| Wan 2.6 Image | - | $0.03 | - |
+| Nano Banana Pro (Gemini 3 Pro Image) | - | $0.134 | - |
+| FLUX.2 [pro] | - | $0.03 | - |
+| Ideogram 4.0 | - | $0.06 | - |
+| Gemini 3.1 Flash Image (Nano Banana 2) | - | $0.05 | - |
+| Qwen Image 2.0 Pro | - | $0.08 | - |
+| Qwen Image 2.0 | - | $0.04 | - |
+| FLUX.2 [dev] | - | $0.0154 | - |
+| FLUX.2 [flex] | - | $0.03 | - |
+| FLUX.2 [max] | $0.070 | - | 50 |
+| FLUX.1 Kontext [pro] | $0.04 | - | 28 |
+| FLUX1.1 [pro] | $0.04 | - | - |
+| Juggernaut Pro Flux | $0.0049 | - | - |
+| GPT Image 1.5 | - | $0.034 | - |
+| FLUX.1 Kontext [max] | $0.08 | - | 28 |
+| SD XL | $0.0019 | - | - |
+| Ideogram 3.0 | $0.06 | - | - |
+| Juggernaut Lightning Flux | $0.0017 | - | - |
+| Qwen Image | $0.0058 | - | - |
+| Google Imagen 4.0 Fast | $0.02 | - | - |
+| ByteDance Seedream 4.0 | $0.03 | - | - |
+| Google Imagen 4.0 Preview | $0.04 | - | - |
+| Gemini Flash Image 2.5 (Nano Banana) | - | $0.039 | - |
+| Google Imagen 4.0 Ultra | $0.06 | - | - |
+| ByteDance Seedream 3.0 | $0.018 | - | - |
+
+_Prices include default steps shown above. Additional costs apply only when exceeding default steps._ [_See full pricing details →_](https://docs.together.ai/docs/serverless-models#image-models)
+
+Price per 1M Characters
+
+| Model | Price |
+| --- | --- |
+| Inkling | $1.00 |
+| NVIDIA Parakeet TDT 0.6B V3 Realtime | $0.0035 |
+| Cartesia Sonic-3 | $65.00 |
+| Orpheus TTS | $15 |
+| Kokoro-82M TTS | $4.00 |
+| Cartesia Sonic-2 | $65.00 |
+
+Price per video
+
+| Model | Price |
+| --- | --- |
+| ByteDance Seedance 2.5 | $0.115 |
+| ByteDance Seedance 2.0 | $0.16 |
+| FLUX 3 | $0.17 |
+| HappyHorse 1.0 T2V | $0.24 |
+| HappyHorse 1.0 I2V | $0.24 |
+| HappyHorse 1.0 R2V | $0.24 |
+| HappyHorse 1.1 T2V | $0.14 |
+| HappyHorse 1.1 I2V | $0.14 |
+| HappyHorse 1.1 R2V | $0.14 |
+| Kling 1.6 Standard | $0.19 |
+| Kling 2.1 Master | $0.92 |
+| Kling 2.1 Pro | $0.32 |
+| Kling 2.1 Standard | $0.18 |
+| Vidu Q1 | $0.22 |
+| Qwen3.6-Plus | $0.50 |
+| Sora 2 | $0.80 |
+| PixVerse v5 | $0.30 |
+| ByteDance Seedance 1.0 Lite | $0.14 |
+| ByteDance Seedance 1.0 Pro | $0.57 |
+| Google Veo 2.0 | $2.50 |
+| MiniMax Hailuo 02 | $0.49 |
+| MiniMax 01 Director | $0.28 |
+
+Price per audio minute
+
+Batch API price
+
+| Model | Price |
+| --- | --- |
+| NVIDIA Nemotron 3 ASR Streaming 0.6B | $0.0015 |
+| NVIDIA Parakeet TDT 0.6B v3 | $0.0015 |
+| NVIDIA Nemotron 3.5 ASR | $0.0045 |
+| Whisper Large v3 | $0.0015 |
+| Whisper Large v3 (Streaming) | $0.0035 |
+
+Price per 1M tokens
+
+No matching models
+
+| Model | Price |
+| --- | --- |
+
+Price per 1M tokens
+
+| Model | Price |
+| --- | --- |
+
+Price per 1M tokens
+
+No matching models
+
+| Model | Price |
+| --- | --- |
+
+## Provisioned Throughput
+
+Reserve dedicated capacity in throughput units (PTUs). Each PTU represents fixed capacity. The tokens-per-minute it delivers depends on the model and the token type.
+
+Estimate your PTUs & cost
+
+Model
+
+Compare vs.
+
+Peak requests / Sec
+
+Cache hit rate
+
+%
+
+Input tokens / request
+
+output tokens / request
+
+PTUs required
+
+10
+
+Est. monthly cost
+
+$21 600
+
+Est. monthly savings
+
+\-$7 236 83% lower
+
+| Compute costs | InputTPM/PTU | CachedTPM/PTU | OutputTPM/PTU | PricePTU/MIN |
+| --- | --- | --- | --- | --- |
+| Name | input | cached | output | rate |
+
+Savings compare Together PTU cost against the selected commercial model's published list price ($/1M tokens) on the same traffic profile. Estimates assume continuous 24/7 provisioning (~43,800 min/mo).
+
+## Dedicated Inference
+
+Deploy models on custom hardware with guaranteed performance and full control.
+
+Single-tenant GPU instances with:
+
+*   Guaranteed performance (no sharing)
+
+*   Support for custom models
+
+*   Autoscaling & traffic spike handling
+
+
+| HardwareAll prices per gpu per hour | On-demandPay as you go | Reserved |
+| --- | --- | --- |
+| NVIDIA HGX H100PromoPromotion valid until 09/30/26 | $5.49$3.99 | Contact sales |
+| NVIDIA HGX H200 | Contact us | Contact sales |
+| NVIDIA HGX B200 | $8.99 | Contact sales |
+| NVIDIA HGX B300 | Contact us | Contact sales |
+| NVIDIA GB200 NVL72 | Contact us | Contact sales |
+| NVIDIA GB300 NVL72 | Contact us | Contact sales |
+
+## GPU Clusters
+
+On-demand
+
+Pay as you go GPU capacity on an hourly basis.
+
+| Hardware | Hourly |
+| --- | --- |
+| NVIDIA GB200 NVL72 | — |
+| NVIDIA GB300 NVL72 | — |
+| NVIDIA HGX B200 | $8.19 |
+| NVIDIA HGX B300 | — |
+| NVIDIA HGX H100 | $3.99 |
+| NVIDIA HGX H200 | $5.99 |
+
+On-demand hourly rates and reserved capacity
+
+All prices are per GPU per hour.
+
+| Hardware | Preemptible Compute | ON-Demand | Reserved |
+| --- | --- | --- | --- |
+| Pay as you go | Pay as you go | 7-30 days | 31-90 days | 91-180 days | 181+ days |
+| NVIDIA HGX H100 | $1.99 | $3.99 | $3.69 | $3.45 | $3.19 | Contact us |
+| NVIDIA HGX H200 | $2.99 | $5.99 | $4.99 | $4.15 | $3.99 | Contact us |
+| NVIDIA HGX B200 | $4.09 | $8.19 | $7.99 | $7.79 | $6.79 | Contact us |
+| NVIDIA GB200 NVL72 | — | — | Contact us |
+| NVIDIA GB300 NVL72 | — | — | Contact us |
+| NVIDIA HGX B300 | — | — | Contact us |
+
+## Sandbox
+
+Code Sandbox
+
+Customize a deployment of VM sandboxes for large development environments.
+
+| Compute costs | Price/Hour |
+| --- | --- |
+| Per vCPU | $0.0446 |
+| Per GiB RAM | $0.0149 |
+
+Code Interpreter
+
+Execute LLM-generated code securely using our API.
+
+| Duration? | Price/Session |
+| --- | --- |
+| Session (60 minutes) | $0.03 |
+
+## Storage
+
+High-bandwidth, parallel filesystem colocated with your compute.
+
+| Compute costs | Price | Unit |
+| --- | --- | --- |
+| Shared Filesystem | $0.16 | GiB/month |
+
+## Fine-Tuning
+
+Train open-source models for real production use.
+
+*   [
+
+    LoRA fine-tuning
+
+    ](#)
+*   [
+
+    Full fine-tuning
+
+    ](#)
+
+Per 1M tokens
+
+| Model | Supervised Fine-Tuning | Direct Preference Optimization | Minimum charge |
+| --- | --- | --- | --- |
+| Qwen3.5 0.8B | $0.34 | $0.84 | $4.00 |
+| Qwen3.5 122B A10B | $4.20 | $10.50 | $10.00 |
+| Qwen3.5 27B | $1.05 | $2.62 | $4.00 |
+| Qwen3.5 2B | $0.34 | $0.84 | $4.00 |
+| Qwen3.5 35B A3B | $1.05 | $2.62 | $4.00 |
+| Qwen3.5 397B A17B | $5.60 | $14.00 | $22.00 |
+| Qwen3.5 4B | $0.34 | $0.84 | $4.00 |
+| Qwen3.5 9B | $0.34 | $0.84 | $4.00 |
+| Qwen3.6 27B | $1.05 | $2.62 | $4.00 |
+| Qwen3.6 35B A3B | $1.05 | $2.62 | $4.00 |
+| Qwen3.8 27B | $1.05 | $2.62 | $4.00 |
+| DeepSeek-V3.1 | $7.00 | $17.50 | $20.00 |
+| DeepSeek V4 Flash 0731 | $6.00 | $15.00 | $12.00 |
+| Gemma 4 26B A4B | $1.05 | $2.62 | $4.00 |
+| Gemma 4 31B | $1.05 | $2.62 | $4.00 |
+| Gemma 4 31B VLM | $1.05 | $2.62 | $4.00 |
+| Llama 3.3 70B | $2.03 | $5.08 | $4.00 |
+| Llama 4 Maverick | $5.60 | $14.00 | $16.00 |
+| Llama 4 Maverick VLM | $5.60 | $14.00 | $16.00 |
+| Llama 4 Scout | $2.10 | $5.25 | $6.00 |
+| Llama 4 Scout VLM | $2.10 | $5.25 | $6.00 |
+| Llama 3.1 8B | $0.34 | $0.84 | $4.00 |
+| Mixtral 8x7B Instruct v0.1 | $1.05 | $2.62 | $4.00 |
+| Kimi K2.6 | $15.00 | $37.50 | $60.00 |
+| Kimi K2.7 Code | $15.00 | $37.50 | $60.00 |
+| gpt-oss-120B | $2.50 | $6.25 | $6.00 |
+| gpt-oss-20B | $0.40 | $1.00 | $4.00 |
+| GLM-5.1 | $40.00 | $100.00 | $60.00 |
+| GLM-5.2 | $40.00 | $100.00 | $60.00 |
+
+Price is based on the sum of tokens processed in the fine-tuning training dataset (training dataset size × number of epochs) plus any tokens in the optional evaluation dataset (validation dataset size × number of evaluations). Each job is subject to the minimum charge shown for its model.
+
+| Model | Supervised Fine-Tuning | Direct Preference Optimization | Minimum charge |
+| --- | --- | --- | --- |
+| Qwen3.5 0.8B | $0.38 | $0.94 | $4.00 |
+| Qwen3.5 27B | $1.16 | $2.88 | $4.00 |
+| Qwen3.5 2B | $0.38 | $0.94 | $4.00 |
+| Qwen3.5 4B | $0.38 | $0.94 | $4.00 |
+| Qwen3.5 9B | $0.38 | $0.94 | $4.00 |
+| Qwen3.6 27B | $1.16 | $2.88 | $4.00 |
+| Gemma 4 31B | $1.16 | $2.88 | $4.00 |
+| Gemma 4 31B VLM | $1.16 | $2.88 | $4.00 |
+| Llama 3.3 70B | $2.24 | $5.60 | $4.00 |
+| Llama 3.1 8B | $0.38 | $0.94 | $4.00 |
+| Mixtral 8x7B Instruct v0.1 | $1.16 | $2.88 | $4.00 |
+
+Price is based on the sum of tokens processed in the fine-tuning training dataset (training dataset size × number of epochs) plus any tokens in the optional evaluation dataset (validation dataset size × number of evaluations). Each job is subject to the minimum charge shown for its model.
+
+No matching models
+
+## Trusted by
+
+![](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69654e88dce9154b5f121454_decagon_black.svg)
+
+![](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69654e88dce9154b5f121452_cursor_black.svg)
+
+![](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69654e88dce9154b5f12138d_vercept_black.svg)
+
+![](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69654e88dce9154b5f12138f_evertune_black.svg)
+
+![](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69654e88dce9154b5f121391_cohere_black.svg)
+
+![](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69654e88dce9154b5f121393_deepmind_black.svg)
+
+![Stylized drawing of a robot holding a magnifying glass over a large globe.](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69654e88dce9154b5f121395_lg-ai-research_black.png)
+
+![](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69654e88dce9154b5f121398_vfs-global_black.svg)
+
+![](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69654e88dce9154b5f121399_elevenlabs_black.svg)
+
+![](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69654e88dce9154b5f12139b_arcee_black.svg)
+
+![](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69654e88dce9154b5f12139c_captions_black.svg)
+
+![](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69654e88dce9154b5f12139f_cartesia_black.svg)
+
+![](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69654e88dce9154b5f1213a8_sk-telekom_black.svg)
+
+![](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69654e88dce9154b5f1213a9_mozilla_black.svg)
+
+![](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69654e88dce9154b5f1213ab_hedra_black.svg)
+
+![](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69654e88dce9154b5f1213ae_cognition_black.svg)
+
+![Black logo with the word NOUS above a stylized face of a person in a rectangular frame.](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69654e88dce9154b5f1213af_nous_black.png)
+
+![Stylized letter K logo with the word KREA in bold uppercase letters.](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69654e88dce9154b5f1213b2_krea_black.png)
+
+![](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69654e88dce9154b5f1213b3_jasper_black.svg)
+
+![](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69654e88dce9154b5f1213b6_salesforce_black.svg)
+
+![Gray 3D geometric shape resembling two interconnected chevrons or arrows.](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69ea5bd7e8fcf6d08c1f8bb9_medal-gray.png)
+
+![](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69654e88dce9154b5f1213b7_ai2_black.svg)
+
+![Minimalist black silhouette of a cat’s head and neck on a gray background.](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69ea5be39bb77304f4abb0dc_lmsys-gray.png)
+
+![](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69654e88dce9154b5f121343_leonado_black.svg)
+
+![](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69654e88dce9154b5f121367_snorkel_black.svg)
+
+![](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/6aa16bff75d9a56a888dfbe6_you-com.svg)
+
+![](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69654e88dce9154b5f12136c_weights-biases_black.svg)
+
+![](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69654e88dce9154b5f12136e_zoho_black.svg)
+
+![](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69654e88dce9154b5f121381_quora_black.svg)
+
+![](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69654e88dce9154b5f121371_wp_black.svg)
+
+![](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69654e88dce9154b5f121373_zoom_black.svg)
+
+![](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69654e88dce9154b5f121376_nexusflow_black.svg)
+
+![Upstage logo with stylized text and a striped graphic element on the right.](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69ea5bbb455338f1d2e2c444_upstage-gray.png)
+
+![Cartoon duck wearing a bow tie inside a round border on a gray background.](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69ea5bce078115e18ca60393_neal-fun-gray.png)
+
+![](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69654e88dce9154b5f12137c_wordware_black.svg)
+
+![Text logo reading 'i.am+' with plus sign in gray color.](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69ea5bc68418177a3c3571d8_i-am-gray.png)
+
+![](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69654e88dce9154b5f121343_leonado_black.svg)
+
+![](https://cdn.prod.website-files.com/69654e88dce9154b5f12070c/69654e88dce9154b5f120cef_logo_pika.svg)

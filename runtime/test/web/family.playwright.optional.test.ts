@@ -62,6 +62,34 @@ browserTest('family notification control uses pinned account headers and clears 
     const mutation=calls.find(value=>value.path==='/agent/push/subscription'&&value.method==='DELETE');expect(mutation.headers).toMatchObject({'x-piclaw-account-id':'alice','x-piclaw-login-id':'login-a'});expect(mutation.body.subscription.endpoint).toBe('https://push.example.test/family');expect(mutation.body.device_id).toBe('device-server');
   }finally{await page.close();}
 },20000);
+browserTest('family public instance branding hydrates and follows profile changes without account identity', async () => {
+  const page = await browser.newPage();
+  try {
+    await fixture(page);
+    await page.route('**/manifest.json*', route => route.fulfill({ json: {name:'Fixture',piclaw_avatar:'/avatar/agent?v=initial'} }));
+    await page.addInitScript(() => {
+      const sources: EventTarget[] = [];
+      class FixtureSource extends EventTarget {
+        onopen: any; onerror: any; readyState = 1;
+        constructor(_url: string) { super(); sources.push(this); setTimeout(() => { this.onopen?.(); this.dispatchEvent(new MessageEvent('connected',{data:JSON.stringify({chat_jid:'web:alice'})})); },10); }
+        close() { const i=sources.indexOf(this);if(i>=0)sources.splice(i,1); }
+      }
+      (window as any).EventSource = FixtureSource;
+      (window as any).emitBranding = (payload: unknown) => sources.forEach(s => s.dispatchEvent(new MessageEvent('profile_update',{data:JSON.stringify(payload)})));
+    });
+    await page.goto(base); await ready(page);
+    await page.waitForFunction(() => document.getElementById('dynamic-favicon')?.getAttribute('href') === '/favicon.ico?v=initial');
+    await page.evaluate(() => (window as any).emitBranding({agent_id:'default',agent_name:'Updated',agent_avatar:'/avatar/agent?v=next'}));
+    await page.waitForFunction(() => document.getElementById('dynamic-favicon')?.getAttribute('href') === '/favicon.ico?v=next');
+    expect(await page.locator('#dynamic-apple-touch-icon-180').getAttribute('href')).toBe('/apple-touch-icon-180x180.png?v=next');
+    expect(await page.locator('meta[name="apple-mobile-web-app-title"]').getAttribute('content')).toBe('Updated');
+    expect(await currentChat(page)).toBe('web:alice');
+    await page.evaluate(() => (window as any).emitBranding({agent_id:'default',agent_name:'Updated',agent_avatar:null}));
+    await page.waitForFunction(() => document.getElementById('dynamic-favicon')?.getAttribute('href') === '/favicon.ico?v=default');
+    expect(await page.locator('#dynamic-manifest').getAttribute('href')).toBe('/manifest.json?v=default');
+  } finally { await page.close(); }
+}, 20000);
+
 async function ready(page: Page) { await page.waitForFunction(() => document.getElementById("timeline")?.textContent?.includes("Alice private text")); }
 const composeInput = (page: Page) => page.getByTestId('compose-input');
 const composeSend = (page: Page) => page.getByTestId('send-button');

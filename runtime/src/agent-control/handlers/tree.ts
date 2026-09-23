@@ -18,7 +18,8 @@ type TreeCommand = Extract<AgentControlCommand, { type: "tree" }>;
 type LabelCommand = Extract<AgentControlCommand, { type: "label" }>;
 type LabelsCommand = Extract<AgentControlCommand, { type: "labels" }>;
 type SessionTreeNode = ReturnType<AgentSession["sessionManager"]["getTree"]>[number];
-type SessionTreeEntry = SessionTreeNode["entry"];
+type SessionTreeEntry = SessionTreeNode["entry"] | { type: "usage"; kind: string; provider: string; model: string }
+  | { type: "context_edit"; targetId: string; replacement: { content: unknown } | null };
 
 function getToolCallName(content: unknown): string | null {
   if (!Array.isArray(content)) return null;
@@ -47,6 +48,10 @@ function describeEntry(entry: SessionTreeEntry): string {
       if (toolCallName) return `${role}: [tool ${toolCallName}]`;
       return role;
     }
+    case "usage":
+      return `[usage ${entry.kind}: ${entry.provider}/${entry.model}]`;
+    case "context_edit":
+      return `[context ${entry.replacement === null ? "omit" : "replace"} ${entry.targetId}]`;
     case "compaction":
       return `[compaction: ${formatCompactNumber(entry.tokensBefore)} tokens]`;
     case "branch_summary":

@@ -22,6 +22,7 @@ describe("tool-activation extension", () => {
     expect(getDefaultActiveToolNames()).not.toContain(["list", "internal", "tools"].join("_"));
     expect(getDefaultActiveToolNames()).toContain("attach_file");
     expect(getDefaultActiveToolNames()).toContain("messages");
+    expect(getDefaultActiveToolNames()).toContain("chat_project");
     expect(getDefaultActiveToolNames()).toContain("keychain");
     expect(getDefaultActiveToolNames()).toContain("exit_process");
     expect(getDefaultActiveToolNames()).not.toContain("list_models");

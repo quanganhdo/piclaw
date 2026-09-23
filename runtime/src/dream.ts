@@ -16,6 +16,8 @@ import { createDreamAccessGuard } from "./core/dream-access.js";
 import { getTaskById, createTask, getDb, updateTask } from "./db.js";
 import { deleteThinkingContentByChatJid, deleteThinkingContentByChatJidPattern } from "./db/thinking-cleanup.js";
 import { refreshWorkspaceIndex } from "./workspace-search.js";
+import { launchWorkspaceIndexProcess, waitForWorkspaceIndexProcess } from "./workspace-index-process.js";
+import { markNoteIndexDirty } from "./note-retrieval/coordinator.js";
 import { computeNextRun } from "./task-scheduler-utils.js";
 import { sanitiseJid } from "./agent-pool/session.js";
 import { createLogger, debugSuppressedError } from "./utils/logger.js";
@@ -431,6 +433,11 @@ function getDreamAgentTimeoutMs(): number {
 async function refreshWorkspaceSearchIndex(): Promise<boolean> {
   try {
     await refreshWorkspaceIndex({ scope: "all" });
+    // Re-check Dream authority through the established index boundary before
+    // touching new note-index metadata or launching the private writer.
+    markNoteIndexDirty();
+    launchWorkspaceIndexProcess({ scope: "notes" });
+    await waitForWorkspaceIndexProcess();
     return true;
   } catch (error) {
     debugSuppressedError(log, "failed to refresh workspace search index after Dream", error);

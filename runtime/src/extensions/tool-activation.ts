@@ -94,6 +94,7 @@ const DEFAULT_ACTIVE_TOOL_NAMES = [
   "attach_file",
   "messages",
   "chat",
+  "chat_project",
   "keychain",
   "exit_process",
   "session_status",

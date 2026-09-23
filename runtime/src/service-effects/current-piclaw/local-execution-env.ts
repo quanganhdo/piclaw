@@ -3,6 +3,7 @@ import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/node";
 
 import type { ExecutionContextError } from "../contracts/execution-context-resolver.js";
 import { PiclawExecutionEnv, type ShellEnvironmentPreparer } from "./execution-env-adapter.js";
+import { withLocalTextLineReader } from './text-line-reader-compat.js';
 import type { LocalExecutionEnvFactory } from "./execution-context-types.js";
 
 export interface CurrentPiclawLocalExecutionEnvFactoryOptions {
@@ -17,11 +18,13 @@ export class CurrentPiclawLocalExecutionEnvFactory implements LocalExecutionEnvF
   readonly #shellPath?: string;
   readonly #prepareShellEnvironment: ShellEnvironmentPreparer;
   readonly #createNodeEnv: (options: ConstructorParameters<typeof NodeExecutionEnv>[0]) => ExecutionEnv;
+  readonly #injectedNodeFactory: boolean;
 
   constructor(options: CurrentPiclawLocalExecutionEnvFactoryOptions) {
     this.#cwd = options.cwd;
     this.#shellPath = options.shellPath;
     this.#prepareShellEnvironment = options.prepareShellEnvironment;
+    this.#injectedNodeFactory = options.createNodeEnv !== undefined;
     this.#createNodeEnv = options.createNodeEnv ?? ((nodeOptions) => new NodeExecutionEnv(nodeOptions));
   }
 
@@ -32,7 +35,10 @@ export class CurrentPiclawLocalExecutionEnvFactory implements LocalExecutionEnvF
         cwd: this.#cwd,
         ...(this.#shellPath ? { shellPath: this.#shellPath } : {}),
       });
-      return Result.ok(new PiclawExecutionEnv(delegate, this.#prepareShellEnvironment));
+      // The pinned 0.85.1 Node implementation predates this public 0.87.1 method.
+      // Injected factories must supply it themselves; only the default local Node
+      // instance receives the temporary compatibility reader.
+      return Result.ok(new PiclawExecutionEnv(this.#injectedNodeFactory ? delegate : withLocalTextLineReader(delegate), this.#prepareShellEnvironment));
     } catch {
       return cleanupUnknown(delegate).then(() => Result.err(error("environment_unavailable", true)));
     }

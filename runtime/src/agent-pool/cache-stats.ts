@@ -81,13 +81,15 @@ export function computePromptCacheWaste(entries: SessionEntry[], models: ModelLo
   const totals: PromptCacheWaste = { missedTokens: 0, missedCost: 0, missCount: 0 };
 
   for (const entry of entries) {
-    if (entry.type === "compaction" || entry.type === "branch_summary") {
+    if (entry.type === "compaction" || entry.type === "branch_summary" || (entry as { type: string }).type === "context_edit") {
       // The context legitimately changed, so the next prompt is new content.
       // Model switches are intentionally counted because they re-bill the same
       // persisted prompt even though cross-model cache reuse is impossible.
       previous = undefined;
       continue;
     }
+    // Explicit 0.87.1 usage entries (e.g. cache warming) are not assistant
+    // requests. Counting them here would attribute the same prompt twice.
     if (entry.type !== "message" || entry.message.role !== "assistant") continue;
 
     const message = entry.message as AssistantMessage;

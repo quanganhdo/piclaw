@@ -8,7 +8,11 @@ import { inspectAdoptedSession, type AdoptedSessionSeed } from './adopted-sessio
 /** Import the captured tree rather than reconstructing messages or trusting a later source file. */
 export async function importAdoptedSession(runtime:AgentSessionRuntime,chatJid:string,seed:AdoptedSessionSeed):Promise<void> {
   if(!requireOwnedSessionExecution(chatJid)) throw new Error('Owned adoption identity required.');
-  inspectAdoptedSession(seed.jsonl,seed.sha256);
+  const inspected=inspectAdoptedSession(seed.jsonl,seed.sha256);
+  if(inspected.entries.some((entry) => (entry as {type:string}).type==='context_edit')
+    && typeof (runtime.session.sessionManager as unknown as {appendContextEdit?:unknown}).appendContextEdit!=='function') {
+    throw new Error('Context-edit adoption requires Earendil 0.87.1; restore the pre-upgrade snapshot before rollback.');
+  }
   const temp=mkdtempSync(join(runtime.session.sessionManager.getSessionDir(),'.adoption-'));
   try {
     const path=join(temp,`adopted-${seed.sha256}.jsonl`);

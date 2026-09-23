@@ -127,28 +127,22 @@ function normalizeOptionalBoolean(value: unknown): boolean | undefined {
   return typeof value === "boolean" ? value : undefined;
 }
 
-function shouldPrecacheAvatarSource(source: string | null | undefined): source is string {
-  const raw = String(source || "").trim();
-  return Boolean(raw && !raw.startsWith("http://") && !raw.startsWith("https://"));
-}
-
 async function maybePrecacheAvatar(kind: AvatarKind, source: string | null | undefined): Promise<void> {
-  if (!shouldPrecacheAvatarSource(source)) return;
-  const cached = await ensureAvatarCache(kind, source);
+  if (!source) return;
+  const cached = await ensureAvatarCache(kind, source, { refresh: true });
   if (!cached?.file) {
     throw new Error(`Failed to prepare ${kind} avatar image.`);
   }
 }
 
-function withAvatarVersion(url: string | null, version: string): string | null {
-  if (!url) return null;
-  const separator = url.includes("?") ? "&" : "?";
-  return `${url}${separator}v=${encodeURIComponent(version)}`;
+function withAvatarVersion(url: string | null, version?: string): string | null {
+  if (!url || !version) return url;
+  return `${url.split("?")[0]}?v=${encodeURIComponent(version)}`;
 }
 
 export function buildGeneralSettingsProfileUpdate(
   settings: GeneralSettingsData,
-  version = String(Date.now()),
+  version?: string,
 ): GeneralSettingsProfileUpdatePayload {
   return {
     agent_id: "default",
@@ -240,8 +234,8 @@ export async function saveGeneralSettings(input: GeneralSettingsInput): Promise<
   const nextAssistantAvatar = normalizeOptionalString(input.assistantAvatar);
   if (nextAssistantAvatar !== undefined) {
     const effectiveAvatar = nextAssistantAvatar || "";
-    setAssistantAvatar(effectiveAvatar);
     await maybePrecacheAvatar("agent", effectiveAvatar);
+    setAssistantAvatar(effectiveAvatar);
   }
 
   const nextUserName = normalizeOptionalString(input.userName);
@@ -252,8 +246,8 @@ export async function saveGeneralSettings(input: GeneralSettingsInput): Promise<
   const nextUserAvatar = normalizeOptionalString(input.userAvatar);
   if (nextUserAvatar !== undefined) {
     const effectiveAvatar = nextUserAvatar || "";
-    setUserAvatar(effectiveAvatar);
     await maybePrecacheAvatar("user", effectiveAvatar);
+    setUserAvatar(effectiveAvatar);
     if (nextUserAvatar === null) {
       setUserAvatarBackground("");
     }

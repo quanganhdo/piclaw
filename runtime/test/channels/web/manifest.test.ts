@@ -46,19 +46,9 @@ describe("web manifest helper", () => {
     });
 
     const manifest = await res.json();
-    expect(manifest.icons).toEqual([
-      {
-        src: "/avatar/agent?format=png&size=192&v=2026-03-09T00%3A00%3A00.000Z",
-        sizes: "192x192",
-        type: "image/png",
-        purpose: "any maskable",
-      },
-      {
-        src: "/avatar/agent?format=png&size=512&v=2026-03-09T00%3A00%3A00.000Z",
-        sizes: "512x512",
-        type: "image/png",
-        purpose: "any maskable",
-      },
-    ]);
+    expect(manifest.icons).toEqual([192, 512].flatMap(size => [
+      { src: `/avatar/agent?format=png&size=${size}&v=2026-03-09T00%3A00%3A00.000Z`, sizes: `${size}x${size}`, type: 'image/png', purpose: 'any' },
+      { src: `/avatar/agent?format=png&size=${size}&purpose=maskable&v=2026-03-09T00%3A00%3A00.000Z`, sizes: `${size}x${size}`, type: 'image/png', purpose: 'maskable' },
+    ]));
   });
 });

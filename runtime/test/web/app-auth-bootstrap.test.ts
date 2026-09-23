@@ -79,7 +79,7 @@ test('updateAgentProfileFromEvent updates default agent + applies branding cache
   expect(brandingCalls).toHaveLength(1);
   expect(brandingCalls[0].name).toBe('Pi New');
   expect(brandingCalls[0].avatar).toBe('next.png');
-  expect(typeof brandingCalls[0].version).toBe('number');
+  expect(brandingCalls[0].version).toBeNull(); // Avatar URL carries the persisted content revision.
 });
 
 test('applyModelStatePayload only applies present model fields', () => {

@@ -1,10 +1,20 @@
 # Provider/model pricing reference
 
-_Reference tag: 2026-09-05_
+_Reference tag: 2026-09-22_
 
-This file records the sources and assumptions behind the token chart's **estimated API-equivalent** costs. The executable resolver is `provider-model-pricing-reference.ts`. The route-specific `pricing-2026-09-05.json` snapshot takes precedence; older fallback rules retain their original source dates.
+This file records the sources and assumptions behind the token chart's **estimated API-equivalent** costs. The executable resolver is `provider-model-pricing-reference.ts`. The route-specific `pricing-2026-09-22.json` snapshot takes precedence; September 5 routes and older rules remain explicitly labelled historical fallbacks when not freshly verified.
 
-## September 2026 refresh
+## 22 September 2026 refresh
+
+- **609 verified route rows** across 12 provider IDs; 195 processing/geography variants remain in the detailed research catalogue.
+- GPT-6 Sol: $2 input / $10 output / $0.20 read / $2.50 write. GPT-6 Luna: $0.10 / $0.50 / $0.01 / $0.125.
+- Claude Opus 5.5: $4 input / $20 output / $0.20 read / $5 5m write / $8 1h write. Native API ID `claude-opus-5-5` resolves alongside the catalogue alias.
+- Sonnet 5's $2/$10 price is permanent. Copilot quotes are independently verified; new OpenAI models are not assumed available there.
+- Updates Google promotions, DeepSeek peak/off-peak pricing and alias changes, Z.ai, Fireworks, Kimi, xAI and numeric Groq public routes. Native Grok 4.5 cache reads differ from Copilot ($0.30 versus $0.50).
+- [Current tables and evidence](../../../../docs/finops/2026-09-22/README.md), [full price table](../../../../docs/finops/2026-09-22/prices.md), [fixed-scenario comparison](../../../../docs/finops/2026-09-22/scenario-comparison.md).
+- Base-tier chart estimates remain distinct from exact request billing. Detailed sources preserve service tiers, long context, TTLs, promotions and time schedules. Unknown tariffs and historical fallbacks are labelled; no ledger records or runtime defaults change.
+
+## 5 September 2026 refresh — historical
 
 - Adds GPT-6 Astra, Claude Fable 5/5.1 and all publicly priced OpenRouter routes in the retrieved snapshot.
 - Fable 5.1 cache reads: $0.25/MTok; Fable 5: $1/MTok. Both use $10 input, $50 output and $12.50 5m cache writes.

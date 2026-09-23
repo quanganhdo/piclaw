@@ -53,6 +53,7 @@ const SAFE_PARAMETER_EXCEPTIONS = Object.freeze([
   safeException("send_adaptive_card", ["schema_version", "submit_behavior", "completed_at"], "Schema version, closed submit behavior, and completion time describe transport state rather than card payload content."),
   safeException("send_dashboard_widget", ["interactive"], "The interaction boolean is a transport capability flag; widget HTML and fallback content remain protected."),
   safeException("chat", ["mode"], "Delivery mode is a closed queueing enum and contains neither destination identity nor message content."),
+  safeException("chat_project", ["action"], "The closed project-setting action carries no repository URL or chat identity."),
   safeException("session_control", ["action", "model", "force"], "Closed control action, public model identifier, and force flag carry no cross-session instructions or destination identity."),
   safeException("session_status", ["action"], "The status action is a closed read-only selector and contains no session result details."),
   safeException("open_workspace_file", ["target"], "The target is a closed tab/popout presentation enum; file path and user-visible label remain protected."),

@@ -574,6 +574,15 @@ const TOOL_CAPABILITIES: Record<string, ToolCapability> = {
       nouns: ["session", "active", "running", "tool"],
     }),
   },
+  chat_project: {
+    kind: "mixed",
+    weight: "lightweight",
+    recommend: rec({
+      domains: ["chat", "repository", "github", "gitea"],
+      verbs: ["get", "set", "clear", "inherit", "link"],
+      nouns: ["project", "repository", "issue", "pull request"],
+    }),
+  },
   session_control: {
     kind: "mixed",
     weight: "standard",

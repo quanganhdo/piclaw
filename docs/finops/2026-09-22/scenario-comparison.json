@@ -1,0 +1,100 @@
+{
+  "assumptionSource": "../2026-09-05/workload/scenario.json",
+  "tokens": {
+    "input": 379156.371309142,
+    "read": 24369478.768348414,
+    "write": 1051364.8603424432,
+    "output": 1650000
+  },
+  "shares": {
+    "input": 0.01469598338407527,
+    "read": 0.9445534406336595,
+    "write": 0.04075057598226524
+  },
+  "results": [
+    {
+      "provider": "openai",
+      "id": "gpt-6-astra",
+      "usd": 123.80310323572039,
+      "usdCold": 340.5,
+      "note": "Standard short-context; 5m writes where quoted"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-6-sol",
+      "usd": 24.760620647144076,
+      "usdCold": 68.1,
+      "note": "Standard short-context; 5m writes where quoted"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-6-luna",
+      "usd": 1.2380310323572037,
+      "usdCold": 3.405,
+      "note": "Standard short-context; 5m writes where quoted"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5.6-sol",
+      "usd": 49.52124129428815,
+      "usdCold": 136.2,
+      "note": "Standard short-context; 5m writes where quoted"
+    },
+    {
+      "provider": "openrouter",
+      "id": "openai/gpt-5.6-sol",
+      "usd": 24.760620647144076,
+      "usdCold": 68.1,
+      "note": "Standard short-context; 5m writes where quoted"
+    },
+    {
+      "provider": "anthropic",
+      "id": "claude-opus-5.5",
+      "usd": 44.64734554061847,
+      "usdCold": 136.2,
+      "note": "Standard short-context; 5m writes where quoted"
+    },
+    {
+      "provider": "anthropic",
+      "id": "claude-opus-5",
+      "usd": 61.90155161786019,
+      "usdCold": 170.25,
+      "note": "Standard short-context; 5m writes where quoted"
+    },
+    {
+      "provider": "anthropic",
+      "id": "claude-sonnet-5",
+      "usd": 24.760620647144076,
+      "usdCold": 68.1,
+      "note": "Standard short-context; 5m writes where quoted"
+    },
+    {
+      "provider": "anthropic",
+      "id": "claude-fable-5.1",
+      "usd": 105.52599415945907,
+      "usdCold": 340.5,
+      "note": "Standard short-context; 5m writes where quoted"
+    },
+    {
+      "provider": "google",
+      "id": "gemini-3.8-flash",
+      "usd": 9.08810183136482,
+      "usdCold": 25.5375,
+      "note": "Promotion through 2026-12-31"
+    },
+    {
+      "provider": "moonshot",
+      "id": "kimi-k3",
+      "usd": 36.35240732545928,
+      "usdCold": 102.15,
+      "note": "Standard short-context; 5m writes where quoted"
+    },
+    {
+      "provider": "deepseek",
+      "id": "deepseek-flash",
+      "usd": 1.277686621052783,
+      "usdCold": 4.86,
+      "note": "Off-peak only"
+    }
+  ]
+}

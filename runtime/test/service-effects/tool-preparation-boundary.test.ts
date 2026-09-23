@@ -163,7 +163,7 @@ describe("WP-3C active-composition snapshots", () => {
     const source = readFileSync(resolve(runtimeRoot, "src/extensions/tool-activation.ts"), "utf8");
     expect(stringArray(source, "DEFAULT_ACTIVE_TOOL_NAMES")).toEqual([
       "read", "bash", "powershell", "edit", "write", "list_tools", "activate_tools", "reset_active_tools",
-      "attach_file", "messages", "chat", "keychain", "exit_process", "session_status",
+      "attach_file", "messages", "chat", "chat_project", "keychain", "exit_process", "session_status",
     ]);
     expect(stringArray(source, "WINDOWS_DEFAULT_ACTIVE_TOOL_NAMES")).toEqual(["bun_run"]);
   });

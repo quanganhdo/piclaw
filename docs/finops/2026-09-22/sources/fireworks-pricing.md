@@ -1,0 +1,147 @@
+[
+
+Join us for our inaugural conference, Forge 2026
+
+](/forge)
+
+## Pricing to seamlessly scale from idea to enterprise
+
+Start building in seconds, self-serve. Contact us for enterprise deployments with faster speeds, lower costs, and higher rate limits.
+
+[
+
+Get started
+
+](/signup)[
+
+Contact Us](/contact-reserved)
+
+[
+
+### Serverless Inference
+
+Get started in seconds with per token pricing, zero setup and no cold starts
+
+
+
+
+
+
+
+](#serverless-pricing)
+
+[](#serverless-pricing)[
+
+See Pricing
+
+](#serverless-pricing)
+
+[
+
+### Training
+
+Customize open models with your own data with minimal setup
+
+
+
+
+
+
+
+](#fine-tuning-pricing)
+
+[](#fine-tuning-pricing)[
+
+See Pricing
+
+](#fine-tuning-pricing)
+
+[
+
+### On Demand Deployments
+
+Pay per GPU second for faster speeds, higher rate limits, and lower costs at scale
+
+
+
+
+
+
+
+](#on-demand-pricing)
+
+[](#on-demand-pricing)[
+
+See Pricing
+
+](#on-demand-pricing)
+
+## Serverless Inference
+
+Pay per token, with high rate limits and postpaid billing. Get started with $1 in free credits. To view the current pricing for our most popular models across Standard, Priority, and Fast serverless tiers, visit our [documentation](https://docs.fireworks.ai/serverless/pricing).
+
+
+
+## Embeddings
+
+| Base model parameter count | $ / 1M input tokens |
+| --- | --- |
+| up to 150M | $0.008 |
+| 150M - 350M | $0.016 |
+| Qwen3 8B | $0.1 |
+
+## Training Pricing
+
+Serve fine-tuned models for the same price as base models.
+
+## Managed Training
+
+**Supervised and preference fine tuning** is priced per 1M training tokens.
+
+| Base Model | LoRA SFT | LoRA DPO | Full Param SFT | Full Param DPO |
+| --- | --- | --- | --- | --- |
+| Models up to 16B parameters | $0.50 | $1.00 | $1.00 | $2.00 |
+| Models 16.1B - 80B | $3.00 | $6.00 | $6.00 | $12.00 |
+| Models 80B - 300B (e.g. Qwen3-235B, gpt-oss-120B) | $6.00 | $12.00 | $12.00 | $24.00 |
+| Models >300B (e.g. DeepSeek V3, Kimi K2) | $10.00 | $20.00 | $20.00 | $40.00 |
+
+*   •SFT and DPO prices are shown in $ per 1M training tokens. Training tokens can be estimated with number of tokens in training dataset \* number of epochs. Estimation should be multiplied by the average number conversation turns /2 for tuning with intermediate thinking traces.
+*   •Please note that when fine-tuning with reasoning traces, including the reasoning\_content field for assistant turns will increase the total number of tuned tokens because multi-turn conversations are unrolled into user, assistant, and thinking traces. For further details, please refer to example 2 in the [documentation about SFT fine tuning](https://docs.fireworks.ai/fine-tuning/fine-tuning-models#fine-tuning-a-model-using-sft).
+*   •Fine-tuning with images (VLM supervised fine-tuning) is also billed per 1M tokens. See this [FAQ](https://docs.fireworks.ai/faq-new/billing-pricing/how-many-tokens-per-image) on calculating image tokens.
+
+## Serverless Training API
+
+Attach to a shared, always-on trainer pool for LoRA training on the launch models. There's no provisioning and no idle cost. You pay only for the tokens you prefill, sample, and train.
+
+| Base Model | Context | Prefill / 1M | Cached Prefill / 1M | Sample / 1M | Train / 1M |
+| --- | --- | --- | --- | --- | --- |
+| GLM 5.3 | 262K | $4.86 | $0.972 | $12.15 | $14.58 |
+| Qwen 3.8 27B | 128K | $1.86 | $0.372 | $5.595 | $4.103 |
+| Kimi K3 | 192K | $10.87 | $2.17 | $27.11 | $32.55 |
+| DeepSeek V4 Flash 0731 | 262K | $1.74 | $0.35 | $4.33 | $5.20 |
+| Muse Glimmer 30B | 128K | $1.96 | $0.39 | $4.88 | $5.86 |
+
+*   •Checkpoint storage for serverless models is included during private preview.
+*   •Other frontier models are coming soon to the Serverless Training API catalog.
+
+## Dedicated Training API
+
+Dedicated Training API jobs are priced per GPU hour. Please see the On-Demand Pricing section below for details on Dedicated Training API Pricing.
+
+
+
+## On-Demand Pricing
+
+Pay per GPU second, with no extra charges for start-up times
+
+## On demand deployments
+
+| GPU Type | Price ($) per minute | Price ($) per hour |
+| --- | --- | --- |
+| H100 80 GB GPU | $0.134 | $8.00 |
+| H200 141 GB GPU | $0.134 | $8.00 |
+| B200 180 GB GPU | $0.217 | $13.00 |
+| B300 288 GB GPU | $0.250 | $15.00 |
+| GB300 288 GB GPU | $0.334 | $20.00 |
+
+*   •Region-restricted deployments are priced at a 1.5x premium. [Contact Sales](/contact) to get started.

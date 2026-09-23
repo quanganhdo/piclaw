@@ -276,6 +276,15 @@ export const TOOL_PREPARATION_MANIFEST: readonly ToolPreparationSpec[] = Object.
     abortExpectation: "may_finish_late",
     protectedFields: ["params.action", "params.content", "params.files", "params.target_address", "params.target_chat_jid", "params.target_agent_name", "params.media_ids", "params.idempotency_key", "params.in_reply_to", "result.content", "result.details"],
   }),
+  ...rows(["chat_project"], {
+    currentSource: "runtime/src/extensions/chat-project.ts",
+    effectClass: "mutation",
+    replay: "never",
+    contextFields: ["chatJid", "operationId"],
+    serviceEffector: null,
+    abortExpectation: "may_finish_late",
+    protectedFields: ["params.repository_url", "result.content", "result.details"],
+  }),
   ...rows(["session_control"], {
     currentSource: "runtime/src/extensions/session-control.ts",
     effectClass: "mixed",

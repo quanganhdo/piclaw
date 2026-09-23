@@ -16,6 +16,8 @@ import { createLogger, debugSuppressedError } from "./utils/logger.js";
 import { workspaceIndexAccess,WorkspaceIndexAccessDenied } from './core/workspace-index-access.js';
 import { familyWorkspaceIndexStatus,familyWorkspaceScope,refreshFamilyWorkspaceIndex,staleFamilyWorkspaceIndex } from './family-workspace-index.js';
 
+import { markNoteIndexDirty } from "./note-retrieval/coordinator.js";
+
 const log = createLogger("workspace-index-core");
 export const AGGRESSIVE_WORKSPACE_INDEX_MEMORY_ENV = "PICLAW_AGGRESSIVE_WORKSPACE_INDEX_MEMORY";
 const AGGRESSIVE_WORKSPACE_INDEX_GC_EVERY_FILES = 8;
@@ -28,7 +30,7 @@ export type WorkspaceIndexBackgroundRefreshParams = {
   max_kb?: number;
 };
 
-export type WorkspaceIndexProcessParams = WorkspaceIndexBackgroundRefreshParams;
+export type WorkspaceIndexProcessParams = WorkspaceIndexBackgroundRefreshParams & { note_binding?: boolean };
 
 type WorkspaceIndexStatusRow = {
   scope: WorkspaceSearchScope;
@@ -403,6 +405,8 @@ export function getWorkspaceIndexStatus(params?: { scope?: WorkspaceSearchScope 
 
 export function markWorkspaceIndexCoreStale(params?: { scope?: WorkspaceSearchScope | string; paths?: string[] }): WorkspaceSearchScope[] {
   const access=workspaceIndexAccess();if(access.mode==='family-shared')return staleFamilyWorkspaceIndex(params);
+  const databaseFile=(getDb().query('PRAGMA database_list').get() as {file?:string})?.file;
+  if(databaseFile&&params?.scope !== 'skills') markNoteIndexDirty(params?.paths?.map(p => path.relative(getWorkspaceRoot(), path.resolve(getWorkspaceRoot(),p)).split(path.sep).join('/')));
   const explicitScope = params?.paths?.length ? null : normalizeWorkspaceSearchScope(params?.scope);
   const scopes = explicitScope ? [explicitScope] : getAffectedWorkspaceIndexScopes(params?.paths || []);
 

@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import sharp from 'sharp';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -31,9 +32,9 @@ test('saveGeneralSettings persists and applies general settings immediately', as
 
     const saved = await handler.saveGeneralSettings({
       assistantName: 'Smith',
-      assistantAvatar: 'https://example.test/assistant.png',
+      assistantAvatar: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSJyZWQiLz48L3N2Zz4=',
       userName: 'Rui',
-      userAvatar: 'https://example.test/user.png',
+      userAvatar: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSJyZWQiLz48L3N2Zz4=',
       sessionAutoRotate: false,
       sessionMaxSizeMb: 48,
       webTerminalEnabled: false,
@@ -50,9 +51,9 @@ test('saveGeneralSettings persists and applies general settings immediately', as
 
     expect(saved).toMatchObject({
       assistantName: 'Smith',
-      assistantAvatar: 'https://example.test/assistant.png',
+      assistantAvatar: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSJyZWQiLz48L3N2Zz4=',
       userName: 'Rui',
-      userAvatar: 'https://example.test/user.png',
+      userAvatar: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSJyZWQiLz48L3N2Zz4=',
       sessionAutoRotate: false,
       sessionMaxSizeMb: 48,
       webTerminalEnabled: false,
@@ -82,9 +83,9 @@ test('saveGeneralSettings persists and applies general settings immediately', as
       domains: {
         identity: {
           assistantName: 'Smith',
-          assistantAvatar: 'https://example.test/assistant.png',
+          assistantAvatar: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSJyZWQiLz48L3N2Zz4=',
           userName: 'Rui',
-          userAvatar: 'https://example.test/user.png',
+          userAvatar: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSJyZWQiLz48L3N2Zz4=',
         },
         web: {
           terminalEnabled: false,
@@ -217,10 +218,8 @@ test('saveGeneralSettings accepts uploaded media avatar references', async () =>
       '../src/channels/web/media/avatar-service.js',
     );
 
-    const png = Buffer.from(
-      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wn1s3sAAAAASUVORK5CYII=',
-      'base64',
-    );
+    const png = await sharp({ create: { width: 32, height: 32, channels: 3, background: 'blue' } }).png().toBuffer();
+
     const userMediaId = db.createMedia('user-avatar.png', 'image/png', png, null, { test: true });
     const agentMediaId = db.createMedia('agent-avatar.png', 'image/png', png, null, { test: true });
 

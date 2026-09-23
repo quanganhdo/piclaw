@@ -42,6 +42,7 @@ type PolicyInput = Omit<
 
 const CURRENT_AUTHORITY_PATHS: Readonly<Record<string, string>> = Object.freeze({
   chat: "runtime/src/extensions/chat-tool.ts resolves the live session-tree registry and installed one-hop chat transport before delivery.",
+  chat_project: "runtime/src/extensions/chat-project.ts validates and persists the current chat's repository through the branch-owned SQLite project store.",
   session_control: "runtime/src/extensions/session-control.ts resolves and mutates the current AgentPool/session registry lane directly.",
   send_adaptive_card: "runtime/src/extensions/send-adaptive-card.ts writes the messages SQLite timeline and broadcasts the adaptive-card block over web SSE to the renderer.",
   send_dashboard_widget: "runtime/src/extensions/send-dashboard-widget.ts writes the messages SQLite timeline and broadcasts widget metadata over web SSE to the pane renderer.",
@@ -233,6 +234,13 @@ const entries = Object.freeze([
     effectClass: "mutation", replay: "never", contextFields: ["chatJid", "operationId"], abortExpectation: "may_finish_late", serviceEffector: "EF-S01",
     authorityRationale: "ServiceWorkStore owns accepted cross-session work before wake intent.", idempotencyIdentity: "source ID plus request hash",
     certainty: "Equal identity reconciles; changed hash conflicts; stale wake results are ignored.", activationPrerequisites: ["EF-S01 accepted-source API", "owner/version fence", "selected tagged Harness v3"],
+  }),
+  ...policy(["chat_project"], {
+    effectClass: "mutation", replay: "never", contextFields: ["chatJid", "operationId"], serviceEffector: null,
+    abortExpectation: "may_finish_late", safeProof: null, nullAuthorityKind: "unsupported_mixed_authority",
+    authorityRationale: "The current branch-owned SQLite project setting has no approved WP-3C service effector.",
+    idempotencyIdentity: null, certainty: "The SQLite mutation may commit before cancellation; automatic replay is forbidden.",
+    activationPrerequisites: ["separately approved branch-settings service authority"],
   }),
   ...servicePolicy(["session_control"], {
     effectClass: "mixed", replay: "never", contextFields: ["chatJid", "operationId"], abortExpectation: "may_finish_late", serviceEffector: "EF-S01",

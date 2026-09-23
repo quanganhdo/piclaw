@@ -910,7 +910,7 @@ test("agent control cycle and agent identity commands", async () => {
   const agentName = await applyControlCommand(runtime as any, cycleRegistry, { type: "agent_name", name: "Pi", raw: "/agent-name Pi" });
   expect(agentName.message).toContain("Agent name set");
 
-  const agentAvatar = await applyControlCommand(runtime as any, cycleRegistry, { type: "agent_avatar", avatar: "https://example.com/avatar.png", raw: "/agent-avatar https://example.com/avatar.png" });
+  const agentAvatar = await applyControlCommand(runtime as any, cycleRegistry, { type: "agent_avatar", avatar: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBmaWxsPSJibHVlIi8+PC9zdmc+", raw: "/agent-avatar data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBmaWxsPSJibHVlIi8+PC9zdmc+" });
   expect(agentAvatar.message).toContain("Agent avatar set");
 });
 

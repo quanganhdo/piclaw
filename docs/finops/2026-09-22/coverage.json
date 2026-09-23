@@ -1,0 +1,4584 @@
+{
+  "installedRoutes": 1354,
+  "verifiedRoutes": 609,
+  "providers": [
+    "openai",
+    "anthropic",
+    "github-copilot",
+    "openrouter",
+    "zai",
+    "deepseek",
+    "xai",
+    "fireworks",
+    "moonshot",
+    "groq",
+    "google",
+    "openai-codex"
+  ],
+  "installedUnverified": [
+    {
+      "provider": "opencode",
+      "id": "claude-fable-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "claude-fable-5-1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "claude-haiku-4-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "claude-opus-4-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "claude-opus-4-6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "claude-opus-4-7",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "claude-opus-4-8",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "claude-opus-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "claude-sonnet-4",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "claude-sonnet-4-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "claude-sonnet-4-6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "claude-sonnet-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "qwen3.5-plus",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "qwen3.6-plus",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "gemini-3-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "gemini-3.1-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "gemini-3.5-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "gemini-3.5-flash-lite",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "gemini-3.6-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "gemini-3.7-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "gemini-3.8-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "big-pickle",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "deepseek-v4-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "deepseek-v4-flash-vision-exp",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "deepseek-v4-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "glm-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "glm-5.1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "glm-5.2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "glm-5.3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "glm-5.3-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "kimi-k2.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "kimi-k2.6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "kimi-k2.7-code",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "kimi-k3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "ling-3.0-flash-fin-free",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "mimo-v2.5-free",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "minimax-m2.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "minimax-m2.7",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "minimax-m3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "nemotron-3-ultra-free",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "nemotron-3.5-lightning-free",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "gpt-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "gpt-5-codex",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "gpt-5-nano",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "gpt-5.1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "gpt-5.1-codex",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "gpt-5.1-codex-max",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "gpt-5.1-codex-mini",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "gpt-5.2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "gpt-5.2-codex",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "gpt-5.3-codex",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "gpt-5.4",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "gpt-5.4-mini",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "gpt-5.4-nano",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "gpt-5.4-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "gpt-5.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "gpt-5.5-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "gpt-5.6-luna",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "gpt-5.6-sol",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "gpt-5.6-terra",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "gpt-6-astra",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "grok-4.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "grok-4.6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "grok-build-0.1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "muse-spark-1.2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "muse-spark-1.2-contributor-free",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "muse-spark-1.3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode",
+      "id": "muse-spark-1.3-contributor-free",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "minimax",
+      "id": "MiniMax-M2.7",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "minimax",
+      "id": "MiniMax-M2.7-highspeed",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "minimax",
+      "id": "MiniMax-M3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "groq",
+      "id": "llama-3.1-8b-instant",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "groq",
+      "id": "llama-3.3-70b-versatile",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "groq",
+      "id": "qwen/qwen3.6-27b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "moonshotai",
+      "id": "kimi-k2-0711-preview",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "moonshotai",
+      "id": "kimi-k2-0905-preview",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "moonshotai",
+      "id": "kimi-k2-thinking",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "moonshotai",
+      "id": "kimi-k2-thinking-turbo",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "moonshotai",
+      "id": "kimi-k2-turbo-preview",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "moonshotai",
+      "id": "kimi-k2.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "moonshotai",
+      "id": "kimi-k2.6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "moonshotai",
+      "id": "kimi-k2.7-code",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "moonshotai",
+      "id": "kimi-k2.7-code-highspeed",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "moonshotai",
+      "id": "kimi-k3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "moonshotai-cn",
+      "id": "kimi-k2-0711-preview",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "moonshotai-cn",
+      "id": "kimi-k2-0905-preview",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "moonshotai-cn",
+      "id": "kimi-k2-thinking",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "moonshotai-cn",
+      "id": "kimi-k2-thinking-turbo",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "moonshotai-cn",
+      "id": "kimi-k2-turbo-preview",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "moonshotai-cn",
+      "id": "kimi-k2.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "moonshotai-cn",
+      "id": "kimi-k2.6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "moonshotai-cn",
+      "id": "kimi-k2.7-code",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "moonshotai-cn",
+      "id": "kimi-k2.7-code-highspeed",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "moonshotai-cn",
+      "id": "kimi-k3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-4",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-4-turbo",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-4.1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-4.1-mini",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-4.1-nano",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-4o",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-4o-2024-05-13",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-4o-2024-08-06",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-4o-2024-11-20",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-4o-mini",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5-chat-latest",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5-mini",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5-nano",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5.1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5.2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5.2-chat-latest",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5.2-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5.3-chat-latest",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5.3-codex",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5.3-codex-spark",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5.4",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5.4-mini",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5.4-nano",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5.4-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5.5-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5.6-luna",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5.6-sol",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5.6-terra",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-6-astra",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-realtime-2.1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "o1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "o1-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "o3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "o3-mini",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "o3-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "o4-mini",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "ant-ling",
+      "id": "Ling-2.6-1T",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "ant-ling",
+      "id": "Ling-2.6-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "ant-ling",
+      "id": "Ring-2.6-1T",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "MiniMaxAI/MiniMax-M2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "MiniMaxAI/MiniMax-M2.1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "MiniMaxAI/MiniMax-M2.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "MiniMaxAI/MiniMax-M2.7",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "MiniMaxAI/MiniMax-M3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "Qwen/Qwen2.5-Coder-32B-Instruct",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "Qwen/Qwen3-235B-A22B",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "Qwen/Qwen3-235B-A22B-Thinking-2507",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "Qwen/Qwen3-30B-A3B",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "Qwen/Qwen3-32B",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "Qwen/Qwen3-Coder-30B-A3B-Instruct",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "Qwen/Qwen3-Coder-480B-A35B-Instruct",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "Qwen/Qwen3-Coder-Next",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "Qwen/Qwen3-Next-80B-A3B-Instruct",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "Qwen/Qwen3-Next-80B-A3B-Thinking",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "Qwen/Qwen3-VL-235B-A22B-Instruct",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "Qwen/Qwen3-VL-235B-A22B-Thinking",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "Qwen/Qwen3.5-122B-A10B",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "Qwen/Qwen3.5-27B",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "Qwen/Qwen3.5-35B-A3B",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "Qwen/Qwen3.5-397B-A17B",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "Qwen/Qwen3.5-9B",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "Qwen/Qwen3.6-27B",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "Qwen/Qwen3.6-35B-A3B",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "Qwen/Qwen3.8-2.4T-A95B",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "Qwen/Qwen3.8-27B",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "XiaomiMiMo/MiMo-V2-Flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "XiaomiMiMo/MiMo-V2.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "XiaomiMiMo/MiMo-V2.5-Pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "deepseek-ai/DeepSeek-R1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "deepseek-ai/DeepSeek-R1-0528",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "deepseek-ai/DeepSeek-V3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "deepseek-ai/DeepSeek-V3-0324",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "deepseek-ai/DeepSeek-V3.1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "deepseek-ai/DeepSeek-V3.2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "deepseek-ai/DeepSeek-V4-Flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "deepseek-ai/DeepSeek-V4-Flash-0731",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "deepseek-ai/DeepSeek-V4-Flash-Vision-Exp",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "deepseek-ai/DeepSeek-V4-Pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "deepseek-ai/DeepSeek-V4-Pro-0813",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "google/gemma-4-26B-A4B-it",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "google/gemma-4-31B-it",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "meta-llama/Llama-3.1-8B-Instruct",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "meta-llama/Llama-3.3-70B-Instruct",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "moonshotai/Kimi-K2-Instruct",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "moonshotai/Kimi-K2-Instruct-0905",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "moonshotai/Kimi-K2-Thinking",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "moonshotai/Kimi-K2.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "moonshotai/Kimi-K2.6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "moonshotai/Kimi-K2.7-Code",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "moonshotai/Kimi-K3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "openai/gpt-oss-120b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "openai/gpt-oss-20b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "stepfun-ai/Step-3.5-Flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "stepfun-ai/Step-3.7-Flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "tencent/Hy3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "thinkingmachines/Inkling",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "thinkingmachines/Inkling-Small",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "zai-org/GLM-4.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "zai-org/GLM-4.5-Air",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "zai-org/GLM-4.5V",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "zai-org/GLM-4.6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "zai-org/GLM-4.6V-Flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "zai-org/GLM-4.7",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "zai-org/GLM-4.7-Flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "zai-org/GLM-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "zai-org/GLM-5.1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "zai-org/GLM-5.2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "zai-org/GLM-5.3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "huggingface",
+      "id": "zai-org/GLM-5.3-Flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "minimax-m3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "qwen3.8-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "deepseek-v4-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "deepseek-v4-flash-vision-exp",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "deepseek-v4-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "glm-5.1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "glm-5.2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "glm-5.3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "glm-5.3-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "hy3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "hy4-preview",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "kimi-k2.6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "kimi-k2.7-code",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "kimi-k3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "longcat-2.0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "mimo-v2.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "mimo-v2.5-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "minimax-m2.7",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "omen-alpha",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "qwen3.6-plus",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "qwen3.7-max",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "qwen3.7-plus",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "qwen3.8-max",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "gpt-5.6-luna",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "grok-4.6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "muse-spark-1.2-contributor",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "muse-spark-1.3-contributor",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "xiaomi-token-plan-sgp",
+      "id": "mimo-v2.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "xiaomi-token-plan-sgp",
+      "id": "mimo-v2.5-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "github-copilot",
+      "id": "mai-code-1-flash-picker",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "fireworks",
+      "id": "accounts/fireworks/models/inkling",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "fireworks",
+      "id": "accounts/fireworks/models/qwen3p7-plus",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "fireworks",
+      "id": "accounts/fireworks/models/qwen3p8-2p4t-a95b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "mistral",
+      "id": "codestral-latest",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "mistral",
+      "id": "devstral-2512",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "mistral",
+      "id": "devstral-latest",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "mistral",
+      "id": "devstral-medium-2507",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "mistral",
+      "id": "devstral-medium-latest",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "mistral",
+      "id": "devstral-small-2505",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "mistral",
+      "id": "devstral-small-2507",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "mistral",
+      "id": "labs-devstral-small-2512",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "mistral",
+      "id": "magistral-medium-latest",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "mistral",
+      "id": "magistral-small",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "mistral",
+      "id": "ministral-3b-latest",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "mistral",
+      "id": "ministral-8b-latest",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "mistral",
+      "id": "mistral-large-2411",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "mistral",
+      "id": "mistral-large-2512",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "mistral",
+      "id": "mistral-large-latest",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "mistral",
+      "id": "mistral-medium-2505",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "mistral",
+      "id": "mistral-medium-2508",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "mistral",
+      "id": "mistral-medium-2604",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "mistral",
+      "id": "mistral-medium-3.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "mistral",
+      "id": "mistral-medium-latest",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "mistral",
+      "id": "mistral-nemo",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "mistral",
+      "id": "mistral-small-2506",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "mistral",
+      "id": "mistral-small-2603",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "mistral",
+      "id": "mistral-small-latest",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "mistral",
+      "id": "open-mistral-7b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "mistral",
+      "id": "open-mistral-nemo",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "mistral",
+      "id": "open-mixtral-8x22b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "mistral",
+      "id": "open-mixtral-8x7b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "mistral",
+      "id": "pixtral-12b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "mistral",
+      "id": "pixtral-large-latest",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "mistral",
+      "id": "voxtral-small-latest",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "mistral",
+      "id": "zai-glm-5-2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "google",
+      "id": "deep-research-max-preview-04-2026",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "google",
+      "id": "deep-research-preview-04-2026",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "google",
+      "id": "gemini-2.5-computer-use-preview-10-2025",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "google",
+      "id": "gemini-2.5-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "google",
+      "id": "gemini-2.5-flash-lite",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "google",
+      "id": "gemini-2.5-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "google",
+      "id": "gemini-3-flash-preview",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "google",
+      "id": "gemini-3.1-flash-lite-image",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "google",
+      "id": "gemini-3.1-flash-lite-preview",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "google",
+      "id": "gemini-3.1-flash-live-preview",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "google",
+      "id": "gemini-3.1-pro-preview",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "google",
+      "id": "gemini-3.1-pro-preview-customtools",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "google",
+      "id": "gemini-3.5-flash-lite",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "google",
+      "id": "gemini-flash-latest",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "google",
+      "id": "gemini-flash-lite-latest",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "google",
+      "id": "gemma-4-26b-a4b-it",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "google",
+      "id": "gemma-4-31b-it",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan-individual",
+      "id": "deepseek-v4-flash-0731",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan-individual",
+      "id": "deepseek-v4-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan-individual",
+      "id": "deepseek-v4-pro-0813",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan-individual",
+      "id": "glm-5.2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan-individual",
+      "id": "qwen3.6-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan-individual",
+      "id": "qwen3.7-max",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan-individual",
+      "id": "qwen3.7-plus",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan-individual",
+      "id": "qwen3.8-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan-individual",
+      "id": "qwen3.8-max",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "nvidia",
+      "id": "deepseek-ai/deepseek-v4-flash-0731",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "nvidia",
+      "id": "deepseek-ai/deepseek-v4-pro-0813",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "nvidia",
+      "id": "google/gemma-3-12b-it",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "nvidia",
+      "id": "google/gemma-3-4b-it",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "nvidia",
+      "id": "meta/llama-3.2-11b-vision-instruct",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "nvidia",
+      "id": "meta/llama-3.2-90b-vision-instruct",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "nvidia",
+      "id": "meta/muse-glimmer-30b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "nvidia",
+      "id": "minimaxai/minimax-m3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "nvidia",
+      "id": "mistralai/mistral-7b-instruct-v0.3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "nvidia",
+      "id": "moonshotai/kimi-k2.6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "nvidia",
+      "id": "moonshotai/kimi-k3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "nvidia",
+      "id": "nvidia/cosmos-reason2-8b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "nvidia",
+      "id": "nvidia/llama-3.1-nemotron-70b-instruct",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "nvidia",
+      "id": "nvidia/llama-3.1-nemotron-ultra-253b-v1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "nvidia",
+      "id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "nvidia",
+      "id": "nvidia/nemotron-3-super-120b-a12b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "nvidia",
+      "id": "nvidia/nemotron-3-ultra-550b-a55b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "nvidia",
+      "id": "nvidia/nemotron-3.5-lightning-30b-a3b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "nvidia",
+      "id": "openai/gpt-oss-20b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "nvidia",
+      "id": "poolside/laguna-xs-2.1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "alibaba/qwen-3-14b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "alibaba/qwen-3-235b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "alibaba/qwen-3-30b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "alibaba/qwen-3-32b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "alibaba/qwen-3.6-max-preview",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "alibaba/qwen3-235b-a22b-thinking",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "alibaba/qwen3-coder",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "alibaba/qwen3-coder-30b-a3b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "alibaba/qwen3-coder-next",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "alibaba/qwen3-coder-plus",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "alibaba/qwen3-max",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "alibaba/qwen3-max-preview",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "alibaba/qwen3-max-thinking",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "alibaba/qwen3-next-80b-a3b-instruct",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "alibaba/qwen3-next-80b-a3b-thinking",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "alibaba/qwen3-vl-235b-a22b-instruct",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "alibaba/qwen3-vl-instruct",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "alibaba/qwen3-vl-thinking",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "alibaba/qwen3.5-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "alibaba/qwen3.5-plus",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "alibaba/qwen3.6-27b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "alibaba/qwen3.6-plus",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "alibaba/qwen3.7-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "alibaba/qwen3.7-max",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "alibaba/qwen3.7-plus",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "alibaba/qwen3.8-2.4t-a95b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "alibaba/qwen3.8-27b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "alibaba/qwen3.8-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "alibaba/qwen3.8-flash-next",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "alibaba/qwen3.8-max",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "alibaba/qwen3.8-max-0902",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "amazon/nova-2-lite",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "amazon/nova-lite",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "amazon/nova-micro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "amazon/nova-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "anthropic/claude-3-haiku",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "anthropic/claude-fable-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "anthropic/claude-fable-5.1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "anthropic/claude-haiku-4.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "anthropic/claude-opus-4",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "anthropic/claude-opus-4.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "anthropic/claude-opus-4.6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "anthropic/claude-opus-4.7",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "anthropic/claude-opus-4.8",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "anthropic/claude-opus-4.8-fast",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "anthropic/claude-opus-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "anthropic/claude-opus-5-fast",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "anthropic/claude-sonnet-4",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "anthropic/claude-sonnet-4.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "anthropic/claude-sonnet-4.6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "anthropic/claude-sonnet-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "arcee-ai/trinity-large-thinking",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "bytedance/seed-1.6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "bytedance/seed-1.8",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "cohere/command-a",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "deepseek/deepseek-r1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "deepseek/deepseek-v3.1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "deepseek/deepseek-v3.1-terminus",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "deepseek/deepseek-v3.2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "deepseek/deepseek-v3.2-thinking",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "deepseek/deepseek-v4-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "deepseek/deepseek-v4-flash-0731",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "deepseek/deepseek-v4-flash-vision-exp",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "deepseek/deepseek-v4-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "deepseek/deepseek-v4-pro-0813",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "google/gemini-2.5-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "google/gemini-2.5-flash-lite",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "google/gemini-2.5-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "google/gemini-3-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "google/gemini-3.1-flash-lite",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "google/gemini-3.1-pro-preview",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "google/gemini-3.5-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "google/gemini-3.5-flash-lite",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "google/gemini-3.6-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "google/gemini-3.7-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "google/gemini-3.8-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "google/gemma-4-26b-a4b-it",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "google/gemma-4-31b-it",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "inception/mercury-2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "inception/mercury-coder-small",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "inclusionai/ling-3.0-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "inclusionai/ling-3.0-flash-fin",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "inclusionai/ling-3.0-flash-fin-free",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "inclusionai/ling-3.0-flash-sante",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "inclusionai/ling-3.0-flash-sante-free",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "interfaze/interfaze-beta",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "kwaipilot/kat-coder-air-v2.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "kwaipilot/kat-coder-pro-v1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "kwaipilot/kat-coder-pro-v2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "kwaipilot/kat-coder-pro-v2.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "meta/llama-3.1-70b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "meta/llama-3.1-8b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "meta/llama-3.3-70b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "meta/llama-4-maverick",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "meta/llama-4-scout",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "meta/muse-glimmer-30b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "meta/muse-spark-1.1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "meta/muse-spark-1.2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "meta/muse-spark-1.2-contributor",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "meta/muse-spark-1.3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "meta/muse-spark-1.3-contributor",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "minimax/minimax-m2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "minimax/minimax-m2.1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "minimax/minimax-m2.1-lightning",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "minimax/minimax-m2.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "minimax/minimax-m2.5-highspeed",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "minimax/minimax-m2.7",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "minimax/minimax-m2.7-free",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "minimax/minimax-m2.7-highspeed",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "minimax/minimax-m3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "minimax/minimax-m3-free",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "mistral/codestral",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "mistral/devstral-2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "mistral/devstral-small-2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "mistral/ministral-14b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "mistral/ministral-3b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "mistral/ministral-8b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "mistral/mistral-large-3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "mistral/mistral-medium",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "mistral/mistral-medium-3.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "mistral/mistral-nemo",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "mistral/mistral-small",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "mistral/pixtral-12b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "moonshotai/kimi-k2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "moonshotai/kimi-k2-thinking",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "moonshotai/kimi-k2.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "moonshotai/kimi-k2.6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "moonshotai/kimi-k2.7-code",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "moonshotai/kimi-k2.7-code-highspeed",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "moonshotai/kimi-k3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "moonshotai/kimi-k3-fast",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "nvidia/nemotron-3-nano-30b-a3b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "nvidia/nemotron-3-super-120b-a12b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "nvidia/nemotron-3-ultra-550b-a55b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "nvidia/nemotron-3.5-lightning",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "nvidia/nemotron-nano-12b-v2-vl",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "nvidia/nemotron-nano-9b-v2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-3.5-turbo",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-4-turbo",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-4.1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-4.1-fast",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-4.1-mini",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-4.1-mini-fast",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-4.1-nano",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-4.1-nano-fast",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-4o",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-4o-fast",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-4o-mini",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-4o-mini-fast",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5-codex",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5-fast",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5-mini",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5-mini-fast",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5-nano",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5.1-codex",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5.1-codex-max",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5.1-codex-mini",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5.1-thinking",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5.1-thinking-fast",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5.2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5.2-codex",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5.2-fast",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5.2-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5.3-codex",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5.3-codex-fast",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5.4",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5.4-fast",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5.4-mini",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5.4-mini-fast",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5.4-nano",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5.4-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5.5-fast",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5.5-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5.6-luna",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5.6-luna-fast",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5.6-sol",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5.6-sol-fast",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5.6-terra",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-5.6-terra-fast",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-6-astra",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-6-astra-fast",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-oss-120b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-oss-20b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-oss-safeguard-120b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/gpt-oss-safeguard-20b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/o1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/o3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/o3-fast",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/o3-mini",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/o3-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/o4-mini",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "openai/o4-mini-fast",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "poolside/laguna-s-2.1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "poolside/laguna-s-2.1-free",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "sakana/fugu-ultra",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "sakana/namazu",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "spacexai/grok-4.1-fast-non-reasoning",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "spacexai/grok-4.1-fast-reasoning",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "spacexai/grok-4.20-multi-agent",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "spacexai/grok-4.20-multi-agent-beta",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "spacexai/grok-4.20-non-reasoning",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "spacexai/grok-4.20-non-reasoning-beta",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "spacexai/grok-4.20-reasoning",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "spacexai/grok-4.20-reasoning-beta",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "spacexai/grok-4.3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "spacexai/grok-4.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "spacexai/grok-4.6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "spacexai/grok-build-0.1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "stepfun/step-3.5-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "stepfun/step-3.7-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "tencent/hy3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "tencent/hy4-preview",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "thinkingmachines/inkling",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "thinkingmachines/inkling-small",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "xiaomi/mimo-v2.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "xiaomi/mimo-v2.5-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "xiaomi/mimo-v2.5-pro-ultraspeed",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "zai/glm-4.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "zai/glm-4.5-air",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "zai/glm-4.5v",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "zai/glm-4.6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "zai/glm-4.7",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "zai/glm-4.7-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "zai/glm-4.7-flashx",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "zai/glm-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "zai/glm-5-turbo",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "zai/glm-5.1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "zai/glm-5.2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "zai/glm-5.2-fast",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "zai/glm-5.3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "zai/glm-5.3-fast",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "zai/glm-5.3-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "zai/glm-5.3-promo-50",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "zai/glm-5v-turbo",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "google-vertex",
+      "id": "gemini-2.5-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "google-vertex",
+      "id": "gemini-2.5-flash-lite",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "google-vertex",
+      "id": "gemini-2.5-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "google-vertex",
+      "id": "gemini-3-flash-preview",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "google-vertex",
+      "id": "gemini-3.1-flash-lite",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "google-vertex",
+      "id": "gemini-3.1-pro-preview",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "google-vertex",
+      "id": "gemini-3.1-pro-preview-customtools",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "google-vertex",
+      "id": "gemini-3.5-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "google-vertex",
+      "id": "gemini-3.5-flash-lite",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "google-vertex",
+      "id": "gemini-3.6-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "google-vertex",
+      "id": "gemini-3.7-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "google-vertex",
+      "id": "gemini-3.8-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "google-vertex",
+      "id": "gemini-flash-latest",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "google-vertex",
+      "id": "gemini-flash-lite-latest",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "claude-fable-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "claude-fable-5.1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "claude-haiku-4.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "claude-opus-4.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "claude-opus-4.6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "claude-opus-4.7",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "claude-opus-4.8",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "claude-opus-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "claude-sonnet-4.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "claude-sonnet-4.6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "claude-sonnet-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "workers-ai/@cf/deepseek-ai/deepseek-v4-flash-0731",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "workers-ai/@cf/deepseek-ai/deepseek-v4-pro-0813",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "workers-ai/@cf/google/gemma-4-26b-a4b-it",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "workers-ai/@cf/ibm-granite/granite-4.0-h-micro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "workers-ai/@cf/meta/llama-4-scout-17b-16e-instruct",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "workers-ai/@cf/mistralai/mistral-small-3.1-24b-instruct",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "workers-ai/@cf/moonshotai/kimi-k2.6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "workers-ai/@cf/moonshotai/kimi-k2.7-code",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "workers-ai/@cf/nvidia/nemotron-3-120b-a12b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "workers-ai/@cf/openai/gpt-oss-120b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "workers-ai/@cf/openai/gpt-oss-20b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "workers-ai/@cf/qwen/qwen3-30b-a3b-fp8",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "workers-ai/@cf/qwen/qwen3.8-27b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "workers-ai/@cf/zai-org/glm-4.7-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "workers-ai/@cf/zai-org/glm-5.2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "workers-ai/@cf/zai-org/glm-5.3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "workers-ai/@cf/zai-org/glm-5.3-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "gpt-4.1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "gpt-4.1-mini",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "gpt-4.1-nano",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "gpt-4o",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "gpt-4o-mini",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "gpt-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "gpt-5-mini",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "gpt-5-nano",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "gpt-5.1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "gpt-5.4",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "gpt-5.4-mini",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "gpt-5.4-nano",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "gpt-5.4-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "gpt-5.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "gpt-5.5-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "gpt-5.6-luna",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "gpt-5.6-sol",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "gpt-5.6-terra",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "o3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "o3-mini",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "o4-mini",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan",
+      "id": "MiniMax-M2.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan",
+      "id": "deepseek-v3.2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan",
+      "id": "deepseek-v4-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan",
+      "id": "deepseek-v4-flash-0731",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan",
+      "id": "deepseek-v4-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan",
+      "id": "deepseek-v4-pro-0813",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan",
+      "id": "glm-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan",
+      "id": "glm-5.1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan",
+      "id": "glm-5.2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan",
+      "id": "kimi-k2.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan",
+      "id": "kimi-k2.6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan",
+      "id": "kimi-k2.7-code",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan",
+      "id": "qwen3.6-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan",
+      "id": "qwen3.6-plus",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan",
+      "id": "qwen3.7-max",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan",
+      "id": "qwen3.7-plus",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan",
+      "id": "qwen3.8-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan",
+      "id": "qwen3.8-max",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "xiaomi-token-plan-ams",
+      "id": "mimo-v2.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "xiaomi-token-plan-ams",
+      "id": "mimo-v2.5-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "xiaomi",
+      "id": "mimo-v2.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "xiaomi",
+      "id": "mimo-v2.5-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "xiaomi",
+      "id": "mimo-v2.5-pro-ultraspeed",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openrouter",
+      "id": "anthropic/claude-opus-4",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openrouter",
+      "id": "auto",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openrouter",
+      "id": "deepseek/deepseek-v4-flash-0731:batch",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openrouter",
+      "id": "deepseek/deepseek-v4-pro-0813:batch",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openrouter",
+      "id": "google/gemini-2.5-pro-preview-05-06",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openrouter",
+      "id": "google/gemma-4-31b-it:batch",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openrouter",
+      "id": "inception/mercury-2.5-preview",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openrouter",
+      "id": "kwaipilot/kat-coder-pro-v2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openrouter",
+      "id": "meta/muse-glimmer-30b:batch",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openrouter",
+      "id": "minimax/minimax-m2.7:free",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openrouter",
+      "id": "minimax/minimax-m3:batch",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openrouter",
+      "id": "minimax/minimax-m3:free",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openrouter",
+      "id": "mistralai/mistral-large-2512",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openrouter",
+      "id": "nex-agi/nex-n2-mini",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openrouter",
+      "id": "nex-agi/nex-n2-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openrouter",
+      "id": "openai/gpt-4-turbo-preview",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openrouter",
+      "id": "openai/gpt-oss-120b:batch",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openrouter",
+      "id": "openrouter/auto",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openrouter",
+      "id": "openrouter/auto-beta",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openrouter",
+      "id": "openrouter/fusion",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openrouter",
+      "id": "qwen/qwen3.5-9b:batch",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openrouter",
+      "id": "qwen/qwen3.8-2.4t-a95b:batch",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openrouter",
+      "id": "thinkingmachines/inkling-small:batch",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openrouter",
+      "id": "thinkingmachines/inkling:batch",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openrouter",
+      "id": "~openai/gpt-latest",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "amazon.nova-2-lite-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "amazon.nova-lite-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "amazon.nova-micro-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "amazon.nova-pro-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "anthropic.claude-fable-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "anthropic.claude-fable-5-1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "anthropic.claude-haiku-4-5-20251001-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "anthropic.claude-opus-4-1-20250805-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "anthropic.claude-opus-4-5-20251101-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "anthropic.claude-opus-4-6-v1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "anthropic.claude-opus-4-7",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "anthropic.claude-opus-4-8",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "anthropic.claude-sonnet-4-5-20250929-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "anthropic.claude-sonnet-4-6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "anthropic.claude-sonnet-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "au.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "au.anthropic.claude-opus-4-6-v1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "au.anthropic.claude-opus-4-8",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "au.anthropic.claude-opus-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "au.anthropic.claude-sonnet-4-5-20250929-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "au.anthropic.claude-sonnet-4-6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "au.anthropic.claude-sonnet-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "deepseek.r1-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "deepseek.v3-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "deepseek.v3.2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "eu.anthropic.claude-fable-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "eu.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "eu.anthropic.claude-opus-4-5-20251101-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "eu.anthropic.claude-opus-4-6-v1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "eu.anthropic.claude-opus-4-7",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "eu.anthropic.claude-opus-4-8",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "eu.anthropic.claude-opus-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "eu.anthropic.claude-sonnet-4-5-20250929-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "eu.anthropic.claude-sonnet-4-6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "eu.anthropic.claude-sonnet-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "global.anthropic.claude-fable-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "global.anthropic.claude-fable-5-1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "global.anthropic.claude-opus-4-5-20251101-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "global.anthropic.claude-opus-4-6-v1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "global.anthropic.claude-opus-4-7",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "global.anthropic.claude-opus-4-8",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "global.anthropic.claude-opus-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "global.anthropic.claude-sonnet-4-6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "global.anthropic.claude-sonnet-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "global.openai.gpt-5.6-luna",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "global.openai.gpt-5.6-sol",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "global.openai.gpt-5.6-terra",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "google.gemma-3-27b-it",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "google.gemma-3-4b-it",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "jp.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "jp.anthropic.claude-opus-4-7",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "jp.anthropic.claude-opus-4-8",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "jp.anthropic.claude-opus-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "jp.anthropic.claude-sonnet-4-5-20250929-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "jp.anthropic.claude-sonnet-4-6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "jp.anthropic.claude-sonnet-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "meta.llama3-1-70b-instruct-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "meta.llama3-1-8b-instruct-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "meta.llama3-3-70b-instruct-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "meta.llama4-maverick-17b-instruct-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "meta.llama4-scout-17b-instruct-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "minimax.minimax-m2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "minimax.minimax-m2.1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "minimax.minimax-m2.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "mistral.devstral-2-123b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "mistral.magistral-small-2509",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "mistral.ministral-3-14b-instruct",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "mistral.ministral-3-3b-instruct",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "mistral.ministral-3-8b-instruct",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "mistral.mistral-large-3-675b-instruct",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "mistral.pixtral-large-2502-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "mistral.voxtral-mini-3b-2507",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "mistral.voxtral-small-24b-2507",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "moonshot.kimi-k2-thinking",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "moonshotai.kimi-k2.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "nvidia.nemotron-nano-12b-v2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "nvidia.nemotron-nano-3-30b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "nvidia.nemotron-nano-9b-v2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "nvidia.nemotron-super-3-120b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "openai.gpt-5.4",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "openai.gpt-5.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "openai.gpt-5.6-luna",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "openai.gpt-5.6-sol",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "openai.gpt-5.6-terra",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "openai.gpt-oss-120b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "openai.gpt-oss-120b-1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "openai.gpt-oss-20b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "openai.gpt-oss-20b-1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "openai.gpt-oss-safeguard-120b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "openai.gpt-oss-safeguard-20b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "qwen.qwen3-235b-a22b-2507-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "qwen.qwen3-32b-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "qwen.qwen3-coder-30b-a3b-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "qwen.qwen3-coder-480b-a35b-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "qwen.qwen3-coder-next",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "qwen.qwen3-next-80b-a3b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "qwen.qwen3-vl-235b-a22b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "us.anthropic.claude-fable-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "us.anthropic.claude-fable-5-1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "us.anthropic.claude-opus-4-1-20250805-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "us.anthropic.claude-opus-4-5-20251101-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "us.anthropic.claude-opus-4-6-v1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "us.anthropic.claude-opus-4-7",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "us.anthropic.claude-opus-4-8",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "us.anthropic.claude-opus-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "us.anthropic.claude-sonnet-4-6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "us.anthropic.claude-sonnet-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "us.deepseek.r1-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "us.meta.llama4-maverick-17b-instruct-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "us.meta.llama4-scout-17b-instruct-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "writer.palmyra-x4-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "writer.palmyra-x5-v1:0",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "xai.grok-4.3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "xai.grok-4.6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "zai.glm-4.7",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "zai.glm-4.7-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "zai.glm-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "xiaomi-token-plan-cn",
+      "id": "mimo-v2.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "xiaomi-token-plan-cn",
+      "id": "mimo-v2.5-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "zai-coding-cn",
+      "id": "glm-4.6v",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "zai-coding-cn",
+      "id": "glm-4.7",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "zai-coding-cn",
+      "id": "glm-5-turbo",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "zai-coding-cn",
+      "id": "glm-5.1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "zai-coding-cn",
+      "id": "glm-5.2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "zai-coding-cn",
+      "id": "glm-5.2-highspeed",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "zai-coding-cn",
+      "id": "glm-5.3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "zai-coding-cn",
+      "id": "glm-5.3-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "zai-coding-cn",
+      "id": "glm-5.3-highspeed",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "zai-coding-cn",
+      "id": "glm-5v-turbo",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "anthropic",
+      "id": "claude-fable-5-1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "anthropic",
+      "id": "claude-haiku-4-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "anthropic",
+      "id": "claude-haiku-4-5-20251001",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "anthropic",
+      "id": "claude-opus-4-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "anthropic",
+      "id": "claude-opus-4-5-20251101",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "anthropic",
+      "id": "claude-opus-4-6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "anthropic",
+      "id": "claude-opus-4-7",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "anthropic",
+      "id": "claude-opus-4-8",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "anthropic",
+      "id": "claude-sonnet-4-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "anthropic",
+      "id": "claude-sonnet-4-5-20250929",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "anthropic",
+      "id": "claude-sonnet-4-6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "baseten",
+      "id": "deepseek-ai/DeepSeek-V4-Flash-0731",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "baseten",
+      "id": "deepseek-ai/DeepSeek-V4-Pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "baseten",
+      "id": "deepseek-ai/DeepSeek-V4-Pro-0813",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "baseten",
+      "id": "moonshotai/Kimi-K2.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "baseten",
+      "id": "moonshotai/Kimi-K2.6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "baseten",
+      "id": "moonshotai/Kimi-K2.7-Code",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "baseten",
+      "id": "moonshotai/Kimi-K3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "baseten",
+      "id": "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "baseten",
+      "id": "nvidia/Nemotron-120B-A12B",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "baseten",
+      "id": "openai/gpt-oss-120b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "baseten",
+      "id": "thinkingmachines/inkling",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "baseten",
+      "id": "thinkingmachines/inkling-small",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "baseten",
+      "id": "zai-org/GLM-4.7",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "baseten",
+      "id": "zai-org/GLM-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "baseten",
+      "id": "zai-org/GLM-5.1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "baseten",
+      "id": "zai-org/GLM-5.2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "baseten",
+      "id": "zai-org/GLM-5.2-Fast",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "baseten",
+      "id": "zai-org/GLM-5.3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "baseten",
+      "id": "zai-org/GLM-5.3-Fast",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "baseten",
+      "id": "zai-org/GLM-5.3-Flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "kimi-coding",
+      "id": "k3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "kimi-coding",
+      "id": "k3-256k",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "kimi-coding",
+      "id": "kimi-for-coding",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "kimi-coding",
+      "id": "kimi-for-coding-highspeed",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-workers-ai",
+      "id": "@cf/deepseek-ai/deepseek-v4-flash-0731",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-workers-ai",
+      "id": "@cf/deepseek-ai/deepseek-v4-pro-0813",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-workers-ai",
+      "id": "@cf/google/gemma-4-26b-a4b-it",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-workers-ai",
+      "id": "@cf/ibm-granite/granite-4.0-h-micro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-workers-ai",
+      "id": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-workers-ai",
+      "id": "@cf/meta/llama-4-scout-17b-16e-instruct",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-workers-ai",
+      "id": "@cf/mistralai/mistral-small-3.1-24b-instruct",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-workers-ai",
+      "id": "@cf/moonshotai/kimi-k2.6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-workers-ai",
+      "id": "@cf/moonshotai/kimi-k2.7-code",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-workers-ai",
+      "id": "@cf/nvidia/nemotron-3-120b-a12b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-workers-ai",
+      "id": "@cf/openai/gpt-oss-120b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-workers-ai",
+      "id": "@cf/openai/gpt-oss-20b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-workers-ai",
+      "id": "@cf/qwen/qwen3-30b-a3b-fp8",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-workers-ai",
+      "id": "@cf/qwen/qwen3.8-27b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-workers-ai",
+      "id": "@cf/zai-org/glm-4.7-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-workers-ai",
+      "id": "@cf/zai-org/glm-5.2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-workers-ai",
+      "id": "@cf/zai-org/glm-5.3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cloudflare-workers-ai",
+      "id": "@cf/zai-org/glm-5.3-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openai-codex",
+      "id": "gpt-5.3-codex-spark",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan-cn",
+      "id": "MiniMax-M2.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan-cn",
+      "id": "deepseek-v3.2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan-cn",
+      "id": "deepseek-v4-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan-cn",
+      "id": "deepseek-v4-flash-0731",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan-cn",
+      "id": "deepseek-v4-pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan-cn",
+      "id": "deepseek-v4-pro-0813",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan-cn",
+      "id": "glm-5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan-cn",
+      "id": "glm-5.1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan-cn",
+      "id": "glm-5.2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan-cn",
+      "id": "kimi-k2.5",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan-cn",
+      "id": "kimi-k2.6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan-cn",
+      "id": "kimi-k2.7-code",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan-cn",
+      "id": "qwen3.6-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan-cn",
+      "id": "qwen3.6-plus",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan-cn",
+      "id": "qwen3.7-max",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan-cn",
+      "id": "qwen3.7-plus",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan-cn",
+      "id": "qwen3.8-flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "qwen-token-plan-cn",
+      "id": "qwen3.8-max",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4-turbo",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4o-2024-08-06",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4o-2024-11-20",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5-chat-latest",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5.2-chat-latest",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5.3-chat-latest",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5.3-codex",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5.3-codex-spark",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-realtime-2.1",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "zai",
+      "id": "glm-5-turbo",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "zai",
+      "id": "glm-5.2-highspeed",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "zai",
+      "id": "glm-5.3-highspeed",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "minimax-cn",
+      "id": "MiniMax-M2.7",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "minimax-cn",
+      "id": "MiniMax-M2.7-highspeed",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "minimax-cn",
+      "id": "MiniMax-M3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "together",
+      "id": "MiniMaxAI/MiniMax-M2.7",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "together",
+      "id": "MiniMaxAI/MiniMax-M3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "together",
+      "id": "Qwen/Qwen2.5-7B-Instruct-Turbo",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "together",
+      "id": "Qwen/Qwen3.5-9B",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "together",
+      "id": "Qwen/Qwen3.6-Plus",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "together",
+      "id": "Qwen/Qwen3.7-Max",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "together",
+      "id": "deepseek-ai/DeepSeek-V4-Flash-0731",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "together",
+      "id": "deepseek-ai/DeepSeek-V4-Pro",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "together",
+      "id": "deepseek-ai/DeepSeek-V4-Pro-0813",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "together",
+      "id": "google/gemma-4-31B-it",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "together",
+      "id": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "together",
+      "id": "moonshotai/Kimi-K2.6",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "together",
+      "id": "moonshotai/Kimi-K2.7-Code",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "together",
+      "id": "moonshotai/Kimi-K3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "together",
+      "id": "nvidia/nemotron-3-ultra-550b-a55b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "together",
+      "id": "openai/gpt-oss-120b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "together",
+      "id": "openai/gpt-oss-20b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "together",
+      "id": "thinkingmachines/Inkling",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "together",
+      "id": "zai-org/GLM-5.2",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "together",
+      "id": "zai-org/GLM-5.3",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "together",
+      "id": "zai-org/GLM-5.3-Flash",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cerebras",
+      "id": "gemma-4-31b",
+      "status": "catalogue-only; not freshly verified"
+    },
+    {
+      "provider": "cerebras",
+      "id": "gpt-oss-120b",
+      "status": "catalogue-only; not freshly verified"
+    }
+  ],
+  "gaps": [
+    "Cerebras public page and pricing redirect do not expose numeric model tariffs; catalogue remains unverified.",
+    "SambaNova pricing page is client-rendered/empty in extraction; model list confirms availability only.",
+    "Azure DeepSeek PAYG page exposes placeholders for dollar amounts; deployment/region rates not inferred.",
+    "Together and Mistral public pages lack reliably extractable model/API-ID tariff mapping in this snapshot.",
+    "Groq Llama and MiniMax Contact Sales rows cannot be refreshed numerically.",
+    "Copilot does not yet list GPT-6 Sol/Luna; native pricing does not establish Copilot route availability.",
+    "Google only five current text models parsed; older and multimodal sections retained as source evidence, not flattened."
+  ]
+}

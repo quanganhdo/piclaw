@@ -1,0 +1,82 @@
+{
+  "baseline": "044dabf325624cac17eb0715e32031445d67900a",
+  "date": "2026-09-22",
+  "platform": "Linux headless",
+  "versions": {
+    "chromium": "151.0.7922.34",
+    "webkit": "26.5"
+  },
+  "metric": "instrumented callback counts, not CPU",
+  "baselineMeasurements": [
+    {
+      "engine": "chromium",
+      "baseline": true,
+      "clock": "real",
+      "elapsedMs": 10001.159936,
+      "interval": 40,
+      "parses": 0,
+      "raf": 0
+    },
+    {
+      "engine": "chromium",
+      "baseline": true,
+      "windowMs": 60000,
+      "interval": 240,
+      "parses": 0,
+      "raf": 0
+    },
+    {
+      "engine": "webkit",
+      "baseline": true,
+      "clock": "real",
+      "elapsedMs": 10002.008947,
+      "interval": 39,
+      "parses": 0,
+      "raf": 0
+    },
+    {
+      "engine": "webkit",
+      "baseline": true,
+      "windowMs": 60000,
+      "interval": 240,
+      "parses": 0,
+      "raf": 0
+    }
+  ],
+  "candidateMeasurements": [
+    {
+      "engine": "chromium",
+      "baseline": false,
+      "clock": "real",
+      "elapsedMs": 10000.879043999994,
+      "interval": 0,
+      "parses": 0,
+      "raf": 0
+    },
+    {
+      "engine": "chromium",
+      "baseline": false,
+      "windowMs": 60000,
+      "interval": 0,
+      "parses": 0,
+      "raf": 0
+    },
+    {
+      "engine": "webkit",
+      "baseline": false,
+      "clock": "real",
+      "elapsedMs": 10001.984503,
+      "interval": 0,
+      "parses": 0,
+      "raf": 0
+    },
+    {
+      "engine": "webkit",
+      "baseline": false,
+      "windowMs": 60000,
+      "interval": 0,
+      "parses": 0,
+      "raf": 0
+    }
+  ]
+}

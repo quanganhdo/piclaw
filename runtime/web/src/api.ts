@@ -1106,6 +1106,7 @@ export class SSEClient {
         bindJsonEvent('agent_thought_delta');
         bindJsonEvent('agent_preview_consumed');
         bindJsonEvent('model_changed');
+        bindJsonEvent('profile_update');
         bindJsonEvent('picker_pins_changed');
         bindJsonEvent('ui_theme');
         bindJsonEvent('ui_meters');

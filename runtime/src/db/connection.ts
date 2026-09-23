@@ -45,6 +45,7 @@ import { initializeFamilyScheduledPublications } from './family-scheduled-public
 import { initializeToolOutputOwnership } from './tool-output-ownership-schema.js';
 import { initializeBudgetLimitsSchema } from './budget-limits-schema.js';
 import { initializeAddonOperationsSchema } from './addon-operations-schema.js';
+import { initializeChatProjects } from './chat-project-schema.js';
 import fs from "fs";
 import path from "path";
 
@@ -91,6 +92,16 @@ let db: Database | null = null;
 let dbMode: "memory" | "file" | null = null;
 /** Cache key for the currently-open database target or in-memory test identity. */
 let dbPathCache: string | null = null;
+let dbFileIdentity: string | null = null;
+let dbInstance = 0;
+function currentFileIdentity(pathname: string): string {
+  const stat = fs.statSync(pathname);
+  return `${stat.dev}:${stat.ino}`;
+}
+export function getDatabaseBinding(): { path: string; identity: string; instance: number } | null {
+  if (!db || dbMode !== "file" || !dbPathCache || !dbFileIdentity) return null;
+  return { path: dbPathCache, identity: dbFileIdentity, instance: dbInstance };
+}
 
 const CANONICAL_WORKSPACE_DIR = path.resolve("/workspace");
 const CANONICAL_LIVE_DB_PATH = path.join(CANONICAL_WORKSPACE_DIR, ".piclaw", "store", "messages.db");
@@ -916,6 +927,7 @@ export function initDatabase(): void {
   let reuse = false;
   if (db && dbMode === nextMode && dbPathCache === nextCacheKey) {
     try {
+      if (!useMemory && dbFileIdentity !== currentFileIdentity(nextPath)) throw new Error("Database file identity changed.");
       db.prepare("SELECT 1;").get();
       reuse = true;
     } catch (err) {
@@ -948,6 +960,8 @@ export function initDatabase(): void {
     }
     dbMode = nextMode;
     dbPathCache = nextCacheKey;
+    dbFileIdentity = useMemory ? null : currentFileIdentity(nextPath);
+    dbInstance += 1;
     log.info("Opened database connection", {
       operation: "init_database.open",
       mode: nextMode,
@@ -983,6 +997,7 @@ export function initDatabase(): void {
   createSchema(db);
   ensureOwnedMigrationLedger(db);
   ensureChatBranchConstraints(db);
+  initializeChatProjects(db);
   ensureMessageColumns(db);
   ensureKeychainNoteColumns(db);
   ensureTokenUsageColumns(db);
@@ -1190,6 +1205,7 @@ export function closeDatabase(options?: { shrinkMemory?: boolean }): void {
   db = null;
   dbMode = null;
   dbPathCache = null;
+  dbFileIdentity = null;
 
   if (options?.shrinkMemory !== false) {
     try {

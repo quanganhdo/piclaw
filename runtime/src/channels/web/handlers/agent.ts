@@ -57,6 +57,7 @@ import {
 } from "../../../db.js";
 import { detectChannel, formatMessages, formatOutbound } from "../../../router.js";
 import { createAgentProfileBuilder } from "../agent/agent-utils.js";
+import { buildGeneralSettingsProfileUpdate, getGeneralSettingsData } from "./general-settings.js";
 import { resolveAvatarUrl } from "../media/avatar-service.js";
 import { broadcastInteractionUpdated } from "../cards/interaction-service.js";
 import { storeAgentTurn } from "../messaging/agent-message-store.js";
@@ -1024,15 +1025,13 @@ export async function handleAgentMessage(
 
   let threadId = resolveThreadId(normalized.threadId, interaction.id);
 
-  const identity = getIdentityConfig();
-  const withAgentProfile = createAgentProfileBuilder(
-    chatJid,
-    identity.assistantName,
-    resolveAvatarUrl("agent", identity.assistantAvatar),
-    identity.userName || null,
-    resolveAvatarUrl("user", identity.userAvatar),
-    identity.userAvatarBackground || null
-  );
+  const withAgentProfile = (payload: Record<string, unknown>) => {
+    const identity = getIdentityConfig();
+    return createAgentProfileBuilder(
+      chatJid, identity.assistantName, resolveAvatarUrl("agent", identity.assistantAvatar),
+      identity.userName || null, resolveAvatarUrl("user", identity.userAvatar), identity.userAvatarBackground || null,
+    )(payload);
+  };
 
   const emitCommandStatus = (payload: Record<string, unknown>) => {
     const activeStatus = typeof channel.getAgentStatus === "function"
@@ -1230,6 +1229,9 @@ export async function handleAgentMessage(
     }
 
     const result = await channel.agentPool.applyControlCommand(chatJid, command);
+    if (result.status === "success" && ["agent_avatar", "agent_name", "user_avatar", "user_name", "user_github"].includes(command.type)) {
+      channel.broadcastEvent("profile_update", buildGeneralSettingsProfileUpdate(getGeneralSettingsData()));
+    }
     if (result.status === "success" && result.sessionGenerationChanged && result.sessionGeneration) {
       const boundaryUsage = {
         tokens: null,

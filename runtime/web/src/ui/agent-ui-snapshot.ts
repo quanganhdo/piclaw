@@ -1,5 +1,7 @@
 /** Shared Classic/Visual transport. One cached reply and in-flight request per
  * chat; a full catalogue remains an on-demand picker/settings request. */
+import { setChatProjectRepository } from "./chat-project-state.js";
+
 export interface AgentUiSnapshot {
   status: any;
   model: any;
@@ -7,6 +9,7 @@ export interface AgentUiSnapshot {
   metrics: any;
   agent_name: string;
   errors: string[];
+  project_repository?: { repository_url: string | null; source_branch_id: string | null; revision: string | null } | null;
 }
 interface Entry {
   value?: AgentUiSnapshot;
@@ -85,6 +88,7 @@ export function getAgentUiSnapshot(
       )
         next[key] = state.value[key];
     }
+    setChatProjectRepository(chatJid, next.project_repository ?? null);
     state.value = next;
     state.completedAt = startedAt;
     return next;

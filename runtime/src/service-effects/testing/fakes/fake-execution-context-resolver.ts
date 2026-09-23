@@ -130,4 +130,4 @@ async function cleanup(env: ExecutionEnv): Promise<void> { try { await env.clean
 function failure(_tag: ExecutionContextError["_tag"], retryable: boolean): ExecutionContextError { return Object.freeze({ _tag, certainty: "not_applied", retryable }); }
 const CHANGED = Symbol("changed");
 const TAGS = new Set<ExecutionContextError["_tag"]>(["operation_not_found", "version_mismatch", "route_unavailable", "invalid_ssh_profile", "credential_unavailable", "environment_unavailable"]);
-const METHODS = ["absolutePath", "joinPath", "readTextFile", "readTextLines", "readBinaryFile", "writeFile", "appendFile", "renameFile", "fileInfo", "listDir", "canonicalPath", "exists", "createDir", "remove", "createTempDir", "createTempFile", "exec", "cleanup"] as const;
+const METHODS = ["absolutePath", "joinPath", "readTextFile", "openTextLineReader", "readTextLines", "readBinaryFile", "writeFile", "appendFile", "renameFile", "fileInfo", "listDir", "canonicalPath", "exists", "createDir", "remove", "createTempDir", "createTempFile", "exec", "cleanup"] as const;

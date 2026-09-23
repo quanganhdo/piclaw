@@ -47,12 +47,10 @@ export async function handleAgentAvatar(_session: AgentSession, command: AgentAv
   const trimmed = command.avatar.trim();
   const normalized = trimmed.toLowerCase();
   const nextAvatar = ["clear", "none", "off", "default"].includes(normalized) ? null : trimmed;
-  const updated = updateAssistantConfig({ avatar: nextAvatar });
-  const fallback = getIdentityConfig().assistantAvatar || process.env.ASSISTANT_AVATAR || "";
-  const effective = updated.avatar || fallback;
-  setAssistantAvatar(effective);
+  const effective = nextAvatar || "";
 
   if (!nextAvatar) {
+    setAssistantAvatar("");
     return {
       status: "success",
       message: "Agent avatar reset to default.",
@@ -62,18 +60,19 @@ export async function handleAgentAvatar(_session: AgentSession, command: AgentAv
   // Keep a local cached copy for web/icon usage and report cached size.
   let cacheSuffix: string;
   try {
-    const cached = await ensureAvatarCache("agent", effective || nextAvatar);
+    const cached = await ensureAvatarCache("agent", effective || nextAvatar, { refresh: true });
     if (cached?.file) {
       const bytes = statSync(cached.file).size;
       cacheSuffix = ` Cached locally (${bytes} bytes).`;
     } else {
-      cacheSuffix = " Avatar set; local cache pending first successful fetch.";
+      return { status: "error", message: "Failed to prepare agent avatar image." };
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    cacheSuffix = ` Avatar set; cache warning: ${message}.`;
+    return { status: "error", message: `Agent avatar unchanged: ${message}` };
   }
 
+  setAssistantAvatar(effective);
   return {
     status: "success",
     message: `Agent avatar set to ${effective || "(default)"}.${cacheSuffix}`,

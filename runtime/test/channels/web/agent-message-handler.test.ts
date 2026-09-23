@@ -1,9 +1,29 @@
 import { describe, expect, test } from "bun:test";
 import "../../helpers.ts";
 import { beginChatRun, getChatCursor, getInflightMessageId, initDatabase } from "../../../src/db.js";
+import { getIdentityConfig, setAssistantAvatar } from '../../../src/core/config.js';
 import { handleAgentMessage } from "../../../src/channels/web/handlers/agent.ts";
 
 describe("web agent message handler", () => {
+  test('avatar command broadcasts updated branding and completion cannot restore the captured old avatar', async () => {
+    const previous = getIdentityConfig().assistantAvatar;
+    const broadcasts: Array<{event: string; payload: any}> = [];
+    try {
+      setAssistantAvatar('/missing/old-avatar.png');
+      const channel = {
+        agentPool: { isStreaming: () => false, isActive: () => false, applyControlCommand: async () => { setAssistantAvatar(''); return {status:'success',message:'Cleared'}; } },
+        json: (body: unknown, status = 200) => Response.json(body,{status}),
+        getQueuedFollowupCount: () => 0, getAgentStatus: () => null,
+        broadcastEvent: (event: string,payload: any) => broadcasts.push({event,payload}), updateAgentStatus: () => {},
+        storeMessage: () => ({id:456,timestamp:'2026-09-22T00:00:00Z',data:{thread_id:null},content:'/agent-avatar clear'}), sendMessage: async () => {},
+      } as any;
+      const response = await handleAgentMessage(channel,new Request('https://fixture/agent/default/message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:'/agent-avatar clear'})}),'/agent/default/message','web:default','default');
+      expect(response.status).toBe(201);
+      expect(broadcasts.find(b => b.event === 'profile_update')?.payload.agent_avatar).toBeNull();
+      const done = broadcasts.find(b => b.event === 'agent_status' && b.payload.type === 'done');
+      expect(done).toBeDefined(); expect(done!.payload.agent_avatar).toBeNull();
+    } finally { setAssistantAvatar(previous); }
+  });
   test("handles /meters as a UI-only command while still returning command output as an assistant message", async () => {
     const broadcasts: Array<{ event: string; payload: unknown }> = [];
     const sentMessages: Array<{ chatJid: string; content: string; options: unknown }> = [];

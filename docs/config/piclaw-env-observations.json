@@ -87,7 +87,7 @@
       "semanticReaderOccurrences": 69
     },
     "docsDeploy": {
-      "referencedNames": 136,
+      "referencedNames": 137,
       "directReaderNames": 16,
       "directReaderOccurrences": 32,
       "helperReaderNames": 0,
@@ -3970,8 +3970,10 @@
             "docs/performance/browser-idle-cpu-1352.md",
             "docs/performance/browser-idle-status-clock-1352.md",
             "docs/performance/browser-ui-snapshot-1352.md",
+            "docs/performance/browser-widget-state-1352.md",
             "docs/reviews/picker-button-parity.md",
             "docs/reviews/vnc-narrow-pane.md",
+            "docs/web-avatar-icons.md",
             "package.json"
           ],
           "readerFiles": []
@@ -7649,6 +7651,21 @@
           "files": [
             "docs/configuration.md",
             "docs/whatsapp.md"
+          ],
+          "readerFiles": []
+        }
+      }
+    },
+    {
+      "name": "PICLAW_WIDGET_POLLING_BASELINE",
+      "scopes": {
+        "docsDeploy": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "docs/performance/browser-widget-state-1352.md"
           ],
           "readerFiles": []
         }

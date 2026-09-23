@@ -1,0 +1,15 @@
+import {parseHTML} from 'linkedom';import TurndownService from 'turndown';import {createHash}from'node:crypto';
+const dir=import.meta.dir+'/sources',manifest=await Bun.file(dir+'/fetch-manifest.json').json();
+const td=new TurndownService({headingStyle:'atx'});td.addRule('tables',{filter:'table',replacement:(_c,node)=>{const rows=Array.from(node.querySelectorAll('tr')).map(tr=>Array.from(tr.querySelectorAll('th,td')).map(c=>c.textContent.replace(/\s+/g,' ').trim().replaceAll('|','/')));return '\n\n'+rows.map((r,i)=>'| '+r.join(' | ')+' |'+(i===0?'\n| '+r.map(()=> '---').join(' | ')+' |':'')).join('\n')+'\n\n';}});
+for(const s of manifest){if(s.status!==200||!s.file.endsWith('.html'))continue;const raw=await Bun.file(dir+'/'+s.file).text();const {document}=parseHTML(raw);for(const e of document.querySelectorAll('script,style,nav,footer,header'))e.remove();const main=document.querySelector('main')??document.querySelector('article')??document.body;const text=td.turndown(main.innerHTML);s.extractedFile=s.key+'.md';s.rawSha256=createHash('sha256').update(raw).digest('hex');await Bun.write(dir+'/'+s.extractedFile,text+'\n');console.log(s.key,text.length);}
+await Bun.write(dir+'/fetch-manifest.json',JSON.stringify(manifest,null,2));
+const more={
+'gpt-6-sol':'https://developers.openai.com/api/docs/models/gpt-6-sol.md','gpt-6-luna':'https://developers.openai.com/api/docs/models/gpt-6-luna.md','gpt-5.6-terra':'https://developers.openai.com/api/docs/models/gpt-5.6-terra.md','gpt-5.6-luna':'https://developers.openai.com/api/docs/models/gpt-5.6-luna.md','openai-fast':'https://developers.openai.com/api/docs/guides/fast-mode.md',
+'openai-changelog':'https://developers.openai.com/api/docs/changelog.md',
+'anthropic-opus-5.5':'https://platform.claude.com/docs/en/about-claude/models/claude-opus-5-5.md',
+'groq-models':'https://console.groq.com/docs/models','groq-api-pricing':'https://console.groq.com/docs/pricing',
+'fireworks-pricing':'https://fireworks.ai/pricing','together-pricing':'https://www.together.ai/pricing',
+'azure-deepseek':'https://azure.microsoft.com/en-us/pricing/details/ai-foundry-models/deepseek/'
+};
+for(const[key,url]of Object.entries(more)){try{const r=await fetch(url,{signal:AbortSignal.timeout(25000)});const raw=await r.text();const suffix=raw.trimStart().startsWith('<')?'html':'md';await Bun.write(`${dir}/${key}.${suffix}`,raw);const entry:any={key,url,finalUrl:r.url,retrievedAt:new Date().toISOString(),status:r.status,file:`${key}.${suffix}`,bytes:Buffer.byteLength(raw),rawSha256:createHash('sha256').update(raw).digest('hex')};if(suffix==='html'&&r.ok){const{document}=parseHTML(raw);for(const e of document.querySelectorAll('script,style,nav,footer,header'))e.remove();const m=document.querySelector('main')??document.querySelector('article')??document.body;entry.extractedFile=key+'.md';await Bun.write(dir+'/'+entry.extractedFile,td.turndown(m.innerHTML)+'\n');}manifest.push(entry);console.log(key,r.status,raw.length);}catch(e){manifest.push({key,url,error:e.message});console.log(key,e.message);}}
+await Bun.write(dir+'/fetch-manifest.json',JSON.stringify(manifest,null,2));

@@ -58,6 +58,22 @@ async function fixture(run: (page: Page, requests: string[], dialogs: string[]) 
 
 const safe = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 300"><title>A &amp; B</title><defs><linearGradient id="paint"><stop offset="0" stop-color="red"/></linearGradient><clipPath id="clip"><rect width="600" height="300"/></clipPath></defs><g clip-path="url(#clip)"><rect width="600" height="300" fill="url(#paint)" onload="alert(1)" style="fill:url(https://bad.invalid)"/><text x="5" y="20">Hello</text></g></svg>\n';
 
+browserTest('visual: legacy null options render without a project and explicit options still link references', async () => {
+  await fixture(async page => {
+    const result = await page.evaluate(() => {
+      const visual = (window as any).svgTest.visual;
+      return {
+        plain: visual('Before #42 and #bug', null),
+        linked: visual('Before #42 and #bug', { projectRepository: 'https://github.com/rcarmo/piclaw' }),
+      };
+    });
+    expect(result.plain).toContain('#42');
+    expect(result.plain).not.toContain('/issues/42');
+    expect(result.linked).toContain('https://github.com/rcarmo/piclaw/issues/42');
+    expect(result.linked).toContain('data-hashtag="bug"');
+  });
+}, 30_000);
+
 for (const skin of ['classic', 'visual']) {
   browserTest(`${skin}: disabled SVG-fence sanitization restores trusted inline interaction`, async () => {
     await fixture(async page => {

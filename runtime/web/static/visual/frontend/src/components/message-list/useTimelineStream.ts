@@ -1,3 +1,5 @@
+import { applyInstanceBranding, refreshInstanceBranding } from "../../../../../../src/ui/instance-branding";
+import { updateAgentDisplayName } from "../../api/agent-identity";
 import { applyThemeFromEvent } from '../../../../../../src/ui/theme';
 import { useEffect, useRef } from "preact/hooks";
 import type { Signal } from "@preact/signals";
@@ -99,6 +101,10 @@ export function useTimelineStream({
 
     const es = new EventSource(buildChatUrl("/sse/stream"));
     esRef.current = es;
+    es.addEventListener("profile_update", (event: MessageEvent) => {
+      try { const payload = JSON.parse(event.data); if (payload.agent_id !== "default") return; applyInstanceBranding(payload); updateAgentDisplayName(payload.agent_name); }
+      catch (error) { log.warn("Invalid profile event", error); }
+    });
 
     es.addEventListener('ui_theme', (event: MessageEvent) => { try { applyThemeFromEvent(JSON.parse(event.data)); } catch (error) { log.warn('Invalid theme event', error); } });
     es.addEventListener("new_post", (e: MessageEvent) => {
@@ -296,6 +302,7 @@ export function useTimelineStream({
     });
 
     es.onopen = () => {
+      void refreshInstanceBranding();
       // Reset backoff state on successful connection
       reconnectDelayRef.current = SSE_RECONNECT_BASE_MS;
       reconnectAttemptsRef.current = 0;

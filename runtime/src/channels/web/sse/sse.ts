@@ -9,6 +9,7 @@
 
 import { createLogger, debugSuppressedError } from "../../../utils/logger.js";
 import { getAppAssetVersion } from "../http/static.js";
+import { projectPublicBranding } from "./public-branding.js";
 import { getServerUiState } from "../ui-state.js";
 
 const log = createLogger("web.sse");
@@ -182,12 +183,14 @@ export function broadcastEvent(channel: SseClientContainer, eventType: string, d
       catch { clearInterval(client.heartbeat); channel.clients.delete(client); }
       continue;
     }
-    // No global broadcast payloads or unknown event types are approved for family clients.
-    if (client.authorisation && (!eventChatJid || !requiresChatScopedDelivery(eventType))) continue;
+    // Only the allowlisted public instance branding may cross the global family boundary.
+    if (client.authorisation && eventType !== 'profile_update' && (!eventChatJid || !requiresChatScopedDelivery(eventType))) continue;
     if (eventChatJid && client.chatJid !== eventChatJid) {
       continue;
     }
-    const projected = client.authorisation ? projectFamilyEvent(client.authorisation, eventType, data) : data;
+    const projected = client.authorisation
+      ? (eventType === 'profile_update' ? projectPublicBranding(data) : projectFamilyEvent(client.authorisation, eventType, data))
+      : data;
     if (projected === null) continue;
     const bytes = encoder.encode(`event: ${eventType}\ndata: ${JSON.stringify(projected)}\n\n`);
     try {

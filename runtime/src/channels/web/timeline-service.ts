@@ -24,6 +24,7 @@ import {
 import type { InteractionRow } from "../../db/types.js";
 import { readAccessConfig } from "../../core/config-access.js";
 import { isFamilyTurnHidden } from "../../db/family-turn-queue.js";
+import { getChatProject } from "../../db/chat-project.js";
 
 const QUEUE_PLACEHOLDER_MARKER = "\u2063";
 const LEGACY_QUEUE_STATUS = "Queued as a follow-up (one-at-a-time).";
@@ -46,6 +47,20 @@ function filterHiddenQueuePlaceholders<T extends QueueFilterablePost>(items: T[]
   return items.filter((post) => !isHiddenQueuePlaceholder(post));
 }
 
+/** Add only metadata for rows already selected by the authorised timeline/search query. */
+function annotateProjectRepositories(results: InteractionRow[]): InteractionRow[] {
+  const cache = new Map<string, NonNullable<InteractionRow["project_repository"]>>();
+  return results.map((row) => {
+    const chatJid = typeof row.chat_jid === "string" ? row.chat_jid.trim() : "";
+    if (!chatJid) return row;
+    if (!cache.has(chatJid)) {
+      const project = getChatProject(chatJid);
+      cache.set(chatJid, { repository_url: project.repository_url, source_branch_id: project.source_branch_id, revision: project.revision });
+    }
+    return { ...row, project_repository: cache.get(chatJid)! };
+  });
+}
+
 export interface TimelineIdentity {
   assistant_name?: string | null;
   assistant_avatar_url?: string | null;
@@ -62,7 +77,7 @@ export function getTimelineResponse(
   identity?: TimelineIdentity | null,
 ): { status: number; body: unknown } {
   const rawPosts = getTimeline(chatJid, limit, before ?? undefined);
-  const posts = filterHiddenQueuePlaceholders(rawPosts);
+  const posts = annotateProjectRepositories(filterHiddenQueuePlaceholders(rawPosts));
   const oldestId = rawPosts.length > 0 ? rawPosts[0].id : null;
   const hasMore = oldestId !== null && rawPosts.length === limit && hasOlderMessages(chatJid, oldestId);
   const body: Record<string, unknown> = { posts, limit, has_more: hasMore };
@@ -79,7 +94,7 @@ export function getHashtagResponse(
   limit: number,
   offset: number
 ): { status: number; body: unknown } {
-  const posts = getMessagesByHashtag(chatJid, tag, limit, offset);
+  const posts = annotateProjectRepositories(getMessagesByHashtag(chatJid, tag, limit, offset));
   return { status: 200, body: { hashtag: tag, posts, limit, offset } };
 }
 
@@ -167,7 +182,7 @@ export function getSearchResponse(
     status: 200,
     body: {
       query,
-      results: annotateSearchResultsWithAgentNames(results),
+      results: annotateSearchResultsWithAgentNames(annotateProjectRepositories(results)),
       limit,
       offset,
       scope,
@@ -182,7 +197,7 @@ export function getThreadResponse(chatJid: string, id: number | null): { status:
   if (readAccessConfig().mode === "family-shared" && isFamilyTurnHidden(chatJid, id)) return { status: 404, body: { error: "Thread not found" } };
   const thread = getMessageByRowId(chatJid, id);
   if (!thread) return { status: 404, body: { error: "Thread not found" } };
-  return { status: 200, body: { thread: [thread] } };
+  return { status: 200, body: { thread: annotateProjectRepositories([thread]) } };
 }
 
 /** Delete a post and its thread, returning success/error. */

@@ -1,0 +1,177 @@
+[
+  {
+    "file": "gpt-5.6-luna.md",
+    "bytes": 3744,
+    "sha256": "1f425d8f2a93f8418702ac7acbb62b26850b98fe20680f82205bed5fce38fed0"
+  },
+  {
+    "file": "openai-models.md",
+    "bytes": 12231,
+    "sha256": "4e0419118ce444a68f7e39f5b32ef7a02f02e75d03b84be31217e776536abd57"
+  },
+  {
+    "file": "xai-models-md.md",
+    "bytes": 4708,
+    "sha256": "ef144203a1ca5e409cc2d0967229f4d368416b8b30479aeb53c649561aade68d"
+  },
+  {
+    "file": "copilot-pricing.md",
+    "bytes": 17775,
+    "sha256": "08353802dabbf21a792e6e0d0ae9bf3fe3c521f8cd068286ff4948657a69b2a3"
+  },
+  {
+    "file": "sambanova-models.md",
+    "bytes": 1490,
+    "sha256": "04ea66ed6089ba2c7947480a7d8de8d30c91fae819537243b3eee3802999ca6d"
+  },
+  {
+    "file": "openrouter.json",
+    "bytes": 743097,
+    "sha256": "0899e2df8f615eae2be2ef13f0c3dbe13c78ba6c2b9d6d1fdd164405b50ab845"
+  },
+  {
+    "file": "openai-changelog.md",
+    "bytes": 70255,
+    "sha256": "4ecc3d91b56a59feaab6de6b0ff2a3b5e6689dbab95ab0f27d621093f4fd60ef"
+  },
+  {
+    "file": "gpt-6-luna.md",
+    "bytes": 4019,
+    "sha256": "561a86af72eced9a76a4e3a96c45ae7fff7782732514a8429b55ebddb4404945"
+  },
+  {
+    "file": "fetch-manifest.json",
+    "bytes": 14245,
+    "sha256": "cc74ca11f4cf444fb2f28452215e7d6a2b069b4ea92ecd621d6af812d93adacf"
+  },
+  {
+    "file": "anthropic-sonnet-5.md",
+    "bytes": 17644,
+    "sha256": "784df9083a782f8a0e5eb9a3f607b3176d3fa983869852fa8d87e42c234f78d6"
+  },
+  {
+    "file": "sambanova-pricing.md",
+    "bytes": 1,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "file": "fireworks-serverless.md",
+    "bytes": 7645,
+    "sha256": "14f03e68feb1122d4a0f6ff5fae04bcc93397b04faaa96b13001da1d9b26d769"
+  },
+  {
+    "file": "anthropic-announcement.md",
+    "bytes": 41409,
+    "sha256": "420e4813c790a48b17f8e31ff3315ef70885c4c691c1f272e01d0746bc4bc894"
+  },
+  {
+    "file": "fireworks-pricing.md",
+    "bytes": 4328,
+    "sha256": "487bd0603b31042f83145b7f80b3461fda1a2a5a24f7855c93f4cf04b6a8af95"
+  },
+  {
+    "file": "mistral-pricing.md",
+    "bytes": 9136,
+    "sha256": "18d3532a2ac693f3670fdabd790db87b6a9f9f4a13a2b48a9022acc8e9bbd0b4"
+  },
+  {
+    "file": "kimi-pricing-md.md",
+    "bytes": 4358,
+    "sha256": "fc5aeeff9664371c5391ace28f8594a86250e0f363a74b250e783adb4e3c88bc"
+  },
+  {
+    "file": "groq-models.md",
+    "bytes": 6979,
+    "sha256": "ed4f9c659895b474d145745c7ebc02a5ed94e0ea650f6cabb27a5eb491aedbcf"
+  },
+  {
+    "file": "deepseek-pricing.md",
+    "bytes": 2587,
+    "sha256": "21d036b0efae8484ce7fbc20a0c60e8f5a556e7171341a2414ccf68b23f03e76"
+  },
+  {
+    "file": "cerebras-pricing.md",
+    "bytes": 1201,
+    "sha256": "db8605071102db3c77080a2dc30b24f2d71994989aa5a35152bb87e33735a368"
+  },
+  {
+    "file": "xai-pricing.md",
+    "bytes": 4618,
+    "sha256": "a5a55da65a24134ec547487cef2179464c2553b88ae667693ae5a3fd10d2dadb"
+  },
+  {
+    "file": "together-pricing.md",
+    "bytes": 15903,
+    "sha256": "ab5e718072216fc7c2781f982bb2c101a04d36974616bb6838e0a98e4701a676"
+  },
+  {
+    "file": "zai-pricing.md",
+    "bytes": 2459,
+    "sha256": "865588ad8aabcc0585eb7f65646fb527beeb2bbfb664696e4b6379bbeca772d1"
+  },
+  {
+    "file": "kimi-pricing.md",
+    "bytes": 2428,
+    "sha256": "28c4cf506311113768b7fa6deb5ee294ac4f2d9fcfc9e769de7d845bbf86cbf5"
+  },
+  {
+    "file": "anthropic-pricing.md",
+    "bytes": 46103,
+    "sha256": "c1faa23e62e0989ce7780a4c5a31c08de237cb22938c00247519861458eb54f7"
+  },
+  {
+    "file": "openai-pricing.md",
+    "bytes": 23673,
+    "sha256": "90defad5086b863fb154b6e4684eba6e473faa2cfd8f5fea7e4eee642501c9a9"
+  },
+  {
+    "file": "anthropic-models.md",
+    "bytes": 17050,
+    "sha256": "02ebe565bc995c5a251fa578699ea048371cdcc2632b0c4d91541bab0e5c2605"
+  },
+  {
+    "file": "xai-details.md",
+    "bytes": 10755,
+    "sha256": "fb8bf2d5ee215148d9cdec45b2093646cdfb48c0e6044f6e1ca944efa398d183"
+  },
+  {
+    "file": "groq-pricing.md",
+    "bytes": 633,
+    "sha256": "2f60612076ad7eff39926aee01dffa66554e918b4bd776e55335879278f22509"
+  },
+  {
+    "file": "openai-fast.md",
+    "bytes": 8624,
+    "sha256": "354664a62cf831bd832dda0289f3c2110aedd787c91042b375c00eb2fe5b74ad"
+  },
+  {
+    "file": "google-pricing.md",
+    "bytes": 66047,
+    "sha256": "9061f58130bb1b8bb420bcac858dcc43d252dcca1776b019c57be119a61f284f"
+  },
+  {
+    "file": "gpt-6-sol.md",
+    "bytes": 3991,
+    "sha256": "5566589803b6f0ac79c00125a7c1af9291e46d5724c1c414f932d36ab92a8ad0"
+  },
+  {
+    "file": "azure-deepseek.md",
+    "bytes": 9414,
+    "sha256": "8e2e01f9698ee09d0a48ea06ba6e193f151d6c923d7fe9faebc116be97374121"
+  },
+  {
+    "file": "cerebras-models.md",
+    "bytes": 4079,
+    "sha256": "8055a44166a0e244070c24fd1a4be5dfea2c98a92ebb4011db4c0780c2a265a1"
+  },
+  {
+    "file": "gpt-5.6-terra.md",
+    "bytes": 3743,
+    "sha256": "359b9ad58c0c7f2339273fff8627ff3225acb9bca0f1d9c5edcee41701808209"
+  },
+  {
+    "file": "anthropic-opus-5.5.md",
+    "bytes": 10,
+    "sha256": "7515bf959b73b956ceb967351c7e299cbb3668a53d35f9c770eb72e00d93ced6"
+  }
+]

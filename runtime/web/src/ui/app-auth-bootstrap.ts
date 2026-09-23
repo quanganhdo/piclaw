@@ -76,7 +76,7 @@ export function updateAgentProfileFromEvent(options: UpdateAgentProfileOptions):
   });
 
   if (patch.agentId === 'default') {
-    applyBranding(patch.resolvedName, patch.resolvedAvatar, patch.avatarChanged ? Date.now() : null);
+    applyBranding(patch.resolvedName, patch.resolvedAvatar, null);
   }
 }
 

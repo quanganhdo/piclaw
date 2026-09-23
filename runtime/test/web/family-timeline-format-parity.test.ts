@@ -51,7 +51,7 @@ test('shared Post separates rendering from interaction authority', () => {
   expect(post).toContain('disabled=${!canOpen}');
   expect(post).toContain("allowMediaActions ? '' : 'post-media-readonly'");
   expect(post).toContain('if (allowAnnotationActions && canAnnotate())');
-  expect(post).toContain('renderMarkdown(displayContent, onHashtagClick, { rewriteImageSrc })');
+  expect(post).toContain('renderMarkdown(displayContent, onHashtagClick, { rewriteImageSrc, projectRepository })');
 });
 
 test('family shell loads the standard markdown, math, and diagram runtimes', () => {

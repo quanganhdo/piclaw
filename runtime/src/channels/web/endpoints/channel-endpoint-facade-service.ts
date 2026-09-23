@@ -47,6 +47,7 @@ export interface WebChannelEndpointFacadeOptions {
   handlePostRequest(req: Request, isReply: boolean, chatJid: string): Promise<Response>;
   listActiveChats(): unknown[];
   listKnownChats?(rootChatJid?: string | null, options?: { includeArchived?: boolean }): unknown[];
+  getProjectRepository?(chatJid: string): unknown;
 }
 
 /**
@@ -151,6 +152,7 @@ export class WebChannelEndpointFacadeService {
       return handleAgentUiSnapshotRequest(req, this.options.endpointContexts.agentStatus(), {
         getSystemMetrics: async () => this.handleSystemMetrics().json(),
         getAgentName: () => this.options.getIdentitySnapshot().assistantName,
+        getProjectRepository: this.options.getProjectRepository,
       });
     }
     return handleAgentStatusRequest(req, this.options.endpointContexts.agentStatus());

@@ -5,6 +5,7 @@ import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/harness/env/node
 import { createTempWorkspace } from "../helpers.js";
 import { BACKGROUND_CONTEXT } from "@earendil-works/pi-agent-core/harness/context";
 import { PiclawExecutionEnv } from "../../src/service-effects/current-piclaw/execution-env-adapter.js";
+import { withLocalTextLineReader } from "../../src/service-effects/current-piclaw/text-line-reader-compat.js";
 import { FakeExecutionEnv } from "../../src/service-effects/testing/fakes/fake-execution-env.js";
 
 const ctx = BACKGROUND_CONTEXT;
@@ -122,7 +123,7 @@ test("cleanup publishes its shared promise before a delegate can re-enter", asyn
 test("real upstream head capture accepts both byte overflow and line-priority metadata", async () => {
   const workspace = createTempWorkspace("earendil-head-capture-");
   const raw = new NodeExecutionEnv({ cwd: workspace.base });
-  const env = new PiclawExecutionEnv(raw, () => ({ PATH: "/usr/bin:/bin" }));
+  const env = new PiclawExecutionEnv(withLocalTextLineReader(raw), () => ({ PATH: "/usr/bin:/bin" }));
   const output: ShellOutputUpdate[] = [];
   try {
     const result = await env.exec("printf '12345678901234567890\\nsecond\\nthird\\n'", {

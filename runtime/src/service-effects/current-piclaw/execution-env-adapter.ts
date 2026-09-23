@@ -22,6 +22,10 @@ import {
   type ShellOutputView,
 } from "@earendil-works/pi-agent-core";
 import type { Context } from "@earendil-works/pi-agent-core/harness/context";
+import type { TextLineEnvironment, TextLineReader, TextLineRecord } from './text-line-reader-compat.js';
+import { createLogger, debugSuppressedError } from '../../utils/logger.js';
+
+const log = createLogger('service-effects.execution-env');
 
 export type ShellEnvironmentPreparer = (
   command: string,
@@ -37,6 +41,8 @@ export class PiclawExecutionEnv implements ExecutionEnv {
   readonly #absolutePath: ExecutionEnv["absolutePath"];
   readonly #joinPath: ExecutionEnv["joinPath"];
   readonly #readTextFile: ExecutionEnv["readTextFile"];
+  readonly #openTextLineReader: TextLineEnvironment["openTextLineReader"];
+  readonly #openReaders = new Set<TextLineReader>();
   readonly #readTextLines: ExecutionEnv["readTextLines"];
   readonly #readBinaryFile: ExecutionEnv["readBinaryFile"];
   readonly #writeFile: ExecutionEnv["writeFile"];
@@ -61,6 +67,7 @@ export class PiclawExecutionEnv implements ExecutionEnv {
     this.#absolutePath = captureMethod(delegate, "absolutePath");
     this.#joinPath = captureMethod(delegate, "joinPath");
     this.#readTextFile = captureMethod(delegate, "readTextFile");
+    this.#openTextLineReader = captureTextLineMethod(delegate);
     this.#readTextLines = captureMethod(delegate, "readTextLines");
     this.#readBinaryFile = captureMethod(delegate, "readBinaryFile");
     this.#writeFile = captureMethod(delegate, "writeFile");
@@ -90,6 +97,28 @@ export class PiclawExecutionEnv implements ExecutionEnv {
     });
   }
   async readTextFile(path: string, context: Context) { return this.file(path, context, stringValue, (invocation) => this.#readTextFile(path, invocation.context)); }
+  async openTextLineReader(path: string, context: Context): Promise<ResultValue<TextLineReader, FileError>> {
+    const addressed = this.addressedPath(path);
+    if (this.#closed) return fileFailure('aborted', 'Execution environment is closed.', addressed);
+    const invocation = snapshotContext(context);
+    if (!invocation) return fileFailure('unknown', 'Invalid execution context.', addressed);
+    if (isAborted(invocation)) return fileFailure('aborted', 'aborted', addressed);
+    let candidate: unknown;
+    try { candidate = await this.#openTextLineReader(path, invocation.context); }
+    catch { return fileFailure('unknown', 'Filesystem environment failed.', addressed); }
+    if (this.#closed || isAborted(invocation)) { await closeUnknownReader(candidate, invocation.context); return fileFailure('aborted', 'aborted', addressed); }
+    try {
+      if (!record(candidate)) return fileFailure('unknown', 'Filesystem environment returned a malformed result.', addressed);
+      if (stable(candidate, 'ok') === false) return normaliseFileError(stable(candidate, 'error'), addressed);
+      if (stable(candidate, 'ok') !== true) return fileFailure('unknown', 'Filesystem environment returned a malformed result.', addressed);
+      const delegate = stable(candidate, 'value');
+      let reader!: TextLineReader;
+      reader = captureTextLineReader(delegate, addressed, () => this.#closed, () => this.#openReaders.delete(reader))!;
+      if (!reader) { await closeUnknownReader(candidate, invocation.context); return fileFailure('unknown', 'Filesystem environment returned a malformed reader.', addressed); }
+      this.#openReaders.add(reader);
+      return Result.ok(reader);
+    } catch { await closeUnknownReader(candidate, invocation.context); return fileFailure('unknown', 'Filesystem environment returned a malformed result.', addressed); }
+  }
   async readTextLines(path: string, options: { maxLines?: number } | undefined, context: Context) {
     return this.file(path, context, stringArrayValue, (invocation) => this.#readTextLines(path, snapshotReadOptions(options), invocation.context));
   }
@@ -195,6 +224,7 @@ export class PiclawExecutionEnv implements ExecutionEnv {
     this.#closed = true;
     if (!this.#cleanupPromise) {
       this.#cleanupPromise = Promise.resolve().then(async () => {
+        await Promise.all([...this.#openReaders].map(reader => reader.close(context)));
         try { await this.#cleanup(context); }
         catch (error) { void error; /* cleanup is best effort by contract */ }
       });
@@ -226,6 +256,50 @@ export class PiclawExecutionEnv implements ExecutionEnv {
   }
 }
 
+function captureTextLineMethod(receiver: ExecutionEnv): TextLineEnvironment['openTextLineReader'] {
+  const value = receiver as Partial<TextLineEnvironment>;
+  const first = value.openTextLineReader; const second = value.openTextLineReader;
+  if (first !== second || typeof first !== 'function') throw new TypeError('Invalid ExecutionEnv method: openTextLineReader');
+  return first.bind(receiver);
+}
+function captureTextLineReader(value: unknown, path: string | undefined, closed: () => boolean, onClose: () => void): TextLineReader | null {
+  if (!record(value)) return null;
+  const read = stable(value, 'readLine'), close = stable(value, 'close');
+  if (typeof read !== 'function' || typeof close !== 'function') return null;
+  const delegateRead = read.bind(value), delegateClose = close.bind(value);
+  let stopped = false;
+  return Object.freeze({
+    async readLine(context: Context): Promise<ResultValue<TextLineRecord | undefined, FileError>> {
+      if (stopped) return fileFailure('invalid', 'Text line reader is closed.', path);
+      const invocation = snapshotContext(context);
+      if (!invocation) return fileFailure('unknown', 'Invalid execution context.', path);
+      if (closed() || isAborted(invocation)) return fileFailure('aborted', 'aborted', path);
+      let candidate: unknown;
+      try { candidate = await delegateRead(invocation.context); }
+      catch { return fileFailure('unknown', 'Filesystem reader failed.', path); }
+      if (closed() || isAborted(invocation)) return fileFailure('aborted', 'aborted', path);
+      return normaliseFileResult(candidate, path, (line): TextLineRecord | undefined | null => {
+        if (line === undefined) return undefined;
+        if (!record(line)) return null;
+        const text = stable(line, 'text'), terminated = stable(line, 'terminated');
+        return typeof text === 'string' && typeof terminated === 'boolean' ? Object.freeze({ text, terminated }) : null;
+      });
+    },
+    async close(context: Context): Promise<void> {
+      if (stopped) return;
+      stopped = true; onClose();
+      try { await delegateClose(context); }
+      catch (error) { debugSuppressedError(log, 'Delegate text reader close failed.', error, { operation: 'execution_env.reader.close' }); }
+    },
+  });
+}
+async function closeUnknownReader(candidate: unknown, context: Context): Promise<void> {
+  try {
+    if (!record(candidate) || stable(candidate, 'ok') !== true) return;
+    const value = stable(candidate, 'value'); if (!record(value)) return;
+    const close = stable(value, 'close'); if (typeof close === 'function') await close.call(value, context);
+  } catch (error) { debugSuppressedError(log, 'Malformed text reader cleanup failed.', error, { operation: 'execution_env.reader.cleanup' }); }
+}
 function captureMethod<K extends keyof ExecutionEnv>(receiver: ExecutionEnv, key: K): ExecutionEnv[K] {
   const first = receiver[key]; const second = receiver[key];
   if (first !== second || typeof first !== "function") throw new TypeError(`Invalid ExecutionEnv method: ${key}`);

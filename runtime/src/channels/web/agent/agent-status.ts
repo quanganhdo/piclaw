@@ -341,6 +341,7 @@ export async function handleAgentModelsRequest(req: Request, ctx: AgentStatusCon
 export async function handleAgentUiSnapshotRequest(req: Request, ctx: AgentStatusContext, extra: {
   getSystemMetrics(): Promise<unknown>;
   getAgentName(): string;
+  getProjectRepository?(chatJid: string): unknown;
 }): Promise<Response> {
   const chatJid = resolveChatJid(req, ctx.defaultChatJid);
   const { result, durationMs } = await measureAsync(async () => {
@@ -360,6 +361,7 @@ export async function handleAgentUiSnapshotRequest(req: Request, ctx: AgentStatu
       context: context.status === 'fulfilled' ? context.value : null,
       metrics: metrics.status === 'fulfilled' ? metrics.value : null,
       agent_name: extra.getAgentName(),
+      project_repository: extra.getProjectRepository?.(chatJid) ?? null,
       errors: sections.flatMap((section, index) => section.status === 'rejected' ? [['model','context','metrics'][index]] : []),
     });
   });

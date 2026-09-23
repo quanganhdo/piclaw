@@ -345,6 +345,10 @@ function describeTreeEntry(entry: Record<string, unknown>): string {
       if (toolCallName) return `${role}: [tool ${toolCallName}]`;
       return role;
     }
+    case "usage":
+      return `[usage ${entry.kind}: ${entry.provider}/${entry.model}]`;
+    case "context_edit":
+      return `[context ${entry.replacement === null ? "omit" : "replace"} ${entry.targetId}]`;
     case "compaction":
       return `[compaction]`;
     case "branch_summary":

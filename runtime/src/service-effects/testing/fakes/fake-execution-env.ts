@@ -51,6 +51,28 @@ export class FakeExecutionEnv implements ExecutionEnv {
 
   absolutePath(path: string, context: Context) { return this.file(path, context, () => this.resolve(path)); }
   joinPath(parts: string[], context: Context) { return this.file(undefined, context, () => normaliseAbsolute(parts.join("/"))); }
+  openTextLineReader(path: string, context: Context) { return this.file(path, context, () => {
+    const addressed = this.resolve(path);
+    if (this.cleaned) throw new FileError('aborted','environment cleaned up',addressed); const bytes = this.files.get(addressed);
+    if (!bytes) throw new FileError('not_found', 'not found', addressed);
+    const text = new TextDecoder().decode(bytes);
+    const lines = text.split('\n').map((value, index, values) => ({ text: value, terminated: index < values.length - 1 }));
+    if (text.endsWith('\n') || text === '') lines.pop();
+    let position = 0, closed = false;
+    return Object.freeze({
+      readLine: async (readContext: Context): Promise<ResultValue<{text:string;terminated:boolean}|undefined,FileError>> => {
+        this.observedContexts.push(readContext);
+        if (readContext.abortSignal?.aborted || this.cleaned) return Result.err(new FileError('aborted','aborted',addressed));
+        if (closed) return Result.err(new FileError('invalid','reader closed',addressed));
+        if (this.rejectAllFiles) {
+          if (this.rejectAllFilesWithThrow) throw new Error('backend rejection');
+          return Result.err(new FileError('unknown','fake reader fault',addressed));
+        }
+        return Result.ok(lines[position++]);
+      },
+      close: async (closeContext: Context): Promise<void> => { this.observedContexts.push(closeContext); closed = true; },
+    });
+  }); }
   readTextFile(path: string, context: Context) { return this.file(path, context, () => {
     const addressed = this.resolve(path); const bytes = this.files.get(addressed);
     if (!bytes) throw new FileError("not_found", "not found", addressed);

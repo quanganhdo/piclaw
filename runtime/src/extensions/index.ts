@@ -53,6 +53,7 @@ import { createSmartCompactionExtension, type CompactionStreamFn } from "./smart
 import { sendAdaptiveCard } from "./send-adaptive-card.js";
 import { sendDashboardWidget } from "./send-dashboard-widget.js";
 import { chatTool } from "./chat-tool.js";
+import { chatProjectTool } from "./chat-project.js";
 import { sessionControl } from "./session-control.js";
 import { openWorkspaceFile } from "./open-workspace-file.js";
 import { envTools } from "./env-tools.js";
@@ -94,6 +95,7 @@ export function createBuiltinExtensionFactories(options?: {
     sendAdaptiveCard,
     sendDashboardWidget,
     chatTool,
+    chatProjectTool,
     sessionControl,
     openWorkspaceFile,
     envTools,

@@ -13,7 +13,7 @@ test('buildAvatarResponse keeps serving the cached avatar when a new source cann
     mkdirSync(avatarsDir, { recursive: true });
 
     const png = Buffer.from(
-      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wn1s3sAAAAASUVORK5CYII=',
+      'iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAEklEQVQImWP4z8DwHxkzkC4AADxAH+HdRw9wAAAAAElFTkSuQmCC',
       'base64',
     );
     const cachedFile = join(avatarsDir, 'agent.png');
@@ -196,7 +196,7 @@ test('buildAvatarResponse supports rasterized PNG size variants for install surf
     mkdirSync(avatarsDir, { recursive: true });
 
     const png = Buffer.from(
-      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wn1s3sAAAAASUVORK5CYII=',
+      'iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAEklEQVQImWP4z8DwHxkzkC4AADxAH+HdRw9wAAAAAElFTkSuQmCC',
       'base64',
     );
     const cachedFile = join(avatarsDir, 'agent.png');
@@ -266,7 +266,7 @@ test('buildAvatarResponse loads uploaded image avatars from /media id sources', 
       db.initDatabase();
       const avatarService = await import('./src/channels/web/media/avatar-service.js');
       const png = Buffer.from(
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wn1s3sAAAAASUVORK5CYII=',
+        'iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAEklEQVQImWP4z8DwHxkzkC4AADxAH+HdRw9wAAAAAElFTkSuQmCC',
         'base64',
       );
       const id = db.createMedia('avatar.png', 'image/png', png, null, { test: true });

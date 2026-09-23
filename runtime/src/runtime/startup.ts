@@ -37,7 +37,7 @@ import { patchConsoleTimestamps } from "./console-timestamps.js";
 import { startExternalProgressWatchdogMonitor } from "./progress-watchdog-supervisor.js";
 import { recoverPendingRestartHandoffs } from "./restart-handoff.js";
 import type { RuntimeState } from "./state.js";
-import { launchWorkspaceIndexProcess } from "../workspace-index-process.js";
+import { launchWorkspaceIndexProcess, startWorkspaceIndexReconciliation } from "../workspace-index-process.js";
 import { SystemMetricsSampler } from "../channels/web/agent/system-metrics.js";
 import {
   initializeStartupAddonRuntime,
@@ -188,6 +188,7 @@ export function initializeRuntimeEnvironment(state: RuntimeState): ReturnType<ty
     });
   }
   launchWorkspaceIndexProcess({ scope: "all" });
+  startWorkspaceIndexReconciliation();
   const toolOutputConfig = getToolOutputConfig();
   startToolOutputCleanup(toolOutputConfig.retentionMs, toolOutputConfig.cleanupIntervalMs);
   state.loadTimestamps();

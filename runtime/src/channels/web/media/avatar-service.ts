@@ -8,7 +8,8 @@
  * Consumers: web/handlers/agent.ts serves and updates avatar images.
  */
 
-import { mkdirSync, readFileSync, writeFileSync, existsSync, rmSync } from "fs";
+import { createHash, randomUUID } from "node:crypto";
+import { mkdirSync, readFileSync, writeFileSync, existsSync, rmSync, renameSync } from "fs";
 import { resolve, extname } from "path";
 import { fileURLToPath } from "url";
 
@@ -28,6 +29,7 @@ interface AvatarMeta {
   file: string;
   contentType: string;
   updatedAt: string;
+  revision?: string;
 }
 
 const AVATAR_DIR = resolve(WORKSPACE_DIR, ".piclaw", "avatars");
@@ -106,7 +108,9 @@ function readMeta(kind: AvatarKind): AvatarMeta | null {
 function writeMeta(kind: AvatarKind, meta: AvatarMeta): void {
   const metaPath = resolve(AVATAR_DIR, `${kind}.json`);
   mkdirSync(AVATAR_DIR, { recursive: true });
-  writeFileSync(metaPath, `${JSON.stringify(meta, null, 2)}\n`, "utf-8");
+  const temporary = `${metaPath}.${randomUUID()}.tmp`;
+  try { writeFileSync(temporary, `${JSON.stringify(meta, null, 2)}\n`, "utf-8"); renameSync(temporary, metaPath); }
+  finally { cleanupFile(temporary); }
 }
 
 function cleanupFile(pathname: string | undefined): void {
@@ -268,17 +272,32 @@ export function isManifestIconType(contentType: string): boolean {
 }
 
 /** Ensure the avatar cache directory exists on disk. */
-export async function ensureAvatarCache(kind: AvatarKind, source: string): Promise<AvatarMeta | null> {
+const cacheWork = new Map<AvatarKind, Promise<AvatarMeta | null>>();
+export async function ensureAvatarCache(kind: AvatarKind, source: string, options: { refresh?: boolean } = {}): Promise<AvatarMeta | null> {
+  const prior = cacheWork.get(kind);
+  const work = (prior ? prior.catch(() => null) : Promise.resolve()).then(() => {
+    // A passive request may have captured the old config while an explicit update
+    // was fetching. Do not let it roll the newly committed cache back afterwards.
+    const current = readMeta(kind);
+    if (prior && !options.refresh && current && current.source !== sanitizeAvatarSource(source) && existsSync(current.file)) return current;
+    return prepareAvatarCache(kind, source, options);
+  });
+  cacheWork.set(kind, work);
+  try { return await work; } finally { if (cacheWork.get(kind) === work) cacheWork.delete(kind); }
+}
+
+async function prepareAvatarCache(kind: AvatarKind, source: string, options: { refresh?: boolean }): Promise<AvatarMeta | null> {
   const sanitized = sanitizeAvatarSource(source);
   if (!sanitized) return null;
 
   const existing = readMeta(kind);
-  if (existing && existing.source === sanitized && existsSync(existing.file)) {
+  if (!options.refresh && existing && existing.source === sanitized && existsSync(existing.file)) {
     return existing;
   }
 
   const loaded = await loadAvatarSource(sanitized);
   if (!loaded) {
+    if (options.refresh) throw new Error(`Failed to load ${kind} avatar image.`);
     if (existing && existsSync(existing.file)) {
       log.warn("Failed to refresh avatar; keeping cached copy", {
         operation: "web_avatar.ensure_avatar_cache.keep_cached_copy",
@@ -313,30 +332,33 @@ export async function ensureAvatarCache(kind: AvatarKind, source: string): Promi
     const processed = await processAvatar(Buffer.from(loaded.data), {
       size: kind === "agent" ? 512 : 256,
     });
+    if (!processed && options.refresh) throw new Error(`Failed to decode ${kind} avatar image.`);
     if (processed) {
       avatarData = processed.data;
       contentType = processed.mimeType;
       effectiveExtension = contentType === "image/webp" ? ".webp" : extension;
     }
   } catch (error) {
+    if (options.refresh) throw error;
     debugSuppressedError(log, "Avatar image processing failed; using original.", error);
   }
 
-  const filePath = resolve(AVATAR_DIR, `${kind}${effectiveExtension}`);
+  const revision = createHash("sha256").update(avatarData).digest("hex");
+  const filePath = resolve(AVATAR_DIR, `${kind}-${revision}${effectiveExtension}`);
   mkdirSync(AVATAR_DIR, { recursive: true });
-  writeFileSync(filePath, Buffer.from(avatarData));
-
-  if (existing && existing.file !== filePath) {
-    cleanupFile(existing.file);
-  }
+  const temporary = `${filePath}.${randomUUID()}.tmp`;
+  try { writeFileSync(temporary, Buffer.from(avatarData)); renameSync(temporary, filePath); }
+  finally { cleanupFile(temporary); }
 
   const meta: AvatarMeta = {
     source: sanitized,
     file: filePath,
     contentType,
     updatedAt: new Date().toISOString(),
+    revision,
   };
   writeMeta(kind, meta);
+  if (existing && existing.file !== filePath) cleanupFile(existing.file);
   return meta;
 }
 
@@ -354,8 +376,9 @@ export async function buildAvatarResponse(kind: AvatarKind, source: string, req:
     return null;
   }
 
-  const file = Bun.file(meta.file);
-  if (!(await file.exists())) return null;
+  // Snapshot bytes before another explicit update replaces/deletes a cached file.
+  const bytes = readFileSync(meta.file);
+  const file = new Blob([bytes]);
 
   // Support ?format=png and ?size=<n> for favicon / manifest / install icon use.
   const url = new URL(req.url, "http://localhost");
@@ -365,12 +388,19 @@ export async function buildAvatarResponse(kind: AvatarKind, source: string, req:
   const requestedSize = Number.isFinite(requestedSizeRaw) && requestedSizeRaw > 0
     ? Math.max(16, Math.min(1024, Math.round(requestedSizeRaw)))
     : null;
-  const needsRasterTransform = Boolean(requestedSize) || (wantsPng && (meta.contentType === "image/webp" || meta.file.endsWith(".webp")));
+  const maskable = url.searchParams.get("purpose") === "maskable";
+  const needsRasterTransform = Boolean(requestedSize) || wantsPng;
   if (needsRasterTransform) {
     try {
       const sharp = (await import("sharp")).default;
-      let pipeline = sharp(meta.file);
-      if (requestedSize) {
+      // HEAD has the same representation headers, without decoding/encoding pixels.
+      if (req.method === "HEAD") return new Response(null, { headers: { "Content-Type": "image/png", "Cache-Control": "no-cache" } });
+      let pipeline = sharp(bytes).rotate();
+      if (requestedSize && maskable) {
+        const inner = Math.floor(requestedSize * 0.56); // Entire square fits inside the central 80%-diameter safe circle.
+        const inset = await pipeline.resize(inner, inner, { fit: "contain", background: "#ffffff" }).flatten({ background: "#ffffff" }).png().toBuffer();
+        pipeline = sharp({ create: { width: requestedSize, height: requestedSize, channels: 3, background: "#ffffff" } }).composite([{ input: inset, gravity: "centre" }]);
+      } else if (requestedSize) {
         pipeline = pipeline.resize(requestedSize, requestedSize, {
           fit: "cover",
           position: "center",
@@ -389,8 +419,9 @@ export async function buildAvatarResponse(kind: AvatarKind, source: string, req:
         });
       }
     } catch (e) {
-      // sharp unavailable — fall through to original format
-      log.debug("Raster avatar transform unavailable; serving original format", { err: e, requestedSize, requestedFormat });
+      // A requested PNG must never silently return a different image format.
+      log.debug("Raster avatar transform unavailable", { err: e, requestedSize, requestedFormat });
+      return null;
     }
   }
 
@@ -413,5 +444,7 @@ export function resolveAvatarUrl(kind: AvatarKind, source?: string | null): stri
   if (!source) return null;
   const sanitized = sanitizeAvatarSource(source);
   if (!sanitized) return null;
-  return `/avatar/${kind}`;
+  const meta = readMeta(kind);
+  const revision = meta?.source === sanitized ? (meta.revision || meta.updatedAt) : null;
+  return `/avatar/${kind}${revision ? `?v=${encodeURIComponent(revision)}` : ""}`;
 }

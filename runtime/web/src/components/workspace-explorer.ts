@@ -20,6 +20,7 @@ import {
 import { uploadFileBatch, uploadWorkspaceFile } from '../ui/upload-transfers.js';
 import { formatFileSize } from '../utils/format.js';
 import { paneRegistry } from '../panes/index.js';
+import { createVisibleInterval } from '../ui/visible-interval.js';
 import { focusAndSelectBestEffort } from './input-focus-safety.js';
 import {
     WORKSPACE_SCALE_STORAGE_KEY,
@@ -1391,14 +1392,14 @@ export function WorkspaceExplorer({
     }, [visible, active]);
 
     useEffect(() => {
-        loadTreeFnRef.current();
-        loadWorkspaceIndexStatusRef.current?.();
-        const timer = setInterval(() => {
-            loadTreeFnRef.current();
+        if (!visible) return undefined;
+        const refreshVisibleWorkspace = () => {
+            if (!visibleRef.current) return;
+            loadTreeFnRef.current?.();
             loadWorkspaceIndexStatusRef.current?.();
-        }, refreshIntervalMs);
-        return () => clearInterval(timer);
-    }, [refreshIntervalMs]);
+        };
+        return createVisibleInterval(refreshVisibleWorkspace, refreshIntervalMs);
+    }, [refreshIntervalMs, visible]);
 
     useEffect(() => {
         updateVisibility();

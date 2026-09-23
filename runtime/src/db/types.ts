@@ -66,6 +66,8 @@ export interface InteractionRow {
   chat_jid?: string;
   /** Optional short agent/branch handle for search results spanning multiple chats. */
   chat_agent_name?: string;
+  /** Effective authorised project repository at response-build time. */
+  project_repository?: { repository_url: string | null; source_branch_id: string | null; revision: string | null };
   /** ISO-8601 timestamp of when the interaction was recorded. */
   timestamp: string;
   /** The parsed JSON payload (see InteractionData). */

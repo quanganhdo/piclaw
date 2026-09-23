@@ -5,7 +5,8 @@
  *   "role": "module"
  * }
  */
-import refreshedPricing from "./pricing-2026-09-05.json";
+import refreshedPricing from "./pricing-2026-09-22.json";
+import previousPricing from "./pricing-2026-09-05.json";
 
 export interface ProviderModelPricingReference {
   canonicalModel: string;
@@ -26,7 +27,7 @@ interface ProviderModelPricingRule extends ProviderModelPricingReference {
 
 // Tag this reference snapshot with the commit date that introduced it so future
 // updates can track pricing provenance without guessing.
-export const PROVIDER_MODEL_PRICING_REFERENCE_TAG = "2026-09-05";
+export const PROVIDER_MODEL_PRICING_REFERENCE_TAG = "2026-09-22";
 
 const ANTHROPIC_PRICING_SOURCE = "https://docs.anthropic.com/en/docs/about-claude/pricing";
 const OPENAI_PRICING_SOURCE = "https://developers.openai.com/api/docs/pricing";
@@ -555,6 +556,17 @@ function normalizeModel(model: string): string {
     "gpt-5-5": "gpt-5.5",
     "gpt-5-6": "gpt-5.6",
     "gpt-5-6-sol": "gpt-5.6-sol",
+    "gpt-5-6-sol-fast": "gpt-5.6-sol-fast",
+    "claude-opus-5-5": "claude-opus-5.5",
+    "claude-opus-5-5-fast": "claude-opus-5.5-fast",
+    "claude-fable-5-1": "claude-fable-5.1",
+    "claude-mythos-5-1": "claude-mythos-5.1",
+    "claude-opus-4-8": "claude-opus-4.8",
+    "claude-opus-4-7": "claude-opus-4.7",
+    "claude-opus-4-6": "claude-opus-4.6",
+    "claude-sonnet-4-6": "claude-sonnet-4.6",
+    "claude-haiku-4-5": "claude-haiku-4.5",
+    "claude-haiku-4-5-20251001": "claude-haiku-4.5",
     "gpt-5-6-terra": "gpt-5.6-terra",
     "gpt-5-6-luna": "gpt-5.6-luna",
     "gpt-5-3-codex": "gpt-5.3-codex",
@@ -611,6 +623,16 @@ export function resolveProviderModelPricing(provider: string, model: string): Pr
     const { provider: _provider, model: _model, ...reference } = refreshed;
     return { ...reference, canonicalModel: rule?.canonicalModel ?? reference.canonicalModel };
   }
+  const previous = previousPricing.find((entry) =>
+    entry.provider === normalizedProvider && normalizeModel(entry.model) === normalizedModel,
+  );
+  if (previous) {
+    const { provider: _provider, model: _model, ...reference } = previous;
+    return {
+      ...reference,
+      notes: `${reference.notes ?? ""} Historical route fallback; not reverified in the ${PROVIDER_MODEL_PRICING_REFERENCE_TAG} refresh.`,
+    };
+  }
   if (rule) {
     return {
       canonicalModel: rule.canonicalModel,
@@ -619,7 +641,7 @@ export function resolveProviderModelPricing(provider: string, model: string): Pr
       outputPerMTok: rule.outputPerMTok,
       cacheReadPerMTok: rule.cacheReadPerMTok,
       cacheWritePerMTok: rule.cacheWritePerMTok,
-      notes: rule.notes,
+      notes: `${rule.notes ?? ""} Historical fallback; not reverified in the ${PROVIDER_MODEL_PRICING_REFERENCE_TAG} refresh.`,
     };
   }
 

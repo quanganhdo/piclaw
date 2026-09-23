@@ -138,6 +138,7 @@ export function normalizePost(raw: Record<string, unknown>): Interaction {
       | undefined,
     media_ids: (raw.media_ids ?? data?.media_ids) as number[] | undefined,
     created_at: String(raw.created_at ?? raw.timestamp ?? ""),
+    project_repository: raw.project_repository && typeof raw.project_repository === "object" ? raw.project_repository as Interaction["project_repository"] : undefined,
     data,
   };
 }

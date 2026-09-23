@@ -52,7 +52,7 @@ test("handleUserAvatar sets and clears avatar", async () => {
 
   const set = await mod.handleUserAvatar(
     {} as any,
-    { type: "user_avatar", avatar: "https://example.com/u.png", raw: "/user-avatar https://example.com/u.png" } as any
+    { type: "user_avatar", avatar: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBmaWxsPSJibHVlIi8+PC9zdmc+", raw: "/user-avatar https://example.com/u.png" } as any
   );
   expect(set.message).toContain("set to");
 

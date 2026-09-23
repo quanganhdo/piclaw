@@ -1,3 +1,4 @@
+import { createVisibleInterval } from '../ui/visible-interval.js';
 import { html, useEffect, useMemo, useState } from '../vendor/preact-htm.js';
 import { getSystemMetrics } from '../api.js';
 import { AGENT_UI_POLL_MS } from '../ui/agent-ui-snapshot.js';
@@ -168,7 +169,6 @@ export function SystemMetersHud({ mode = 'overlay' }) {
     useEffect(() => {
         if (!enabled || !isActiveInstance) return undefined;
         let cancelled = false;
-        let timer = 0;
 
         const refresh = async () => {
             setLoading((prev) => (prev || metrics.cpu_series.length > 0 ? prev : true));
@@ -207,14 +207,11 @@ export function SystemMetersHud({ mode = 'overlay' }) {
         };
 
         void refresh();
-        timer = window.setInterval(() => {
-            if (document?.visibilityState === 'hidden') return;
-            void refresh();
-        }, AGENT_UI_POLL_MS);
+        const stopVisibleInterval = createVisibleInterval(() => { void refresh(); }, AGENT_UI_POLL_MS);
 
         return () => {
             cancelled = true;
-            if (timer) window.clearInterval(timer);
+            stopVisibleInterval();
         };
     }, [enabled, isActiveInstance]);
 

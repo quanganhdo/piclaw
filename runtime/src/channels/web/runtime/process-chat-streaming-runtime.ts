@@ -58,8 +58,11 @@ export async function createProcessChatStreamingRuntime(options: {
   const sessionGeneration = typeof channel.agentPool.getSessionGenerationForChat === "function"
     ? channel.agentPool.getSessionGenerationForChat(chatJid)
     : null;
-  const identity = getIdentityConfig();
-  const withAgentProfile = createAgentProfileBuilder(chatJid, identity.assistantName, resolveAvatarUrl("agent", identity.assistantAvatar), identity.userName || null, resolveAvatarUrl("user", identity.userAvatar), identity.userAvatarBackground || null);
+  const withAgentProfile = <T extends object>(payload: T) => {
+    // A profile can change while a turn is streaming; never re-emit captured branding.
+    const identity = getIdentityConfig();
+    return createAgentProfileBuilder(chatJid, identity.assistantName, resolveAvatarUrl("agent", identity.assistantAvatar), identity.userName || null, resolveAvatarUrl("user", identity.userAvatar), identity.userAvatarBackground || null)(payload);
+  };
   const emitter = createAgentEventEmitter(channel, withAgentProfile);
   const trackedEmitter: AgentEventEmitter = {
     ...emitter,

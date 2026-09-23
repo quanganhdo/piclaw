@@ -1,3 +1,4 @@
+import { applyInstanceBranding, refreshInstanceBranding } from './ui/instance-branding.js';
 import { handleAppSseEvent } from './ui/app-sse-events.js';
 
 type Ref<T> = { current: T };
@@ -89,10 +90,12 @@ export class FamilyRealtime {
       'connected', 'new_post', 'new_reply', 'agent_response', 'interaction_updated', 'interaction_deleted',
       'agent_status', 'agent_steer_queued', 'agent_followup_queued', 'agent_followup_consumed',
       'agent_followup_removed', 'agent_draft', 'agent_draft_delta', 'agent_thought', 'agent_thought_delta',
-      'agent_preview_consumed', 'model_changed',
+      'agent_preview_consumed', 'model_changed', 'profile_update',
     ]) source.addEventListener(type, event => {
       if (!this.current(source, generation)) return;
       let data: any; try { data = JSON.parse((event as MessageEvent).data); } catch { this.options.invalidated(); return; }
+      if (type === 'profile_update') { applyInstanceBranding(data); return; }
+      if (type === 'connected') void refreshInstanceBranding();
       if (data?.chat_jid !== chatJid) { this.options.invalidated(); return; }
       this.handle(type, data, chatJid);
     });

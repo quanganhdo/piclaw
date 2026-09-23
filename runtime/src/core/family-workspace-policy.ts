@@ -2,7 +2,7 @@ import type { AccessMode } from './config-access.js';
 
 /** Fixed ceiling for admitted family web turns, not a configurable role permission matrix. */
 export const FAMILY_WEB_TOOLS = Object.freeze([
-  'read', 'ls', 'find', 'grep', 'messages', 'session_status', 'session_control', 'chat', 'search_tool_output',
+  'read', 'ls', 'find', 'grep', 'messages', 'session_status', 'session_control', 'chat', 'chat_project', 'search_tool_output',
 ] as const);
 export function isFamilyWebToolAllowed(name: string): boolean {
   return (FAMILY_WEB_TOOLS as readonly string[]).includes(name);

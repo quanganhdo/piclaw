@@ -1,3 +1,4 @@
+import { createVisibleInterval } from '../../ui/visible-interval.js';
 import { html, useState, useEffect, useCallback, useMemo, useRef } from '../../vendor/preact-htm.js';
 import { getAgentModels, sendAgentMessage } from '../../api.js';
 import {
@@ -169,12 +170,12 @@ export function ModelsSection({ filter = '', onFilterChange = null }) {
             if (!eventChatJid || eventChatJid === chatJid) void loadModels({ quiet: true });
         };
         const refreshOnFocus = () => void loadModels({ quiet: true });
-        const interval = setInterval(refreshOnFocus, 15_000);
+        const stopVisibleInterval = createVisibleInterval(refreshOnFocus, 15_000);
         window.addEventListener('piclaw:model-state-changed', refresh);
         window.addEventListener('piclaw:sse-connected', refresh);
         window.addEventListener('focus', refreshOnFocus);
         return () => {
-            clearInterval(interval);
+            stopVisibleInterval();
             window.removeEventListener('piclaw:model-state-changed', refresh);
             window.removeEventListener('piclaw:sse-connected', refresh);
             window.removeEventListener('focus', refreshOnFocus);

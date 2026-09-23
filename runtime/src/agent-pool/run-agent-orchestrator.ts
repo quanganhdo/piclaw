@@ -78,6 +78,7 @@ import {
 import { logToolStateTransition } from "./tool-state-transitions.js";
 import { createRunToolCeilingController, type SessionWithToolControl } from "./run-tool-ceiling.js";
 import { isPendingShutdown } from "../runtime/shutdown-registry.js";
+import { markWorkspaceIndexStale } from "../workspace-search.js";
 import { clearAgentAbortCause, consumeAgentAbortCause, recordAgentAbortCause } from "./abort-provenance.js";
 import {
   beginTrackedPhase,
@@ -541,6 +542,7 @@ async function runPromptAttempt(
   ].includes(toolName);
   let sawTerminalSideEffectToolActivity = false;
   let hadToolFailure = false;
+  const completedFileMutations = new Map<string, string>();
 
   const attemptContext = createAttemptContextPressureController({
     session,
@@ -602,6 +604,10 @@ async function runPromptAttempt(
     if (event.type === "tool_execution_start") {
       const e = event as { toolCallId?: string; toolName?: string; args?: unknown };
       if (e.toolCallId && e.toolName) {
+        if ((e.toolName === "write" || e.toolName === "edit") && e.args && typeof e.args === "object") {
+          const candidate = (e.args as { path?: unknown; file_path?: unknown }).path ?? (e.args as { file_path?: unknown }).file_path;
+          if (typeof candidate === "string" && candidate.trim()) completedFileMutations.set(e.toolCallId, candidate.trim());
+        }
         trackToolStartActivity(chatJid, e.toolCallId, e.toolName, e.args);
         options.onInfo?.("Tool execution started", {
           operation: "tool.call.start",
@@ -714,6 +720,10 @@ async function runPromptAttempt(
         sawTerminalSideEffectToolActivity = true;
       }
       if (event.type === "tool_execution_end") {
+        const completed = event as { toolCallId?: unknown; toolName?: unknown; isError?: unknown };
+        const mutation = typeof completed.toolCallId === "string" ? completedFileMutations.get(completed.toolCallId) : undefined;
+        if (mutation) completedFileMutations.delete(completed.toolCallId as string);
+        if (!completed.isError && mutation) markWorkspaceIndexStale({ paths: [mutation] });
         attemptContext.checkMidTurnContextAfterToolResult(toolName, (event as { isError?: unknown }).isError, toolExecutionCount, midTurnToolExecutionHardCeiling, toolUseMessageBudget);
       }
       // If exit_process was called, do NOT abort immediately — let the LLM

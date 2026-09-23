@@ -1,8 +1,12 @@
 import type { AgentSession, SessionContext, SessionEntry, SessionManager } from "@earendil-works/pi-coding-agent";
+import type { ImageContent, TextContent, ThinkingContent, ToolCall } from "@earendil-works/pi-ai";
 
 type CustomMessageContent = Parameters<SessionManager["appendCustomMessageEntry"]>[1];
 
 type MaybePromise<T> = T | Promise<T>;
+
+/** Public 0.87.1 context-edit payload; the pinned 0.85.1 manager has no append method yet. */
+export type ContextEditReplacement = { content: string | (TextContent | ImageContent | ThinkingContent | ToolCall)[] } | null;
 
 export interface SessionEntryAppendPort {
   appendMessage(message: Parameters<SessionManager["appendMessage"]>[0]): Promise<string>;
@@ -10,7 +14,7 @@ export interface SessionEntryAppendPort {
   appendModelChange(provider: string, modelId: string): Promise<string>;
   appendCompaction(
     summary: string,
-    firstKeptEntryId: string,
+    firstKeptEntryId: string | null,
     tokensBefore: number,
     details?: unknown,
     fromHook?: boolean,
@@ -18,6 +22,7 @@ export interface SessionEntryAppendPort {
   appendSessionInfo(name: string): Promise<string>;
   appendCustomMessageEntry(customType: string, content: CustomMessageContent, display: boolean, details?: unknown): Promise<string>;
   appendCustomEntry(customType: string, data?: unknown): Promise<string>;
+  appendContextEdit?(targetId: string, replacement: ContextEditReplacement): Promise<string>;
 }
 
 export interface SessionPersistencePort extends SessionEntryAppendPort {
@@ -40,10 +45,11 @@ export interface SessionManagerLike {
   appendMessage(message: Parameters<SessionManager["appendMessage"]>[0]): MaybePromise<string>;
   appendThinkingLevelChange(thinkingLevel: string): MaybePromise<string>;
   appendModelChange(provider: string, modelId: string): MaybePromise<string>;
-  appendCompaction(summary: string, firstKeptEntryId: string, tokensBefore: number, details?: unknown, fromHook?: boolean): MaybePromise<string>;
+  appendCompaction(summary: string, firstKeptEntryId: string | null, tokensBefore: number, details?: unknown, fromHook?: boolean): MaybePromise<string>;
   appendSessionInfo(name: string): MaybePromise<string>;
   appendCustomMessageEntry(customType: string, content: CustomMessageContent, display: boolean, details?: unknown): MaybePromise<string>;
   appendCustomEntry(customType: string, data?: unknown): MaybePromise<string>;
+  appendContextEdit?: (targetId: string, replacement: ContextEditReplacement) => MaybePromise<string>;
 }
 
 export function createSessionManagerPersistencePort(
@@ -65,6 +71,10 @@ export function createSessionManagerPersistencePort(
     appendSessionInfo: async (name) => await sessionManager.appendSessionInfo(name),
     appendCustomMessageEntry: async (customType, content, display, details) => await sessionManager.appendCustomMessageEntry(customType, content, display, details),
     appendCustomEntry: async (customType, data) => await sessionManager.appendCustomEntry(customType, data),
+    ...(typeof sessionManager.appendContextEdit === "function"
+      ? { appendContextEdit: async (targetId: string, replacement: ContextEditReplacement) =>
+          await sessionManager.appendContextEdit!(targetId, replacement) }
+      : {}),
     dispose: async () => {
       disposePromise ??= Promise.resolve().then(async () => { await options.dispose?.(); });
       await disposePromise;

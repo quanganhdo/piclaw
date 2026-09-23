@@ -50,6 +50,7 @@ export async function handleShellRoutes(
     // by appending ?format=png to the internal request.
     const faviconUrl = new URL(req.url);
     faviconUrl.searchParams.set('format', 'png');
+    faviconUrl.searchParams.set('size', '48');
     const pngReq = new Request(faviconUrl.toString(), req);
     const avatarResp = await channel.handleAvatar("agent", pngReq);
     if (avatarResp.status === 200 && (avatarResp.headers.get("Content-Type") || "").toLowerCase().includes("image/png")) return avatarResp;

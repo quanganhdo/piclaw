@@ -15,7 +15,7 @@ import type { AgentSession, SessionContext, SessionEntry, SessionManager } from 
 import { seedRotatedSession } from "../session-rotation.js";
 import { getSessionThinkingPolicy, readThinkingPreference, THINKING_POLICY_ENTRY } from './thinking-policy.js';
 import { ensureSessionDir } from "./session.js";
-import { createSessionManagerPersistencePort, getSessionPersistencePort, type SessionEntryAppendPort, type SessionManagerLike } from "./session-persistence.js";
+import { createSessionManagerPersistencePort, getSessionPersistencePort, type ContextEditReplacement, type SessionEntryAppendPort, type SessionManagerLike } from "./session-persistence.js";
 
 type LegacyCustomEntry = {
   type: "custom_entry";
@@ -24,7 +24,17 @@ type LegacyCustomEntry = {
   data?: unknown;
 };
 
-export type SeedBranchEntry = SessionEntry | LegacyCustomEntry;
+type FutureSessionEntry = {
+  id: string;
+  parentId: string | null;
+  timestamp: string;
+} & (
+  | { type: "context_edit"; targetId: string; replacement: ContextEditReplacement }
+  | { type: "usage"; kind: string; provider: string; model: string; usage: unknown; note?: string }
+  | { type: "compaction"; summary: string; firstKeptEntryId: null; tokensBefore: number; details?: unknown; fromHook?: boolean }
+);
+
+export type SeedBranchEntry = SessionEntry | FutureSessionEntry | LegacyCustomEntry;
 
 export interface DeferredBranchSeed {
   version: 1;
@@ -92,7 +102,7 @@ async function getStableForkSeed(sourceSession: AgentSession, stableLeafId: stri
   model: { provider: string; modelId: string } | null;
   thinkingLevel: ThinkingLevel | null;
 }> {
-  const branchEntries = stableLeafId === null
+  const branchEntries: SeedBranchEntry[] = stableLeafId === null
     ? []
     : await getSessionPersistencePort(sourceSession).getBranch(stableLeafId);
 
@@ -159,6 +169,23 @@ async function seedSessionManagerFromBranchEntries(
     return;
   }
 
+  // A failed seed is retried; reject unmappable edits before writing any entries.
+  const appendableSourceIds = new Set<string>();
+  const hasEdits = branchEntries.some((entry) => entry?.type === "context_edit");
+  if (hasEdits && !sessionManager.appendContextEdit) {
+    throw new Error("SessionManager does not support context edits; upgrade to Earendil 0.87.1 before replay.");
+  }
+  for (const entry of branchEntries) {
+    if (entry?.type === "context_edit" && !appendableSourceIds.has(entry.targetId)) {
+      throw new Error(`Cannot replay context edit for unmappable target ${entry.targetId}.`);
+    }
+    if (!entry?.id) continue;
+    if ((entry.type === "message" && isAppendableAgentMessage(entry.message))
+      || (entry.type === "custom_message" && typeof entry.customType === "string")) {
+      appendableSourceIds.add(entry.id);
+    }
+  }
+
   const sourceToNewId = new Map<string, string>();
   for (const entry of branchEntries) {
     let newId: string | null = null;
@@ -169,10 +196,19 @@ async function seedSessionManagerFromBranchEntries(
     } else if (entry?.type === "model_change" && typeof entry.provider === "string" && typeof entry.modelId === "string") {
       newId = await sessionManager.appendModelChange(entry.provider, entry.modelId);
     } else if (entry?.type === "compaction" && typeof entry.summary === "string") {
-      const firstKeptEntryId = sourceToNewId.get(entry.firstKeptEntryId)
-        ?? sourceToNewId.get(branchEntries[0]?.id ?? "")
-        ?? "rotated-context";
+      const firstKeptEntryId = entry.firstKeptEntryId === null
+        ? null
+        : sourceToNewId.get(entry.firstKeptEntryId)
+          ?? sourceToNewId.get(branchEntries[0]?.id ?? "")
+          ?? "rotated-context";
       newId = await sessionManager.appendCompaction(entry.summary, firstKeptEntryId, entry.tokensBefore ?? 0, entry.details, entry.fromHook);
+    } else if (entry?.type === "context_edit") {
+      const targetId = sourceToNewId.get(entry.targetId);
+      if (!targetId) throw new Error(`Cannot replay context edit for unmappable target ${entry.targetId}.`);
+      newId = await sessionManager.appendContextEdit!(targetId, entry.replacement as ContextEditReplacement);
+    } else if (entry?.type === "usage") {
+      // Deferred seeds omit billable usage records. Upstream file-branch copies retain them.
+      continue;
     } else if (entry?.type === "session_info" && typeof entry.name === "string" && entry.name.trim()) {
       newId = await sessionManager.appendSessionInfo(entry.name.trim());
     } else if (entry?.type === "custom_message" && typeof entry.customType === "string") {

@@ -1,3 +1,4 @@
+import { applyInstanceBranding, refreshInstanceBranding } from './instance-branding.js';
 import { useCallback, useEffect } from '../vendor/preact-htm.js';
 import { useSseConnection } from './use-sse-connection.js';
 import { handleAppSseEvent, invalidateAppPreviewTrailingFlushes } from './app-sse-events.js';
@@ -168,8 +169,12 @@ export function useRealtimeLifecycleOrchestration(options: UseRealtimeLifecycleO
   } = options;
 
   const handleSseEvent = useCallback((eventType: string, data: any) => {
+    if (eventType === 'profile_update') applyInstanceBranding(data);
     if (eventType === 'picker_pins_changed') { window.dispatchEvent(new Event('piclaw:picker-pins-changed')); return; }
-    if (eventType === 'connected') window.dispatchEvent(new Event('piclaw:sse-connected'));
+    if (eventType === 'connected') {
+      void refreshInstanceBranding();
+      window.dispatchEvent(new Event('piclaw:sse-connected'));
+    }
     if (['model_changed', 'connected'].includes(eventType) || (eventType === 'agent_status' && (['done','error'].includes(data?.type) || data?.status === 'idle'))) invalidateAgentUiSnapshot(data?.chat_jid || currentChatJid);
     handleAppSseEvent(eventType, data, {
       currentChatJid,

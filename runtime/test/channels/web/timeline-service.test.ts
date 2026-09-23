@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import "../../helpers.js";
 import { getSearchResponse } from "../../../src/channels/web/timeline-service.js";
 import * as db from "../../../src/db.js";
+import { updateChatProject } from "../../../src/db/chat-project.js";
 
 function makeMessage(chatJid: string, content: string, timestamp: string, isBot = false) {
   return {
@@ -46,6 +47,25 @@ test("all-chat search annotates agent responses with the branch short agent name
     data: { content: "needle agent", type: "agent_response" },
     chat_agent_name: agentName,
   });
+});
+
+test("all-chat search carries bounded per-row effective project metadata", () => {
+  db.initDatabase();
+  const root = `web:project-root-${Date.now()}`, child = `${root}:branch:child`;
+  db.storeChatMetadata(root, new Date().toISOString(), "Root"); db.storeChatMetadata(child, new Date().toISOString(), "Child");
+  const rootBranch = db.ensureChatBranch({ chat_jid: root, root_chat_jid: root, agent_name: `root-${Date.now()}` });
+  db.ensureChatBranch({ chat_jid: child, root_chat_jid: root, parent_branch_id: rootBranch.branch_id, agent_name: `child-${Date.now()}` });
+  updateChatProject(root, "set", "https://github.com/example/root");
+  const token = `projecttoken${Date.now()}`;
+  db.storeMessage(makeMessage(root, `${token} root`, "2024-03-01T00:00:00.000Z"));
+  db.storeMessage(makeMessage(child, `${token} child`, "2024-03-01T00:01:00.000Z"));
+  const response = getSearchResponse(child, token, 10, 0, "all", null).body as { results: Array<{ chat_jid?: string; project_repository?: { repository_url: string | null; source_branch_id: string | null; revision: string | null } }> };
+  expect(response.results).toHaveLength(2);
+  for (const row of response.results) {
+    expect(row.project_repository?.repository_url).toBe("https://github.com/example/root");
+    expect(row.project_repository?.source_branch_id).toBe(rootBranch.branch_id);
+    expect(row.project_repository?.revision).toContain(rootBranch.branch_id);
+  }
 });
 
 test("root-scoped search derives the root chat from the registry", () => {
