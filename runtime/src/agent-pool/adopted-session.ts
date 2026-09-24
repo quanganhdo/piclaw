@@ -59,8 +59,8 @@ export function inspectAdoptedSession(jsonl: string, expectedHash: string) {
     if(entry.type==='label'&&!byId.has(entry.targetId)) throw new Error('Invalid label target.');
     byId.set(entry.id,entry);entries.push(entry);
   }
-  // Pinned 0.85.1 does not project context edits; mirror the 0.87.1 projection
-  // for adoption validation without enabling context editing in production.
+  // Validate the projected context independently of the installed manager's
+  // version, including context edits and the completed assistant boundary.
   const edits=new Map<string, any>();
   const selected=buildContextEntries(entries);
   for(const entry of selected) {

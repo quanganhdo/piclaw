@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
 import { streamSimple } from "@earendil-works/pi-ai/api/bedrock-converse-stream";
+import { providerTranscriptContext } from "../src/extensions/transcript-context-compat.js";
 import { getBuiltinModels } from "@earendil-works/pi-ai/providers/all";
 
 import { getAvailableThinkingLevelsForModel } from "../src/agent-control/agent-control-helpers.js";
@@ -48,9 +49,9 @@ if (!live) {
 }
 
 const startedAt = Date.now();
-const stream = streamSimple(model, {
+const stream = streamSimple(model, providerTranscriptContext({
   messages: [{ role: "user", content: "Reply with exactly: BEDROCK_OK", timestamp: Date.now() }],
-}, {
+}), {
   maxTokens: 64,
   reasoning: "minimal",
 });

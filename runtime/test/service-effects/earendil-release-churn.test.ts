@@ -73,7 +73,7 @@ async function sha256(path: string): Promise<string> {
 }
 
 describe("Earendil release churn gate", () => {
-  test("pins the repository and lockfile to the selected coherent 0.85.1 candidate runtime", async () => {
+  test("pins the repository and lockfile to the selected coherent 0.87.1 runtime", async () => {
     const manifest = EARENDIL_HARNESS_V3_COMPATIBILITY_MANIFEST;
     const historical = manifest.historical.releases[0], current = manifest.selected;
     const rootManifest = requireRecord(await Bun.file(resolve(repositoryRoot, "package.json")).json(), "repository package.json");
@@ -83,7 +83,7 @@ describe("Earendil release churn gate", () => {
       "@earendil-works/pi-ai",
       "@earendil-works/pi-coding-agent",
     ]) {
-      expect(rootDependencies[directName]).toBe("0.85.1");
+      expect(rootDependencies[directName]).toBe("0.87.1");
     }
     expect(rootDependencies.openai).toBe("7.5.0");
 

@@ -444,6 +444,8 @@ test("agent control queue, compact, and abort commands", async () => {
   const session = new TestAgentControlSession(ws.workspace, registry);
   const runtime = createTestSessionRuntime(session);
 
+  // The fixture has no persisted tool-result entries; mutating the agent array
+  // cannot count as a durable repair under the 0.87.1 projection contract.
   session.agent.state.messages = [
     { role: "assistant", content: [{ type: "toolCall", id: "call-1" }] },
     { role: "toolResult", toolCallId: "call-1" },
@@ -455,7 +457,7 @@ test("agent control queue, compact, and abort commands", async () => {
   expect(compact.message).toContain("Method: Pipelined");
   expect(compact.message).toContain("Execution: Single Pass");
   expect(compact.message).toContain("Provider-native pre-pass: Provider Failure — Remote endpoint returned HTTP 503");
-  expect(compact.message).toContain("Removed 1 orphaned tool-result block before rewriting the session.");
+  expect(compact.message).not.toContain("Removed 1 orphaned tool-result block before rewriting the session.");
   expect(compact.message).toContain("Estimated after: 42 (upstream estimate)");
   expect(compact.message).toContain("96.5% reduction");
   expect(compact.message).toContain("Safety-adjusted after:");
@@ -474,6 +476,7 @@ test("agent control queue, compact, and abort commands", async () => {
   expect(session.agent.state.messages).toEqual([
     { role: "assistant", content: [{ type: "toolCall", id: "call-1" }] },
     { role: "toolResult", toolCallId: "call-1" },
+    { role: "toolResult", toolCallId: "call-orphan" },
   ]);
   const compactMedia = db.getMediaById(compact.mediaIds![0]);
   expect(compactMedia?.filename).toMatch(/^compaction-report-.*\.md$/);

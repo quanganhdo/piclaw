@@ -62,7 +62,7 @@ type MethodArguments<T> = {
   readonly [TKey in keyof T]: T[TKey] extends (...args: infer TArgs) => unknown ? TArgs : never;
 };
 
-describe("selected 0.85.1 Harness v3 preparation contract", () => {
+describe("selected 0.87.1 Harness v3 preparation contract", () => {
   test("aliases public Context and every ExecutionEnv argument tuple", () => {
     expect(exact<Equal<EarendilV3ContextShape, Context>>()).toBeTrue();
     expect(exact<Equal<EarendilV3ContextKeyShape<string>, ContextKey<string>>>()).toBeTrue();
@@ -186,7 +186,7 @@ describe("selected 0.85.1 Harness v3 preparation contract", () => {
 
   test("records published 0.87 separately from the installed selection gate", () => {
     const gate: EarendilV3PublishedCandidateGateShape = {
-      installedVersion: "0.85.1",
+      installedVersion: "0.87.1",
       candidateVersion: "0.87.0",
       candidateReleaseCommit: "16787ad5b2dc748047f314ca1bfe7708f30f54f3",
       assessmentScope: "published_candidate_not_installed",
@@ -200,14 +200,14 @@ describe("selected 0.85.1 Harness v3 preparation contract", () => {
       harnessActivation: "blocked",
       productionImporter: "forbidden",
     };
-    expect(gate.installedVersion).toBe("0.85.1");
+    expect(gate.installedVersion).toBe("0.87.1");
     expect(gate.candidateVersion).toBe("0.87.0");
     expect(gate.assessmentScope).toBe("published_candidate_not_installed");
     expect(gate.promotionIssues).toEqual([1377, 1378, 1379, 1380, 1381]);
     expect(gate.harnessActivation).toBe("blocked");
   });
 
-  test("records installed 0.85.1 while isolating historical 0.85.0 and gating Harness deployment", () => {
+  test("records installed 0.87.1 while isolating historical 0.85.0 and gating Harness deployment", () => {
     const historical: EarendilV3Historical0850AssessmentShape = {
       assessedVersion: "0.85.0",
       assessedReleaseCommit: "107d79f11072bbc8a3a757ed7fd69596bee7d68c",
@@ -216,9 +216,9 @@ describe("selected 0.85.1 Harness v3 preparation contract", () => {
       directPiServerWorkaround: "forbidden",
     };
     const gate: EarendilV3SelectionGateShape = {
-      currentLoopVersion: "0.85.1",
-      selectedVersion: "0.85.1",
-      selectedReleaseCommit: "d981de1229ef899957bbe968bc8dcda02a21f477",
+      currentLoopVersion: "0.87.1",
+      selectedVersion: "0.87.1",
+      selectedReleaseCommit: "f07218c4d4bbc12bef056a7058c3dd49dfe41abe",
       selectionScope: "installed_current_loop_only",
       harnessDeploymentRequiresApproval: true,
       packageClosure: "fresh_supported_coding_agent_root_imports_in_bun_and_supported_node_without_workarounds",
@@ -226,8 +226,8 @@ describe("selected 0.85.1 Harness v3 preparation contract", () => {
       harnessActivation: "blocked",
       productionImporter: "forbidden",
     };
-    expect(gate.currentLoopVersion).toBe("0.85.1");
-    expect(gate.selectedVersion).toBe("0.85.1");
+    expect(gate.currentLoopVersion).toBe("0.87.1");
+    expect(gate.selectedVersion).toBe("0.87.1");
     expect(gate.harnessDeploymentRequiresApproval).toBeTrue();
     expect(historical.disposition).toBe("rejected");
   });

@@ -84,7 +84,7 @@ test('deferred fork omits usage, maps surviving edits and preserves null compact
   expect(calls).toEqual([]);
 });
 
-test('nullable compaction is forwarded; pinned 0.85.1 fails closed on context-edit replay', async () => {
+test('nullable compaction is forwarded; managers without context-edit support fail closed', async () => {
   const port = createSessionManagerPersistencePort({
     appendCompaction: (_summary, first) => { expect(first).toBeNull(); return 'compact'; },
   } as any);
@@ -92,13 +92,14 @@ test('nullable compaction is forwarded; pinned 0.85.1 fails closed on context-ed
   expect(port.appendContextEdit).toBeUndefined();
 });
 
-test('0.85.1 rollback cannot safely reopen context-edited 0.87.1 JSONL', () => {
+test('0.87.1 canonical projection omits context-edited content on reopen', () => {
   const { rows } = adoptedJsonl('/tmp/adoption', '/tmp/parent.jsonl');
   const jsonl = append(rows, [{ type: 'context_edit', id: 'omit', targetId: 'user', replacement: null }]);
   const inspected = inspect(jsonl);
   expect(inspected.context.messages.some((message: any) => message.role === 'user')).toBe(false);
-  // The pinned 0.85.1 SDK silently ignores 0.87.1 edits during its projection.
-  expect(buildSessionContext(inspected.entries).messages.some((message) => message.role === 'user')).toBe(true);
+  // The upgraded SDK applies the edit; 0.85.1 would ignore this same JSONL.
+  // Rollback must restore the pre-upgrade snapshot instead of reopening it.
+  expect(buildSessionContext(inspected.entries).messages.some((message) => message.role === 'user')).toBe(false);
 });
 
 test('usage entries do not add a prompt-cache request and edits reset the comparison', () => {

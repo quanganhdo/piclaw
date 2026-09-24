@@ -191,6 +191,7 @@ export async function handleWebauthnLoginFinish(req: Request, ctx: WebauthnAuthC
 
 /** Start a passkey registration ceremony from a valid enrollment token. */
 export async function handleWebauthnRegisterStart(req: Request, ctx: WebauthnAuthContext): Promise<Response> {
+  if (!ctx.accessMode || ctx.accessMode === 'single-user') return ctx.json({ error: 'Use Settings → Authentication to register passkeys.' }, 410);
   if (!ctx.isPasskeyEnabled()) return ctx.json({ error: "Passkeys disabled" }, 404);
 
   let body: { token?: string };
@@ -212,7 +213,7 @@ export async function handleWebauthnRegisterStart(req: Request, ctx: WebauthnAut
     return ctx.json({ error: "Invalid or expired enrol token" }, 400);
   }
 
-  const multiUser = ctx.accessMode !== undefined && ctx.accessMode !== "single-user";
+  const multiUser = true;
   const user = multiUser ? getUser(getDb(), enrollment.user_id) : null;
   if (multiUser && (!user?.enabled || !ctx.authoriseEnrolment?.(req, enrollment.user_id))) {
     return ctx.json({ error: "Enrolment access denied" }, 403);
@@ -250,6 +251,7 @@ export async function handleWebauthnRegisterStart(req: Request, ctx: WebauthnAut
 
 /** Finish passkey registration and persist the verified credential. */
 export async function handleWebauthnRegisterFinish(req: Request, ctx: WebauthnAuthContext): Promise<Response> {
+  if (!ctx.accessMode || ctx.accessMode === 'single-user') return ctx.json({ error: 'Use Settings → Authentication to register passkeys.' }, 410);
   if (!ctx.isPasskeyEnabled()) return ctx.json({ error: "Passkeys disabled" }, 404);
 
   let body: { token?: string; credential?: RegistrationResponseJSON };
@@ -283,7 +285,7 @@ export async function handleWebauthnRegisterFinish(req: Request, ctx: WebauthnAu
     return ctx.json({ error: "Enrollment mismatch" }, 400);
   }
 
-  const multiUser = ctx.accessMode !== undefined && ctx.accessMode !== "single-user";
+  const multiUser = true;
   if (multiUser && (!getUser(getDb(), enrollment.user_id)?.enabled || !ctx.authoriseEnrolment?.(req, enrollment.user_id))) {
     return ctx.json({ error: "Enrolment access denied" }, 403);
   }

@@ -11,13 +11,13 @@ This ADR proposes a future service-plane coordinator around Earendil Harness. Th
 | Decision owner | Rui Carmo |
 | Assessment baseline | Piclaw `v2.13.2` |
 | Baseline commit | `0afd3ae645c423bed82deef80c343bcaa6f31d4d` |
-| Earendil runtime selection | The existing current loop now runs exact published `0.85.1`; Harness remains inactive |
-| Earendil released evidence | Installed 0.85.1 at `d981de1229ef899957bbe968bc8dcda02a21f477`; published-candidate 0.87.0 at `16787ad5b2dc748047f314ca1bfe7708f30f54f3`; neither record activates Harness |
+| Earendil runtime selection | The #1381 upgrade candidate selects exact published `0.87.1` for the existing loop; Harness remains inactive. Local installation awaits separate approval. |
+| Earendil released evidence | 0.85.1 at `d981de1229ef899957bbe968bc8dcda02a21f477`; historical 0.87.0 candidate at `16787ad5b2dc748047f314ca1bfe7708f30f54f3`; the #1381 0.87.1 package candidate targets `f07218c4d4bbc12bef056a7058c3dd49dfe41abe`. None activates Harness. |
 | Earendil planning tip | `main` at `e4c75a73222ae2c72abb5f5314fa35ee8effc508`; historical planning evidence only, superseded for release-candidate assessment by published 0.87.0 |
 | Historical implementation capture | `dev` / draft #8963 at `d14d6b22327d545d6a253f932165b63e48d7f9c8`; spec blob `c7c18c74730d4971f8ca004924e44c7fbe236f25`, SHA-256 `1b200eb7b4255d5afd71e17bb4cf54f82e2c5d1d1e24ae87ba97363838251785` |
 | Evidence timestamps | Original capture: 2026-09-01 18:30 UTC; 0.85.1 follow-up: 2026-09-17–18; 0.87.0 candidate assessment: 2026-09-21; observations apply only to their recorded revisions |
-| Document state | A/B merged; C broader inactive HC evidence complete; D produced a published 0.87.0 candidate assessment. The installed selection remains 0.85.1 and Harness architecture approval remains explicit |
-| Production changes | Current-loop dependencies select `0.85.1`; no production Harness importer, activation or authority change |
+| Document state | A/B merged; C broader inactive HC evidence complete; D produced a historical 0.87.0 assessment. #1381 prepares a 0.87.1 current-loop upgrade; Harness architecture approval remains explicit. |
+| Production changes | The isolated #1381 worktree pins current-loop dependencies to `0.87.1`; the running installation is unchanged until an approved deploy. No production Harness importer, activation or authority change. |
 | Final decision | Proposed: select direct Earendil adoption with a selected-version test implementation first |
 
 ## Problem

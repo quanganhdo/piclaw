@@ -59,7 +59,7 @@ const BACKENDS = [["Memory", memoryCases], ["JSONL", jsonlCases]] as const;
 const caseId = (c: ConformanceCase) => c.group + " / " + c.name;
 const ids = [...new Set(BACKENDS.flatMap(([, cases]) => cases.map(caseId)))].sort();
 let completed = 0;
-describe("Earendil 0.85.1 public repository conformance", () => {
+describe("Earendil 0.87.1 public repository conformance", () => {
   test("HC-024/025 pins public SessionRepo scope and rejects raw Storage/SQLite promotion", async () => {
     const root = await import("@earendil-works/pi-agent-core");
     const session = await import("@earendil-works/pi-agent-core/harness/session");

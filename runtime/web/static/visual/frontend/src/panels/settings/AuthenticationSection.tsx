@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "preact/hooks";
+import { PasskeySettings } from "../../../../../../shared/passkey-settings";
 import { useSignal } from "@preact/signals";
 import { useDialog } from "../../hooks/useDialog";
 import { CopyButton } from "../../components/CopyButton";
@@ -6,20 +6,9 @@ import { registerSettingsPane } from "./pane-registry";
 import type { SettingsSectionProps } from "./types";
 import { sanitizeSvg } from "../../utils/agent-status";
 
-interface PasskeyEntry {
-  id: string;
-  name?: string;
-  createdAt?: string;
-}
-
 function AuthenticationSection({ data, saveSetting }: SettingsSectionProps) {
   const totp = data.instanceTotp ?? {};
   const totpStatus = useSignal<string | null>(null);
-
-  // Passkeys state
-  const passkeys = useSignal<PasskeyEntry[]>([]);
-  const passkeysLoading = useSignal(true);
-  const passkeysError = useSignal<string | null>(null);
 
   const { showConfirm } = useDialog();
 
@@ -45,52 +34,6 @@ function AuthenticationSection({ data, saveSetting }: SettingsSectionProps) {
     totpStatus.value = "TOTP disabled";
     setTimeout(() => (totpStatus.value = null), 3000);
     window.dispatchEvent(new CustomEvent("piclaw:reload-settings"));
-  }
-
-  // ── Passkeys ──────────────────────────────────────────────────────────────
-
-  const fetchPasskeys = useCallback(async () => {
-    passkeysLoading.value = true;
-    passkeysError.value = null;
-    try {
-      const res = await fetch("/agent/passkeys", {
-        method: "GET",
-        credentials: "same-origin",
-      });
-      if (!res.ok) {
-        passkeysError.value = `Failed to load passkeys (HTTP ${res.status})`;
-        return;
-      }
-      const json = await res.json() as PasskeyEntry[];
-      passkeys.value = Array.isArray(json) ? json : [];
-    } catch {
-      passkeysError.value = "Failed to load passkeys";
-    } finally {
-      passkeysLoading.value = false;
-    }
-  }, []);
-
-  useEffect(() => { fetchPasskeys(); }, [fetchPasskeys]);
-
-  async function deletePasskey(id: string, name?: string) {
-    const confirmed = await showConfirm({
-      title: `Delete passkey${name ? ` "${name}"` : ""}?`,
-      message: "This passkey will be permanently removed.",
-      confirmLabel: "Delete",
-      destructive: true,
-    });
-    if (!confirmed) return;
-    try {
-      await fetch("/agent/passkeys/delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "same-origin",
-        body: JSON.stringify({ id }),
-      });
-      fetchPasskeys();
-    } catch {
-      passkeysError.value = "Failed to delete passkey";
-    }
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -186,65 +129,7 @@ function AuthenticationSection({ data, saveSetting }: SettingsSectionProps) {
         </div>
       )}
 
-      {/* ── Passkeys ── */}
-      <h3 className="settings-panel__subsection-title" style={{ marginTop: "28px" }}>Passkeys</h3>
-      <p className="settings-panel__description">
-        Passkeys allow passwordless login using biometrics or a hardware key.
-      </p>
-
-      <div style={{ margin: "10px 0" }}>
-        <a
-          href="/auth/webauthn/enrol"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="settings-panel__provider-btn"
-          style={{ display: "inline-block", textDecoration: "none" }}
-        >
-          <i className="codicon codicon-add" /> Enrol new passkey
-        </a>
-      </div>
-
-      {passkeysError.value && (
-        <div className="settings-panel__save-status settings-panel__save-status--error">
-          {passkeysError.value}
-        </div>
-      )}
-
-      {passkeysLoading.value ? (
-        <p className="settings-panel__description">Loading passkeys…</p>
-      ) : passkeys.value.length === 0 ? (
-        <p className="settings-panel__description">No passkeys registered.</p>
-      ) : (
-        <table className="settings-panel__table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Name</th>
-              <th>Created</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {passkeys.value.map((pk) => (
-              <tr key={pk.id}>
-                <td><code className="settings-panel__env-var">{pk.id.slice(0, 12)}…</code></td>
-                <td>{pk.name ?? "—"}</td>
-                <td>{pk.createdAt ? new Date(pk.createdAt).toLocaleDateString() : "—"}</td>
-                <td>
-                  <button
-                    type="button"
-                    className="settings-panel__provider-btn settings-panel__provider-btn--logout"
-                    onClick={() => deletePasskey(pk.id, pk.name)}
-                    title="Delete passkey"
-                  >
-                    <i className="codicon codicon-trash" />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      <PasskeySettings />
     </section>
   );
 }

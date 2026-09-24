@@ -101,7 +101,8 @@ describe("Earendil 0.81.x provider regressions", () => {
         supportsReasoningEffort: true,
         supportsDeveloperRole: false,
         requiresReasoningContentOnAssistantMessages: true,
-        deferredToolsMode: "kimi",
+        supportsMidConvoSystemMessages: true,
+        supportsMidConvoToolAdditions: true,
       });
     }
   });

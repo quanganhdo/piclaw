@@ -5,7 +5,7 @@ type CustomMessageContent = Parameters<SessionManager["appendCustomMessageEntry"
 
 type MaybePromise<T> = T | Promise<T>;
 
-/** Public 0.87.1 context-edit payload; the pinned 0.85.1 manager has no append method yet. */
+/** Public 0.87.1 context-edit payload; append stays optional for injected older managers. */
 export type ContextEditReplacement = { content: string | (TextContent | ImageContent | ThinkingContent | ToolCall)[] } | null;
 
 export interface SessionEntryAppendPort {

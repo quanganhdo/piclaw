@@ -11,7 +11,7 @@ describe("web http auth dispatch", () => {
     expect(response).toBeNull();
   });
 
-  test("enrol route requires TOTP session", async () => {
+  test("single-user enrol links are retired even without a TOTP session", async () => {
     const channel = {
       authGateway: {
         isTotpSession: () => false,
@@ -32,11 +32,11 @@ describe("web http auth dispatch", () => {
 
     const getReq = new Request("https://example.com/auth/webauthn/enrol", { method: "GET" });
     const getFlags = buildRouteFlags({ isWebauthnEnrollPage: true, isGetOrHead: true });
-    expect((await handleAuthRoutes(channel, getReq, getFlags))?.status).toBe(302);
+    expect((await handleAuthRoutes(channel, getReq, getFlags))?.status).toBe(410);
 
     const postReq = new Request("https://example.com/auth/webauthn/enrol", { method: "POST" });
     const postFlags = buildRouteFlags({ isWebauthnEnrollPage: true });
-    expect((await handleAuthRoutes(channel, postReq, postFlags))?.status).toBe(401);
+    expect((await handleAuthRoutes(channel, postReq, postFlags))?.status).toBe(410);
   });
 
   test("E2E bootstrap accepts remote requests authorized by the internal secret", async () => {
@@ -98,10 +98,10 @@ describe("web http auth dispatch", () => {
 
     const req = new Request("https://example.com/auth/webauthn", { method: "POST" });
 
-    expect((await handleAuthRoutes(channel, req, buildRouteFlags({ isWebauthnEnrollPage: true })))?.status).toBe(404);
+    expect((await handleAuthRoutes(channel, req, buildRouteFlags({ isWebauthnEnrollPage: true })))?.status).toBe(410);
     expect((await handleAuthRoutes(channel, req, buildRouteFlags({ isWebauthnLoginStart: true })))?.status).toBe(404);
     expect((await handleAuthRoutes(channel, req, buildRouteFlags({ isWebauthnLoginFinish: true })))?.status).toBe(404);
-    expect((await handleAuthRoutes(channel, req, buildRouteFlags({ isWebauthnRegisterStart: true })))?.status).toBe(404);
-    expect((await handleAuthRoutes(channel, req, buildRouteFlags({ isWebauthnRegisterFinish: true })))?.status).toBe(404);
+    expect((await handleAuthRoutes(channel, req, buildRouteFlags({ isWebauthnRegisterStart: true })))?.status).toBe(410);
+    expect((await handleAuthRoutes(channel, req, buildRouteFlags({ isWebauthnRegisterFinish: true })))?.status).toBe(410);
   });
 });

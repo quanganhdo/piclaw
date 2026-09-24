@@ -6,14 +6,14 @@ The flows below describe supported single-user operation unless marked **gated f
 
 ## Authentication flow (single-user TOTP + passkeys)
 
-The web UI can be gated behind TOTP with optional WebAuthn passkeys. Passkeys are enrolled via the `/passkey enrol` slash command (after signing in with TOTP). The login page loads public method flags from `/auth/options`, offers conditional mediation and an explicit passkey button when enabled, and shows the code form only when TOTP is enabled. Failed policy loading does not expose a guessed fallback.
+The web UI can be gated behind TOTP with optional WebAuthn passkeys. Passkeys are enrolled in Settings → Authentication after a recent TOTP or passkey sign-in. The login page loads public method flags from `/auth/options`, offers conditional mediation and an explicit passkey button when enabled, and shows the code form only when TOTP is enabled. Failed policy loading does not expose a guessed fallback.
 
 - **Initial TOTP setup**: `/totp` → single card with QR + manual code + confirmation input → secret is committed only after successful confirmation
 - **Secondary-device setup**: `/totp` with an existing secret re-displays the same secret in the same single-card flow so another authenticator can be validated without rotating the secret
 - **Reset**: `/totp reset <current-code>` → verify current code → single card with new QR/manual code + confirmation input → new secret is committed only after successful confirmation, then existing web sessions are invalidated
-- **Passkey enrolment**: `/passkey enrol` → one-time link → WebAuthn registration
+- **Passkey enrolment**: Settings → Authentication → Add passkey → native prompt → session-bound server verification. Legacy single-user bearer enrolment links are retired.
 - **Login**: optional conditional passkey mediation or explicit passkey button; enabled TOTP is a separate form. Explicit passkey/code actions cancel competing passkey work.
-- **Multiple passkeys** are supported per user; manage with `/passkey list` and `/passkey delete`
+- **Multiple passkeys**: list, name, rename and remove in Settings. Writes require a login no older than five minutes. Removal must leave an accepted sign-in factor and does not revoke existing sessions. `/passkey list` remains read-only; enrol/delete redirect to Settings.
 - Every TOTP card submission returns explicit feedback describing validation success/failure and any changes performed
 
 ## Gated family backend flows

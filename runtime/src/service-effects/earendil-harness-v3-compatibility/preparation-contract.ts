@@ -31,7 +31,7 @@ import type {
 
 import type { PiclawExecutionAuthority } from "../contracts/execution-context-resolver.js";
 
-/** Inert aliases to the selected pi-agent-core 0.85.1 public Harness boundary. */
+/** Inert aliases to the selected pi-agent-core 0.87.1 public Harness boundary. */
 export type EarendilV3ContextKeyShape<T> = ContextKey<T>;
 export type EarendilV3ContextShape = Context;
 export type EarendilV3ResultShape<TValue, TError> = Result<TValue, TError>;
@@ -106,9 +106,9 @@ export interface EarendilV3Historical0850AssessmentShape {
 }
 
 export interface EarendilV3SelectionGateShape {
-  readonly currentLoopVersion: "0.85.1";
-  readonly selectedVersion: "0.85.1";
-  readonly selectedReleaseCommit: "d981de1229ef899957bbe968bc8dcda02a21f477";
+  readonly currentLoopVersion: "0.87.1";
+  readonly selectedVersion: "0.87.1";
+  readonly selectedReleaseCommit: "f07218c4d4bbc12bef056a7058c3dd49dfe41abe";
   readonly selectionScope: "installed_current_loop_only";
   readonly harnessDeploymentRequiresApproval: true;
   readonly packageClosure: "fresh_supported_coding_agent_root_imports_in_bun_and_supported_node_without_workarounds";
@@ -119,7 +119,7 @@ export interface EarendilV3SelectionGateShape {
 
 /** Published package evidence only; it cannot replace the installed selection gate. */
 export interface EarendilV3PublishedCandidateGateShape {
-  readonly installedVersion: "0.85.1";
+  readonly installedVersion: "0.87.1";
   readonly candidateVersion: "0.87.0";
   readonly candidateReleaseCommit: "16787ad5b2dc748047f314ca1bfe7708f30f54f3";
   readonly assessmentScope: "published_candidate_not_installed";

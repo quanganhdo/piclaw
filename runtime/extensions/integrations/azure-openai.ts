@@ -41,6 +41,7 @@ import {
   resolveCacheSessionId,
 } from "../../src/extensions/azure-openai-api.js";
 import { estimateAzureRequestTokens } from "../../src/utils/azure-tool-call-limit.js";
+import { currentContextTools } from "../../src/extensions/transcript-context-compat.js";
 import { streamSimple as streamSimpleOpenAICompletions } from "@earendil-works/pi-ai/api/openai-completions";
 import { chmodSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
@@ -1270,7 +1271,7 @@ function streamAzureOpenAIResponses(model: any, context: any, options: any) {
         baseUrl: model.baseUrl,
         messageCount: messages.length,
         messageTypes: messageTypeCounts,
-        toolCount: toolsEnabled && context.tools ? context.tools.length : 0,
+        toolCount: toolsEnabled ? currentContextTools(context).length : 0,
         hasToolCalls: messages.some((item: any) => item?.type === "function_call"),
         toolCallLimit: toolCallLimit,
         toolCallTotal: toolCallTrim.toolCallTotal,
@@ -1348,8 +1349,8 @@ function streamAzureOpenAIResponses(model: any, context: any, options: any) {
       if (options?.temperature !== undefined) {
         params.temperature = options?.temperature;
       }
-      if (!DISABLE_TOOLS && context.tools) {
-        const rawTools = convertResponsesTools(context.tools);
+      if (!DISABLE_TOOLS && currentContextTools(context).length) {
+        const rawTools = convertResponsesTools(currentContextTools(context));
         // Sanitize tool schemas: Azure Responses API strictly validates JSON Schema
         // and rejects arrays without `items`, which other providers silently accept.
         params.tools = Array.isArray(rawTools)
@@ -1375,7 +1376,7 @@ function streamAzureOpenAIResponses(model: any, context: any, options: any) {
             reasoningEffort: options?.reasoningEffort ?? null,
             reasoningSummary: options?.reasoningSummary ?? null,
           },
-          toolsEnabled && context.tools?.length > 0,
+          toolsEnabled && currentContextTools(context).length > 0,
         );
         if (reasoning) {
           // Azure accepts reasoning.summary, but include=encryped_content has

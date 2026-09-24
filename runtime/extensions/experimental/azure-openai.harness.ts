@@ -30,6 +30,7 @@ import {
   processResponsesStream,
   resolveCacheSessionId,
 } from "../../src/extensions/azure-openai-api.js";
+import { currentContextTools } from "../../src/extensions/transcript-context-compat.js";
 import { streamSimple as streamSimpleOpenAICompletions } from "@earendil-works/pi-ai/api/openai-completions";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -1058,7 +1059,7 @@ function streamAzureOpenAIResponses(model: any, context: any, options: any) {
         baseUrl: model.baseUrl,
         messageCount: messages.length,
         messageTypes: messageTypeCounts,
-        toolCount: toolsEnabled && context.tools ? context.tools.length : 0,
+        toolCount: toolsEnabled ? currentContextTools(context).length : 0,
         hasToolCalls: messages.some((item: any) => item?.type === "function_call"),
         toolCallLimit: toolCallLimit,
         toolCallTotal: toolCallTrim.toolCallTotal,
@@ -1121,8 +1122,8 @@ function streamAzureOpenAIResponses(model: any, context: any, options: any) {
       if (options?.temperature !== undefined) {
         params.temperature = options?.temperature;
       }
-      if (!DISABLE_TOOLS && context.tools) {
-        params.tools = convertResponsesTools(context.tools);
+      if (!DISABLE_TOOLS && currentContextTools(context).length) {
+        params.tools = convertResponsesTools(currentContextTools(context));
       } else if (DISABLE_TOOLS) {
         params.tool_choice = "none";
       }

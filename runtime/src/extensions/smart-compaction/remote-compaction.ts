@@ -2,6 +2,7 @@
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import { convertResponsesMessages, convertResponsesTools } from "@earendil-works/pi-ai/api/openai-responses-shared";
 import type { Api, Model, ProviderHeaders, Tool } from "@earendil-works/pi-ai";
+import { currentContextTools, providerTranscriptContext } from "../transcript-context-compat.js";
 import { convertToLlm, type FileOperations, type SessionEntry } from "@earendil-works/pi-coding-agent";
 import type { ModelRequestAuth } from "../../utils/model-auth.js";
 import { createLogger } from "../../utils/logger.js";
@@ -419,16 +420,12 @@ export async function attemptRemoteCompaction(options: {
   if (options.signal.aborted) return { ok: false, code: "cancelled", message: "Remote compaction cancelled" };
 
   let input: unknown[];
+  let requestTools = options.tools as Tool[] | undefined;
   try {
-    const deferredTools = new Map<string, Tool>();
-    for (const tool of options.tools ?? []) deferredTools.set(tool.name, tool as Tool);
     const llmMessages = convertToLlm(withoutRemoteSummaryMarker(options.messages));
-    const convertedInput = convertResponsesMessages(
-      options.model,
-      { messages: llmMessages, systemPrompt: "" },
-      OPENAI_TOOL_CALL_PROVIDERS,
-      { includeSystemPrompt: false, deferredTools },
-    );
+    const transcript = providerTranscriptContext({ messages: llmMessages, tools: requestTools });
+    requestTools = currentContextTools(transcript);
+    const convertedInput = convertResponsesMessages(options.model, transcript, OPENAI_TOOL_CALL_PROVIDERS, { includeSystemPrompt: false });
     const previousSummary = options.previousDetails ? "" : options.previousSummary?.trim();
     input = [
       ...(options.previousDetails?.output ?? []),
@@ -476,7 +473,7 @@ export async function attemptRemoteCompaction(options: {
     model: options.model.id,
     input,
     ...(options.systemPrompt?.trim() ? { instructions: options.systemPrompt } : {}),
-    ...(options.tools?.length ? { tools: convertResponsesTools(options.tools as readonly Tool[], { strict: null }) } : {}),
+    ...(requestTools?.length ? { tools: convertResponsesTools(requestTools, { strict: null }) } : {}),
     parallel_tool_calls: true,
   }, {
     onOrphanFunctionCallOutputs: (diagnostic) => {

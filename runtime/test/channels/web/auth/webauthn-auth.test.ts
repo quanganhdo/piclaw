@@ -138,6 +138,7 @@ describe("webauthn auth handlers", () => {
 
   test("register handlers validate required token/credential payloads", async () => {
     const { ctx, authEvents } = createContext(true);
+    ctx.accessMode = "family-shared"; ctx.authoriseEnrolment = () => true;
 
     const missingTokenReq = new Request("https://example.com/auth/webauthn/register/start", {
       method: "POST",
@@ -173,6 +174,7 @@ describe("webauthn auth handlers", () => {
     const db = await import("../../../../src/db.js");
     db.initDatabase();
     const { ctx } = createContext(true);
+    ctx.accessMode = "family-shared"; ctx.authoriseEnrolment = () => true;
     const enrollment = db.createWebauthnEnrollment("default", 300);
     ctx.challenges.trackRegistration(enrollment.token, {
       challenge: "challenge-value",

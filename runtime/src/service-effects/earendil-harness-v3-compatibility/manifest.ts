@@ -199,7 +199,7 @@ export interface EarendilPico3ExperimentalAssessment {
 
 export interface EarendilHarnessCompatibilityManifest {
   readonly schemaVersion: 5;
-  readonly authority: Readonly<{ currentRuntimeVersion: "0.85.1"; harnessActivation: "latent_only"; unsupportedCountsAsPass: false }>;
+  readonly authority: Readonly<{ currentRuntimeVersion: "0.87.1"; harnessActivation: "latent_only"; unsupportedCountsAsPass: false }>;
   readonly historical: HistoricalEarendilHarnessCompatibilityManifest;
   readonly selected: typeof SELECTED_RELEASE;
   readonly publishedCandidate: EarendilPublishedCandidateAssessment;
@@ -430,17 +430,17 @@ const HISTORICAL_MANIFEST = {
 } as const satisfies HistoricalEarendilHarnessCompatibilityManifest;
 
 const SELECTED_RELEASE = {
-  "version": "0.85.1",
-  "commit": "d981de1229ef899957bbe968bc8dcda02a21f477",
+  "version": "0.87.1",
+  "commit": "f07218c4d4bbc12bef056a7058c3dd49dfe41abe",
   "runtimeSelection": "installed_current_loop",
   "harnessSelection": "inactive_partial_evidence",
   "packages": [
     {
       "name": "@earendil-works/chord",
-      "version": "0.85.1",
-      "integrity": "sha512-VDlkEC3dhCzQ5fcyH1OhG19dq+6jCn+rqc/iXFivwDYGR5anwo2RCiXij9PpHhqNR5GuhhE+Er69Zi1Sn4eY6w==",
-      "shasum": "acc677176bee8b7c1fbed96483317f694398aded",
-      "gitHead": "d981de1229ef899957bbe968bc8dcda02a21f477",
+      "version": "0.87.1",
+      "integrity": "sha512-bg7IkJGFcEaMqqYgOGUiq5Ky9RghpRfrlZ8I/v/1b4bBZ02A7t3E+6uhPRbadwWb/kWsnVFbZsqOKRN4a3LLCg==",
+      "shasum": "f983a4eae3e22c8204c53ea13070bf491330a31a",
+      "gitHead": "f07218c4d4bbc12bef056a7058c3dd49dfe41abe",
       "engine": ">=22.19.0",
       "installation": "transitive",
       "exports": [
@@ -455,14 +455,15 @@ const SELECTED_RELEASE = {
     },
     {
       "name": "@earendil-works/pi-agent-core",
-      "version": "0.85.1",
-      "integrity": "sha512-hIXIP3eAWueAYiAl8aMvWCvvZ8Q5gT3Dip5bE5uJyIGh4+YlWRjtMLI4BaeoXoSs93zndjue61u1B/vhefLnuA==",
-      "shasum": "8a85116c0d4494e4d9e82341237d91ad360fdc2a",
-      "gitHead": "d981de1229ef899957bbe968bc8dcda02a21f477",
+      "version": "0.87.1",
+      "integrity": "sha512-Zev3B0HK7YS5A4EZQ2XnEqiJuirx6QBiltJ+LpmjV5a/+2IU0cfKtIfnkNkORK707XOvKBY2WRtk7cAwHpbh2Q==",
+      "shasum": "bfea5c2d96dd33f8e150b7f85f693dbc72973674",
+      "gitHead": "f07218c4d4bbc12bef056a7058c3dd49dfe41abe",
       "engine": ">=22.19.0",
       "installation": "direct",
       "exports": [
         ".",
+        "./experimental/pico3",
         "./harness/context",
         "./harness/env/nodejs",
         "./harness/runtime/reducer",
@@ -474,24 +475,24 @@ const SELECTED_RELEASE = {
       "internalDependencies": [
         {
           "name": "@earendil-works/chord",
-          "range": "^0.85.1"
+          "range": "^0.87.1"
         },
         {
           "name": "@earendil-works/pi-ai",
-          "range": "^0.85.1"
+          "range": "^0.87.1"
         },
         {
           "name": "@earendil-works/pi-telemetry",
-          "range": "^0.85.1"
+          "range": "^0.87.1"
         }
       ]
     },
     {
       "name": "@earendil-works/pi-ai",
-      "version": "0.85.1",
-      "integrity": "sha512-+VgVIJDkDO2efYJKEEqvPTH4zmnIaXdAppGbO+vKFA9qy5PdhFiAenuFAkU+oiCSfOC4dMHDyrjdQeL4ZoC5CQ==",
-      "shasum": "3f5726032c30149f6060a3aeacb79436c7387a37",
-      "gitHead": "d981de1229ef899957bbe968bc8dcda02a21f477",
+      "version": "0.87.1",
+      "integrity": "sha512-X/3PfQBnnoeVdO9Cv8zHghUMglzlgNZYGNzoPnbRoGnHl3Rw3TlA2UKSUB7BRHUOxMryHXYa8dnjWZlbRheDZA==",
+      "shasum": "7d1f174120d5e6d33f301503677ec3281f217e2a",
+      "gitHead": "f07218c4d4bbc12bef056a7058c3dd49dfe41abe",
       "engine": ">=22.19.0",
       "installation": "direct",
       "exports": [
@@ -507,16 +508,16 @@ const SELECTED_RELEASE = {
       "internalDependencies": [
         {
           "name": "@earendil-works/pi-telemetry",
-          "range": "^0.85.1"
+          "range": "^0.87.1"
         }
       ]
     },
     {
       "name": "@earendil-works/pi-coding-agent",
-      "version": "0.85.1",
-      "integrity": "sha512-FGRN+OHbWaefBPGaTggAdLjrIHW+s2PzLyglz/5dfLzb9of7uuXMXYC0fJIeZTw+shS32o2cuQ9jF7YSDuL/oQ==",
-      "shasum": "4cd00f653c3dabeb193b46f511044e7fbfe0f947",
-      "gitHead": "d981de1229ef899957bbe968bc8dcda02a21f477",
+      "version": "0.87.1",
+      "integrity": "sha512-m8ArJUtVcQMSe1lLE/Ei7vX/JV7O39sWmWBsXV2NOU70F0qCp8GubA24pT3LnwTmM6LL2xV80/h6sQg85n69ew==",
+      "shasum": "5708b9310325177d5c1b487b5c99627ffa733324",
+      "gitHead": "f07218c4d4bbc12bef056a7058c3dd49dfe41abe",
       "engine": ">=22.19.0",
       "installation": "direct",
       "exports": [
@@ -528,28 +529,28 @@ const SELECTED_RELEASE = {
       "internalDependencies": [
         {
           "name": "@earendil-works/chord",
-          "range": "^0.85.1"
+          "range": "^0.87.1"
         },
         {
           "name": "@earendil-works/pi-agent-core",
-          "range": "^0.85.1"
+          "range": "^0.87.1"
         },
         {
           "name": "@earendil-works/pi-ai",
-          "range": "^0.85.1"
+          "range": "^0.87.1"
         },
         {
           "name": "@earendil-works/pi-tui",
-          "range": "^0.85.1"
+          "range": "^0.87.1"
         }
       ]
     },
     {
       "name": "@earendil-works/pi-telemetry",
-      "version": "0.85.1",
-      "integrity": "sha512-Bg/YN6kA7Swja/NQxka8xFdecb4E/auIEGF2G5A25EaQXhRnPj300/7/KpgsDDMYUzHTDAv4RyUxaQPJKW81Rw==",
-      "shasum": "b4dbe9155fff8aedb3ff752e7a954b9c7201ddf1",
-      "gitHead": "d981de1229ef899957bbe968bc8dcda02a21f477",
+      "version": "0.87.1",
+      "integrity": "sha512-MC6TRQH5lgMXpcN+Vku2WMI2T8BsiUPzMQHGo81uqFZD3/9O79WWJAysEDGuzduP6R4tvtgwMLwmqIxynM10JQ==",
+      "shasum": "856ce8c1539d4ea24dee679f1be6e19ae353f04b",
+      "gitHead": "f07218c4d4bbc12bef056a7058c3dd49dfe41abe",
       "engine": ">=22.19.0",
       "installation": "transitive",
       "exports": [
@@ -560,10 +561,10 @@ const SELECTED_RELEASE = {
     },
     {
       "name": "@earendil-works/pi-tui",
-      "version": "0.85.1",
-      "integrity": "sha512-OIzw9efInmO4WOBnD4TxcTdBjmzvYJpzslkgoUro946nEGoYWg5rwv1p4fDt3/JvMx9QybryUCUwlm7j8Dreig==",
-      "shasum": "06a13bc6f4093f14262e72868234e6d4eb9bbf55",
-      "gitHead": "d981de1229ef899957bbe968bc8dcda02a21f477",
+      "version": "0.87.1",
+      "integrity": "sha512-YEH2vRyOeiO7hhN6j6AE6YwKSq2Kz2f3XR8bj1TbR+aGE/JsnY1hLPMI2pvaZfRM1n9Y00tejxFQ4zbzvF7nkQ==",
+      "shasum": "2e3cf93fe05b7a4277855d0489e388671fcb62c2",
+      "gitHead": "f07218c4d4bbc12bef056a7058c3dd49dfe41abe",
       "engine": ">=22.19.0",
       "installation": "transitive",
       "exports": [],
@@ -611,61 +612,61 @@ const SELECTED_RELEASE = {
       "package": "@earendil-works/pi-agent-core",
       "subpath": "./harness/env/nodejs",
       "kind": "runtime",
-      "sha256": "30c08f4619c896048ba51dfe9dfc408644d425eabc86eb38cae116647fea8a98"
+      "sha256": "f197648dc272eb1065deb02467ebb7cc07d020ad1c30cfd8adab26dddd3ff150"
     },
     {
       "package": "@earendil-works/pi-agent-core",
       "subpath": "./harness/env/nodejs",
       "kind": "declaration",
-      "sha256": "f604426f24f2a7a7c82c647cddeb85c4915b20a7a1074cbc3e3ac9f8fc3969fd"
+      "sha256": "8b892fd9130551cff8cf7bcf29baed12fbc3543a6f08bdb959701831df162e75"
     },
     {
       "package": "@earendil-works/pi-agent-core",
       "subpath": "./harness/session",
       "kind": "runtime",
-      "sha256": "685d779201af8a00ee8572a36b71ea88b64643d0df5a3acfef90d14c9bb69ed1"
+      "sha256": "fab2c9c5eb32d52e4fff468dba4c6adbe33bf3ec23bfa642eba7aa712d537ac7"
     },
     {
       "package": "@earendil-works/pi-agent-core",
       "subpath": "./harness/session",
       "kind": "declaration",
-      "sha256": "e89de9bae6e9f45350f26c789934c9120c4f5ca4aba252e9fb72e9d790e3612d"
+      "sha256": "3deac15e45b9839c4406f522ea18f75d3f5b0953217fd84eaabe5d17a9e6cf97"
     },
     {
       "package": "@earendil-works/pi-agent-core",
       "subpath": "./harness/session/testing",
       "kind": "runtime",
-      "sha256": "0ddcde3a3353af89353bf8667a9552d8c4f4eb1d6df8b4d13c913a99a20a62c5"
+      "sha256": "b6603b5a993e6eb678fb49352126138556e57a3963af7e000eec03f304ab02c4"
     },
     {
       "package": "@earendil-works/pi-agent-core",
       "subpath": "./harness/session/testing",
       "kind": "declaration",
-      "sha256": "0ea7e2f85101ab3c4e0793da2baa01f921ac000c36f07c95bef3fac9fc31a654"
+      "sha256": "961fc28330bcffc231c14b3c3d3b5a247f3df9e13f6156e411dc791db152118e"
     },
     {
       "package": "@earendil-works/pi-ai",
       "subpath": ".",
       "kind": "runtime",
-      "sha256": "010778daab84fd68b88507d6cd2c4ff1fc1f2efe230e096100eebff98d5183a5"
+      "sha256": "4eee4d99e3eaf82e28826808136b2eede4184c3fb697328cbfc32db3360a8540"
     },
     {
       "package": "@earendil-works/pi-ai",
       "subpath": ".",
       "kind": "declaration",
-      "sha256": "1a17322292ed4af5ba0e1d801ca47917a22aa465112b1e8ef3f679c61c7cc460"
+      "sha256": "dd340daff435715950e104d1983cf013bef83c66e66b4e7b895360c1e8f4ec94"
     },
     {
       "package": "@earendil-works/pi-coding-agent",
       "subpath": ".",
       "kind": "runtime",
-      "sha256": "82cb4ea864f3d8816c06bc8f2f2d9a8d82d883297af179dc69d287d042834844"
+      "sha256": "1e3601da1e18a7be4dfdcc625d7a7fb942cc095a5d737bb1b70211af33b61e05"
     },
     {
       "package": "@earendil-works/pi-coding-agent",
       "subpath": ".",
       "kind": "declaration",
-      "sha256": "f1cb93477c7357d08b839c0663d079b8f9bb949079ed7b50a71f8d2945cece90"
+      "sha256": "1e89f64c284248e8004bc040be1b8d886f20c158091d4e466cb130fa9d13d458"
     }
   ],
   "conformance": {
@@ -1593,7 +1594,7 @@ const EXPERIMENTAL_PICO3 = {
 
 const RAW_MANIFEST = {
   schemaVersion: 5,
-  authority: { currentRuntimeVersion: "0.85.1", harnessActivation: "latent_only", unsupportedCountsAsPass: false },
+  authority: { currentRuntimeVersion: "0.87.1", harnessActivation: "latent_only", unsupportedCountsAsPass: false },
   historical: HISTORICAL_MANIFEST,
   selected: SELECTED_RELEASE,
   publishedCandidate: PUBLISHED_CANDIDATE,

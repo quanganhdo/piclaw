@@ -97,7 +97,7 @@ A fresh single-user instance permits unauthenticated access. Keep it on loopback
 
 1. Send `/totp` in the web UI.
 2. Scan the QR code into an authenticator app and confirm a current six-digit code in the card. The login gate is enabled only after successful confirmation.
-3. Sign in with TOTP before running `/passkey enrol` if you want a passkey. Passkeys are bound to the hostname used for enrolment; choose the hostname you will actually use.
+3. Sign in with TOTP, then open **Settings → Authentication → Passkeys → Add passkey**. Name the key and complete the native browser prompt. You can add more keys after signing in with an existing passkey, including in passkey-only mode. Passkeys are bound to the hostname used for enrolment; choose the hostname you will actually use.
 4. Before remote access, configure HTTPS and a [reverse proxy](reverse-proxy.md), or PiClaw's own [TLS settings](configuration.md#web-server). Enable `PICLAW_TRUST_PROXY=1` only behind a trusted proxy that overwrites forwarding headers; prevent clients from reaching the backend directly.
 
 The [authentication reference](configuration.md#authentication-totp--passkeys) covers preconfigured TOTP, enrolment, reset, expiry and passkey-only policies. Do not select passkey-only mode before enrolling and testing a usable passkey. Protect provider credentials, downloaded files and backups independently of the browser login gate.

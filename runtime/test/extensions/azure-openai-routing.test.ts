@@ -7,6 +7,8 @@
  * - Slice 3: Foundry compat flags on model registration
  */
 import { expect, test, describe } from "bun:test";
+import { Type } from "typebox";
+import type { Context, Tool } from "@earendil-works/pi-ai";
 import {
   registerAzureProviders,
   capToolFlowReasoning,
@@ -80,6 +82,30 @@ describe("Slice 1: Responses-only routing", () => {
     expect(payload.store).toBe(false);
     expect(payload.model).toBe(model.id);
     expect(payload.stream).toBe(true);
+  });
+
+  test("Azure payload resolves transcript additions and removals for tools and reasoning", () => {
+    const providers: Array<{ name: string; config: any }> = [];
+    registerAzureProviders((name, config) => providers.push({ name, config }), "test-token");
+    const azureProvider = providers.find((provider) => provider.name === "azure-openai")!;
+    const model = azureProvider.config.models[0];
+    const tool = (name: string): Tool => ({ name, description: name, parameters: Type.Object({}) });
+    const controller = new AbortController();
+    controller.abort();
+    const request = (context: Context) => {
+      let payload: any;
+      azureProvider.config.streamSimple({ ...model, provider: 'azure-openai', baseUrl: azureProvider.config.baseUrl, headers: {} },
+        context, { signal: controller.signal, onPayload: (next: unknown) => { payload = next; } });
+      return payload;
+    };
+    const initial = request({ messages: [], tools: [tool('first')] });
+    expect(initial.tools.map((entry: any) => entry.name)).toEqual(['first']);
+    expect(initial.tool_choice).not.toBe('none');
+    const changed = request({ tools: [tool('first')], messages: [
+      { role: 'system', content: 'Use the current tools.', toolsAdded: [tool('second')], timestamp: 1 },
+      { role: 'system', content: '', toolsRemoved: [{ name: 'first' }], timestamp: 2 },
+    ] } as unknown as Context);
+    expect(changed.tools.map((entry: any) => entry.name)).toEqual(['second']);
   });
 
   test("Azure Responses stream payload honors AOAI deployment-name mapping", async () => {

@@ -115,12 +115,13 @@ test("handlePasskey returns help, list, and delete validation errors", async () 
   expect(deleteNoMatch.message).toContain("No passkey matches");
 });
 
-test("handlePasskey enrol requires configured TOTP secret", async () => {
+test("handlePasskey enrol redirects to browser-bound Settings without creating a token", async () => {
   const { passkey } = await setup();
 
   const enrol = await passkey.handlePasskey({} as any, { type: "passkey", action: "enrol" } as any);
-  expect(enrol.status).toBe("error");
-  expect(enrol.message).toContain("TOTP is not configured");
+  expect(enrol.status).toBe("success");
+  expect(enrol.message).toContain("Settings → Authentication");
+  expect(enrol.message).toContain("no enrolment link");
 });
 
 test("handleTotp validates action and returns a single-card setup flow without committing immediately", async () => {

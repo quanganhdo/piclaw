@@ -16,6 +16,7 @@ import { buildSessionCookieHeader } from "../auth/session-auth.js";
 import { isInternalSecretRequestAuthorized } from "../auth/internal-secret.js";
 import { getWebRuntimeConfig } from "../../../core/config.js";
 import { createWebSession, DEFAULT_WEB_USER_ID } from "../../../db.js";
+import { readAccessConfig } from '../../../core/config-access.js';
 import type { RouteFlags } from "./route-flags.js";
 
 const E2E_BOOTSTRAP_TTL_SECONDS = 10 * 60;
@@ -80,6 +81,7 @@ export async function handleAuthRoutes(
   flags: RouteFlags
 ): Promise<Response | null> {
   if (flags.isWebauthnEnrollPage) {
+    if (readAccessConfig().mode === 'single-user') return channel.json({ error: 'Use Settings → Authentication to register passkeys.' }, 410);
     if (!channel.authGateway.isTotpSession(req)) {
       if (flags.isGetOrHead) {
         return redirectToLoginResponse();

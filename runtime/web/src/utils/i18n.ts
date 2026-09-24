@@ -116,6 +116,7 @@ type MessageKey =
   | 'settings.close'
   | 'settings.filter'
   | 'settings.loading'
+  | 'settings.section.authentication'
   | 'settings.section.general'
   | 'settings.section.sessions'
   | 'settings.section.recordings'
@@ -765,6 +766,7 @@ const EN: Record<MessageKey, string> = {
   'settings.close': 'Close (Esc)',
   'settings.filter': 'Filter…',
   'settings.loading': 'Loading settings…',
+  'settings.section.authentication': 'Authentication',
   'settings.section.general': 'General',
   'settings.section.sessions': 'Sessions',
   'settings.section.recordings': 'Recordings',
@@ -1408,6 +1410,7 @@ const ZH_CN: Partial<Record<MessageKey, string>> = {
   'settings.close': '关闭（Esc）',
   'settings.filter': '筛选…',
   'settings.loading': '加载设置中…',
+  'settings.section.authentication': '身份验证',
   'settings.section.general': '常规',
   'settings.section.sessions': '会话',
   'settings.section.recordings': '录制',
@@ -2051,6 +2054,7 @@ const JA: Partial<Record<MessageKey, string>> = {
   'settings.close': '閉じる（Esc）',
   'settings.filter': 'フィルター…',
   'settings.loading': '設定を読み込み中…',
+  'settings.section.authentication': '認証',
   'settings.section.general': '一般',
   'settings.section.sessions': 'セッション',
   'settings.section.recordings': '録画',

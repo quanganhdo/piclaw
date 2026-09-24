@@ -36,7 +36,7 @@ function sseResponse(event: unknown, trailingFrameBoundary = true): Response {
 
 function requireOpenAIModel(id: string): Model<"openai-responses"> {
   const model = getBuiltinModels("openai").find((candidate) => candidate.id === id);
-  expect(model, `missing OpenAI ${id} from the 0.85.1 public catalog`).toBeDefined();
+  expect(model, `missing OpenAI ${id} from the 0.87.1 public catalog`).toBeDefined();
   return model as Model<"openai-responses">;
 }
 
@@ -76,7 +76,7 @@ async function captureResponsesPayload(
   return { sanitized, sent };
 }
 
-describe("Earendil 0.85.1 offline provider contracts", () => {
+describe("Earendil 0.87.1 offline provider contracts", () => {
   test("GPT-5.6+ long retention uses explicit 30m prompt-cache options in the sanitized wire payload", async () => {
     expect(typeof openaiResponsesApi.stream).toBe("function");
     for (const id of ["gpt-5.6-sol", "gpt-6-astra"]) {
@@ -127,7 +127,7 @@ describe("Earendil 0.85.1 offline provider contracts", () => {
 
   test("Codex converts an EOF-terminated response.done event into a successful terminal stream", async () => {
     const model = getBuiltinModels("openai-codex").find((candidate) => candidate.id === "gpt-5.6-sol");
-    expect(model, "missing Codex GPT-5.6 Sol from the 0.85.1 public catalog").toBeDefined();
+    expect(model, "missing Codex GPT-5.6 Sol from the 0.87.1 public catalog").toBeDefined();
 
     const tokenPayload = btoa(JSON.stringify({
       "https://api.openai.com/auth": { chatgpt_account_id: "offline-account" },

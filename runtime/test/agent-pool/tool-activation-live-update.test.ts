@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { Type } from "typebox";
 import { SettingsManager, getAgentDir, type ExtensionFactory } from "@earendil-works/pi-coding-agent";
 import type { AssistantMessage, ToolCall } from "@earendil-works/pi-ai";
+import { currentContextTools } from "../../src/extensions/transcript-context-compat.js";
 import { registerFauxProvider } from "@earendil-works/pi-ai/compat";
 import "../helpers.js";
 import { createSessionInDir } from "../../src/agent-pool/session.ts";
@@ -94,15 +95,13 @@ describe("same-turn tool activation live update", () => {
       session.agent.state.model = faux.getModel();
       session.setActiveToolsByName(["activate_tools"]);
 
-      const anchoredToolNames: string[] = [];
+      const observedToolNames: string[] = [];
       faux.setResponses([
         fauxAssistantMessage(fauxToolCall("activate_tools", { names: ["demo_extension_tool"] })),
         (context) => {
-          anchoredToolNames.push(...context.messages
-            .filter((message) => message.role === "toolResult" && message.toolName === "activate_tools")
-            .flatMap((message) => message.addedToolNames ?? []));
+          observedToolNames.push(...currentContextTools(context).map((tool) => tool.name));
           return fauxAssistantMessage(
-            context.tools?.some((tool) => tool.name === "demo_extension_tool")
+            observedToolNames.includes("demo_extension_tool")
               ? fauxToolCall("demo_extension_tool", { value: "same-turn" })
               : "demo tool missing from context",
           );
@@ -123,8 +122,7 @@ describe("same-turn tool activation live update", () => {
       const toolResults = session.agent.state.messages.filter((message) => message.role === "toolResult");
       expect(toolResults.map((message) => message.toolName)).toContain("demo_extension_tool");
       expect(toolResults.some((message) => message.toolName === "demo_extension_tool" && message.isError)).toBe(false);
-      expect(anchoredToolNames).toEqual(["demo_extension_tool"]);
-      expect(toolResults.find((message) => message.toolName === "activate_tools")?.addedToolNames).toEqual(["demo_extension_tool"]);
+      expect(observedToolNames).toContain("demo_extension_tool");
     } finally {
       faux.unregister();
       if (previousWorkspace === undefined) delete process.env.PICLAW_WORKSPACE;

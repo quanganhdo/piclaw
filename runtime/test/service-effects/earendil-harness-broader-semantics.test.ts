@@ -44,7 +44,7 @@ function settled(value: unknown): OperationResultRecord {
   return value.outcome as OperationResultRecord;
 }
 
-describe("selected 0.85.1 broader public Harness semantics (inactive evidence only)", () => {
+describe("selected 0.87.1 broader public Harness semantics (inactive evidence only)", () => {
   test("HC-010 manual compaction publishes one structural result and ordered events", async () => {
     const fixture = await createSelectedHarnessFixture({
       responses: [fauxAssistantMessage("ordinary response"), fauxAssistantMessage("summary text")],

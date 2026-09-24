@@ -35,7 +35,7 @@ export class CurrentPiclawLocalExecutionEnvFactory implements LocalExecutionEnvF
         cwd: this.#cwd,
         ...(this.#shellPath ? { shellPath: this.#shellPath } : {}),
       });
-      // The pinned 0.85.1 Node implementation predates this public 0.87.1 method.
+      // Prefer the public 0.87.1 method; the wrapper only fills an older Node instance.
       // Injected factories must supply it themselves; only the default local Node
       // instance receives the temporary compatibility reader.
       return Result.ok(new PiclawExecutionEnv(this.#injectedNodeFactory ? delegate : withLocalTextLineReader(delegate), this.#prepareShellEnvironment));

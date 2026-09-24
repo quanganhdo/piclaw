@@ -52,9 +52,13 @@ The route tables below describe single-user guards unless explicitly marked fami
 | POST | `/auth/verify` | request guards / auth endpoints | public login verification | auth bucket | compatibility success envelope with session cookie on success: `{ status: "ok", ok: true }` |
 | POST | `/auth/webauthn/login/start` | `dispatch-auth.ts` | public login bootstrap | auth bucket | bootstrap payload `{ token, options }` |
 | POST | `/auth/webauthn/login/finish` | `dispatch-auth.ts` | public login completion | auth bucket | compatibility success envelope with session cookie on success: `{ status: "ok", ok: true }` |
-| POST | `/auth/webauthn/register/start` | `dispatch-auth.ts` | authenticated TOTP session required for enrol flows | enrol bucket | bootstrap payload `{ token, options }` |
-| POST | `/auth/webauthn/register/finish` | `dispatch-auth.ts` | authenticated TOTP session required for enrol flows | enrol bucket | compatibility success envelope `{ status: "ok", ok: true }` |
-| GET/HEAD | `/auth/webauthn/enrol` | `dispatch-auth.ts` | authenticated TOTP session required | enrol bucket | HTML page |
+| POST | `/auth/webauthn/register/start` | `dispatch-auth.ts` | retired for single-user | enrol bucket | 410, use Settings; family account enrolment is separate below |
+| POST | `/auth/webauthn/register/finish` | `dispatch-auth.ts` | retired for single-user | enrol bucket | 410, use Settings |
+| GET/HEAD | `/auth/webauthn/enrol` | `dispatch-auth.ts` | retired for single-user | enrol bucket | 410, use Settings |
+| GET | `/agent/passkeys` | `auth/single-user-passkeys.ts` | enabled default-owner session with an accepted factor; no internal/no-auth bypass | none | no-store list, RP, recent-auth and action eligibility |
+| POST | `/agent/passkeys` | same | same-origin owner login no older than five minutes; `rename` or `remove` | 20/five-minute management bucket | `{ok:true}`; atomic last-usable-factor guard, no session revocation |
+| POST | `/agent/passkeys/register/start` | same | same recent session; `{name}`; secure origin | same bucket | `{token,options}` bound to session, RP and origin for five minutes |
+| POST | `/agent/passkeys/register/finish` | same | same session and single-use token; verified credential; rechecked before commit | same bucket | `{ok:true}`; duplicate credentials rejected |
 
 ## Family development routes
 

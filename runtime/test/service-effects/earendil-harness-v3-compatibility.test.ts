@@ -190,7 +190,7 @@ describe("latent Earendil Harness v3 compatibility evidence", () => {
     expectDeepFrozen(normalized.value);
 
     expect(normalized.value.schemaVersion).toBe(5);
-    expect(normalized.value.authority).toEqual({ currentRuntimeVersion: "0.85.1", harnessActivation: "latent_only", unsupportedCountsAsPass: false });
+    expect(normalized.value.authority).toEqual({ currentRuntimeVersion: "0.87.1", harnessActivation: "latent_only", unsupportedCountsAsPass: false });
     expect(normalized.value.historical.authority).toEqual({
       currentRuntimeVersion: "0.84.4",
       harnessBaselineVersion: "0.84.1",
@@ -300,7 +300,7 @@ describe("latent Earendil Harness v3 compatibility evidence", () => {
     expect(receipt.operations.map((r: { operation: string }) => r.operation)).toEqual(EARENDIL_HARNESS_DIRECT_OPERATIONS);
     expect(receipt.operations).toHaveLength(25);
     expect(receipt.operations.every((r: { status: string; errorName: string }) => r.status === "unsupported" && r.errorName === "HarnessNotImplemented")).toBe(true);
-    expect(await readInstalledEarendilAgentCoreVersion()).toBe("0.85.1");
+    expect(await readInstalledEarendilAgentCoreVersion()).toBe("0.87.1");
   });
 
   test("maps every selected HC row and status to exact active public test registrations", () => {
@@ -358,8 +358,8 @@ describe("latent Earendil Harness v3 compatibility evidence", () => {
   test("published 0.87 candidate evidence remains separate from installed selected authority", () => {
     const manifest = EARENDIL_HARNESS_V3_COMPATIBILITY_MANIFEST;
     const candidate = manifest.publishedCandidate;
-    expect(manifest.authority.currentRuntimeVersion).toBe("0.85.1");
-    expect(manifest.selected.version).toBe("0.85.1");
+    expect(manifest.authority.currentRuntimeVersion).toBe("0.87.1");
+    expect(manifest.selected.version).toBe("0.87.1");
     expect(manifest.selected.runtimeSelection).toBe("installed_current_loop");
     expect(candidate.version).toBe("0.87.0");
     expect(candidate.commit).toBe("16787ad5b2dc748047f314ca1bfe7708f30f54f3");
@@ -548,7 +548,7 @@ describe("latent Earendil Harness v3 compatibility evidence", () => {
 
   test("selected-release partial HC coverage never counts as full promotion", () => {
     const selected = EARENDIL_HARNESS_V3_COMPATIBILITY_MANIFEST.selected;
-    expect(selected.version).toBe("0.85.1");
+    expect(selected.version).toBe("0.87.1");
     const selectedIds: readonly string[] = selected.capabilities.map((capability) => capability.id);
     expect(selectedIds).toEqual(
       Array.from({ length: 25 }, (_, index) => `HC-${String(index + 1).padStart(3, "0")}`),

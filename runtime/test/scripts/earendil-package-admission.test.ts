@@ -20,7 +20,7 @@ import {
   parseAdmissionArgs,
 } from "../../../scripts/check-earendil-package-admission.ts";
 
-const VERSION = "0.85.1";
+const VERSION = "0.87.1";
 const GIT_HEAD = "0123456789abcdef0123456789abcdef01234567";
 const fixtureRoot = resolve(import.meta.dir, "../fixtures/earendil-package-admission/valid-consumer");
 const scratchRoots: string[] = [];
@@ -101,7 +101,7 @@ describe("Earendil package admission checker", () => {
 
     expect(() => parseAdmissionArgs([
       "--consumer-root", "./consumer",
-      "--version", "^0.85.1",
+      "--version", "^0.87.1",
       "--git-head", GIT_HEAD,
       "--node", "/opt/node/bin/node",
       "--bun", "/opt/bun/bin/bun",

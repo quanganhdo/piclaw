@@ -37,6 +37,7 @@ import type {
   ToolCall,
   ToolResultMessage,
 } from "@earendil-works/pi-ai";
+import { providerTranscriptContext } from "../src/extensions/transcript-context-compat.js";
 
 type HarnessCaseName = "smoke" | "json" | "tool" | "history";
 
@@ -46,7 +47,7 @@ type RegisteredProvider = {
   api: string;
   apiKey?: string;
   headers?: Record<string, string>;
-  streamSimple: (model: Model<Api>, context: Context, options?: SimpleStreamOptions) => AsyncIterable<any>;
+  streamSimple: (model: Model<Api>, context: ReturnType<typeof providerTranscriptContext>, options?: SimpleStreamOptions) => AsyncIterable<any>;
   models?: Array<Partial<Model<Api>> & { id: string; name: string }>;
 };
 
@@ -600,7 +601,7 @@ async function runSingleStream(
     let currentMessage: AssistantMessage | undefined;
 
     try {
-      const stream = model.providerConfig.streamSimple(model, context, {
+      const stream = model.providerConfig.streamSimple(model, providerTranscriptContext(context), {
         apiKey: model.providerConfig.apiKey,
         headers: model.headers,
         sessionId: options.sessionId,

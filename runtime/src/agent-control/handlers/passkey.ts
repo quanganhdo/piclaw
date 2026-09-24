@@ -2,26 +2,20 @@
  * agent-control/handlers/passkey.ts – Manage WebAuthn passkeys.
  *
  * Commands:
- *   /passkey enrol|enroll  – generate a one-time enrolment link
+ *   /passkey enrol|enroll  – open passkey Settings
  *   /passkey list          – list registered passkeys
- *   /passkey delete <id>   – delete a passkey by ID prefix
+ *   /passkey delete <id>   – direct removal to authenticated Settings
  */
 
 import type { AgentSession } from "@earendil-works/pi-coding-agent";
 import { readAccessConfig } from "../../core/config-access.js";
 import type { AgentControlCommand, AgentControlResult } from "../agent-control-types.js";
 import { getWebRuntimeConfig } from "../../core/config.js";
-import { getChatChannel, getChatJid } from "../../core/chat-context.js";
-import { getWebOrigin } from "../../channels/web/auth/request-origin.js";
 import {
-  createWebauthnEnrollment,
   listWebauthnCredentials,
   findWebauthnCredentialsByPrefix,
-  deleteWebauthnCredential,
   DEFAULT_WEB_USER_ID,
 } from "../../db.js";
-
-const MAX_LINK_MINUTES = 5;
 
 type PasskeyCommand = Extract<AgentControlCommand, { type: "passkey" }>;
 
@@ -46,31 +40,14 @@ export async function handlePasskey(_session: AgentSession, command: PasskeyComm
       status: "success",
       message:
         "Passkey commands:\n" +
-        "• /passkey enrol – generate a one-time enrolment link\n" +
+        "• /passkey enrol – use Settings → Authentication\n" +
         "• /passkey list – list registered passkeys\n" +
-        "• /passkey delete <id> – remove a passkey by ID prefix",
+        "• /passkey delete <id> – use Settings → Authentication to remove a passkey",
     };
   }
 
   if (action === "enrol" || action === "enroll") {
-    const webRuntimeConfig = getWebRuntimeConfig();
-    if (!webRuntimeConfig.totpSecret || !webRuntimeConfig.totpSecret.trim()) {
-      return { status: "error", message: "TOTP is not configured; enrolment is disabled." };
-    }
-    const channel = getChatChannel();
-    if (channel !== "web") {
-      return { status: "error", message: "Passkey enrolment must be started from the web UI." };
-    }
-    const enrollment = createWebauthnEnrollment(DEFAULT_WEB_USER_ID, MAX_LINK_MINUTES * 60);
-    const relative = `/auth/webauthn/enrol?token=${enrollment.token}`;
-    const origin = getWebOrigin(getChatJid()) || "";
-    const absolute = origin ? `${origin}${relative}` : relative;
-    const message = [
-      "Open this link in the same browser to register a passkey:",
-      absolute.startsWith("http") ? absolute : `<${absolute}>`,
-      `This link expires in ${MAX_LINK_MINUTES} minutes.`,
-    ].join("\n");
-    return { status: "success", message };
+    return { status: "success", message: "Add passkeys in Settings → Authentication. Sign in again there if requested; no enrolment link was created." };
   }
 
   if (action === "list") {
@@ -98,8 +75,9 @@ export async function handlePasskey(_session: AgentSession, command: PasskeyComm
       const suggestions = matches.map((cred) => maskCredential(cred.credential_id));
       return { status: "error", message: `Ambiguous prefix. Matches: ${suggestions.join(", ")}` };
     }
-    deleteWebauthnCredential(matches[0].credential_id);
-    return { status: "success", message: "Passkey removed." };
+    // Agent-control has no browser-bound recent proof. Never bypass the
+    // Settings transaction's current-RP and last-usable-factor checks here.
+    return { status: "error", message: "Remove passkeys in Settings → Authentication after signing in again. No passkey was removed." };
   }
 
   return { status: "error", message: "Unknown passkey action. Use /passkey for help." };

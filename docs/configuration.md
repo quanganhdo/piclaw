@@ -851,16 +851,18 @@ You can either preconfigure `PICLAW_WEB_TOTP_SECRET` yourself or initialize it f
 
 ### Passkey enrolment
 
-1. Sign in with TOTP.
-2. Run `/passkey enrol` in the web UI to get a one-time enrolment link (valid for 5 minutes).
-3. Open the link in the same browser and complete the passkey prompt. The enrol page requires a TOTP session — passkey-only sessions are not sufficient.
+1. Sign in with an enabled method: TOTP for the first passkey, or an existing passkey for additional keys.
+2. Open **Settings → Authentication → Passkeys** in Classic or Visual.
+3. Choose **Add passkey**, give it a name and complete the browser's native prompt. The key appears after server verification.
+4. If your login is older than five minutes, use **Sign in again**, then return and select **Refresh**. Adding another key in passkey-only mode does not require TOTP.
 
 ### Notes
 
-- Multiple passkeys are supported per user; use `/passkey list` to review and `/passkey delete` to revoke.
+- Settings lists names, creation dates and last use, with per-key Rename and Remove actions. `/passkey list` still works; enrol/delete commands now direct you to authenticated Settings.
 - Passkeys are bound to the hostname used during enrolment (RP ID).
 - The login page offers an explicit passkey button and optional conditional mediation when passkeys are enabled. TOTP remains available only when configured; passkey-only mode hides the code form, and totp-only mode makes no passkey attempt.
-- `/passkey enrol` still requires a TOTP-authenticated session. Passkeys are a login factor; TOTP remains the enrollment/bootstrap factor.
+- Removing a passkey blocks future login with it but does not sign out existing sessions. The server refuses removal of the last usable sign-in method; keys for another hostname and TOTP disabled by policy do not count as fallback.
+- Legacy single-user bearer enrolment links and `/auth/webauthn/register/*` are retired (HTTP 410). Use session-bound Settings; existing registered credentials are preserved.
 - All auth endpoints (`/auth/verify`, WebAuthn login, and enrol) are rate-limited per IP (10–20 attempts per 5 minutes).
 - After five failed TOTP attempts in five minutes, the IP is temporarily locked out for five minutes (with audit logs emitted on failures).
 - TOTP confirmation flows return explicit success/failure feedback and report whether the secret/session state changed.

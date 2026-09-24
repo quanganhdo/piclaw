@@ -74,8 +74,8 @@ describe("web auth endpoints", () => {
 
     expect(loginStart.status).toBe(404);
     expect(loginFinish.status).toBe(404);
-    expect(registerStart.status).toBe(404);
-    expect(registerFinish.status).toBe(404);
+    expect(registerStart.status).toBe(410);
+    expect(registerFinish.status).toBe(410);
     expect(enrolPage.status).toBe(404);
   });
 

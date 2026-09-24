@@ -11,7 +11,7 @@ export interface TextLineRecord { readonly text: string; readonly terminated: bo
 export interface TextLineReader { readLine(context: Context): Promise<ResultValue<TextLineRecord | undefined, FileError>>; close(context: Context): Promise<void> }
 export type TextLineEnvironment = ExecutionEnv & { openTextLineReader(path: string, context: Context): Promise<ResultValue<TextLineReader, FileError>> };
 
-/** Temporary 0.85.1 Node compatibility; the 0.87.1 Node environment supplies this method itself. */
+/** Compatibility fallback for older injected Node environments; 0.87.1 supplies the method itself. */
 export function withLocalTextLineReader(delegate: ExecutionEnv): TextLineEnvironment {
   const original = delegate as Partial<TextLineEnvironment>;
   if (typeof original.openTextLineReader === 'function') return delegate as TextLineEnvironment;

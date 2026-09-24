@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { Type } from "typebox";
 import { streamSimple } from "@earendil-works/pi-ai/api/openai-completions";
-import type { AssistantMessage, Context, Model, Tool, ToolResultMessage } from "@earendil-works/pi-ai";
+import { normalizeContext, type AssistantMessage, type Context, type Model, type Tool, type ToolResultMessage } from "@earendil-works/pi-ai";
 
 function assistantToolCall(): AssistantMessage {
   return {
@@ -64,21 +64,25 @@ function model(baseUrl: string, kimi: boolean): Model<"openai-completions"> {
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
     contextWindow: 128_000,
     maxTokens: 4096,
-    ...(kimi ? { compat: { deferredToolsMode: "kimi" } } : {}),
+    ...(kimi ? { compat: { supportsMidConvoSystemMessages: true, supportsMidConvoToolAdditions: true } } : {}),
   };
 }
 
 function context(): Context {
+  const initial = normalizeContext({ messages: [], tools: [activateTools] });
   return {
-    systemPrompt: "",
-    messages: [assistantToolCall(), activationResult()],
-    tools: [activateTools, demoTool],
+    messages: [
+      ...initial.messages,
+      assistantToolCall(),
+      activationResult(),
+      { role: "system", content: "", toolsAdded: [demoTool], timestamp: 3 },
+    ],
   };
 }
 
 async function captureRequest(kimi: boolean): Promise<Record<string, any>> {
   let requestBody: Record<string, any> | undefined;
-  const stream = streamSimple(model("https://example.invalid/v1", kimi), context(), {
+  const stream = streamSimple(model("https://example.invalid/v1", kimi), normalizeContext(context()), {
     apiKey: "test-key",
     maxRetries: 0,
     onPayload(payload) {
