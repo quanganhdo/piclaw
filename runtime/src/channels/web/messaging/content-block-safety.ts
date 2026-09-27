@@ -1,5 +1,6 @@
 /** Internal timeline metadata that public callers must not be allowed to forge. */
 const INTERNAL_CONTENT_BLOCK_TYPES = new Set([
+  "addon_local_dispatch",
   "restart_handoff",
   "self_continuation",
   "control_intent",
@@ -8,6 +9,7 @@ const INTERNAL_CONTENT_BLOCK_TYPES = new Set([
 ]);
 
 const MODEL_FORBIDDEN_CONTENT_BLOCK_TYPES = new Set([
+  "addon_local_dispatch",
   "control_intent",
   "turn_outcome_marker",
   "agent_turn_marker",

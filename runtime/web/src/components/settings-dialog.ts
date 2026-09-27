@@ -139,12 +139,12 @@ const BUILTIN_SECTIONS = [
     { id: 'environment', label: 'Environment', icon: iconEnvironment, searchable: true, placeholder: 'Filter environment…', order: 16 },
     { id: 'providers', label: 'Providers', icon: iconProviders, searchable: false, order: 20 },
     { id: 'models', label: 'Models', icon: iconModels, searchable: true, placeholder: 'Filter models…', order: 30 },
-    { id: 'theme', label: 'Appearance', icon: iconAppearance, searchable: false, order: 40 },
+    { id: 'theme', label: 'Appearance', icon: iconAppearance, searchable: false, order: 11 },
     { id: 'scheduled-tasks', label: 'Scheduled Tasks', icon: iconScheduledTasks, searchable: true, placeholder: 'Filter scheduled tasks…', order: 65 },
-    { id: 'quick-actions', label: 'Quick Actions', icon: iconQuickActions, searchable: true, placeholder: 'Filter quick actions…', order: 70 },
+    { id: 'quick-actions', label: 'Quick Actions', icon: iconQuickActions, searchable: true, placeholder: 'Filter quick actions…', order: 14.5 },
     { id: 'authentication', label: 'Authentication', icon: iconKeychain, searchable: false, order: 55 },
-    { id: 'keychain', label: 'Keychain', icon: iconKeychain, searchable: true, placeholder: 'Filter entries…', order: 75 },
-    { id: 'tools', label: 'Tools', icon: iconTools, searchable: true, placeholder: 'Filter tools…', order: 80 },
+    { id: 'keychain', label: 'Keychain', icon: iconKeychain, searchable: true, placeholder: 'Filter entries…', order: 17 },
+    { id: 'tools', label: 'Tools', icon: iconTools, searchable: true, placeholder: 'Filter tools…', order: 31 },
     { id: 'addons', label: 'Add-ons', icon: iconAddons, searchable: true, placeholder: 'Filter add-ons…', order: 90 },
 ];
 
@@ -180,7 +180,7 @@ export function SettingsDialogContent({ onClose }) {
 
     useEffect(() => {
         const onOpenSettings = (event) => {
-            const requestedSection = typeof event?.detail?.section === 'string' ? event.detail.section.trim() : '';
+            const requestedSection = normalizeSettingsSectionId(event?.detail?.section);
             if (requestedSection) {
                 setActiveSection(requestedSection);
                 setFilter('');
@@ -312,7 +312,7 @@ export function SettingsDialogContent({ onClose }) {
         }
 
         switch (activeSection) {
-            case 'authentication': return html`<${Comp} />`;
+            case 'authentication': return html`<${Comp} settingsData=${settingsData} setStatus=${setStatus} mergeSettingsData=${mergeSettingsData} />`;
             case 'general': return html`<${Comp} settingsData=${settingsData} setStatus=${setStatus} mergeSettingsData=${mergeSettingsData} />`;
             case 'sessions': return html`<${Comp} settingsData=${settingsData} setStatus=${setStatus} mergeSettingsData=${mergeSettingsData} />`;
             case 'recordings': return html`<${Comp} filter=${filter} setStatus=${setStatus} />`;

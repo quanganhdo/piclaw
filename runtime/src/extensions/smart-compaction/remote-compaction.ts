@@ -573,19 +573,29 @@ export async function attemptRemoteCompaction(options: {
   }
 }
 
-function partContainsSentinel(part: unknown): boolean {
-  if (typeof part === "string") return part.includes(REMOTE_COMPACTION_SUMMARY_SENTINEL);
-  if (!part || typeof part !== "object" || Array.isArray(part)) return false;
-  const content = part as Record<string, unknown>;
-  return typeof content.text === "string" && content.text.includes(REMOTE_COMPACTION_SUMMARY_SENTINEL);
+// Derive the SDK's synthetic summary wrapper from its public converter. A user
+// quoting the sentinel inside a real prompt must never be mistaken for this item.
+const remoteSummaryMessage = convertToLlm([{
+  role: "compactionSummary", summary: REMOTE_COMPACTION_SUMMARY_SENTINEL, tokensBefore: 0, timestamp: 0,
+}]);
+const remoteSummaryContent = remoteSummaryMessage[0]?.role === "user" ? remoteSummaryMessage[0].content : null;
+const REMOTE_COMPACTION_MARKER_TEXT = Array.isArray(remoteSummaryContent)
+  ? remoteSummaryContent.find((part) => part.type === "text")?.text
+  : remoteSummaryContent;
+
+function isMarkerText(value: unknown): boolean {
+  return typeof value === "string" && value === REMOTE_COMPACTION_MARKER_TEXT;
 }
 
 function inputItemContainsSentinel(item: unknown): boolean {
   if (!item || typeof item !== "object" || Array.isArray(item)) return false;
   const record = item as Record<string, unknown>;
-  if (typeof record.content === "string") return partContainsSentinel(record.content);
-  if (!Array.isArray(record.content)) return false;
-  return record.content.some(partContainsSentinel);
+  if (record.role !== undefined && record.role !== "user") return false;
+  if (typeof record.content === "string") return isMarkerText(record.content);
+  if (!Array.isArray(record.content) || record.content.length !== 1) return false;
+  const part = record.content[0];
+  if (!part || typeof part !== "object" || Array.isArray(part)) return false;
+  return (part.type === "input_text" || part.type === "text") && isMarkerText(part.text);
 }
 
 /**
@@ -630,7 +640,11 @@ export function prependRemoteCompactionPayload(payload: unknown, details: Remote
   }
   const record = payload as Record<string, unknown>;
   if (!Array.isArray(record.input)) return stripRemoteCompactionMarker(payload);
-  return { ...record, input: [...structuredClone(details.output), ...record.input] };
+  const markerIndex = record.input.findIndex(inputItemContainsSentinel);
+  const suffix = markerIndex < 0
+    ? record.input
+    : [...record.input.slice(0, markerIndex), ...record.input.slice(markerIndex + 1)];
+  return { ...record, input: [...structuredClone(details.output), ...suffix] };
 }
 
 export function injectRemoteCompactionPayload(

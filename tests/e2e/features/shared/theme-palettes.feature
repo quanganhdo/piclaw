@@ -100,6 +100,19 @@ Feature: Shared palette identities with skin-specific interfaces
     Then Full UI and compose animations and inherited text glow are removed
     And attachment preview backdrops remain translucent without reducing image opacity
 
+  @ux-themes-010 @pwa
+  Scenario: Apply standalone chrome colours without opening a dashboard
+    Given either skin starts with a saved bundled or imported palette
+    Then the early document background and browser theme colours match the selected palette before application hydration
+    And explicit colour mode takes precedence over the system preference
+    When I change the palette or resume the standalone webapp
+    Then root and body backgrounds and all theme-colour tags match the active palette
+    And the Apple status-bar style remains black-translucent
+    And the theme update does not change scroll position, focus or viewport geometry
+    And visible Apple standalone pages schedule at most one coalesced chrome refresh frame per update batch
+    And hidden pages and normal browser tabs do not run that repaint callback
+    # Desktop WebKit verifies metadata/lifecycle only. Native iOS safe-area paint needs device confirmation.
+
   @ux-themes-009
   Scenario: Keep workspace charts and meter traces consistent with the selected palette
     Given either skin shows a selected folder and its size chart

@@ -1040,17 +1040,19 @@ export function usePaneRuntimeOrchestration(options: UsePaneRuntimeOrchestration
     const savedViewState = tabStore.getViewState(activeId);
     const savedContent = savedViewState?.content;
     const tabIsDirty = tabStore.getTabs().find(t => t.id === activeId)?.dirty;
+    const isAddonPath = activeId.startsWith('piclaw://addon/');
     const context = {
       path: activeId,
-      mode: 'edit',
+      mode: isAddonPath ? 'view' : 'edit',
       ...(pendingTransfer?.content !== undefined ? { content: pendingTransfer.content }
         : tabIsDirty && typeof savedContent === 'string' ? { content: savedContent, dirty: true }
         : {}),
       ...(pendingTransfer?.mtime !== undefined ? { mtime: pendingTransfer.mtime } : {}),
       ...(resolvedTransferState ? { transferState: resolvedTransferState } : {}),
     };
-    const ext = (effectivePaneOverrideId ? paneRegistry.get(effectivePaneOverrideId) : null)
-      || paneRegistry.resolve(context)
+    const override = !isAddonPath && effectivePaneOverrideId ? paneRegistry.get(effectivePaneOverrideId) : null;
+    const ext = override
+      || paneRegistry.resolve(context, isAddonPath ? effectivePaneOverrideId : null)
       || paneRegistry.get('editor');
 
     const createInstanceHost = () => {
@@ -1272,7 +1274,7 @@ export function usePaneRuntimeOrchestration(options: UsePaneRuntimeOrchestration
   const refreshActiveEditorFromWorkspace = useCallback(async (updates: unknown) => {
     const activePath = typeof tabStripActiveId === 'string' ? tabStripActiveId.trim() : '';
     const instance = editorInstanceRef.current;
-    if (!activePath || !instance?.setContent) return;
+    if (!activePath || activePath.startsWith('piclaw://addon/') || !instance?.setContent) return;
     if (typeof instance.isDirty === 'function' && instance.isDirty()) return;
     if (!isWorkspaceUpdateRelevantForPath(activePath, updates)) return;
 

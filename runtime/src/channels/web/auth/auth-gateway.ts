@@ -77,8 +77,8 @@ export class WebAuthGateway {
     return verifyInternalSecret(req, this.config);
   }
 
-  getPrincipal(req: Request): AuthenticatedPrincipal | null {
-    if (this.principals.has(req)) return this.principals.get(req)!;
+  getPrincipal(req: Request, refresh = false): AuthenticatedPrincipal | null {
+    if (!refresh && this.principals.has(req)) return this.principals.get(req)!;
     const principal = resolveRequestPrincipal(req, {
       mode: this.config.accessMode ?? "single-user",
       authEnabled: this.isAuthEnabled(),

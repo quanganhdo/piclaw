@@ -11,6 +11,7 @@ import { detectChannel } from "../router.js";
 import { withChatContext } from "../core/chat-context.js";
 import { installSessionUsageRecorder, recordMessageUsage } from "./usage.js";
 import { createLogger, debugSuppressedError } from "../utils/logger.js";
+import { withoutAddonLocalContext } from '../addons/local-context.js';
 import { normalizeLlmContext } from "./llm-context-normalizer.js";
 import {
   extractAssistantText,
@@ -199,11 +200,11 @@ export async function runSidePrompt(
   }
 
   try {
-    await withChatContext(chatJid, channel, async () => {
+    await withoutAddonLocalContext(() => withChatContext(chatJid, channel, async () => {
       const composedPrompt = options.systemPrompt ? `${options.systemPrompt}\n\n${prompt}` : prompt;
       await sideSession.prompt(composedPrompt);
       await waitForSessionIdle(sideSession);
-    });
+    }));
   } catch (err) {
     if (timeoutId) clearTimeout(timeoutId);
     unsubscribe();

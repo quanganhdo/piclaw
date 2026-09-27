@@ -111,17 +111,6 @@ export function GeneralSection({
         <span className="settings-panel__description">Limit the model picker to models that have been explicitly scoped to this instance.</span>
       </div>
 
-      <h3 className="settings-panel__subsection-title">Authentication</h3>
-      <div className="settings-panel__field">
-        <label className="settings-panel__label">TOTP setup QR</label>
-        <div className="settings-panel__card">
-          <span className="settings-panel__description">
-            {data.instanceTotp?.configured
-              ? "TOTP is configured for this instance."
-              : "TOTP is not configured for this instance yet, so no setup QR is available."}
-          </span>
-        </div>
-      </div>
     </section>
   );
 }

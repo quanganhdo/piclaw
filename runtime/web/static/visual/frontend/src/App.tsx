@@ -1,3 +1,4 @@
+import { normalizeSettingsSectionId } from '../../../../src/components/settings-dialog-events';
 import { startPickerPinSync } from '../../../../src/ui/picker-pin-sync';
 import { isSafeExtensionUrl } from "./utils/isSafeExtensionUrl";
 import { useCallback, useRef, useEffect } from "preact/hooks";
@@ -140,7 +141,7 @@ function AppContent() {
 
   useEffect(() => {
     const onOpenSettings = (event: Event) => {
-      const section = (event as CustomEvent<{ section?: string }>).detail?.section;
+      const section = normalizeSettingsSectionId((event as CustomEvent<{ section?: string }>).detail?.section);
       if (section) safeSetItem("piclaw-settings-category", section);
       if (activePanel.value !== "settings") previousPanel.value = activePanel.value;
       activePanel.value = "settings";

@@ -2,6 +2,8 @@
  * web/http/request-guards.ts – Auth/CSRF/rate-limit pre-dispatch guards.
  */
 
+import { admitAddonLocalRequest } from "../../../addons/local-context.js";
+import type { AuthenticatedPrincipal as WebPrincipal } from "../../../core/access-types.js";
 import {
   handleAuthVerifyEndpoint,
   redirectToLoginResponse,
@@ -36,6 +38,7 @@ export interface RequestGuardsChannel {
     verifyInternalSecret(req: Request): boolean;
     /** Validate whether the request has an authenticated user session. */
     isAuthenticated(req: Request): boolean;
+    getPrincipal?(req: Request, refresh?: boolean): WebPrincipal | null;
   };
   /** Endpoint contexts used by auth verify/login route helpers. */
   endpointContexts: {
@@ -161,5 +164,17 @@ export async function enforceRequestGuards(
     }
   }
 
+  // Only the actual guarded Request receives local add-on authority. Internal
+  // transport calls and client-supplied IDs cannot manufacture this admission.
+  if (!hasInternalAccess && pathname.startsWith("/agent/addons/api/")) {
+    const principal = channel.authGateway.getPrincipal?.(req) ?? null;
+    admitAddonLocalRequest(req, principal, () => {
+      const current = channel.authGateway.getPrincipal?.(req, true);
+      return Boolean(current && current.userId === principal?.userId && current.kind === principal?.kind
+        && current.authentication.sessionId === principal?.authentication.sessionId
+        && current.authentication.method === principal?.authentication.method
+        && current.authentication.expiresAt === principal?.authentication.expiresAt);
+    });
+  }
   return null;
 }

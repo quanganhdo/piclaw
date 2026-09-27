@@ -1,5 +1,6 @@
 import { WEB_THEME_PRESETS, normaliseWebThemeId, type ThemePalette, type ThemePreset, type ThemeMode } from '../../../src/core/ui-theme-catalogue.js';
 import { paletteVariables, visualDefaultPalette, themeForeground } from './theme-palette.js';
+import { applyThemeChrome, watchThemeChrome } from './theme-chrome.js';
 import { getLocalStorageItem, setLocalStorageItem } from '../utils/storage.js';
 
 const THEME_STORAGE_KEY = 'piclaw_theme';
@@ -227,63 +228,6 @@ export function applyOutputPad(value: unknown) {
     document.documentElement.dataset.outputPad = String(clamped);
 }
 
-function ensureMetaTag(name: string, options: { id?: string } = {}) {
-    if (typeof document === 'undefined') return null;
-    const id = typeof options.id === 'string' && options.id.trim() ? options.id.trim() : null;
-    let tag = (id
-        ? document.getElementById(id)
-        : document.querySelector(`meta[name="${name}"]`)) as HTMLMetaElement | null;
-    if (!tag) {
-        tag = document.createElement('meta');
-        document.head.appendChild(tag);
-    }
-    tag.setAttribute('name', name);
-    if (id) tag.setAttribute('id', id);
-    return tag;
-}
-
-function resolveThemeColorForMode(mode: ThemeMode) {
-    const themeName = normalizeThemeName(currentTheme?.theme || 'default');
-    const tint = currentTheme?.tint ? String(currentTheme.tint).trim() : null;
-    let palette = resolvePalette(themeName, mode);
-    if (themeName === 'default' && tint) {
-        palette = buildTintedPalette(palette, tint, mode);
-    }
-    if (palette?.bgPrimary) return palette.bgPrimary;
-    return mode === 'dark' ? DEFAULT_DARK.bgPrimary : DEFAULT_LIGHT.bgPrimary;
-}
-
-function updateMetaColor(color: string, mode: ThemeMode) {
-    if (typeof document === 'undefined') return;
-
-    const themeMeta = ensureMetaTag('theme-color', { id: 'dynamic-theme-color' });
-    if (themeMeta && color) {
-        themeMeta.removeAttribute('media');
-        themeMeta.setAttribute('content', color);
-    }
-
-    const lightThemeMeta = ensureMetaTag('theme-color', { id: 'theme-color-light' });
-    if (lightThemeMeta) {
-        lightThemeMeta.setAttribute('media', '(prefers-color-scheme: light)');
-        lightThemeMeta.setAttribute('content', resolveThemeColorForMode('light'));
-    }
-
-    const darkThemeMeta = ensureMetaTag('theme-color', { id: 'theme-color-dark' });
-    if (darkThemeMeta) {
-        darkThemeMeta.setAttribute('media', '(prefers-color-scheme: dark)');
-        darkThemeMeta.setAttribute('content', resolveThemeColorForMode('dark'));
-    }
-
-    const tileMeta = ensureMetaTag('msapplication-TileColor');
-    if (tileMeta && color) tileMeta.setAttribute('content', color);
-
-    const navMeta = ensureMetaTag('msapplication-navbutton-color');
-    if (navMeta && color) navMeta.setAttribute('content', color);
-
-    const statusMeta = ensureMetaTag('apple-mobile-web-app-status-bar-style');
-    if (statusMeta) statusMeta.setAttribute('content', mode === 'dark' ? 'black-translucent' : 'default');
-}
-
 function emitThemeChange() {
     if (typeof window === 'undefined') return;
     const detail = { ...currentTheme, mode: currentMode };
@@ -299,13 +243,6 @@ function resolveCurrentChatJid() {
     } catch {
         return 'web:default';
     }
-}
-
-function syncDocumentBackground(color: string) {
-    if (typeof document === 'undefined' || !color) return;
-    const root = document.documentElement;
-    if (root?.style) root.style.background = color;
-    if (document.body?.style) document.body.style.background = color;
 }
 
 function applyThemeState(nextTheme: Partial<ThemeState>, options: { persist?: boolean } = {}) {
@@ -335,8 +272,7 @@ function applyThemeState(nextTheme: Partial<ThemeState>, options: { persist?: bo
     root.dataset.synthwaveGlow = preset.glow ? 'on' : 'off';
     updateThemeVisibility();
 
-    syncDocumentBackground(palette.bgPrimary);
-    updateMetaColor(palette.bgPrimary, mode);
+    applyThemeChrome(palette.bgPrimary);
     emitThemeChange();
 
     if (options.persist !== false) {
@@ -376,6 +312,7 @@ export function initTheme(options: {skin?: 'classic' | 'visual'} = {}) {
     reapplyStoredTheme();
     updateThemeVisibility();
     document.addEventListener('visibilitychange', updateThemeVisibility);
+    const stopChrome = watchThemeChrome();
 
     if (window.matchMedia && !mediaListenerAttached) {
         const media = window.matchMedia('(prefers-color-scheme: dark)');
@@ -391,12 +328,13 @@ export function initTheme(options: {skin?: 'classic' | 'visual'} = {}) {
             } else if (media.removeListener) {
                 media.removeListener(handleSystemThemeChange);
             }
+            stopChrome();
             mediaListenerAttached = false;
             document.removeEventListener('visibilitychange', updateThemeVisibility);
         };
     }
 
-    return () => document.removeEventListener('visibilitychange', updateThemeVisibility);
+    return () => { stopChrome(); document.removeEventListener('visibilitychange', updateThemeVisibility); };
 }
 
 export function applyThemeFromEvent(payload: any) {

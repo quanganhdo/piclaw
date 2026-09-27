@@ -27,9 +27,9 @@ test("legacy Visual add-on descendant overrides cannot restyle built-in Settings
   expect(legacy).toContain(":not(.settings-addon-label)");
 });
 
-test("narrow-layout overrides are scoped to the measured General and Keychain failures", () => {
+test("narrow-layout overrides are scoped to General, Keychain and the moved settings forms", () => {
   const css = read("visual/css/shell.css");
-  expect(css).toContain(":is(.settings-panel__section--general, .settings-panel__section--keychain)");
+  expect(css).toContain(":is(.settings-panel__section--general, .settings-panel__section--keychain, .settings-panel__section--authentication, .settings-panel__section--api-access, .settings-panel__section--sessions)");
   expect(css).toContain(".settings-panel__section--general .settings-panel__checkbox-row { margin-left: 0; }");
   expect(css).toContain(".settings-panel__section--keychain .settings-panel__actions-row { flex-wrap: wrap; }");
   expect(css).toContain(".settings-panel__content :is(.settings-panel__input, .settings-panel__select, .settings-panel__stepper-value, .custom-select__trigger):focus-visible");

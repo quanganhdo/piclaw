@@ -1,3 +1,4 @@
+import { withAddonLocalPrompt, revokeAddonLocalAgent } from '../addons/local-context.js';
 import { createOperationModelBoundary } from "./run-operation-boundary.js";
 /**
  * agent-pool/run-agent-orchestrator.ts – Main runAgent prompt lifecycle orchestration.
@@ -968,6 +969,11 @@ export async function runAgentPrompt(
   runOptions: RunAgentOptions,
   options: RunAgentOrchestratorOptions,
 ): Promise<AgentOutput> {
+  return withAddonLocalPrompt(chatJid, runOptions.executionProvenance === undefined && !hasScheduledDispatch(),
+    () => runAgentPromptWithAdmission(prompt, chatJid, runOptions, options));
+}
+
+async function runAgentPromptWithAdmission(prompt: string, chatJid: string, runOptions: RunAgentOptions, options: RunAgentOrchestratorOptions): Promise<AgentOutput> {
   const mode = readAccessConfig().mode;
   if (mode === "single-user" && runOptions.executionProvenance === undefined && !hasScheduledDispatch()) {
     return withExecutionIdentity(null, () => runAgentPromptWithIdentity(prompt, chatJid, runOptions, options));
@@ -1031,6 +1037,7 @@ async function runAgentPromptWithIdentity(
     }
     if(hasScheduledDispatch())authoriseScheduledDispatch(chatJid,runOptions.executionProvenance);
     let session = runtime.session;
+    if (session.getSteeringMessages?.().length || session.getFollowUpMessages?.().length) revokeAddonLocalAgent(chatJid);
     if(hasScheduledDispatch()&&(session.isStreaming||session.isCompacting||session.isRetrying))throw new Error("Scheduled target is busy.");
     if(!hasScheduledDispatch())session = await maybeAutoRotateSession(session, runtime, chatJid, options);
     // Protected recovery/finalization attempts deliberately clear tools. An

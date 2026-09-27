@@ -7443,19 +7443,19 @@ pre.frontmatter-block {
   .settings-panel__content {
     padding: 12px 10px;
   }
-  /* Only General and Keychain failed the measured phone-width contract. */
-  :is(.settings-panel__section--general, .settings-panel__section--keychain) .settings-panel__field:not(.settings-panel__checkbox-row) {
+  /* Stack the settings pages with measured phone-width form controls. */
+  :is(.settings-panel__section--general, .settings-panel__section--keychain, .settings-panel__section--authentication, .settings-panel__section--api-access, .settings-panel__section--sessions) .settings-panel__field:not(.settings-panel__checkbox-row) {
     flex-direction: column;
     align-items: stretch;
     gap: 6px;
   }
-  :is(.settings-panel__section--general, .settings-panel__section--keychain) .settings-panel__label {
+  :is(.settings-panel__section--general, .settings-panel__section--keychain, .settings-panel__section--authentication, .settings-panel__section--api-access, .settings-panel__section--sessions) .settings-panel__label {
     min-width: 0;
     max-width: 100%;
     text-align: left;
     white-space: normal;
   }
-  :is(.settings-panel__section--general, .settings-panel__section--keychain) :is(.settings-panel__field-content, .settings-panel__input, .settings-panel__select) {
+  :is(.settings-panel__section--general, .settings-panel__section--keychain, .settings-panel__section--authentication, .settings-panel__section--api-access, .settings-panel__section--sessions) :is(.settings-panel__field-content, .settings-panel__input, .settings-panel__select) {
     min-width: 0;
     max-width: 100%;
   }

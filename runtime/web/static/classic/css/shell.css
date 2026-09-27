@@ -27,6 +27,8 @@
 
 .app-shell.resume-layout-settling > .workspace-sidebar,
 .app-shell.resume-layout-settling > .workspace-splitter,
+.app-shell.resume-layout-settling > .workspace-toggle-tab,
+.app-shell.resume-layout-settling > .workspace-toggle-tab .workspace-toggle-tab-icon,
 .app-shell.resume-layout-settling > .container,
 .app-shell.resume-layout-settling > .editor-pane-container {
     transition: none !important;

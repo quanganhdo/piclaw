@@ -3,6 +3,7 @@ import {
   type VSCodeSyntaxTheme,
 } from "../../../../../../src/core/theme-syntax";
 import { paletteVariables } from "../../../../../src/ui/theme-palette";
+import { applyThemeChrome } from "../../../../../src/ui/theme-chrome";
 import { reapplyStoredTheme } from "../../../../../src/ui/theme";
 /**
  * VS Code theme importer — maps VS Code color keys to our CSS custom properties
@@ -62,8 +63,8 @@ const VSCODE_TO_CSS: Record<string, string> = {
   "editorLink.activeForeground": "--accent",
   "textLink.foreground": "--accent",
   "textLink.activeForeground": "--accent",
-  "selection.background": "--accent",
-  "editor.selectionBackground": "--accent",
+  "editor.selectionBackground": "--selection-background",
+  "selection.background": "--selection-background",
 
   // Semantic colors
   errorForeground: "--error",
@@ -256,6 +257,7 @@ export function applyTheme(vars: Record<string, string>): void {
           "--input-border",
           "--handle",
           "--handle-hover",
+          "--selection-background",
         ].includes(key),
     ),
   );
@@ -277,8 +279,7 @@ export function applyTheme(vars: Record<string, string>): void {
   root.classList.toggle("light", mode === "light");
   root.classList.toggle("dark", mode === "dark");
   root.style.colorScheme = mode;
-  root.style.background = values["--bg"];
-  document.body.style.background = values["--bg"];
+  applyThemeChrome(values["--bg"]);
   window.dispatchEvent(
     new CustomEvent("piclaw-theme-change", { detail: { mode, custom: true } }),
   );

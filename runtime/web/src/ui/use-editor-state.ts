@@ -9,6 +9,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from '../vendor/preact-htm.js';
+import { isAddonVirtualPath, bindAddonPaneLauncher } from './addon-workspace-actions.js';
 import { paneRegistry, tabStore } from '../panes/index.js';
 import { addRecentFile } from './recent-files.js';
 
@@ -133,7 +134,7 @@ export function useEditorState({ onTabClosed } = {}) {
     /** Open a file in the editor. Creates a tab and sets it active. */
     const openEditor = useCallback((path, options = {}) => {
         if (!path) return;
-        const paneOverrideId = typeof options?.paneOverrideId === 'string' && options.paneOverrideId.trim()
+        const paneOverrideId = (!isAddonVirtualPath(path) || paneRegistry.get(options?.paneOverrideId)?.capabilities.includes('readonly')) && typeof options?.paneOverrideId === 'string' && options.paneOverrideId.trim()
             ? options.paneOverrideId.trim()
             : null;
         // Verify there's a pane handler for this file type
@@ -175,6 +176,8 @@ export function useEditorState({ onTabClosed } = {}) {
             });
         }
     }, []);
+
+    useEffect(() => bindAddonPaneLauncher(openEditor), [openEditor]);
 
     /** Close the active tab (with dirty confirmation). */
     const closeEditor = useCallback(() => {
@@ -267,7 +270,7 @@ export function useEditorState({ onTabClosed } = {}) {
 
     /** Replace a specialized editor tab with the generic source editor. */
     const handleTabEditSource = useCallback((id) => {
-        if (!id) return;
+        if (!id || isAddonVirtualPath(id)) return;
         setTabPaneOverrides((prev) => {
             if (prev.get(id) === 'editor') return prev;
             const next = new Map(prev);
@@ -280,7 +283,7 @@ export function useEditorState({ onTabClosed } = {}) {
     /** Reveal active tab in workspace explorer. */
     const revealInExplorer = useCallback(() => {
         const activeId = tabStore.getActiveId();
-        if (activeId) {
+        if (activeId && !isAddonVirtualPath(activeId)) {
             window.dispatchEvent(new CustomEvent('workspace-reveal-path', { detail: { path: activeId } }));
         }
     }, []);

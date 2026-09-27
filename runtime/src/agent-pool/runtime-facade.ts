@@ -5,6 +5,7 @@
  * and queued-message mutations so AgentPool can remain a thinner orchestrator.
  */
 
+import { revokeAddonLocalAgent } from "../addons/local-context.js";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import type { AgentSession, AgentSessionRuntime, ModelRegistry, ModelRuntime, SettingsManager } from "@earendil-works/pi-coding-agent";
@@ -25,7 +26,7 @@ import { promptWithContextPressureRetry } from "./context-pressure-retry.js";
 import { peekProviderUsage, peekProviderUsageForRuntime, warmProviderUsage, type ProviderUsageSnapshot } from "./provider-usage.js";
 import { resolveModelLabel } from "../utils/model-utils.js";
 import { resolveModelScope } from "../utils/scoped-models.js";
-import { withChatContext } from "../core/chat-context.js";
+import { withChatContext, getChatJid } from "../core/chat-context.js";
 import { sanitiseJid } from "./session.js";
 import type { PoolEntry } from "./session-manager.js";
 import { probeCompactionModel, type CompactionModelProbeResult } from "./compaction-model-probe.js";
@@ -322,6 +323,7 @@ export class AgentRuntimeFacade {
 
   async applyControlCommand(chatJid: string, command: AgentControlCommand): Promise<AgentControlResult> {
     requireSingleUserDirectExecution("Direct control commands");
+    revokeAddonLocalAgent(chatJid);
     const runtime = await this.options.getOrCreateRuntime(chatJid);
     const session = runtime.session;
     const previousSessionGeneration = typeof session.sessionId === "string" ? session.sessionId : null;
@@ -612,6 +614,7 @@ export class AgentRuntimeFacade {
     behavior: "steer" | "followUp",
   ): Promise<{ queued: boolean; error?: string }> {
     requireSingleUserDirectExecution("Direct queue mutation");
+    revokeAddonLocalAgent(chatJid);
     const session = (await this.options.getOrCreateRuntime(chatJid)).session;
     if (!session.isStreaming) return { queued: false };
 
@@ -717,6 +720,8 @@ export class AgentRuntimeFacade {
     steering: readonly string[],
     followUp: readonly string[],
   ): Promise<void> {
+    const chatJid = getChatJid('');
+    if (chatJid && (steering.length || followUp.length)) revokeAddonLocalAgent(chatJid);
     for (const steer of steering) {
       await session.prompt(steer, { streamingBehavior: "steer" });
     }
@@ -727,6 +732,7 @@ export class AgentRuntimeFacade {
 
   async applySlashCommand(chatJid: string, rawText: string): Promise<AgentControlResult> {
     requireSingleUserDirectExecution("Direct slash commands");
+    revokeAddonLocalAgent(chatJid);
     this.options.clearAttachments(chatJid);
     const runtime = await this.options.getOrCreateRuntime(chatJid);
     const session = runtime.session;

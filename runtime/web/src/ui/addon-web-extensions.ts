@@ -1,3 +1,4 @@
+import { registerWorkspaceAction, openAddonPane, resetAddonWorkspaceActionsForTests } from './addon-workspace-actions.js';
 import { paneRegistry } from '../panes/index.js';
 import { registerSettingsPane, unregisterSettingsPane, notifySettingsPanesChanged } from '../components/settings/pane-registry.js';
 
@@ -14,6 +15,9 @@ export interface AddonAttachmentPreviewDefinition {
 }
 
 export interface AddonWebApiSurface {
+  workspaceActionsVersion: 1;
+  registerWorkspaceAction: typeof registerWorkspaceAction;
+  openPane: typeof openAddonPane;
   registerPane: (extension: any) => boolean;
   registerWorkspacePane: (extension: any) => boolean;
   registerSettingsPane: (definition: any) => () => void;
@@ -57,7 +61,7 @@ function normalizeUrl(value: unknown, base: string): string | null {
 
 export function registerAddonWorkspacePane(extension: any): boolean {
   if (!extension || typeof extension.id !== 'string' || !extension.id.trim()) return false;
-  paneRegistry.register(extension);
+  paneRegistry.register(extension, { addon: true });
   addonPaneIds.add(extension.id);
   return true;
 }
@@ -154,6 +158,9 @@ export function buildAddonAttachmentPreviewFrameUrl(kind: string | null | undefi
 
 export function createAddonWebApi(runtimeWindow: (Window & typeof globalThis) | null = typeof window !== 'undefined' ? window : null): AddonWebApiSurface {
   return {
+    workspaceActionsVersion: 1,
+    registerWorkspaceAction,
+    openPane: openAddonPane,
     registerPane: registerAddonPane,
     registerWorkspacePane: registerAddonWorkspacePane,
     registerSettingsPane: registerAddonSettingsPane,
@@ -211,6 +218,7 @@ export async function loadInstalledAddonWebEntries(runtimeWindow: (Window & type
 }
 
 export function resetAddonWebRegistriesForTests(): void {
+  resetAddonWorkspaceActionsForTests();
   for (const paneId of addonPaneIds) {
     paneRegistry.unregister(paneId);
   }

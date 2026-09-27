@@ -32,7 +32,59 @@
     <meta id="theme-color-light" name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
     <meta id="theme-color-dark" name="theme-color" media="(prefers-color-scheme: dark)" content="#000000">
     <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <!-- piclaw-theme-bootstrap-start -->
+    <script>/* Generated from ui-theme-catalogue by stamp-cache-buster.ts. */
+(function () {
+  var presets = {"default":{"mode":"auto","light":"#ffffff","dark":"#1e1e2e"},"tango":{"mode":"light","light":"#f6f5f4","dark":"#f6f5f4"},"xterm":{"mode":"dark","light":"#000000","dark":"#000000"},"monokai":{"mode":"dark","light":"#272822","dark":"#272822"},"monokai-pro":{"mode":"dark","light":"#2d2a2e","dark":"#2d2a2e"},"ristretto":{"mode":"dark","light":"#2c2525","dark":"#2c2525"},"dracula":{"mode":"dark","light":"#282a36","dark":"#282a36"},"catppuccin":{"mode":"dark","light":"#1e1e2e","dark":"#1e1e2e"},"nord":{"mode":"dark","light":"#2e3440","dark":"#2e3440"},"gruvbox":{"mode":"dark","light":"#282828","dark":"#282828"},"solarized":{"mode":"auto","light":"#fdf6e3","dark":"#002b36"},"tokyo":{"mode":"dark","light":"#1a1b26","dark":"#1a1b26"},"miasma":{"mode":"dark","light":"#1f1f23","dark":"#1f1f23"},"github":{"mode":"auto","light":"#ffffff","dark":"#0d1117"},"gotham":{"mode":"dark","light":"#0b0f14","dark":"#0b0f14"},"one-dark-pro":{"mode":"dark","light":"#282c34","dark":"#282c34"},"solarized-dark":{"mode":"dark","light":"#002b36","dark":"#002b36"},"solarized-light":{"mode":"light","light":"#fdf6e3","dark":"#fdf6e3"},"github-dark":{"mode":"dark","light":"#0d1117","dark":"#0d1117"},"vscode-dark":{"mode":"dark","light":"#1f1f1f","dark":"#1f1f1f"},"vscode-light":{"mode":"light","light":"#ffffff","dark":"#ffffff"},"github-light":{"mode":"light","light":"#ffffff","dark":"#ffffff"},"ayu-light":{"mode":"light","light":"#fafafa","dark":"#fafafa"},"ayu-dark":{"mode":"dark","light":"#0d1017","dark":"#0d1017"},"gruvbox-light":{"mode":"light","light":"#fbf1c7","dark":"#fbf1c7"},"rose-pine":{"mode":"dark","light":"#191724","dark":"#191724"},"catppuccin-latte":{"mode":"light","light":"#eff1f5","dark":"#eff1f5"},"everforest-dark":{"mode":"dark","light":"#2d353b","dark":"#2d353b"},"everforest-light":{"mode":"light","light":"#fdf6e3","dark":"#fdf6e3"},"rose-pine-dawn":{"mode":"light","light":"#faf4ed","dark":"#faf4ed"},"graphite":{"mode":"dark","light":"#202326","dark":"#202326"},"paper":{"mode":"light","light":"#f8f7f3","dark":"#f8f7f3"},"accessible-dark":{"mode":"dark","light":"#080b0d","dark":"#080b0d"},"accessible-light":{"mode":"light","light":"#ffffff","dark":"#ffffff"},"oled":{"mode":"dark","light":"#000000","dark":"#000000"},"petrol":{"mode":"dark","light":"#102b30","dark":"#102b30"},"petrol-light":{"mode":"light","light":"#f0e8da","dark":"#f0e8da"},"aubergine":{"mode":"dark","light":"#291f30","dark":"#291f30"},"cobalt2":{"mode":"dark","light":"#193549","dark":"#193549"},"burgundy":{"mode":"dark","light":"#321f29","dark":"#321f29"},"porcelain":{"mode":"light","light":"#f6f1e7","dark":"#f6f1e7"},"synthwave-84":{"mode":"dark","light":"#262335","dark":"#262335"},"synthwave-84-full":{"mode":"dark","light":"#262335","dark":"#262335"},"colour-friendly-dark":{"mode":"dark","light":"#202326","dark":"#202326"},"colour-friendly-light":{"mode":"light","light":"#f8f7f3","dark":"#f8f7f3"},"turbo-pascal":{"mode":"dark","light":"#000088","dark":"#000088"},"as400":{"mode":"dark","light":"#000000","dark":"#000000"},"lumon":{"mode":"dark","light":"#1b2d40","dark":"#1b2d40"},"noctis":{"mode":"dark","light":"#052529","dark":"#052529"},"noctis-lux":{"mode":"light","light":"#fef8ec","dark":"#fef8ec"},"bearded-arc":{"mode":"dark","light":"#1c2433","dark":"#1c2433"},"tokyo-night-storm":{"mode":"dark","light":"#24283b","dark":"#24283b"},"tokyo-night-light":{"mode":"light","light":"#e6e7ed","dark":"#e6e7ed"},"catppuccin-frappe":{"mode":"dark","light":"#303446","dark":"#303446"},"catppuccin-macchiato":{"mode":"dark","light":"#24273a","dark":"#24273a"},"piclaw-classic":{"mode":"dark","light":"#000000","dark":"#000000"}};
+  var aliases = {"auto":"default","drac":"dracula","catpp":"catppuccin","catppuccin-mocha":"catppuccin","gruv":"gruvbox","gruvbox-dark":"gruvbox","tokyo-night":"tokyo","catpuccin":"catppuccin","catpuccin-latte":"catppuccin-latte","as400-green-screen":"as400","as-400":"as400","bearded":"bearded-arc","turbo":"turbo-pascal","monokai-original":"monokai","synthwave":"synthwave-84","synthwave-full":"synthwave-84-full","petrol-copper":"petrol","aubergine-gold":"aubergine","burgundy-rose":"burgundy","ivory-petrol":"petrol-light"};
+  function read(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+  var id = (read('piclaw_theme') || 'default').trim().toLowerCase();
+  id = aliases[id] || id;
+  if (!presets[id]) id = 'default';
+  var preset = presets[id];
+  var preference = read('piclaw_theme_mode');
+  var systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  var mode = preset.mode === 'auto' ? (preference === 'light' || preference === 'dark' ? preference : systemDark ? 'dark' : 'light') : preset.mode;
+  var bg = preset[mode];
+  var tint = read('piclaw_tint');
+  if (id === 'default' && tint) {
+    var tintProbe = document.createElement('span');
+    tintProbe.style.color = tint;
+    if (tintProbe.style.color) {
+      document.head.appendChild(tintProbe);
+      var channels = getComputedStyle(tintProbe).color.match(/\d+(?:\.\d+)?/g);
+      tintProbe.remove();
+      if (channels && channels.length >= 3) {
+        bg = '#' + [1,3,5].map(function (start,index) { return Math.round(parseInt(bg.slice(start,start+2),16)*0.92+Number(channels[index])*0.08).toString(16).padStart(2,'0'); }).join('');
+      }
+    }
+  }
+  try {
+    var custom = JSON.parse(read('piclaw_custom_theme') || '{}');
+    if (Object.keys(custom).length) {
+      var declared = custom['--piclaw-theme-mode'];
+      var customBg = custom['--bg'];
+      if (declared === 'light' || declared === 'dark') mode = declared;
+      else if (/^#[0-9a-f]{6}$/i.test(customBg || '')) {
+        var n = parseInt(customBg.slice(1),16);
+        mode = 0.2126*((n>>16)&255)+0.7152*((n>>8)&255)+0.0722*(n&255)>150 ? 'light' : 'dark';
+      } else mode = 'dark';
+      bg = typeof customBg === 'string' && CSS.supports('color',customBg) && !/[;{}]/.test(customBg) ? customBg : mode === 'dark' ? '#1e1e2e' : '#ffffff';
+    }
+  } catch (e) { /* Invalid custom storage must not prevent startup. */ }
+  var root = document.documentElement;
+  root.dataset.theme = mode; root.dataset.colorTheme = id;
+  root.style.colorScheme = mode; root.style.background = bg;
+  root.style.setProperty('--bg-primary',bg); root.style.setProperty('--bg',bg);
+  ['dynamic-theme-color','theme-color-light','theme-color-dark'].forEach(function(id) {
+    var tag = document.getElementById(id); if (tag) tag.setAttribute('content',bg);
+  });
+  var body = function() { if (document.body) document.body.style.background = root.style.background; };
+  if (document.body) body(); else document.addEventListener('DOMContentLoaded', body, {once:true});
+})();</script>
+    <!-- piclaw-theme-bootstrap-end -->
     <title>PiClaw</title>
     <meta name="apple-mobile-web-app-title" content="PiClaw">
     <script>
@@ -92,59 +144,7 @@
         window.__PICLAW_NOTIFICATION_SOURCE_LABELS_ENABLED__ = "__PICLAW_NOTIFICATION_SOURCE_LABELS_FLAG__" === "1";
         window.__PICLAW_SANITIZE_SVG_FENCES__ = "__PICLAW_SANITIZE_SVG_FENCES_FLAG__" === "1";
 
-        // Early theme application — prevents white flash on navigation.
-        // /theme and /tint are now instance-wide settings mirrored into
-        // localStorage after server sync, so the bootstrap path reads the
-        // global values directly.
-        (function() {
-            try {
-                var theme = localStorage.getItem('piclaw_theme') || 'default';
-                var tint = localStorage.getItem('piclaw_tint') || null;
 
-                // Resolve mode: dark presets get dark, auto follows system
-                var darkPresets = ['xterm','monokai','monokai-pro','ristretto','dracula','catppuccin','nord','gruvbox','tokyo','miasma','gotham'];
-                var autoPresets = ['default','solarized','github'];
-                var mode;
-                if (darkPresets.indexOf(theme) >= 0) {
-                    mode = 'dark';
-                } else if (autoPresets.indexOf(theme) >= 0) {
-                    mode = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
-                } else {
-                    mode = 'light';
-                }
-
-                var root = document.documentElement;
-                root.dataset.theme = mode;
-                root.dataset.colorTheme = theme;
-                root.style.colorScheme = mode;
-
-                // Set background immediately to prevent white flash
-                var bg = mode === 'dark' ? '#000000' : '#ffffff';
-                if (theme === 'dracula') bg = '#282a36';
-                else if (theme === 'catppuccin') bg = '#1e1e2e';
-                else if (theme === 'nord') bg = '#2e3440';
-                else if (theme === 'gruvbox') bg = '#282828';
-                else if (theme === 'tokyo') bg = '#1a1b26';
-                else if (theme === 'monokai') bg = '#272822';
-                else if (theme === 'monokai-pro') bg = '#2d2a2e';
-                else if (theme === 'ristretto') bg = '#2c2525';
-                else if (theme === 'miasma') bg = '#1f1f23';
-                else if (theme === 'gotham') bg = '#0b0f14';
-                else if (theme === 'xterm') bg = '#000000';
-                else if (theme === 'solarized' && mode === 'dark') bg = '#002b36';
-                else if (theme === 'solarized' && mode === 'light') bg = '#fdf6e3';
-                else if (theme === 'github' && mode === 'dark') bg = '#0d1117';
-                else if (theme === 'tango') bg = '#f6f5f4';
-                root.style.background = bg;
-                document.body && (document.body.style.background = bg);
-
-                // Update theme-color meta tags for the status bar
-                var meta = document.getElementById('dynamic-theme-color');
-                if (meta) meta.setAttribute('content', bg);
-                var darkMeta = document.getElementById('theme-color-dark');
-                if (darkMeta) darkMeta.setAttribute('content', bg);
-            } catch(e) {}
-        })();
     </script>
 </head>
 <body>

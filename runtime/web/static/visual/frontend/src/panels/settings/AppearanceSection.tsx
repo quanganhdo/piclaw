@@ -227,7 +227,7 @@ registerSettingsPane({
   id: "appearance",
   label: "Appearance",
   icon: <i className="codicon codicon-paintcan" />,
-  order: 45,
+  order: 11,
   component: ({ data, saveSetting }: SettingsSectionProps) => (
     <AppearanceSection data={data} onSaveGeneral={(field, value) => saveSetting("general", field, value)} />
   ),

@@ -1,3 +1,4 @@
+import { AddonLocalContextError, withAddonLocalRequest, type AddonLocalContext } from "../../../addons/local-context.js";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -11,7 +12,7 @@ import {
 
 const log = createLogger("web.addon-config-api");
 
-export type AddonConfigApiHandler = (payload: unknown, req: Request) => unknown | Promise<unknown>;
+export type AddonConfigApiHandler = (payload: unknown, req: Request, context?: AddonLocalContext | null) => unknown | Promise<unknown>;
 
 export interface AddonConfigApiRegistration {
   get?: AddonConfigApiHandler;
@@ -149,13 +150,15 @@ export async function handleRegisteredAddonConfigApiRequest(
   try {
     if (req.method === "GET") {
       if (typeof entry.handlers.get !== "function") return json({ error: "Method not allowed" }, 405);
-      return json(await entry.handlers.get(undefined, req));
+      const handler = entry.handlers.get;
+      return await withAddonLocalRequest(req, async (context) => json(await handler(undefined, req, context)));
     }
 
     if (req.method === "POST") {
       if (typeof entry.handlers.set !== "function") return json({ error: "Method not allowed" }, 405);
       const body = await req.json().catch(() => ({}));
-      return json(await entry.handlers.set(body, req));
+      const handler = entry.handlers.set;
+      return await withAddonLocalRequest(req, async (context) => json(await handler(body, req, context)));
     }
 
     return json({ error: "Method not allowed" }, 405);
@@ -167,6 +170,9 @@ export async function handleRegisteredAddonConfigApiRequest(
       extensionPath: entry.extensionPath,
       err: error,
     });
+    if (error instanceof AddonLocalContextError) {
+      return json({ error: error.message, code: error.code, delivery: error.delivery }, error.delivery === 'unknown' ? 502 : 409);
+    }
     return json({ error: String((error as Error)?.message || error) }, 500);
   }
 }

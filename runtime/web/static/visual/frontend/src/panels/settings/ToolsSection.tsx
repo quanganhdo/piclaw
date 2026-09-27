@@ -264,7 +264,7 @@ registerSettingsPane({
   id: "tools",
   label: "Tools",
   icon: <i className="codicon codicon-tools" />,
-  order: 80,
+  order: 41,
   component: ({ data, saveSetting }: SettingsSectionProps) => (
     <ToolsSection data={data} saveSetting={saveSetting!} />
   ),

@@ -117,6 +117,8 @@ type MessageKey =
   | 'settings.filter'
   | 'settings.loading'
   | 'settings.section.authentication'
+  | 'settings.section.api-access'
+  | 'settings.authentication.totpManage'
   | 'settings.section.general'
   | 'settings.section.sessions'
   | 'settings.section.recordings'
@@ -767,6 +769,8 @@ const EN: Record<MessageKey, string> = {
   'settings.filter': 'Filter…',
   'settings.loading': 'Loading settings…',
   'settings.section.authentication': 'Authentication',
+    'settings.section.api-access': 'API access',
+    'settings.authentication.totpManage': 'To enrol an authenticator, use /totp enrol in chat. To replace the secret, use /totp reset <current code>. Changes require confirmation through the enrolment flow.',
   'settings.section.general': 'General',
   'settings.section.sessions': 'Sessions',
   'settings.section.recordings': 'Recordings',
@@ -1411,6 +1415,8 @@ const ZH_CN: Partial<Record<MessageKey, string>> = {
   'settings.filter': '筛选…',
   'settings.loading': '加载设置中…',
   'settings.section.authentication': '身份验证',
+    'settings.section.api-access': 'API 访问',
+    'settings.authentication.totpManage': '在聊天中使用 /totp enrol 注册验证器。使用 /totp reset <current code> 替换密钥。更改须通过注册流程确认。',
   'settings.section.general': '常规',
   'settings.section.sessions': '会话',
   'settings.section.recordings': '录制',
@@ -2055,6 +2061,8 @@ const JA: Partial<Record<MessageKey, string>> = {
   'settings.filter': 'フィルター…',
   'settings.loading': '設定を読み込み中…',
   'settings.section.authentication': '認証',
+    'settings.section.api-access': 'API アクセス',
+    'settings.authentication.totpManage': 'チャットで /totp enrol を使って認証アプリを登録します。シークレットの変更には /totp reset <current code> を使います。登録フローでの確認が必要です。',
   'settings.section.general': '一般',
   'settings.section.sessions': 'セッション',
   'settings.section.recordings': '録画',

@@ -7,7 +7,8 @@ const OPEN_SECTION_FLAG = '__piclawSettingsRequestedSection';
 
 export function normalizeSettingsSectionId(value: unknown): string | null {
   const normalized = typeof value === 'string' ? value.trim() : '';
-  return normalized ? normalized : null;
+  // Preserve links from the short-lived standalone API access page.
+  return normalized === 'api-access' ? 'authentication' : normalized || null;
 }
 
 export function requestOpenSettingsDialog(options: OpenSettingsDialogOptions = {}): void {

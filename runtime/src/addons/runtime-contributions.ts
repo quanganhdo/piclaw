@@ -1,3 +1,4 @@
+import { addonLocalContextApi, setAddonLocalContextHost } from "./local-context.js";
 import { AddonOperationService } from "./operation-service.js";
 import { admitAddonOutboundWork } from './operation-outbound-admission.js';
 import type { OperationHost } from "./operation-contracts.js";
@@ -127,6 +128,7 @@ export interface PiclawRuntimeAddonApi {
   registerAdaptiveCardIntentHandler: (intent: string, handler: AddonAdaptiveCardIntentHandler) => () => void;
   enqueueAgentMessage: AddonAgentMessageEnqueuer;
   messaging: PiclawRuntimeMessagingApiV1;
+  localContext: typeof addonLocalContextApi;
   externalRoutes: PiclawRuntimeExternalRoutesApiV1;
   operations: PiclawRuntimeOperationsApiV1;
   createMedia: typeof createMedia;
@@ -256,6 +258,7 @@ export function registerAddonAdaptiveCardIntentHandler(intent: string, handler: 
 
 export function setAddonAgentMessageEnqueuer(enqueuer: AddonAgentMessageEnqueuer | null): void {
   agentMessageEnqueuer = enqueuer;
+  setAddonLocalContextHost(enqueuer ? { enqueue: enqueuer } : null);
 }
 
 export function setAddonMessagingRuntimeHandlers(handlers: AddonMessagingRuntimeHandlers | null): void {
@@ -357,6 +360,7 @@ export function installAddonRuntimeApi(): PiclawRuntimeAddonApi {
     registerStatusPanelProvider: registerAddonStatusPanelProvider,
     registerAdaptiveCardIntentHandler: registerAddonAdaptiveCardIntentHandler,
     enqueueAgentMessage: enqueueAgentMessageViaRuntime,
+    localContext: addonLocalContextApi,
     messaging: {
       version: 1,
       registerChatTransport: registerAddonChatTransport,
@@ -483,6 +487,7 @@ export function resetAddonRuntimeContributionsForTests(): void {
   startupRuntimeEntriesLoadPromise = null;
   runtimeApiInstalled = false;
   agentMessageEnqueuer = null;
+  setAddonLocalContextHost(null);
   messagingRuntimeHandlers = null;
   const runtimeGlobal = globalThis as RuntimeGlobal;
   delete runtimeGlobal.__piclaw_runtime;

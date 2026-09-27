@@ -6,20 +6,24 @@
  * for a given file/context.
  */
 
+import { addonUnavailablePane } from './addon-unavailable.js';
 import type { WebPaneExtension, PaneContext } from './pane-types.js';
 
 /** Singleton pane registry. */
 class PaneRegistryImpl {
     private extensions: Map<string, WebPaneExtension> = new Map();
+    private addonIds = new Set<string>();
 
     /** Register a pane extension. Overwrites if id already exists. */
-    register(ext: WebPaneExtension): void {
+    register(ext: WebPaneExtension, options: { addon?: boolean } = {}): void {
         this.extensions.set(ext.id, ext);
+        if (options.addon) this.addonIds.add(ext.id); else this.addonIds.delete(ext.id);
     }
 
     /** Remove a pane extension by id. */
     unregister(id: string): void {
         this.extensions.delete(id);
+        this.addonIds.delete(id);
     }
 
     /**
@@ -27,16 +31,33 @@ class PaneRegistryImpl {
      * Calls canHandle() on each registered tabs pane, picks highest priority.
      * Returns undefined if no pane can handle the context.
      */
-    resolve(context: PaneContext): WebPaneExtension | undefined {
+    resolve(context: PaneContext, preferredId?: string | null): WebPaneExtension | undefined {
+        const isAddonPath = context.path?.startsWith('piclaw://addon/');
+        // An explicit virtual-pane choice must not silently switch to another add-on.
+        // Revalidate it on mount (including after popout/reattach), since registration can change.
+        if (isAddonPath && preferredId) {
+            const preferred = this.extensions.get(preferredId);
+            if (!preferred || !this.addonIds.has(preferredId) || preferred.placement !== 'tabs'
+                || !preferred.capabilities.includes('readonly') || preferred.capabilities.includes('edit')) return addonUnavailablePane;
+            try {
+                const result = preferred.canHandle?.({ ...context, mode: 'view' });
+                return result && result !== 0 ? preferred : addonUnavailablePane;
+            } catch {
+                return addonUnavailablePane;
+            }
+        }
+
         let best: WebPaneExtension | undefined;
         let bestPriority = -Infinity;
 
         for (const ext of this.extensions.values()) {
             if (ext.placement !== 'tabs') continue;
+            if (isAddonPath && (!this.addonIds.has(ext.id)
+                || !ext.capabilities.includes('readonly') || ext.capabilities.includes('edit'))) continue;
             if (!ext.canHandle) continue;
 
             try {
-                const result = ext.canHandle(context);
+                const result = ext.canHandle(isAddonPath ? { ...context, mode: 'view' } : context);
                 if (result === false || result === 0) continue;
 
                 const priority = result === true ? 0 : (typeof result === 'number' ? result : 0);
@@ -50,7 +71,7 @@ class PaneRegistryImpl {
             }
         }
 
-        return best;
+        return best ?? (isAddonPath ? addonUnavailablePane : undefined);
     }
 
     /** List all registered pane extensions. */

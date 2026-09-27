@@ -65,6 +65,11 @@ export interface SettingsData {
   toolUseBudget?: number;
   webTerminalEnabled?: boolean;
   sessionIsolation?: "none" | "summary" | "full";
+  widgetToken?: string;
+  automaticRecoveryEnabled?: boolean;
+  automaticRecoveryMaxAttempts?: number;
+  automaticRecoveryTotalBudgetMs?: number;
+  automaticRecoveryEffectiveBudgetMs?: number;
   searchMatchMode?: "or" | "and";
   composeUploadLimitMb?: number;
   workspaceUploadLimitMb?: number;
@@ -116,7 +121,7 @@ export interface SettingsData {
   toolsets?: Toolset[];
 }
 
-export type Category = "general" | "sessions" | "recordings" | "workspace" | "environment" | "models" | "keychain" | "tools" | "appearance" | "compaction" | "budget" | "keyboard" | "providers";
+export type Category = "general" | "sessions" | "recordings" | "workspace" | "environment" | "models" | "keychain" | "authentication" | "tools" | "appearance" | "compaction" | "budget" | "keyboard" | "providers";
 
 /**
  * Props passed to every built-in settings section component when rendered
@@ -125,5 +130,6 @@ export type Category = "general" | "sessions" | "recordings" | "workspace" | "en
 export interface SettingsSectionProps {
   data: SettingsData;
   saveSetting: (endpoint: string, field: string, value: unknown) => Promise<void>;
+  mergeSettingsData?: (patch: Partial<SettingsData>) => void;
   filter?: string;
 }

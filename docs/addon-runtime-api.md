@@ -192,3 +192,88 @@ const stream = interop?.streamSimple?.(model, context, options);
 - `getScopedModels(chatJid)` returns the active session's read-only scoped-model list. An empty list means Pi has no model scope; it does not mean that no model is allowed.
 
 The registry object is process-scoped. Scoped models and session IDs are session-scoped snapshots and can change when a session is replaced. Resolve them for each operation rather than retaining them across lifecycle changes.
+
+## Local caller context v1
+
+`globalThis.__piclaw_runtime.localContext` provides scoped authority for local
+single-operator add-ons. Feature-detect `version === 1`. Browser/model JSON cannot
+supply an equivalent context. Family, isolated-container, remote and unprovenanced
+agent execution return `null`.
+
+Registered direct config handlers receive the context as optional argument three:
+
+```ts
+registerAddonConfigApi('example', 'read', {
+  async get(_payload, req, context) {
+    if (!context) throw new Error('Verified local context unavailable');
+    return { targets: await context.listTargets() };
+  },
+});
+```
+
+The same context is available from `localContext.getRequestContext(req)` only
+inside the registered handler for that exact authenticated, CSRF-checked request.
+Internal-secret bypass requests do not acquire browser authority. A retained
+context expires when its handler returns. Each method rechecks the original
+session, access mode and canonical configured workspace; never obtain roots or
+owner IDs from a posted payload.
+
+Fields:
+
+- `version: 1`, `accessMode: 'single-user'`.
+- `ownerId`, `actorId`, `kind: 'operator' | 'agent'`.
+- `workspaceRoot`: runtime-configured workspace realpath.
+- `workspaceId`: SHA-256 of that canonical root, for local scope partitioning.
+- Agent contexts also include `chatJid` and `chatIncarnation`. `actorId` is the
+  persisted chat branch ID, never a model-supplied display name.
+- A verified submission may also include immutable `reference: {addonId, intentId}`.
+  It comes from the host authority ledger for this prompt, never from prompt text,
+  tool arguments or public message blocks. Legacy submissions omit it.
+
+Methods:
+
+- `listTargets()` returns active-lifetime, nonarchived local web branches. Each
+  target has `chatJid`, `incarnation`, `agentName`, `label` and activity hint `active`.
+- `resolveTarget({chatJid?, agentName?, incarnation?})` accepts exactly one selector
+  and returns a target or `null`. Supplying an incarnation requires an exact match.
+  Aliases are picker conveniences; persist the chat JID and incarnation together.
+- `enqueue({target: {chatJid, incarnation}, content, mode: 'queue', reference?})` is available
+  only to operator contexts from POST handlers. Content is bounded to 32 KiB and
+  cannot begin with a slash command or routed `@mention`. Existing queue, budget
+  and tool restrictions apply. No source/caller/content-block override is accepted.
+  Optional `reference` contains an `addonId` of 1–64 lowercase letters, digits,
+  dots, underscores or hyphens (first character alphanumeric), and an `intentId`
+  of 1–128 ASCII letters, digits, underscores, dots, colons or hyphens. The host
+  stores this reference alongside the internal dispatch authority, not in public
+  payload fields. Each add-on must check the referenced intent and its selected
+  records; the host does not interpret add-on data.
+
+`incarnation` is the existing `chat_branches.branch_id`. It survives ordinary
+context rotation and alias changes; deleting/recreating a chat invalidates old
+bindings. Target enumeration does not create or hydrate chats. Missing targets
+and stale lifetimes fail closed.
+
+Accepted dispatch returns `{status:'accepted', chatJid, incarnation, rowId,
+threadId, queued}`. Acceptance means the host accepted the instruction, not that
+an agent completed it. Preflight failures throw `AddonLocalContextError` with
+`code` and `delivery:'rejected'`; uncertain errors after entering the queue are
+`delivery:'unknown'`. Direct config responses preserve those fields (409/502).
+An unknown attempt must be reconciled by the add-on; never retry automatically.
+There is no durable idempotency-key or exactly-once API here.
+
+`getToolContext()` grants agent authority only during a positively verified
+local dispatch from this API. Core persists a body-free dispatch digest, target
+lifetime and one-message binding in its generic authority ledger. The marker
+survives queued materialisation/restart but is stripped from public and
+model-authored message input. Direct steering, control-command or follow-up
+injection into an active Pi session revokes its scoped authority. Ordinary legacy
+prompts, scheduled/side turns and remote messages do not inherit the operator's
+context merely because they name the same chat. In this initial version, ask the
+operator to use the add-on's explicit dispatch action when tool context is absent.
+The reference belongs only to the admitted prompt; nested and subsequent ordinary
+prompts cannot inherit it. Add-ons needing per-submission scope must reject absent
+or mismatched references, then enforce assignment, ownership, versions and limits.
+
+No add-on activity subscription is introduced. Use explicit Refresh and refetch
+on pane focus; do not introduce hidden recurring polling. Add-on review state
+continues to belong in its own database under the scoped data directory.

@@ -53,6 +53,21 @@ test('adoption rejects invalid, orphan, non-ancestral and non-editable targets a
   expect(() => inspect(jsonl)).toThrow('Context edit target is not on this branch');
 });
 
+test('adoption rejects assistant tool-call content and stop-reason mismatches', () => {
+  const { rows } = adoptedJsonl('/tmp/adoption', '/tmp/parent.jsonl');
+  const call = { type: 'toolCall', id: 'call-1', name: 'read', arguments: {} };
+  const toolResult = { type: 'message', id: 'tool-result', message: {
+    role: 'toolResult', toolCallId: 'call-1', toolName: 'read', content: [{ type: 'text', text: 'done' }], isError: false, timestamp: 2,
+  } };
+  const final = { type: 'message', id: 'final', message: { ...rows[4].message, content: [{ type: 'text', text: 'complete' }] } };
+  const wrongStop = rows.map((row) => structuredClone(row));
+  wrongStop[4].message.content = [call];
+  expect(() => inspect(append(wrongStop, [toolResult, final]))).toThrow('stop reason does not match tool calls');
+  const missingCall = rows.map((row) => structuredClone(row));
+  missingCall[4].message.stopReason = 'toolUse';
+  expect(() => inspect(append(missingCall, []))).toThrow('stop reason does not match tool calls');
+});
+
 test('deferred fork omits usage, maps surviving edits and preserves null compaction', async () => {
   const calls: string[] = [];
   let serial = 0;

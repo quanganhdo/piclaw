@@ -353,3 +353,52 @@ runtime/extensions/viewers/editor/
 The core app only includes a lightweight **lazy proxy** (`runtime/web/src/panes/editor-loader.ts`)
 that shows a loading spinner and dynamically imports `editor.bundle.js` on first mount.
 This keeps the editor isolated from the main app bundle; the current built sizes are roughly ~1.24 MB for `app.bundle.js` and ~1.57 MB for `editor.bundle.js`.
+
+## Installed add-on workspace actions v1
+
+Feature-detect `window.__piclaw_web.workspaceActionsVersion === 1` before exposing
+file entry actions. Registration does not replace double-click or Open in editor:
+
+```ts
+const web = window.__piclaw_web;
+const unregister = web.registerWorkspaceAction({
+  id: 'example.inspect',
+  label: 'Inspect file',
+  title: 'Open a read-only inspection of the saved file',
+  when: context => context.path.endsWith('.ts'),
+  async run(context) {
+    // Validate access and capture saved bytes through the authenticated add-on API.
+    const record = await createInspection(context.path);
+    web.openPane({
+      path: `piclaw://addon/example/${record.id}`,
+      paneId: 'example-inspector',
+      label: `Inspect · ${context.name}`,
+    });
+  },
+});
+```
+
+The host shows registered actions in the selected-file menu and the preview header
+for touch access. An action may set `icon: 'review'` for a host-rendered preview
+icon; raw add-on SVG/HTML is not accepted. Its `label` remains the accessible name
+and menu text. The frozen context contains `path`, `name`, `type:'file'`, optional
+`size`/`contentType`, and `chatJid:string|null`. It contains no source bytes. The
+path is workspace-relative; the host rechecks existence, root containment and
+file type with `/workspace/stat` before invoking the action. The backend must
+still validate every source read. `chatJid` is only a suggested target and is not
+caller identity or authorisation. A disposer removes the action; removing it
+while stat is in flight prevents execution.
+
+`openPane({path, paneId, label?})` returns a boolean and calls the app's bound tab
+launcher directly. It returns false before the host is mounted, for missing or
+editable panes, or when the pane declines the path. Paths use the reserved form
+`piclaw://addon/<addon-slug>/<opaque-id>`; each ID segment accepts letters, digits,
+underscores and hyphens. Query strings, fragments, traversal and encoded segments
+are rejected. Register a readonly tabs pane using `registerPane` or
+`registerWorkspacePane`, and claim only its own namespace.
+
+Restored virtual tabs with no available add-on show a readonly unavailable notice.
+They do not fall through to generic file editors/previews, filesystem recents,
+Reveal in explorer, Edit source or workspace-content refresh. Normal pane
+focus/dispose, dirty-draft callbacks and popout transfer remain available. Put
+only record IDs in paths; persist private drafts in the add-on store, not URLs.

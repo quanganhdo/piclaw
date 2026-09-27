@@ -2,6 +2,7 @@ export const RECENT_FILES_KEY = 'piclaw_recent_files';
 export const MAX_RECENT_FILES = 5;
 
 function isIgnoredPath(path: string): boolean {
+  if (path.startsWith('piclaw://addon/')) return true;
   const normalizedPath = path.trim();
   const legacyPath = normalizedPath.replace(/^\/+/, '');
   return legacyPath.startsWith('__terminal')
@@ -10,7 +11,7 @@ function isIgnoredPath(path: string): boolean {
     || normalizedPath.startsWith('piclaw://vnc');
 }
 
-function normalizeRecentFiles(value: unknown): string[] {
+export function normalizeRecentFiles(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
 
   const files: string[] = [];
@@ -59,7 +60,7 @@ export function removeRecentFile(path: string): void {
 
 /** Validate only a selected recent entry; do not read file contents or poll. */
 export async function openRecentFile(path: string, open?: (path: string) => unknown): Promise<void> {
-  if (typeof open !== 'function') return;
+  if (typeof open !== 'function' || isIgnoredPath(path)) return;
   try {
     const response = await fetch(`/workspace/stat?path=${encodeURIComponent(path)}`, { cache: 'no-store' });
     if (response.status === 404) {

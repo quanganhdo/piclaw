@@ -8,6 +8,8 @@
  * Consumers: web/request-router.ts routes agent paths to these handlers.
  */
 
+import { getAddonLocalDispatchBlock } from "../../../addons/local-dispatch.js";
+import { withVerifiedAddonMessage } from "../../../addons/local-context.js";
 import type { WebChannelLike } from "../core/web-channel-contracts.js";
 import { readAccessConfig } from "../../../core/config-access.js";
 import { isFamilyWebToolAllowed } from '../../../core/family-workspace-policy.js';
@@ -643,6 +645,8 @@ export async function handleAgentMessage(
   if (parsed.error || !parsed.payload) return channel.json({ error: parsed.error }, 400);
 
   const normalized = normalizeAgentMessagePayload(parsed.payload);
+  const localDispatch = getAddonLocalDispatchBlock(req, chatJid, normalized.content ?? "");
+  if (localDispatch) normalized.contentBlocks = [...(normalized.contentBlocks ?? []), localDispatch];
   let content = typeof normalized.content === "string" ? normalized.content : "";
   const hasAttachments =
     normalized.mediaIds.length > 0 ||
@@ -1794,7 +1798,7 @@ async function processAuthorisedChat(
     recovery: streamState.lastRecoveryMeta,
   });
 
-  const output = await channel.agentPool.runAgent(prompt, chatJid, {
+  const output = await withVerifiedAddonMessage(chatJid, currentMessage, () => channel.agentPool.runAgent(prompt, chatJid, {
     ...(identity ? {
       executionProvenance: identity.provenance,
       // Narrow initial family conversation tools; global mutators lack owner-scoped entry points.
@@ -1857,7 +1861,7 @@ async function processAuthorisedChat(
         }
       }
     },
-  });
+  }));
 
   streamState.lastRecoveryMeta = output.recovery || null;
 

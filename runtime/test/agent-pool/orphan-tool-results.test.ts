@@ -112,6 +112,18 @@ describe('pruneOrphanToolResults canonical projection', () => {
     expect(orphan.message).toEqual(toolResult('orphan')); // raw audit entry remains
   });
 
+  test('older manager fails closed on persisted context edits instead of resurrecting an orphan', () => {
+    const source = row('source', { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'orphan' }] });
+    const edit = { type: 'context_edit', id: 'edit', parentId: 'source', timestamp: stamp, targetId: 'source', replacement: { content: [] } };
+    let writes = 0;
+    const active = { sessionManager: {
+      getEntries: () => [source, edit], getLeafId: () => 'edit',
+      appendContextEdit: () => { writes++; return 'duplicate'; },
+    }, agent: { state: { messages: [] } } } as unknown as AgentSession;
+    expect(() => pruneOrphanToolResults(active, 'web:test')).toThrow('cannot project persisted context edits');
+    expect(writes).toBe(0);
+  });
+
   test('does not treat a mutable agent array as a canonical source', () => {
     const active = { agent: { state: { messages: [toolResult('orphan')] } }, sessionManager: {
       getLeafId: () => null, getEntries: () => [],

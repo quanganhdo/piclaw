@@ -73,6 +73,7 @@ export function handleWorkspaceStat(req: Request): Response {
       path: toRelativePath(targetPath),
       mtime: formatMtime(stats),
       size: stats.size,
+      type: stats.isFile() ? "file" : stats.isDirectory() ? "dir" : "other",
     }, 200);
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;

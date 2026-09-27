@@ -7,6 +7,26 @@ Feature: Classic workspace flows
     Given the audited surface is the Classic workspace shell
     And only source-backed Classic behaviors are in scope
 
+  @ux-workspace-019 @layout @motion
+  Scenario: Collapse the desktop workspace towards the left edge
+    Given the Classic workspace sidebar is open in desktop landscape layout
+    And reduced motion is not requested
+    When I close the workspace
+    Then the sidebar stays anchored to the left while its width shrinks
+    And the workspace toggle moves left during the collapse instead of jumping
+    And the chat ends centred when no editor is open
+    And a docked editor keeps its position when an editor is open
+    When I reopen the workspace
+    Then the sidebar returns to its stored width
+    And an interrupted transition follows the latest open or closed target
+
+  @ux-workspace-020 @layout @motion
+  Scenario: Settle workspace geometry without animation when required
+    Given the Classic workspace sidebar is open in desktop landscape layout
+    When reduced motion is requested or the shell is settling after resume
+    Then workspace visibility changes settle the sidebar and toggle without a transition
+    And dragging the workspace splitter does not animate its width or toggle position
+
   @ux-workspace-001 @crud
   Scenario: Create a new untitled markdown file in the resolved folder
     Given a workspace file or folder is selected

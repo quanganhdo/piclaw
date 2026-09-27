@@ -39,6 +39,12 @@ export function inspectAdoptedSession(jsonl: string, expectedHash: string) {
     if(!entry||!types.includes(entry.type)||typeof entry.id!=='string'||!entry.id||byId.has(entry.id)||!Number.isFinite(Date.parse(entry.timestamp))
       ||(entry.parentId!==null&&(!byId.has(entry.parentId)||typeof entry.parentId!=='string'))) throw new Error('Invalid, duplicate or orphan session entry.');
     if(entry.type==='message'&&(!entry.message||!['user','assistant','toolResult','custom','bashExecution'].includes(entry.message.role))) throw new Error('Unsupported session message.');
+    if(entry.type==='message'&&entry.message.role==='assistant') {
+      const assistant=entry.message;
+      if(!['stop','length','toolUse'].includes(assistant.stopReason)||!Array.isArray(assistant.content)) throw new Error('Incomplete assistant turn.');
+      const hasToolCall=assistant.content.some((part: {type?:string})=>part?.type==='toolCall');
+      if((assistant.stopReason==='toolUse')!==hasToolCall) throw new Error('Assistant tool stop reason does not match tool calls.');
+    }
     if(entry.type==='model_change'&&(typeof entry.provider!=='string'||!entry.provider||typeof entry.modelId!=='string'||!entry.modelId)) throw new Error('Invalid stored model.');
     if(entry.type==='thinking_level_change'&&!['off','minimal','low','medium','high','xhigh','max'].includes(entry.thinkingLevel)) throw new Error('Invalid stored thinking level.');
     if(entry.type==='usage'&&(typeof entry.kind!=='string'||!entry.kind||typeof entry.provider!=='string'||!entry.provider
@@ -86,7 +92,8 @@ export function inspectAdoptedSession(jsonl: string, expectedHash: string) {
   for(const message of context.messages) {
     if(message.role==='assistant') {
       if(!['stop','length','toolUse'].includes(message.stopReason)||!(Array.isArray(message.content))) throw new Error('Incomplete assistant turn.');
-      for(const part of message.content) if(part.type==='toolCall') {if(pending.has(part.id)) throw new Error('Duplicate pending tool call.');pending.add(part.id);}
+      const calls=message.content.filter((part): part is Extract<typeof part,{type:'toolCall'}>=>part?.type==='toolCall');
+      for(const part of calls) {if(pending.has(part.id)) throw new Error('Duplicate pending tool call.');pending.add(part.id);}
     } else if(message.role==='toolResult') {
       if(!pending.delete(message.toolCallId)) throw new Error('Unmatched tool result.');
     } else if(message.role==='user'&&pending.size) throw new Error('Unfinished tool turn.');

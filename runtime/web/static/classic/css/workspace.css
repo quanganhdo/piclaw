@@ -109,7 +109,18 @@
     cursor: pointer;
     align-items: center;
     justify-content: center;
-    transition: background-color var(--ui-transition-fast), color var(--ui-transition-fast), border-color var(--ui-transition-fast), box-shadow var(--ui-transition-fast);
+    transition: left var(--ui-transition-fast), background-color var(--ui-transition-fast), color var(--ui-transition-fast), border-color var(--ui-transition-fast), box-shadow var(--ui-transition-fast);
+}
+
+/* Width and handle movement must settle together when motion is disabled. */
+@media (prefers-reduced-motion: reduce) {
+    .app-shell > .workspace-sidebar,
+    .app-shell > .workspace-splitter,
+    .app-shell > .workspace-toggle-tab,
+    .app-shell > .workspace-toggle-tab .workspace-toggle-tab-icon,
+    .app-shell > .container {
+        transition: none;
+    }
 }
 
 .workspace-toggle-tab:hover {

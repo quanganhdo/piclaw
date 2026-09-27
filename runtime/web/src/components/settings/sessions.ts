@@ -13,10 +13,17 @@ function normalizeSessionSettings(data: Record<string, any> = {}) {
         sessionMaxCompactions: data.sessionMaxCompactions ?? 3,
         sessionIsolation: data.sessionIsolation || 'none',
         toolUseBudget: data.toolUseBudget ?? 64,
+        automaticRecoveryEnabled: data.automaticRecoveryEnabled ?? true,
+        automaticRecoveryMaxAttempts: data.automaticRecoveryMaxAttempts ?? 0,
+        automaticRecoveryTotalBudgetMs: data.automaticRecoveryTotalBudgetMs ?? 0,
     };
 }
 
+let sessionsInstanceId = 0;
 export function SessionsSection({ settingsData, setStatus, mergeSettingsData }) {
+    const prefix = useRef(null);
+    if (!prefix.current) prefix.current = `settings-sessions-${++sessionsInstanceId}`;
+    const fieldId = (name) => `${prefix.current}-${name}`;
     const { t } = useTranslation();
     const [sessionAutoRotate, setSessionAutoRotate] = useState(true);
     const [sessionMaxSizeMb, setSessionMaxSizeMb] = useState(16);
@@ -24,6 +31,9 @@ export function SessionsSection({ settingsData, setStatus, mergeSettingsData }) 
     const [sessionMaxCompactions, setSessionMaxCompactions] = useState(3);
     const [toolUseBudget, setToolUseBudget] = useState(64);
     const [sessionIsolation, setSessionIsolation] = useState('none');
+    const [automaticRecoveryEnabled, setAutomaticRecoveryEnabled] = useState(true);
+    const [automaticRecoveryMaxAttempts, setAutomaticRecoveryMaxAttempts] = useState(0);
+    const [automaticRecoveryTotalBudgetMs, setAutomaticRecoveryTotalBudgetMs] = useState(0);
     const [appliedHint, setAppliedHint] = useState(false);
     const savedSnapshotRef = useRef('');
     const saveTimerRef = useRef(null);
@@ -41,6 +51,9 @@ export function SessionsSection({ settingsData, setStatus, mergeSettingsData }) 
         setSessionMaxLines(next.sessionMaxLines);
         setSessionMaxCompactions(next.sessionMaxCompactions);
         setToolUseBudget(next.toolUseBudget);
+        setAutomaticRecoveryEnabled(next.automaticRecoveryEnabled);
+        setAutomaticRecoveryMaxAttempts(next.automaticRecoveryMaxAttempts);
+        setAutomaticRecoveryTotalBudgetMs(next.automaticRecoveryTotalBudgetMs);
         setSessionIsolation(next.sessionIsolation);
         savedSnapshotRef.current = JSON.stringify(next);
     }, []);
@@ -51,7 +64,9 @@ export function SessionsSection({ settingsData, setStatus, mergeSettingsData }) 
 
     const currentSnapshot = useMemo(() => JSON.stringify(normalizeSessionSettings({
         sessionAutoRotate, sessionMaxSizeMb, sessionMaxLines, sessionMaxCompactions, toolUseBudget, sessionIsolation,
-    })), [sessionAutoRotate, sessionMaxSizeMb, sessionMaxLines, sessionMaxCompactions, toolUseBudget, sessionIsolation]);
+        automaticRecoveryEnabled, automaticRecoveryMaxAttempts, automaticRecoveryTotalBudgetMs,
+    })), [sessionAutoRotate, sessionMaxSizeMb, sessionMaxLines, sessionMaxCompactions, toolUseBudget, sessionIsolation,
+        automaticRecoveryEnabled, automaticRecoveryMaxAttempts, automaticRecoveryTotalBudgetMs]);
 
     useEffect(() => {
         if (currentSnapshot === savedSnapshotRef.current) return;
@@ -129,6 +144,45 @@ export function SessionsSection({ settingsData, setStatus, mergeSettingsData }) 
                     <option value="full">${t('settings.sessions.isolationFull')}</option>
                 </select>
             </div>
+
+            <h3 style="margin-top:20px">${t('settings.general.agentRecovery')}</h3>
+            <div class="settings-row">
+                <label for=${fieldId('recovery')}>${t('settings.general.automaticRecovery')}</label>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <input id=${fieldId('recovery')} type="checkbox" checked=${automaticRecoveryEnabled}
+                        onChange=${e => setAutomaticRecoveryEnabled(Boolean(e.target.checked))} />
+                    <span class="settings-hint" style="margin:0">${t('settings.general.automaticRecoveryHint')}</span>
+                </div>
+            </div>
+            <div class="settings-row">
+                <label for=${fieldId('attempts')}>${t('settings.general.recoveryMaxAttempts')}</label>
+                <${NumberStepper}
+                    id=${fieldId('attempts')}
+                    label=${t('settings.general.recoveryMaxAttemptsAria')}
+                    value=${automaticRecoveryMaxAttempts}
+                    min=${0}
+                    step=${1}
+                    fallback=${0}
+                    width="90px"
+                    onChange=${setAutomaticRecoveryMaxAttempts}
+                />
+                <span class="settings-hint" style="margin:0">${t('settings.general.recoveryMaxAttemptsHint')}</span>
+            </div>
+            <div class="settings-row">
+                <label for=${fieldId('budget')}>${t('settings.general.recoveryTotalBudget')}</label>
+                <${NumberStepper}
+                    id=${fieldId('budget')}
+                    label=${t('settings.general.recoveryTotalBudgetAria')}
+                    value=${automaticRecoveryTotalBudgetMs}
+                    min=${0}
+                    step=${1000}
+                    fallback=${0}
+                    width="110px"
+                    onChange=${setAutomaticRecoveryTotalBudgetMs}
+                />
+                <span class="settings-hint" style="margin:0">${t('settings.general.recoveryTotalBudgetHint')} ${automaticRecoveryTotalBudgetMs === 0 && Number.isFinite(settingsData?.automaticRecoveryEffectiveBudgetMs) ? t('settings.general.recoveryEffectiveBudget', { budget: settingsData.automaticRecoveryEffectiveBudgetMs }) : ''}</span>
+            </div>
+
         </div>
     `;
 }

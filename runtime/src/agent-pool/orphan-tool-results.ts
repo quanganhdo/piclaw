@@ -61,7 +61,13 @@ function projection(manager: RepairManager): ProjectionEntry[] {
   // requires appendContextEdit and fails closed when that method is absent.
   const entries = manager.getEntries();
   if (!entries.some((entry) => entry.type === "message" && !!entry.message || entry.type === "custom_message")) return [];
-  return buildContextEntries(entries, manager.getLeafId()).map((sourceEntry) => ({
+  const selected = buildContextEntries(entries, manager.getLeafId());
+  if (selected.some((entry) => (entry as { type: string }).type === "context_edit")) {
+    // An older manager cannot project active persisted edits. Rebuilding raw
+    // messages would resurrect omitted results and append a duplicate repair.
+    throw new Error("SessionManager cannot project persisted context edits; restore the pre-upgrade session snapshot.");
+  }
+  return selected.map((sourceEntry) => ({
     sourceEntry: sourceEntry as SourceEntry,
     messages: sessionEntryToContextMessages(sourceEntry) as MessageRecord[],
   }));

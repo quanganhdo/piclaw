@@ -1,10 +1,22 @@
 import { expect, test } from 'bun:test';
 import type { Model, Tool } from '@earendil-works/pi-ai';
 import { Type } from 'typebox';
-import { attemptRemoteCompaction } from '../../src/extensions/smart-compaction/remote-compaction.js';
+import { attemptRemoteCompaction, prependRemoteCompactionPayload, REMOTE_COMPACTION_SUMMARY_SENTINEL } from '../../src/extensions/smart-compaction/remote-compaction.js';
 
 const model = { provider: 'openai', id: 'gpt-5.1', api: 'openai-responses', baseUrl: 'https://api.openai.com/v1', input: ['text', 'image'], reasoning: false } as Model<any>;
 const tool = (name: string): Tool => ({ name, description: name, parameters: Type.Object({}) });
+
+test('local fallback prepends opaque context without leaking the replay marker', () => {
+  const marker = { role: 'user', content: [{ type: 'input_text', text: `The conversation history before this point was compacted into the following summary:\n\n<summary>\n${REMOTE_COMPACTION_SUMMARY_SENTINEL}\n</summary>` }] };
+  const suffix = { role: 'user', content: [{ type: 'input_text', text: 'keep' }] };
+  const native = { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'native' }] };
+  const later = { role: 'user', content: [{ type: 'input_text', text: `quoted ${REMOTE_COMPACTION_SUMMARY_SENTINEL}` }] };
+  const payload = { input: [marker, suffix, later], model: 'gpt-5.1' };
+  const details = { output: [native] } as any;
+  const repaired = prependRemoteCompactionPayload(payload, details) as typeof payload;
+  expect(repaired.input).toEqual([native, suffix, later]);
+  expect(payload.input).toEqual([marker, suffix, later]);
+});
 
 test('remote compaction keeps tools at request level and omits system instructions from converted input', async () => {
   let body: any;

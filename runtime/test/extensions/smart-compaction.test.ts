@@ -204,7 +204,7 @@ import {
 import { validateCompactionSummaryResponse } from "../../src/extensions/smart-compaction/summary-validation.js";
 import { runProgressiveCompaction } from "../../src/extensions/smart-compaction/progressive.js";
 import { canonicalizeFileLists } from "../../src/extensions/smart-compaction/noop.js";
-import { clearRemoteCompactionBackoffForTests } from "../../src/extensions/smart-compaction/remote-compaction.js";
+import { clearRemoteCompactionBackoffForTests, REMOTE_COMPACTION_SUMMARY_SENTINEL } from "../../src/extensions/smart-compaction/remote-compaction.js";
 import {
   beginCompactionStatusOwnership,
   finishCompactionStatusOwnership,
@@ -525,7 +525,7 @@ describe("smart-compaction", () => {
       payload: {
         model: "gpt-5.1",
         input: [
-          { role: "user", content: [{ type: "input_text", text: "[Piclaw provider-native compaction state. The opaque canonical context is injected at request time.]" }] },
+          { role: "user", content: [{ type: "input_text", text: `The conversation history before this point was compacted into the following summary:\n\n<summary>\n${REMOTE_COMPACTION_SUMMARY_SENTINEL}\n</summary>` }] },
           { role: "user", content: [{ type: "input_text", text: "retained suffix" }] },
         ],
       },

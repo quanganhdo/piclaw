@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import { useSignal } from "@preact/signals";
 
 import { type SettingsData } from "./settings/types";
+import { normalizeSettingsSectionId } from "../../../../../src/components/settings-dialog-events";
 import { safeGetItem, safeSetItem } from "../utils/storage";
 import { getRegisteredPanes, type SettingsPaneDefinition } from "./settings/pane-registry";
 import { mergeSavedSettings, SettingsSaveGeneration } from "./settings/save-state";
@@ -28,10 +29,12 @@ function PaneRenderer({
   pane,
   data,
   saveSetting,
+  mergeSettingsData,
 }: {
   pane: SettingsPaneDefinition;
   data: SettingsData;
   saveSetting: (endpoint: string, field: string, value: unknown) => Promise<void>;
+  mergeSettingsData: (patch: Partial<SettingsData>) => void;
 }) {
   const [renderError, setRenderError] = useState<string | null>(null);
 
@@ -56,9 +59,10 @@ function PaneRenderer({
       data: SettingsData;
       saveSetting: (endpoint: string, field: string, value: unknown) => Promise<void>;
       filter?: string;
+      mergeSettingsData?: (patch: Partial<SettingsData>) => void;
     }) => unknown;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return <>{Comp({ data, saveSetting }) as any}</>;
+    return <>{Comp({ data, saveSetting, mergeSettingsData }) as any}</>;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     Promise.resolve().then(() => setRenderError(msg));
@@ -67,7 +71,12 @@ function PaneRenderer({
 }
 
 export function SettingsPanel() {
-  const activeCategory = useSignal<string>(safeGetItem("piclaw-settings-category") || "general");
+  const activeCategory = useSignal<string>(normalizeSettingsSectionId(safeGetItem("piclaw-settings-category")) || "general");
+  useEffect(() => {
+    if (safeGetItem("piclaw-settings-category") === "api-access") {
+      safeSetItem("piclaw-settings-category", "authentication");
+    }
+  }, []);
   const settings = useSignal<SettingsData>({});
   const loading = useSignal(true);
   const error = useSignal<string | null>(null);
@@ -86,7 +95,7 @@ export function SettingsPanel() {
 
   useEffect(() => {
     const onOpenSettings = (event: Event) => {
-      const section = (event as CustomEvent<{ section?: string }>).detail?.section;
+      const section = normalizeSettingsSectionId((event as CustomEvent<{ section?: string }>).detail?.section);
       if (!section || !getRegisteredPanes().some((pane) => pane.id === section)) return;
       activeCategory.value = section;
       safeSetItem("piclaw-settings-category", section);
@@ -204,7 +213,7 @@ export function SettingsPanel() {
         )}
 
         {activePane && (
-          <PaneRenderer pane={activePane} data={s} saveSetting={saveSetting} />
+          <PaneRenderer key={activePane.id} pane={activePane} data={s} saveSetting={saveSetting} mergeSettingsData={(patch) => { settings.value = { ...settings.value, ...patch }; }} />
         )}
       </div>
     </div>

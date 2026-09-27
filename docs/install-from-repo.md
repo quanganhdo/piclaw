@@ -2,7 +2,7 @@
 
 The Bun repository install is experimental. [Docker](../README.md#quick-start-with-docker) is the recommended deployment; [portable releases](getting-started.md#portable-releases) bundle Bun for Docker-free use.
 
-This checkout requires Bun 1.4.1 or newer. Bun 1.3 cannot read its version 2 lockfiles. Check the chosen release's requirements before installing or downgrading Bun.
+Use the Bun version pinned in [BUN_VERSION](../BUN_VERSION) for a source checkout (1.4.2 for this revision). Bun 1.3 cannot read its version 2 lockfile. Check the chosen release's requirements before installing or downgrading Bun.
 
 PiClaw can be installed directly from a tagged release with Bun. Replace `vX.Y.Z` below with an existing tag from [GitHub Releases](https://github.com/rcarmo/piclaw/releases):
 

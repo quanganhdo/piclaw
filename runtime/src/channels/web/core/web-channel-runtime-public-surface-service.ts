@@ -1,3 +1,4 @@
+import { bindAddonLocalDispatchRequest } from "../../../addons/local-dispatch.js";
 import type { InteractionRow } from "../../../db.js";
 import type { WebAgentBufferEntry } from "../agent/agent-buffers.js";
 import type { QueuedFollowupItem, QueuedFollowupSourceMetadata } from "../runtime/followup-placeholders.js";
@@ -347,10 +348,12 @@ export class WebChannelRuntimePublicSurfaceService {
         ...(request?.threadId !== undefined ? { thread_id: normalizeRuntimeMessageThreadId(request?.threadId) ?? null } : {}),
         ...(screenHint !== undefined ? { screen_hint: screenHint } : {}),
       };
-      const response = await this.channel.handleAgentMessage(new Request(
+      const req = new Request(
         `http://internal/agent/default/message?chat_jid=${encodeURIComponent(chatJid)}`,
         { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },
-      ), "/agent/default/message");
+      );
+      bindAddonLocalDispatchRequest(req, chatJid, content);
+      const response = await this.channel.handleAgentMessage(req, "/agent/default/message");
       const responsePayload = await response.clone().json().catch(() => null);
       if (!response.ok) {
         const detail = await readRuntimeHandlerError(response);

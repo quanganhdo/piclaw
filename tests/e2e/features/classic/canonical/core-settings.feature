@@ -179,9 +179,9 @@ Feature: Classic Settings dialog core UX
     Then the meters preference is applied locally and a meters-change event is dispatched
     And server UI-state persistence is attempted separately from General autosave
 
-  @ux-settings-021 @general @widget-token
+  @ux-settings-021 @api-access @widget-token
   Scenario: Reveal and copy the widget token
-    Given General has a widget token
+    Given Authentication's API access subsection has a widget token
     Then the displayed token starts masked
     When I toggle reveal
     Then the displayed value switches between the token and its mask
@@ -190,21 +190,21 @@ Feature: Classic Settings dialog core UX
     And a successful copy briefly shows copied feedback
     And a failed copy reports status without regenerating the token
 
-  @ux-settings-022 @general @widget-token
+  @ux-settings-022 @api-access @widget-token
   Scenario: Confirm widget-token regeneration
-    Given General has no regeneration in progress
+    Given Authentication's API access subsection has no regeneration in progress
     When I request regeneration and cancel confirmation
     Then no regeneration request is sent
     When I request regeneration and confirm
     Then regeneration is disabled while its request is in progress
     And a successful response updates the token and shared settings snapshot
-    And a failure logs a warning and clears the busy state
-    # Regeneration failure does not set the General error status in this handler.
+    And a failure reports a Settings error and clears the busy state
 
   @ux-settings-023 @sessions @autosave
   Scenario: Change session lifecycle and agent behaviour settings
     Given the Classic Sessions section is open
     Then auto-rotation, maximum session size, tool-use budget and isolation controls are visible
+    And automatic recovery, maximum recovery attempts and the recovery time budget are visible
     And isolation offers none, summary and full
     When I change a setting and leave the section mounted through its 800 millisecond debounce
     Then it posts its session snapshot to the general settings endpoint

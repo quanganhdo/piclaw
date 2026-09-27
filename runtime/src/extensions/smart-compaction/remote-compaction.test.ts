@@ -338,7 +338,7 @@ describe("opaque state persistence and replay", () => {
       model: "gpt-5.1",
       input: [
         { role: "system", content: [{ type: "input_text", text: "prefix" }] },
-        { role: "user", content: [{ type: "input_text", text: `Earlier context was compacted.\n\n${REMOTE_COMPACTION_SUMMARY_SENTINEL}` }] },
+        { role: "user", content: [{ type: "input_text", text: `The conversation history before this point was compacted into the following summary:\n\n<summary>\n${REMOTE_COMPACTION_SUMMARY_SENTINEL}\n</summary>` }] },
         { role: "user", content: [{ type: "input_text", text: "kept suffix" }] },
       ],
     };
@@ -374,12 +374,12 @@ describe("opaque state persistence and replay", () => {
   });
 
   test("strips the marker from every prompt-bearing field without destroying the request", () => {
-    const sentinelItem = { role: "user", content: [{ type: "input_text", text: REMOTE_COMPACTION_SUMMARY_SENTINEL }] };
+    const sentinelItem = { role: "user", content: [{ type: "input_text", text: `The conversation history before this point was compacted into the following summary:\n\n<summary>\n${REMOTE_COMPACTION_SUMMARY_SENTINEL}\n</summary>` }] };
     const stripped = stripRemoteCompactionMarker({
       model: "other",
       input: [sentinelItem, { role: "user", content: [{ type: "input_text", text: "keep me" }] }],
-      messages: [{ content: [{ type: "text", text: REMOTE_COMPACTION_SUMMARY_SENTINEL }] }, { content: "keep me too" }],
-      contents: [{ content: REMOTE_COMPACTION_SUMMARY_SENTINEL }],
+      messages: [{ content: [{ type: "text", text: sentinelItem.content[0].text }] }, { content: "keep me too" }],
+      contents: [{ content: sentinelItem.content[0].text }],
     });
 
     // The un-replayable marker is removed, but the real prompt survives and the
@@ -396,7 +396,7 @@ describe("opaque state persistence and replay", () => {
     const persisted = details();
     expect(isRemoteCompactionCompatible(model(), persisted)).toBe(true);
     const replay = injectRemoteCompactionPayload(
-      { model: "other", input: [{ role: "user", content: [{ type: "input_text", text: REMOTE_COMPACTION_SUMMARY_SENTINEL }] }, { role: "user", content: [{ type: "input_text", text: "current prompt" }] }] },
+      { model: "other", input: [{ role: "user", content: [{ type: "input_text", text: `The conversation history before this point was compacted into the following summary:\n\n<summary>\n${REMOTE_COMPACTION_SUMMARY_SENTINEL}\n</summary>` }] }, { role: "user", content: [{ type: "input_text", text: "current prompt" }] }] },
       model({ id: "other" }),
       persisted,
     );

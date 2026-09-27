@@ -82,3 +82,20 @@ describe("web auth gateway", () => {
     expect(logs[0]).toContain("ip=");
   });
 });
+
+test('auth gateway refresh bypasses request cache after session revocation', () => {
+  let valid = true;
+  const session = { user_id: 'default', auth_method: 'totp', expires_at: new Date(Date.now() + 60000).toISOString() };
+  const user = { id: 'default', username: 'local', display_name: 'Local', role: 'admin', home_chat_jid: 'web:default', enabled: 1 };
+  const gateway = new WebAuthGateway(config({ accessMode: 'single-user' }), {
+    challenges: new WebauthnChallengeTracker(), failureTracker: new TotpFailureTracker(),
+    json: (body, status=200) => new Response(JSON.stringify(body), {status}),
+    getClientKey: () => 'test', logAuthEvent() {},
+    principalResolver: { getSession: () => valid ? session as any : undefined, getUser: () => user as any, getLocalDisplayName: () => 'Local' },
+  });
+  const req = new Request('http://localhost/', { headers: { cookie: 'piclaw_session=test-token' } });
+  expect(gateway.getPrincipal(req)?.userId).toBe('default');
+  valid = false;
+  expect(gateway.getPrincipal(req)?.userId).toBe('default');
+  expect(gateway.getPrincipal(req, true)).toBeNull();
+});

@@ -2,7 +2,8 @@ import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { resolveAvatarPreview, writeSettingsClipboardText } from "../../web/src/components/settings/general.js";
+import { resolveAvatarPreview } from "../../web/src/components/settings/general.js";
+import { writeSettingsClipboardText } from "../../web/src/components/settings/api-access.js";
 
 const runtimeRoot = join(import.meta.dir, "../..");
 
@@ -62,8 +63,8 @@ test("general settings keeps unsaved browser-local avatar previews direct", () =
   expect(resolveAvatarPreview("avatar.png", "unknown")).toBe("");
 });
 
-test("general settings renders automatic or exact recovery budgets in milliseconds", () => {
-  const source = readFileSync(join(runtimeRoot, "web/src/components/settings/general.ts"), "utf8");
+test("Sessions renders automatic or exact recovery budgets in milliseconds", () => {
+  const source = readFileSync(join(runtimeRoot, "web/src/components/settings/sessions.ts"), "utf8");
   expect(source).toContain("settings.general.agentRecovery");
   expect(source).toContain("automaticRecoveryEnabled");
   expect(source).toContain("automaticRecoveryMaxAttempts");

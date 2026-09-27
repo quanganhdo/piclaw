@@ -255,6 +255,6 @@ registerSettingsPane({
   id: "keychain",
   label: "Keychain",
   icon: <i className="codicon codicon-key" />,
-  order: 50,
+  order: 31,
   component: () => <KeychainSection />,
 });
