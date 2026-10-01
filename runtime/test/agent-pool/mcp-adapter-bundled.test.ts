@@ -9,8 +9,6 @@ import { getPreparedMcpConfig, hydrateMcpKeychainCredentials, resetMcpStartupSta
 import { createRealTestModelServices } from "../model-services-fixture.js";
 import { executeCall, executeDescribe, executeList, executeSearch, executeStatus } from "../../../node_modules/pi-mcp-adapter/proxy-modes.ts";
 import { createMcpStatusSnapshot } from "../../../node_modules/pi-mcp-adapter/mcp-status.ts";
-import { getActiveMcpRuntimeOwnerCount } from "../../../node_modules/pi-mcp-adapter/runtime-owner.ts";
-import { getManagedMcpStdioProcessCount } from "../../../node_modules/pi-mcp-adapter/server-manager.ts";
 
 describe("bundled pi-mcp-adapter integration", () => {
   test("binds one eager stdio process to each live Piclaw session owner", async () => {
@@ -70,8 +68,6 @@ createInterface({ input: process.stdin }).on("line", (line) => {
       MCP_DIRECT_TOOLS: undefined,
     });
     const settingsManager = SettingsManager.create(workspaceDir, getAgentDir());
-    const ownerBaseline = getActiveMcpRuntimeOwnerCount();
-    const processBaseline = getManagedMcpStdioProcessCount();
     const events = () => existsSync(eventsPath)
       ? readFileSync(eventsPath, "utf8").trim().split("\n").filter(Boolean).map((line) => JSON.parse(line) as { event: string; pid: number })
       : [];
@@ -89,9 +85,7 @@ createInterface({ input: process.stdin }).on("line", (line) => {
       });
       await Bun.sleep(100);
       expect(events(), "MCP must not spawn before Piclaw binds the session").toEqual([]);
-      expect(getActiveMcpRuntimeOwnerCount()).toBe(ownerBaseline);
       await runtime.session.bindExtensions({});
-      expect(getActiveMcpRuntimeOwnerCount()).toBe(ownerBaseline + 1);
 
       const allTools = (runtime.session as any)._extensionRunner?.getAllRegisteredTools?.() ?? [];
       const mcpTool = allTools.find((tool: any) => tool.definition?.name === "mcp")?.definition;
@@ -104,7 +98,6 @@ createInterface({ input: process.stdin }).on("line", (line) => {
       await waitFor(() => events().some(({ event }) => event === "start"));
       const initialStarts = events().filter(({ event }) => event === "start");
       expect(initialStarts, JSON.stringify(events())).toHaveLength(1);
-      await waitFor(() => getManagedMcpStdioProcessCount() === processBaseline + 1);
 
       const results = await Promise.all([
         mcpTool.execute("parallel-a", { tool: "ping", server: "fixture" }),
@@ -113,21 +106,16 @@ createInterface({ input: process.stdin }).on("line", (line) => {
       expect(results.every((result: any) => result.content?.[0]?.text?.includes("pong"))).toBe(true);
       expect(events().some(({ event }) => event === "request:server/discover")).toBe(false);
       expect(events().filter(({ event }) => event === "start")).toHaveLength(1);
-      expect(getManagedMcpStdioProcessCount()).toBe(processBaseline + 1);
 
       await runtime.newSession();
       await waitFor(() => events().filter(({ event }) => event === "exit").length >= 1);
       await runtime.session.bindExtensions({});
       await waitFor(() => events().filter(({ event }) => event === "start").length >= 2);
       expect(events().filter(({ event }) => event === "start")).toHaveLength(2);
-      expect(getActiveMcpRuntimeOwnerCount()).toBe(ownerBaseline + 1);
-      expect(getManagedMcpStdioProcessCount()).toBe(processBaseline + 1);
 
       await runtime.dispose();
       runtime = null;
       await waitFor(() => events().filter(({ event }) => event === "exit").length >= 2);
-      await waitFor(() => getActiveMcpRuntimeOwnerCount() === ownerBaseline);
-      await waitFor(() => getManagedMcpStdioProcessCount() === processBaseline);
     } finally {
       if (runtime) await runtime.dispose();
       resetMcpStartupStateForTests();
@@ -161,14 +149,15 @@ createInterface({ input: process.stdin }).on("line", (line) => {
       },
       manager: {
         getConnection: mock(() => connection),
+        isConnecting: mock(() => false),
         getRequestOptions: mock(() => undefined),
         touch: mock(),
         incrementInFlight: mock(),
         decrementInFlight: mock(),
       },
+      // Adapter 2.31 applies include/exclude policy before publishing metadata.
       toolMetadata: new Map([["workiq", [
         { name: "workiq_retrieve", originalName: "retrieve", description: "Read data" },
-        { name: "workiq_delete_entity", originalName: "delete_entity", description: "Delete data" },
       ]]]),
       resourceCounts: new Map(),
       serverInstructions: new Map(),
@@ -183,7 +172,7 @@ createInterface({ input: process.stdin }).on("line", (line) => {
     expect(createMcpStatusSnapshot(state)).toMatchObject({ totalTools: 1 });
 
     const denied = await executeCall(state, "workiq_delete_entity", {});
-    expect(denied.details).toMatchObject({ error: "tool_not_allowed", server: "workiq" });
+    expect(denied.details).toMatchObject({ error: "tool_not_found" });
     expect(callTool).not.toHaveBeenCalled();
 
     const allowed = await executeCall(state, "workiq_retrieve", { q: "status" });

@@ -1096,3 +1096,72 @@ for (const engine of ["chromium", "webkit"]) {
     30000,
   );
 }
+
+
+for (const [name, engine] of Object.entries({ chromium, webkit })) {
+  browserTest(name + ": rendered Markdown fences follow theme and live system mode", async () => {
+    const browser = await engine.launch({ headless: true });
+    try {
+      for (const skin of ["classic", "visual"]) {
+        const page = await browser.newPage({ colorScheme: "dark", viewport: { width: 1280, height: 1000 } });
+        const errors: string[] = [];
+        page.on("pageerror", e => errors.push(e.message));
+        await page.goto(base + "/?skin=" + skin + "&fences=1", { waitUntil: "networkidle" });
+        const surfaces = ["#markdown-timeline", "#markdown-workspace-preview", "#markdown-editor-preview"];
+        for (const surface of surfaces) await page.locator(surface + " .tok-keyword").first().waitFor();
+        expect(await page.evaluate(() => (window as any).cmHighlight)).toBeUndefined();
+        const read = () => page.evaluate((surfaces) => {
+          const resolve = (role: string) => {
+            const probe = document.createElement("span");
+            probe.style.color = "var(--syntax-" + role + ")";
+            document.body.append(probe);
+            const color = getComputedStyle(probe).color;
+            probe.remove();
+            return color;
+          };
+          const roles = { keyword: "tok-keyword", string: "tok-string", number: "tok-number", atom: "tok-bool", function: "tok-function", comment: "tok-comment" };
+          return surfaces.map(surface => {
+            const node = document.querySelector(surface)!;
+            const failures: string[] = [];
+            const colors: string[] = [];
+            for (const [role, cls] of Object.entries(roles)) {
+              const token = node.querySelector("." + cls);
+              if (!token) { failures.push("missing:" + role); continue; }
+              const actual = getComputedStyle(token).color, expected = resolve(role);
+              colors.push(actual);
+              if (actual !== expected) failures.push(role + ":" + actual + " != " + expected);
+            }
+            const code = node.querySelector("pre code, .cm-md-code-content")!;
+            const backdrop = node.querySelector("pre, .cm-md-code-line")!;
+            const probe = document.createElement("span");
+            probe.style.cssText = "color:var(--text-code);background:var(--bg-code)";
+            document.body.append(probe);
+            const expected = getComputedStyle(probe);
+            if (getComputedStyle(code).color !== expected.color) failures.push("foreground");
+            if (getComputedStyle(backdrop).backgroundColor !== expected.backgroundColor) failures.push("background");
+            probe.remove();
+            return { surface, failures, colors };
+          });
+        }, surfaces);
+        await page.evaluate(() => { const f=(window as any).themeFixture; f.selectLocalTheme("default",null); f.setThemeModePreference("auto"); });
+        const dark = await read();
+        for (const probe of dark) expect(probe.failures).toEqual([]);
+        await page.emulateMedia({ colorScheme: "light" });
+        await page.waitForFunction(() => document.documentElement.dataset.theme === "light");
+        const light = await read();
+        for (const probe of light) expect(probe.failures).toEqual([]);
+        expect(light[0].colors).not.toEqual(dark[0].colors);
+        for (const id of ["monokai", "solarized-light", "github-dark"]) {
+          await page.evaluate(id => (window as any).themeFixture.selectLocalTheme(id,null),id);
+          for (const probe of await read()) expect(probe.failures).toEqual([]);
+        }
+        await page.evaluate(() => { const f=(window as any).themeFixture; f.applyTheme(f.importVSCodeTheme({ type:"light", colors:{ "editor.background":"#fafafa", "editor.foreground":"#202020" }, tokenColors:[{scope:"keyword",settings:{foreground:"#8b005d",fontStyle:"bold"}},{scope:"entity.name.function",settings:{foreground:"#006699"}},{scope:"string",settings:{foreground:"#226622"}}] })); });
+        for (const probe of await read()) expect(probe.failures).toEqual([]);
+        await page.emulateMedia({ colorScheme: "dark" });
+        for (const probe of await read()) expect(probe.failures).toEqual([]);
+        expect(errors).toEqual([]);
+        await page.close();
+      }
+    } finally { await browser.close(); }
+  }, 120000);
+}

@@ -101,6 +101,24 @@ describe("provider/model pricing reference", () => {
     expect(resolveProviderModelPricing("anthropic", "claude-fable-5-1").cacheReadPerMTok).toBe(0.25);
   });
 
+  test("values native GPT-6.1 Sol without inheriting unquoted provider routes", () => {
+    const standard = resolveProviderModelPricing("openai", "gpt-6.1-sol");
+    expect(standard).toMatchObject({
+      canonicalModel: "GPT-6.1 Sol",
+      inputPerMTok: 2,
+      outputPerMTok: 10,
+      cacheReadPerMTok: 0.1,
+      cacheWritePerMTok: 2.5,
+    });
+    expect(standard.basis).toContain("2026-09-29");
+    expect(standard.notes).toContain("base tier only");
+    expect(resolveProviderModelPricing("openai", "gpt-6-1-sol")).toEqual(standard);
+    expect(resolveProviderModelPricing("openai", "gpt-6-sol").cacheReadPerMTok).toBe(0.2);
+    expect(resolveProviderModelPricing("github-copilot", "gpt-6.1-sol").basis).toContain("Unpriced");
+    expect(resolveProviderModelPricing("openrouter", "openai/gpt-6.1-sol").basis).toContain("Unpriced");
+    expect(resolveProviderModelPricing("openai-codex", "gpt-6.1-sol").basis).toContain("Unpriced");
+  });
+
   test("preserves peer route differences and explicitly dated fallbacks", () => {
     expect(resolveProviderModelPricing("xai", "grok-4.5").cacheReadPerMTok).toBe(0.3);
     expect(resolveProviderModelPricing("github-copilot", "grok-4.5").cacheReadPerMTok).toBe(0.5);

@@ -33,7 +33,8 @@ import {
 } from "@earendil-works/pi-coding-agent";
 
 import { createRequire } from "node:module";
-import { getPreparedMcpConfig } from "../secure/mcp-keychain.js";
+import { acquireMcpSessionBridge } from "../secure/mcp-keychain.js";
+import { mcpRuntimeRegistrationPolicy } from "../extensions/mcp-runtime-policy.js";
 import { getPiclawAgentDir } from "../core/agent-dir.js";
 import { SESSIONS_DIR, getRuntimeRoot, getSessionPersistenceConfig, getWorkspaceDir } from "../core/config.js";
 import { buildChannelSystemPromptAppendix } from "../channels/formatting.js";
@@ -63,7 +64,7 @@ import {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 const { createMcpAdapter } = require("pi-mcp-adapter") as {
-  createMcpAdapter(options: { config: unknown; initializeOnLoad?: boolean }): ExtensionFactory;
+  createMcpAdapter(options: { config: unknown; initializeOnLoad?: boolean; resolveRuntimeEnv?: (serverName: string) => Readonly<NodeJS.ProcessEnv> }): ExtensionFactory;
 };
 const AGENT_DIR = getPiclawAgentDir();
 const EMPTY_STRING_ARRAY: string[] = [];
@@ -604,6 +605,10 @@ export async function createSessionInDir(
     sessionStartEvent?: SessionStartEvent;
   }) => {
     if (mode === 'family-shared' && !requireOwnedSessionExecution(options.chatJid!)) throw new Error('Owned family session identity is required.');
+    const mcpBridge = operationProfile ? null : acquireMcpSessionBridge();
+    let mcpBridgeReleased = false;
+    const releaseMcpBridge = () => { if (!mcpBridgeReleased) { mcpBridgeReleased = true; mcpBridge?.release(); } };
+    try {
     const builtinExtensionFactories = operationProfile ? [] : [
       ...(mode === 'family-shared' ? [createFamilyToolCallGuard(options.chatJid!)] : []),
       ...createBuiltinExtensionFactories({
@@ -611,9 +616,14 @@ export async function createSessionInDir(
         modelRuntime: options.modelRuntime,
         chatJid: options.chatJid,
       }),
+      mcpRuntimeRegistrationPolicy,
       // Piclaw synchronously emits the initial session_start event. Let that
       // session own eager servers instead of spawning a superseded load-time owner.
-      createMcpAdapter({ config: getPreparedMcpConfig(), initializeOnLoad: false }),
+      createMcpAdapter({
+        config: mcpBridge!.config,
+        initializeOnLoad: false,
+        resolveRuntimeEnv: (serverName) => mcpBridge!.resolveRuntimeEnv(serverName),
+      }),
     ];
     const resourceLoader = new DefaultResourceLoader({
       cwd,
@@ -642,7 +652,8 @@ export async function createSessionInDir(
     const restoredBranch = sessionManager.getBranch();
     const restoredThinkingPreference = readThinkingPreference(restoredBranch);
     const recordedThinking = readThinkingPreference(restoredBranch.filter(entry => entry.type === 'thinking_level_change'));
-    const result = await createAgentSessionFromServices({
+    let result: Awaited<ReturnType<typeof createAgentSessionFromServices>>;
+    result = await createAgentSessionFromServices({
       services,
       sessionManager,
       sessionStartEvent,
@@ -657,10 +668,16 @@ export async function createSessionInDir(
         ? createFamilyBuiltinTools(cwd, options.chatJid!, (options.customTools ?? []) as ToolDefinition[])
         : options.customTools as any,
     });
-    if (mode === 'family-shared') {
-      try { if (!requireOwnedSessionExecution(options.chatJid!)) throw new Error('Owned family session identity is required.'); }
-      catch (error) { result.session.dispose(); throw error; }
+    if (mcpBridge) {
+      const dispose = result.session.dispose.bind(result.session);
+      let released = false;
+      result.session.dispose = () => {
+        try { dispose(); }
+        finally { if (!released) { released = true; releaseMcpBridge(); } }
+      };
     }
+    try {
+    if (mode === 'family-shared' && !requireOwnedSessionExecution(options.chatJid!)) throw new Error('Owned family session identity is required.');
 
     const normalizeResourceDiagnostics = (items: Array<{ path?: string; error?: string }> = []) =>
       items.map((item) => ({
@@ -691,6 +708,8 @@ export async function createSessionInDir(
       services,
       diagnostics,
     };
+    } catch (error) { result.session.dispose(); throw error; }
+    } catch (error) { releaseMcpBridge(); throw error; }
   };
 
   return await createAgentSessionRuntime(createRuntime as any, {

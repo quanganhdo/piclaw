@@ -1,4 +1,4 @@
-import { useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { type Signal } from "@preact/signals";
 
 export function NumberStepper({ value, min, max, step, onSave, id, label }: {
@@ -12,6 +12,11 @@ export function NumberStepper({ value, min, max, step, onSave, id, label }: {
 }) {
   const s = step ?? 1;
   const [invalid, setInvalid] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const input = inputRef.current;
+    if (input) setInvalid(input.value === "" || !input.validity.valid);
+  }, [value.value, min, max]);
   const decrement = () => {
     const next = Math.max(min ?? -Infinity, value.value - s);
     value.value = next;
@@ -28,6 +33,7 @@ export function NumberStepper({ value, min, max, step, onSave, id, label }: {
     <div className="settings-panel__stepper">
       <button type="button" className="settings-panel__stepper-btn" aria-label={`Decrease ${label || "value"}`} onClick={decrement}>−</button>
       <input
+        ref={inputRef}
         id={id}
         aria-label={label}
         aria-invalid={invalid || undefined}

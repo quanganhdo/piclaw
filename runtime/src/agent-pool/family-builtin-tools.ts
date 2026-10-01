@@ -48,10 +48,20 @@ export function createFamilyBuiltinTools(cwd: string, chatJid: string, customToo
 
 /** Covers SDK-routed extension calls; arbitrary extension code is not a sandbox. */
 export function createFamilyToolCallGuard(chatJid: string): ExtensionFactory {
+  const deniedResult = () => ({
+    content: [{ type: 'text' as const, text: 'Session access denied.' }],
+    details: { error: 'session_access_denied' },
+    structuredContent: null,
+    isError: true,
+  });
   return pi => {
     pi.on('tool_call', event => {
       try { authorise(chatJid, event.toolName); }
       catch { return { block: true, reason: 'Session access denied.' }; }
+    });
+    pi.on('tool_result', event => {
+      try { authorise(chatJid, event.toolName); }
+      catch { return deniedResult(); }
     });
     pi.on('user_bash', () => ({ result: { output: 'Shell access denied in family mode.', exitCode: 1, cancelled: false, truncated: false } }));
   };

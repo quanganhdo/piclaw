@@ -147,7 +147,7 @@ describe("core config", () => {
       expect(snapshot.DATA_DIR).toBe(workspace.data);
       expect(snapshot["call:getIdentityConfig"]).toEqual({ assistantName: "Env Assistant", assistantAvatar: "https://env-file.example/avatar.png", userName: "Config User", userAvatar: "https://config.example/user.png", userAvatarBackground: "#123456" });
       expect(snapshot["call:getLoggingConfig"]).toEqual({ level: "debug" });
-      expect(snapshot["call:getWebRuntimeConfig"]).toMatchObject({ passkeyMode: "totp-only", sessionTtl: 99, totpWindow: 3, internalSecret: "cfg-secret", terminalEnabled: false, vncAllowDirect: false, vncTargetsRaw: "", debugCardSubmissions: true, trustProxy: false, composeUploadLimitMb: 32, workspaceUploadLimitMb: 256 });
+      expect(snapshot["call:getWebRuntimeConfig"]).toMatchObject({ passkeyMode: "totp-only", sessionTtl: 99, totpWindow: 3, internalSecret: "cfg-secret", terminalEnabled: false, vncAllowDirect: false, vncTargetsRaw: "", debugCardSubmissions: true, trustProxy: false, composeUploadLimitMb: 256, workspaceUploadLimitMb: 256 });
       expect(snapshot["call:getToolActivationConfig"]).toEqual({ additionalDefaultTools: ["search_workspace", "introspect_sql"] });
       expect(snapshot["call:getWorkspaceSearchConfig"]).toEqual({ roots: ["notes", ".pi/skills", "docs"], extraExtensions: [] });
     } finally {
@@ -1290,7 +1290,7 @@ describe("core config", () => {
         terminalImageProtocol: "kitty",
         pushSubscriptionCap: 24,
         pushVapidSubject: "mailto:domain@example.test",
-        composeUploadLimitMb: 48,
+        composeUploadLimitMb: 512,
         workspaceUploadLimitMb: 512,
         notificationDebugLabels: true,
         vncAllowDirect: false,

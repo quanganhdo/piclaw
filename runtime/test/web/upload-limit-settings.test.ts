@@ -17,7 +17,9 @@ test('compose upload limit setting applies immediately to MediaService', async (
       '../src/channels/web/media/media-service.js',
     );
 
-    await handler.saveGeneralSettings({ composeUploadLimitMb: 1 });
+    const saved = await handler.saveGeneralSettings({ composeUploadLimitMb: 1 });
+    expect(saved.workspaceUploadLimitMb).toBe(1);
+    expect(saved.composeUploadLimitMb).toBe(1);
 
     const service = new mediaModule.MediaService();
     const tooBig = new Uint8Array(1024 * 1024 + 1);
@@ -62,6 +64,8 @@ test('workspace upload limit setting accepts 1024 MB', async () => {
     const saved = await handler.saveGeneralSettings({ workspaceUploadLimitMb: 1024 });
     expect(saved.workspaceUploadLimitMb).toBe(1024);
     expect(configModule.getWebRuntimeConfig().workspaceUploadLimitMb).toBe(1024);
+    expect(saved.composeUploadLimitMb).toBe(1024);
+    expect(configModule.getWebRuntimeConfig().composeUploadLimitMb).toBe(1024);
   } finally {
     await handler.saveGeneralSettings({ workspaceUploadLimitMb: previousLimit });
   }

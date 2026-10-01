@@ -1,8 +1,14 @@
 # Provider/model pricing reference
 
-_Reference tag: 2026-09-22_
+_Reference tag: 2026-09-29_
 
-This file records the sources and assumptions behind the token chart's **estimated API-equivalent** costs. The executable resolver is `provider-model-pricing-reference.ts`. The route-specific `pricing-2026-09-22.json` snapshot takes precedence; September 5 routes and older rules remain explicitly labelled historical fallbacks when not freshly verified.
+This file records the sources and assumptions behind the token chart's **estimated API-equivalent** costs. The executable resolver is `provider-model-pricing-reference.ts`. The native OpenAI `pricing-2026-09-29.json` addition takes precedence for GPT-6.1 Sol; the September 22 and September 5 snapshots and older rules remain dated fallbacks. No rate is inferred for Copilot, OpenRouter or Codex.
+
+## 29 September 2026 — GPT-6.1 Sol
+
+- Native OpenAI API standard prices per million tokens: **$2 input, $0.10 cache read, $2.50 cache write, $10 output**. The cache-read rate is half GPT-6 Sol's; other short-context rates match.
+- Above 272K input tokens, full-request rates are $4 / $0.20 / $5 / $15 respectively. Batch/Flex are 50% of Standard, Fast is 2×; EU data residency cannot use Fast. Request-level modifiers remain outside the chart's base-tier estimator.
+- [Evidence and route boundaries](../../../../docs/finops/2026-09-29/README.md). Copilot and OpenRouter did not quote this route at retrieval; other providers stay unpriced. API-equivalent cost is separate from subscription billing.
 
 ## 22 September 2026 refresh
 

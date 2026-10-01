@@ -1,4 +1,4 @@
-import { useId } from "preact/hooks";
+import { useEffect, useId } from "preact/hooks";
 import { useSignal } from "@preact/signals";
 import { type SettingsData, type SettingsSectionProps } from "./types";
 import { NumberStepper } from "./NumberStepper";
@@ -14,8 +14,13 @@ export function GeneralSection({
   const prefix = useId();
   const assistantName = useSignal(data.assistantName ?? "");
   const userName = useSignal(data.userName ?? "");
-  const composeUploadMb = useSignal(data.composeUploadLimitMb ?? 32);
   const workspaceUploadMb = useSignal(data.workspaceUploadLimitMb ?? 256);
+
+  // Reconcile every acknowledgement, even when an environment override keeps
+  // the effective limit unchanged from the previous response.
+  useEffect(() => {
+    workspaceUploadMb.value = data.workspaceUploadLimitMb ?? 256;
+  }, [data]);
 
   return (
     <section className="settings-panel__section settings-panel__section--general">
@@ -76,18 +81,10 @@ export function GeneralSection({
       <h3 className="settings-panel__subsection-title">Instance Configuration</h3>
 
       <div className="settings-panel__field">
-        <label htmlFor={`${prefix}-compose`} className="settings-panel__label">Compose upload (MB)</label>
+        <label htmlFor={`${prefix}-workspace`} className="settings-panel__label">Upload limit (MB)</label>
         <div className="settings-panel__field-content">
-          <NumberStepper id={`${prefix}-compose`} label="Compose upload (MB)" value={composeUploadMb} min={1} max={256} onSave={(v) => onSaveGeneral("composeUploadLimitMb", v)} />
-          <span className="settings-panel__description">Chat/media attachments</span>
-        </div>
-      </div>
-
-      <div className="settings-panel__field">
-        <label htmlFor={`${prefix}-workspace`} className="settings-panel__label">Workspace upload (MB)</label>
-        <div className="settings-panel__field-content">
-          <NumberStepper id={`${prefix}-workspace`} label="Workspace upload (MB)" value={workspaceUploadMb} min={1} max={1024} onSave={(v) => onSaveGeneral("workspaceUploadLimitMb", v)} />
-          <span className="settings-panel__description">Defaults to 256 MB; chunked uploads allow up to 1 GB</span>
+          <NumberStepper id={`${prefix}-workspace`} label="Upload limit (MB)" value={workspaceUploadMb} min={1} max={1024} onSave={(v) => onSaveGeneral("workspaceUploadLimitMb", v)} />
+          <span className="settings-panel__description">Applies to chat and workspace files. Chat files above 32 MB are saved under workspace/uploads and referenced in the message.</span>
         </div>
       </div>
 

@@ -1,0 +1,124 @@
+{
+  "version": "0.99.1",
+  "gitHead": "d86654abb8862e201933517d6f1fce9f88dd117f",
+  "packageAdmissionMerge": "8abf2030781b90fd6c345ac86352f8abb3a689a8",
+  "requirements": [
+    {
+      "id": "MCP-01",
+      "owner": "1443",
+      "status": "pass",
+      "reason": "Eight exact published packages, root exports, Node/Bun imports and private-import rejection admitted."
+    },
+    {
+      "id": "MCP-02",
+      "owner": "1446",
+      "status": "implementable",
+      "reason": "loadConfig and updateConfig are public; Piclaw must translate legacy layers, provenance and quarantine before session construction."
+    },
+    {
+      "id": "MCP-03",
+      "owner": "1446,1450",
+      "status": "blocked",
+      "reason": "Extension credentials accepts a concrete non-root-exported store; no public keychain-backed credential-store interface."
+    },
+    {
+      "id": "MCP-04",
+      "owner": "1447",
+      "status": "implementable",
+      "reason": "Server/tool exposure is public, but adapter include/exclude semantics require proved translation and invocation checks."
+    },
+    {
+      "id": "MCP-05",
+      "owner": "1449",
+      "status": "implementable",
+      "reason": "Direct/deferred/codemode/tool_search and parentToolCallId are public; host policy/late-output checks still require implementation evidence."
+    },
+    {
+      "id": "MCP-06",
+      "owner": "1447,1449",
+      "status": "blocked",
+      "reason": "Shared resource tools aggregate by server exposure; no public per-server URI/list-result policy seam."
+    },
+    {
+      "id": "MCP-07",
+      "owner": "1448",
+      "status": "blocked",
+      "reason": "Public calls have inactivity timeout/signal, but extension tool execution exposes no host absolute-deadline abort injection seam."
+    },
+    {
+      "id": "MCP-08",
+      "owner": "1448",
+      "status": "blocked",
+      "reason": "Every enabled server connects during session_start; deferred/hidden exposure and startupWaitMs do not provide initial lazy lifecycle. Config has no socket transport shape."
+    },
+    {
+      "id": "MCP-09",
+      "owner": "1448",
+      "status": "implementable",
+      "reason": "Generation gating prevents client, transport, process, listener and tool ownership; a transient constructed object is not explicitly closed and should be corrected and regression-tested."
+    },
+    {
+      "id": "MCP-10",
+      "owner": "1450",
+      "status": "blocked",
+      "reason": "Low-level public OAuth exists, but extension store/controller is private and non-UI login rejects; openUrl is not headless auth start/complete."
+    },
+    {
+      "id": "MCP-11",
+      "owner": "1449",
+      "status": "blocked",
+      "reason": "Extension exposes no prompt list/get or MCP App host path and deliberately filters App resources; parallel low-level client is prohibited."
+    },
+    {
+      "id": "MCP-12",
+      "owner": "1451",
+      "status": "blocked",
+      "reason": "No public extension connection/status observer or reconnect/login/logout controller for host management."
+    },
+    {
+      "id": "MCP-13",
+      "owner": "addons#160",
+      "status": "pending",
+      "reason": "Delegate child bridge requires exact core policy snapshot, explicit factories and one owner; not proven by package imports."
+    },
+    {
+      "id": "MCP-14",
+      "owner": "1455",
+      "status": "pending",
+      "reason": "Live Memento execution requires later credential/server-call authorization and all blockers resolved or waived."
+    },
+    {
+      "id": "MCP-15",
+      "owner": "1454,1455,1456",
+      "status": "blocked",
+      "reason": "Adapter removal, single-owner install and rollback cannot proceed while required public seams remain blocked."
+    }
+  ],
+  "publicPositive": [
+    "createMcpExtension",
+    "createToolSearchExtension",
+    "createCodemodeExtension",
+    "McpExtensionOptions.loadConfig",
+    "McpExtensionOptions.createTransport",
+    "McpExtensionOptions.updateConfig",
+    "McpClient",
+    "StdioTransport",
+    "StreamableHttpTransport",
+    "McpClient.listTools",
+    "McpClient.listResources",
+    "McpClient.listResourceTemplates",
+    "McpClient.readResource",
+    "McpClient.callTool",
+    "McpClient.request",
+    "pi-mcp/oauth public authorization primitives"
+  ],
+  "forbiddenWorkarounds": [
+    "coding-agent/dist/extensions/mcp private imports",
+    "private class casts",
+    "synthetic invalid transport configs",
+    "parallel MCP client",
+    "TUI/status text scraping",
+    "patched in-memory agent tool arrays",
+    "automatic adapter fallback"
+  ]
+}

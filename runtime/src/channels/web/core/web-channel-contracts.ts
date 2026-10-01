@@ -26,7 +26,7 @@ interface AuthGatewayLike {
   isInternalSecretEnabled(): boolean;
   verifyInternalSecret(req: Request): boolean;
   isAuthenticated(req: Request): boolean;
-  getPrincipal?(req: Request): import("../auth/principal.js").AuthenticatedPrincipal | null;
+  getPrincipal?(req: Request, refresh?: boolean): import("../auth/principal.js").AuthenticatedPrincipal | null;
   isTotpSession(req: Request): boolean;
   createTotpContext(): TotpAuthContext;
   createWebauthnContext(): WebauthnAuthContext;

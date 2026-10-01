@@ -1,5 +1,6 @@
 import { useCallback } from '../vendor/preact-htm.js';
-import { handleMessageResponseRefresh } from './app-auth-bootstrap.js';
+import { appendAcknowledgedTimelinePost } from './app-realtime-timeline.js';
+import { handleMessageResponseRefresh, type HandleMessageResponseOptions } from './app-auth-bootstrap.js';
 import {
   handleInjectQueuedFollowupAction,
   handleRemoveQueuedFollowupAction,
@@ -17,6 +18,9 @@ interface ToastFn {
 
 export interface UseFollowupActionsOrchestrationOptions {
   currentChatJid: string;
+  activeChatJidRef: RefBox<string>;
+  viewStateRef: RefBox<any>;
+  setPosts: StateSetter<any[] | null>;
   followupQueueItemsRef: RefBox<any[]>;
   dismissedQueueRowIdsRef: RefBox<Set<string | number>>;
   refreshQueueState: () => Promise<void>;
@@ -67,7 +71,7 @@ export function runMessageResponseRefresh(
     refreshAutoresearchStatus: () => Promise<void>;
     refreshQueueState: () => Promise<void>;
   },
-  action: (options: Record<string, unknown>) => void = handleMessageResponseRefresh,
+  action: (options: HandleMessageResponseOptions) => void = handleMessageResponseRefresh,
 ): void {
   action({
     response,
@@ -82,6 +86,9 @@ export function runMessageResponseRefresh(
 export function useFollowupActionsOrchestration(options: UseFollowupActionsOrchestrationOptions) {
   const {
     currentChatJid,
+    activeChatJidRef,
+    viewStateRef,
+    setPosts,
     followupQueueItemsRef,
     dismissedQueueRowIdsRef,
     refreshQueueState,
@@ -146,6 +153,11 @@ export function useFollowupActionsOrchestration(options: UseFollowupActionsOrche
   }, [currentChatJid, refreshQueueState, setFollowupQueueItems]);
 
   const handleMessageResponse = useCallback((response: any) => {
+    // Do not wait for SSE delivery or a refresh to echo an already stored row.
+    // The ref prevents a late response from leaking into a different session.
+    if (activeChatJidRef.current === currentChatJid) {
+      setPosts(posts => appendAcknowledgedTimelinePost(posts, response, activeChatJidRef.current, viewStateRef.current));
+    }
     runMessageResponseRefresh(response, {
       refreshActiveChatAgents,
       refreshCurrentChatBranches,
@@ -153,7 +165,7 @@ export function useFollowupActionsOrchestration(options: UseFollowupActionsOrche
       refreshAutoresearchStatus,
       refreshQueueState,
     });
-  }, [refreshActiveChatAgents, refreshAutoresearchStatus, refreshContextUsage, refreshCurrentChatBranches, refreshQueueState]);
+  }, [activeChatJidRef, currentChatJid, setPosts, viewStateRef, refreshActiveChatAgents, refreshAutoresearchStatus, refreshContextUsage, refreshCurrentChatBranches, refreshQueueState]);
 
   return {
     handleInjectQueuedFollowup,

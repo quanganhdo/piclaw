@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "status": "accepted-first-release",
+  "acceptedBy": "Rui Carmo",
+  "acceptedAt": "2026-09-29T08:30:19.485Z",
+  "scope": "Bounded, citable single-user lexical note retrieval, evaluated on the fixed 516-note local isolated workload. Not a universal production SLA, semantic-answer claim or deployment approval.",
+  "sourceCommit": "95498eaa0b4168c6888389f9955f00aec6e9d010",
+  "validatedTree": "2652a78a17119214f3383928dd0dbbc424a49e54",
+  "resource": {
+    "warmQueryP95MsMaximum": 50,
+    "freshProcessFirstQueryMsMaximum": 100,
+    "indexOwnedBytesPerSourceByteMaximum": 3,
+    "toolResponseBytesMaximum": 16384
+  },
+  "evidence": {
+    "releaseReport": "release-results/repeated.json",
+    "holdoutReport": "final-holdout/result.json",
+    "fixtureFiles": 516,
+    "warmSamplesPerPhase": 110,
+    "phases": ["build", "reopen", "reopen", "reopen", "recover", "incremental"],
+    "measuredProcessTreePeakBytes": 174063616,
+    "peakLog": "377-repeated-reviewed.log",
+    "finalIntegratedRuntimePass": 5793,
+    "finalIntegratedRuntimeSkip": 7,
+    "finalIntegratedRuntimeFail": 0,
+    "finalIntegratedFeaturePass": 25,
+    "finalIntegratedWebBuildPass": 9
+  },
+  "unchangedOtherBounds": {
+    "refreshCooperativeCeilingMs": 30000,
+    "refreshAuthority": "Pre-existing #1345 logical refresh ceiling, not a newly approved performance budget.",
+    "historicalProposedRssBytes": 268435456,
+    "rssDisposition": "Measured below the historical proposal; not a fifth newly accepted budget.",
+    "historicalSmallInitialRefreshMs": 2000,
+    "smallRefreshDisposition": "Not evaluated by this 516-note release workload; retained as an unapproved small-fixture proposal, not replaced by the 30-second logical ceiling. Research issue #1436 was triaged closed as not planned."
+  },
+  "safety": {
+    "allowedCitationFailures": 0,
+    "allowedAdmissionFailures": 0,
+    "sourceRevisionRequired": true,
+    "parentReferencesRemainSeparate": true,
+    "existingLogicalAndAccessLimitsUnchanged": true
+  },
+  "historicalProposal": {
+    "path": "budgets.json",
+    "sha256": "47b5e08e912c33e5b5ba4f8440fead6b0ec6cdd1f3ba8e73196d049419f2b02b",
+    "disposition": "Preserved unchanged, with all original failed/unsupported results. Its file-level latency/output/index-growth and lexical no-answer proposals do not define acceptance of this integrated v1."
+  },
+  "deferred": {
+    "temporalRankingAndAblations": 1434,
+    "answerFaithfulnessAndAbsentLabels": 1435,
+    "longRunStorageAndRepresentativePerformance": 1436
+  },
+  "followUpTriage": {
+    "1434": "Closed as not planned: substantial speculative ranking work; reopen for a reproducible failure.",
+    "1435": "Open, narrowed: separate label corrections and a small answer/citation smoke test after separately authorised deployment.",
+    "1436": "Closed as not planned: broader benchmarks have limited immediate benefit; reopen for observed latency or storage problems."
+  },
+  "limitations": [
+    "Runtime source validation and evidence retrieval do not establish model answer correctness or semantic abstention.",
+    "Final holdout Q23/Q24 absent-label defects remain documented and are not counted as passed absence tests.",
+    "The 3x ratio covers note-owned allocated tables/indexes on this fixture, not whole messages.db, WAL/SHM or long-run growth.",
+    "Process-cold reopen timings do not flush the OS cache; measurements are local fixture results.",
+    "Independent reviews and exact citation regressions cover accepted safety invariants; tests do not establish OS confinement against privileged writers.",
+    "Installation, restart and a real-workspace smoke test require separate authorisation."
+  ]
+}

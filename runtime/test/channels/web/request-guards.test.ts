@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
+import { getRouteFlags } from "../../../src/channels/web/http/route-flags.js";
+import { getDataRateLimitRule } from "../../../src/channels/web/http/rate-limit-rules.js";
 import { enforceRequestGuards } from "../../../src/channels/web/http/request-guards.js";
 import { resetRateLimiterStateForTests } from "../../../src/channels/web/http/rate-limit.js";
 import { buildRouteFlags } from "./helpers/route-flags.js";
@@ -82,4 +84,14 @@ describe("request guards", () => {
     expect(response?.status).toBe(403);
     expect(await response?.json()).toEqual({ error: "Origin not allowed" });
   });
+});
+
+test('large media upload route is authenticated, CSRF guarded and chunk-rate limited', async () => {
+  const path='/media/upload-chunk';const req=new Request('https://example.com'+path,{method:'POST',headers:{origin:'https://example.com',host:'example.com'}});
+  const flags=getRouteFlags(req,path);
+  expect((await enforceRequestGuards(createChannel({authGateway:{isAuthenticated:()=>false}}),req,path,flags))?.status).toBe(401);
+  const hostile=new Request('https://example.com'+path,{method:'POST',headers:{origin:'https://evil.test',host:'example.com'}});
+  expect((await enforceRequestGuards(createChannel(),hostile,path,getRouteFlags(hostile,path)))?.status).toBe(403);
+  expect(await enforceRequestGuards(createChannel(),req,path,flags)).toBeNull();
+  expect(getDataRateLimitRule('POST',path)).toMatchObject({bucket:'data/media_upload_chunk',limit:240});
 });

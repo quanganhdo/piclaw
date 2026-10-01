@@ -453,7 +453,7 @@ test("config and env fallback chains handle booleans and session settings", () =
       vncTargetsRaw: "",
       debugCardSubmissions: true,
       trustProxy: false,
-      composeUploadLimitMb: 32,
+      composeUploadLimitMb: 256,
       workspaceUploadLimitMb: 256,
       uiMode: "classic",
     });
@@ -808,7 +808,7 @@ test("web runtime config getter groups auth/session/proxy settings", () => {
       vncTargetsRaw: "",
       debugCardSubmissions: true,
       trustProxy: false,
-      composeUploadLimitMb: 32,
+      composeUploadLimitMb: 256,
       workspaceUploadLimitMb: 256,
       uiMode: "classic",
     });
@@ -928,7 +928,7 @@ test("in-process module init handles deprecated env warnings, argv parsing, and 
       vncTargetsRaw: "",
       debugCardSubmissions: false,
       trustProxy: false,
-      composeUploadLimitMb: 32,
+      composeUploadLimitMb: 256,
       workspaceUploadLimitMb: 256,
       uiMode: "classic",
     });

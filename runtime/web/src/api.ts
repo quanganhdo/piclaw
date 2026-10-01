@@ -334,6 +334,31 @@ export async function saveWorkspaceSettings(payload) {
     });
 }
 
+export async function getWorkspaceIndexingSettings() {
+    return request('/agent/settings/workspace/indexing');
+}
+
+export async function previewWorkspaceIndexingPolicy(policy) {
+    return request('/agent/settings/workspace/indexing/preview', {
+        method: 'POST',
+        body: JSON.stringify(policy),
+    });
+}
+
+export async function saveWorkspaceIndexingPolicy(policy) {
+    return request('/agent/settings/workspace/indexing/save', {
+        method: 'POST',
+        body: JSON.stringify(policy),
+    });
+}
+
+export async function refreshWorkspaceIndexing() {
+    return request('/agent/settings/workspace/indexing/refresh', {
+        method: 'POST',
+        body: JSON.stringify({}),
+    });
+}
+
 export async function getEnvironmentSettings() {
     return request('/agent/settings/environment');
 }
@@ -654,11 +679,12 @@ export async function respondToAgentRequest(requestId, outcome, chatJid = null) 
 /**
  * Submit an Adaptive Card action back to the web channel.
  */
-export async function submitAdaptiveCardAction(payload) {
+export async function submitAdaptiveCardAction(payload, options: { signal?: AbortSignal } = {}) {
     const response = await fetch(API_BASE + '/agent/card-action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
+        signal: options.signal,
     });
 
     if (!response.ok) {

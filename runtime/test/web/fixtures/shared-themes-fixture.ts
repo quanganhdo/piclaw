@@ -196,3 +196,38 @@ const editor = new EditorView({
 Object.assign((window as any).themeFixture, {
   destroyEditor: () => editor.destroy(),
 });
+
+
+if (new URLSearchParams(location.search).get("fences") === "1") {
+// Exercise the actual fenced-Markdown pipelines and editor preview. Keep these
+// nodes mounted while themes change so stale inline colours cannot pass.
+await import("../../../web/src/vendor/marked-entry.js");
+const classicMarkdown = await import("../../../web/src/markdown.js");
+const visualMarkdown = await import("../../../web/static/visual/frontend/src/utils/markdown-pipeline");
+const { h, render } = await import("preact");
+const { WorkspacePreview } = await import("../../../web/static/visual/frontend/src/panels/workspace/WorkspacePreview");
+const markdown = '# Fixture\n\n```javascript\nasync function launch(city) {\n  const greeting = "hello"; // comment\n  return city.connect(42, true, greeting);\n}\n```\n\nEnd.\n';
+const renderer = skin === "visual" ? visualMarkdown.renderMarkdown : classicMarkdown.renderMarkdown;
+const timeline = document.createElement("div");
+timeline.id = "markdown-timeline";
+timeline.className = skin === "visual" ? "message-list__content" : "post-content";
+timeline.innerHTML = renderer(markdown);
+document.body.append(timeline);
+const preview = document.createElement("div");
+preview.id = "markdown-workspace-preview";
+document.body.append(preview);
+if (skin === "visual") {
+  render(h(WorkspacePreview, { nodeName: "fixture.md", preview: { content: markdown }, status: "done", errorMessage: "", kind: "markdown", content: markdown, rawUrl: "" } as any), preview);
+} else {
+  preview.className = "attachment-preview-markdown post-content";
+  preview.innerHTML = renderer(markdown);
+}
+const live = document.createElement("div");
+live.id = "markdown-editor-preview";
+live.style.cssText = "height:360px;width:850px";
+document.body.append(live);
+const { editorPaneExtension } = await import("../../../extensions/viewers/editor/editor-extension.js");
+const markdownEditor = editorPaneExtension.mount(live, { path: "fixture.md", content: markdown, mtime: null, onSave: async()=>({ok:true}), onDirtyChange: ()=>{} });
+Object.assign((window as any).themeFixture, { markdownEditor });
+
+}

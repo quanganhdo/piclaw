@@ -91,9 +91,14 @@ export async function createProcessChatStreamingRuntime(options: {
     },
   };
 
+  // Lifecycle feedback is not replaceable display data. Publish it before any
+  // optional model metadata/auth lookup so cold or slow providers cannot hide
+  // that the accepted turn has started.
+  trackedEmitter.status({ thread_id: threadId, agent_id: agentId, turn_id: turnId, type: "thinking", title: "Thinking...", started_at: options.runStartedAt });
+
   const liveThinkingLevelLabels = new Map<string, string>();
   try {
-    const modelState = await channel.agentPool.getAvailableModels(chatJid);
+    const modelState = await channel.agentPool.getAvailableModels(chatJid, { includeProviderUsage: false, includeProviderDiagnostics: false, includeCatalogue: false });
     if (shouldPersistThinking) currentModel = modelState.current ?? null;
     modelState.available_thinking_levels.forEach((level, index) => liveThinkingLevelLabels.set(level, modelState.available_thinking_level_labels[index] ?? level));
     if (modelState.thinking_level && modelState.thinking_level_label) liveThinkingLevelLabels.set(modelState.thinking_level, modelState.thinking_level_label);
@@ -187,7 +192,6 @@ export async function createProcessChatStreamingRuntime(options: {
       });
     }
   };
-  lifecycleEmitter.status({ thread_id: threadId, agent_id: agentId, type: "thinking", title: "Thinking...", turn_id: turnId });
   const runtimeConfig = getAgentRuntimeConfig();
   const timeoutMs = channel.sse.clients.size > 0 ? runtimeConfig.timeoutMs : (runtimeConfig.backgroundTimeoutMs > 0 ? runtimeConfig.backgroundTimeoutMs : runtimeConfig.timeoutMs);
   return {

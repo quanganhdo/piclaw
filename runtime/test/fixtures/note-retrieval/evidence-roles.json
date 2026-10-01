@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "scope": "Secondary evidence-role annotations for consulted independent-v3 regression cases; not a replacement for frozen relevance labels and not an unseen answer-quality evaluation.",
+  "labels": [
+    {"id":"negative-battery","role":"explicitly-unrecorded","path":"notes/field-negatives.md","quote":"The Brass Compass inspection records its spring housing but does not state a battery chemistry."},
+    {"id":"negative-locker","role":"explicitly-unrecorded","path":"notes/field-negatives.md","quote":"The Meadow Pavilion visitor lockers are mentioned, but no opening time or locker number is recorded."},
+    {"id":"negative-cart","role":"rejected","path":"notes/field-negatives.md","quote":"The proposed violet cart route for Alder Hall was rejected; no weekday route was adopted."},
+    {"id":"negative-ferry","role":"explicitly-unrecorded","path":"notes/field-negatives.md","quote":"The Oriole Ferry lower deck note does not specify passenger capacity."},
+    {"id":"negative-acidity","role":"explicitly-unrecorded","path":"notes/field-negatives.md","quote":"The Clay Moraine sample sheet has a temperature note but no acidity measurement."},
+    {"id":"negative-buoy","role":"explicitly-unrecorded","path":"notes/field-negatives.md","quote":"Buoy Sigma has a maintenance date but no flash interval or radio channel."},
+    {"id":"negative-mesh","role":"rejected","path":"notes/field-negatives.md","quote":"The winter mesh trial at Slate Fen was cancelled without a bank or mesh choice."},
+    {"id":"negative-mass","role":"explicitly-unrecorded","path":"notes/field-negatives.md","quote":"The Comet Fern specimen CF-883 has a scale-card photograph but no measured mass."},
+    {"id":"negative-near-id","role":"unlabelled-absence","path":null,"quote":null},
+    {"id":"negative-map","role":"explicitly-unrecorded","path":"notes/civic-map.md","quote":"No ferry capacity is listed on the map."}
+  ]
+}

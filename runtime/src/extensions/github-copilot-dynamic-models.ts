@@ -7,7 +7,7 @@
  * scoped to github-copilot only and imports chat-capable live model IDs while filtering known
  * non-chat model IDs such as embeddings and trajectory compaction helpers.
  */
-import type { Api, Model, OAuthCredential, Provider, RefreshModelsContext } from "@earendil-works/pi-ai";
+import { isModelType, type Api, type Model, type OAuthCredential, type Provider, type RefreshModelsContext } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ModelRuntime } from "@earendil-works/pi-coding-agent";
 
 import { getToolsIntegrationConfig } from "../core/config.js";
@@ -385,7 +385,8 @@ function copilotBaseUrl(credential: OAuthCredential): string {
 }
 
 function storedProviderModels(context: RefreshModelsContext): Model<Api>[] {
-  return [...(context.stored?.models ?? [])].filter((model) => model.provider === PROVIDER && model.id);
+  return [...(context.stored?.models ?? [])].filter((model): model is Model<Api> =>
+    isModelType(model, "chat") && model.provider === PROVIDER && Boolean(model.id));
 }
 
 function toStoredModel(model: ProviderModelConfig): Model<Api> {

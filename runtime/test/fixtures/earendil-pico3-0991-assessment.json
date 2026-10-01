@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "version": "0.99.1",
+  "commit": "d86654abb8862e201933517d6f1fce9f88dd117f",
+  "export": "@earendil-works/pi-agent-core/experimental/pico3",
+  "historicalVersion": "0.87.0",
+  "historicalCommit": "16787ad5b2dc748047f314ca1bfe7708f30f54f3",
+  "publicRuntimeExports": 30,
+  "fingerprints": {
+    "index.js": "ce575fbbbd66e9bcb67ff0b6be483c5baefd1750cb10adaa1d73aedb9d66eafe",
+    "index.d.ts": "1ef74b8615a31ec9eed49cfd9fa657b68958af82f1b6c480dfb40d65703a6d72",
+    "session.js": "263ffac4b262b13b569c93520d859b8ca1eb1e5cbad32d14f18a5fa1dee4c1ae",
+    "view.js": "0e0aadac888bf85858313112d990c09033fbaa963d56186400c6771b20d36856",
+    "legacy-tracker.js": "1514c18e2887402add4cfd897c01862076ac750d9cacf9c48926fdc77f5899ea"
+  },
+  "sourceDelta": {
+    "files": ["legacy-tracker.ts", "session.ts", "view.ts"],
+    "addedLines": 75,
+    "deletedLines": 17,
+    "patchSha256": "107beb119c5e48b8dc804187f4783b594488ebf1fab990ee8a49745729358feb"
+  },
+  "executionModel": "send_creates_work_resume_starts_scheduler",
+  "storage": ["Memory", "JSONL"],
+  "sqlite": "unsupported_no_backend",
+  "crossProcessOwnership": "unsupported_one_process_per_directory",
+  "processHost": "unverified_not_exercised",
+  "storageMigration": "unsupported_no_public_migration_contract",
+  "piclawServiceCases": "PC-001_through_PC-020_unverified",
+  "authorities": [
+    ["EF-S01", "ServiceWorkStore", "retained_piclaw"],
+    ["EF-S02", "TerminalSettlementStore", "retained_piclaw"],
+    ["EF-S05", "ServiceOutboxStore", "retained_piclaw"],
+    ["EF-S07", "ScheduledRunStore", "retained_piclaw"],
+    ["EF-S08", "AgentProjectionSink", "retained_piclaw"]
+  ],
+  "unsupportedHarnessCases": ["HC-008", "HC-017", "HC-021", "HC-024"],
+  "boundedFixtureCoverage": ["send_resume", "requestId_deduplication", "Chord_transaction_snapshot", "rollback", "watch_envelope_fold", "queued_cancel", "active_abort", "JSONL_undriven_reopen"],
+  "productionImport": false,
+  "productionActivation": false,
+  "recommendation": { "boundedFurtherSpike": "go_fake_providers_only", "productionAdoption": "no_go" }
+}

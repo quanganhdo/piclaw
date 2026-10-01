@@ -48,7 +48,6 @@ function normalizeGeneralSettings(data: Record<string, any> = {}) {
         userAvatar: data.userAvatar || '',
         assistantName: data.assistantName || '',
         assistantAvatar: data.assistantAvatar || '',
-        composeUploadLimitMb: data.composeUploadLimitMb ?? 32,
         workspaceUploadLimitMb: data.workspaceUploadLimitMb ?? 256,
     };
 }
@@ -65,7 +64,6 @@ export function GeneralSection({ settingsData, setStatus, mergeSettingsData }) {
     const [userAvatar, setUserAvatar] = useState('');
     const [assistantName, setAssistantName] = useState('');
     const [assistantAvatar, setAssistantAvatar] = useState('');
-    const [composeUploadLimitMb, setComposeUploadLimitMb] = useState(32);
     const [workspaceUploadLimitMb, setWorkspaceUploadLimitMb] = useState(256);
     const [metersEnabled, setMetersEnabled] = useState(() => readStoredMetersEnabled(false));
     const [appliedHint, setAppliedHint] = useState(false);
@@ -84,7 +82,6 @@ export function GeneralSection({ settingsData, setStatus, mergeSettingsData }) {
         setUserAvatar(next.userAvatar);
         setAssistantName(next.assistantName);
         setAssistantAvatar(next.assistantAvatar);
-        setComposeUploadLimitMb(next.composeUploadLimitMb);
         setWorkspaceUploadLimitMb(next.workspaceUploadLimitMb);
         savedSnapshotRef.current = JSON.stringify(next);
     }, []);
@@ -103,10 +100,10 @@ export function GeneralSection({ settingsData, setStatus, mergeSettingsData }) {
 
     const currentSnapshot = useMemo(() => JSON.stringify(normalizeGeneralSettings({
         userName, userAvatar, assistantName, assistantAvatar,
-        composeUploadLimitMb, workspaceUploadLimitMb,
+        workspaceUploadLimitMb,
     })), [
         userName, userAvatar, assistantName, assistantAvatar,
-        composeUploadLimitMb, workspaceUploadLimitMb,
+        workspaceUploadLimitMb,
     ]);
 
     useEffect(() => {
@@ -195,24 +192,10 @@ export function GeneralSection({ settingsData, setStatus, mergeSettingsData }) {
 
             <h3 style="margin-top:20px">${t('settings.general.instanceConfig')}</h3>
             <div class="settings-row">
-                <label for=${fieldId('compose')}>${t('settings.general.composeUpload')}</label>
-                <${NumberStepper}
-                    id=${fieldId('compose')}
-                    label=${t('settings.general.composeUploadAria')}
-                    value=${composeUploadLimitMb}
-                    min=${1}
-                    max=${512}
-                    fallback=${32}
-                    width="80px"
-                    onChange=${setComposeUploadLimitMb}
-                />
-                <span class="settings-hint" style="margin:0">${t('settings.general.composeUploadHint')}</span>
-            </div>
-            <div class="settings-row">
-                <label for=${fieldId('workspace')}>${t('settings.general.workspaceUpload')}</label>
+                <label for=${fieldId('workspace')}>${t('settings.general.uploadLimit')}</label>
                 <${NumberStepper}
                     id=${fieldId('workspace')}
-                    label=${t('settings.general.workspaceUploadAria')}
+                    label=${t('settings.general.uploadLimit')}
                     value=${workspaceUploadLimitMb}
                     min=${1}
                     max=${1024}
@@ -220,7 +203,7 @@ export function GeneralSection({ settingsData, setStatus, mergeSettingsData }) {
                     width="80px"
                     onChange=${setWorkspaceUploadLimitMb}
                 />
-                <span class="settings-hint" style="margin:0">${t('settings.general.workspaceUploadHint')}</span>
+                <span class="settings-hint" style="margin:0">${t('settings.general.uploadLimitHint')}</span>
             </div>
 
         </div>

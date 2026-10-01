@@ -1,0 +1,6 @@
+{
+  "name": "@earendil-works/pi-codemode",
+  "version": "0.99.1",
+  "type": "module",
+  "engines": { "node": ">=22.19.0" }
+}

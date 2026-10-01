@@ -10,6 +10,7 @@ export interface ParsedAttachment {
 export interface ParsedUserContent {
   cleanedContent: string;
   attachments: ParsedAttachment[];
+  workspaceFiles: string[];
 }
 
 /**
@@ -17,7 +18,14 @@ export interface ParsedUserContent {
  * Attachment lines have the form: `attachment:<id> (<filename>)` (optionally prefixed with `-` or `*`).
  */
 export function parseUserContent(content: string): ParsedUserContent {
-  const lines = content.split(/\r?\n/);
+  const workspaceFiles: string[] = [];
+  const withoutFiles = content.replace(/(?:^|\n)Files:[ \t]*\n((?:[ \t]*- [^\n]+\n?)+)/g, (block, entries: string) => {
+    const paths = entries.split('\n').filter(line => line.trim()).map(line => line.replace(/^[ \t]*- /, '').trim());
+    if (paths.some(path => !path || path.startsWith('/') || path.includes('\\') || path.split('/').some(part => part === '..') || /^[a-z][a-z0-9+.-]*:/i.test(path))) return block;
+    workspaceFiles.push(...paths);
+    return '\n';
+  });
+  const lines = withoutFiles.split(/\r?\n/);
   const textLines: string[] = [];
   const attachments: ParsedAttachment[] = [];
 
@@ -46,5 +54,5 @@ export function parseUserContent(content: string): ParsedUserContent {
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 
-  return { cleanedContent, attachments };
+  return { cleanedContent, attachments, workspaceFiles };
 }

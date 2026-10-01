@@ -28,6 +28,8 @@ import { hashTotpSecret, parseTotpCardToken } from "../auth/totp-card.js";
 import { handleAgentMessage as handleAgentMessageRequest } from "../handlers/agent.js";
 import type { WebChannelLike } from "../core/web-channel-contracts.js";
 import { runAddonAdaptiveCardIntent } from "../../../addons/runtime-contributions.js";
+import type { AgentControlResult } from "../../../agent-control/agent-control-types.js";
+import { withPrivateProviderAuthResponse, commitPrivateProviderAuthResponse } from "../../../agent-control/handlers/login.js";
 
 const log = createLogger("web");
 const SIDE_PROMPT_STREAM_HEARTBEAT_MS = 30000;
@@ -56,6 +58,7 @@ type SidePromptAgentPoolLike = {
     contentBlocks?: unknown[];
     model_label?: string | null;
     thinking_level?: string | null;
+    authPresentation?: AgentControlResult["authPresentation"];
   }>;
   getAvailableModels?: (chatJid: string) => Promise<{
     current?: string | null;
@@ -189,6 +192,14 @@ export class WebAdaptiveCardSidePromptService {
     const payload = parsed.payload as AdaptiveCardActionPayload;
     const normalized = sanitizeAdaptiveCardActionPayload(payload);
     const requestedChatJid = normalized.chatJid ?? null;
+    const rawAction = normalized.actionData && typeof normalized.actionData === "object" && !Array.isArray(normalized.actionData)
+      ? normalized.actionData as Record<string, unknown> : null;
+    const isAuthAction = typeof rawAction?.intent === "string" && rawAction.intent.startsWith("login-step");
+    const isPrivateAuth = rawAction?.intent === "login-step2" && typeof rawAction.method === "string" && rawAction.method.startsWith("runtime_");
+    if (isPrivateAuth && rawAction && Object.keys(rawAction).some(key => !["intent", "provider", "method", "auth_type", "flow_id", "action_id", "auth_value"].includes(key))) {
+      return this.options.json({ error: "Unexpected authentication action field" }, 409);
+    }
+    if (isAuthAction && !requestedChatJid) return this.options.json({ error: "Authentication requires its initiating chat" }, 409);
     if (!normalized.postId || normalized.postId <= 0) {
       return this.options.json({ error: "Missing or invalid post_id" }, 400);
     }
@@ -209,7 +220,7 @@ export class WebAdaptiveCardSidePromptService {
     }
 
     const sourceInteraction = (requestedChatJid ? getMessageByRowId(requestedChatJid, sourcePostId) : undefined)
-      ?? getMessageByAnyRowId(sourcePostId);
+      ?? (isAuthAction ? undefined : getMessageByAnyRowId(sourcePostId));
     if (!sourceInteraction) {
       return this.options.json({ error: "Source post not found" }, 404);
     }
@@ -224,10 +235,62 @@ export class WebAdaptiveCardSidePromptService {
 
     const submittedAt = new Date().toISOString();
     const sanitizedSubmissionData = sanitizeAdaptiveCardSubmissionData(normalized.actionData);
+    const loginIntents = new Set(["login-step1", "login-step1-method", "login-step2", "login-step3"]);
+    const loginData = sanitizedSubmissionData && typeof sanitizedSubmissionData === "object" && !Array.isArray(sanitizedSubmissionData)
+      ? sanitizedSubmissionData as Record<string, unknown> : null;
+    const isLoginFlow = loginData && typeof loginData.intent === "string" && loginIntents.has(loginData.intent);
+    const blocks = sourceInteraction.data?.content_blocks;
+    const card = Array.isArray(blocks) ? blocks.find((block: any) => block?.type === "adaptive_card" && block.card_id === normalized.cardId && block.state === "active") as any : null;
+    const actions = card?.payload?.actions;
+    const isLoginCard = Array.isArray(actions) && actions.some((action: any) => loginIntents.has(action?.data?.intent));
+    if (isLoginCard || isLoginFlow) {
+      if (!isLoginFlow || !loginData) return this.options.json({ error: "Authentication card requires its original login action" }, 409);
+      const matchingAction = Array.isArray(actions) && actions.some((action: any) => {
+        const data = action?.data;
+        return action.type === "Action.Submit" && data?.intent === loginData.intent
+          && Object.keys(data).every(key => data[key] === loginData[key]);
+      });
+      if (!matchingAction) return this.options.json({ error: "Stale or mismatched authentication card action" }, 409);
+    }
+    if (isPrivateAuth && loginData) {
+      try {
+        return await withPrivateProviderAuthResponse(async () => {
+          const result = await this.options.agentPool.applyControlCommand?.(chatJid, {
+            type: "login", provider: `__step2 ${JSON.stringify(loginData)}`, raw: "/login __step2",
+          }) ?? failMissingDependency("agentPool.applyControlCommand");
+          if (result.status !== "success") {
+            return this.options.json({ error: "Authentication flow unavailable. Start again with /login." }, 409);
+          }
+          const nextCard = result.authPresentation ? result.contentBlocks?.[0] as Record<string, unknown> : null;
+          const nextBlocks = nextCard ? (blocks ?? []).map((block: any) => block === card ? nextCard : block)
+            : markAdaptiveCardState(blocks, normalized.cardId, "completed", submittedAt, { title: "Authentication action" });
+          if (!nextBlocks) throw new Error("Authentication card unavailable");
+          const updated = replaceMessageContent(chatJid, sourcePostId, sourceInteraction.data?.content || "", { contentBlocks: nextBlocks });
+          if (!updated) throw new Error("Authentication card unavailable");
+          commitPrivateProviderAuthResponse();
+          // Only the safe opaque card is persisted/broadcast. Sensitive presentation
+          // leaves solely in this authenticated HTTP response.
+          this.options.interactionBroadcaster.broadcastInteractionUpdated(updated);
+          if (!result.authPresentation) await this.options.sendMessage(chatJid, result.message, { threadId: sourceInteraction.id, contentBlocks: result.contentBlocks as Array<Record<string, unknown>> | undefined });
+          return new Response(JSON.stringify({
+            status: "ok", auth_presentation: result.authPresentation, source_post_id: sourcePostId,
+            card_id: nextCard?.card_id ?? normalized.cardId, chat_jid: chatJid,
+          }), { headers: { "Content-Type": "application/json", "Cache-Control": "private, no-store", Vary: "Cookie", "Referrer-Policy": "no-referrer" } });
+        });
+      } catch {
+        return this.options.json({ error: "Authentication presentation unavailable. Retry or start again with /login." }, 409);
+      }
+    }
+    // Auth inputs travel only through the in-memory control call. Never retain
+    // password/key/redirect values in card state, submission text or the DB.
+    const persistedSubmissionData = isLoginFlow
+      ? Object.fromEntries(Object.entries(loginData).filter(([key]) => ["intent", "provider", "method", "auth_type", "flow_id", "action_id", "activation_id", "confirmation_id"].includes(key)))
+      : sanitizedSubmissionData;
+    const persistedTitle = isLoginFlow ? "Authentication action" : normalized.actionTitle;
     const submissionMeta = {
       action_type: normalized.actionType,
-      title: normalized.actionTitle || undefined,
-      data: sanitizedSubmissionData,
+      title: persistedTitle || undefined,
+      data: persistedSubmissionData,
       submitted_at: submittedAt,
     };
     const submitBehavior = getAdaptiveCardSubmitBehavior(sourceInteraction.data?.content_blocks, normalized.cardId);
@@ -247,15 +310,15 @@ export class WebAdaptiveCardSidePromptService {
 
     const threadId = normalized.threadId ?? sourceInteraction.data?.thread_id ?? sourceInteraction.id;
     const submissionText = buildAdaptiveCardSubmissionText(
-      normalized.actionTitle,
+      persistedTitle,
       normalized.cardId,
-      sanitizedSubmissionData,
+      persistedSubmissionData,
     );
     const submissionBlock = buildAdaptiveCardSubmitBlock({
       cardId: normalized.cardId,
       sourcePostId,
-      title: normalized.actionTitle || undefined,
-      data: sanitizedSubmissionData,
+      title: persistedTitle || undefined,
+      data: persistedSubmissionData,
       submittedAt,
     });
 
@@ -276,16 +339,14 @@ export class WebAdaptiveCardSidePromptService {
       return interaction;
     };
 
-    const loginIntents = new Set(["login-step1", "login-step1-method", "login-step2", "login-step3"]);
-    const isLoginFlow = submissionData && typeof submissionData.intent === "string" && loginIntents.has(submissionData.intent);
-    if (isLoginFlow) {
+    if (isLoginFlow && loginData) {
       const updatedCardInteraction = submitBehavior === "keep_active"
         ? null
         : updateSourceCard(updatedCardBlocks);
 
-      const routePrefix = submissionData.intent === "login-step1" ? "__step1 "
-        : submissionData.intent === "login-step1-method" ? "__step1method "
-        : submissionData.intent === "login-step2" ? "__step2 "
+      const routePrefix = loginData.intent === "login-step1" ? "__step1 "
+        : loginData.intent === "login-step1-method" ? "__step1method "
+        : loginData.intent === "login-step2" ? "__step2 "
         : "__step3 ";
       const authResult = await this.options.agentPool.applyControlCommand?.(chatJid, {
         type: "login",

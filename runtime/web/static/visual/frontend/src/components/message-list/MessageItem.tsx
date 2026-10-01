@@ -285,11 +285,14 @@ export function MessageItem({
   };
 
   const renderUserContent = (content: string) => {
-    const { cleanedContent, attachments } = parseUserContent(content);
+    const { cleanedContent, attachments, workspaceFiles } = parseUserContent(content);
 
     return (
       <>
         {cleanedContent && <div className="message-list__user-markdown" dangerouslySetInnerHTML={{ __html: renderMarkdown(cleanedContent, { projectRepository }) }} />}
+        {workspaceFiles.length > 0 && <div className="message-list__attachments">
+          {workspaceFiles.map(path => <a key={path} className="attachment-chip" href={`/workspace/raw?path=${encodeURIComponent(path)}&download=1`} download title={path}>{path.split('/').pop()}</a>)}
+        </div>}
         {attachments.length > 0 && (
           <div className="message-list__attachments">
             {attachments.map((attachment, idx) => (

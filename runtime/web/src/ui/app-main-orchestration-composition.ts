@@ -253,6 +253,9 @@ export function useMainAppOrchestrationComposition(options: UseMainAppOrchestrat
 
   const actionBundle = useMainAppActionComposition({
     currentChatJid: routeState.currentChatJid,
+    activeChatJidRef: refs.activeChatJidRef,
+    viewStateRef: refs.viewStateRef,
+    setPosts: timeline.setPosts,
     followupQueueItemsRef: refs.followupQueueItemsRef,
     dismissedQueueRowIdsRef: refs.dismissedQueueRowIdsRef,
     setFollowupQueueItems: setters.setFollowupQueueItems,

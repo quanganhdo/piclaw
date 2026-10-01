@@ -17,9 +17,11 @@ import { buildGeneratedWidgetPayload, canRenderGeneratedWidget } from '../ui/gen
 import { disclosureTriangleSvgString, renderDisclosureTriangle } from '../ui/disclosure-triangle.js';
 import { isIOSDevice } from '../ui/app-helpers.js';
 import { attachHeaderAnchor } from '../ui/scroll-anchor.js';
+import { presentProviderAuth } from '../ui/provider-auth-presentation.js';
 import { ImageModal } from './image-modal.js';
 import { ImageAnnotator, canAnnotate } from './image-annotator.js';
 import { FilePill } from './file-pill.js';
+import { isSafeUploadFilename } from '../../../src/core/upload-limits.js';
 import {
     applyHighlightsToElement,
     applyAsidesToElement,
@@ -2018,7 +2020,8 @@ export function Post({ post, onClick, onHashtagClick, onMessageRef, onScrollToMe
                     }
 
                     if (action.type === 'Action.Submit') {
-                        await (onSubmitCardAction ?? submitAdaptiveCardAction)({
+                        const submit = onSubmitCardAction ?? submitAdaptiveCardAction;
+                        const response = await submit({
                             post_id: post.id,
                             thread_id: data.thread_id || post.id,
                             chat_jid: post.chat_jid || null,
@@ -2029,6 +2032,7 @@ export function Post({ post, onClick, onHashtagClick, onMessageRef, onScrollToMe
                                 data: action.data,
                             },
                         });
+                        presentProviderAuth(response, submit);
                         return;
                     }
 
@@ -2207,6 +2211,9 @@ export function Post({ post, onClick, onHashtagClick, onMessageRef, onScrollToMe
                         })}
                         ${fileRefs.map((ref) => {
                             const label = ref.split('/').pop() || ref;
+                            if (/^uploads\/upload-[a-zA-Z0-9-]{16,90}\/[^/]+$/.test(ref) && isSafeUploadFilename(label)) {
+                                return html`<a class="post-file-pill" href=${`/workspace/raw?path=${encodeURIComponent(ref)}&download=1`} download title=${ref}>${label}</a>`;
+                            }
                             return html`
                                 <${FilePill}
                                     prefix="post"

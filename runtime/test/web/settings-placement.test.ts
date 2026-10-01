@@ -9,7 +9,7 @@ test('General no longer owns authentication, API tokens or recovery saves', () =
   for (const path of ['src/components/settings/general.ts', 'static/visual/frontend/src/panels/settings/GeneralSection.tsx']) {
     const text = source(path);
     for (const field of ['automaticRecovery', 'instanceTotp', 'widgetToken', 'totpSetup']) expect(text).not.toContain(field);
-    expect(text).toContain('composeUploadLimitMb');
+    expect(text).not.toContain('composeUploadLimitMb');
     expect(text).toContain('workspaceUploadLimitMb');
   }
 });

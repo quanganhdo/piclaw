@@ -13,18 +13,19 @@ import { resolveAudioContentType } from "../../../utils/audio-media.js";
 import { basename, extname } from "path";
 import { createMedia, createMediaInDatabase, getMediaById, getMediaInfoById } from "../../../db/media.js";
 import type Database from "bun:sqlite";
+import { DATABASE_ATTACHMENT_MAX_BYTES } from "../../../core/upload-limits.js";
 import { getWebRuntimeConfig } from "../../../core/config.js";
 import { createLogger, debugSuppressedError } from "../../../utils/logger.js";
 
 const log = createLogger("web.media");
 
 /**
- * Resolve the current compose/media upload size in bytes.
- * This is enforced at the application level. The Bun.serve()
- * maxRequestBodySize (512 MB) is a separate hard cap.
+ * Resolve the database-backed attachment ceiling, capped by the shared upload
+ * limit. Larger chat attachments use /media/upload-chunk and workspace storage.
+ * The per-request HTTP cap does not apply to their total assembled size.
  */
 function getMaxMediaUploadBytes(): number {
-  return Math.max(1, Math.round((getWebRuntimeConfig().composeUploadLimitMb || 32) * 1024 * 1024));
+  return Math.min(DATABASE_ATTACHMENT_MAX_BYTES, Math.max(1, Math.round(getWebRuntimeConfig().workspaceUploadLimitMb * 1024 * 1024)));
 }
 
 /**

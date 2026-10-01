@@ -236,7 +236,8 @@ See [extension routes](extension-routes.md) for the author-facing registration A
 
 | Method | Path | Source | Auth | CSRF | Data rate limit | Response style |
 |---|---|---|---|---|---|---|
-| POST | `/media/upload` | `dispatch-media.ts` | authenticated | yes | `data/media_upload` | uploaded media JSON |
+| POST | `/media/upload` | `dispatch-media.ts` | authenticated | yes | `data/media_upload` | database media JSON; capped at 32 MiB or shared limit, whichever is lower |
+| POST | `/media/upload-chunk` | `dispatch-media.ts` | authenticated; single-user only | yes | `data/media_upload_chunk` | raw bounded chunks; completion returns workspace path and size, no media ID |
 | GET | `/media/:id/thumbnail` | `dispatch-media.ts` | authenticated | n/a | none | image/binary |
 | GET | `/media/:id/info` | `dispatch-media.ts` | authenticated | n/a | none | JSON metadata |
 | GET | `/media/:id` | `dispatch-media.ts` | authenticated | n/a | none | binary/media response |

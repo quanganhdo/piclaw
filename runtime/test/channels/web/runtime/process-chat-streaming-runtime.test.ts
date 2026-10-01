@@ -65,3 +65,18 @@ describe("process chat streaming runtime", () => {
     expect(runtime.buildAgentTimingBlock({ input: 10 })).not.toHaveProperty("usage.cost_total");
   });
 });
+
+test("publishes working state before slow model metadata completes", async () => {
+  const events: Array<{type:string;payload:any}> = [];
+  const fake=channel(events);
+  let release!:()=>void;
+  const gate=new Promise<void>(resolve=>{release=resolve;});
+  let metadataOptions: unknown;
+  fake.agentPool.getAvailableModels=async(_chat:string,options:unknown)=>{metadataOptions=options;await gate;return {current:null,available_thinking_levels:[],available_thinking_level_labels:[]};};
+  const pending=createProcessChatStreamingRuntime({channel:fake,chatJid:'web:latency',agentId:'default',threadId:'t',turnId:'turn',runStartedAt:new Date().toISOString(),sourceMessageId:'m',withResolvedToolStatusHints:(_jid,p)=>p,withAgentStatusProgressMetadata:p=>p});
+  try {
+    await Bun.sleep(50);
+    expect(events.filter(e=>e.type==='agent_status'&&e.payload.type==='thinking')).toHaveLength(1);
+    expect(metadataOptions).toEqual({includeProviderUsage:false,includeProviderDiagnostics:false,includeCatalogue:false});
+  } finally {release();await pending;}
+});

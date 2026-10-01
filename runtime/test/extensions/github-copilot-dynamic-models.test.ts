@@ -162,6 +162,15 @@ describe("github-copilot dynamic models overlay", () => {
     expect(overlay.getModels().map((model) => model.id)).toEqual(["cached-unknown"]);
   });
 
+  test("cached image and classifier entries cannot enter the chat-only overlay", async () => {
+    const baseline=[makeModel({id:"baseline-chat"})];
+    const runtime={getProvider:()=>({id:"github-copilot",name:"GitHub Copilot",auth:{oauth:{}},getModels:()=>baseline,stream:()=>{throw Error("unused")},streamSimple:()=>{throw Error("unused")}})} as any;
+    const overlay=createGitHubCopilotDynamicModelsProvider(runtime)!;
+    const harness=createRefreshHarness({models:[makeModel({id:"cached-chat"}),{type:"image",id:"cached-image",name:"Cached Image",provider:"github-copilot",api:"openai-images"},{type:"classifier",id:"cached-classifier",name:"Cached Classifier",provider:"github-copilot",api:"typesafe-classifier"}] as any,checkedAt:Date.now()});
+    await overlay.refreshModels!(harness.context({credential:oauth("token"),allowNetwork:false}) as any);
+    expect(overlay.getModels().map(model=>model.id)).toEqual(["cached-chat"]);
+  });
+
   test("rejected cached publication does not mutate the in-memory catalog", async () => {
     const baseline = [makeModel({ id: "gpt-5.5" })];
     const runtime = { getModels: () => baseline, getProvider: () => ({ id: "github-copilot", name: "GitHub Copilot", auth: { oauth: {} }, getModels: () => baseline, stream: () => { throw new Error("unused"); }, streamSimple: () => { throw new Error("unused"); } }) } as any;

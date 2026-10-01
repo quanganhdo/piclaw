@@ -1,5 +1,6 @@
-import { createRequire } from "node:module";
-import { dirname, join } from "node:path";
+import { loadMetadataCache } from "pi-mcp-adapter/metadata-cache";
+import { formatToolName } from "pi-mcp-adapter/types";
+import { getPreparedMcpConfig } from "../secure/mcp-keychain.js";
 
 export type McpToolPrefix = "server" | "none" | "short" | "mcp";
 
@@ -38,23 +39,11 @@ export interface McpStatusHintMetadataCache {
   }>;
 }
 
-const require = createRequire(import.meta.url);
-const adapterDir = dirname(require.resolve("pi-mcp-adapter"));
-const { loadMcpConfig } = require(join(adapterDir, "config.ts")) as {
-  loadMcpConfig(overridePath?: string, cwd?: string): McpStatusHintConfig;
-};
-const { loadMetadataCache } = require(join(adapterDir, "metadata-cache.ts")) as {
-  loadMetadataCache(): McpStatusHintMetadataCache | null;
-};
-const { resourceNameToToolName } = require(join(adapterDir, "resource-tools.ts")) as {
-  resourceNameToToolName(name: string): string;
-};
-const { formatToolName } = require(join(adapterDir, "types.ts")) as {
-  formatToolName(toolName: string, serverName: string, prefix: McpToolPrefix): string;
-};
-const { getConfigPathFromArgv } = require(join(adapterDir, "utils.ts")) as {
-  getConfigPathFromArgv(): string | undefined;
-};
+function resourceNameToToolName(name: string): string {
+  let result = name.replace(/[^a-zA-Z0-9]/g, "_").replace(/_+/g, "_").replace(/^_+|_+$/g, "").toLowerCase();
+  if (!result || /^\d/.test(result)) result = `resource${result ? `_${result}` : ""}`;
+  return result;
+}
 
 export interface McpStatusHintRuntimeState {
   config: McpStatusHintConfig;
@@ -67,7 +56,7 @@ export interface McpStatusHintRuntimeState {
  */
 export function loadMcpStatusHintRuntimeState(): McpStatusHintRuntimeState {
   return {
-    config: loadMcpConfig(getConfigPathFromArgv()),
+    config: getPreparedMcpConfig() as McpStatusHintConfig,
     cache: loadMetadataCache(),
   };
 }

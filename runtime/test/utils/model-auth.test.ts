@@ -30,11 +30,13 @@ describe("model auth helper", () => {
     expect(auth).toEqual({ ok: false, error: "No credentials available for openai/gpt-test." });
   });
 
-  test("unwraps runtime auth failure causes", async () => {
-    const auth = await resolveModelRequestAuth({
-      getAuth: async () => { throw new Error("auth wrapper", { cause: new Error("refresh denied") }); },
-    } as any, model);
-    expect(auth).toEqual({ ok: false, error: "refresh denied" });
+  test("redacts runtime auth failures and nested causes", async () => {
+    const sentinel = "SENTINEL-auth-failure";
+    for (const error of [new Error(`token=${sentinel}`), new Error("wrapper", { cause: new Error(`https://auth.example.test/?token=${sentinel}`) }), { error: sentinel }]) {
+      const auth = await resolveModelRequestAuth({ getAuth: async () => { throw error; } }, model);
+      expect(auth).toEqual({ ok: false, error: "Model credentials could not be resolved. Start provider login again." });
+      expect(JSON.stringify(auth)).not.toContain(sentinel);
+    }
   });
 
   test("returns a stable error when the model runtime is unavailable", async () => {

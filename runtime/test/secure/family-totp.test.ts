@@ -49,25 +49,34 @@ beforeEach(() => {
 afterEach(() => { closeDatabase(); restore(); resetRateLimiterStateForTests(); });
 
 test('self TOTP stores hashes/ciphertext, binds login/origin and confirms once without replacing passkeys or issuing login', async () => {
-  const db = getDb(), started = await service().start(alice, origin);
+  const db = getDb();
+  let now = Math.floor(Date.now() / 30_000) * 30_000 + 15_000;
+  const fixedFactors = new UserAuthFactors(db, () => 'totp-self-test-key', () => now);
+  const ceremony = new FamilyTotp(db, fixedFactors, () => now);
+  const started = await ceremony.start(alice, origin);
+  const consumedProof = code(started.secret, now);
   const before = db.query('SELECT user_id,session_id FROM web_sessions ORDER BY session_id').all();
   const rows = JSON.stringify(db.query('SELECT * FROM user_totp_registrations').all());
   expect(rows).not.toContain(started.token); expect(rows).not.toContain(started.secret);
   expect(Buffer.from((db.query('SELECT ciphertext FROM user_totp_enrolments').get() as any).ciphertext).toString()).not.toContain(started.secret);
   for (const [who, where] of [[bob, origin], [actor(alice.userId, 'other-login'), origin], [alice, 'https://other.local']] as const) {
-    await expect(service().confirm(who, where, started.token, code(started.secret))).rejects.toThrow();
+    await expect(ceremony.confirm(who, where, started.token, consumedProof)).rejects.toThrow();
   }
-  const results = await Promise.all([service().confirm(alice, origin, started.token, code(started.secret)), service().confirm(alice, origin, started.token, code(started.secret))]);
+  const results = await Promise.all([ceremony.confirm(alice, origin, started.token, consumedProof), ceremony.confirm(alice, origin, started.token, consumedProof)]);
   expect(results.filter(Boolean)).toHaveLength(1);
   expect(db.query('SELECT * FROM user_totp_registrations').all()).toHaveLength(0);
   expect(db.query('SELECT * FROM user_totp_enrolments').all()).toHaveLength(0);
   expect(db.query('SELECT * FROM webauthn_credentials').all()).toHaveLength(2);
   expect(db.query('SELECT session_id FROM web_sessions').all()).toHaveLength(before.length+1);
   expect(readOwnAccountSettings(db, alice, policy).capabilities.enrol_totp).toBe(false);
-  await expect(service().start(alice, origin)).rejects.toThrow();
-  expect(await factors().verifyLogin('alice', code(started.secret))).toBeNull();
-  const future = Date.now()+60_000;
-  expect((await new UserAuthFactors(db, () => 'totp-self-test-key', () => future).verifyLogin('alice', code(started.secret, future)))?.userId).toBe(alice.userId);
+  await expect(ceremony.start(alice, origin)).rejects.toThrow();
+  expect(await fixedFactors.verifyLogin('alice', consumedProof)).toBeNull();
+  // Replay the consumed proof after a real TOTP step boundary, rather than
+  // accidentally generating a fresh unconsumed code for the replay assertion.
+  now += 30_000;
+  expect(await fixedFactors.verifyLogin('alice', consumedProof)).toBeNull();
+  now += 30_000;
+  expect((await fixedFactors.verifyLogin('alice', code(started.secret, now)))?.userId).toBe(alice.userId);
 });
 
 test('cancel and login revocation remove pending ciphertext; expiry prunes reservations', async () => {

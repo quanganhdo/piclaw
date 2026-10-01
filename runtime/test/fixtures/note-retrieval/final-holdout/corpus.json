@@ -1,0 +1,424 @@
+{
+  "version": 1,
+  "provenance": "New fictional fixture drafted in a delegate context without implementation/prior-corpus access; delegate timed out after writing the file, so authorship is not a review approval. Parent validation corrected three spaces to exact source newlines in Q13/Q19/Q20 before any retrieval run. Recorded 2026-09-28; no labels or note content tuned to outputs.",
+  "notes": [
+    {
+      "path": "notes/software/oriole-desktop.md",
+      "text": "# Oriole desktop client\n\n## Current setting\nAs of 2025-02-03, the telemetry endpoint listens on loopback port 4318.\nThe older loopback port 4418 was used from 2024-08-10 through 2025-02-02 and is retired.\nThe profile identifier is desktop-lilac.\nDo not confuse it with the test fixture desktop-lillac, which has an extra l.\nThe upload interval is fifteen minutes.\n\n## Appearance\nThe desktop theme is soft charcoal.\nThe mobile theme has not been selected. The decision log intentionally leaves it open.\n\n## Ownership\nThe fictional team name is Oriole Tools.\nNo production hosts are named in this note.\n"
+    },
+    {
+      "path": "notes/software/oriole-workers.md",
+      "text": "# Oriole ingest workers\n\n## Worker pebble-2\n\n### Current setting\nWorker pebble-2 uses write-through cache mode as of 2025-03-11.\nIts queue label is q-linen-8.\n\n## Worker pebble-02\n\n### Current setting\nWorker pebble-02 uses a read-only mirror cache.\nIts queue label is q-linen-80.\n\n## Caution\nThe names pebble-2 and pebble-02 identify different fictional workers.\nA setting from one must not be copied to the other by name similarity.\n"
+    },
+    {
+      "path": "notes/backups/skylark-agent.md",
+      "text": "# Skylark backup agent\n\n## Job identity\nThe household document job is BKP-HOME-07.\nThe scratch-media job is BKP-HOME-70.\nThese identifiers are deliberately similar but not interchangeable.\n\n## Completion sequence\nAfter each copy, verify the generated manifest against the copied objects. Only after that verification passes may stale snapshots be pruned.\nA copy that lacks a verified manifest remains incomplete.\nRecord only the success stamp, never a secret or recovery phrase.\n\n## Timing\nBKP-HOME-07 starts on Tuesdays at 02:20 fictional local time.\n"
+    },
+    {
+      "path": "notes/household/kitchen-preferences.md",
+      "text": "# Kitchen preferences\n\n## Drinks\nAfter 19:00, the shared tea choice is rooibos rather than black tea.\nMorning coffee is medium roast.\nOat drink is kept for guests who request it.\n\n## Cleaning supplies\nNo dishwasher-tablet brand is recorded; choose any unscented tablet until a brand decision is documented.\nHand soap should be fragrance-free when practical.\n\n## Storage\nEveryday mugs belong on the lower oak shelf.\nThe shelf called lower oke in the old sketch was a spelling error, not a second shelf.\n"
+    },
+    {
+      "path": "notes/household/laundry-and-rooms.md",
+      "text": "# Laundry and rooms\n\n## Laundry\nUse scent-free liquid detergent for all shared laundry. Scented detergent is not approved for shared loads.\nWash kitchen cloths separately from guest towels.\nThe cold cycle is the default for ordinary clothing.\n\n## Alder room\n\n### Current setting\nKeep the reading lamp at the left side of the desk.\nPlace guest towels in the basket marked GUEST-SAND.\n\n## Aspen room\n\n### Current setting\nKeep the reading lamp on the wall shelf.\nPlace spare blankets in the chest marked GUEST-SAGE.\n"
+    },
+    {
+      "path": "notes/finance/bookkeeping-conventions.md",
+      "text": "# Fictional household bookkeeping conventions\n\n## Reimbursements\nRecord a reimbursement on its approval date, not on the date the receipt was photographed.\nIf approval is reversed, use the reversal date for the reversing entry.\nProject ORC-17 means shared supplies.\nProject ORC-71 means learning materials.\n\n## Tax estimates\nRound each tax line to the nearest cent before summing the lines. Do not round only the final total.\nA half cent rounds away from zero in this notebook.\n\n## Transfers\nTransfers between envelopes are not household income.\nThe memo should name both envelope labels.\n"
+    },
+    {
+      "path": "notes/finance/reimbursement-policy.md",
+      "text": "# Reimbursement policy notes\n\n## Travel\nTransit fares require a trip purpose.\nMileage may be reimbursed when a fictional trip log is complete.\nThe mileage rate is deliberately not recorded here because it must come from the annual rate table.\nNo annual rate table is included in these notes.\n\n## Meals\nA meal entry lists attendees by role, not by full legal name.\nTips are included in the meal total.\n\n## Review\nReviewer code FINCH-4 is current.\nReviewer code FINCH-04 belonged to the retired sample workflow.\n"
+    },
+    {
+      "path": "notes/decisions/archive-format.md",
+      "text": "# Decision record: archive bundle format\n\n## Current decision\nDecision recorded 2025-01-15: all new archive bundles use tar.zst.\nThe choice applies to bundles created on or after 2025-01-20.\n\n## Historical context\nZip was the selected format from 2023-06-01 through 2025-01-19. It is not the current choice for new bundles.\nExisting zip bundles do not need conversion.\n\n## Deferred item\nThe filename timestamp style was not decided in this record.\n"
+    },
+    {
+      "path": "notes/decisions/notification-policy.md",
+      "text": "# Decision record: household notifications\n\n## Decision\nOn 2025-04-06, the household adopted quiet delivery after 21:30. Notifications after that time may show a badge but must not play a sound.\nEmergency calls are outside this software notification rule.\n\n## Earlier trial\nDuring March 2025, the trial cutoff was 22:00.\nThe trial ended when the 21:30 decision took effect.\n\n## Scope\nThis rule covers the fictional pantry and chore applications.\n"
+    },
+    {
+      "path": "notes/dietary/meal-constraints.md",
+      "text": "# Meal constraints\n\n## Mina Vale\nMina has a sesame allergy. Tahini and sesame oil must be excluded from her meals.\nMina is comfortable with oats labeled gluten-free.\nCoconut is acceptable for Mina.\n\n## Mena Vail\nMena Vail is a separate fictional guest.\nMena avoids raw tomato by preference.\nNo allergy information is recorded for Mena.\n\n## Shared meals\nIngredient cards stay beside each serving dish.\nA preference must never be silently upgraded to an allergy.\n"
+    },
+    {
+      "path": "notes/dietary/guest-cards.md",
+      "text": "# Fictional guest cards\n\n## Tomas Reed\nTomas can eat gluten but avoids fennel.\nHe prefers still water with lunch.\n\n## Noor Pell\nNoor avoids kiwi fruit.\nNo caffeine preference or limit was supplied for Noor.\nAsk Noor directly before planning a coffee tasting.\n\n## Nori Pell\nNori Pell is a different fictional guest.\nNori prefers decaffeinated coffee after lunch.\nThe similar names are not a reason to merge their cards.\n"
+    },
+    {
+      "path": "notes/backups/retention-runbook.md",
+      "text": "# Backup retention runbook\n\n## Home documents\nKeep daily snapshots for 14 days.\nKeep weekly snapshots for 8 weeks.\nKeep monthly snapshots for 13 months.\nThe monthly snapshot is the final verified snapshot of the calendar month.\n\n## Creative drafts\nKeep daily snapshots for 30 days.\nKeep monthly snapshots for 6 months.\n\n## Restore drill\nRun a sample restore on the first Saturday of each month.\nA restore drill is successful only when three sampled files open correctly.\nNever place credentials in the drill report.\n"
+    },
+    {
+      "path": "notes/reference/house-manual.md",
+      "text": "# Synthetic house manual\n\nThis manual covers routine fictional household operations.\nIt contains no addresses, account numbers, or real services.\nEach instruction is intentionally written as a complete short line.\nSimilar labels remain distinct throughout the manual.\n\n## Entry routine\n\nPlace ordinary shoes on the slate mat.\nPlace wet boots on the ribbed tray.\nHang cloth shopping bags on hook BAG-CREAM.\nHook BAG-CREME belongs to the costume box.\nReturn borrowed umbrellas to the blue stand.\nLeave the narrow shelf clear for outgoing parcels.\nCheck parcel labels before moving any package.\nDo not infer a recipient from package color.\nWipe rainwater before storing the floor brush.\nRecord damaged shared items in the paper log.\n\n## Alder room\n\n### Current setting\n\nThe desk faces the blank interior wall.\nThe left drawer holds plain stationery.\nThe right drawer holds drawing supplies.\nThe low basket is labeled ALDER-GUEST.\nThe lamp timer ends at 22:10.\nThe radiator dial normally stays at two.\nThe striped cushion belongs on the wooden chair.\nThe solid cushion belongs on the window bench.\nKeep the ventilation gap unobstructed.\nDo not store books against the radiator.\n\n## Aspen room\n\n### Current setting\n\nThe desk faces the courtyard window.\nThe left drawer holds drawing supplies.\nThe right drawer holds plain stationery.\nThe low basket is labeled ASPEN-GUEST.\nThe lamp timer ends at 21:50.\nThe radiator dial normally stays at one.\nThe striped cushion belongs on the window bench.\nThe solid cushion belongs on the wooden chair.\nKeep the curtain clear of the heater.\nDo not move Alder labels into Aspen.\n\n## Kitchen opening\n\nOpen the small blind before breakfast.\nFill the drinking jug with fresh water.\nSet the compost crock beside the cutting board.\nCheck that yesterday's cloth is in the wash basket.\nPut clean cloths in the drawer marked CLOTH-3.\nDrawer CLOTH-03 holds table mats instead.\nKeep wooden tools away from the soaking basin.\nAllow the kettle exterior to dry before wiping it.\nUse the oldest dated oat drink first.\nMove no unlabeled jar into shared storage.\n\n## Kitchen closing\n\nEmpty the compost crock after the evening meal.\nWipe the work surface with an unscented cleaner.\nLeave the steel pan dry on its hook.\nPlace the cast pan on the lower rack.\nCheck that the refrigerator door is fully closed.\nWrite low staples on the chalk list.\nDate opened grains with the calendar date.\nStore sharp tools in the fitted drawer.\nLeave one clean towel by the sink.\nTurn off the window light last.\n\n## Pantry labels\n\nLabel PAN-OAT identifies ordinary rolled oats.\nLabel PAN-OATS identifies the sealed guest container.\nLabel PAN-RICE identifies long-grain rice.\nLabel PAN-RICES is not in use.\nUse clear month names on pantry dates.\nNever identify allergens by lid color alone.\nKeep sesame ingredients in the marked closed bin.\nKeep guest-safe utensils in their own sleeve.\nReplace any label that cannot be read.\nDo not reuse an allergen label for another item.\n\n## Freezer routine\n\nList frozen meals on card FREEZE-A.\nList frozen ingredients on card FREEZE-B.\nCross out an item when it leaves the freezer.\nAdd the prepared date beside every meal.\nUse the upper basket for vegetables.\nUse the middle basket for prepared meals.\nUse the lower basket for bread and pastry.\nKeep loose ice out of labeled food baskets.\nDefrost only during a planned inventory day.\nThe appliance make and model are not documented here.\n\n## Laundry sorting\n\nPlace white kitchen cloths in bin WASH-K1.\nPlace colored kitchen cloths in bin WASH-K2.\nPlace guest towels in bin WASH-G1.\nPlace cleaning rags in bin WASH-R1.\nDo not combine cleaning rags with guest towels.\nUse cold water for routine clothing.\nUse the care label when it requires another cycle.\nAir-dry wool items on the mesh frame.\nReturn empty baskets to the upper shelf.\nLog a leaking container before replacing it.\n\n## Household purchasing\n\nUse list HOME-WEEK for routine groceries.\nUse list HOME-LONG for durable replacements.\nA listed item is not automatically approved.\nMark substitutions beside the original item.\nKeep fictional warranty slips in folder PAPER-6.\nFolder PAPER-06 contains craft templates.\nCompare unit prices using the same unit.\nRecord a return when the shop accepts it.\nDo not count store credit as cash received.\nAvoid recording payment credentials in this manual.\n\n## Envelope bookkeeping\n\nEnvelope FOOD covers shared groceries.\nEnvelope HOME covers routine household supplies.\nEnvelope GUEST covers agreed guest preparations.\nEnvelope LEARN covers books and classes.\nMove money between envelopes as a transfer.\nDo not classify an envelope transfer as income.\nDate a correction on the day it is entered.\nPreserve the original memo in a correction note.\nRound only according to the relevant convention note.\nLeave uncertain categories for review.\n\n## Receipt handling\n\nPhotograph a receipt while all edges are visible.\nKeep the original until the monthly check finishes.\nName a receipt image with its purchase date.\nAdd the approval date in the bookkeeping record.\nDo not invent a project code from a similar label.\nUse ORC-17 only for shared supplies.\nUse ORC-71 only for learning materials.\nFlag an unreadable total for manual review.\nRecord refunds separately from purchases.\nDestroy duplicate paper only after verification.\n\n## Software test profiles\n\nProfile LARK-4 simulates a morning schedule.\nProfile LARK-04 simulates an evening schedule.\nProfile WREN-A uses a pale interface.\nProfile WREN-B uses a dark interface.\nTest profiles contain synthetic content only.\nNever copy a test token into another profile.\nReset test queues after a completed scenario.\nKeep scenario names shorter than forty characters.\nDate accepted scenarios in the change note.\nLeave undecided appearance choices unset.\n\n## Software change notes\n\nState the previous value before the new value.\nGive the effective date for a changed default.\nCall a temporary setting a trial.\nCall a ratified setting a decision.\nDo not describe a retired value as current.\nPreserve exact hyphens in identifiers.\nPreserve meaningful leading zeroes in identifiers.\nExplain similar names when confusion is plausible.\nKeep secrets outside ordinary change notes.\nReview examples for fictional data before saving.\n\n## Backup preparation\n\nClose files that are still being edited.\nConfirm that the source label matches the job.\nConfirm that the destination has enough space.\nStart only the intended fictional job identifier.\nWait for the copy stage to report completion.\nGenerate a manifest for the completed copy.\nCompare the manifest with copied objects.\nMark the run verified only after comparison.\nPrune nothing from an unverified run.\nWrite the completion date in the run log.\n\n## Restore practice\n\nChoose sample files from different folders.\nRestore samples into the isolated practice area.\nOpen each restored sample with its normal reader.\nCompare the sample against its manifest entry.\nRecord whether each sample opened correctly.\nRemove practice copies after the review.\nKeep the original backup untouched.\nEscalate any mismatch before routine pruning.\nDo not include credentials in the report.\nUse synthetic examples in training notes.\n\n## Meal planning\n\nRead every current guest card before planning.\nSeparate allergies from stated preferences.\nKeep ingredient packaging until service ends.\nPlace an ingredient card beside every dish.\nUse a clean utensil for each serving dish.\nAsk when a restriction is unrecorded.\nNever infer one guest's answer from another's.\nTreat similar guest names as distinct identities.\nOffer plain water without requiring a preference.\nDocument a change only after the guest confirms it.\n\n## Quiet hours\n\nDim shared-room lights at 21:15.\nUse headphones for spoken audio after 21:30.\nAllow software badges during quiet delivery.\nDisable ordinary software sounds after 21:30.\nKeep emergency calling rules separate.\nClose soft-latch doors without forcing them.\nPrepare morning items before quiet hours.\nKeep hallway conversations brief at night.\nMove noisy chores to the daytime list.\nReview temporary exceptions the next morning.\n\n## Monthly review\n\nCheck pantry labels for legibility.\nCheck household lists for stale entries.\nCheck envelope transfers for clear memos.\nCheck reimbursement approvals for dates.\nCheck backup logs for verified manifests.\nCheck restore drills for readable samples.\nCheck guest cards for confirmed updates.\nCheck software notes for effective dates.\nArchive completed paper checklists together.\nLeave unresolved questions explicitly open.\n\n## Manual boundaries\n\nThis manual does not contain any password.\nThis manual does not name a real network.\nThis manual does not provide banking coordinates.\nThis manual does not identify a real person.\nAn omitted fact must not be guessed.\nAn undecided fact must remain undecided.\nA historical setting must remain historical.\nA current decision must include its scope.\nA similar name is not equivalent evidence.\nThe final review should preserve these boundaries.\n"
+    }
+  ],
+  "queries": [
+    {
+      "id": "Q01-current-desktop-port",
+      "question": "Which loopback port does the Oriole desktop telemetry endpoint currently use?",
+      "query": "current Oriole desktop telemetry port",
+      "expectedRole": "supported",
+      "evidence": [
+        {
+          "path": "notes/software/oriole-desktop.md",
+          "quote": "As of 2025-02-03, the telemetry endpoint listens on loopback port 4318."
+        }
+      ],
+      "forbiddenClaims": [
+        "The current port is 4418.",
+        "The note gives no current port."
+      ]
+    },
+    {
+      "id": "Q02-historical-desktop-port",
+      "question": "What port was used by the Oriole desktop client from 2024-08-10 through 2025-02-02?",
+      "query": "Oriole desktop port before February 3 2025",
+      "expectedRole": "supported",
+      "evidence": [
+        {
+          "path": "notes/software/oriole-desktop.md",
+          "quote": "The older loopback port 4418 was used from 2024-08-10 through 2025-02-02 and is retired."
+        }
+      ],
+      "forbiddenClaims": [
+        "Port 4318 was used throughout that historical interval.",
+        "Port 4418 is still current."
+      ]
+    },
+    {
+      "id": "Q03-pebble-two-cache",
+      "question": "What cache mode is configured for worker pebble-2?",
+      "query": "cache behavior for pebble-2 worker",
+      "expectedRole": "supported",
+      "evidence": [
+        {
+          "path": "notes/software/oriole-workers.md",
+          "quote": "Worker pebble-2 uses write-through cache mode as of 2025-03-11."
+        }
+      ],
+      "forbiddenClaims": [
+        "pebble-2 uses the read-only mirror cache.",
+        "pebble-2 and pebble-02 are the same worker."
+      ]
+    },
+    {
+      "id": "Q04-prune-after-copy",
+      "question": "What must happen before stale snapshots may be pruned from the Skylark household document job?",
+      "query": "Skylark step required before pruning old snapshots",
+      "expectedRole": "supported",
+      "evidence": [
+        {
+          "path": "notes/backups/skylark-agent.md",
+          "quote": "After each copy, verify the generated manifest against the copied objects. Only after that verification passes may stale snapshots be pruned."
+        }
+      ],
+      "forbiddenClaims": [
+        "Pruning may begin as soon as copying starts.",
+        "A manifest does not need verification."
+      ]
+    },
+    {
+      "id": "Q05-evening-tea",
+      "question": "What tea does the household choose after 19:00?",
+      "query": "shared evening tea preference",
+      "expectedRole": "supported",
+      "evidence": [
+        {
+          "path": "notes/household/kitchen-preferences.md",
+          "quote": "After 19:00, the shared tea choice is rooibos rather than black tea."
+        }
+      ],
+      "forbiddenClaims": [
+        "The evening choice is black tea.",
+        "The notes specify green tea after 19:00."
+      ]
+    },
+    {
+      "id": "Q06-shared-laundry-detergent",
+      "question": "What kind of detergent should be used for shared laundry?",
+      "query": "detergent preference for shared loads",
+      "expectedRole": "supported",
+      "evidence": [
+        {
+          "path": "notes/household/laundry-and-rooms.md",
+          "quote": "Use scent-free liquid detergent for all shared laundry. Scented detergent is not approved for shared loads."
+        }
+      ],
+      "forbiddenClaims": [
+        "Shared loads require scented powder.",
+        "There is no detergent guidance."
+      ]
+    },
+    {
+      "id": "Q07-reimbursement-date",
+      "question": "Which date is used to record a reimbursement?",
+      "query": "bookkeeping date convention for reimbursement",
+      "expectedRole": "supported",
+      "evidence": [
+        {
+          "path": "notes/finance/bookkeeping-conventions.md",
+          "quote": "Record a reimbursement on its approval date, not on the date the receipt was photographed."
+        }
+      ],
+      "forbiddenClaims": [
+        "Use the receipt photograph date.",
+        "Use the purchase date in every case."
+      ]
+    },
+    {
+      "id": "Q08-tax-rounding",
+      "question": "How are tax estimate lines rounded before the total is calculated?",
+      "query": "tax line rounding convention",
+      "expectedRole": "supported",
+      "evidence": [
+        {
+          "path": "notes/finance/bookkeeping-conventions.md",
+          "quote": "Round each tax line to the nearest cent before summing the lines. Do not round only the final total."
+        }
+      ],
+      "forbiddenClaims": [
+        "Only the final total is rounded.",
+        "Tax lines are rounded to the nearest whole unit."
+      ]
+    },
+    {
+      "id": "Q09-current-archive-format",
+      "question": "What format is used for new archive bundles under the current decision?",
+      "query": "current archive bundle format",
+      "expectedRole": "supported",
+      "evidence": [
+        {
+          "path": "notes/decisions/archive-format.md",
+          "quote": "Decision recorded 2025-01-15: all new archive bundles use tar.zst."
+        }
+      ],
+      "forbiddenClaims": [
+        "New bundles currently use zip.",
+        "Existing zip bundles must all be converted."
+      ]
+    },
+    {
+      "id": "Q10-quiet-delivery-cutoff",
+      "question": "What is the current sound rule for household app notifications after 21:30?",
+      "query": "notification sound policy after half past nine",
+      "expectedRole": "supported",
+      "evidence": [
+        {
+          "path": "notes/decisions/notification-policy.md",
+          "quote": "On 2025-04-06, the household adopted quiet delivery after 21:30. Notifications after that time may show a badge but must not play a sound."
+        }
+      ],
+      "forbiddenClaims": [
+        "Ordinary notification sounds remain enabled until 22:00.",
+        "Badges are forbidden after 21:30."
+      ]
+    },
+    {
+      "id": "Q11-mina-sesame",
+      "question": "What sesame-related constraint applies to Mina Vale's meals?",
+      "query": "Mina Vale meal restriction involving sesame",
+      "expectedRole": "supported",
+      "evidence": [
+        {
+          "path": "notes/dietary/meal-constraints.md",
+          "quote": "Mina has a sesame allergy. Tahini and sesame oil must be excluded from her meals."
+        }
+      ],
+      "forbiddenClaims": [
+        "Sesame is merely a mild preference for Mina.",
+        "Tahini is acceptable for Mina."
+      ]
+    },
+    {
+      "id": "Q12-monthly-retention",
+      "question": "How long are monthly home-document snapshots retained?",
+      "query": "monthly snapshot retention for home documents",
+      "expectedRole": "supported",
+      "evidence": [
+        {
+          "path": "notes/backups/retention-runbook.md",
+          "quote": "Keep monthly snapshots for 13 months."
+        }
+      ],
+      "forbiddenClaims": [
+        "Monthly home-document snapshots are kept for 6 months.",
+        "Monthly snapshots are kept indefinitely."
+      ]
+    },
+    {
+      "id": "Q13-current-port-is-old",
+      "question": "Is 4418 the current telemetry port for the Oriole desktop client?",
+      "query": "whether Oriole desktop still uses port 4418",
+      "expectedRole": "contradicted",
+      "evidence": [
+        {
+          "path": "notes/software/oriole-desktop.md",
+          "quote": "As of 2025-02-03, the telemetry endpoint listens on loopback port 4318.\nThe older loopback port 4418 was used from 2024-08-10 through 2025-02-02 and is retired."
+        }
+      ],
+      "forbiddenClaims": [
+        "4418 is the current telemetry port.",
+        "The change to 4318 has no effective date."
+      ]
+    },
+    {
+      "id": "Q14-zip-still-current",
+      "question": "Does the current archive decision require new bundles to use zip?",
+      "query": "whether zip remains current for new archive bundles",
+      "expectedRole": "contradicted",
+      "evidence": [
+        {
+          "path": "notes/decisions/archive-format.md",
+          "quote": "Zip was the selected format from 2023-06-01 through 2025-01-19. It is not the current choice for new bundles."
+        }
+      ],
+      "forbiddenClaims": [
+        "Zip is required for current new bundles.",
+        "The zip period continued after 2025-01-19."
+      ]
+    },
+    {
+      "id": "Q15-scented-shared-loads",
+      "question": "Are scented detergents approved for shared laundry loads?",
+      "query": "approval of scented detergent for shared washing",
+      "expectedRole": "contradicted",
+      "evidence": [
+        {
+          "path": "notes/household/laundry-and-rooms.md",
+          "quote": "Use scent-free liquid detergent for all shared laundry. Scented detergent is not approved for shared loads."
+        }
+      ],
+      "forbiddenClaims": [
+        "Scented detergent is approved for shared loads.",
+        "The household requires a floral scent."
+      ]
+    },
+    {
+      "id": "Q16-mina-can-have-tahini",
+      "question": "Can Mina Vale's meals include tahini?",
+      "query": "whether tahini is allowed for Mina Vale",
+      "expectedRole": "contradicted",
+      "evidence": [
+        {
+          "path": "notes/dietary/meal-constraints.md",
+          "quote": "Mina has a sesame allergy. Tahini and sesame oil must be excluded from her meals."
+        }
+      ],
+      "forbiddenClaims": [
+        "Tahini can be included for Mina.",
+        "Mina's sesame restriction is only a preference."
+      ]
+    },
+    {
+      "id": "Q17-mobile-theme",
+      "question": "Which theme was selected for the Oriole mobile client?",
+      "query": "chosen Oriole mobile appearance theme",
+      "expectedRole": "unrecorded",
+      "evidence": [
+        {
+          "path": "notes/software/oriole-desktop.md",
+          "quote": "The mobile theme has not been selected. The decision log intentionally leaves it open."
+        }
+      ],
+      "forbiddenClaims": [
+        "The mobile theme is soft charcoal.",
+        "The mobile theme is midnight blue."
+      ]
+    },
+    {
+      "id": "Q18-dishwasher-brand",
+      "question": "What brand of dishwasher tablets does the household prefer?",
+      "query": "preferred dishwasher tablet brand",
+      "expectedRole": "unrecorded",
+      "evidence": [
+        {
+          "path": "notes/household/kitchen-preferences.md",
+          "quote": "No dishwasher-tablet brand is recorded; choose any unscented tablet until a brand decision is documented."
+        }
+      ],
+      "forbiddenClaims": [
+        "The preferred brand is BrightNest.",
+        "Any tablet is acceptable even if scented."
+      ]
+    },
+    {
+      "id": "Q19-mileage-rate",
+      "question": "What per-distance mileage reimbursement rate is in force?",
+      "query": "current mileage reimbursement amount",
+      "expectedRole": "unrecorded",
+      "evidence": [
+        {
+          "path": "notes/finance/reimbursement-policy.md",
+          "quote": "The mileage rate is deliberately not recorded here because it must come from the annual rate table.\nNo annual rate table is included in these notes."
+        }
+      ],
+      "forbiddenClaims": [
+        "The rate is 0.67 per unit of distance.",
+        "The notes establish a fixed mileage rate."
+      ]
+    },
+    {
+      "id": "Q20-noor-caffeine-limit",
+      "question": "What caffeine limit did Noor Pell provide?",
+      "query": "Noor Pell caffeine preference or limit",
+      "expectedRole": "unrecorded",
+      "evidence": [
+        {
+          "path": "notes/dietary/guest-cards.md",
+          "quote": "No caffeine preference or limit was supplied for Noor.\nAsk Noor directly before planning a coffee tasting."
+        }
+      ],
+      "forbiddenClaims": [
+        "Noor requested decaffeinated coffee after lunch.",
+        "Noor allows exactly one coffee each day."
+      ]
+    },
+    {
+      "id": "Q21-vega-router-light",
+      "question": "What color does the Vega router's status light show during a successful backup?",
+      "query": "Vega router success light color during backup",
+      "expectedRole": "absent",
+      "evidence": [],
+      "forbiddenClaims": [
+        "The status light is green.",
+        "The status light is blue."
+      ]
+    },
+    {
+      "id": "Q22-kestrel-scholarship-bank",
+      "question": "Which bank holds the Kestrel scholarship account?",
+      "query": "bank for Kestrel scholarship account",
+      "expectedRole": "absent",
+      "evidence": [],
+      "forbiddenClaims": [
+        "The account is held by North Harbor Bank.",
+        "The account is held by Juniper Credit Union."
+      ]
+    },
+    {
+      "id": "Q23-freezer-model",
+      "question": "What is the freezer's manufacturer and model number?",
+      "query": "household freezer make and model",
+      "expectedRole": "absent",
+      "evidence": [],
+      "forbiddenClaims": [
+        "The freezer is a Polar Finch F200.",
+        "The model number is listed on the inventory card."
+      ]
+    },
+    {
+      "id": "Q24-backup-passphrase",
+      "question": "What is the backup encryption passphrase?",
+      "query": "backup encryption passphrase value",
+      "expectedRole": "absent",
+      "evidence": [],
+      "forbiddenClaims": [
+        "The passphrase is paper-lantern-seven.",
+        "A recovery phrase in the notes is the passphrase."
+      ]
+    }
+  ]
+}

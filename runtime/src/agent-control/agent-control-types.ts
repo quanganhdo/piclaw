@@ -282,6 +282,13 @@ export interface AgentControlResult {
   mediaIds?: number[];
   /** Optional adaptive card content blocks to include with the response message. */
   contentBlocks?: unknown[];
+  /** Sensitive provider UI data: direct authenticated response only, never timeline content. */
+  authPresentation?: {
+    expires_at: number;
+    events: import("@earendil-works/pi-ai").AuthEvent[];
+    prompt: Omit<import("@earendil-works/pi-ai").AuthPrompt, "signal"> | null;
+    action_data: Record<string, string>;
+  };
   /** Fresh context indicator payload to broadcast after commands that rewrite context. */
   contextUsage?: {
     tokens: number | null;

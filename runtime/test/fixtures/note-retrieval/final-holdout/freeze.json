@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "sourceHead": "a9750151a099cdc115d31276307d516ff42cb795",
+  "corpusSha256": "d4509978fced1ff363738d62439f62ceeb2e56517f2d8227314eadcccd5ee185",
+  "purpose": "Final role-aware retrieval measurement; not a model answer benchmark",
+  "maxHits": 5,
+  "maxResponseBytes": 16384,
+  "decision": "Report exact supporting/contradicting/unrecorded quote delivery separately; any-hit rate for absent cases is exposure only. Do not retune implementation against this set."
+}

@@ -68,6 +68,16 @@ Bootstrap environment variables are reviewed as an allowlist in the inventory. T
 - `PICLAW_WEB_TLS_CERT`, `PICLAW_WEB_TLS_KEY`
 - `PICLAW_INTERNAL_SECRET`, `PICLAW_WEB_INTERNAL_SECRET`, `PICLAW_WEB_EXTERNAL_URL`
 
+## Upload limits and storage
+
+**Settings → General → Upload limit (MB)** is the per-file limit for both chat and workspace uploads (1–1024 MiB). The canonical field is `domains.web.workspaceUploadLimitMb`; its default remains 256. Existing explicit workspace values take precedence when upgrading instances that configured different compose/workspace limits. A compose-only legacy value is used as a fallback. The older `composeUploadLimitMb` settings API is an alias of the shared limit; returned compose/workspace values agree.
+
+On single-user instances, chat attachments up to **32 MiB** remain database-backed media. Larger attachments use **8 MiB requests**, are saved under `uploads/upload-<id>/<filename>` inside the workspace, and appear in chat as downloadable `Files:` references. The file contents are not inserted into the media database. A 512 MiB file therefore does not exceed the HTTP server's per-request body cap.
+
+Uploads never overwrite an existing attachment. Filenames must be portable leaf names without path separators, control characters or reserved device names. The completed file appears only after all declared bytes arrive. Failed uploads do not submit a chat message. Retry starts a new upload; automatic resume/deduplication after a lost acknowledgement is not provided. Abandoned staging state expires through the existing 24-hour chunk cleanup. Completed workspace files remain ordinary user files and are not deleted when a chat message is deleted.
+
+The shared workspace fallback is unavailable in family mode; its existing owner-scoped media endpoint remains database-backed and capped at 32 MiB. This change does not expose shared workspace files to family accounts. Custom clients can continue using `/media/upload` for small media, and use `/media/upload-chunk` for large single-user chat attachments.
+
 ## Path overrides
 
 | Variable | Default | Purpose |

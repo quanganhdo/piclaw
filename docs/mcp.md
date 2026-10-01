@@ -74,7 +74,7 @@ Shared MCP config comes first; Pi-owned config is for PiClaw-specific imports an
 
 ## Keychain-backed bearer tokens
 
-PiClaw can resolve an HTTP MCP bearer token from its encrypted keychain before the adapter starts:
+PiClaw can resolve an HTTP MCP bearer token from its encrypted keychain before the adapter starts. The effective configuration is loaded once into an immutable, revisioned bridge snapshot; sessions never reread raw MCP config:
 
 ```json
 {
@@ -89,7 +89,7 @@ PiClaw can resolve an HTTP MCP bearer token from its encrypted keychain before t
 }
 ```
 
-Store the token with `piclaw keychain set mcp/memory --type token --secret-file <path>`. `bearerTokenKeychain` and `bearerTokenEnv` must appear together. PiClaw puts the decrypted value into the named environment variable in memory before loading `pi-mcp-adapter`, and removes it during graceful shutdown. The token is not written into the MCP config or metadata cache.
+Store the token with `piclaw keychain set mcp/memory --type token --secret-file <path>`. `bearerTokenKeychain` and `bearerTokenEnv` must appear together. The decrypted token is retained in a generation-scoped secret map, never added to global `process.env`. Each live session receives an immutable per-server environment containing only referenced variables, that server's credential and required operational values. Concurrent/replacement sessions retain their generation until the final lease releases it. The token is not written into MCP config, bridge snapshots, dry-run output, diagnostics, metadata caches or transcripts.
 
 Do not combine `bearerTokenKeychain` with a literal `bearerToken`, and choose a dedicated environment variable name that is not already set.
 
@@ -97,7 +97,7 @@ Do not combine `bearerTokenKeychain` with a literal `bearerToken`, and choose a 
 
 `pi-mcp-adapter` 2.15.0 expands `${NAME}`, `$env:NAME`, and `{env:NAME}` in MCP `socket`, `env`, `cwd`, `url`, HTTP `headers`, and `bearerToken` values. Plain `$NAME` is intentionally literal. A leading `!!` preserves a literal leading `!`; a leading single `!` is an adapter command-secret expression.
 
-PiClaw validates all supported environment references before loading the adapter, after keychain-backed variables are hydrated. Missing variables fail startup instead of becoming empty stdio/header values. Keychain secrets remain in memory only and must not be written into MCP configuration, metadata caches, or logs.
+PiClaw validates all supported environment references before loading the adapter, after keychain-backed references are resolved in memory. Missing variables quarantine only the affected optional server instead of becoming empty stdio/header values. Literal bearer tokens, literal sensitive headers/environment fields and literal OAuth client secrets are quarantined and removed from every exported snapshot. Command-secret expressions are not executed by loading or dry-run; they run once inside the server-scoped environment only when the eligible server connects.
 
 ## Safe starter shell
 
@@ -126,6 +126,14 @@ For a concrete starter server, for example filesystem access:
   }
 }
 ```
+
+## Bridge snapshots and safe writes
+
+The bridge preserves source provenance for the shared-global, Pi-global, shared-project and Pi-project layers plus approved imports. Project precedence remains unchanged. Invalid higher-precedence server entries become disabled tombstones, so they cannot reveal a lower definition with the same name; a malformed project override fails the complete lower projection closed.
+
+A redacted dry-run classifies every server as `mapped`, `blocked`, or `quarantined`. This is a migration preview only: socket, lazy/idle lifecycle, resource policy, auth, per-request headers and other adapter-only semantics remain blocked from native 0.99.1 projection rather than being approximated. `pi-mcp-adapter` remains the sole runtime owner.
+
+Authorized project-override writes require the current bridge revision, reject unknown/malformed fields and literal secrets, lock the Piclaw-owned `.pi/mcp.json` directory, reject symlink components, write a `0600` temporary file, fsync, rename and reload the bridge. Stale/failed writes leave the active snapshot unchanged.
 
 ## Setup flow
 

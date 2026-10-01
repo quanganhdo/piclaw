@@ -230,6 +230,20 @@ const TOOL_CAPABILITIES: Record<string, ToolCapability> = {
     }),
   },
 
+  // Exact note reads may enqueue refresh/invalidate derived metadata; explicitly activated.
+  memory_query: {
+    kind: "mixed",
+    weight: "standard",
+    summary: "Search source-verified local note chunks with bounded snippets and honest partial freshness; may enqueue reconciliation.",
+    recommend: rec({ domains: ["notes", "memory"], verbs: ["search", "query", "find"], nouns: ["chunk", "citation", "answer", "reference"] }),
+  },
+  memory_get: {
+    kind: "mixed",
+    weight: "standard",
+    summary: "Verify and read one exact revision-bound note chunk in single-user mode; no search or arbitrary path reads.",
+    recommend: rec({ domains: ["notes", "memory"], verbs: ["read", "verify"], nouns: ["chunk", "reference", "citation", "revision"] }),
+  },
+
   // data
   messages: {
     kind: "mixed",

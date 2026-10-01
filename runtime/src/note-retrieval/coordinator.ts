@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { workspaceIndexPolicySnapshot } from '../core/workspace-index-policy.js';
 import { lstatSync } from 'node:fs';
 import { join } from 'node:path';
 import { getDb, initDatabase } from '../db/connection.js';
@@ -34,8 +35,8 @@ export async function runNoteIndexPhase(options: { rebuild?: boolean; signal?: A
   const admission=receiveNoteIndexBinding(); // Before database open or option access.
   initDatabase();const db=getDb();admission.bindDatabase(db);admission.validate();
   ensureNoteSchema(db);
-  const started=performance.now(),signal=options.signal;
-  const check=()=>{admission.validate();if(signal?.aborted)throw new Error('cancelled');if(performance.now()-started>=NOTE_LIMITS.elapsedMs)throw new NoteScanLimited();};
+  const started=performance.now(),signal=options.signal,policy=workspaceIndexPolicySnapshot();
+  const check=()=>{admission.validate();policy.validate();if(signal?.aborted)throw new Error('cancelled');if(performance.now()-started>=NOTE_LIMITS.elapsedMs)throw new NoteScanLimited();};
   const purge=(generation:number)=>{db.query('DELETE FROM note_retrieval_fts WHERE generation=?').run(generation);db.query('DELETE FROM note_retrieval_chunks WHERE generation=?').run(generation);db.query('DELETE FROM note_retrieval_sources WHERE generation=?').run(generation);};
   const deleteStagedPath=(generation:number,path:string)=>{db.query('DELETE FROM note_retrieval_fts WHERE generation=? AND path=?').run(generation,path);db.query('DELETE FROM note_retrieval_chunks WHERE generation=? AND path=?').run(generation,path);db.query('DELETE FROM note_retrieval_sources WHERE generation=? AND path=?').run(generation,path);};
   let captured!:State;let namespace='';let generation=0;let claimed=false;let dirtyPaths:string[]=[];let incremental=false;const binding=bindingKey(admission.binding);
@@ -91,8 +92,10 @@ export async function runNoteIndexPhase(options: { rebuild?: boolean; signal?: A
           check();again.verify();if(state().dirty!==captured.dirty)throw new Error('superseded');
           deleteStagedPath(generation,relative);
           db.query('INSERT INTO note_retrieval_sources VALUES(?,?,?,?,?,?)').run(generation,relative,parsed.sourceRevision,source.bytes.length,Date.now(),captured.dirty);
-          for(const c of parsed.chunks){check();db.query('INSERT INTO note_retrieval_chunks(generation,path,chunk_id,revision,chunker,first_byte,after_last_byte,line_start,line_end,heading,kind,content) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)').run(generation,relative,c.chunkId,parsed.sourceRevision,CHUNKER_VERSION,c.firstByte,c.afterLastByte,c.lineStart,c.lineEnd,JSON.stringify(c.headingPath),c.kind,c.text);
-            db.query('INSERT INTO note_retrieval_fts(content,heading,path,generation,chunk_id) VALUES(?,?,?,?,?)').run(c.text,JSON.stringify(c.headingPath),relative,generation,c.chunkId);}
+          // Bun's SQLite string binding can strip an initial BOM. Bind raw UTF-8
+          // and CAST to TEXT so stored content still matches the hashed byte range.
+          for(const c of parsed.chunks){check();db.query('INSERT INTO note_retrieval_chunks(generation,path,chunk_id,revision,chunker,first_byte,after_last_byte,line_start,line_end,heading,kind,content) VALUES(?,?,?,?,?,?,?,?,?,?,?,CAST(? AS TEXT))').run(generation,relative,c.chunkId,parsed.sourceRevision,CHUNKER_VERSION,c.firstByte,c.afterLastByte,c.lineStart,c.lineEnd,JSON.stringify(c.headingPath),c.kind,Buffer.from(c.text,'utf8'));
+            db.query('INSERT INTO note_retrieval_fts(content,heading,path,generation,chunk_id) VALUES(CAST(? AS TEXT),?,?,?,?)').run(Buffer.from(c.text,'utf8'),JSON.stringify(c.headingPath),relative,generation,c.chunkId);}
           check();again.verify();
         }).immediate();
       } catch(error){

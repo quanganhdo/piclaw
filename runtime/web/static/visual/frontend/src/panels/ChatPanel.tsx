@@ -10,7 +10,7 @@ import { createLogger } from "../utils/logger";
 import { agentDisplayName } from "../api/agent-identity";
 import {
   uploadFileBatch,
-  uploadMedia,
+  uploadChatAttachment,
   type UploadBatchProgress,
 } from "../../../../../src/ui/upload-transfers";
 const log = createLogger("ChatPanel");
@@ -401,31 +401,31 @@ export function ChatPanel({ onOpenPalette }: ChatPanelProps = {}) {
         .map((attachment) => attachment.file as File);
       const uploaded = await uploadFileBatch(
         pendingFiles,
-        (file, onProgress) => uploadMedia(file, { onProgress }),
+        (file, onProgress) => uploadChatAttachment(file, { onProgress }),
         {
           onProgress: setUploadProgress,
         },
       );
       const uploadedByFile = new Map(uploaded.map((entry) => [entry.file, entry]));
       const mediaRecords = mediaAttachments.map((attachment, index) => {
-        if (attachment.id) return { id: attachment.id, name: attachment.name };
+        if (attachment.id) return { id: attachment.id, path: undefined, name: attachment.name };
         const uploadedEntry = attachment.file ? uploadedByFile.get(attachment.file) : undefined;
         if (!uploadedEntry) throw new Error(`Attachment ${attachment.name || index + 1} was not uploaded.`);
-        return { id: uploadedEntry.result.id, name: attachment.name || uploadedEntry.name };
+        return { id: uploadedEntry.result.id, path: uploadedEntry.result.path, name: attachment.name || uploadedEntry.name };
       });
-      const mediaIds = mediaRecords.map(({ id }) => id);
+      const mediaIds = mediaRecords.map(({ id }) => id).filter((id): id is number => typeof id === "number");
 
       // Keep IDs paired with their source names even when the message also has
       // existing media IDs or workspace path references.
       let messageContent = content;
-      if (mediaRecords.length > 0) {
-        const mediaBlock = mediaRecords
+      if (mediaIds.length > 0) {
+        const mediaBlock = mediaRecords.filter(record => record.id)
           .map(({ id, name }, index) => `- attachment:${id} (${name || `attachment-${index + 1}`})`)
           .join("\n");
         messageContent = [content, `Attachments:\n${mediaBlock}`].filter(Boolean).join("\n\n");
       }
 
-      const fileRefs = capturedAttachments.filter((attachment) => attachment.isFileRef && attachment.path);
+      const fileRefs = [...capturedAttachments.filter((attachment) => attachment.isFileRef && attachment.path), ...mediaRecords.filter(record => record.path).map(record => ({path:record.path}))];
       if (fileRefs.length > 0) {
         const filesBlock = fileRefs.map((attachment) => `- ${attachment.path}`).join("\n");
         messageContent = [messageContent, `Files:\n${filesBlock}`].filter(Boolean).join("\n\n");

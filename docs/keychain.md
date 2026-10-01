@@ -107,7 +107,7 @@ Example:
 
 ## Automatic bash environment injection
 
-Piclaw auto-injects eligible keychain entries into local and SSH bash environments after sanitising their names into environment-variable identifiers. See the mapping rules below.
+Piclaw injects an eligible keychain entry into a supported shell command only when that command text directly references its environment-variable name as `$NAME` or `${NAME}` (PowerShell also accepts `$env:NAME`; cmd accepts `%NAME%`). It sanitises entry names as described below. Dynamic lookups such as `process.env[name]` or Bash `${!name}`, and listing the environment with `env`, do not request injection. Other keychain entries need not appear in that command's environment.
 
 This applies to:
 

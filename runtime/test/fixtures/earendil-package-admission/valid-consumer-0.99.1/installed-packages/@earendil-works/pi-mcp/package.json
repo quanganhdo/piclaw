@@ -1,0 +1,10 @@
+{
+  "name": "@earendil-works/pi-mcp",
+  "version": "0.99.1",
+  "type": "module",
+  "engines": { "node": ">=22.19.0" },
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./oauth": { "types": "./dist/oauth/index.d.ts", "import": "./dist/oauth/index.js" }
+  }
+}

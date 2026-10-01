@@ -2,6 +2,7 @@
  * web/http/dispatch-media.ts – Media route dispatch helpers.
  */
 
+import { handleWorkspaceAttachmentChunk } from "../media/workspace-attachment-upload.js";
 import {
   handleMedia,
   handleMediaInfo,
@@ -33,6 +34,10 @@ export async function handleMediaRoutes(
   req: Request,
   pathname: string
 ): Promise<Response | null> {
+  if (req.method === "POST" && pathname === "/media/upload-chunk") {
+    return handleWorkspaceAttachmentChunk(channel, req);
+  }
+
   if (req.method === "POST" && pathname === "/media/upload") {
     return await (channel.handleMediaUpload?.(req) ?? handleMediaUpload(channel, req));
   }

@@ -55,6 +55,8 @@ describe("keychain-tools extension", () => {
     const result = await tool.execute("k1", { action: "list" });
     expect(result.content[0].text).toContain("Keychain entries");
     expect(result.content[0].text).toContain("ssh/piclaw");
+    expect(result.content[0].text).toContain("Injection is command-scoped");
+    expect(result.content[0].text).toContain("Dynamic lookups and env enumeration do not trigger it");
     expect(result.details.count).toBe(1);
   });
 
@@ -133,7 +135,8 @@ describe("keychain-tools extension", () => {
     expect(result?.systemPrompt).toContain("proxmox/lab");
     expect(result?.systemPrompt).toContain("portainer/relay");
     expect(result?.systemPrompt).toContain("Use keychain get only as an absolute last resort");
-    expect(result?.systemPrompt).toContain("This is the default and preferred access path");
+    expect(result?.systemPrompt).toContain("Shell injection is command-scoped");
+    expect(result?.systemPrompt).toContain("Dynamic lookups and env enumeration do not request injection");
   });
 
   test("status hints only expose entry names, not secrets", async () => {

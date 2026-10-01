@@ -13,17 +13,34 @@
  * custom-provider models.json configuration, with backups and awaited reload.
  */
 
-import type { AgentSession, ModelRegistry, ModelRuntime } from "@earendil-works/pi-coding-agent";
+import { CredentialSynchronizationError, type AgentSession, type ModelRegistry, type ModelRuntime } from "@earendil-works/pi-coding-agent";
 import type { AuthEvent, AuthPrompt, AuthType, CredentialInfo } from "@earendil-works/pi-ai";
 import type { AgentControlCommand, AgentControlResult } from "../agent-control-types.js";
-import { writeFileSync, readFileSync, existsSync, copyFileSync } from "fs";
+import { writeFileSync, readFileSync, existsSync, chmodSync, unlinkSync } from "fs";
 import { join } from "path";
+import { randomUUID } from "node:crypto";
 import { getPiclawAgentDir } from "../../core/agent-dir.js";
+import { getChatJid } from "../../core/chat-context.js";
+import { readAccessConfig } from "../../core/config-access.js";
 import { createLogger } from "../../utils/logger.js";
 import { getProviderDefs, type ProviderDef } from "../provider-defs.js";
 import { handleModel } from "./model.js";
+import { AsyncLocalStorage } from "node:async_hooks";
 
 const log = createLogger("agent-control.login");
+const privateAuthResponse = new AsyncLocalStorage<{ rollback?: () => void }>();
+/** Admit sensitive presentation only from the authenticated, non-persisting HTTP callback. */
+export function withPrivateProviderAuthResponse<T>(run: () => Promise<T>): Promise<T> {
+  const delivery: { rollback?: () => void } = {};
+  return privateAuthResponse.run(delivery, async () => {
+    try { return await run(); }
+    catch (error) { delivery.rollback?.(); throw error; }
+  });
+}
+export function commitPrivateProviderAuthResponse(): void {
+  const delivery = privateAuthResponse.getStore();
+  if (delivery) delivery.rollback = undefined;
+}
 
 type LoginCommand = Extract<AgentControlCommand, { type: "login" }>;
 type LogoutCommand = Extract<AgentControlCommand, { type: "logout" }>;
@@ -39,18 +56,35 @@ interface ModelRegistryLike {
 
 // ── Config paths ────────────────────────────────────────────────
 
-function getAuthJsonPath(): string {
-  return join(getPiclawAgentDir(), "auth.json");
-}
+// Earendil 0.99.1 keyless Ollama/llama.cpp availability requires a configured
+// placeholder. This non-secret compatibility marker never enters the credential store.
+const KEYLESS_LOCAL_MARKER = "piclaw-keyless-local";
+const KEYLESS_LOCAL_PROVIDERS = new Set(["ollama", "llama-cpp"]);
 
 function getModelsJsonPath(): string {
   return join(getPiclawAgentDir(), "models.json");
 }
 
-function backupFile(path: string): void {
+// Different providers share one configuration file; provider locks alone do
+// not protect its read/modify/write across asynchronous auth operations.
+const modelConfigWrites = new Map<string, Promise<void>>();
+async function serializeModelsConfig<T>(path: string, run: () => Promise<T>): Promise<T> {
+  const prior = modelConfigWrites.get(path) ?? Promise.resolve();
+  const operation = prior.then(run);
+  const tail = operation.then(() => undefined, () => undefined);
+  modelConfigWrites.set(path, tail);
+  try { return await operation; }
+  finally { if (modelConfigWrites.get(path) === tail) modelConfigWrites.delete(path); }
+}
+
+function backupModelsConfig(path: string): void {
   if (!existsSync(path)) return;
+  const snapshot = JSON.parse(readFileSync(path, "utf-8")) as { providers?: Record<string, Record<string, unknown>> };
+  // New backups must not duplicate provider API keys. Existing backups are
+  // preserved for a separately reviewed migration/retention decision.
+  for (const provider of Object.values(snapshot.providers ?? {})) delete provider.apiKey;
   const ts = new Date().toISOString().replace(/[:.]/g, "-");
-  copyFileSync(path, `${path}.${ts}.bak`);
+  writeJsonFile(`${path}.${ts}.bak`, snapshot);
 }
 
 function readJsonFile(path: string): Record<string, unknown> {
@@ -59,7 +93,8 @@ function readJsonFile(path: string): Record<string, unknown> {
 }
 
 function writeJsonFile(path: string, data: unknown): void {
-  writeFileSync(path, JSON.stringify(data, null, 2) + "\n", "utf-8");
+  writeFileSync(path, JSON.stringify(data, null, 2) + "\n", { encoding: "utf-8", mode: 0o600 });
+  chmodSync(path, 0o600);
 }
 
 // ── Provider definitions ────────────────────────────────────────
@@ -176,7 +211,7 @@ function buildCard2Config(def: ProviderDef): Record<string, unknown> {
 
   const body: unknown[] = [
     { type: "TextBlock", text: `${def.name} — Configuration`, weight: "Bolder", size: "Medium" },
-    { type: "TextBlock", text: "Saved to `~/.pi/agent/models.json` (backup created first) and applied immediately.", wrap: true, isSubtle: true },
+    { type: "TextBlock", text: "Model configuration is applied immediately. Keys are saved through provider authentication, not in models.json or its new backups. Leave the key blank to retain a stored credential.", wrap: true, isSubtle: true },
   ];
 
   for (const field of def.customFields || []) {
@@ -190,10 +225,12 @@ function buildCard2Config(def: ProviderDef): Record<string, unknown> {
     } else {
       currentValue = String(existing[field.key] || "");
     }
+    if (field.key === "apiKey") currentValue = "";
     body.push({
       type: "Input.Text", id: field.key,
-      label: `${field.label}${field.required ? " *" : ""}`,
+      label: `${field.label}${field.required && field.key !== "apiKey" ? " *" : ""}`,
       placeholder: field.placeholder, value: currentValue,
+      ...(field.key === "apiKey" ? { style: "password" } : {}),
     });
   }
 
@@ -211,7 +248,7 @@ function buildCard2Config(def: ProviderDef): Record<string, unknown> {
   };
 }
 
-function buildCard2Logout(def: ProviderDef, currentAuth: string): Record<string, unknown> {
+function buildCard2Logout(def: ProviderDef, currentAuth: string, confirmationId: string): Record<string, unknown> {
   return {
     type: "adaptive_card",
     card_id: `login-2-logout-${def.id}-${Date.now()}`,
@@ -225,7 +262,7 @@ function buildCard2Logout(def: ProviderDef, currentAuth: string): Record<string,
         { type: "TextBlock", text: "Removes credentials from config files. Backup created first.", wrap: true, isSubtle: true },
       ],
       actions: [
-        { type: "Action.Submit", title: "Confirm Remove", data: { intent: "login-step2", provider: def.id, method: "logout" } },
+        { type: "Action.Submit", title: "Confirm Remove", data: { intent: "login-step2", provider: def.id, method: "logout", confirmation_id: confirmationId } },
       ],
     },
   };
@@ -282,7 +319,7 @@ function buildCard2AuthPicker(def: ProviderDef): Record<string, unknown> {
 
 // ── Card 3: Activate / Model Picker ─────────────────────────────
 
-function buildCard3(def: ProviderDef, models: Array<{ id: string; name: string }>): Record<string, unknown> {
+function buildCard3(def: ProviderDef, models: Array<{ id: string; name: string }>, activationId: string): Record<string, unknown> {
   const choices = models.map((m) => ({ title: m.name || m.id, value: m.id }));
 
   return {
@@ -301,7 +338,7 @@ function buildCard3(def: ProviderDef, models: Array<{ id: string; name: string }
         },
       ],
       actions: [
-        { type: "Action.Submit", title: "Activate Model", data: { intent: "login-step3", provider: def.id } },
+        { type: "Action.Submit", title: "Activate Model", data: { intent: "login-step3", provider: def.id, activation_id: activationId } },
       ],
     },
   };
@@ -316,6 +353,9 @@ type PendingAuthPrompt = {
 };
 
 type RuntimeAuthFlow = {
+  id: string;
+  actionId: string;
+  owner: RuntimeAuthOwner;
   providerId: string;
   authType: AuthType;
   controller: AbortController;
@@ -325,9 +365,95 @@ type RuntimeAuthFlow = {
   error: string | null;
   version: number;
   expiry: ReturnType<typeof setTimeout>;
+  expiresAt: number;
 };
 
-const runtimeAuthFlows = new Map<string, RuntimeAuthFlow>();
+type RuntimeAuthOwner = {
+  session: AgentSession;
+  chatJid: string;
+  sessionId: string;
+  runtime: ModelRuntime;
+  flows: Map<string, RuntimeAuthFlow>;
+  activations: Map<string, { provider: string; models: Set<string>; expiresAt: number; providerRevision: number }>;
+  logouts: Map<string, { provider: string; expiresAt: number; providerRevision: number }>;
+};
+const runtimeAuthOwners = new WeakMap<AgentSession, RuntimeAuthOwner>();
+const disposeBound = new WeakSet<AgentSession>();
+const disposedAuthSessions = new WeakSet<AgentSession>();
+// Runtime credentials have one slot per provider, across sessions and methods.
+type ProviderAuthState = { revision: number; flow?: RuntimeAuthFlow; mutation: Promise<void> };
+const runtimeProviderAuth = new WeakMap<ModelRuntime, Map<string, ProviderAuthState>>();
+
+function providerAuthState(runtime: ModelRuntime, provider: string) {
+  let providers = runtimeProviderAuth.get(runtime);
+  if (!providers) { providers = new Map(); runtimeProviderAuth.set(runtime, providers); }
+  let state = providers.get(provider);
+  if (!state) { state = { revision: 0, mutation: Promise.resolve() }; providers.set(provider, state); }
+  return state;
+}
+
+/** Join old provider credential work before login/logout can mutate the same slot. */
+function serializeProviderAuth<T>(runtime: ModelRuntime, provider: string, mutate: () => Promise<T>): Promise<T> {
+  const state = providerAuthState(runtime, provider);
+  const operation = state.mutation.then(mutate);
+  // The caller observes failure; queue settlement must still release the next operation.
+  state.mutation = operation.then(() => undefined, () => undefined);
+  return operation;
+}
+
+function retireProviderAuth(runtime: ModelRuntime, provider: string): void {
+  const state = providerAuthState(runtime, provider);
+  state.revision++;
+  const previous = state.flow;
+  if (!previous) return;
+  previous.controller.abort(new Error("Provider authentication replaced or removed"));
+  previous.pending?.reject(new Error("Provider authentication replaced or removed"));
+  deleteRuntimeAuthFlow(previous);
+}
+
+function isRuntimeAuthOwnerActive(owner: RuntimeAuthOwner): boolean {
+  return runtimeAuthOwners.get(owner.session) === owner
+    && !disposedAuthSessions.has(owner.session)
+    && owner.session.sessionId === owner.sessionId
+    && owner.session.modelRuntime === owner.runtime;
+}
+
+/** Provider credentials belong to the instance; family sessions have no login authority. */
+function getRuntimeAuthOwner(session: AgentSession): RuntimeAuthOwner {
+  const chatJid = getChatJid(), sessionId = session.sessionId, runtime = session.modelRuntime;
+  let owner = runtimeAuthOwners.get(session);
+  if (owner && (owner.chatJid !== chatJid || owner.sessionId !== sessionId || owner.runtime !== runtime)) {
+    cancelProviderAuthFlows(session);
+    owner = undefined;
+  }
+  if (!owner) {
+    owner = { session, chatJid, sessionId, runtime, flows: new Map(), activations: new Map(), logouts: new Map() };
+    runtimeAuthOwners.set(session, owner);
+  }
+  if (!disposeBound.has(session)) {
+    const dispose = session.dispose.bind(session);
+    session.dispose = () => { disposedAuthSessions.add(session); cancelProviderAuthFlows(session); return dispose(); };
+    disposeBound.add(session);
+  }
+  return owner;
+}
+
+export function cancelProviderAuthFlows(session: AgentSession): void {
+  const owner = runtimeAuthOwners.get(session);
+  if (!owner) return;
+  runtimeAuthOwners.delete(session);
+  owner.activations.clear();
+  owner.logouts.clear();
+  for (const flow of owner.flows.values()) {
+    clearTimeout(flow.expiry);
+    flow.controller.abort(new Error("Authentication session ended"));
+    flow.pending?.reject(new Error("Authentication session ended"));
+    flow.events.length = 0;
+    const state = providerAuthState(owner.runtime, flow.providerId);
+    if (state.flow === flow) { state.flow = undefined; state.revision++; }
+  }
+  owner.flows.clear();
+}
 
 function flowKey(providerId: string, authType: AuthType): string {
   return `${providerId}\u0000${authType}`;
@@ -337,16 +463,14 @@ function updateAuthFlow(flow: RuntimeAuthFlow): void {
   flow.version += 1;
 }
 
-function beginRuntimeAuthFlow(modelRuntime: ModelRuntime, providerId: string, authType: AuthType): RuntimeAuthFlow {
+function beginRuntimeAuthFlow(owner: RuntimeAuthOwner, modelRuntime: ModelRuntime, providerId: string, authType: AuthType): RuntimeAuthFlow {
   const key = flowKey(providerId, authType);
-  const previous = runtimeAuthFlows.get(key);
-  if (previous) {
-    clearTimeout(previous.expiry);
-    previous.controller.abort(new Error("Superseded by a new authentication flow"));
-    previous.pending?.reject(new Error("Superseded by a new authentication flow"));
-  }
+  retireProviderAuth(modelRuntime, providerId);
 
   const flow: RuntimeAuthFlow = {
+    id: randomUUID(),
+    actionId: randomUUID(),
+    owner,
     providerId,
     authType,
     controller: new AbortController(),
@@ -356,22 +480,34 @@ function beginRuntimeAuthFlow(modelRuntime: ModelRuntime, providerId: string, au
     error: null,
     version: 0,
     expiry: undefined as unknown as ReturnType<typeof setTimeout>,
+    expiresAt: Date.now() + 300_000,
   };
   flow.expiry = setTimeout(() => {
-    if (runtimeAuthFlows.get(key) !== flow) return;
+    if (owner.flows.get(key) !== flow) return;
     flow.controller.abort(new Error("Authentication flow expired"));
     flow.pending?.reject(new Error("Authentication flow expired"));
-    runtimeAuthFlows.delete(key);
+    deleteRuntimeAuthFlow(flow);
   }, 300_000);
   (flow.expiry as { unref?: () => void }).unref?.();
-  runtimeAuthFlows.set(key, flow);
+  owner.flows.set(key, flow);
+  providerAuthState(modelRuntime, providerId).flow = flow;
 
-  void modelRuntime.login(providerId, authType, {
+  void serializeProviderAuth(modelRuntime, providerId, async () => {
+    if (!isRuntimeAuthOwnerActive(owner) || flow.controller.signal.aborted || owner.flows.get(key) !== flow) throw new Error("Authentication session ended");
+    return modelRuntime.login(providerId, authType, {
     signal: flow.controller.signal,
     prompt: (prompt) => new Promise<string>((resolve, reject) => {
+      if (!isRuntimeAuthOwnerActive(owner) || flow.controller.signal.aborted || owner.flows.get(key) !== flow) {
+        reject(new Error("Authentication session ended"));
+        return;
+      }
+      let finished = false;
       const finish = (value: string | Error) => {
+        if (finished) return;
+        finished = true;
         prompt.signal?.removeEventListener("abort", onAbort);
         if (flow.pending?.resolve === finishValue) flow.pending = null;
+        flow.actionId = randomUUID();
         if (value instanceof Error) reject(value);
         else resolve(value);
         updateAuthFlow(flow);
@@ -379,16 +515,31 @@ function beginRuntimeAuthFlow(modelRuntime: ModelRuntime, providerId: string, au
       const finishValue = (value: string) => finish(value);
       const onAbort = () => finish(new Error("Authentication prompt cancelled"));
       prompt.signal?.addEventListener("abort", onAbort, { once: true });
+      flow.actionId = randomUUID();
       flow.pending = { prompt, resolve: finishValue, reject: (error) => finish(error) };
       updateAuthFlow(flow);
       if (prompt.signal?.aborted) onAbort();
     }),
     notify: (event) => {
+      if (!isRuntimeAuthOwnerActive(owner) || flow.controller.signal.aborted || owner.flows.get(key) !== flow) return;
+      // Retain the latest actionable URL/code even during verbose progress.
+      flow.events = flow.events.filter(previous => previous.type !== event.type);
       flow.events.push(event);
-      if (flow.events.length > 8) flow.events.shift();
+      if (event.type === "device_code" && typeof event.expiresInSeconds === "number" && Number.isFinite(event.expiresInSeconds)) {
+        flow.expiresAt = Math.min(flow.expiresAt, Date.now() + Math.max(0, event.expiresInSeconds) * 1000);
+        clearTimeout(flow.expiry);
+        flow.expiry = setTimeout(() => {
+          flow.controller.abort(new Error("Authentication code expired"));
+          flow.pending?.reject(new Error("Authentication code expired"));
+          deleteRuntimeAuthFlow(flow);
+        }, Math.max(0, flow.expiresAt - Date.now()));
+        (flow.expiry as { unref?: () => void }).unref?.();
+      }
       updateAuthFlow(flow);
     },
+    });
   }).then(() => {
+    if (!isRuntimeAuthOwnerActive(owner) || flow.controller.signal.aborted || owner.flows.get(key) !== flow) return;
     flow.status = "completed";
     updateAuthFlow(flow);
     log.info("Provider authentication completed", {
@@ -396,15 +547,17 @@ function beginRuntimeAuthFlow(modelRuntime: ModelRuntime, providerId: string, au
       providerId,
       authType,
     });
-  }).catch((error) => {
+  }).catch(() => {
     flow.status = "failed";
-    flow.error = error instanceof Error ? error.message : String(error);
+    // Provider errors can contain tokens, codes or secret-bearing URLs. Never
+    // forward their text to logs/cards; the provider-owned flow may be retried.
+    flow.error = flow.controller.signal.aborted ? "Authentication cancelled." : "Authentication failed. Start again with /login.";
     updateAuthFlow(flow);
     log.warn("Provider authentication failed", {
       operation: "agent_control_login.runtime_login_failed",
       providerId,
       authType,
-      error: flow.error,
+      outcome: flow.controller.signal.aborted ? "cancelled" : "failed",
     });
   });
 
@@ -413,93 +566,70 @@ function beginRuntimeAuthFlow(modelRuntime: ModelRuntime, providerId: string, au
 
 async function waitForAuthFlowUpdate(flow: RuntimeAuthFlow, previousVersion: number, timeoutMs = 10_000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
-  while (flow.version === previousVersion && flow.status === "running" && Date.now() < deadline) {
+  while (flow.version === previousVersion && flow.status === "running" && !flow.controller.signal.aborted && isRuntimeAuthOwnerActive(flow.owner) && Date.now() < deadline) {
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
 }
 
 async function waitForRenderableAuthFlow(flow: RuntimeAuthFlow, timeoutMs = 10_000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
-  while (flow.status === "running" && !flow.pending && flow.events.length === 0 && Date.now() < deadline) {
+  while (flow.status === "running" && !flow.controller.signal.aborted && isRuntimeAuthOwnerActive(flow.owner) && !flow.pending && flow.events.length === 0 && Date.now() < deadline) {
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
 }
 
 function deleteRuntimeAuthFlow(flow: RuntimeAuthFlow): void {
   clearTimeout(flow.expiry);
-  runtimeAuthFlows.delete(flowKey(flow.providerId, flow.authType));
+  const key = flowKey(flow.providerId, flow.authType);
+  if (flow.owner.flows.get(key) === flow) flow.owner.flows.delete(key);
+  const state = providerAuthState(flow.owner.runtime, flow.providerId);
+  if (state.flow === flow) state.flow = undefined;
+  flow.events.length = 0;
 }
 
 function buildRuntimeAuthCard(def: ProviderDef, flow: RuntimeAuthFlow): Record<string, unknown> {
+  flow.actionId = randomUUID();
+  const actionData = { intent: "login-step2", provider: def.id, auth_type: flow.authType, flow_id: flow.id, action_id: flow.actionId };
   const body: Record<string, unknown>[] = [
     { type: "TextBlock", text: `${def.name} — ${flow.authType === "oauth" ? "OAuth" : "API Key"} Login`, weight: "Bolder", size: "Medium" },
   ];
   const actions: Record<string, unknown>[] = [];
-  for (const event of flow.events) {
-    if (event.type === "auth_url") {
-      body.push({ type: "TextBlock", text: event.instructions || "Open the login page and complete authentication.", wrap: true });
-      actions.push({ type: "Action.OpenUrl", title: "Open login page ↗", url: event.url });
-    } else if (event.type === "device_code") {
-      body.push(
-        { type: "TextBlock", text: `Open ${event.verificationUri} and enter code:`, wrap: true },
-        { type: "TextBlock", text: event.userCode, wrap: true, weight: "Bolder", fontType: "Monospace" },
-      );
-      actions.push({ type: "Action.OpenUrl", title: "Open login page ↗", url: event.verificationUri });
-    } else if (event.type === "info") {
-      body.push({ type: "TextBlock", text: event.message, wrap: true, isSubtle: true });
-      for (const link of event.links ?? []) actions.push({ type: "Action.OpenUrl", title: link.label || "Open link ↗", url: link.url });
-    } else {
-      body.push({ type: "TextBlock", text: event.message, wrap: true, isSubtle: true });
-    }
-  }
-
+  // Provider text, URLs, codes and choice values may contain credentials. Keep
+  // them in the flow and reveal only through the authenticated direct response.
+  body.push({ type: "TextBlock", text: "Open the private authentication dialog to view provider instructions and enter credentials.", wrap: true });
   const prompt = flow.pending?.prompt;
-  if (prompt?.type === "select") {
-    body.push({
-      type: "Input.ChoiceSet",
-      id: "auth_value",
-      label: prompt.message,
-      style: "expanded",
-      choices: prompt.options.map((option) => ({ title: option.description ? `${option.label} — ${option.description}` : option.label, value: option.id })),
-      value: prompt.options[0]?.id || "",
-    });
-  } else if (prompt) {
-    body.push({
-      type: "Input.Text",
-      id: "auth_value",
-      label: prompt.message,
-      placeholder: prompt.placeholder || "",
-      style: prompt.type === "secret" ? "password" : "text",
-    });
-  }
-
+  actions.push({ type: "Action.Submit", title: "Open private authentication", data: { ...actionData, method: "runtime_present" } });
   if (prompt) {
-    actions.push({ type: "Action.Submit", title: "Continue →", data: { intent: "login-step2", provider: def.id, method: "runtime_continue", auth_type: flow.authType } });
+    actions.push({ type: "Action.Submit", title: "Continue →", data: { ...actionData, method: "runtime_continue" } });
   } else if (flow.status === "running") {
-    actions.push({ type: "Action.Submit", title: "Check & Continue →", data: { intent: "login-step2", provider: def.id, method: "runtime_check", auth_type: flow.authType } });
+    actions.push({ type: "Action.Submit", title: "Check & Continue →", data: { ...actionData, method: "runtime_check" } });
   }
   if (flow.status === "running") {
-    actions.push({ type: "Action.Submit", title: "Cancel", data: { intent: "login-step2", provider: def.id, method: "runtime_cancel", auth_type: flow.authType } });
+    actions.push({ type: "Action.Submit", title: "Cancel", data: { ...actionData, method: "runtime_cancel" } });
   }
 
   return {
     type: "adaptive_card",
-    card_id: `login-runtime-${def.id}-${Date.now()}`,
+    card_id: `login-runtime-${flow.id}-${flow.actionId}`,
     schema_version: "1.5",
     state: "active",
+    expires_at: flow.expiresAt,
     fallback_text: `Authentication for ${def.name}.`,
     payload: { type: "AdaptiveCard", version: "1.5", body, actions },
   };
 }
 
 async function startRuntimeAuth(
+  session: AgentSession,
   modelRuntime: ModelRuntime,
   def: ProviderDef,
   authType: AuthType,
   onComplete?: () => Promise<AgentControlResult>,
 ): Promise<AgentControlResult> {
-  const flow = beginRuntimeAuthFlow(modelRuntime, def.id, authType);
+  const owner = getRuntimeAuthOwner(session);
+  const flow = beginRuntimeAuthFlow(owner, modelRuntime, def.id, authType);
   await waitForRenderableAuthFlow(flow);
+  if (!isRuntimeAuthOwnerActive(owner) || flow.controller.signal.aborted || owner.flows.get(flowKey(def.id, authType)) !== flow) return { status: "error", message: "Authentication flow ended. Start again with /login." };
   if (flow.status === "completed") {
     deleteRuntimeAuthFlow(flow);
     return onComplete ? await onComplete() : { status: "success", message: `✓ **${def.name}** authenticated.` };
@@ -515,7 +645,9 @@ async function startRuntimeAuth(
 
 /** Card 1 submitted → show Card 2 (auth method picker or direct form). */
 async function handleStep1(
+  session: AgentSession,
   modelRuntime: ModelRuntime,
+  modelRegistry: ModelRegistry,
   registry: ModelRegistryLike,
   data: Record<string, unknown>,
 ): Promise<AgentControlResult> {
@@ -530,9 +662,9 @@ async function handleStep1(
   // If only one auth method (+ optional logout), go straight to the form
   if (methods === 1 && !hasLogoutOption) {
     if (def.hasOAuth) {
-      return await startRuntimeAuth(modelRuntime, def, "oauth");
+      return await startRuntimeAuth(session, modelRuntime, def, "oauth", () => showCard3OrComplete(session, modelRegistry, def, providerId, def.name, registry));
     }
-    if (def.hasApiKey) return await startRuntimeAuth(modelRuntime, def, "api_key");
+    if (def.hasApiKey) return await startRuntimeAuth(session, modelRuntime, def, "api_key", () => showCard3OrComplete(session, modelRegistry, def, providerId, def.name, registry));
     if (def.isCustom) return { status: "success", message: `Configure ${def.name}`, contentBlocks: [buildCard2Config(def)] };
     if (def.hasExternalAuth) return { status: "success", message: `${def.name} uses external authentication`, contentBlocks: [buildCard2ExternalInfo(def)] };
   }
@@ -556,11 +688,11 @@ async function handleStep1Method(
 
   if (action === "oauth") {
     if (!def.hasOAuth) return { status: "error", message: `**${def.name}** doesn't support OAuth.` };
-    return await startRuntimeAuth(modelRuntime, def, "oauth", () => showCard3OrComplete(session, modelRegistry, def, providerId, def.name, registry));
+    return await startRuntimeAuth(session, modelRuntime, def, "oauth", () => showCard3OrComplete(session, modelRegistry, def, providerId, def.name, registry));
   }
   if (action === "api_key") {
     if (!def.hasApiKey) return { status: "error", message: `**${def.name}** doesn't support API key auth.` };
-    return await startRuntimeAuth(modelRuntime, def, "api_key", () => showCard3OrComplete(session, modelRegistry, def, providerId, def.name, registry));
+    return await startRuntimeAuth(session, modelRuntime, def, "api_key", () => showCard3OrComplete(session, modelRegistry, def, providerId, def.name, registry));
   }
   if (action === "configure") {
     if (!def.isCustom) return { status: "error", message: `**${def.name}** doesn't need configuration.` };
@@ -573,7 +705,10 @@ async function handleStep1Method(
   if (action === "logout") {
     const status = (await getProviderStatuses(modelRuntime, registry)).find((s) => s.def.id === providerId);
     if (!status || status.authType === "none") return { status: "error", message: `**${def.name}** is not configured.` };
-    return { status: "success", message: `Confirm removal for ${def.name}`, contentBlocks: [buildCard2Logout(def, statusLabel(status))] };
+    const owner = getRuntimeAuthOwner(session), confirmationId = randomUUID();
+    owner.logouts.clear();
+    owner.logouts.set(confirmationId, { provider: providerId, expiresAt: Date.now() + 300_000, providerRevision: providerAuthState(modelRuntime, providerId).revision });
+    return { status: "success", message: `Confirm removal for ${def.name}`, contentBlocks: [buildCard2Logout(def, statusLabel(status), confirmationId)] };
   }
 
   return { status: "error", message: `Unknown action: ${action}` };
@@ -592,12 +727,40 @@ async function handleStep2(
   const def = getProviderDef(modelRuntime, registry, providerId);
   const name = def?.name || providerId;
 
-  if (method === "runtime_continue" || method === "runtime_check" || method === "runtime_cancel" || method === "oauth_check" || method === "api_key") {
+  if (method === "runtime_present" || method === "runtime_continue" || method === "runtime_check" || method === "runtime_cancel" || method === "oauth_check" || method === "api_key") {
     const authType = String(data.auth_type || (method === "api_key" ? "api_key" : "oauth")) as AuthType;
     if (authType !== "api_key" && authType !== "oauth") return { status: "error", message: "Invalid authentication type." };
-    const flow = runtimeAuthFlows.get(flowKey(providerId, authType));
+    const owner = getRuntimeAuthOwner(session);
+    const flow = owner.flows.get(flowKey(providerId, authType));
     if (!flow) return { status: "error", message: `No active authentication flow for **${name}**. Start again with \`/login\`.` };
+    if (Date.now() >= flow.expiresAt) {
+      flow.controller.abort(new Error("Authentication flow expired"));
+      flow.pending?.reject(new Error("Authentication flow expired"));
+      deleteRuntimeAuthFlow(flow);
+      return { status: "error", message: "Authentication flow expired. Start again with /login." };
+    }
+    if (data.flow_id !== flow.id || data.action_id !== flow.actionId) return { status: "error", message: "Stale or foreign authentication submission. Use the latest card in the initiating session." };
+    if (method === "runtime_present") {
+      if (!privateAuthResponse.getStore()) return { status: "error", message: "Open authentication from its private web dialog." };
+      if (flow.status !== "running") return { status: "error", message: "Authentication flow ended. Start again with /login." };
+      const oldActionId = flow.actionId;
+      const card = buildRuntimeAuthCard(def!, flow); // Consume reveal and rotate continuation before returning.
+      const nextActionId = flow.actionId;
+      privateAuthResponse.getStore()!.rollback = () => {
+        if (flow.actionId === nextActionId && owner.flows.get(flowKey(providerId, authType)) === flow) flow.actionId = oldActionId;
+      };
+      const pending = flow.pending?.prompt;
+      const prompt = pending ? (({ signal: _signal, ...safe }) => safe)(pending) : null;
+      return {
+        status: "success", message: "Private authentication instructions.", contentBlocks: [card],
+        authPresentation: {
+          expires_at: flow.expiresAt, events: structuredClone(flow.events), prompt,
+          action_data: { intent: "login-step2", provider: providerId, auth_type: authType, flow_id: flow.id, action_id: flow.actionId },
+        },
+      };
+    }
     if (method === "runtime_cancel") {
+      flow.actionId = randomUUID();
       flow.controller.abort(new Error("Authentication cancelled by user"));
       flow.pending?.reject(new Error("Authentication cancelled by user"));
       deleteRuntimeAuthFlow(flow);
@@ -605,13 +768,25 @@ async function handleStep2(
     }
 
     let previousVersion = flow.version;
+    const delivery = privateAuthResponse.getStore();
+    if (delivery) delivery.rollback = () => {
+      // Provider input cannot be undone after delivery. Fail closed rather than
+      // leave a running flow with no usable persisted continuation.
+      flow.controller.abort(new Error("Authentication presentation delivery failed"));
+      flow.pending?.reject(new Error("Authentication presentation delivery failed"));
+      deleteRuntimeAuthFlow(flow);
+    };
     if (method === "runtime_continue" || method === "oauth_check" || method === "api_key") {
       const value = String(data.auth_value ?? data.redirect_url ?? data.api_key ?? "");
       if (!flow.pending) return { status: "error", message: `**${name}** is not waiting for input. Use Check & Continue.` };
+      if (flow.pending.prompt.type === "select" && !flow.pending.prompt.options.some(option => option.id === value)) return { status: "error", message: "Invalid authentication choice. Start again with /login." };
+      flow.actionId = randomUUID(); // Consume before any provider callback.
       flow.pending.resolve(value);
       previousVersion = flow.version;
     }
+    else flow.actionId = randomUUID();
     await waitForAuthFlowUpdate(flow, previousVersion, method === "runtime_check" ? 2_000 : 10_000);
+    if (!isRuntimeAuthOwnerActive(owner) || flow.controller.signal.aborted || owner.flows.get(flowKey(providerId, authType)) !== flow) return { status: "error", message: "Authentication flow ended. Start again with /login." };
 
     if (flow.status === "completed") {
       deleteRuntimeAuthFlow(flow);
@@ -621,7 +796,15 @@ async function handleStep2(
       deleteRuntimeAuthFlow(flow);
       return { status: "error", message: `Authentication for **${name}** failed: ${flow.error || "unknown error"}` };
     }
-    return { status: "success", message: `Authentication for ${name}`, contentBlocks: [buildRuntimeAuthCard(def!, flow)] };
+    const card = buildRuntimeAuthCard(def!, flow);
+    const pending = flow.pending?.prompt;
+    const prompt = pending ? (({ signal: _signal, ...safe }) => safe)(pending) : null;
+    return { status: "success", message: `Authentication for ${name}`, contentBlocks: [card],
+      ...(privateAuthResponse.getStore() ? { authPresentation: {
+        expires_at: flow.expiresAt, events: structuredClone(flow.events), prompt,
+        action_data: { intent: "login-step2", provider: providerId, auth_type: authType, flow_id: flow.id, action_id: flow.actionId },
+      } } : {}),
+    };
   }
 
   if (method === "configure" || method === "custom") {
@@ -644,32 +827,108 @@ async function handleStep2(
       ...(def.customCompat ? { compat: def.customCompat } : {}),
     }));
 
-    backupFile(getModelsJsonPath());
-    const modelsJson = readJsonFile(getModelsJsonPath()) as { providers?: Record<string, unknown> };
-    if (!modelsJson.providers) modelsJson.providers = {};
-    modelsJson.providers[providerId] = { baseUrl, api: def.customApi || "openai-completions", ...(apiKey ? { apiKey } : {}), models };
-    writeJsonFile(getModelsJsonPath(), modelsJson);
-    await modelRuntime.refresh({ allowNetwork: false });
-
-    return await showCard3OrComplete(session, modelRegistry, def, providerId, name, registry);
+    const owner = getRuntimeAuthOwner(session);
+    let revision = -1;
+    const active = () => isRuntimeAuthOwnerActive(owner) && revision === providerAuthState(modelRuntime, providerId).revision;
+    try {
+      const path = getModelsJsonPath();
+      await serializeProviderAuth(modelRuntime, providerId, () => serializeModelsConfig(path, async () => {
+        // Custom setup admission is ordered with credential writes. A later
+        // setup cannot supersede a credential that is already committing.
+        retireProviderAuth(modelRuntime, providerId);
+        revision = providerAuthState(modelRuntime, providerId).revision;
+        if (!active()) throw new Error("Authentication owner replaced");
+        const original = existsSync(path) ? readFileSync(path, "utf-8") : null;
+        const modelsJson = (original === null ? {} : JSON.parse(original)) as { providers?: Record<string, Record<string, unknown>> };
+        // Never silently discard or migrate a legacy credential. That path
+        // needs an explicit compatibility and historical-backup decision.
+        const existingKey = modelsJson.providers?.[providerId]?.apiKey;
+        if (existingKey && !(KEYLESS_LOCAL_PROVIDERS.has(providerId) && existingKey === KEYLESS_LOCAL_MARKER)) throw new Error("Legacy key migration required");
+        const stored = (await modelRuntime.listCredentials()).some(entry => entry.providerId === providerId);
+        const usableStoredKey = stored ? (await modelRuntime.getAuth(providerId))?.auth.apiKey : undefined;
+        if (def.customFields?.some(field => field.key === "apiKey" && field.required) && !apiKey && !usableStoredKey) throw new Error("API key required");
+        if (!active()) throw new Error("Authentication owner replaced");
+        backupModelsConfig(path);
+        if (!modelsJson.providers) modelsJson.providers = {};
+        modelsJson.providers[providerId] = { baseUrl, api: def.customApi || "openai-completions",
+          ...(KEYLESS_LOCAL_PROVIDERS.has(providerId) && !apiKey && !usableStoredKey ? { apiKey: KEYLESS_LOCAL_MARKER } : {}), models };
+        let written = false;
+        try {
+          writeJsonFile(path, modelsJson);
+          written = true;
+          await modelRuntime.refresh({ allowNetwork: false });
+          if (!active()) throw new Error("Authentication owner replaced");
+          if (apiKey) await modelRuntime.login(providerId, "api_key", {
+            prompt: async prompt => {
+              if (!active() || prompt.type !== "secret") throw new Error("Unsupported custom credential prompt");
+              return apiKey;
+            },
+            notify: () => {},
+          });
+          if (!active()) throw new CredentialSynchronizationError(providerId, "login", undefined, { cause: new Error("Authentication owner changed after commit") });
+        } catch (error) {
+          // The public runtime distinguishes a committed credential from a
+          // post-write snapshot failure. Never restore a superseded credential.
+          if (error instanceof CredentialSynchronizationError) throw error;
+          if (written) {
+            if (original === null) unlinkSync(path);
+            else { writeFileSync(path, original, { encoding: "utf-8", mode: 0o600 }); chmodSync(path, 0o600); }
+            await modelRuntime.refresh({ allowNetwork: false });
+          }
+          throw error;
+        }
+      }));
+    } catch (error) {
+      return { status: "error", message: error instanceof CredentialSynchronizationError
+        ? "The credential was saved, but model availability could not be refreshed. Retry model refresh; do not restore an older credential."
+        : "Custom authentication configuration failed. Supply a required key or review legacy model configuration, then retry. The prior configuration and stored credential are retained." };
+    }
+    return await showCard3OrComplete(session, modelRegistry, def, providerId, name, registry, revision);
   }
 
   if (method === "logout") {
-    backupFile(getAuthJsonPath());
-    await modelRuntime.logout(providerId);
-    if (def?.isCustom) {
-      const modelsJson = readJsonFile(getModelsJsonPath()) as { providers?: Record<string, unknown> };
-      if (modelsJson.providers?.[providerId]) {
-        backupFile(getModelsJsonPath());
-        delete modelsJson.providers[providerId];
-        writeJsonFile(getModelsJsonPath(), modelsJson);
-        await modelRuntime.refresh({ allowNetwork: false });
-      }
-    }
-    return { status: "success", message: `✓ **${name}** removed. Backups created.` };
+    const owner = getRuntimeAuthOwner(session), id = typeof data.confirmation_id === "string" ? data.confirmation_id : "";
+    const confirmation = owner.logouts.get(id);
+    if (!confirmation || confirmation.provider !== providerId || confirmation.expiresAt <= Date.now() || confirmation.providerRevision !== providerAuthState(modelRuntime, providerId).revision) return { status: "error", message: "Stale or foreign logout confirmation. Use /logout or request a new confirmation." };
+    owner.logouts.delete(id);
+    retireProviderAuth(modelRuntime, providerId);
+    await serializeProviderAuth(modelRuntime, providerId, async () => {
+      if (def?.isCustom) await removeCustomModelConfig(modelRuntime, providerId, true);
+      else await modelRuntime.logout(providerId);
+    });
+    return { status: "success", message: `✓ **${name}** removed. New configuration backups omit API keys; credentials are not snapshotted.` };
   }
 
   return { status: "error", message: `Unknown method: ${method}` };
+}
+
+async function removeCustomModelConfig(modelRuntime: ModelRuntime, providerId: string, removeCredential: boolean): Promise<boolean> {
+  const path = getModelsJsonPath();
+  return serializeModelsConfig(path, async () => {
+    const original = existsSync(path) ? readFileSync(path, "utf-8") : null;
+    const config = (original === null ? {} : JSON.parse(original)) as { providers?: Record<string, unknown> };
+    const configured = Boolean(config.providers?.[providerId]);
+    let written = false;
+    try {
+      // Configuration errors must not remove an otherwise working credential.
+      if (configured) {
+        backupModelsConfig(path);
+        delete config.providers![providerId];
+        writeJsonFile(path, config);
+        written = true;
+        await modelRuntime.refresh({ allowNetwork: false });
+      }
+      if (removeCredential) await modelRuntime.logout(providerId);
+    } catch (error) {
+      if (written && !(error instanceof CredentialSynchronizationError)) {
+        writeFileSync(path, original!, { encoding: "utf-8", mode: 0o600 });
+        chmodSync(path, 0o600);
+        await modelRuntime.refresh({ allowNetwork: false });
+      }
+      throw error;
+    }
+    return configured;
+  });
 }
 
 async function activateProviderModel(
@@ -686,7 +945,7 @@ async function activateProviderModel(
   });
 }
 
-/** Show Card 3 (model picker) or auto-complete if only one model. */
+/** Authentication never changes the active model; even one model needs confirmation. */
 async function showCard3OrComplete(
   session: AgentSession,
   modelRegistry: ModelRegistry,
@@ -694,19 +953,24 @@ async function showCard3OrComplete(
   providerId: string,
   name: string,
   registry: ModelRegistryLike,
+  expectedRevision?: number,
 ): Promise<AgentControlResult> {
+  const owner = getRuntimeAuthOwner(session);
+  const providerRevision = expectedRevision ?? providerAuthState(owner.runtime, providerId).revision;
+  await registry.refresh?.();
+  if (!isRuntimeAuthOwnerActive(owner) || owner.chatJid !== getChatJid() || providerRevision !== providerAuthState(owner.runtime, providerId).revision) return { status: "error", message: "Authentication session changed. Use /login in the active session." };
   const models = registry.getAll().filter((m) => m.provider === providerId);
   if (models.length === 0) {
     return { status: "success", message: `✓ **${name}** authenticated, but no models found for this provider. Use \`/model\` to check available models.` };
   }
-  if (models.length === 1) {
-    return activateProviderModel(session, modelRegistry, models[0].provider, models[0].id);
-  }
+  const activationId = randomUUID();
+  owner.activations.clear();
+  owner.activations.set(activationId, { provider: providerId, models: new Set(models.map(model => model.id)), expiresAt: Date.now() + 300_000, providerRevision });
 
   return {
     status: "success",
     message: `${name} — select a model`,
-    contentBlocks: [buildCard3(def!, models)],
+    contentBlocks: [buildCard3(def!, models, activationId)],
   };
 }
 
@@ -720,6 +984,11 @@ async function handleStep3(
   const modelId = String(data.model || "").trim();
   if (!providerId) return { status: "error", message: "No provider selected." };
   if (!modelId) return { status: "error", message: "No model selected." };
+  const owner = getRuntimeAuthOwner(session);
+  const id = typeof data.activation_id === "string" ? data.activation_id : "";
+  const activation = owner.activations.get(id);
+  if (!activation || activation.expiresAt <= Date.now() || activation.provider !== providerId || !activation.models.has(modelId) || activation.providerRevision !== providerAuthState(owner.runtime, providerId).revision) return { status: "error", message: "Stale or foreign model activation. Authenticate again or use /model explicitly." };
+  owner.activations.delete(id);
 
   return activateProviderModel(session, modelRegistry, providerId, modelId);
 }
@@ -731,11 +1000,14 @@ export async function handleLogin(
   modelRegistry: ModelRegistry,
   command: LoginCommand,
 ): Promise<AgentControlResult> {
+  if (readAccessConfig().mode !== "single-user") return { status: "error", message: "Provider authentication is an instance-owner operation; unavailable in family sessions." };
+  const existingOwner = runtimeAuthOwners.get(session);
+  if (disposedAuthSessions.has(session) || (existingOwner && existingOwner.chatJid !== getChatJid())) return { status: "error", message: "Provider authentication belongs to its initiating session and chat." };
   const modelRuntime = getModelRuntime(session);
   const registry = getModelRegistry(session, modelRegistry);
 
-  // Internal routing from card submissions. Parse errors are UI errors, while
-  // provider/runtime failures must retain their actionable messages.
+  // Internal routing from card submissions. Authentication failure text is
+  // deliberately generic because provider diagnostics can contain credentials.
   const parseCardData = (json: string): Record<string, unknown> | null => {
     try {
       const parsed = JSON.parse(json) as unknown;
@@ -746,7 +1018,7 @@ export async function handleLogin(
   };
   if (command.provider?.startsWith("__step1 ")) {
     const data = parseCardData(command.provider.slice(8));
-    return data ? handleStep1(modelRuntime, registry, data) : { status: "error", message: "Invalid card data." };
+    return data ? handleStep1(session, modelRuntime, modelRegistry, registry, data) : { status: "error", message: "Invalid card data." };
   }
   if (command.provider?.startsWith("__step1method ")) {
     const data = parseCardData(command.provider.slice(14));
@@ -771,15 +1043,24 @@ export async function handleLogout(
   modelRegistry: ModelRegistry,
   command: LogoutCommand,
 ): Promise<AgentControlResult> {
+  if (readAccessConfig().mode !== "single-user") return { status: "error", message: "Provider authentication is an instance-owner operation; unavailable in family sessions." };
+  const existingOwner = runtimeAuthOwners.get(session);
+  if (disposedAuthSessions.has(session) || (existingOwner && existingOwner.chatJid !== getChatJid())) return { status: "error", message: "Provider authentication belongs to its initiating session and chat." };
   const modelRuntime = getModelRuntime(session);
   const registry = getModelRegistry(session, modelRegistry);
 
   if (command.provider) {
     const providerId = command.provider.trim().toLowerCase();
-    const credentials = await modelRuntime.listCredentials();
-    if (!credentials.some((entry) => entry.providerId === providerId)) return { status: "error", message: `**${providerId}** is not logged in.` };
-    backupFile(getAuthJsonPath());
-    await modelRuntime.logout(providerId);
+    retireProviderAuth(modelRuntime, providerId);
+    const removed = await serializeProviderAuth(modelRuntime, providerId, async () => {
+      const credentials = await modelRuntime.listCredentials();
+      const stored = credentials.some((entry) => entry.providerId === providerId);
+      const custom = getProviderDef(modelRuntime, registry, providerId)?.isCustom;
+      const configured = custom ? await removeCustomModelConfig(modelRuntime, providerId, stored) : false;
+      if (stored && !custom) await modelRuntime.logout(providerId);
+      return stored || configured;
+    });
+    if (!removed) return { status: "error", message: `**${providerId}** is not logged in.` };
     return { status: "success", message: `✓ Logged out from **${providerId}**.` };
   }
 

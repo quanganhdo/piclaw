@@ -2,7 +2,7 @@ import { html, useRef, useState, useEffect, useCallback, useMemo } from '../vend
 import { useTranslation } from '../utils/i18n.js';
 import { findPopupTypeaheadMatch, isPopupTypeaheadKey, resolvePopupTypeaheadMatch, updatePopupTypeaheadBuffer } from '../ui/popup-typeahead.js';
 import { getAgentModels, sendAgentMessage } from '../api.js';
-import { uploadFileBatch, uploadMedia } from '../ui/upload-transfers.js';
+import { uploadFileBatch, uploadChatAttachment } from '../ui/upload-transfers.js';
 import { getLocalStorageItem, setLocalStorageItem } from '../utils/storage.js';
 import { buildMentionValue, filterMentionAgents, parseMentionAutocompleteQuery } from '../ui/agent-mentions.js';
 import { filterSessionPickerChats, formatSessionPickerMetrics, groupSessionPickerChats, moveSessionPickerIndex, resolveSessionPickerChatIndex, resolveSessionPickerSearchInitialIndex, shouldOpenSessionSwitcherFromBlankCompose, shouldRouteComposeValueToSessionSwitcher } from '../ui/compose-session-switcher.js';
@@ -1222,7 +1222,7 @@ export function ComposeBox({
     const composeCapabilities = capabilities && typeof capabilities === 'object' ? capabilities : {};
     const sendMessage = composeServices.sendAgentMessage ?? sendAgentMessage;
     const loadModels = composeServices.getAgentModels ?? getAgentModels;
-    const uploadOne = composeServices.uploadMedia ?? uploadMedia;
+    const uploadOne = composeServices.uploadMedia ?? uploadChatAttachment;
     const fetchCommands = composeServices.fetchCommands ?? ((chatJid) => fetch(`/agent/commands?chat_jid=${encodeURIComponent(chatJid)}`).then(r => r.ok ? r.json() : null));
     const composeStorage = composeServices.browserStorage && typeof composeServices.browserStorage === 'object'
         ? composeServices.browserStorage
@@ -2606,11 +2606,13 @@ export function ComposeBox({
                         onProgress: setUploadProgress,
                     },
                 );
-                const mediaRecords = uploadedMedia.map(({ name, result }) => ({ name, id: result.id }));
+                const mediaRecords = uploadedMedia.filter(({result}) => result.id).map(({ name, result }) => ({ name, id: result.id }));
+                const uploadedPaths = uploadedMedia.filter(({result}) => result.storage === "workspace").map(({result}) => result.path);
                 const mediaIds = mediaRecords.map(({ id }) => id);
 
-                const fileBlock = capturedFileRefs.length
-                    ? `Files:\n${capturedFileRefs.map((path) => `- ${path}`).join('\n')}`
+                const allFileRefs = [...capturedFileRefs, ...uploadedPaths];
+                const fileBlock = allFileRefs.length
+                    ? `Files:\n${allFileRefs.map((path) => `- ${path}`).join('\n')}`
                     : '';
                 const folderBlock = capturedFolderRefs.length
                     ? `Folders:\n${capturedFolderRefs.map((path) => `- ${path}`).join('\n')}`

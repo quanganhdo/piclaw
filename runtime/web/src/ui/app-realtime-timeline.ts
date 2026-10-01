@@ -66,3 +66,18 @@ export function removeTimelinePostsByIds<T extends TimelinePostLike>(
   const filtered = posts.filter((post) => !idSet.has(post?.id));
   return filtered.length === posts.length ? posts : filtered;
 }
+
+/** HTTP acknowledgement and SSE may arrive in either order. Use the durable
+ * returned row immediately; appendUniqueTimelinePost keeps both paths idempotent. */
+export function appendAcknowledgedTimelinePost<T extends TimelinePostLike>(
+  posts: T[] | null | undefined,
+  response: any,
+  activeChatJid: string,
+  viewState: TimelineViewStateLike | null | undefined,
+): T[] | null | undefined {
+  const post = response?.user_message;
+  if (!isMainTimelineView(viewState) || response?.queued || response?.ui_only
+    || !post || post.chat_jid !== activeChatJid
+    || typeof post.id !== 'number' || !Number.isSafeInteger(post.id) || post.id <= 0) return posts;
+  return appendUniqueTimelinePost(posts, post);
+}

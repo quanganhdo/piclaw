@@ -155,7 +155,7 @@ test("plain import covers config module init branches with isolated argv and env
       vncTargetsRaw: "",
       debugCardSubmissions: false,
       trustProxy: true,
-      composeUploadLimitMb: 32,
+      composeUploadLimitMb: 256,
       workspaceUploadLimitMb: 256,
       uiMode: "classic",
     });

@@ -1,3 +1,5 @@
+import { DATABASE_ATTACHMENT_MAX_BYTES, UPLOAD_CHUNK_BYTES, MAX_UPLOAD_BYTES, UPLOAD_CHUNK_TIMEOUT_MS, isSafeUploadFilename } from "../../../src/core/upload-limits.js";
+
 export interface UploadProgress {
   loaded: number;
   total: number;
@@ -28,6 +30,7 @@ export interface UploadError extends Error {
 }
 
 export interface UploadRequestOptions {
+  timeoutMs?: number;
   headers?: Record<string, string | number | null | undefined>;
   onProgress?: (progress: UploadProgress) => void;
 }
@@ -69,6 +72,7 @@ function uploadJson(url: string, body: XMLHttpRequestBodyInit, options: UploadRe
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", url);
+    if (options.timeoutMs) xhr.timeout = options.timeoutMs;
     for (const [key, value] of Object.entries(options.headers || {})) {
       if (value !== undefined && value !== null) xhr.setRequestHeader(key, String(value));
     }
@@ -257,4 +261,33 @@ export async function uploadWorkspaceFile(file: File, targetPath = "", options: 
   }
 
   return lastResult;
+}
+
+export type ChatUploadResult = { id: number; storage?: 'database'; path?: never } | { storage: 'workspace'; path: string; filename: string; size: number; id?: never };
+
+/** Large chat files use bounded requests and return a workspace reference, not a DB blob. */
+export async function uploadChatAttachment(file: File, options: UploadRequestOptions = {}): Promise<ChatUploadResult> {
+  if (file.size <= DATABASE_ATTACHMENT_MAX_BYTES) return uploadMedia(file, options);
+  if (file.size > MAX_UPLOAD_BYTES) throw createUploadError('File exceeds the maximum upload size (1024 MB).', 413);
+  if (!isSafeUploadFilename(file.name)) throw createUploadError('Rename the file: its name is not safe for a workspace upload.');
+  const uploadId = 'upload-' + createWorkspaceUploadId().replace(/^upload-/, '');
+  const total = Math.ceil(file.size / UPLOAD_CHUNK_BYTES);
+  for(let index=0; index<total; index++) {
+    const start=index*UPLOAD_CHUNK_BYTES;
+    const result=await uploadJson('/media/upload-chunk',file.slice(start,Math.min(file.size,start+UPLOAD_CHUNK_BYTES)),{
+      timeoutMs: UPLOAD_CHUNK_TIMEOUT_MS + 10_000,
+      headers:{...options.headers,'X-Upload-Id':uploadId,'X-Chunk-Index':index,'X-Chunk-Total':total,'X-File-Name':encodeURIComponent(file.name),'X-File-Size':file.size},
+      onProgress:progress=>options.onProgress?.({loaded:start+progress.loaded,total:file.size,percent:Math.round((start+progress.loaded)/file.size*100),lengthComputable:progress.lengthComputable}),
+    }) as { complete?:boolean;storage?:string;path?:string;size?:number };
+    if(index===total-1) {
+      const expectedPath=`uploads/${uploadId}/${file.name}`;
+      if(!result?.complete || result.storage!=='workspace' || result.path!==expectedPath || result.size!==file.size) throw createUploadError('Upload did not complete with a valid file reference.');
+      options.onProgress?.({loaded:file.size,total:file.size,percent:100,lengthComputable:true});
+      return {storage:'workspace',path:expectedPath,filename:file.name,size:file.size};
+    }
+    if(result?.complete !== false) throw createUploadError('Invalid upload chunk acknowledgement.');
+    const loaded=Math.min(file.size,(index+1)*UPLOAD_CHUNK_BYTES);
+    options.onProgress?.({loaded,total:file.size,percent:Math.round(loaded/file.size*100),lengthComputable:true});
+  }
+  throw createUploadError('Incomplete upload.');
 }

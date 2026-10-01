@@ -57,7 +57,7 @@ test('saveGeneralSettings persists and applies general settings immediately', as
       sessionAutoRotate: false,
       sessionMaxSizeMb: 48,
       webTerminalEnabled: false,
-      composeUploadLimitMb: 24,
+      composeUploadLimitMb: 256,
       workspaceUploadLimitMb: 256,
       toolUseBudget: 23,
       automaticRecoveryEnabled: false,
@@ -89,7 +89,6 @@ test('saveGeneralSettings persists and applies general settings immediately', as
         },
         web: {
           terminalEnabled: false,
-          composeUploadLimitMb: 24,
           workspaceUploadLimitMb: 256,
         },
         agent: {

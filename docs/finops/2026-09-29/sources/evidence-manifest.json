@@ -1,0 +1,40 @@
+{
+  "retrievedAt": "2026-09-29T17:18:00Z",
+  "sources": [
+    {
+      "file": "pricing.md",
+      "url": "https://developers.openai.com/api/docs/pricing.md",
+      "status": 200,
+      "bytes": 22146,
+      "sha256": "4bc4e0342596d733700409456224a6dc56d9230db44c9f417df4278b32744f71"
+    },
+    {
+      "file": "model.md",
+      "url": "https://developers.openai.com/api/docs/models/gpt-6.1-sol.md",
+      "status": 200,
+      "bytes": 4294,
+      "sha256": "972f4265295eea723d5332016dc22cde03f46173fafcbcba5c23b24c8cee90c6"
+    },
+    {
+      "file": "copilot.md",
+      "url": "https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing.md",
+      "status": 200,
+      "bytes": 19166,
+      "sha256": "27541fe4a39ad0007db07b0f38ef4dcdcafbcb790eb8f170556c2ae364d42239"
+    }
+  ],
+  "otherChecks": [
+    {
+      "url": "https://openai.com/index/introducing-gpt-6-1-sol/",
+      "status": 403,
+      "reason": "Web access denied; OpenAI developer pages independently verify prices"
+    },
+    {
+      "url": "https://openrouter.ai/api/v1/models",
+      "status": 200,
+      "matchingModelIds": 0,
+      "note": "No published GPT-6.1 Sol quote at retrieval"
+    }
+  ],
+  "normalization": "Source Markdown trimmed of trailing whitespace/blank tail for repository diff hygiene; raw fetched bytes and hashes are retained in the workspace evidence export."
+}

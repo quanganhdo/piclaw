@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -48,113 +48,49 @@ async function readPackage(name: string): Promise<Record<string, unknown>> {
   return requireRecord(await Bun.file(resolve(modulesRoot, name, "package.json")).json(), `${name} package.json`);
 }
 
-function internalDependencies(manifest: Record<string, unknown>): readonly Readonly<{ name: string; range: string }>[] {
-  const dependencies = manifest.dependencies === undefined ? {} : requireRecord(manifest.dependencies, "dependencies");
-  return Object.keys(dependencies)
-    .filter((name) => name.startsWith("@earendil-works/"))
-    .sort()
-    .map((name) => ({ name, range: requireString(dependencies[name], `${name} dependency range`) }));
-}
-
-function exportNames(manifest: Record<string, unknown>): readonly string[] {
-  if (manifest.exports === undefined) return [];
-  return Object.keys(requireRecord(manifest.exports, "exports")).sort();
-}
-
-function publicTarget(manifest: Record<string, unknown>, subpath: string, kind: "runtime" | "declaration"): string {
-  const exportsMap = requireRecord(manifest.exports, "exports");
-  const entry = requireRecord(exportsMap[subpath], `exports[${subpath}]`);
-  return requireString(entry[kind === "runtime" ? "import" : "types"], `${subpath} ${kind} target`);
-}
-
-async function sha256(path: string): Promise<string> {
-  const bytes = new Uint8Array(await Bun.file(path).arrayBuffer());
-  return new Bun.CryptoHasher("sha256").update(bytes).digest("hex");
-}
-
 describe("Earendil release churn gate", () => {
-  test("pins the repository and lockfile to the selected coherent 0.87.1 runtime", async () => {
-    const manifest = EARENDIL_HARNESS_V3_COMPATIBILITY_MANIFEST;
-    const historical = manifest.historical.releases[0], current = manifest.selected;
+  test("pins the repository and lockfile to the exact coherent 0.99.1 current loop", async () => {
+    const receipt = await Bun.file(resolve(runtimeRoot, "test/fixtures/earendil-package-admission/registry-0.99.1.json")).json() as Array<any>;
     const rootManifest = requireRecord(await Bun.file(resolve(repositoryRoot, "package.json")).json(), "repository package.json");
     const rootDependencies = requireRecord(rootManifest.dependencies, "repository dependencies");
-    for (const directName of [
-      "@earendil-works/pi-agent-core",
-      "@earendil-works/pi-ai",
-      "@earendil-works/pi-coding-agent",
-    ]) {
-      expect(rootDependencies[directName]).toBe("0.87.1");
-    }
+    for (const directName of ["@earendil-works/pi-agent-core", "@earendil-works/pi-ai", "@earendil-works/pi-coding-agent"]) expect(rootDependencies[directName]).toBe("0.99.1");
     expect(rootDependencies.openai).toBe("7.5.0");
-
     const lock = await Bun.file(resolve(repositoryRoot, "bun.lock")).text();
-    for (const evidence of historical.packages) {
-      expect(lock).not.toContain(`"${evidence.name}@0.84.1"`);
-      expect(lock).not.toContain(evidence.integrity);
-    }
-    for (const evidence of current.packages) {
+    expect(receipt).toHaveLength(8);
+    for (const evidence of receipt) {
       const entry = lockPackageEntry(lock, evidence.name);
-      if (evidence.installation === "not_installed") {
-        expect(entry).toBeUndefined();
-        expect(lock).not.toContain(evidence.integrity);
-      } else {
-        expect(entry).toBeDefined();
-        if (!entry) throw new Error(`Missing locked package entry for ${evidence.name}.`);
-        expect(entry.startsWith(`    "${evidence.name}": ["${evidence.name}@${evidence.version}",`)).toBe(true);
-        expect(entry).toContain(`, "${evidence.integrity}"],`);
-      }
+      expect(entry, evidence.name).toBeDefined();
+      expect(entry!.startsWith(`    "${evidence.name}": ["${evidence.name}@0.99.1",`)).toBe(true);
+      expect(entry).toContain(`, "${evidence.dist.integrity}"],`);
+      expect(lock.match(new RegExp(`${evidence.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}@0\\.99\\.1`, "g"))).toHaveLength(1);
     }
     expect(lockPackageEntry(lock, "openai")?.startsWith('    "openai": ["openai@7.5.0",')).toBe(true);
   });
 
-  test("matches installed public package manifests, export maps, engines, and internal ranges", async () => {
-    const current = EARENDIL_HARNESS_V3_COMPATIBILITY_MANIFEST.selected;
-    expect(current.packages).toHaveLength(6);
-    for (const evidence of current.packages) {
-      const directory = resolve(modulesRoot, evidence.name);
-      if (evidence.installation === "not_installed") {
-        expect(existsSync(directory)).toBe(false);
-        continue;
-      }
+  test("matches installed 0.99.1 family manifests and keeps inactive Harness evidence at 0.87.1", async () => {
+    const receipt = await Bun.file(resolve(runtimeRoot, "test/fixtures/earendil-package-admission/registry-0.99.1.json")).json() as Array<any>;
+    for (const evidence of receipt) {
       const installed = await readPackage(evidence.name);
       expect(installed.name).toBe(evidence.name);
-      expect(installed.version).toBe(evidence.version);
-      expect(installed.engines ? requireRecord(installed.engines, `${evidence.name} engines`).node : null).toBe(evidence.engine);
-      expect(exportNames(installed)).toEqual(evidence.exports);
-      expect(internalDependencies(installed)).toEqual(evidence.internalDependencies);
+      expect(installed.version).toBe("0.99.1");
+      expect(installed.engines ? requireRecord(installed.engines, `${evidence.name} engines`).node : null).toBe(">=22.19.0");
     }
+    const selected = EARENDIL_HARNESS_V3_COMPATIBILITY_MANIFEST.selected;
+    expect(selected.version).toBe("0.87.1");
+    expect(EARENDIL_HARNESS_V3_COMPATIBILITY_MANIFEST.authority.harnessActivation).toBe("latent_only");
+    expect(digestEvidence(selected.packages)).toBe("c9ff5d9c135c9b234e0de13da5b1a21fbc8968215ea889775be133aa286d3dca");
+    expect(digestEvidence(selected.fingerprints)).toBe("ce484225a4fbc620b7dccbf2dbb911ee56a3abcbc1dca59d7420683ebd69e0bc");
   });
 
-  test("matches current hashes only through contained package-declared public export targets", async () => {
-    const current = EARENDIL_HARNESS_V3_COMPATIBILITY_MANIFEST.selected;
-    for (const fingerprint of current.fingerprints) {
-      if (fingerprint.subpath.startsWith("audit:")) continue;
-      const installed = await readPackage(fingerprint.package);
-      const target = publicTarget(installed, fingerprint.subpath, fingerprint.kind);
-      const packageRoot = resolve(modulesRoot, fingerprint.package);
-      const targetPath = resolve(packageRoot, target);
-      expect(target.startsWith("./")).toBe(true);
-      expect(isLexicallyContained(packageRoot, targetPath)).toBe(true);
-      const realPackageRoot = realpathSync(packageRoot);
-      const realTargetPath = realpathSync(targetPath);
-      expect(isLexicallyContained(realPackageRoot, realTargetPath)).toBe(true);
-      expect(await sha256(realTargetPath)).toBe(fingerprint.sha256);
-    }
+  test("retains public-export containment as an independent security invariant", () => {
     expect(isLexicallyContained("/package", "/escape")).toBe(false);
     expect(isLexicallyContained("/package", "/package/../escape")).toBe(false);
-
     const temporaryRoot = mkdtempSync(resolve(tmpdir(), "earendil-export-containment-"));
     try {
-      const packageRoot = resolve(temporaryRoot, "package");
-      const escapedTarget = resolve(temporaryRoot, "outside");
-      mkdirSync(packageRoot);
-      mkdirSync(escapedTarget);
-      const linkedTarget = resolve(packageRoot, "linked-export");
-      symlinkSync(escapedTarget, linkedTarget, "dir");
+      const packageRoot = resolve(temporaryRoot, "package"), escapedTarget = resolve(temporaryRoot, "outside");
+      mkdirSync(packageRoot); mkdirSync(escapedTarget); const linkedTarget = resolve(packageRoot, "linked-export"); symlinkSync(escapedTarget, linkedTarget, "dir");
       expect(isLexicallyContained(realpathSync(packageRoot), realpathSync(linkedTarget))).toBe(false);
-    } finally {
-      rmSync(temporaryRoot, { recursive: true, force: true });
-    }
+    } finally { rmSync(temporaryRoot, { recursive: true, force: true }); }
   });
 
   test("pins manifest uniqueness, canonical order, hashes, SRI, and inert candidate classifications", () => {

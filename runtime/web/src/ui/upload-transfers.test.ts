@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import {
   uploadFileBatch,
   uploadMedia,
+  uploadChatAttachment,
   uploadWorkspaceFile,
   type UploadProgress,
 } from './upload-transfers.js';
@@ -175,5 +176,39 @@ describe('uploadWorkspaceFile', () => {
     expect(progress.some((event) => event.percent === 80)).toBe(true);
     expect(progress.at(-1)?.percent).toBe(100);
     expect(result).toEqual({ path: 'target/ten.txt' });
+  });
+});
+
+describe('uploadChatAttachment', () => {
+  test('preserves database media IDs for small attachments', async () => {
+    FakeXMLHttpRequest.plans.push({status:200,payload:{id:17}});
+    expect(await uploadChatAttachment(new File(['hello'],'small.txt'))).toEqual({id:17});
+  });
+  test('chunks a 512 MiB file into workspace storage and returns a durable reference', async () => {
+    const size=512*1024*1024, chunk=8*1024*1024;
+    let uploadId='',expectedPath='';
+    for(let i=0;i<64;i++) {
+      const plan:any={status:200,payload:{complete:false}};
+      plan.inspect=(xhr:FakeXMLHttpRequest,body:Blob)=>{
+        expect(xhr.url).toBe('/media/upload-chunk');expect(body.size).toBe(chunk);
+        expect(xhr.headers.get('X-Chunk-Index')).toBe(String(i));expect(xhr.headers.get('X-Chunk-Total')).toBe('64');
+        uploadId=xhr.headers.get('X-Upload-Id')!;expectedPath=`uploads/${uploadId}/large.bin`;
+        if(i===63)plan.payload={complete:true,storage:'workspace',path:expectedPath,size};
+      };
+      FakeXMLHttpRequest.plans.push(plan);
+    }
+    // Synthetic File supplies bounded slices; never allocate 512 MiB in the browser fixture.
+    const file={size,name:'large.bin',slice:(start:number,end:number)=>new Blob([new Uint8Array(end-start)])} as File;
+    const result=await uploadChatAttachment(file);
+    expect(result).toEqual({storage:'workspace',path:expectedPath,filename:'large.bin',size});expect(result.id).toBeUndefined();
+  });
+  test('rejects failed or false final acknowledgements instead of fabricating a reference', async () => {
+    const chunk=8*1024*1024,size=32*1024*1024+1;
+    const file={size,name:'large.bin',slice:(a:number,b:number)=>new Blob([new Uint8Array(b-a)])} as File;
+    FakeXMLHttpRequest.plans.push({status:413,payload:{error:'File too large'}});
+    await expect(uploadChatAttachment(file)).rejects.toThrow('File too large');
+    for(let i=0;i<4;i++)FakeXMLHttpRequest.plans.push({status:200,payload:{complete:false}});
+    FakeXMLHttpRequest.plans.push({status:200,payload:{complete:true,storage:'workspace',path:'../../escape',size}});
+    await expect(uploadChatAttachment(file)).rejects.toThrow('valid file reference');
   });
 });

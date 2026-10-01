@@ -87,6 +87,7 @@ test("legacy metadata rows without an FTS row are repaired on refresh", async ()
 test("equal scores and paginated FTS/LIKE results sort by binary path regardless of insertion order", async () => {
   const db = getDb();
   for (const name of ["z.md", "A.md", "a.md"]) {
+    await fs.writeFile(file(name), "stabletie lexical");
     db.query("INSERT INTO workspace_files VALUES (?,1,17,?)").run(
       "notes/" + name,
       "fixture",
@@ -225,7 +226,8 @@ for (const kind of ["missing", "oversized"])
       refreshWorkspaceIndex({ scope: "notes", max_kb: 16 }),
     ).rejects.toThrow("cleanup failed");
     expect(getWorkspaceIndexStatus({ scope: "notes" }).state).toBe("failed");
-    expect(await paths("cleanupmarker")).toEqual(["notes/cleanup.md"]);
+    // DB rollback preserves the cached row, but a missing file is not publishable.
+    expect(await paths("cleanupmarker")).toEqual(kind === "missing" ? [] : ["notes/cleanup.md"]);
     expect(
       getDb().query("SELECT count(*) n FROM workspace_files").get(),
     ).toEqual({ n: 1 });
@@ -266,7 +268,7 @@ test("refresh removes FTS-only orphans and consolidates duplicate paths even whe
   ).toEqual({ n: 1 });
   expect(
     (await searchWorkspace({ query: "skillmarker", scope: "all" })).rows,
-  ).toHaveLength(1);
+  ).toHaveLength(0); // Out-of-policy FTS-only rows cannot bypass selected roots.
 });
 test("overlapping refresh scopes are rejected before changing status or writing rows", async () => {
   await fs.writeFile(file("pending.md"), "pendingmarker");
@@ -353,76 +355,25 @@ test("operational FTS errors are reported without a misleading LIKE fallback", a
   }
 });
 
-test("notes and skills refresh independently while overlapping configured roots are rejected", async () => {
-  await fs.writeFile(file("pending.md"), "notesmarker");
-  const skillRoot = path.join(ws.workspace, ".pi", "skills");
-  const extraRoot = path.join(ws.workspace, "extra");
-  await fs.mkdir(skillRoot, { recursive: true });
-  await fs.mkdir(extraRoot, { recursive: true });
-  await fs.writeFile(path.join(skillRoot, "a.md"), "skillsmarker");
-  await fs.writeFile(path.join(extraRoot, "a.md"), "extramarker");
-  const open = fs.open;
-  let release!: () => void, entered!: () => void;
-  const started = new Promise<void>((resolve) => {
-    entered = resolve;
-  });
-  const spy = spyOn(fs, "open").mockImplementation((async (...args: any[]) => {
-    if (String(args[0]) === file("pending.md")) {
-      entered();
-      await new Promise<void>((resolve) => {
-        release = resolve;
-      });
-    }
-    return Reflect.apply(open, fs, args);
+test("notes and skills can refresh independently; a policy change aborts an in-flight writer", async () => {
+  const {saveWorkspaceIndexPolicy}=await import('../src/core/workspace-index-policy.js');
+  saveWorkspaceIndexPolicy({roots:['notes','.pi/skills'],ignorePatterns:[]});
+  await fs.writeFile(file('pending.md'),'notesmarker');
+  await fs.mkdir(path.join(ws.workspace,'.pi/skills'),{recursive:true});
+  await fs.writeFile(path.join(ws.workspace,'.pi/skills/a.md'),'skillsmarker');
+  const open=fs.open;let release!:()=>void,entered!:()=>void;
+  const started=new Promise<void>(r=>entered=r);
+  const spy=spyOn(fs,'open').mockImplementation((async(...args:any[])=>{
+    if(String(args[0])===file('pending.md')){entered();await new Promise<void>(r=>release=r);}
+    return Reflect.apply(open,fs,args);
   }) as any);
-  const pending = refreshWorkspaceIndex({ scope: "notes" });
-  await started;
-  try {
-    const skills = await refreshWorkspaceIndex({ scope: "skills" });
-    expect(skills.state).toBe("ready");
-    expect(getWorkspaceIndexStatus({ scope: "notes" }).state).toBe("indexing");
-    expect(
-      (
-        await searchWorkspace({ query: "skillsmarker", scope: "skills" })
-      ).rows.map((r) => r.path),
-    ).toEqual([".pi/skills/a.md"]);
-    await expect(refreshWorkspaceIndex({ scope: "notes" })).rejects.toThrow(
-      "already active",
-    );
-    await expect(refreshWorkspaceIndex({ scope: "all" })).rejects.toThrow(
-      "overlapping roots",
-    );
-    const setRoots = async (roots: string[]) =>
-      fs.writeFile(
-        path.join(ws.workspace, ".piclaw/config.json"),
-        JSON.stringify({
-          domains: {
-            access: { mode: "single-user" },
-            tools: { workspaceSearchRoots: roots },
-          },
-        }),
-      );
-    await setRoots(["."]);
-    await expect(refreshWorkspaceIndex({ scope: "all" })).rejects.toThrow(
-      "overlapping roots",
-    );
-    await setRoots(["notes/nested"]);
-    await expect(refreshWorkspaceIndex({ scope: "all" })).rejects.toThrow(
-      "overlapping roots",
-    );
-    // The label "all" can refer to a configured root disjoint from notes.
-    await setRoots(["extra"]);
-    expect((await refreshWorkspaceIndex({ scope: "all" })).state).toBe("ready");
-    expect(
-      (await searchWorkspace({ query: "extramarker", scope: "all" })).rows.map(
-        (r) => r.path,
-      ),
-    ).toEqual(["extra/a.md"]);
-  } finally {
-    release();
-    spy.mockRestore();
-    await pending;
-  }
-  expect(getWorkspaceIndexStatus({ scope: "notes" }).state).toBe("ready");
-  expect(await paths("notesmarker")).toEqual(["notes/pending.md"]);
+  const pending=refreshWorkspaceIndex({scope:'notes'});await started;
+  try{
+    expect((await refreshWorkspaceIndex({scope:'skills'})).state).toBe('ready');
+    expect((await searchWorkspace({query:'skillsmarker',scope:'skills'})).rows.map(r=>r.path)).toEqual(['.pi/skills/a.md']);
+    await expect(refreshWorkspaceIndex({scope:'all'})).rejects.toThrow('overlapping roots');
+    saveWorkspaceIndexPolicy({roots:['.pi/skills'],ignorePatterns:[]});
+    release();spy.mockRestore();await expect(pending).rejects.toThrow('policy changed');
+    expect(await paths('notesmarker')).toEqual([]);
+  }finally{release();spy.mockRestore();await Promise.allSettled([pending]);}
 });

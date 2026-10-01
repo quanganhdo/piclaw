@@ -22,6 +22,9 @@ interface RefBox<T> {
 
 interface ComposeFollowupActionOptionsInput {
   currentChatJid: string;
+  activeChatJidRef: RefBox<string>;
+  viewStateRef: RefBox<any>;
+  setPosts: StateSetter<any[] | null>;
   followupQueueItemsRef: RefBox<any[]>;
   dismissedQueueRowIdsRef: RefBox<Set<string | number>>;
   setFollowupQueueItems: StateSetter<any[]>;
@@ -39,6 +42,9 @@ interface ComposeFollowupActionOptionsInput {
 export function composeFollowupActionOptions(input: ComposeFollowupActionOptionsInput) {
   return {
     currentChatJid: input.currentChatJid,
+    activeChatJidRef: input.activeChatJidRef,
+    viewStateRef: input.viewStateRef,
+    setPosts: input.setPosts,
     followupQueueItemsRef: input.followupQueueItemsRef,
     dismissedQueueRowIdsRef: input.dismissedQueueRowIdsRef,
     refreshQueueState: input.refreshQueueState,

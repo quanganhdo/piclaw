@@ -71,7 +71,8 @@ function clampLimit(value: number | undefined, fallback = 100): number {
 const KEYCHAIN_HINT = [
   "## Keychain",
   "Use keychain primarily to list available key names and manage entries by name.",
-  "Default access path: rely on automatically injected environment variables in bash/SSH and keychain-backed profile fields in other tools.",
+  "Shell injection is command-scoped: include a literal $NAME or ${NAME} reference in the command text to load that entry. Dynamic lookups (for example process.env[name], env enumeration, or Bash ${!name}) do not request injection.",
+  "Default access path: use the injected variable in bash/SSH or a keychain-backed profile field in other tools.",
   "Use keychain get only as an absolute last resort when no tool or env-based path can consume the secret directly.",
   "Never inline fetched secrets into shell commands when an env var or profile reference is available.",
   "Only reveal secrets to the user when explicitly requested.",
@@ -111,7 +112,7 @@ function buildInjectedBashEnvHint(): string {
   if (entries.length === 0) {
     return [
       "## Bash secret env",
-      "Keychain entries are automatically injected as environment variables into bash and SSH commands. Names with `/`, `-`, or `.` are sanitized (replaced with `_` and uppercased), e.g. `github/piclaw-bot-pat` becomes `$GITHUB_PICLAW_BOT_PAT`. This is the default and preferred access path. Do NOT fetch secrets and inline them into shell commands; just reference $ENTRY_NAME directly.",
+      "In bash and SSH commands, use a literal `$ENTRY_NAME` or `${ENTRY_NAME}` in the command text to inject that keychain entry. Dynamic lookups and env enumeration do not request injection. Names with `/`, `-`, or `.` become `_` and are uppercased, e.g. `github/piclaw-bot-pat` → `$GITHUB_PICLAW_BOT_PAT`. Prefer this path; do not fetch and inline secrets.",
     ].join("\n");
   }
 
@@ -121,7 +122,7 @@ function buildInjectedBashEnvHint(): string {
   const more = entries.length > 20 ? `\n- … ${entries.length - 20} more` : "";
   return [
     "## Bash secret env",
-    "Keychain entries are automatically injected as environment variables into bash and SSH commands. Names with `/`, `-`, or `.` are sanitized (replaced with `_` and uppercased), e.g. `github/piclaw-bot-pat` becomes `$GITHUB_PICLAW_BOT_PAT`. This is the default and preferred access path. Do NOT fetch secrets and inline them into shell commands; just reference $ENTRY_NAME directly.",
+    "In bash and SSH commands, use a literal `$ENTRY_NAME` or `${ENTRY_NAME}` in the command text to inject that keychain entry. Dynamic lookups and env enumeration do not request injection. Names with `/`, `-`, or `.` become `_` and are uppercased, e.g. `github/piclaw-bot-pat` → `$GITHUB_PICLAW_BOT_PAT`. Prefer this path; do not fetch and inline secrets.",
     "",
     `${preview}${more}`,
     "",
@@ -147,7 +148,7 @@ export const keychainTools: ExtensionFactory = (pi: ExtensionAPI) => {
   pi.registerTool({
     name: "keychain",
     label: "keychain",
-    description: "List keychain entries, retrieve values, store/update entries, or delete entries. Prefer env injection and keychain-backed profile references over reading secrets directly. Entries are automatically injected as environment variables (names with `/`, `-`, `.` are sanitized to `_` and uppercased) into bash and SSH commands — treat keychain get as a last resort and do NOT inline fetched secrets into shell commands.",
+    description: "List keychain entries, retrieve values, store/update entries, or delete entries. Prefer command-scoped env injection and keychain-backed profile references over reading secrets directly. Include a literal $NAME or ${NAME} reference in bash/SSH command text to inject that entry; dynamic lookups or env enumeration do not trigger injection. Names with `/`, `-`, `.` are sanitized to `_` and uppercased. Treat keychain get as a last resort; never inline fetched secrets into shell commands.",
     promptSnippet: "keychain: list/get/set/delete secure keychain entries by name. Prefer auto-injected env vars and profile references; use keychain get only as a last resort, and never inline fetched secrets into commands.",
     parameters: KeychainToolSchema,
     async execute(_toolCallId, params): Promise<AgentToolResult<KeychainToolDetails>> {
@@ -167,7 +168,7 @@ export const keychainTools: ExtensionFactory = (pi: ExtensionAPI) => {
         });
         const injectable = listInjectableKeychainEnvNames();
         const envNote = injectable.length > 0
-          ? `\n\nEntries with shell-safe names are auto-injected as env vars into bash by default. Prefer $NAME in commands instead of keychain get or inlining secrets.`
+          ? `\n\nInjection is command-scoped: reference a literal $NAME or \${NAME} in bash to load that entry. Dynamic lookups and env enumeration do not trigger it. Prefer this over keychain get or inlining secrets.`
           : '';
         return {
           content: [{ type: "text", text: `Keychain entries (${entries.length}):\n${lines.join("\n")}${envNote}` }],

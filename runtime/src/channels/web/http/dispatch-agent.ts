@@ -32,6 +32,7 @@ import {
 import { getQuickActionsSettingsData, saveQuickActionsSettings } from "../handlers/quick-actions-settings.js";
 import { handleScheduledTasksManagementAction, handleScheduledTasksManagementList } from "../handlers/scheduled-tasks-management.js";
 import { getWorkspaceSettingsData, saveWorkspaceSettings } from "../handlers/workspace-settings.js";
+import { handleWorkspaceIndexingSettings } from "../handlers/workspace-indexing.js";
 import { getServerUiState, setServerUiMetersConfig, setServerUiOutputConfig, setServerUiThemeConfig } from "../ui-state.js";
 import {
   clearEnvironmentOverride,
@@ -64,6 +65,11 @@ interface ExactAgentRoute {
 }
 
 const EXACT_AGENT_ROUTES: ExactAgentRoute[] = [
+  { method: "GET", path: "/agent/settings/workspace/indexing", handle: (channel, req, url) => handleWorkspaceIndexingSettings(channel, req, url) as Promise<Response> },
+  ...["preview", "save", "refresh"].map(action => ({
+    method: "POST", path: `/agent/settings/workspace/indexing/${action}`,
+    handle: (channel: WebChannelLike, req: Request, url: URL) => handleWorkspaceIndexingSettings(channel, req, url) as Promise<Response>,
+  })),
   ...['/agent/passkeys', '/agent/passkeys/register/start', '/agent/passkeys/register/finish'].map(path => ({ method: 'POST', path, handle: (_channel: WebChannelLike, req: Request) => handleSingleUserPasskeys(req) })),
   { method: 'GET', path: '/agent/passkeys', handle: (_channel, req) => handleSingleUserPasskeys(req) },
   { method: "GET", path: "/agent/picker-pins", handle: (channel,req) => handlePickerPins(req,channel) },

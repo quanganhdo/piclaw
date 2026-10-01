@@ -1,6 +1,7 @@
 import { execSync } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { closeSync, constants, existsSync, fchmodSync, fstatSync, lstatSync, mkdirSync, openSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { CredentialFileCommitError, type CredentialFileIO, writeCredentialFileAtomic } from "./credential-file.js";
 
 import type { Credential, CredentialInfo, CredentialStore } from "@earendil-works/pi-ai";
 import lockfile from "proper-lockfile";
@@ -153,6 +154,7 @@ export class FileCredentialStore implements PiclawCredentialStore {
   constructor(
     readonly authPath: string = join(getPiclawAgentDir(), "auth.json"),
     oauthRefreshRetry: Partial<OAuthRefreshRetryOptions> = {},
+    private readonly credentialFileIO?: CredentialFileIO,
   ) {
     this.oauthRefreshRetry = {
       maxRetries: oauthRefreshRetry.maxRetries ?? DEFAULT_OAUTH_REFRESH_MAX_RETRIES,
@@ -172,18 +174,46 @@ export class FileCredentialStore implements PiclawCredentialStore {
   private ensureFile(): void {
     const parent = dirname(this.authPath);
     if (!existsSync(parent)) mkdirSync(parent, { recursive: true, mode: AUTH_DIRECTORY_MODE });
-    if (!existsSync(this.authPath)) writeFileSync(this.authPath, "{}", { encoding: "utf8", mode: AUTH_FILE_MODE });
-    chmodSync(this.authPath, AUTH_FILE_MODE);
+    const parentStat = lstatSync(parent);
+    if (!parentStat.isDirectory() || parentStat.isSymbolicLink()) throw new Error("Credential directory must be a real directory.");
+    if (process.platform !== "win32") {
+      const dir = openSync(parent, constants.O_RDONLY | constants.O_NOFOLLOW);
+      try {
+        const stat = fstatSync(dir);
+        if (!stat.isDirectory() || stat.uid !== process.getuid?.()) throw new Error("Credential directory ownership mismatch.");
+        fchmodSync(dir, AUTH_DIRECTORY_MODE);
+      } finally { closeSync(dir); }
+    }
+    if (!existsSync(this.authPath)) {
+      try { writeFileSync(this.authPath, "{}", { encoding: "utf8", mode: AUTH_FILE_MODE, flag: "wx" }); }
+      catch (error) { if (!error || typeof error !== "object" || !("code" in error) || error.code !== "EEXIST") throw error; }
+    }
+    const target = lstatSync(this.authPath);
+    if (!target.isFile() || target.isSymbolicLink() || target.nlink !== 1) throw new Error("Credential target must be a private regular file.");
+    const fd = openSync(this.authPath, constants.O_RDONLY | (process.platform === "win32" ? 0 : constants.O_NOFOLLOW));
+    try {
+      const stat = fstatSync(fd);
+      if (!stat.isFile() || stat.nlink !== 1 || (process.platform !== "win32" && stat.uid !== process.getuid?.())) throw new Error("Credential file ownership mismatch.");
+      fchmodSync(fd, AUTH_FILE_MODE);
+    } finally { closeSync(fd); }
   }
 
   private readFileData(): CredentialData {
     this.ensureFile();
-    return parseCredentialData(readFileSync(this.authPath, "utf8"));
+    const fd = openSync(this.authPath, constants.O_RDONLY | (process.platform === "win32" ? 0 : constants.O_NOFOLLOW));
+    try { return parseCredentialData(readFileSync(fd, "utf8")); }
+    finally { closeSync(fd); }
   }
 
   private writeFileData(data: CredentialData): void {
-    writeFileSync(this.authPath, `${JSON.stringify(data, null, 2)}\n`, { encoding: "utf8", mode: AUTH_FILE_MODE });
-    chmodSync(this.authPath, AUTH_FILE_MODE);
+    try { writeCredentialFileAtomic(this.authPath, `${JSON.stringify(data, null, 2)}\n`, this.credentialFileIO); }
+    catch (error) {
+      // After rename, the new credential is authoritative. Reporting a failed
+      // mutation would let callers mistakenly restore a superseded token.
+      if (!(error instanceof CredentialFileCommitError)) throw error;
+      this.recordError(error);
+      log.warn("Credential file committed without confirmed directory synchronization", { operation: "credential_store.directory_sync_failed" });
+    }
   }
 
   private async withLock<T>(fn: (current: CredentialData, assertLock: () => void) => Promise<T>): Promise<T> {
@@ -247,7 +277,6 @@ export class FileCredentialStore implements PiclawCredentialStore {
             retryAttempt,
             maxRetries: this.oauthRefreshRetry.maxRetries,
             delayMs: jitteredDelay,
-            error: error instanceof Error ? error.message : String(error),
           });
           await this.oauthRefreshRetry.sleep(jitteredDelay);
         }

@@ -27,11 +27,11 @@ function gate() {
   return { promise, release };
 }
 
-describe("selected 0.87.1 public Harness semantics (inactive evidence only)", () => {
+describe("installed 0.99.1 public Harness semantics (preliminary inactive evidence)", () => {
   test("HC-015 explicit lane acquisition is atomic and configuration is isolated", async () => {
     const f = await createSelectedHarnessFixture();
     try {
-      expect(await readInstalledEarendilAgentCoreVersion()).toBe("0.87.1");
+      expect(await readInstalledEarendilAgentCoreVersion()).toBe("0.99.1");
       expect(await f.harness.lanes(ctx)).toEqual([]);
       const [main, same] = await Promise.all([f.harness.lane("main", ctx), f.harness.lane("main", ctx)]);
       expect(main).toBe(same);

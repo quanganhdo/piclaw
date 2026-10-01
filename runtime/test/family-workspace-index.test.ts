@@ -23,7 +23,7 @@ afterEach(()=>{setBackgroundWorkspaceIndexRefreshRequesterForTests(null);resetWo
 
 test('family uses separate empty index despite legacy ready status, then indexes only explicit family and skill roots',async()=>{
   await file('notes/users/alice/MEMORY.md','alpha PERSONAL_ALICE');await file('notes/users/bob/preferences.md','alpha PERSONAL_BOB');await file('notes/memory/MEMORY.md','alpha LEGACY_PERSONAL');await file('notes/family/MEMORY.md','alpha SHARED_FAMILY');await file('.pi/skills/shared/SKILL.md','alpha SHARED_SKILL');await file('extra/private.md','alpha EXTRA_PRIVATE');
-  config('single-user',['notes','.pi/skills','extra']);await refreshWorkspaceIndex();expect((await searchWorkspace({query:'alpha'})).rows).toHaveLength(6);
+  config('single-user',['notes','.pi/skills','extra']);await refreshWorkspaceIndex();expect((await searchWorkspace({query:'alpha'})).rows).toHaveLength(3); // Single-user policy excludes private/family subtrees.
   const legacy=getDb().query('SELECT * FROM workspace_fts ORDER BY path').all();
   config('family-shared',['.','extra','notes/users']);expect(getWorkspaceIndexStatus().state).toBe('never_indexed');expect((await searchWorkspace({query:'alpha'})).rows).toEqual([]);
   expect(normalizeWorkspaceIndexRoots('all')).toEqual([path.join(ws.workspace,'notes/family'),path.join(ws.workspace,'.pi/skills')]);
@@ -32,7 +32,7 @@ test('family uses separate empty index despite legacy ready status, then indexes
   expect((await searchWorkspace({query:'alpha',scope:'notes'})).rows.map(row=>row.path)).toEqual(['notes/family/MEMORY.md']);
   expect((await searchWorkspace({query:'alpha',scope:'skills'})).rows.map(row=>row.path)).toEqual(['.pi/skills/shared/SKILL.md']);
   expect(JSON.stringify(getDb().query('SELECT content FROM family_workspace_fts').all())).not.toContain('PERSONAL');expect(getDb().query('SELECT * FROM workspace_fts ORDER BY path').all()).toEqual(legacy);
-  config('single-user');expect((await searchWorkspace({query:'PERSONAL_ALICE'})).rows).toHaveLength(1);
+  config('single-user');expect((await searchWorkspace({query:'PERSONAL_ALICE'})).rows).toHaveLength(0);
 });
 
 test('family ignores file/directory/root symlinks and hard links and never follows them into personal notes',async()=>{
@@ -64,7 +64,7 @@ test('family partial refresh and stale paths never touch personal index or statu
 });
 
 test('mode change across legacy read await rejects without stale SQL content or failed-status mutation',async()=>{
-  await file('notes/users/alice/MEMORY.md','PERSONAL');const open=fs.open;
+  await file('notes/memory/MEMORY.md','PERSONAL');const open=fs.open;
   const spy=spyOn(fs,'open').mockImplementation((async(...args:any[])=>{const handle=await Reflect.apply(open,fs,args),read=handle.read.bind(handle);handle.read=(async(...parts:any[])=>{const value=await Reflect.apply(read,handle,parts);config('family-shared');return value;}) as any;return handle;}) as any);
   try{await expect(refreshWorkspaceIndex()).rejects.toBeInstanceOf(WorkspaceIndexAccessDenied);}finally{spy.mockRestore();}
   expect(getDb().query('SELECT count(*) n FROM workspace_fts').get()).toEqual({n:0});expect(getWorkspaceIndexStatus().state).toBe('never_indexed');expect((await searchWorkspace({query:'PERSONAL'})).rows).toEqual([]);

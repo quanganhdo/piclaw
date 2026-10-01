@@ -5,12 +5,14 @@ Start with [getting started](getting-started.md) for installation, first chat, a
 ## Use PiClaw
 
 - [Web UI](web-ui.md#chat-and-status-surfaces) — chat, workspace, editor, terminal and viewers
+- [Workspace indexing](workspace-indexing.md) — indexed roots, ignore patterns, preview and refresh controls
 - [Configuration](configuration.md) — settings, paths, providers, remote SSH tools and environment overrides
 - [Tools and skills](tools-and-skills.md) — tool discovery, skills and slash commands
 - [Budget limits](budget-limits.md) — opt-in spend/quota caps, status, approvals and enforcement limits
 - [Settings and add-ons](settings-and-addons.md) — installation and configuration; [add-on catalogue](https://rcarmo.github.io/piclaw-addons/)
 - [Visual artefact generation](visual-artifact-generator.md) — diagrams, charts and interactive output
 - [Dream memory](dream-memory.md) — file-based memory maintenance
+- [Local note recall](local-note-recall.md) — opt-in query→get→cited answers, stale handling, untrusted evidence and recovery; [first-release acceptance](design/local-note-first-release-acceptance.md)
 - [Thinking persistence](thinking-persistence.md) — opt-in reasoning storage and privacy
 - [Notifications](web-notification-delivery-policy.md) and [iOS PWA](PWA.md)
 
@@ -39,8 +41,9 @@ Start with [getting started](getting-started.md) for installation, first chat, a
 - [Development](development.md), [repository workflow](../AGENTS.md), [CI flows](ci-flows.md) and [release process](release.md)
 - [Architecture](architecture.md), [runtime flows](runtime-flows.md) and [runtime stream sessions](runtime-stream-sessions.md)
 - [Pipelined compaction](pipelined-compaction.md)
-- [Local note retrieval contract](design/local-note-retrieval-contract.md) — accepted access, freshness and citation rules; [lifecycle and implementation test map](design/local-note-retrieval-lifecycle-tests.md); no new tools enabled
+- [Local note retrieval contract](design/local-note-retrieval-contract.md) — accepted access, freshness and citation rules; [lifecycle and implementation test map](design/local-note-retrieval-lifecycle-tests.md); [internal context assembly](design/local-note-context-assembly.md) and on-demand [exact-reference `memory_get`](design/local-note-memory-get.md) and [bounded `memory_query`](design/local-note-memory-query.md) are not deployed
 - [Local note retrieval baseline](performance/local-note-retrieval-baseline.md) — synthetic file-search evaluation, measured limits and proposed release budgets; [current budget assessment](performance/local-note-retrieval-budget-assessment.md) separates passing, failing and unsupported targets
+- [Retrieval evidence and next implementation](performance/local-note-retrieval-next-step.md) — consolidated experiments, metric correction and the selected #390/#377 approach
 - [Add-on runtime API](addon-runtime-api.md)
 - [Web pane extensions](web-pane-extensions.md) and [extension UI contract](extension-ui-contract.md)
 - [Vendored widget libraries](vendored-widget-libraries.md)

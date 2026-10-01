@@ -20,6 +20,8 @@ const options: BuildOptions = {
   format: "esm",
   platform: "browser",
   target: ["es2022"],
+  // Reuse the browser import map and editor vendor, without a second parser copy.
+  external: ["#editor-vendor/codemirror"],
   sourcemap: true,
   minify: true,
   jsx: "automatic",

@@ -46,6 +46,7 @@ import { toolActivation } from "./tool-activation.js";
 import { sqlIntrospect } from "./sql-introspect.js";
 import { scheduledTasks } from "./scheduled-tasks.js";
 import { workspaceSearch } from "./workspace-search.js";
+import { createMemorySearchExtension } from "./memory-search.js";
 import { workspaceMemoryBootstrap } from "./workspace-memory-bootstrap.js";
 import { dreamMaintenance } from "./dream-maintenance.js";
 import { uiThemeExtension } from "./ui-theme.js";
@@ -88,6 +89,7 @@ export function createBuiltinExtensionFactories(options?: {
     sqlIntrospect,
     scheduledTasks,
     workspaceSearch,
+    createMemorySearchExtension(options?.chatJid),
     workspaceMemoryBootstrap,
     dreamMaintenance,
     uiThemeExtension,

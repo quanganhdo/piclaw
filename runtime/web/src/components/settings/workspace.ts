@@ -1,5 +1,6 @@
 import { html, useCallback, useEffect, useMemo, useRef, useState } from '../../vendor/preact-htm.js';
 import { saveWorkspaceSettings } from '../../api.js';
+import { WorkspaceIndexingSettings } from './workspace-indexing.js';
 import {
     applyWorkspaceClientSettings,
     readWorkspaceClientSettings,
@@ -110,6 +111,8 @@ export function WorkspaceSection({ settingsData, setStatus, mergeSettingsData })
 
     return html`
         <div class="settings-section">
+            <${WorkspaceIndexingSettings} setStatus=${setStatus} />
+
             ${serverAppliedHint && html`
                 <div class="settings-general-applied-notice" role="status" aria-live="polite">
                     ${t('settings.workspace.serverApplied')}

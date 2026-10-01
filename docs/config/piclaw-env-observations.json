@@ -87,7 +87,7 @@
       "semanticReaderOccurrences": 69
     },
     "docsDeploy": {
-      "referencedNames": 138,
+      "referencedNames": 145,
       "directReaderNames": 16,
       "directReaderOccurrences": 32,
       "helperReaderNames": 0,
@@ -582,6 +582,21 @@
           "readerFiles": [
             "scripts/audit-baseline-quality-deterministic.ts"
           ]
+        }
+      }
+    },
+    {
+      "name": "PICLAW_AUTH_ARTIFACT_RECEIPT",
+      "scopes": {
+        "docsDeploy": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "docs/design/earendil-agent-harness-integration-adr/evidence/earendil-0991-packed-provider-auth.md"
+          ],
+          "readerFiles": []
         }
       }
     },
@@ -1772,6 +1787,13 @@
           "semanticReaders": 0,
           "files": [
             ".github/workflows/e2e.yml",
+            "docs/design/earendil-agent-harness-integration-adr/evidence/earendil-0991-auth-recording-boundaries.md",
+            "docs/design/earendil-agent-harness-integration-adr/evidence/earendil-0991-packaged-cli-auth.md",
+            "docs/design/earendil-agent-harness-integration-adr/evidence/earendil-0991-packed-provider-auth.md",
+            "docs/design/earendil-agent-harness-integration-adr/evidence/earendil-0991-provider-auth-ui-matrix.md",
+            "docs/design/earendil-agent-harness-integration-adr/evidence/earendil-0991-provider-browser-matrix.md",
+            "docs/design/earendil-agent-harness-integration-adr/evidence/earendil-0991-radius-auth.md",
+            "docs/design/earendil-agent-harness-integration-adr/evidence/earendil-0991-xai-meta-device.md",
             "docs/development.md"
           ],
           "readerFiles": []
@@ -2831,8 +2853,7 @@
           "semanticReaders": 0,
           "files": [
             "runtime/src/core/config-sources.ts",
-            "runtime/src/core/config-tools.ts",
-            "runtime/src/extensions/mcp-timeout-patch.ts"
+            "runtime/src/core/config-tools.ts"
           ],
           "readerFiles": []
         },
@@ -2843,8 +2864,7 @@
           "semanticReaders": 0,
           "files": [
             "runtime/src/core/config-sources.ts",
-            "runtime/src/core/config-tools.ts",
-            "runtime/src/extensions/mcp-timeout-patch.ts"
+            "runtime/src/core/config-tools.ts"
           ],
           "readerFiles": []
         }
@@ -3940,6 +3960,66 @@
       }
     },
     {
+      "name": "PICLAW_RUN_AUTH_ARTIFACT_TESTS",
+      "scopes": {
+        "docsDeploy": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "docs/design/earendil-agent-harness-integration-adr/evidence/earendil-0991-packed-provider-auth.md"
+          ],
+          "readerFiles": []
+        }
+      }
+    },
+    {
+      "name": "PICLAW_RUN_AUTH_BROWSER_MATRIX",
+      "scopes": {
+        "docsDeploy": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "docs/design/earendil-agent-harness-integration-adr/evidence/earendil-0991-provider-browser-matrix.md"
+          ],
+          "readerFiles": []
+        }
+      }
+    },
+    {
+      "name": "PICLAW_RUN_AUTH_CLI_TESTS",
+      "scopes": {
+        "docsDeploy": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "docs/design/earendil-agent-harness-integration-adr/evidence/earendil-0991-packaged-cli-auth.md"
+          ],
+          "readerFiles": []
+        }
+      }
+    },
+    {
+      "name": "PICLAW_RUN_AUTH_CRASH_TESTS",
+      "scopes": {
+        "docsDeploy": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "docs/design/earendil-agent-harness-integration-adr/evidence/earendil-0991-auth-cross-process.md"
+          ],
+          "readerFiles": []
+        }
+      }
+    },
+    {
       "name": "PICLAW_RUN_IDLE_CPU_PROFILE",
       "scopes": {
         "docsDeploy": {
@@ -3967,6 +4047,8 @@
           "files": [
             ".github/workflows/ci.yml",
             "docs/audio-attachment-preview.md",
+            "docs/design/earendil-agent-harness-integration-adr/evidence/earendil-0991-auth-recording-boundaries.md",
+            "docs/design/earendil-agent-harness-integration-adr/evidence/earendil-0991-provider-auth-ui-matrix.md",
             "docs/development.md",
             "docs/performance/browser-idle-cpu-1352.md",
             "docs/performance/browser-idle-status-clock-1352.md",
@@ -3975,6 +4057,7 @@
             "docs/reviews/picker-button-parity.md",
             "docs/reviews/vnc-narrow-pane.md",
             "docs/web-avatar-icons.md",
+            "docs/workspace-indexing.md",
             "package.json"
           ],
           "readerFiles": []
@@ -3987,6 +4070,36 @@
           "files": [
             "runtime/scripts/test-vnc-disposable.sh",
             "scripts/audit-session-turn-management-regression.sh"
+          ],
+          "readerFiles": []
+        }
+      }
+    },
+    {
+      "name": "PICLAW_RUN_RADIUS_AUTH_TESTS",
+      "scopes": {
+        "docsDeploy": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "docs/design/earendil-agent-harness-integration-adr/evidence/earendil-0991-radius-auth.md"
+          ],
+          "readerFiles": []
+        }
+      }
+    },
+    {
+      "name": "PICLAW_RUN_XAI_META_AUTH_TESTS",
+      "scopes": {
+        "docsDeploy": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "docs/design/earendil-agent-harness-integration-adr/evidence/earendil-0991-xai-meta-device.md"
           ],
           "readerFiles": []
         }

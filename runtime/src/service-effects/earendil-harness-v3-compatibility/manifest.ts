@@ -198,12 +198,13 @@ export interface EarendilPico3ExperimentalAssessment {
 }
 
 export interface EarendilHarnessCompatibilityManifest {
-  readonly schemaVersion: 5;
-  readonly authority: Readonly<{ currentRuntimeVersion: "0.87.1"; harnessActivation: "latent_only"; unsupportedCountsAsPass: false }>;
+  readonly schemaVersion: 6;
+  readonly authority: Readonly<{ currentRuntimeVersion: "0.99.1"; harnessActivation: "latent_only"; unsupportedCountsAsPass: false }>;
   readonly historical: HistoricalEarendilHarnessCompatibilityManifest;
   readonly selected: typeof SELECTED_RELEASE;
   readonly publishedCandidate: EarendilPublishedCandidateAssessment;
   readonly experimentalPico3: EarendilPico3ExperimentalAssessment;
+  readonly currentRuntime: typeof CURRENT_RUNTIME;
 }
 
 export type EarendilManifestIssueCode =
@@ -1592,13 +1593,53 @@ const EXPERIMENTAL_PICO3 = {
 } as const satisfies EarendilPico3ExperimentalAssessment;
 
 
+/** Separate exact-target assessment; the historical selected/candidate records stay unchanged. */
+const CURRENT_RUNTIME = {
+  version: "0.99.1",
+  commit: "d86654abb8862e201933517d6f1fce9f88dd117f",
+  selection: "installed_inactive_assessment",
+  packageAdmission: "earendil-0991-package-admission.md",
+  fingerprints: [
+    { path: "dist/index.js", sha256: "4a551a8b128525e90f3da827f5c459a6f6ba39796c63b2ba73d0f0bfb7be9e72" },
+    { path: "dist/index.d.ts", sha256: "3ce94af0dcd9a9f82cdb2e6aa213222e29b42401367eb6c31c747fee02364611" },
+    { path: "dist/harness/agent-harness.js", sha256: "72727858035d2e9b99aabd0532332d84c99a8c0783361ef1e05ecd5ba4ce9354" },
+    { path: "dist/harness/agent-harness.d.ts", sha256: "f8144427584721d84ef9ed3690e00eae35b2e62935b7b3d21a23c2d0b44a0237" },
+    { path: "dist/harness/runtime/harness.js", sha256: "423e13cfac9d37c1934e0395e3e03c73c441d0f85fbd9e3fa8f8f3fe55a555c9" },
+    { path: "dist/harness/runtime/harness.d.ts", sha256: "1bd98a0769eefc0a7d5887fab6257b7bfc9671a7a5ee5af5a23439e381eeaac4" },
+    { path: "dist/harness/session/index.js", sha256: "fab2c9c5eb32d52e4fff468dba4c6adbe33bf3ec23bfa642eba7aa712d537ac7" },
+    { path: "dist/harness/session/index.d.ts", sha256: "3deac15e45b9839c4406f522ea18f75d3f5b0953217fd84eaabe5d17a9e6cf97" },
+    { path: "dist/harness/session/testing/index.js", sha256: "b6603b5a993e6eb678fb49352126138556e57a3963af7e000eec03f304ab02c4" },
+    { path: "dist/harness/session/testing/index.d.ts", sha256: "961fc28330bcffc231c14b3c3d3b5a247f3df9e13f6156e411dc791db152118e" },
+  ],
+  capabilities: SELECTED_RELEASE.capabilities.map(row => ({
+    id: row.id,
+    requirement: row.requirement,
+    status: row.status,
+    evidence: row.id === "HC-024"
+      ? "Exact 0.99.1 exports no Memory/JSONL raw Storage constructor or fixture factory. Open-operation migration fault injection remains unsupported."
+      : row.id === "HC-025"
+        ? "Public repository conformance: 17 unique cases, 17 Memory + 15 JSONL executions. Streaming forks: 15 unique cases, 15 Memory + 15 JSONL executions. SQLite and cross-process host authority remain unproved."
+        : row.evidence,
+  })),
+  repositoryConformance: { uniqueCases: 17, memoryExecutions: 17, jsonlExecutions: 15 },
+  streamingForkConformance: { uniqueCases: 15, memoryExecutions: 15, jsonlExecutions: 15 },
+  watchSession: "runtime_slice_not_implemented",
+  rawStorage: "constructors_not_publicly_exported",
+  sqlite: "streaming_fork_support_pending",
+  hostOwnership: "cross_process_authority_unproved",
+  serviceEffectAuthority: "retained_piclaw",
+  productionImport: false,
+  productionActivation: false,
+} as const;
+
 const RAW_MANIFEST = {
-  schemaVersion: 5,
-  authority: { currentRuntimeVersion: "0.87.1", harnessActivation: "latent_only", unsupportedCountsAsPass: false },
+  schemaVersion: 6,
+  authority: { currentRuntimeVersion: "0.99.1", harnessActivation: "latent_only", unsupportedCountsAsPass: false },
   historical: HISTORICAL_MANIFEST,
   selected: SELECTED_RELEASE,
   publishedCandidate: PUBLISHED_CANDIDATE,
   experimentalPico3: EXPERIMENTAL_PICO3,
+  currentRuntime: CURRENT_RUNTIME,
 } as const satisfies EarendilHarnessCompatibilityManifest;
 
 const CANONICAL_MANIFEST = deepFreeze(RAW_MANIFEST);

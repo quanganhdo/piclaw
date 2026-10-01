@@ -30,11 +30,12 @@ export async function resolveModelRequestAuth(
       env: resolved.env,
       baseUrl: resolved.auth.baseUrl,
     };
-  } catch (error) {
-    const cause = error instanceof Error && error.cause instanceof Error ? error.cause : error;
+  } catch {
+    // Auth diagnostics can carry refresh tokens, headers or callback URLs.
+    // Callers use this result in user-visible status and structured telemetry.
     return {
       ok: false,
-      error: cause instanceof Error ? cause.message : String(cause),
+      error: "Model credentials could not be resolved. Start provider login again.",
     };
   }
 }

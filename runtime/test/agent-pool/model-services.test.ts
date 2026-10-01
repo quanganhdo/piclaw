@@ -44,7 +44,10 @@ describe("runtime model services", () => {
       modelsStorePath: join(agentDir, "models-store.json"),
       allowModelNetwork: false,
     });
-    expect(captured?.credentials).toBe(services.credentialStore);
+    const runtimeOptions = captured as CreateModelRuntimeOptions | null;
+    expect(runtimeOptions?.credentials).not.toBe(services.credentialStore);
+    await runtimeOptions!.credentials!.modify("fixture", async () => ({ type: "api_key", key: "synthetic-key" }));
+    expect(await services.credentialStore.read("fixture")).toEqual({ type: "api_key", key: "synthetic-key" });
     expect(services.modelRuntime).toBe(fakeRuntime);
     expect(services.modelRegistry).toBeInstanceOf(PiclawModelRegistry);
   });

@@ -204,6 +204,9 @@ test("auto-injects only referenced env-style keychain entries for shell use", as
     await expect(keychain.loadAutoInjectedKeychainEnv(["echo $STRIPE_KEY"])).resolves.toEqual({
       STRIPE_KEY: "stripe-secret",
     });
+    await expect(keychain.loadAutoInjectedKeychainEnv(["env"])).resolves.toEqual({});
+    await expect(keychain.loadAutoInjectedKeychainEnv(["node -e 'process.env[name]'"])).resolves.toEqual({});
+    await expect(keychain.loadAutoInjectedKeychainEnv(["echo ${!name}"])).resolves.toEqual({});
 
     const env = await keychain.buildInjectedShellEnv({
       includeProcessEnv: false,

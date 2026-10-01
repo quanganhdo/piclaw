@@ -61,6 +61,9 @@ export function getDataRateLimitRule(method: string, pathname: string): DataRate
   if (method === "POST" && pathname.endsWith("/message")) {
     return { bucket: "data/agent_message", limit: DATA_AGENT_MESSAGE_LIMIT, message: "Too many agent messages. Slow down." };
   }
+  if (method === "POST" && pathname === "/media/upload-chunk") {
+    return { bucket: "data/media_upload_chunk", limit: DATA_WORKSPACE_UPLOAD_CHUNK_LIMIT, message: "Too many upload chunks. Slow down." };
+  }
   if (method === "POST" && pathname === "/media/upload") {
     return { bucket: "data/media_upload", limit: DATA_MEDIA_UPLOAD_LIMIT, message: "Too many media uploads. Slow down." };
   }
@@ -134,7 +137,7 @@ export function getDataRateLimitRule(method: string, pathname: string): DataRate
       message: "Too many workspace attach actions. Slow down.",
     };
   }
-  if (method === "POST" && (pathname === "/workspace/visibility" || pathname === "/workspace/reindex")) {
+  if (method === "POST" && (pathname === "/workspace/visibility" || pathname === "/workspace/reindex" || pathname.startsWith("/agent/settings/workspace/indexing/"))) {
     return {
       bucket: "data/workspace_ui",
       limit: DATA_WORKSPACE_UI_LIMIT,

@@ -18,6 +18,17 @@ Feature: Editor colours follow the active theme in every mode
     And raw code uses the code surface while live-preview prose uses the reading surface
     And both sides of a saved diff follow the same theme
 
+  # Browser mappings: runtime/test/web/shared-themes.playwright.optional.test.ts
+  # and runtime/test/web/markdown-syntax-theme-shell.playwright.optional.test.ts
+  @ux-markdown-syntax-theme-001
+  Scenario: Timeline and Markdown preview fences follow live theme changes
+    Given highlighted code fences in either skin's timeline and Markdown previews
+    When the system colour scheme changes in automatic mode
+    Then existing code foregrounds, backgrounds and token colours follow the active palette
+    When I select a named theme or import VS Code colours
+    Then timeline, workspace preview and editor preview use the same syntax roles
+    And Visual highlights fences without a deferred global or a duplicate parser bundle
+
   @ux-editor-theme-002
   Scenario: Editing states and widgets use semantic theme roles
     Given a themed editor is open

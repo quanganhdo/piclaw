@@ -7,6 +7,7 @@ import * as actualCodingAgent from "../../../node_modules/@earendil-works/pi-cod
 import { resetCompactionRuntimeConfigForTests, setCompactionRuntimeConfigForTests } from "../../src/core/config.js";
 import { initDatabase } from "../../src/db.js";
 import { resetExtensionKvStoreForTests } from "../../src/extension-kv-registry.js";
+import { addLogSink, removeLogSink, type LogRecord } from "../../src/utils/logger.js";
 
 // We test the module by importing its factory and invoking it with a
 // mock ExtensionAPI, then firing the session_before_compact handler.
@@ -882,6 +883,41 @@ describe("smart-compaction", () => {
       expect(result.compaction.summary).toContain("## Goal");
     } finally {
       globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("redacts provider auth causes from remote fallback diagnostics", async () => {
+    const sentinel = "SENTINEL";
+    const rawUrl = `https://auth.example.test/callback?token=${sentinel}`;
+    const generic = "Model credentials could not be resolved. Start provider login again.";
+    const logs: LogRecord[] = [];
+    const sink = (record: LogRecord) => logs.push(record);
+    const getAuth = vi.spyOn(testModelRuntime, "getAuth").mockRejectedValue(
+      new Error("wrapper", { cause: new Error(rawUrl) }),
+    );
+    setCompactionRuntimeConfigForTests({
+      remoteCompactionEnabled: true,
+      smartCompactionMethod: "selective",
+    });
+    completeSimple.mockResolvedValue({
+      content: [{ type: "text", text: "## Goal\nPreserve continuity\n\n## Current Active Topic\n- auth fallback\n\n## Historical / Background Context\n- none\n\n## Constraints & Preferences\n- redact credentials\n\n## Progress\n### Done\n- [x] remote auth failed\n### In Progress\n- [ ] continue locally\n### Blocked\n- none\n\n## Key Decisions\n- **Fallback**: use selective compaction\n\n## Next Steps\n1. continue\n\n## Critical Context\n- diagnostics are sanitized" }],
+      stopReason: "stop",
+    });
+    const model = {
+      provider: "openai", id: "gpt-5.1", api: "openai-responses", baseUrl: "https://api.openai.com/v1",
+      reasoning: false, input: ["text"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 128_000, maxTokens: 16_000,
+    };
+    const ctx = makeCtx({ model });
+    addLogSink(sink);
+    try {
+      const result = await handler!({ preparation: makePreparation(60), branchEntries: [], signal: new AbortController().signal }, ctx);
+      expect(result.compaction.details.remoteCompaction.reason).toBe(generic);
+      const downstream = JSON.stringify({ logs, status: ctx.ui.setStatus.mock.calls, notifications: ctx.ui.notify.mock.calls, details: result.compaction.details });
+      expect(downstream).not.toContain(sentinel);
+      expect(downstream).not.toContain(rawUrl);
+    } finally {
+      removeLogSink(sink);
+      getAuth.mockRestore();
     }
   });
 

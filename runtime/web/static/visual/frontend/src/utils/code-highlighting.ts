@@ -1,11 +1,10 @@
-/**
- * Syntax highlighting using CodeMirror/Lezer parsers via window.cmHighlight global.
- * Deferred-loaded — returns plain escaped HTML if global not available yet.
- */
+/** Syntax highlighting with the shared CodeMirror vendor and theme token roles. */
+import * as cmHighlight from "#editor-vendor/codemirror";
+import { themeClassHighlighter } from "../../../../../../extensions/viewers/editor/syntax-highlighter";
 import { bicepMode } from "./bicep-mode";
 
-function getCm(): PiclawCmHighlight | null {
-  return window.cmHighlight ?? null;
+function getCm(): PiclawCmHighlight {
+  return cmHighlight;
 }
 
 function escapeHtml(value: string): string {
@@ -316,6 +315,8 @@ export function parserForCodeFenceLanguage(lang: string): { parse: (input: strin
 interface TokenSegment { from: number; to: number; cls: string; }
 
 export function highlightCodeToHtml(code: string, lang: string): string {
+  // Match the shared renderer's bound; huge logs remain safe escaped text.
+  if (code.length > 96 * 1024) return escapeHtml(code);
   const parser = parserForCodeFenceLanguage(lang);
   if (!parser) return escapeHtml(code);
 
@@ -323,7 +324,7 @@ export function highlightCodeToHtml(code: string, lang: string): string {
   const tokens: TokenSegment[] = [];
   try {
     const tree = parser.parse(code);
-    cm.highlightTree(tree, cm.classHighlighter, (from: number, to: number, cls: string) => {
+    cm.highlightTree(tree, themeClassHighlighter, (from: number, to: number, cls: string) => {
       if (!cls || from >= to) return;
       tokens.push({ from, to, cls });
     });

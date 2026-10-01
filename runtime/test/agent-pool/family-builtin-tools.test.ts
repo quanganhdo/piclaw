@@ -82,6 +82,8 @@ test('SDK tool-call/user-bash hooks deny unknown and restricted calls and allow 
   expect(handlers.get('user_bash')().result.exitCode).toBe(1);
   expect((await run(identity(bob), () => handlers.get('tool_call')({ toolName: 'read' }))).block).toBe(true);
   revokeUserWebSessions(alice.userId); expect((await run(first, () => handlers.get('tool_call')({ toolName: 'read' }))).block).toBe(true);
+  const late=await run(first,()=>handlers.get('tool_result')({toolName:'read',content:[{type:'text',text:'PRIVATE'}]}));
+  expect(late.isError).toBe(true);expect(JSON.stringify(late)).not.toContain('PRIVATE');
 });
 
 test('real SDK registry gives guarded custom definitions precedence over static/dynamic extension overrides', async () => {

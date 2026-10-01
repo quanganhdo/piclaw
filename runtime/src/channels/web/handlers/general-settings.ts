@@ -275,7 +275,7 @@ export async function saveGeneralSettings(input: GeneralSettingsInput): Promise<
     setWebTerminalEnabled(nextWebTerminalEnabled);
   }
 
-  const nextComposeUploadLimitMb = normalizeOptionalInt(input.composeUploadLimitMb, 1, 512);
+  const nextComposeUploadLimitMb = normalizeOptionalInt(input.composeUploadLimitMb, 1, 1024);
   if (nextComposeUploadLimitMb !== undefined) {
     setWebComposeUploadLimitMb(nextComposeUploadLimitMb);
   }

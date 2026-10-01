@@ -9,6 +9,7 @@ import type { ModelsRefreshOptions, ModelsRefreshResult } from "@earendil-works/
 
 import { getPiclawAgentDir } from "../core/agent-dir.js";
 import { FileCredentialStore, type PiclawCredentialStore } from "./credential-store.js";
+import { createRuntimeCredentialStore } from "./runtime-credential-store.js";
 import { installOpenAICompletionsUsageCompatibility } from "./openai-completions-usage-compat.js";
 
 export class PiclawModelRegistry extends ModelRegistry {
@@ -50,7 +51,7 @@ export async function createRuntimeModelServices(
   const credentialStore = options.credentialStore ?? new FileCredentialStore(join(agentDir, "auth.json"));
   const createModelRuntime = options.createModelRuntime ?? ((runtimeOptions) => ModelRuntime.create(runtimeOptions));
   const modelRuntime = await createModelRuntime({
-    credentials: credentialStore,
+    credentials: createRuntimeCredentialStore(credentialStore),
     authPath: join(agentDir, "auth.json"),
     modelsPath: join(agentDir, "models.json"),
     modelsStorePath: join(agentDir, "models-store.json"),

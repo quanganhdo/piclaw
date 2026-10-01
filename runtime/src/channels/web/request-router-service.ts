@@ -129,6 +129,12 @@ export class RequestRouterService {
 
     if (pathname === "/auth/options") return loginOptionsResponse(req, this.accessMode, this.channel.authGateway);
 
+    // Instance-wide indexing policy is available only to the single-user owner.
+    // Deny before family or isolated dispatch can reinterpret caller identity.
+    if (pathname.startsWith("/agent/settings/workspace/indexing") && this.accessMode !== "single-user") {
+      return this.channel.json({ error: "Workspace indexing settings are owner-only." }, 403);
+    }
+
     // Terminal gate precedes every legacy/add-on dispatcher, including early routes.
     if (this.accessMode === "family-shared") {
       return handleFamilyRequest(this.channel, req, this.serveStaticAsset.bind(this));

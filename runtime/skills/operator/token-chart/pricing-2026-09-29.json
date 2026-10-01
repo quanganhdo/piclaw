@@ -1,0 +1,13 @@
+[
+  {
+    "provider": "openai",
+    "model": "gpt-6.1-sol",
+    "canonicalModel": "GPT-6.1 Sol",
+    "basis": "public-first-party; retrieved 2026-09-29 (https://developers.openai.com/api/docs/pricing.md)",
+    "inputPerMTok": 2,
+    "outputPerMTok": 10,
+    "cacheReadPerMTok": 0.1,
+    "cacheWritePerMTok": 2.5,
+    "notes": "Standard short-context tier; whole request uses long-context rates above 272K input tokens. Fast is unavailable with EU data residency. Eligible regional processing adds 10%. Chart estimates use the base tier only; Batch, Flex, Fast and regional modifiers require request-level selection. Native OpenAI API tariff. Not evidence of GitHub Copilot/OpenRouter availability, credits, subscription capacity, or invoice charges."
+  }
+]

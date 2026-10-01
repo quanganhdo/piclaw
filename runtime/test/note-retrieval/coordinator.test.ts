@@ -1,7 +1,7 @@
 import {afterEach,beforeEach,expect,setDefaultTimeout,test} from 'bun:test';
 import {spawn} from 'node:child_process';
 import {once} from 'node:events';
-import {mkdirSync,writeFileSync,readFileSync,unlinkSync,renameSync,symlinkSync,linkSync,utimesSync,statSync,lstatSync,realpathSync} from 'node:fs';
+import {mkdirSync,writeFileSync,readFileSync,existsSync,unlinkSync,renameSync,symlinkSync,linkSync,utimesSync,statSync,lstatSync,realpathSync} from 'node:fs';
 import {join,resolve} from 'node:path';
 import {Database} from 'bun:sqlite';
 import {createTempWorkspace,setEnv} from '../helpers.js';
@@ -60,6 +60,27 @@ test('versioned atomic snapshots preserve unchanged IDs, detect same-metadata ed
  const old=chunks()[0].chunk_id;expect((await run(binding(),true)).code).toBe(0);expect(chunks()[0].chunk_id).not.toBe(old);
  expect(snapshot().staging).toBeNull();expect(sql('SELECT count(DISTINCT generation) n FROM note_retrieval_sources')).toEqual({n:1});
 });
+test('independent WAL reader keeps one published generation across dirty refresh and commit',async()=>{
+ put('a.md','# Entry\nold source');expect((await run()).code).toBe(0);
+ const original=chunks()[0],published=snapshot().published;
+ const dbPath=join(ws.store,'messages.db'),ready=join(ws.data,'reader-ready.json'),go=join(ws.data,'reader-go'),done=join(ws.data,'reader-done.json');
+ const select="SELECT s.published,s.state,c.chunk_id,c.revision,c.content FROM note_retrieval_state s JOIN note_retrieval_chunks c ON c.generation=s.published WHERE c.path='notes/a.md'";
+ const reader=spawn(process.execPath,['-e',`const {Database}=await import('bun:sqlite');const fs=await import('node:fs');const db=new Database(${JSON.stringify(dbPath)},{readonly:true});const select=${JSON.stringify(select)};db.exec('BEGIN');const before=db.query(select).get();fs.writeFileSync(${JSON.stringify(ready)},JSON.stringify(before));for(let i=0;i<500&&!fs.existsSync(${JSON.stringify(go)});i++)await Bun.sleep(20);if(!fs.existsSync(${JSON.stringify(go)}))throw Error('reader barrier timed out');const during=db.query(select).get();db.exec('COMMIT');const after=db.query(select).get();fs.writeFileSync(${JSON.stringify(done)},JSON.stringify({during,after}));db.close();`],{cwd:resolve(import.meta.dir,'../..'),env:process.env,stdio:['ignore','ignore','pipe']});
+ let errors='';reader.stderr!.on('data',b=>errors+=b);const readerExited=once(reader,'exit');
+ const waitFor=async(path:string)=>{for(let i=0;i<500&&!existsSync(path);i++){if(reader.exitCode!==null)throw Error(`reader exited ${reader.exitCode}: ${errors}`);await Bun.sleep(20);}expect(existsSync(path)).toBe(true);return JSON.parse(readFileSync(path,'utf8'));};
+ try{
+  const before=await waitFor(ready);expect(before).toMatchObject({published,chunk_id:original.chunk_id,content:original.content,state:'ready'});
+  put('a.md','# Entry\nnew source');
+  expect(await childEval(`const {markNoteIndexDirty}=await import('./src/note-retrieval/coordinator.ts');const {initDatabase}=await import('./src/db/connection.ts');initDatabase();markNoteIndexDirty(['notes/a.md'])`)).toBe(0);
+  expect(snapshot().state).toBe('stale');
+  expect((await run()).code).toBe(0);
+  const current=chunks()[0];expect(current.chunk_id).not.toBe(original.chunk_id);expect(snapshot().published).toBeGreaterThan(published);
+  expect(sql('SELECT count(*) n FROM note_retrieval_chunks WHERE chunk_id=?',original.chunk_id)).toEqual({n:0});
+  writeFileSync(go,'go');const observed=await waitFor(done);const [code]=await readerExited;expect(code).toBe(0);expect(errors).toBe('');
+  expect(observed.during).toEqual(before);
+  expect(observed.after).toMatchObject({published:snapshot().published,chunk_id:current.chunk_id,revision:current.revision,content:current.content,state:'ready'});
+ }finally{if(reader.exitCode===null){reader.kill();await readerExited;}}
+});
 test('excluded private roots, symlinks, hardlinks, invalid UTF8 and oversized files cannot publish',async()=>{
  put('good.md','good');mkdirSync(join(ws.workspace,'notes','users'));mkdirSync(join(ws.workspace,'notes','family'));put('users/private.md','private');put('family/shared.md','shared');
  put('bad.md','valid initially');expect((await run()).code).toBe(0);
@@ -87,10 +108,42 @@ test('live writer cannot be reclaimed; crash-left staging is reclaimed before su
  {const db=database();db.query('UPDATE note_retrieval_state SET writer_pid=2147483647').run();db.query("INSERT INTO note_retrieval_sources VALUES(999,'notes/abandoned.md','rev',1,1,0)").run();db.close();}
  expect((await run()).code).toBe(0);expect(sql('SELECT count(*) n FROM note_retrieval_sources WHERE generation=999')).toEqual({n:0});
 });
+test('a competing process refuses a live writer and reclaims its staging after SIGKILL',async()=>{
+ put('a.md','original');expect((await run()).code).toBe(0);
+ const first=snapshot(),original=chunks()[0],ready=join(ws.data,'writer-ready');
+ const writer=spawn(process.execPath,['-e',`const {Database}=await import('bun:sqlite');const fs=await import('node:fs');const db=new Database(${JSON.stringify(join(ws.store,'messages.db'))});db.transaction(()=>{db.query("UPDATE note_retrieval_state SET staging=999,writer_pid=?,state='indexing' WHERE id=1").run(process.pid);db.query('INSERT INTO note_retrieval_sources VALUES(?,?,?,?,?,?)').run(999,'notes/abandoned.md','rev',1,1,0)}).immediate();db.close();fs.writeFileSync(${JSON.stringify(ready)},'ready');setInterval(()=>{},1000);`],{cwd:resolve(import.meta.dir,'../..'),env:process.env,stdio:['ignore','ignore','pipe']});
+ let errors='';writer.stderr!.on('data',b=>errors+=b);const writerExited=once(writer,'exit');
+ try{
+  for(let i=0;i<500&&!existsSync(ready);i++){if(writer.exitCode!==null)throw Error(`writer exited ${writer.exitCode}: ${errors}`);await Bun.sleep(20);}
+  expect(existsSync(ready)).toBe(true);
+  const active=snapshot();expect(active).toMatchObject({published:first.published,staging:999,writer_pid:writer.pid,state:'indexing'});
+  expect(chunks()).toEqual([original]);
+  const contender=await run();expect(contender.code).toBe(1);expect(contender.errors).toContain('writer_busy');
+  expect(snapshot()).toMatchObject({published:first.published,staging:999,writer_pid:writer.pid});
+  writer.kill('SIGKILL');const [exit,signal]=await writerExited;expect(exit).toBeNull();expect(signal).toBe('SIGKILL');
+  put('a.md','replacement');expect((await run()).code).toBe(0);
+  expect(snapshot()).toMatchObject({staging:null,writer_pid:null,state:'ready'});
+  expect(snapshot().published).toBeGreaterThan(first.published);
+  expect(sql('SELECT count(*) n FROM note_retrieval_sources WHERE generation=999')).toEqual({n:0});
+  expect(chunks()[0].chunk_id).not.toBe(original.chunk_id);
+ }finally{if(writer.exitCode===null&&writer.signalCode===null){writer.kill('SIGKILL');await writerExited;}}
+});
 test('SQL fault rolls back staging, retains publication and never deletes source/other tables',async()=>{
  put('a.md','alpha');expect((await run()).code).toBe(0);const previous=chunks();
  {const db=database();db.exec("CREATE TABLE fixture_other(value TEXT); INSERT INTO fixture_other VALUES('keep'); CREATE TRIGGER note_fault BEFORE INSERT ON note_retrieval_chunks BEGIN SELECT RAISE(ABORT,'fixture fault'); END;");db.close();}put('a.md','bravo');
  expect((await run()).code).toBe(1);expect(chunks()).toEqual(previous);expect(snapshot().staging).toBeNull();expect(sql('SELECT value FROM fixture_other')).toEqual({value:'keep'});expect(readFileSync(join(ws.workspace,'notes','a.md'),'utf8')).toBe('bravo');
+});
+test('independent process sees the old publication after a faulted refresh, then the committed successor',async()=>{
+ put('a.md','original');expect((await run()).code).toBe(0);
+ const first=snapshot(),original=chunks()[0];
+ {const db=database();db.exec("CREATE TRIGGER faulted_chunk BEFORE INSERT ON note_retrieval_chunks BEGIN SELECT RAISE(ABORT,'fixture fault'); END;");db.close();}
+ put('a.md','replacement');expect((await run()).code).toBe(1);
+ const read=`const {Database}=await import('bun:sqlite');const db=new Database(${JSON.stringify(join(ws.store,'messages.db'))},{readonly:true});const state=db.query('SELECT published,staging,state FROM note_retrieval_state').get();const rows=db.query('SELECT chunk_id,revision,content FROM note_retrieval_chunks WHERE generation=?').all(state.published);console.log(JSON.stringify({state,rows}));db.close()`;
+ const reopen=async()=>{const p=spawn(process.execPath,['-e',read],{cwd:resolve(import.meta.dir,'../..'),env:process.env,stdio:['ignore','pipe','pipe']});let output='',errors='';p.stdout!.on('data',b=>output+=b);p.stderr!.on('data',b=>errors+=b);const [code]=await once(p,'exit');expect(code).toBe(0);expect(errors).toBe('');return JSON.parse(output);};
+ expect(await reopen()).toEqual({state:{published:first.published,staging:null,state:'stale'},rows:[{chunk_id:original.chunk_id,revision:original.revision,content:original.content}]});
+ {const db=database();db.exec('DROP TRIGGER faulted_chunk');db.close();}
+ expect((await run()).code).toBe(0);const next=chunks()[0];expect(next.chunk_id).not.toBe(original.chunk_id);
+ expect(await reopen()).toEqual({state:{published:snapshot().published,staging:null,state:'ready'},rows:[{chunk_id:next.chunk_id,revision:next.revision,content:next.content}]});
 });
 test('cancelled refresh cleans its only staging slot and preserves publication',async()=>{
  put('a.md','alpha');expect((await run()).code).toBe(0);const publication=snapshot().published,previous=chunks();put('a.md','bravo');

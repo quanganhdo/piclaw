@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 
 import {
   appendUniqueTimelinePost,
+  appendAcknowledgedTimelinePost,
   isMainTimelineView,
   removeTimelinePostsByIds,
   replaceTimelinePostById,
@@ -58,4 +59,23 @@ test('replaceTimelinePostById and removeTimelinePostsByIds preserve no-op identi
   expect(noIds).toBe(source);
   const noMatch = removeTimelinePostsByIds(source, [9]);
   expect(noMatch).toBe(source);
+});
+
+test('HTTP acknowledged rows appear immediately and dedupe against earlier/later SSE', () => {
+  const post={id:41,chat_jid:'web:a',data:{content:'accepted'}};
+  const response={user_message:post};
+  const first=appendAcknowledgedTimelinePost([],response,'web:a',{});
+  expect(first).toEqual([post]);
+  expect(appendUniqueTimelinePost(first,post)).toBe(first);
+  const sseFirst=[post];
+  expect(appendAcknowledgedTimelinePost(sseFirst,response,'web:a',{})).toBe(sseFirst);
+});
+
+test('acknowledgements do not contaminate another chat, filtered view or queued intent', () => {
+  const existing=[{id:1}];
+  const response={user_message:{id:41,chat_jid:'web:a'}};
+  expect(appendAcknowledgedTimelinePost(existing,response,'web:b',{})).toBe(existing);
+  for(const view of [{searchQuery:'needle'},{searchOpen:true},{currentHashtag:'topic'}])expect(appendAcknowledgedTimelinePost(existing,response,'web:a',view)).toBe(existing);
+  for(const extra of [{queued:'followup'},{queued:'steer'},{ui_only:true}])expect(appendAcknowledgedTimelinePost(existing,{...response,...extra},'web:a',{})).toBe(existing);
+  for(const id of [null,0,-1,'41',NaN])expect(appendAcknowledgedTimelinePost(existing,{user_message:{id,chat_jid:'web:a'}},'web:a',{})).toBe(existing);
 });

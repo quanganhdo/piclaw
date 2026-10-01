@@ -6,6 +6,7 @@ import { WebServerLifecycleGatewayService } from "../../../src/channels/web/serv
 import { WebAdaptiveCardSidePromptService } from "../../../src/channels/web/cards/adaptive-card-side-prompt-service.js";
 import { handlePasskey } from "../../../src/agent-control/handlers/passkey.js";
 import { handleTotp } from "../../../src/agent-control/handlers/totp.js";
+import { handleLogin, handleLogout } from "../../../src/agent-control/handlers/login.js";
 import { closeDatabase, getDb, initDatabase } from "../../../src/db/connection.js";
 import { createWebSession } from "../../../src/db/web-sessions.js";
 
@@ -62,6 +63,14 @@ test("legacy factor commands deny all multi-user actions without creating cards 
   }
   expect((getDb().query("SELECT count(*) n FROM web_sessions").get() as any).n).toBe(1);
   expect((getDb().query("SELECT count(*) n FROM webauthn_enrollments").get() as any).n).toBe(0);
+});
+
+test("direct provider login/logout deny multi-user modes before runtime or credential reads", async () => {
+  for (const accessMode of ["family-shared", "isolated-containers"] as const) {
+    mode(accessMode);
+    expect((await handleLogin({} as any, {} as any, { type: "login", raw: "/login" })).status).toBe("error");
+    expect((await handleLogout({} as any, {} as any, { type: "logout", provider: "openai", raw: "/logout openai" })).status).toBe("error");
+  }
 });
 
 test("direct card and side-prompt services deny before parsing payload or touching source messages/models", async () => {

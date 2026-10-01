@@ -1,0 +1,106 @@
+[
+  {
+    "name": "@earendil-works/chord",
+    "version": "0.99.1",
+    "gitHead": "d86654abb8862e201933517d6f1fce9f88dd117f",
+    "dist": {
+      "shasum": "7f6ba945b705a5ab48d25dbed39b253afcec68df",
+      "integrity": "sha512-4xyn0IBzJ+Xu/iOGi2hjXJGAR61QEhEWZsIqTDqr+GmItdquYwBO5jYFnqGiBaTqlY12/EpM7QHoEKSHbyvOug==",
+      "tarball": "https://registry.npmjs.org/@earendil-works/chord/-/chord-0.99.1.tgz"
+    },
+    "engines": {
+      "node": ">=22.19.0"
+    }
+  },
+  {
+    "name": "@earendil-works/pi-agent-core",
+    "version": "0.99.1",
+    "gitHead": "d86654abb8862e201933517d6f1fce9f88dd117f",
+    "dist": {
+      "shasum": "e918b147f4d3ae1c8c5d435229a2d56d76a3191c",
+      "integrity": "sha512-zywvWnj5FujeuFI/x/CJHwwxhcLIQgjqseTA+bQgX4O8gJTcgjRd/I8SZnQDqJvxC9QcV12ujiGLviv6EgwcCg==",
+      "tarball": "https://registry.npmjs.org/@earendil-works/pi-agent-core/-/pi-agent-core-0.99.1.tgz"
+    },
+    "engines": {
+      "node": ">=22.19.0"
+    }
+  },
+  {
+    "name": "@earendil-works/pi-ai",
+    "version": "0.99.1",
+    "gitHead": "d86654abb8862e201933517d6f1fce9f88dd117f",
+    "dist": {
+      "shasum": "2945bf014fbb314bd37b919e83317560e0a8fa1d",
+      "integrity": "sha512-4nV9JKc94iPX8bwdGPc2nTuVPKIPsffhnp3WoN9NYCNqbtoOF8LhYcIs/+Sn/alroqJK/5QRu6/Z6Ck+n0hyBA==",
+      "tarball": "https://registry.npmjs.org/@earendil-works/pi-ai/-/pi-ai-0.99.1.tgz"
+    },
+    "engines": {
+      "node": ">=22.19.0"
+    }
+  },
+  {
+    "name": "@earendil-works/pi-codemode",
+    "version": "0.99.1",
+    "gitHead": "d86654abb8862e201933517d6f1fce9f88dd117f",
+    "dist": {
+      "shasum": "f9965078e21d744fe1b018959359aed1a664f17d",
+      "integrity": "sha512-oh8TMsBI3SWTN3xTQtX8u5n+BKhnVXcFagroWumfn6/WWfBnDYL/LmeQtjLb83WRTb9rcu+ZdK8rFa4vggvCJg==",
+      "tarball": "https://registry.npmjs.org/@earendil-works/pi-codemode/-/pi-codemode-0.99.1.tgz"
+    },
+    "engines": {
+      "node": ">=22.19.0"
+    }
+  },
+  {
+    "name": "@earendil-works/pi-coding-agent",
+    "version": "0.99.1",
+    "gitHead": "d86654abb8862e201933517d6f1fce9f88dd117f",
+    "dist": {
+      "shasum": "00e7e6c668d67d0825fc8814d80097eb07ec44e0",
+      "integrity": "sha512-cWUrTOqA5M73cOYMgsh9PlhDrsBhavd+n5kVY6F7BGbGl1RjqCteVCoeVMVqhngoGACVDyw1tbLjajL8l9jrHg==",
+      "tarball": "https://registry.npmjs.org/@earendil-works/pi-coding-agent/-/pi-coding-agent-0.99.1.tgz"
+    },
+    "engines": {
+      "node": ">=22.19.0"
+    }
+  },
+  {
+    "name": "@earendil-works/pi-mcp",
+    "version": "0.99.1",
+    "gitHead": "d86654abb8862e201933517d6f1fce9f88dd117f",
+    "dist": {
+      "shasum": "c2002b819a5d75d9cfa8091171580f794c205042",
+      "integrity": "sha512-YCFGPkmDzLwQuIzwfbP6Vuk/g/ukKpZhwTpbcfzomuI1Fkiu6hHRkOGwAqsO3G8cTkZWkM8vmOkFJjStQNC4qA==",
+      "tarball": "https://registry.npmjs.org/@earendil-works/pi-mcp/-/pi-mcp-0.99.1.tgz"
+    },
+    "engines": {
+      "node": ">=22.19.0"
+    }
+  },
+  {
+    "name": "@earendil-works/pi-telemetry",
+    "version": "0.99.1",
+    "gitHead": "d86654abb8862e201933517d6f1fce9f88dd117f",
+    "dist": {
+      "shasum": "37b1fb0ce8c0ca2fe04363035a4b7aea29a9e8cb",
+      "integrity": "sha512-9PBPjGk+TXRtuMianpqBbHBpYpyKusESF6rwdmgD0WTZSTUQXhcKEO0hAINRLuSwy4V7yPvXV+EVV0ONY7mbpQ==",
+      "tarball": "https://registry.npmjs.org/@earendil-works/pi-telemetry/-/pi-telemetry-0.99.1.tgz"
+    },
+    "engines": {
+      "node": ">=22.19.0"
+    }
+  },
+  {
+    "name": "@earendil-works/pi-tui",
+    "version": "0.99.1",
+    "gitHead": "d86654abb8862e201933517d6f1fce9f88dd117f",
+    "dist": {
+      "shasum": "f6f82a4792fabb4aabf310e082743d87accc90cc",
+      "integrity": "sha512-gZp0Guat96Fr1AuC/xqVz5B2lulZakp/PxD1lXx3lSgBdjiqmwYhJbcQ0HRrGAfy0WtMGn9b05RJr5qJf7oIuw==",
+      "tarball": "https://registry.npmjs.org/@earendil-works/pi-tui/-/pi-tui-0.99.1.tgz"
+    },
+    "engines": {
+      "node": ">=22.19.0"
+    }
+  }
+]

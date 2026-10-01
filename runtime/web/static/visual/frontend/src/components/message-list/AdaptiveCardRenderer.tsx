@@ -7,6 +7,7 @@
  */
 import { useEffect, useRef, useMemo } from "preact/hooks";
 import type { ContentBlock } from "./types";
+import { presentProviderAuth } from "../../../../../../src/ui/provider-auth-presentation.js";
 
 import { createLogger } from "../../utils/logger";
 const log = createLogger("AdaptiveCard");
@@ -199,18 +200,26 @@ async function renderCard(
 
       if (type === "Action.Submit") {
         cardEl.classList.add("adaptive-card-busy");
-        fetch("/agent/card-action", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "same-origin",
-          body: JSON.stringify({
-            post_id: postId,
-            thread_id: postId,
-            chat_jid: chatJid ?? "web:default",
-            card_id: block.card_id,
-            action: { type, title, data },
-          }),
+        const submit = async (payload: any, options: { signal?: AbortSignal } = {}) => {
+          const response = await fetch("/agent/card-action", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
+            body: JSON.stringify(payload),
+            signal: options.signal,
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error("Adaptive Card action failed");
+          return result;
+        };
+        submit({
+          post_id: postId,
+          thread_id: postId,
+          chat_jid: chatJid ?? "web:default",
+          card_id: block.card_id,
+          action: { type, title, data },
         })
+          .then((response) => { presentProviderAuth(response, submit); })
           .catch((err) => log.error("Submit failed:", err))
           .finally(() => cardEl.classList.remove("adaptive-card-busy"));
         return;

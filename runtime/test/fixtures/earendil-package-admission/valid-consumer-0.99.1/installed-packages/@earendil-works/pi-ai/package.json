@@ -1,0 +1,9 @@
+{
+  "name": "@earendil-works/pi-ai",
+  "version": "0.99.1",
+  "type": "module",
+  "engines": { "node": ">=22.19.0" },
+  "exports": {
+    "./bun-oauth": { "types": "./dist/bun-oauth.d.ts", "import": "./dist/bun-oauth.js" }
+  }
+}

@@ -12,6 +12,7 @@ import { extractFtsFallbackTerms, isFtsOperatorQuery, prepareFtsQuery } from "./
 import { createLogger, debugSuppressedError } from "./utils/logger.js";
 import { workspaceIndexAccess,WorkspaceIndexAccessDenied } from './core/workspace-index-access.js';
 import { familyWorkspaceScope,searchFamilyWorkspaceIndex } from './family-workspace-index.js';
+import { workspaceIndexPolicySnapshot, workspaceIndexPathDecision, workspaceIndexSafePath } from './core/workspace-index-policy.js';
 import {
   getWorkspaceIndexStatus,
   markWorkspaceIndexCoreStale,
@@ -52,12 +53,16 @@ export type WorkspaceSearchParams = {
 import type { WorkspaceSearchRow,WorkspaceSearchResult } from './core/workspace-index-types.js';
 export type { WorkspaceSearchRow,WorkspaceSearchResult } from './core/workspace-index-types.js';
 
-let requestBackgroundWorkspaceIndexRefreshImpl = (params: WorkspaceIndexBackgroundRefreshParams = {}): void => {
+let backgroundRefreshQueue: Promise<void> = Promise.resolve();
+const defaultBackgroundRefresh = (params: WorkspaceIndexBackgroundRefreshParams = {}): void => {
   const access=workspaceIndexAccess();
-  void import("./workspace-index-process.js")
-    .then((mod) => {
+  backgroundRefreshQueue = backgroundRefreshQueue.then(async () => {
+      const mod=await import("./workspace-index-process.js");
+      // Retain requests made while an older policy's writer is exiting.
+      await mod.waitForWorkspaceIndexProcess();
       access.validate();
       mod.launchWorkspaceIndexProcess({ scope: params.scope, max_kb: params.max_kb });
+      await mod.waitForWorkspaceIndexProcess();
     })
     .catch((error) => {
       debugSuppressedError(log, "Failed to request background workspace index refresh.", error, {
@@ -67,6 +72,7 @@ let requestBackgroundWorkspaceIndexRefreshImpl = (params: WorkspaceIndexBackgrou
       });
     });
 };
+let requestBackgroundWorkspaceIndexRefreshImpl = defaultBackgroundRefresh;
 
 const clampNumber = (value: number | undefined, fallback: number, min: number, max: number): number => {
   if (!Number.isFinite(value)) return fallback;
@@ -83,21 +89,7 @@ export function requestBackgroundWorkspaceIndexRefresh(params?: WorkspaceIndexBa
 export function setBackgroundWorkspaceIndexRefreshRequesterForTests(
   requester: ((params?: WorkspaceIndexBackgroundRefreshParams) => void) | null,
 ): void {
-  requestBackgroundWorkspaceIndexRefreshImpl = requester ?? ((params: WorkspaceIndexBackgroundRefreshParams = {}) => {
-    const access=workspaceIndexAccess();
-    void import("./workspace-index-process.js")
-      .then((mod) => {
-        access.validate();
-        mod.launchWorkspaceIndexProcess({ scope: params.scope, max_kb: params.max_kb });
-      })
-      .catch((error) => {
-        debugSuppressedError(log, "Failed to request background workspace index refresh.", error, {
-          operation: "workspace_search.background_refresh.import",
-          scope: params.scope,
-          maxKb: params.max_kb,
-        });
-      });
-  });
+  requestBackgroundWorkspaceIndexRefreshImpl = requester ?? defaultBackgroundRefresh;
 }
 
 export function markWorkspaceIndexStale(params?: { scope?: WorkspaceSearchScope | string; paths?: string[] }): void {
@@ -109,6 +101,7 @@ export function markWorkspaceIndexStale(params?: { scope?: WorkspaceSearchScope 
 /** Full-text search across indexed workspace files. */
 export async function searchWorkspace(params: WorkspaceSearchParams): Promise<WorkspaceSearchResult> {
   const access=workspaceIndexAccess();
+  const policy=access.mode==='single-user'?workspaceIndexPolicySnapshot():null;
   const query = params.query.trim();
   const limit = clampNumber(params.limit, 10, 1, 50);
   const offset = clampNumber(params.offset, 0, 0, 1_000_000);
@@ -128,7 +121,7 @@ export async function searchWorkspace(params: WorkspaceSearchParams): Promise<Wo
     }
   }
 
-  access.validate();
+  access.validate();policy?.validate();
   if(access.mode==='family-shared')return searchFamilyWorkspaceIndex(query,scope,limit,offset);
 
   const operatorQuery = isFtsOperatorQuery(query);
@@ -138,6 +131,8 @@ export async function searchWorkspace(params: WorkspaceSearchParams): Promise<Wo
   }
 
   const db = getDb();
+  const allowedPaths=JSON.stringify((db.prepare('SELECT path FROM workspace_files').all() as Array<{path:string}>).filter(row=>workspaceIndexPathDecision(row.path,policy!.policy).included&&workspaceIndexSafePath(access.workspace,row.path)).map(row=>row.path));
+  const visible = 'path IN (SELECT value FROM json_each(?))';
   try {
     const prefix = scope === "notes" ? "notes/%" : scope === "skills" ? ".pi/skills/%" : null;
 
@@ -145,11 +140,12 @@ export async function searchWorkspace(params: WorkspaceSearchParams): Promise<Wo
       ? "SELECT path, size_bytes, mtime_ms, snippet(workspace_fts, 0, '[', ']', '…', 12) as snippet FROM workspace_fts WHERE workspace_fts MATCH ? AND path LIKE ? ORDER BY bm25(workspace_fts), path COLLATE BINARY LIMIT ? OFFSET ?"
       : "SELECT path, size_bytes, mtime_ms, snippet(workspace_fts, 0, '[', ']', '…', 12) as snippet FROM workspace_fts WHERE workspace_fts MATCH ? ORDER BY bm25(workspace_fts), path COLLATE BINARY LIMIT ? OFFSET ?";
 
+    const filteredStmt=stmt.replace(' ORDER BY', ` AND ${visible} ORDER BY`);
     const rows = prefix
-      ? (db.prepare(stmt).all(ftsQuery, prefix, limit, offset) as WorkspaceSearchRow[])
-      : (db.prepare(stmt).all(ftsQuery, limit, offset) as WorkspaceSearchRow[]);
+      ? (db.prepare(filteredStmt).all(ftsQuery, prefix, allowedPaths, limit, offset) as WorkspaceSearchRow[])
+      : (db.prepare(filteredStmt).all(ftsQuery, allowedPaths, limit, offset) as WorkspaceSearchRow[]);
 
-    access.validate();return { rows, limit, offset };
+    access.validate();policy?.validate();return { rows, limit, offset };
   } catch (error) {
     access.validate();if(error instanceof WorkspaceIndexAccessDenied)throw error;
     // Only invalid FTS syntax may fall back. Operational/schema failures must
@@ -168,8 +164,9 @@ export async function searchWorkspace(params: WorkspaceSearchParams): Promise<Wo
       const params_arr = prefix ? [...terms, prefix] : terms;
 
       const sql = `SELECT workspace_files.path AS path, workspace_files.size_bytes AS size_bytes, workspace_files.mtime_ms AS mtime_ms, substr(workspace_fts.content, 1, 200) as snippet FROM workspace_files JOIN workspace_fts ON workspace_fts.path = workspace_files.path WHERE ${conditions} ORDER BY workspace_files.path COLLATE BINARY LIMIT ? OFFSET ?`;
-      const rows = db.prepare(sql).all(...params_arr, limit, offset) as WorkspaceSearchRow[];
-      access.validate();return { rows, limit, offset };
+      const filteredSql=sql.replace(' ORDER BY', ' AND workspace_files.path IN (SELECT value FROM json_each(?)) ORDER BY');
+      const rows = db.prepare(filteredSql).all(...params_arr, allowedPaths, limit, offset) as WorkspaceSearchRow[];
+      access.validate();policy?.validate();return { rows, limit, offset };
     } catch (error) {
       access.validate();if(error instanceof WorkspaceIndexAccessDenied)throw error;
       return { rows: [], limit, offset, error: "Workspace search failed (invalid query?)." };

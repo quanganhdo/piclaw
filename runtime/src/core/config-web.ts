@@ -203,12 +203,6 @@ export function isDefaultWebVncDirectEnabled(platform = process.platform): boole
   return platform === "linux" || platform === "darwin" || platform === "win32";
 }
 
-function clampComposeUploadLimitMb(value: unknown, fallback: number): number {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return fallback;
-  return Math.min(512, Math.max(1, Math.round(parsed)));
-}
-
 function clampWorkspaceUploadLimitMb(value: unknown, fallback: number): number {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return fallback;
@@ -287,8 +281,8 @@ const webOrdinaryDomainSchema = registerDomainConfig<WebOrdinaryDomainConfig>({
     pushVapidSubject: stringField({ key: "pushVapidSubject", owner: "web", defaultValue: configWebPushVapidSubject ?? legacyWebPushVapidSubject ?? "mailto:notifications@localhost.invalid", nonEmpty: true, persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_WEB_PUSH_VAPID_SUBJECT", replacement: "domains.web.pushVapidSubject", removalVersion: "3.0.0", parse: (raw) => parseLegacyNonEmptyString(raw, "mailto:notifications@localhost.invalid") }] }),
     terminalEnabled: boolField({ key: "terminalEnabled", owner: "web", defaultValue: nestedWebTerminalEnabled ?? legacyWebTerminalEnabled ?? isDefaultWebTerminalEnabled(), persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_WEB_TERMINAL_ENABLED", replacement: "domains.web.terminalEnabled", removalVersion: "3.0.0" }] }),
     terminalImageProtocol: stringField({ key: "terminalImageProtocol", owner: "web", defaultValue: configWebTerminalImageProtocol ?? legacyWebTerminalImageProtocol ?? "iterm2", nonEmpty: true, persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_TERMINAL_IMAGE_PROTOCOL", replacement: "domains.web.terminalImageProtocol", removalVersion: "3.0.0", parse: (raw) => parseLegacyNonEmptyString(raw, "iterm2") }] }),
-    composeUploadLimitMb: integerField({ key: "composeUploadLimitMb", owner: "web", defaultValue: configWebComposeUploadLimitMb ?? legacyWebComposeUploadLimitMb ?? 32, min: 1, max: 512, bounds: "1..512", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_WEB_COMPOSE_UPLOAD_LIMIT_MB", replacement: "domains.web.composeUploadLimitMb", removalVersion: "3.0.0" }] }),
-    workspaceUploadLimitMb: integerField({ key: "workspaceUploadLimitMb", owner: "web", defaultValue: configWebWorkspaceUploadLimitMb ?? legacyWebWorkspaceUploadLimitMb ?? 256, min: 1, max: 1024, bounds: "1..1024", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_WEB_WORKSPACE_UPLOAD_LIMIT_MB", replacement: "domains.web.workspaceUploadLimitMb", removalVersion: "3.0.0" }] }),
+    composeUploadLimitMb: integerField({ key: "composeUploadLimitMb", owner: "web", defaultValue: configWebComposeUploadLimitMb ?? legacyWebComposeUploadLimitMb ?? 32, min: 1, max: 1024, bounds: "1..1024", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_WEB_COMPOSE_UPLOAD_LIMIT_MB", replacement: "domains.web.composeUploadLimitMb", removalVersion: "3.0.0" }] }),
+    workspaceUploadLimitMb: integerField({ key: "workspaceUploadLimitMb", owner: "web", defaultValue: configWebWorkspaceUploadLimitMb ?? legacyWebWorkspaceUploadLimitMb ?? configWebComposeUploadLimitMb ?? legacyWebComposeUploadLimitMb ?? 256, min: 1, max: 1024, bounds: "1..1024", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_WEB_WORKSPACE_UPLOAD_LIMIT_MB", replacement: "domains.web.workspaceUploadLimitMb", removalVersion: "3.0.0" }] }),
     notificationDebugLabels: boolField({ key: "notificationDebugLabels", owner: "web", defaultValue: nestedWebNotificationDebugLabels ?? legacyWebNotificationDebugLabels ?? false, persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_WEB_NOTIFICATION_DEBUG_LABELS", replacement: "domains.web.notificationDebugLabels", removalVersion: "3.0.0" }] }),
     sanitizeSvgFences: boolField({ key: "sanitizeSvgFences", owner: "web", defaultValue: true, persistence: "json-config", precedence: ["persisted", "default"], secretClass: "none" }),
     vncAllowDirect: boolField({ key: "vncAllowDirect", owner: "web", defaultValue: nestedWebVncAllowDirect ?? legacyWebVncAllowDirect ?? isDefaultWebVncDirectEnabled(), persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [
@@ -307,6 +301,18 @@ const webOrdinaryDomainSchema = registerDomainConfig<WebOrdinaryDomainConfig>({
 });
 
 const WEB_ORDINARY_DOMAIN_CONFIG = readDomainConfig(webOrdinaryDomainSchema, getWebOrdinaryDomainConfigOptions());
+// Preserve compose-only legacy configuration as a fallback. An explicit workspace
+// limit wins when old instances have both values; it becomes the one shared cap.
+const persistedWebDomain = (readJsonConfig(getConfigPath()).domains as { web?: Record<string, unknown> } | undefined)?.web;
+const legacyUploadEnv = getDomainConfigOptions().env ?? {};
+const hasWorkspaceLimit = legacyUploadEnv.PICLAW_WEB_WORKSPACE_UPLOAD_LIMIT_MB !== undefined
+  || persistedWebDomain?.workspaceUploadLimitMb !== undefined
+  || configWebWorkspaceUploadLimitMb !== undefined || legacyWebWorkspaceUploadLimitMb !== undefined;
+if (!hasWorkspaceLimit && (legacyUploadEnv.PICLAW_WEB_COMPOSE_UPLOAD_LIMIT_MB !== undefined
+  || persistedWebDomain?.composeUploadLimitMb !== undefined
+  || configWebComposeUploadLimitMb !== undefined || legacyWebComposeUploadLimitMb !== undefined)) {
+  WEB_ORDINARY_DOMAIN_CONFIG.workspaceUploadLimitMb = WEB_ORDINARY_DOMAIN_CONFIG.composeUploadLimitMb;
+}
 
 /** Grouped web server network/TLS settings. */
 const NETWORK_BOOTSTRAP_CONFIG = getNetworkBootstrapConfig();
@@ -337,7 +343,8 @@ export const WEB_RUNTIME_CONFIG: WebRuntimeConfig = Object.seal({
   terminalImageProtocol: WEB_ORDINARY_DOMAIN_CONFIG.terminalImageProtocol,
   pushSubscriptionCap: WEB_ORDINARY_DOMAIN_CONFIG.pushSubscriptionCap,
   pushVapidSubject: WEB_ORDINARY_DOMAIN_CONFIG.pushVapidSubject,
-  composeUploadLimitMb: WEB_ORDINARY_DOMAIN_CONFIG.composeUploadLimitMb,
+  // Legacy compose field remains an alias of the canonical workspace limit.
+  composeUploadLimitMb: WEB_ORDINARY_DOMAIN_CONFIG.workspaceUploadLimitMb,
   workspaceUploadLimitMb: WEB_ORDINARY_DOMAIN_CONFIG.workspaceUploadLimitMb,
   notificationDebugLabels: WEB_ORDINARY_DOMAIN_CONFIG.notificationDebugLabels,
   sanitizeSvgFences: WEB_ORDINARY_DOMAIN_CONFIG.sanitizeSvgFences,
@@ -393,6 +400,7 @@ function persistWebOrdinarySetting<K extends keyof WebOrdinaryDomainConfig>(key:
   WEB_ORDINARY_DOMAIN_CONFIG[key] = effectiveValue;
   if (key in WEB_RUNTIME_CONFIG) {
     (WEB_RUNTIME_CONFIG as unknown as Record<string, unknown>)[key as string] = effectiveValue;
+    if (key === "workspaceUploadLimitMb") WEB_RUNTIME_CONFIG.composeUploadLimitMb = Number(effectiveValue);
   }
   return effectiveValue;
 }
@@ -407,11 +415,7 @@ function persistWebNumberSetting(options: {
 }
 
 export function setWebComposeUploadLimitMb(limitMb: number): number {
-  return persistWebNumberSetting({
-    value: limitMb,
-    runtimeKey: "composeUploadLimitMb",
-    clamp: clampComposeUploadLimitMb,
-  });
+  return setWebWorkspaceUploadLimitMb(limitMb);
 }
 
 export function setWebWorkspaceUploadLimitMb(limitMb: number): number {

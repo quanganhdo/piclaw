@@ -9,6 +9,8 @@
 
 import fs from "node:fs/promises";
 import path from "node:path";
+import { constants } from 'node:fs';
+import { workspaceIndexPolicyRoots, workspaceIndexPolicySnapshot, workspaceIndexPathDecision, workspaceIndexSafePath, WorkspaceIndexPolicyChanged } from './core/workspace-index-policy.js';
 
 import { getDb } from "./db.js";
 import { getWorkspaceDir, getWorkspaceSearchConfig } from "./core/config.js";
@@ -75,24 +77,6 @@ export const normalizeWorkspaceSearchScope = (scope: WorkspaceSearchScope | stri
 
 const getWorkspaceRoot = (): string => getWorkspaceDir();
 
-const getBuiltInRoots = (): string[] => {
-  const root = getWorkspaceRoot();
-  return [path.join(root, "notes"), path.join(root, ".pi", "skills")];
-};
-
-const getConfiguredRoots = (): string[] => getWorkspaceSearchConfig().roots;
-
-const getDefaultRoots = (): string[] => {
-  const root = getWorkspaceRoot();
-  const configured = getConfiguredRoots();
-  const resolved = configured.map((entry) => {
-    const trimmed = entry.trim();
-    if (!trimmed) return "";
-    return path.isAbsolute(trimmed) ? path.resolve(trimmed) : path.join(root, trimmed);
-  }).filter(Boolean);
-  return resolved.length > 0 ? resolved : getBuiltInRoots();
-};
-
 const toRelative = (absPath: string): string => {
   const workspaceRoot = getWorkspaceRoot();
   if (absPath === workspaceRoot) return ".";
@@ -113,7 +97,7 @@ function getIndexedExtensions(): Set<string> {
   return merged;
 }
 
-const isTextFile = (filePath: string): boolean => {
+export const isWorkspaceIndexTextFile = (filePath: string): boolean => {
   const ext = path.extname(filePath).toLowerCase();
   return getIndexedExtensions().has(ext);
 };
@@ -154,6 +138,8 @@ function aggressivelyReleaseWorkspaceIndexMemory(): void {
 
 async function walkFiles(root: string, validate: () => void, allowMissingRoot = true): Promise<string[]> {
   const files: string[] = [];
+  const relative = toRelative(root);
+  if (!workspaceIndexPathDecision(relative).included || !workspaceIndexSafePath(getWorkspaceRoot(), relative)) return files;
   let entries;
   try {
     validate(); entries = await fs.readdir(root, { withFileTypes: true }); validate();
@@ -166,6 +152,7 @@ async function walkFiles(root: string, validate: () => void, allowMissingRoot = 
   // disappearing mid-walk is not evidence that the entire root is absent.
   for (const entry of entries) {
     const full = path.join(root, entry.name);
+    if (!workspaceIndexPathDecision(toRelative(full)).included) continue;
     if (entry.isDirectory()) {
       if (["node_modules", ".git", ".cache", "generated"].includes(entry.name)) continue;
       files.push(...await walkFiles(full, validate, false)); validate();
@@ -177,12 +164,7 @@ async function walkFiles(root: string, validate: () => void, allowMissingRoot = 
 export function normalizeWorkspaceIndexRoots(scope: string | undefined): string[] {
   const access=workspaceIndexAccess();
   if(access.mode==='family-shared'){const selected=familyWorkspaceScope(scope);return (selected==='notes'?['notes/family']:selected==='skills'?['.pi/skills']:['notes/family','.pi/skills']).map(root=>path.resolve(access.workspace,root));}
-  const configuredRoots = getDefaultRoots();
-  const builtInRoots = getBuiltInRoots();
-  if (!scope || scope === "all") return configuredRoots;
-  if (scope === "notes") return [builtInRoots[0]];
-  if (scope === "skills") return [builtInRoots[1]];
-  return configuredRoots;
+  return workspaceIndexPolicyRoots(scope).map(root => path.join(getWorkspaceRoot(), root));
 }
 
 function rootsToStatusRoots(roots: string[]): string[] {
@@ -201,16 +183,6 @@ export function workspacePathMatchesRoots(relativePath: string, roots: string[])
   return prefixes.some((prefix) => prefix === "" || relativePath.startsWith(prefix));
 }
 
-function parseRootsJson(raw: string | null | undefined, fallback: string[]): string[] {
-  if (!raw) return fallback;
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((entry) => typeof entry === "string") : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
 function getStatusRow(scope: WorkspaceSearchScope): WorkspaceIndexStatusRow | undefined {
   const db = getDb();
   return db.prepare(
@@ -221,7 +193,7 @@ function getStatusRow(scope: WorkspaceSearchScope): WorkspaceIndexStatusRow | un
 function countIndexedFilesForRoots(roots: string[]): number {
   const db = getDb();
   const rows = db.prepare("SELECT path FROM workspace_files").all() as Array<{ path: string }>;
-  return rows.reduce((count, row) => count + (workspacePathMatchesRoots(row.path, roots) ? 1 : 0), 0);
+  return rows.reduce((count, row) => count + (workspacePathMatchesRoots(row.path, roots) && workspaceIndexPathDecision(row.path).included ? 1 : 0), 0);
 }
 
 function buildStatusSnapshot(scope: WorkspaceSearchScope, roots: string[], row?: WorkspaceIndexStatusRow): WorkspaceIndexStatus {
@@ -231,8 +203,8 @@ function buildStatusSnapshot(scope: WorkspaceSearchScope, roots: string[], row?:
     state: activeIndexScopes.has(scope) ? "indexing" : (row?.state ?? "never_indexed"),
     last_indexed_at: row?.last_indexed_at ?? null,
     last_error: row?.last_error ?? null,
-    indexed_file_count: row?.indexed_file_count ?? 0,
-    roots: parseRootsJson(row?.roots_json, fallbackRoots),
+    indexed_file_count: countIndexedFilesForRoots(roots),
+    roots: fallbackRoots,
     updated_at: row?.updated_at ?? null,
   };
 }
@@ -302,10 +274,12 @@ async function indexWorkspace(roots: string[], maxBytes: number,validate:()=>voi
     const absRoot = path.resolve(root);
     const files = await walkFiles(absRoot,validate);validate();
     for (const file of files) {
-      if (!isTextFile(file)) continue;
+      if (!isWorkspaceIndexTextFile(file)) continue;
       const rel = toRelative(file);
       try {
-        validate();const stat = await fs.stat(file);validate();
+        validate();
+        if (!workspaceIndexPathDecision(rel).included || !workspaceIndexSafePath(getWorkspaceRoot(), rel)) { removeFile(rel); continue; }
+        const stat = await fs.lstat(file);validate();
         if (stat.size > maxBytes) {
           removeFile(rel);
           continue;
@@ -317,10 +291,11 @@ async function indexWorkspace(roots: string[], maxBytes: number,validate:()=>voi
         // Metadata is a hint, not content identity: editors can restore mtime
         // after an equal-length rewrite. Verify against the text already in FTS
         // so existing databases need no hash backfill or schema migration.
-        const handle = await fs.open(file, 'r');
+        const handle = await fs.open(file, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
         let content: string;
         try {
           validate();
+          if (!workspaceIndexPathDecision(rel).included || !workspaceIndexSafePath(getWorkspaceRoot(), rel)) throw new WorkspaceIndexPolicyChanged();
           // Read at most the admitted size plus a growth sentinel. A file that
           // grows after stat cannot allocate an unbounded readFile buffer.
           const buffer = Buffer.alloc(stat.size + 1);
@@ -345,6 +320,7 @@ async function indexWorkspace(roots: string[], maxBytes: number,validate:()=>voi
         }
         db.transaction(() => {
           validate();
+          if (!workspaceIndexPathDecision(rel).included || !workspaceIndexSafePath(getWorkspaceRoot(), rel)) throw new WorkspaceIndexPolicyChanged();
           db.prepare("DELETE FROM workspace_fts WHERE path = ?").run(rel);
           db.prepare("INSERT INTO workspace_fts (content, path, mtime_ms, size_bytes) VALUES (?, ?, ?, ?)").run(content, rel, mtimeMs, stat.size);
           db.prepare(
@@ -370,6 +346,7 @@ async function indexWorkspace(roots: string[], maxBytes: number,validate:()=>voi
 
   validate();const existingPaths = db.prepare("SELECT path FROM workspace_files UNION SELECT path FROM workspace_fts").all() as Array<{ path: string }>;
   for (const row of existingPaths) {
+    if (!workspaceIndexPathDecision(row.path).included || !workspaceIndexSafePath(getWorkspaceRoot(), row.path)) { removeFile(row.path); continue; }
     const inScope = rootPrefixes.some((prefix) => prefix === "" || row.path.startsWith(prefix));
     if (!inScope) continue;
     if (!seen.has(row.path)) {
@@ -427,8 +404,8 @@ export function markWorkspaceIndexCoreStale(params?: { scope?: WorkspaceSearchSc
 
 export async function refreshWorkspaceIndex(params?: { scope?: WorkspaceSearchScope | string; max_kb?: number }): Promise<WorkspaceIndexStatus> {
   const access=workspaceIndexAccess();if(access.mode==='family-shared')return refreshFamilyWorkspaceIndex(params);
-  const database=getDb();let denied=false;
-  const validate=()=>{access.validate();if(denied||getDb()!==database){denied=true;throw new WorkspaceIndexAccessDenied();}};
+  const database=getDb(), policy=workspaceIndexPolicySnapshot();let denied=false;
+  const validate=()=>{access.validate();policy.validate();if(denied||getDb()!==database){denied=true;throw new WorkspaceIndexAccessDenied();}};
   const scope = normalizeWorkspaceSearchScope(params?.scope);
   const roots = normalizeWorkspaceIndexRoots(scope);
   const maxBytes = clampNumber(params?.max_kb, 512, 16, 2048) * 1024;
@@ -464,7 +441,7 @@ export async function refreshWorkspaceIndex(params?: { scope?: WorkspaceSearchSc
     activeIndexScopes.delete(scope);
     return buildStatusSnapshot(scope, roots, getStatusRow(scope));
   } catch (error) {
-    validate();if(error instanceof WorkspaceIndexAccessDenied)throw error;
+    access.validate();if(error instanceof WorkspaceIndexAccessDenied)throw error;
     upsertStatus(scope, "failed", roots, {
       lastIndexedAt: previous?.last_indexed_at ?? null,
       lastError: error instanceof Error ? error.message : String(error),

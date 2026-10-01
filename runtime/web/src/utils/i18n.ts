@@ -388,6 +388,8 @@ type MessageKey =
   | 'settings.general.composeUpload'
   | 'settings.general.composeUploadAria'
   | 'settings.general.composeUploadHint'
+  | 'settings.general.uploadLimit'
+  | 'settings.general.uploadLimitHint'
   | 'settings.general.workspaceUpload'
   | 'settings.general.workspaceUploadAria'
   | 'settings.general.workspaceUploadHint'
@@ -1035,6 +1037,8 @@ const EN: Record<MessageKey, string> = {
   'settings.general.composeUpload': 'Compose upload (MB)',
   'settings.general.composeUploadAria': 'compose upload limit',
   'settings.general.composeUploadHint': 'chat/media attachments',
+  'settings.general.uploadLimit': 'Upload limit (MB)',
+  'settings.general.uploadLimitHint': 'Applies to chat and workspace files. Chat files above 32 MB are saved under workspace/uploads and referenced in the message.',
   'settings.general.workspaceUpload': 'Workspace upload (MB)',
   'settings.general.workspaceUploadAria': 'workspace upload limit',
   'settings.general.workspaceUploadHint': 'defaults to 256 MB; chunked uploads allow up to 1 GB',
@@ -1681,6 +1685,8 @@ const ZH_CN: Partial<Record<MessageKey, string>> = {
   'settings.general.composeUpload': '撰写上传（MB）',
   'settings.general.composeUploadAria': '撰写上传限制',
   'settings.general.composeUploadHint': '聊天/媒体附件',
+  'settings.general.uploadLimit': '上传限制（MB）',
+  'settings.general.uploadLimitHint': '适用于聊天和工作区文件。超过 32 MB 的聊天文件保存在 workspace/uploads，并在消息中引用。',
   'settings.general.workspaceUpload': '工作区上传（MB）',
   'settings.general.workspaceUploadAria': '工作区上传限制',
   'settings.general.workspaceUploadHint': '默认为 256 MB；分块上传最多允许 1 GB',
@@ -2327,6 +2333,8 @@ const JA: Partial<Record<MessageKey, string>> = {
   'settings.general.composeUpload': '作成アップロード（MB）',
   'settings.general.composeUploadAria': '作成アップロード上限',
   'settings.general.composeUploadHint': 'チャット/メディア添付',
+  'settings.general.uploadLimit': 'アップロード上限（MB）',
+  'settings.general.uploadLimitHint': 'チャットとワークスペースのファイルに適用します。32 MB を超えるチャットファイルは workspace/uploads に保存され、メッセージで参照されます。',
   'settings.general.workspaceUpload': 'ワークスペースアップロード（MB）',
   'settings.general.workspaceUploadAria': 'ワークスペースアップロード上限',
   'settings.general.workspaceUploadHint': 'デフォルトは 256 MB。チャンクアップロードは最大 1 GB まで許可',

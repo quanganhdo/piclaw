@@ -1,0 +1,86 @@
+{
+  "asOf": "2026-09-29",
+  "units": "USD per million tokens",
+  "rates": [
+    {
+      "provider": "openai",
+      "id": "gpt-6.1-sol",
+      "name": "GPT-6.1 Sol",
+      "input": 2,
+      "output": 10,
+      "cr": 0.1,
+      "cw": 2.5,
+      "threshold": 272000,
+      "thresholdOperator": ">",
+      "long": {
+        "input": 4,
+        "cr": 0.2,
+        "cw": 5,
+        "output": 15
+      },
+      "source": "https://developers.openai.com/api/docs/pricing.md",
+      "modelSource": "https://developers.openai.com/api/docs/models/gpt-6.1-sol.md",
+      "retrievedDate": "2026-09-29",
+      "evidence": "public-first-party",
+      "contextWindow": 1050000,
+      "maximumInputTokens": 922000,
+      "maximumOutputTokens": 128000,
+      "billing": "Native OpenAI API tariff. Not evidence of GitHub Copilot/OpenRouter availability, credits, subscription capacity, or invoice charges.",
+      "notes": "Standard short-context tier; whole request uses long-context rates above 272K input tokens. Fast is unavailable with EU data residency. Eligible regional processing adds 10%."
+    }
+  ],
+  "variants": [
+    {
+      "processing": "standard",
+      "input": 2,
+      "cr": 0.1,
+      "cw": 2.5,
+      "output": 10,
+      "long": {
+        "input": 4,
+        "cr": 0.2,
+        "cw": 5,
+        "output": 15
+      }
+    },
+    {
+      "processing": "batch",
+      "input": 1,
+      "cr": 0.05,
+      "cw": 1.25,
+      "output": 5,
+      "long": {
+        "input": 2,
+        "cr": 0.1,
+        "cw": 2.5,
+        "output": 7.5
+      }
+    },
+    {
+      "processing": "flex",
+      "input": 1,
+      "cr": 0.05,
+      "cw": 1.25,
+      "output": 5,
+      "long": {
+        "input": 2,
+        "cr": 0.1,
+        "cw": 2.5,
+        "output": 7.5
+      }
+    },
+    {
+      "processing": "fast",
+      "input": 4,
+      "cr": 0.2,
+      "cw": 5,
+      "output": 20,
+      "long": {
+        "input": 8,
+        "cr": 0.4,
+        "cw": 10,
+        "output": 30
+      }
+    }
+  ]
+}
