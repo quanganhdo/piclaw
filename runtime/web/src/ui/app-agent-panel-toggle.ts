@@ -18,6 +18,9 @@ export interface HandleAgentPanelToggleOptions {
   setAgentDraft: (next: AgentPreviewState | ((prev: AgentPreviewState | null | undefined) => AgentPreviewState)) => void;
 }
 
+// Expansion/collapse requests share the panel ref; a later toggle invalidates an older fetch.
+const panelToggleGenerations = new WeakMap<object, number>();
+
 export async function handleAgentPanelToggle(options: HandleAgentPanelToggleOptions): Promise<void> {
   const {
     panelKey,
@@ -36,6 +39,14 @@ export async function handleAgentPanelToggle(options: HandleAgentPanelToggleOpti
   if (panelKey !== 'thought' && panelKey !== 'draft') return;
 
   const turnId = currentTurnIdRef.current;
+  const expandedRef = panelKey === 'thought' ? thoughtExpandedRef : draftExpandedRef;
+  const bufferRef = panelKey === 'thought' ? thoughtBufferRef : draftBufferRef;
+  const generation = (panelToggleGenerations.get(expandedRef) ?? 0) + 1;
+  panelToggleGenerations.set(expandedRef, generation);
+  const requestedBuffer = bufferRef.current;
+  const isCurrent = () => currentTurnIdRef.current === turnId
+    && expandedRef.current === expanded
+    && panelToggleGenerations.get(expandedRef) === generation;
   if (panelKey === 'thought') {
     thoughtExpandedRef.current = expanded;
     if (turnId) {
@@ -45,9 +56,10 @@ export async function handleAgentPanelToggle(options: HandleAgentPanelToggleOpti
         console.warn('Failed to update thought visibility:', error);
       }
     }
-    if (!expanded) return;
+    if (!expanded || !isCurrent()) return;
     try {
       const data = turnId ? await getAgentThought(turnId, 'thought') : null;
+      if (!isCurrent() || thoughtBufferRef.current !== requestedBuffer) return;
       if (data?.text) {
         thoughtBufferRef.current = data.text;
       }
@@ -70,10 +82,11 @@ export async function handleAgentPanelToggle(options: HandleAgentPanelToggleOpti
       console.warn('Failed to update draft visibility:', error);
     }
   }
-  if (!expanded) return;
+  if (!expanded || !isCurrent()) return;
 
   try {
     const data = turnId ? await getAgentThought(turnId, 'draft') : null;
+    if (!isCurrent() || draftBufferRef.current !== requestedBuffer) return;
     if (data?.text) {
       draftBufferRef.current = data.text;
     }

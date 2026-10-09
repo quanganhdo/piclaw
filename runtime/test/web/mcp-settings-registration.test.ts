@@ -15,7 +15,7 @@ test('MCP is registered in both settings shells and uses the shared preview cont
         const source = text(path);
         expect(source).toContain('createMcpSettingsController');
         expect(source).toContain('Preview compatibility');
-        expect(source).toContain('Apply codemode');
+        expect(source).toContain('Apply MCP settings');
         expect(source).toContain('acknowledged');
         expect(source).toContain('nativeBlockReason');
         expect(source).not.toContain('/apply'); expect(source).not.toContain('/save');

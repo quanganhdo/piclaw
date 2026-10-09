@@ -201,6 +201,20 @@ const entries = Object.freeze([
     idempotencyIdentity: null, certainty: "The selected lane may change before cancellation is observed; no replay.",
     activationPrerequisites: ["selected tagged Harness v3 constructor dependencies", "lane owner/version fence"],
   }),
+  ...policy(["provider_quota"], {
+    effectClass: "mixed", replay: "never", contextFields: [], serviceEffector: null,
+    abortExpectation: "may_finish_late", safeProof: null, nullAuthorityKind: "model",
+    authorityRationale: "Provider quota/authentication belongs to the model runtime, not Piclaw service-operation authority.",
+    idempotencyIdentity: null, certainty: "Authentication refresh and shared quota/cache work may finish after cancellation; no replay.",
+    activationPrerequisites: ["credential-bound model runtime query", "bounded wait with explicit late-operation certainty"],
+  }),
+  ...policy(["set_model"], {
+    effectClass: "mutation", replay: "never", contextFields: [], serviceEffector: null,
+    abortExpectation: "may_finish_late", safeProof: null, nullAuthorityKind: "model",
+    authorityRationale: "Selected model and thinking state belong to the model runtime, not Piclaw service-operation authority.",
+    idempotencyIdentity: null, certainty: "The selected model or effort may change before cancellation is observed; no replay.",
+    activationPrerequisites: ["complete model/effort validation before mutation", "public scoped model snapshot"],
+  }),
   ...policy(["switch_model", "switch_thinking"], {
     effectClass: "mutation", replay: "never", contextFields: [], serviceEffector: null,
     abortExpectation: "may_finish_late", safeProof: null, nullAuthorityKind: "model",

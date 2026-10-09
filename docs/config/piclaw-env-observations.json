@@ -78,7 +78,7 @@
       "semanticReaderOccurrences": 0
     },
     "tooling": {
-      "referencedNames": 88,
+      "referencedNames": 89,
       "directReaderNames": 43,
       "directReaderOccurrences": 71,
       "helperReaderNames": 0,
@@ -87,7 +87,7 @@
       "semanticReaderOccurrences": 71
     },
     "docsDeploy": {
-      "referencedNames": 146,
+      "referencedNames": 148,
       "directReaderNames": 16,
       "directReaderOccurrences": 32,
       "helperReaderNames": 0,
@@ -1279,6 +1279,7 @@
             "docs/development/testing-and-linting-flow-presentation-2026-04-18.html",
             "docs/development/tool-output-retention-performance.md",
             "docs/development/web-session-query-performance.md",
+            "docs/finops/2026-10-06/README.md",
             "package.json"
           ],
           "readerFiles": []
@@ -3308,6 +3309,31 @@
     {
       "name": "PICLAW_PRE_PUSH_KEEP_WORKTREE",
       "scopes": {
+        "tooling": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "scripts/git-pre-push-ci-fast.sh"
+          ],
+          "readerFiles": []
+        }
+      }
+    },
+    {
+      "name": "PICLAW_PRE_PUSH_RECEIPT_DIR",
+      "scopes": {
+        "docsDeploy": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "docs/development/local-ci-receipts.md"
+          ],
+          "readerFiles": []
+        },
         "tooling": {
           "referenced": true,
           "directReaders": 0,
@@ -5573,6 +5599,21 @@
           "semanticReaders": 0,
           "files": [
             "runtime/src/channels/web/terminal/terminal-session-service.ts"
+          ],
+          "readerFiles": []
+        }
+      }
+    },
+    {
+      "name": "PICLAW_TEST_CDP_CLIENTS",
+      "scopes": {
+        "docsDeploy": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            ".github/workflows/ci.yml"
           ],
           "readerFiles": []
         }
@@ -7880,6 +7921,7 @@
             "scripts/audit-baseline-quality-deterministic.ts",
             "scripts/audit-piclaw-env-surface.ts",
             "scripts/audit-queue-session-threading-replay.ts",
+            "scripts/check-actions-workflows.ts",
             "scripts/smoke-install-from-repo.sh"
           ],
           "readerFiles": [

@@ -72,3 +72,12 @@ test("visual compaction settings use the same canonical processing-method contra
   expect(bundle).toContain("Pipelined");
   expect(bundle).toContain("remoteCompactionEnabled");
 });
+
+test("both settings skins expose default-off local-lite opt-in", () => {
+  const classic = source('web/src/components/settings/compaction.ts');
+  const visual = source('web/static/visual/frontend/src/panels/settings/CompactionSection.tsx');
+  expect(classic).toContain('localLitePromptProfileEnabled ?? false');
+  expect(classic).toContain('Local-lite prompt and tools');
+  expect(visual).toContain('localLitePromptProfileEnabled ?? false');
+  expect(visual).toContain('onSaveCompaction("localLitePromptProfileEnabled"');
+});

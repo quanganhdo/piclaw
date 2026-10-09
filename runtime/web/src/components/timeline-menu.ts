@@ -15,6 +15,7 @@ import {
 } from '../ui/pwa-display-scale.js';
 import { getRecentFiles, openRecentFile } from '../ui/recent-files.js';
 import { LanguageSwitcher } from './language-switcher.js';
+import { AboutDialog } from './about-dialog.js';
 import { useTranslation } from '../utils/i18n.js';
 
 export function TimelineMenu({
@@ -23,10 +24,11 @@ export function TimelineMenu({
     chatOnlyMode,
     openEditor,
     onOpenTerminalTab,
-    onOpenVncTab,
+    onOpenVncTab, onOpenCdpTab,
 }) {
     const { t } = useTranslation();
     const [open, setOpen] = useState(false);
+    const [aboutOpen, setAboutOpen] = useState(false);
     const [pwaDisplayScalePercent, setPwaDisplayScalePercent] = useState(() => readStoredPwaDisplayScalePercent());
     const [pwaDisplayScaleDraft, setPwaDisplayScaleDraft] = useState(() => String(readStoredPwaDisplayScalePercent()));
     const [showHidden, setShowHidden] = useState(() => {
@@ -188,8 +190,9 @@ export function TimelineMenu({
                     ${chatOnlyMode ? t('menu.exitChatOnly') : t('menu.chatOnly')}
                 </button>
 
-                ${(onOpenTerminalTab || onOpenVncTab) && html`<div class="workspace-menu-separator"></div>`}
+                ${(onOpenTerminalTab || onOpenVncTab || onOpenCdpTab) && html`<div class="workspace-menu-separator"></div>`}
                 ${onOpenTerminalTab && html`<button class="workspace-menu-item" role="menuitem" onClick=${() => run(onOpenTerminalTab)}>${t('menu.openTerminal')}</button>`}
+                ${onOpenCdpTab && html`<button class="workspace-menu-item" role="menuitem" onClick=${() => run(onOpenCdpTab)}>Open browser in tab</button>`}
                 ${onOpenVncTab && html`<button class="workspace-menu-item" role="menuitem" onClick=${() => run(onOpenVncTab)}>${t('menu.openVnc')}</button>`}
 
                 <div class="workspace-menu-separator"></div>
@@ -219,6 +222,8 @@ export function TimelineMenu({
                 })}>
                     ${showHidden ? t('menu.hideHidden') : t('menu.showHidden')}
                 </button>
+                <button class="workspace-menu-item" role="menuitem" onClick=${() => run(() => window.dispatchEvent(new CustomEvent('piclaw:open-settings')))}>${t('menu.settings')}</button>
+                <div class="workspace-menu-separator"></div>
                 <div class="workspace-menu-scale-control" role="none">
                     <label for="timeline-pwa-display-scale">${t('menu.scale')}</label>
                     <div class="workspace-menu-scale-input-wrap">
@@ -241,11 +246,11 @@ export function TimelineMenu({
                         <span aria-hidden="true">%</span>
                     </div>
                 </div>
-                <button class="workspace-menu-item" role="menuitem" onClick=${() => run(() => window.dispatchEvent(new CustomEvent('piclaw:open-settings')))}>${t('menu.settings')}</button>
-                <div class="workspace-menu-separator"></div>
                 <div class="workspace-menu-language" role="none">
                     <${LanguageSwitcher} variant="menu" />
                 </div>
+                <div class="workspace-menu-separator"></div>
+                <button class="workspace-menu-item" role="menuitem" onClick=${() => run(() => { btnRef.current?.focus(); setAboutOpen(true); })}>About…</button>
             </div>
         `}
     `;
@@ -254,5 +259,5 @@ export function TimelineMenu({
         if (portalRef.current) render(content, portalRef.current);
     });
 
-    return null;
+    return aboutOpen ? html`<${AboutDialog} onClose=${() => setAboutOpen(false)} />` : null;
 }

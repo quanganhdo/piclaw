@@ -40,6 +40,7 @@ import type { AttachmentRegistry } from "../agent-pool/attachments.js";
 import { createFileAttachmentsExtension } from "./file-attachments.js";
 import { messagesCrud } from "./messages-crud.js";
 import { modelControl } from "./model-control.js";
+import { createProviderQuotaExtension } from "./provider-quota.js";
 import { internalTools } from "./internal-tools.js";
 import { runtimeScripts } from "./runtime-scripts.js";
 import { toolActivation } from "./tool-activation.js";
@@ -83,6 +84,7 @@ export function createBuiltinExtensionFactories(options?: {
     createFileAttachmentsExtension(options?.attachmentRegistry),
     messagesCrud,
     modelControl,
+    createProviderQuotaExtension({ modelRuntime: options?.modelRuntime }),
     internalTools,
     runtimeScripts,
     toolActivation,

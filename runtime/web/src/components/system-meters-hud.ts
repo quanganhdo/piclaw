@@ -4,7 +4,7 @@ import { getSystemMetrics } from '../api.js';
 import { AGENT_UI_POLL_MS } from '../ui/agent-ui-snapshot.js';
 import { METERS_COLLAPSED_EVENT_NAME, METERS_EVENT_NAME, applyMetersCollapsed, readStoredMetersCollapsed, readStoredMetersEnabled } from '../ui/meters.js';
 import { renderDisclosureTriangle } from '../ui/disclosure-triangle.js';
-import { buildGpuCompactSummaryParts, GpuDetailsPopover, GpuMeterRows, getGpuMeterRows, normalizeGpuSnapshots } from './intel-gpu-meters.js';
+import { buildGpuCompactSummaryParts, GpuDetailsPopover, GpuMeterRows, GpuMeterHistory, getGpuMeterRows } from './intel-gpu-meters.js';
 
 export const SYSTEM_METERS_COMPACT_BREAKPOINT_PX = 600;
 
@@ -116,7 +116,29 @@ export function resolveGpuMeterSnapshots(metrics) {
     if (!shouldShowVram(metrics) || devices.some(gpu => gpu?.provider === metrics.gpu_provider)) return devices;
     return [...devices, { id: `memory-${metrics.gpu_provider || 'gpu'}`, name: 'GPU', provider: metrics.gpu_provider || 'device-memory', status: 'ok',
         memory: { used_bytes: Number(metrics.vram_used_bytes), total_bytes: Number(metrics.vram_total_bytes) },
-        history: metrics.vram_series.map(percent => ({ resident_bytes: Number(metrics.vram_total_bytes) * Number(percent) / 100 })) }];
+        history: metrics.vram_series.map(percent => ({ resident_bytes: optionalPercent(percent) === null ? null : Number(metrics.vram_total_bytes) * Number(percent) / 100 })) }];
+}
+
+/** Legacy NVIDIA memory transport has no explicit device-removal signal. */
+export class GpuSnapshotTracker {
+    constructor() { this.aggregate = null; this.missing = null; }
+    clear() { this.aggregate = null; this.missing = null; }
+    resolve(metrics) {
+        const explicit = Array.isArray(metrics?.gpus) ? metrics.gpus : [];
+        if (explicit.length > 0) { this.clear(); return explicit; }
+        if (this.aggregate && metrics?.gpu_provider && metrics.gpu_provider !== this.aggregate.provider) this.clear();
+        const snapshots = resolveGpuMeterSnapshots(metrics);
+        const aggregate = snapshots.find(snapshot => String(snapshot.id).startsWith('memory-'));
+        if (aggregate) { this.aggregate = aggregate; this.missing = null; }
+        else if (this.aggregate && snapshots.some(snapshot => snapshot.provider === this.aggregate.provider)) this.clear();
+        else if (this.aggregate) {
+            // A failed aggregate read is not proof that the GPU disappeared.
+            this.missing ||= { ...this.aggregate, status: 'unavailable', memory: { total_bytes: this.aggregate.memory.total_bytes }, history: [],
+                reasons: ['GPU memory telemetry is temporarily unavailable.'] };
+            return [...snapshots, this.missing];
+        }
+        return snapshots;
+    }
 }
 
 function readIsNarrowLayout() {
@@ -156,12 +178,25 @@ export function SystemMetersHud({ mode = 'overlay' }) {
     const [loading, setLoading] = useState(false);
     const [openGpuId, setOpenGpuId] = useState(null);
     const gpuTriggerRef = useRef(null);
+    const gpuHistoryRef = useRef(new GpuMeterHistory());
+    const gpuSnapshotTrackerRef = useRef(new GpuSnapshotTracker());
     const [lastSuccessfulRefreshMs, setLastSuccessfulRefreshMs] = useState(null);
     const [nowMs, setNowMs] = useState(() => Date.now());
+    const [gpuPollId, setGpuPollId] = useState(0);
+    const gpuRefreshGeneration = useRef(0);
+    const enabledRef = useRef(enabled);
+    enabledRef.current = enabled;
 
     useEffect(() => {
         const onMetersChange = (event) => {
-            setEnabled(Boolean(event?.detail?.enabled));
+            const nextEnabled = Boolean(event?.detail?.enabled);
+            enabledRef.current = nextEnabled;
+            if (!nextEnabled) gpuRefreshGeneration.current++;
+            if (!nextEnabled) {
+                gpuHistoryRef.current.clear(); gpuSnapshotTrackerRef.current.clear();
+                setMetrics(previous => ({ ...previous, gpus: [], gpu_provider: null, vram_percent: null, vram_series: [], vram_total_bytes: null, vram_used_bytes: null }));
+            }
+            setEnabled(nextEnabled);
         };
         const onMetersCollapsedChange = (event) => {
             setCollapsed(Boolean(event?.detail?.collapsed));
@@ -194,12 +229,17 @@ export function SystemMetersHud({ mode = 'overlay' }) {
     useEffect(() => {
         if (!enabled || !isActiveInstance) return undefined;
         let cancelled = false;
+        let inFlight = false;
 
         const refresh = async () => {
+            if (cancelled || !enabledRef.current || inFlight) return;
+            inFlight = true;
+            const generation = gpuRefreshGeneration.current;
+            const current = () => !cancelled && enabledRef.current && generation === gpuRefreshGeneration.current;
             setLoading((prev) => (prev || metrics.cpu_series.length > 0 ? prev : true));
             try {
                 const next = await getSystemMetrics();
-                if (cancelled) return;
+                if (!current()) return;
                 setMetrics({
                     cpu_percent: optionalPercent(next?.cpu_percent),
                     ram_percent: optionalPercent(next?.ram_percent),
@@ -208,7 +248,7 @@ export function SystemMetersHud({ mode = 'overlay' }) {
                     cpu_series: clampPercentSeries(next?.cpu_series),
                     ram_series: clampPercentSeries(next?.ram_series),
                     swap_series: clampPercentSeries(next?.swap_series),
-                    vram_series: clampPercentSeries(next?.vram_series),
+                    vram_series: Array.isArray(next?.vram_series) ? next.vram_series.slice(-30).map(optionalPercent) : [],
                     vram_total_bytes: optionalBytes(next?.vram_total_bytes),
                     vram_used_bytes: optionalBytes(next?.vram_used_bytes),
                     gpu_provider: typeof next?.gpu_provider === 'string' && next.gpu_provider.trim() ? next.gpu_provider.trim() : null,
@@ -225,14 +265,17 @@ export function SystemMetersHud({ mode = 'overlay' }) {
                     sample_interval_ms: Number(next?.sample_interval_ms) || 2000,
                     platform: String(next?.platform || ''),
                 });
+                setGpuPollId(value => value + 1);
                 const refreshedAt = Date.now();
                 setLastSuccessfulRefreshMs(refreshedAt);
                 setNowMs(refreshedAt);
             } catch {
-                if (cancelled) return;
+                if (!current()) return;
+                setGpuPollId(value => value + 1);
                 setNowMs(Date.now());
             } finally {
-                if (!cancelled) setLoading(false);
+                inFlight = false;
+                if (current()) setLoading(false);
             }
         };
 
@@ -250,9 +293,10 @@ export function SystemMetersHud({ mode = 'overlay' }) {
     const swapPath = useMemo(() => buildSparklinePath(metrics.swap_series, 56, 16, { min: 0, max: 100 }), [metrics.swap_series]);
     const bufferCachePath = useMemo(() => buildSparklinePath(metrics.buffer_cache_series_bytes), [metrics.buffer_cache_series_bytes]);
     const rssPath = useMemo(() => buildSparklinePath(metrics.process_rss_series_bytes), [metrics.process_rss_series_bytes]);
+    const gpuSnapshots = useMemo(() => enabled ? gpuSnapshotTrackerRef.current.resolve(metrics) : [], [metrics, enabled]);
     const gpuMeters = useMemo(
-        () => normalizeGpuSnapshots(resolveGpuMeterSnapshots(metrics), { nowMs, lastSuccessAtMs: lastSuccessfulRefreshMs }).filter(meter => getGpuMeterRows(meter).length > 0),
-        [metrics, nowMs, lastSuccessfulRefreshMs],
+        () => enabled ? gpuHistoryRef.current.update(gpuSnapshots, { nowMs, pollId: gpuPollId, lastSuccessAtMs: lastSuccessfulRefreshMs }).filter(meter => getGpuMeterRows(meter).length > 0) : [],
+        [enabled, gpuSnapshots, nowMs, gpuPollId, lastSuccessfulRefreshMs],
     );
     const showBufferCache = Number(metrics.buffer_cache_bytes) > 0 && sanitizeSeries(metrics.buffer_cache_series_bytes).length > 0;
     const showSwap = optionalPercent(metrics.swap_percent) !== null && metrics.swap_total_bytes > 0;

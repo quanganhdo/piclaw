@@ -75,7 +75,9 @@ export default function register(pi: ExtensionAPI) {
     },
     async execute(_id, params, signal, _onUpdate, ctx) {
       const mod = await loadModule();
-      return await mod.executeCdpBrowserTool(params, signal, ctx as { cwd?: string } | undefined);
+      const release = (globalThis as any).__piclaw_beginCdpViewTool?.("cdp");
+      try { return await mod.executeCdpBrowserTool(params, signal, ctx as { cwd?: string } | undefined); }
+      finally { release?.(); }
     },
   });
 

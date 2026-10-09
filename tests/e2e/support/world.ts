@@ -36,9 +36,9 @@ async function ensureSeedTimelinePost(page: Page, baseURL: string): Promise<void
  * If no secret is provided, the fixture falls back to no-auth mode.
  */
 export const test = base.extend<{ authedPage: Page }>({
-  authedPage: async ({ page, request }, use) => {
+  authedPage: async ({ page, request }, use, testInfo) => {
     const baseURL = requireDisposableTestTarget(process.env.PICLAW_E2E_URL);
-    const auth = await bootstrapE2eAuth(request, baseURL);
+    const auth = await base.step('fixture-auth', () => bootstrapE2eAuth(request, baseURL));
     if (auth.attempted && !auth.authenticated) {
       throw new Error(`E2E auth bootstrap failed${auth.status ? ` with HTTP ${auth.status}` : ''}${auth.error ? `: ${auth.error}` : ''}`);
     }
@@ -49,12 +49,38 @@ export const test = base.extend<{ authedPage: Page }>({
         await page.context().addCookies([{ name: 'piclaw_session', value: match[1], domain: url.hostname, path: '/' }]);
       }
     }
-    await page.goto(baseURL);
-    await page.waitForLoadState('domcontentloaded');
+    let target = baseURL;
+    if (/us07-reconnection|us18-19-compaction-model/.test(testInfo.file)) {
+      const name = `e2e-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const created = await page.request.post(`${baseURL}/agent/root-session`, { data: { agent_name: name }, headers: { 'x-piclaw-internal-secret': resolveInternalSecret() }, timeout: 10_000 });
+      if (created.status() !== 201) throw new Error(`Fixture session creation failed: ${created.status()}`);
+      const record = await created.json() as { branch?: { chat_jid?: string } };
+      if (!record.branch?.chat_jid) throw new Error('Fixture session identity missing');
+      target = `${baseURL}/?chat_jid=${encodeURIComponent(record.branch.chat_jid)}`;
+    }
+    await page.addInitScript(() => {
+      const Native = window.EventSource;
+      (window as any).__e2eSse = { opens: 0, errors: 0, statuses: [], sources: [] };
+      window.EventSource = class extends Native {
+        constructor(url: string | URL, options?: EventSourceInit) {
+          super(url, options);
+          (window as any).__e2eSse.sources = [this];
+          this.addEventListener('open', () => { (window as any).__e2eSse.opens++; });
+          this.addEventListener('error', () => { (window as any).__e2eSse.errors++; });
+          this.addEventListener('agent_status', (event) => { const d = JSON.parse((event as MessageEvent).data); const a = (window as any).__e2eSse.statuses; a.push({ type: d.type, intent: d.intent_key, chat: d.chat_jid }); if (a.length > 32) a.shift(); });
+        }
+      };
+    });
+    const initialStatus = page.waitForResponse(r => r.url().includes('/agent/status?') && r.status() === 200, { timeout: 10_000 });
+    await base.step('fixture-navigation-and-sse', async () => {
+      await page.goto(target, { waitUntil: 'domcontentloaded' });
+      await (await initialStatus).finished();
+      await page.waitForFunction(() => (window as any).__e2eSse.opens > 0, undefined, { timeout: 10_000 });
+    });
     // Wait for app shell to render — SSE keeps networkidle from resolving.
     await page.waitForSelector('.compose-box, .compose-editor, [data-testid="compose-box"]', { timeout: 60000 });
-    await ensureSeedTimelinePost(page, baseURL);
-    await page.waitForTimeout(500); // short SSE settle time
+    if (target === baseURL) await ensureSeedTimelinePost(page, baseURL);
+    await page.waitForFunction(() => document.readyState !== 'loading', undefined, { timeout: 5000 });
     await use(page);
   },
 });

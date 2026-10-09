@@ -1,5 +1,6 @@
 import { applyOutputPad, applyThemeFromEvent } from './theme.js';
 import { applyMetersFromEvent } from './meters.js';
+import { publishSubmissionRunStatus } from './submission-feedback.js';
 import {
   applyDraftDeltaBuffer,
   applyThoughtDeltaBuffer,
@@ -15,6 +16,7 @@ import {
 } from './app-agent-turn-events.js';
 import { readAgentTurnId, resolveAgentPreviewRestoreState } from './app-agent-status-refresh.js';
 import { parseStatusLastEventAt } from './status-duration.js';
+import { invalidateAgentUiSnapshot } from './agent-ui-snapshot.js';
 import { resolveLiveGeneratedWidgetEvent } from './app-generated-widget-events.js';
 import {
   appendUniqueTimelinePost,
@@ -415,7 +417,7 @@ export function handleAppSseEvent(
       }
 
       const payload = response.data;
-      if (payload.type === 'done' || payload.type === 'error') {
+      if (payload.type === 'done' || payload.type === 'error') { publishSubmissionRunStatus(targetChatJid, payload.type, payload.thread_id);
         // A terminal event may have landed while SSE was disconnected. The
         // connected handler already refreshes timeline/model state; refresh
         // context explicitly so session rotation completion is fully applied.
@@ -431,7 +433,7 @@ export function handleAppSseEvent(
       }
       const activeTurn = readAgentTurnId(payload);
       if (activeTurn) setActiveTurn(activeTurn);
-      setAgentStatus(payload);
+      setAgentStatus(payload); publishSubmissionRunStatus(targetChatJid, payload.type, payload.thread_id);
       noteAgentActivity({
         clearSilence: true,
         atMs: parseStatusLastEventAt(payload) ?? Date.now(),
@@ -489,6 +491,7 @@ export function handleAppSseEvent(
       return;
     }
 
+    if (data.type === 'intent' && data.intent_key === 'compaction') invalidateAgentUiSnapshot(currentChatJid);
     const liveContextUsage = normalizeContextUsage(data.context_usage);
     if (liveContextUsage) {
       setContextUsage((prev) => {
@@ -508,7 +511,7 @@ export function handleAppSseEvent(
       if (shouldIgnoreMismatchedTurn(turnId, currentTurnIdRef.current)) {
         return;
       }
-      flushAuthoritativePreviews();
+      flushAuthoritativePreviews(); publishSubmissionRunStatus(currentChatJid, data.type, data.thread_id);
       invalidateAppPreviewTrailingFlushes(previewResyncGenerationRef);
       if (data.type === 'done') {
         notifyForFinalResponse(turnId || currentTurnIdRef.current);
@@ -551,7 +554,7 @@ export function handleAppSseEvent(
         setAgentPlan('');
         setAgentThought({ text: '', totalLines: 0 });
       }
-      setAgentStatus(data);
+      setAgentStatus(data); publishSubmissionRunStatus(currentChatJid, data.type, data.thread_id);
     }
     return;
   }

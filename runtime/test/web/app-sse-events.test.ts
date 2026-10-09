@@ -1,4 +1,5 @@
 import { afterEach, expect, test } from 'bun:test';
+import { getAgentUiSnapshot, invalidateAgentUiSnapshot } from '../../web/src/ui/agent-ui-snapshot.js';
 
 import { handleAppSseEvent, type HandleAppSseEventDependencies } from '../../web/src/ui/app-sse-events.js';
 import {
@@ -13,6 +14,23 @@ import {
 afterEach(() => {
   resetAppRefreshCoordination();
   resetContextSessionGenerationsForTests();
+});
+
+test('compaction intent invalidates a previously idle UI snapshot', async () => {
+  const originalFetch = globalThis.fetch;
+  let requests = 0;
+  try {
+    invalidateAgentUiSnapshot('chat:alpha');
+    globalThis.fetch = (async () => {
+      requests++;
+      return new Response(JSON.stringify({ status: { status: 'idle' }, errors: [] }), { headers: { 'content-type': 'application/json' } });
+    }) as typeof fetch;
+    await getAgentUiSnapshot('chat:alpha');
+    const fixture = createDeps();
+    handleAppSseEvent('agent_status', { chat_jid: 'chat:alpha', type: 'intent', intent_key: 'compaction', turn_id: 'compact' }, fixture.deps);
+    await getAgentUiSnapshot('chat:alpha');
+    expect(requests).toBe(2);
+  } finally { globalThis.fetch = originalFetch; invalidateAgentUiSnapshot('chat:alpha'); }
 });
 
 function applyUpdate<T>(current: T, next: T | ((prev: T) => T)): T {

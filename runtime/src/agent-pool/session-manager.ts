@@ -115,6 +115,14 @@ export class AgentSessionManager {
 
   constructor(private readonly options: AgentSessionManagerOptions) {}
 
+  /** Synchronous full GC must not interrupt protected runs or lifecycle work. */
+  hasActiveMemoryReclamationWork(): boolean {
+    return this.evictionProtectionCounts.size > 0 || this.prewarmInFlight.size > 0
+      || this.pendingMcpLifecycleWork().length > 0
+      || [...this.options.pool.values(), ...this.options.sidePool.values()].some(({ runtime }) =>
+        runtime.session.isStreaming || runtime.session.isBashRunning || runtime.session.isCompacting);
+  }
+
   /** Close admission synchronously; keep it closed after transition failure. */
   blockMcpAdmissions(): void {
     if (!this.mcpAdmissionsBlocked) this.mcpAdmissionEpoch++;

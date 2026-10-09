@@ -26,6 +26,7 @@ function normalizeCompactionSettings(data: Record<string, any> = {}) {
         compactionBackoffMaxMin: data.compactionBackoffMaxMin ?? 360,
         compactionThresholdPercent: data.compactionThresholdPercent ?? 80,
         compactionBackoffDecayFactor: data.compactionBackoffDecayFactor ?? 0.5,
+        localLitePromptProfileEnabled: Boolean(data.localLitePromptProfileEnabled ?? false),
         toolResultCompactionEnabled: Boolean(data.toolResultCompactionEnabled ?? true),
         toolResultSemanticSummaryEnabled: Boolean(data.toolResultSemanticSummaryEnabled ?? true),
         toolResultSemanticSummaryMaxInputChars: data.toolResultSemanticSummaryMaxInputChars ?? 12000,
@@ -63,6 +64,7 @@ export function CompactionSection({ settingsData, setStatus, mergeSettingsData }
     const [compactionBackoffMaxMin, setCompactionBackoffMaxMin] = useState(360);
     const [compactionThresholdPercent, setCompactionThresholdPercent] = useState(80);
     const [compactionBackoffDecayFactor, setCompactionBackoffDecayFactor] = useState(0.5);
+    const [localLitePromptProfileEnabled, setLocalLitePromptProfileEnabled] = useState(false);
     const [toolResultCompactionEnabled, setToolResultCompactionEnabled] = useState(true);
     const [toolResultSemanticSummaryEnabled, setToolResultSemanticSummaryEnabled] = useState(true);
     const [toolResultSemanticSummaryMaxInputChars, setToolResultSemanticSummaryMaxInputChars] = useState(12000);
@@ -96,6 +98,7 @@ export function CompactionSection({ settingsData, setStatus, mergeSettingsData }
         setCompactionBackoffMaxMin(next.compactionBackoffMaxMin);
         setCompactionThresholdPercent(next.compactionThresholdPercent);
         setCompactionBackoffDecayFactor(next.compactionBackoffDecayFactor);
+        setLocalLitePromptProfileEnabled(next.localLitePromptProfileEnabled);
         setToolResultCompactionEnabled(next.toolResultCompactionEnabled);
         setToolResultSemanticSummaryEnabled(next.toolResultSemanticSummaryEnabled);
         setToolResultSemanticSummaryMaxInputChars(next.toolResultSemanticSummaryMaxInputChars);
@@ -116,6 +119,7 @@ export function CompactionSection({ settingsData, setStatus, mergeSettingsData }
             compactionBackoffMaxMin: next.compactionBackoffMaxMin,
             compactionThresholdPercent: next.compactionThresholdPercent,
             compactionBackoffDecayFactor: next.compactionBackoffDecayFactor,
+            localLitePromptProfileEnabled: next.localLitePromptProfileEnabled,
             toolResultCompactionEnabled: next.toolResultCompactionEnabled,
             toolResultSemanticSummaryEnabled: next.toolResultSemanticSummaryEnabled,
             toolResultSemanticSummaryMaxInputChars: next.toolResultSemanticSummaryMaxInputChars,
@@ -174,6 +178,7 @@ export function CompactionSection({ settingsData, setStatus, mergeSettingsData }
         compactionBackoffMaxMin,
         compactionThresholdPercent,
         compactionBackoffDecayFactor,
+        localLitePromptProfileEnabled,
         toolResultCompactionEnabled,
         toolResultSemanticSummaryEnabled,
         toolResultSemanticSummaryMaxInputChars,
@@ -192,6 +197,7 @@ export function CompactionSection({ settingsData, setStatus, mergeSettingsData }
         compactionBackoffMaxMin,
         compactionThresholdPercent,
         compactionBackoffDecayFactor,
+        localLitePromptProfileEnabled,
         toolResultCompactionEnabled,
         toolResultSemanticSummaryEnabled,
         toolResultSemanticSummaryMaxInputChars,
@@ -268,6 +274,12 @@ export function CompactionSection({ settingsData, setStatus, mergeSettingsData }
                 </div>
             `}
 
+            <h3>Local models</h3>
+            <div class="settings-row settings-dense-row settings-dense-row-checkbox">
+                <label>Local-lite prompt and tools</label>
+                <input type="checkbox" checked=${localLitePromptProfileEnabled} onChange=${e => setLocalLitePromptProfileEnabled(Boolean(e.target.checked))} />
+                <span class="settings-hint">Off by default. When enabled, local endpoints use a compact prompt and start with only read and tool discovery. Changes apply on the next turn.</span>
+            </div>
             <h3>${t('settings.compaction.autoHeading')}</h3>
             <div class="settings-row settings-dense-row settings-dense-row-checkbox">
                 <label>${t('settings.compaction.enableAutomatic')}</label>

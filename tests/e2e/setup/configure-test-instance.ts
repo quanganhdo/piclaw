@@ -126,6 +126,9 @@ if (existsSync(settingsPath)) {
 settingsData.defaultProvider = OPENCODE_PROVIDER_ID;
 settingsData.defaultModel = OPENCODE_MODEL;
 settingsData.defaultThinkingLevel = "off";
+// Small retained window makes short deterministic conversations genuinely
+// compactable; production defaults are not changed by this fixture.
+settingsData.compaction = { enabled: false, keepRecentTokens: 256, reserveTokens: 16384 };
 
 writeFileSync(settingsPath, JSON.stringify(settingsData, null, 2));
 console.log(`✓ settings.json updated: ${settingsPath}`);

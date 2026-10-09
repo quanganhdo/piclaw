@@ -1354,7 +1354,7 @@
       "name": "PICLAW_MAIN_SESSION_POOL_MAX_SIZE",
       "owner": "agent-runtime",
       "type": "integer",
-      "default": 1,
+      "default": 4,
       "bounds": "non-negative integer",
       "allowedValues": [],
       "secret": false,

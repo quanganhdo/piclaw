@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 import { createTempWorkspace } from "../helpers.js";
 
-const fixturePath = join(import.meta.dir, "fixtures", "provider-auth-lifecycle-104.ts");
+const fixturePath = join(import.meta.dir, "fixtures", "provider-auth-lifecycle-110.ts");
 const scenarios = [
   "login-persist-recreate-logout",
   "expired-get-auth-rotates",

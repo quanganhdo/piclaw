@@ -403,6 +403,8 @@ export function usePaneRuntimeOrchestration(options: UsePaneRuntimeOrchestration
     openEditor(terminalTabPath, { label: 'Terminal' });
   }, [openEditor, terminalTabPath]);
 
+  const openCdpTab = useCallback(() => { openEditor('piclaw://cdp-view', { label: 'Browser' }); }, [openEditor]);
+
   const openVncTab = useCallback(() => {
     openEditor(vncTabPrefix, { label: 'VNC' });
   }, [openEditor, vncTabPrefix]);
@@ -1357,6 +1359,7 @@ export function usePaneRuntimeOrchestration(options: UsePaneRuntimeOrchestration
     toggleDock,
     openTerminalTab,
     openVncTab,
+    openCdpTab,
     panePopoutTitle,
     panePopoutHasMenuActions,
     hidePanePopoutControls,

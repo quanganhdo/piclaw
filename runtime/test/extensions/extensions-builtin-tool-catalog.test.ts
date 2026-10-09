@@ -45,6 +45,8 @@ const EXPECTED_BUILTIN_TOOL_NAMES = [
   "list_models",
   "switch_model",
   "switch_thinking",
+  "set_model",
+  "provider_quota",
   // internal-tools (discovery)
   "list_tools",
   // runtime-scripts
@@ -85,6 +87,8 @@ const BOOTSTRAP_CRITICAL_ACTIVE_TOOLS = [
   "attach_file",
   "messages",
   "exit_process",
+  "set_model",
+  "provider_quota",
 ];
 
 function runAllBuiltinExtensions() {

@@ -52,7 +52,11 @@ jobs:
           fd --version
 
       - name: Install Playwright browsers
-        run: bunx playwright install chromium --only-shell
+        uses: ./.github/actions/playwright-cache
+        with:
+          bun-version: ${{ steps.bun-version.outputs.version }}
+          browsers: chromium --only-shell
+          variant: chromium-shell
 
       - name: Install Playwright system dependencies
         run: sudo env PATH="$PATH" bunx playwright install-deps chromium-headless-shell

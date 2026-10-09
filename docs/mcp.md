@@ -207,3 +207,22 @@ The adapter also guards oversized MCP output by default and spills excess text t
 - Global `settings.toolPrefix` controls whether proxied/direct tool names are server-prefixed (`server`, `short`, or `none`).
 - Global `settings.directTools` can expose all imported MCP tools as first-class Pi tools; per-server `directTools` can enable all tools or only a named subset.
 - Keep large MCP servers behind the proxy unless you deliberately enable `directTools`.
+
+## Legacy instance-config permission migration
+
+On startup and before selecting an MCP owner, Piclaw tightens an existing
+owner-owned, single-link regular `.piclaw/config.json` to mode `0600` on qualified
+POSIX hosts. The migration uses a no-follow file descriptor and does not rewrite
+configuration contents. Symlinks, hardlinks, foreign ownership and unverifiable
+ownership are not repaired or trusted.
+
+If an instance MCP policy cannot be safely read or migrated, ordinary agent
+sessions still start with a warning diagnostic, **without MCP or codemode**.
+MCP registration remains blocked; no default adapter is selected from untrusted
+contents. Settings reads/writes remain strict. After repairing the configuration,
+restart to replace degraded sessions before applying MCP settings. An explicit
+unsupported native owner or a failed/in-progress MCP transition remains fenced;
+those are not permission-migration fallbacks.
+
+Upgrade acceptance must exercise real session creation and agent output as well
+as HTTP/service health. A healthy web endpoint alone does not qualify a rollout.

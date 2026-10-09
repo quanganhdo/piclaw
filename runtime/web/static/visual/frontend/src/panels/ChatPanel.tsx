@@ -8,6 +8,7 @@ import { safeGetItem, safeSetItem } from "../utils/storage";
 
 import { createLogger } from "../utils/logger";
 import { agentDisplayName } from "../api/agent-identity";
+import { SubmissionFeedback, isSubmissionRunStatus, type SubmissionFeedbackState } from '../../../../../src/ui/submission-feedback';
 import {
   uploadFileBatch,
   uploadChatAttachment,
@@ -56,6 +57,22 @@ export function ChatPanel({ onOpenPalette }: ChatPanelProps = {}) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isSending = useSignal(false);
   const sendError = useSignal<string | null>(null);
+  const [submissionFeedback, setSubmissionFeedback] = useState<SubmissionFeedbackState>(null);
+  const feedbackRef = useRef<SubmissionFeedback | null>(null);
+  if (!feedbackRef.current) feedbackRef.current = new SubmissionFeedback(setSubmissionFeedback);
+  useEffect(() => {
+    const feedback = feedbackRef.current!;
+    const onStatus = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      if (isSubmissionRunStatus(detail?.type)) feedback.activity(detail.chat_jid ?? getChatJid(), detail.thread_id);
+    };
+    const onChatChange = () => feedback.reset();
+    window.addEventListener('piclaw:agent-status', onStatus);
+    window.addEventListener('piclaw:submission-run-status', onStatus);
+    window.addEventListener('popstate', onChatChange);
+    window.addEventListener('piclaw:current-chat-changed', onChatChange);
+    return () => { feedback.reset(); window.removeEventListener('piclaw:agent-status', onStatus); window.removeEventListener('piclaw:submission-run-status', onStatus); window.removeEventListener('popstate', onChatChange); window.removeEventListener('piclaw:current-chat-changed', onChatChange); };
+  }, []);
   const isAgentRunning = useSignal(false);
   const [uploadProgress, setUploadProgress] = useState<UploadBatchProgress | null>(null);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -395,6 +412,7 @@ export function ChatPanel({ onOpenPalette }: ChatPanelProps = {}) {
     const mode = isAgentRunning.value ? (forceSteer ? "steer" : "queue") : undefined;
 
     isSending.value = true;
+    const feedbackGeneration = feedbackRef.current!.begin(submissionChatJid);
     sendError.value = null;
     let stage: "upload" | "send" = "upload";
 
@@ -480,6 +498,7 @@ export function ChatPanel({ onOpenPalette }: ChatPanelProps = {}) {
       sendError.value = null;
       setAttachments([]);
       const data = await res.json();
+      feedbackRef.current!.acknowledged(feedbackGeneration, Boolean(data?.queued) || Boolean(data?.command) || data?.ui_only === true || data?.relayed === true, data?.thread_id, data?.user_message?.data?.timestamp);
       if (data?.queued === 'followup' || data?.queued === 'steer') {
         window.dispatchEvent(new CustomEvent('piclaw:queue-acknowledged', { detail: { chat_jid: submissionChatJid } }));
       }
@@ -487,6 +506,7 @@ export function ChatPanel({ onOpenPalette }: ChatPanelProps = {}) {
         window.dispatchEvent(new CustomEvent("piclaw:new-message", { detail: data.user_message }));
       }
     } catch (err: any) {
+      feedbackRef.current!.failed(feedbackGeneration);
       if (err?.name === "AbortError") {
         sendError.value = "Send timed out. Try again.";
       } else if (stage === "upload") {
@@ -495,6 +515,7 @@ export function ChatPanel({ onOpenPalette }: ChatPanelProps = {}) {
         sendError.value = err?.message || "Failed to send. Check connection.";
       }
     } finally {
+      feedbackRef.current!.finished(feedbackGeneration);
       setUploadProgress(null);
       isSending.value = false;
     }
@@ -510,6 +531,7 @@ export function ChatPanel({ onOpenPalette }: ChatPanelProps = {}) {
           <AgentStatusPanel />
 
           <QueueStack onEdit={handleQueueEdit} />
+          {submissionFeedback && <div className="compose-submission-feedback" role="status" aria-live="polite" data-submission-state={submissionFeedback}><span className="submission-feedback-spinner" aria-hidden="true" />{submissionFeedback === 'sending' ? 'Sending message…' : 'Message accepted. Waiting for agent…'}</div>}
 
           {uploadProgress && (
             <div className="chat__upload-status" role="status" aria-live="polite" data-testid="compose-upload-status">
@@ -534,7 +556,7 @@ export function ChatPanel({ onOpenPalette }: ChatPanelProps = {}) {
           )}
 
           <div className="chat__compose">
-            <button type="button" className={`compose-latest-divider ${latestState.away ? 'away-from-latest' : ''} ${latestState.hasNew ? 'has-new-messages' : ''}`} aria-label={latestState.hasNew ? 'New messages — jump to latest' : 'Jump to latest message'} onClick={() => window.dispatchEvent(new Event('piclaw:jump-latest'))}><span className="compose-latest-chevron" aria-hidden="true">⌄</span></button>
+            <button type="button" className={`compose-latest-divider ${latestState.away ? 'away-from-latest' : ''} ${latestState.hasNew ? 'has-new-messages' : ''}`} aria-label={latestState.hasNew ? 'New messages — jump to latest' : 'Jump to latest message'} onClick={() => window.dispatchEvent(new Event('piclaw:jump-latest'))}><span className="compose-latest-chevron compose-latest-chevron-left" aria-hidden="true" /><span className="compose-latest-chevron compose-latest-chevron-right" aria-hidden="true" /></button>
             <input
               ref={fileInputRef}
               type="file"

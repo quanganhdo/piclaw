@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { readStoredCredential, type ModelRuntime } from "@earendil-works/pi-coding-agent";
 
 import { getPiclawAgentDir } from "../core/agent-dir.js";
-import { createLogger, debugSuppressedError } from "../utils/logger.js";
+import { createLogger } from "../utils/logger.js";
 
 export interface ProviderUsageWindow {
   label: string;
@@ -450,8 +450,8 @@ export async function warmProviderUsage(modelRuntime: UsageModelRuntime, provide
       value = refreshFailure && cached?.value?.availability === "available"
         ? { ...cached.value, stale: true, refresh_failure: refreshFailure }
         : refreshed;
-    } catch (error) {
-      debugSuppressedError(log, "Provider usage refresh failed; returning the cached usage snapshot when available.", error, { providerId, hasCachedValue: cached?.value != null });
+    } catch {
+      log.debug("Provider usage refresh failed; returning the cached usage snapshot when available.", { providerId, hasCachedValue: cached?.value != null, classification: "temporary_failure" });
       value = cached?.value
         ? { ...cached.value, stale: true, refresh_failure: "temporary_failure" }
         : null;

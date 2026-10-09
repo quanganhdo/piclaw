@@ -85,6 +85,11 @@ test('shouldOpenTimelineQuickActionsFromKeyEvent defers to single-key keyboard s
       shiftKey: false,
       target: timelineTarget,
     })).toBe(true);
+    for (const flag of ['defaultPrevented', 'repeat']) {
+      expect(shouldOpenTimelineQuickActionsFromKeyEvent({
+        key: 'g', target: timelineTarget, [flag]: true,
+      })).toBe(false);
+    }
   } finally {
     (globalThis as any).window = originalWindow;
   }

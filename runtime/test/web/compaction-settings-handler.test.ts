@@ -37,6 +37,9 @@ test('saveCompactionSettings persists and applies compaction settings immediatel
       '../src/channels/web/handlers/compaction-settings.js',
     );
 
+    expect(handler.getCompactionSettingsData().localLitePromptProfileEnabled).toBe(false);
+    expect((await handler.saveCompactionSettings({ localLitePromptProfileEnabled: true })).localLitePromptProfileEnabled).toBe(true);
+    expect((await handler.saveCompactionSettings({ localLitePromptProfileEnabled: false })).localLitePromptProfileEnabled).toBe(false);
     const saved = await handler.saveCompactionSettings({
       autoCompactionEnabled: false,
       smartCompactionMethod: 'traditional-pipelined',

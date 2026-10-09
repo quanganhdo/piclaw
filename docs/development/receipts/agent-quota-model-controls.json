@@ -1,0 +1,63 @@
+{
+  "recordedAt": "2026-10-06T08:08:45.715Z",
+  "base": "5f016a3d1596901abbc7c757cc659e75e7679f35",
+  "qualifiedHead": "665c63bd5f9bccae322df0e44212e95c1d352179",
+  "qualifiedTree": "523ae761b3ed5d07b3058c33d63914cb902f3360",
+  "runtimeTree": "a5f5133f5960674746673961cc7ab9e211704780",
+  "full": {
+    "exit": 0,
+    "pass": 6603,
+    "skip": 8,
+    "fail": 0,
+    "assertions": 43136,
+    "files": 932,
+    "elapsedSeconds": 666.74,
+    "log": "/workspace/tmp/agent-quota-full-v2/ci-fast.log",
+    "sha256": "496edcf64bf15f2b6d926868cb3bba7d978ba388350247431133bc938aa86908",
+    "cleanBeforeAfter": true
+  },
+  "focused": {
+    "pass": 170,
+    "assertions": 2403,
+    "files": 9
+  },
+  "settings": {
+    "pass": 25,
+    "assertions": 246
+  },
+  "build": {
+    "pass": 9,
+    "assertions": 26
+  },
+  "reviews": "Explicit github-copilot/gpt-6.1-sol scoped CLEAR after auth logging, public scope and manifest corrections; read-only, no reviewer tests",
+  "limitations": [
+    "Four existing quota adapters; other providers explicitly unsupported",
+    "Default credential verification may refresh authentication; quota endpoint requires shared refresh",
+    "Bounded waits do not terminate underlying shared requests",
+    "No budget/spending permission granted",
+    "No live provider/account/config/hardware/install/restart"
+  ],
+  "retainedLogs": [
+    {
+      "path": "/workspace/tmp/agent-quota-full/ci-fast.log",
+      "sha256": "6f85ecc47581e65d0ec1664078767a78efbd284a4d53dd971116ad2e271ffc83"
+    },
+    {
+      "path": "/workspace/tmp/agent-quota-types.log",
+      "sha256": "43d3615b800d1fb1accb11faf99a43aea0ba1e20cc77e06058e32fb78af6959e"
+    },
+    {
+      "path": "/workspace/tmp/agent-quota-manifest-tests.log",
+      "sha256": "0037478ae4226f7db2d532a836164504ccff62e89cc2bec9c6dfc6a07af7e681"
+    },
+    {
+      "path": "/workspace/tmp/agent-quota-final-integration.log",
+      "sha256": "b7d851c6074ed4670e5e0248e54cfc8374cea22c7f6ccb48e1c20176a741e034"
+    },
+    {
+      "path": "/workspace/tmp/agent-quota-final-integration-types.log",
+      "sha256": "dfd0c6d3af373830a215c2274b74fba3950b6edffc950c5db83eccf51ae8e409"
+    }
+  ],
+  "publicationDelta": "Docs/receipts only; verify runtime parity"
+}

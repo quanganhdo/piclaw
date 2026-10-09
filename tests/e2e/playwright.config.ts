@@ -13,6 +13,8 @@ export default defineConfig({
   retries: 1,
   workers, // default serial for stable UX assertions; override with PICLAW_E2E_WORKERS for split/fast runs
   reporter: [
+    ['line'],
+    ['./support/progress-reporter.ts'],
     ['html', { outputFolder: './reports/html', open: 'never' }],
     ['json', { outputFile: './reports/results.json' }],
   ],

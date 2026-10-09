@@ -44,8 +44,10 @@ export interface FileConflictMonitor {
 }
 
 function generateCopyPath(originalPath: string): string {
-  const ext = originalPath.includes('.') ? originalPath.slice(originalPath.lastIndexOf('.')) : '';
-  const base = originalPath.includes('.') ? originalPath.slice(0, originalPath.lastIndexOf('.')) : originalPath;
+  const dot = originalPath.lastIndexOf('.');
+  const hasExtension = dot > originalPath.lastIndexOf('/');
+  const ext = hasExtension ? originalPath.slice(dot) : '';
+  const base = hasExtension ? originalPath.slice(0, dot) : originalPath;
   const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
   return `${base}.${stamp}${ext}`;
 }

@@ -26,8 +26,13 @@ const RESULTS_PATH = "reports/results.json";
 const EVIDENCE_DIR = "reports/evidence";
 
 if (!existsSync(RESULTS_PATH)) {
-  console.error(`Error: ${RESULTS_PATH} not found. Run 'bun run test' first.`);
-  process.exit(1);
+  mkdirSync('reports', { recursive: true });
+  const progressPath = 'reports/progress.jsonl';
+  const lines = existsSync(progressPath) ? readFileSync(progressPath, 'utf8').trim().split('\n') : [];
+  const last = lines.length ? JSON.parse(lines[lines.length - 1]) : null;
+  writeFileSync('reports/incomplete.json', JSON.stringify({ complete: false, reason: 'Playwright result report missing', lastProgress: last }, null, 2) + '\n');
+  console.error('No completed Playwright result report; retained incomplete.json and incremental progress, no success/PDF claim.');
+  process.exit(0);
 }
 
 const results = JSON.parse(readFileSync(RESULTS_PATH, "utf-8"));

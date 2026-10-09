@@ -1,7 +1,7 @@
 import { describe, expect, setDefaultTimeout, test } from "bun:test";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "fs";
-import { join } from "path";
-import { closeDbQuietly, createTempWorkspace, importFresh, setEnv } from "../helpers.js";
+import { dirname, join } from "path";
+import { closeDbQuietly, createTempWorkspace, importFresh, setEnv, withTempWorkspaceEnv } from "../helpers.js";
 import {
   STARTUP_STATUS_CHAT_JID,
   STARTUP_STATUS_TURN_ID,
@@ -506,3 +506,27 @@ export {};
     });
   });
 });
+
+test("startup upgrade check migrates legacy config permissions before sessions", async () => {
+  await withTempWorkspaceEnv("startup-config-permissions-", {}, async workspace => {
+    const path = join(workspace.workspace, ".piclaw/config.json");
+    mkdirSync(dirname(path), { recursive: true });
+    const content = '{"domains":{"access":{"mode":"single-user"}}}';
+    writeFileSync(path, content, { mode: 0o644 });
+    const proc = Bun.spawn([process.execPath, "-e", `
+      import { initializeRuntimeEnvironment } from ${JSON.stringify(join(RUNTIME_DIR, "src/runtime/startup.ts"))};
+      initializeRuntimeEnvironment({loadTimestamps(){},loadChats(){}});
+      const fs=await import('node:fs');
+      console.log('CONFIG_MIGRATION_RESULT:'+JSON.stringify({mode:fs.statSync(${JSON.stringify(path)}).mode&511,content:fs.readFileSync(${JSON.stringify(path)},'utf8')}));
+      process.exit(0);
+    `], { cwd: import.meta.dir, stdout: "pipe", stderr: "pipe", env: { ...process.env, PICLAW_DB_IN_MEMORY: "1", PICLAW_DISABLE_BACKGROUND_WORKSPACE_INDEX: "1" } });
+    const stdout = await new Response(proc.stdout).text();
+    const stderr = await new Response(proc.stderr).text();
+    expect(await proc.exited).toBe(0);
+    expect(stderr).not.toContain("MCP settings require");
+    const marker = "CONFIG_MIGRATION_RESULT:";
+    const line = stdout.split("\n").find(line => line.includes(marker));
+    expect(line).toBeDefined();
+    expect(JSON.parse(line!.slice(line!.indexOf(marker) + marker.length))).toEqual({ mode: 0o600, content });
+  });
+}, 20000);

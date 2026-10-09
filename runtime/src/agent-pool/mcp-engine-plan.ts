@@ -1,4 +1,6 @@
 import type { McpBridgeReadSnapshot } from "../secure/mcp-keychain.js";
+import { readAccessConfig } from '../core/config-access.js';
+import { nativeHeadersCompatible } from './mcp-native-header-policy';
 import { parseMcpEnginePolicy, resolveMcpCodemode, type McpEnginePolicy } from "./mcp-engine-policy.js";
 
 export interface McpEngineReadiness {
@@ -46,6 +48,8 @@ export function planMcpEnginePolicy(value: unknown, snapshot: McpBridgeReadSnaps
   const mapped = new Map(snapshot.nativePreview.servers.map(server => [server.name, server]));
   let requiresCodemode = false;
   if (policy.engine === "native") {
+    if (process.platform === 'win32') add(null, 'platform', 'native_incompatible', 'Experimental Native requires POSIX process-group cleanup; use Adapter on Windows.');
+    if (readAccessConfig().mode !== 'single-user') add(null, 'access', 'native_incompatible', 'Experimental Native MCP is limited to single-user mode.');
     if (snapshot.nativePreview.errors.length) add(null, "configuration", "native_incompatible", "The native projection contains errors.");
     const projectedNames = new Set<string>();
     for (const server of snapshot.nativePreview.servers) {
@@ -64,10 +68,8 @@ export function planMcpEnginePolicy(value: unknown, snapshot: McpBridgeReadSnaps
       if (!native || snapshot.dryRun.rows.find(row => row.serverName === name)?.status !== "mapped") {
         add(name, "configuration", "native_incompatible", "This enabled server cannot be represented by the native MCP bridge.");
       }
-      // Even mapped HTTP entries could trigger native OAuth with file-owned
-      // credentials. Until the host owns that flow, do not silently cross the
-      // private authentication/keychain boundary.
-      if (Object.hasOwn(config, "url")) add(name, "auth", "native_incompatible", "Native HTTP authentication does not yet use the approved Piclaw credential lifecycle.");
+      if (Object.hasOwn(config, 'url') && !nativeHeadersCompatible(native && 'url' in native.config ? native.config.headers : undefined)) add(name, 'auth', 'native_incompatible', 'Native HTTP requires explicit Authorization. Browser OAuth is disabled.');
+      if (config.bearerTokenEnv && (!native || !('url' in native.config))) add(name, 'auth', 'native_incompatible', 'Native bearer credentials require a mapped HTTP server.');
       if (Object.hasOwn(config, "requestTimeoutMs")) add(name, "requestTimeoutMs", "native_incompatible", "Native request timeout does not establish Piclaw's absolute operation deadline.");
       if (typeof config.command === "string" && SECRET_REFERENCE.test(config.command)) add(name, "command", "native_incompatible", "Native command environment references require a qualified runtime resolver.");
       for (const field of ["url", "cwd"] as const) if (typeof config[field] === "string" && SECRET_REFERENCE.test(config[field])) {
@@ -75,7 +77,7 @@ export function planMcpEnginePolicy(value: unknown, snapshot: McpBridgeReadSnaps
       }
       if (config.args?.some(arg => SECRET_REFERENCE.test(arg))) add(name, "args", "native_incompatible", "Native argument references require a qualified runtime resolver.");
       if (Object.values(config.env ?? {}).some(entry => SECRET_REFERENCE.test(entry))) add(name, "env", "native_incompatible", "Native secret environment resolution is not qualified.");
-      if (["bearerToken", "bearerTokenEnv", "bearerTokenStore", "bearerTokenKeychain", "oauth", "auth"].some(field => Object.hasOwn(config, field))) add(name, "auth", "native_incompatible", "Native credential settings are incompatible with the approved Piclaw bridge.");
+      if (["bearerToken", "bearerTokenStore", "oauth", "auth"].some(field => Object.hasOwn(config, field))) add(name, "auth", "native_incompatible", "Native credential settings are incompatible with the approved Piclaw bridge.");
       if (native && native.config.enabled !== false) {
         const exposure = native.config.exposure ?? "codemode";
         if (NATIVE_ONLY_EXPOSURES.has(exposure) || Object.values(native.config.toolExposure ?? {}).some(entry => NATIVE_ONLY_EXPOSURES.has(entry))) requiresCodemode = true;

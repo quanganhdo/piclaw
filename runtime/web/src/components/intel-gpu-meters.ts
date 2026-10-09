@@ -78,6 +78,12 @@ export function buildNullableSparklinePath(series, width = 56, height = 16, opti
     const minValue = Number.isFinite(options.min) ? Number(options.min) : Math.min(...finitePoints);
     const maxValue = Number.isFinite(options.max) ? Number(options.max) : Math.max(...finitePoints);
     const singleValueY = (height / 2).toFixed(2);
+    // Keep the stroke inside the SVG, including valid 0% and 100% samples.
+    const padding = Math.min(1, height / 2);
+    const sampleY = (value) => maxValue > minValue
+        ? (height - padding - Math.max(0, Math.min(1, (value - minValue) / (maxValue - minValue))) * (height - 2 * padding)).toFixed(2)
+        : singleValueY;
+    if (points.length === 1) return `M 0 ${sampleY(points[0])} L ${width} ${sampleY(points[0])}`;
     const path = [];
 
     let previousIndex = -2;
@@ -89,17 +95,15 @@ export function buildNullableSparklinePath(series, width = 56, height = 16, opti
             continue;
         }
         const x = points.length === 1 ? width / 2 : (index / (points.length - 1 || 1)) * width;
-        const normalized = maxValue > minValue
-            ? (value - minValue) / (maxValue - minValue)
-            : null;
-        const y = normalized === null
-            ? singleValueY
-            : (height - normalized * height).toFixed(2);
+        const y = sampleY(value);
         const isContinuation = previousIndex === index - 1;
         path.push(`${isContinuation ? 'L' : 'M'} ${x.toFixed(2)} ${y}`);
         if (!isContinuation) {
             segmentCount += 1;
-            path.push(`L ${x.toFixed(2)} ${y}`);
+            // A nonzero segment makes isolated valid samples visible with
+            // round line caps, without bridging null history gaps.
+            const markerX = x >= width ? x - 0.01 : x + 0.01;
+            path.push(`L ${markerX.toFixed(2)} ${y}`);
         }
         previousIndex = index;
     }
@@ -256,7 +260,7 @@ export function normalizeGpuSnapshots(input, options = {}) {
                 gmemLabel: snapshots.length === 1 ? (observedClients ? 'GMEM' : 'VRAM') : `${observedClients ? 'GMEM' : 'VRAM'}${index}`,
                 busyPercent,
                 busyText: formatOptionalPercent(busyPercent),
-                busySparkPath: unavailable ? '' : buildNullableSparklinePath(busySeries, 56, 16, { min: 0, max: 100 }),
+                busySparkPath: unavailable ? '' : buildNullableSparklinePath(busySeries.length ? busySeries : [busyPercent], 56, 16, { min: 0, max: 100 }),
                 busyTitle: observedClients && busiestEngineLabel
                     ? `${name} — busiest observed engine: ${busiestEngineLabel}`
                     : `${name} — ${busyPercent === null ? 'activity unavailable' : 'GPU activity'}`,
@@ -264,8 +268,8 @@ export function normalizeGpuSnapshots(input, options = {}) {
                 residentBytes,
                 residentText: deviceMemoryPercent !== null ? formatOptionalPercent(deviceMemoryPercent) : formatOptionalBytesCompact(residentBytes),
                 residentSparkPath: unavailable ? '' : deviceMemoryPercent !== null
-                    ? buildNullableSparklinePath(residentSeries.map(value => value === null ? null : value / totalBytes * 100), 56, 16, { min: 0, max: 100 })
-                    : buildNullableSparklinePath(residentSeries, 56, 16),
+                    ? buildNullableSparklinePath(residentSeries.length ? residentSeries.map(value => value === null ? null : value / totalBytes * 100) : [deviceMemoryPercent], 56, 16, { min: 0, max: 100 })
+                    : buildNullableSparklinePath(residentSeries.length ? residentSeries : [residentBytes], 56, 16),
                 memoryTitle: `${name} — ${observedClients ? 'observed client memory' : 'device memory usage'}`,
             },
             memory: {
@@ -281,11 +285,98 @@ export function normalizeGpuSnapshots(input, options = {}) {
 }
 export const normalizeIntelGpuSnapshots = normalizeGpuSnapshots;
 
+/** Per-HUD capability memory. Never persist readings or invent idle samples. */
+export class GpuMeterHistory {
+    constructor() { this.devices = new Map(); }
+    clear() { this.devices.clear(); }
+    update(snapshots, options = {}) {
+        const meters = normalizeGpuSnapshots(snapshots, options);
+        const present = new Set(meters.map(meter => `${meter.provider}:${meter.id}`));
+        for (const key of this.devices.keys()) if (!present.has(key)) this.devices.delete(key);
+        return meters.map(meter => {
+            const key = `${meter.provider}:${meter.id}`;
+            const identity = `${meter.name}:${meter.driver}`;
+            const previous = this.devices.get(key);
+            const state = previous?.identity === identity ? previous : { identity, busy: false, memory: false, busySeries: [], memorySeries: [], sample: null, freshness: null, historyTime: -Infinity };
+            const snapshot = snapshots.find(row => String(row?.id) === meter.id && row.provider === meter.provider);
+            const sample = meter.effectiveStatus === 'stale' && options.pollId !== undefined
+                ? `stale:${options.pollId}`
+                : snapshot?.sample_time_ms ?? options.pollId ?? options.lastSuccessAtMs ?? options.nowMs;
+            const freshness = `${meter.effectiveStatus}:${meter.rows.busyPercent}:${meter.rows.residentBytes}`;
+            const memoryPercent = meter.rows.residentText.endsWith('%');
+            const history = Array.isArray(snapshot?.history) ? snapshot.history.slice(-30) : [];
+            const unseen = [...new Map(history.filter(row => toFiniteNumber(row?.timestamp_ms) !== null && Number(row.timestamp_ms) > state.historyTime)
+                .map(row => [Number(row.timestamp_ms), row])).values()]
+                .sort((a, b) => Number(a.timestamp_ms) - Number(b.timestamp_ms));
+            const seedHistory = unseen.length ? unseen : history;
+            if (sample !== state.sample || freshness !== state.freshness || unseen.length > 0) {
+                const busyUsable = meter.rows.busyPercent !== null && Boolean(meter.rows.busySparkPath);
+                const memoryUsable = meter.rows.residentBytes !== null && Boolean(meter.rows.residentSparkPath)
+                    && (!state.memory || !state.memoryPercent || (memoryPercent && meter.memory.totalBytes > 0));
+                const memoryValue = value => {
+                    const bytes = toFiniteNumber(value);
+                    if (bytes === null || bytes < 0) return null;
+                    return state.memoryPercent ? (meter.memory.totalBytes > 0 ? clampPercent(bytes / meter.memory.totalBytes * 100) : null) : bytes;
+                };
+                if (busyUsable && !state.busy) {
+                    state.busy = true;
+                    state.busySeries = seedHistory.length ? seedHistory.map(row => clampPercent(row.busy_percent)) : [meter.rows.busyPercent];
+                } else if (state.busy) {
+                    const values = unseen.length ? unseen.map(row => clampPercent(row.busy_percent)) : [busyUsable ? meter.rows.busyPercent : null];
+                    state.busySeries = [...state.busySeries, ...values].slice(-30);
+                }
+                if (memoryUsable && !state.memory) {
+                    state.memory = true;
+                    state.memoryPercent = memoryPercent;
+                    state.memoryScale = memoryPercent ? { min: 0, max: 100 } : {};
+                    state.memorySeries = seedHistory.length ? seedHistory.map(row => memoryValue(row.resident_bytes)) : [memoryValue(meter.rows.residentBytes)];
+                } else if (state.memory) {
+                    const values = unseen.length ? unseen.map(row => memoryValue(row.resident_bytes)) : [memoryUsable ? memoryValue(meter.rows.residentBytes) : null];
+                    state.memorySeries = [...state.memorySeries, ...values].slice(-30);
+                }
+                // A retained backend history must not hide the current transport/counter gap.
+                if (unseen.length && state.busy && !busyUsable && unseen.at(-1)?.busy_percent != null) state.busySeries = [...state.busySeries, null].slice(-30);
+                if (unseen.length && state.memory && !memoryUsable && unseen.at(-1)?.resident_bytes != null) state.memorySeries = [...state.memorySeries, null].slice(-30);
+                const timestamps = history.map(row => toFiniteNumber(row?.timestamp_ms)).filter(value => value !== null);
+                if (timestamps.length) state.historyTime = Math.max(state.historyTime, ...timestamps);
+                state.sample = sample;
+                state.freshness = freshness;
+            }
+            meter.rows.busyRemembered = state.busy;
+            meter.rows.memoryRemembered = state.memory;
+            if (state.busy) {
+                if (!meter.rows.busySparkPath || meter.rows.busyPercent === null) {
+                    meter.rows.busyPercent = null;
+                    meter.rows.busyText = INTEL_GPU_MISSING_VALUE;
+                }
+                meter.rows.busySparkPath = buildNullableSparklinePath(state.busySeries, 56, 16, { min: 0, max: 100 });
+            }
+            if (state.memory) {
+                if (!state.memoryPercent && meter.rows.residentBytes !== null) meter.rows.residentText = formatOptionalBytesCompact(meter.rows.residentBytes);
+                if (!meter.rows.residentSparkPath || meter.rows.residentBytes === null || (state.memoryPercent && !memoryPercent)) {
+                    meter.rows.residentBytes = null;
+                    meter.rows.residentText = INTEL_GPU_MISSING_VALUE;
+                }
+                meter.rows.residentSparkPath = buildNullableSparklinePath(state.memorySeries, 56, 16, state.memoryScale);
+            }
+            const missing = (state.busy && meter.rows.busyPercent === null) || (state.memory && meter.rows.residentBytes === null);
+            if (missing && meter.effectiveStatus === 'ok') {
+                meter.effectiveStatus = meter.rows.busyPercent !== null || meter.rows.residentBytes !== null ? 'partial' : 'unavailable';
+                meter.statusText = humanizeStatus(meter.effectiveStatus);
+                meter.statusToneClass = statusToneClass(meter.effectiveStatus);
+                meter.effectiveReasons = [...meter.effectiveReasons, 'Current GPU readings unavailable.'];
+            }
+            this.devices.set(key, state);
+            return meter;
+        });
+    }
+}
+
 export function getGpuMeterRows(meter) {
     return [
-        { key: 'busy', className: 'intel-gpu', label: meter.rows.gpuLabel, value: meter.rows.busyText, title: meter.rows.busyTitle, path: meter.rows.busySparkPath, available: meter.rows.busyPercent !== null },
-        { key: 'memory', className: 'intel-gmem', label: meter.rows.gmemLabel, value: meter.rows.residentText, title: meter.rows.memoryTitle, path: meter.rows.residentSparkPath, available: meter.rows.residentBytes !== null },
-    ].filter(row => row.available);
+        { key: 'busy', className: 'intel-gpu', label: meter.rows.gpuLabel, value: meter.rows.busyText, title: meter.rows.busyTitle, path: meter.rows.busySparkPath, available: meter.rows.busyRemembered || meter.rows.busyPercent !== null },
+        { key: 'memory', className: 'intel-gmem', label: meter.rows.gmemLabel, value: meter.rows.residentText, title: meter.rows.memoryTitle, path: meter.rows.residentSparkPath, available: meter.rows.memoryRemembered || meter.rows.residentBytes !== null },
+    ].filter(row => row.available && (row.path !== '' || (row.key === 'busy' ? meter.rows.busyRemembered : meter.rows.memoryRemembered)));
 }
 
 export function buildIntelGpuCompactSummaryParts(meters) {
@@ -410,6 +501,7 @@ export function GpuDetailsPopover({ meters = [], openGpuId = null, onOpen = () =
                         ${activeMeter.rows.residentBytes !== null && renderDetailsSection(activeMeter.rows.gmemLabel.startsWith('GMEM') ? 'Observed memory' : 'Device memory', activeMeter.memory.residentText)}
                         ${activeMeter.memory.totalBytes !== null && renderDetailsSection(activeMeter.rows.gmemLabel.startsWith('GMEM') ? 'Client-reported total' : 'Memory capacity', activeMeter.memory.totalText)}
                     </div>
+                    ${activeMeter.noVisibleClientsText && html`<p class="system-meters-gpu-note">${activeMeter.noVisibleClientsText}</p>`}
                     ${activeMeter.memoryWarningText && html`<p class="system-meters-gpu-note">${activeMeter.memoryWarningText}</p>`}
                     ${activeMeter.effectiveReasons.length > 0 && html`<p class="system-meters-gpu-note">${activeMeter.effectiveReasons.join(' ')}</p>`}
                 </div>

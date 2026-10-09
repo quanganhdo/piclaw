@@ -11,6 +11,8 @@
 .system-meters-row.buf { --meter-color: var(--chart-3); }
 .system-meters-row.rss { --meter-color: var(--chart-6); }
 .system-meters-row.vram { --meter-color: var(--chart-5); }
+.system-meters-row.intel-gpu { --meter-color: var(--chart-1); }
+.system-meters-row.intel-gmem { --meter-color: var(--chart-5); }
 :root .system-meters-row .system-meters-spark path { stroke: var(--meter-color); }
 /* Visual normally shows inline stats, but shared meter HUDs/popouts use the
  * same sparkline contract when mounted under either skin. */

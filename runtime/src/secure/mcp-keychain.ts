@@ -47,6 +47,7 @@ export type McpBridgeReadSnapshot = DeepReadonly<McpBridgeSnapshot>;
 export interface McpSessionBridgeLease {
   config: McpConfig;
   revision: string;
+  nativePreview?: LoadedMcpConfig;
   resolveRuntimeEnv(serverName: string): Readonly<NodeJS.ProcessEnv>;
   release(): void;
 }
@@ -218,7 +219,7 @@ function nativeMapping(name: string, definition: ServerEntry, source?: ServerPro
   if (definition.lifecycle && definition.lifecycle !== "eager") reasons.push(`Lifecycle ${definition.lifecycle} has no native 0.99.1 equivalent.`);
   if (definition.includeTools?.length || definition.excludeTools?.length) reasons.push("Adapter include/exclude authorization requires the retained adapter owner.");
   if (definition.exposeResources !== undefined) reasons.push("Per-server resource exposure has no native 0.99.1 policy seam.");
-  if (definition.auth !== undefined || definition.bearerTokenEnv || definition.bearerTokenStore || definition.oauth !== undefined) reasons.push("Adapter authentication is not representable in the native preview.");
+  if (definition.auth !== undefined || definition.bearerTokenStore || definition.oauth !== undefined) reasons.push("Interactive OAuth/provider authentication is unavailable in constrained Native.");
   if (definition.requestHeadersCommand) reasons.push("Per-request header commands are adapter-only.");
   if (Array.isArray(definition.directTools)) reasons.push("Named direct-tool subsets require adapter policy translation.");
   for (const [field, value] of Object.entries({ idleTimeout: definition.idleTimeout, toolPrefix: definition.toolPrefix, searchKeywords: definition.searchKeywords, approveTools: definition.approveTools, debug: definition.debug, trace: definition.trace, httpTransport: definition.httpTransport, pluginDataDir: definition.pluginDataDir, literalEnv: definition.literalEnv, protocolVersion: definition.protocolVersion })) if (value !== undefined) reasons.push(`${field} is adapter-only.`);
@@ -227,7 +228,7 @@ function nativeMapping(name: string, definition: ServerEntry, source?: ServerPro
     config = { type: "stdio", command: definition.command, ...(definition.args ? { args: definition.args } : {}), ...(definition.env ? { env: definition.env } : {}), ...(definition.cwd ? { cwd: definition.cwd } : {}) };
     mappings.push("stdio transport");
   } else if (definition.url) {
-    config = { type: "http", url: definition.url, ...(definition.headers ? { headers: definition.headers } : {}) };
+    config = { type: "http", url: definition.url, headers: { ...definition.headers, ...(definition.bearerTokenEnv ? { Authorization: `Bearer ${'${'}${definition.bearerTokenEnv}}` } : {}) } };
     mappings.push("HTTP transport");
   }
   if (!config) reasons.push("Server has no supported stdio or HTTP transport.");
@@ -335,7 +336,7 @@ export async function hydrateMcpKeychainCredentials(workspaceDir: string, resolv
 export function acquireMcpSessionBridge(): McpSessionBridgeLease {
   const snapshot = preparedSnapshot, generation = preparedGeneration; if (generation.retired) throw new Error("MCP credential generation is retired."); let released = false; generation.leases++;
   return {
-    config: cloneMcpConfig(snapshot.adapterConfig), revision: snapshot.revision,
+    config: cloneMcpConfig(snapshot.adapterConfig), revision: snapshot.revision, nativePreview: structuredClone(snapshot.nativePreview),
     resolveRuntimeEnv(serverName: string): Readonly<NodeJS.ProcessEnv> {
       const environment: NodeJS.ProcessEnv = {};
       for (const name of OPERATIONAL_ENV) if (process.env[name] !== undefined) environment[name] = process.env[name];

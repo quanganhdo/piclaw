@@ -1,3 +1,4 @@
+import { CdpViewConnection, closeCdpViewConnections } from './cdp-view.js';
 import { initTheme } from "@earendil-works/pi-coding-agent";
 import type { ServerWebSocket } from "bun";
 import { readAccessConfig } from "../../core/config-access.js";
@@ -14,7 +15,7 @@ const LINK_PREVIEW_CACHE_PURGE_INTERVAL_MS = 12 * 60 * 60 * 1000;
 const MAX_BIND_ATTEMPTS = 5;
 const BIND_RETRY_MS = 1500;
 
-export type WebSocketSessionData = TerminalSocketData | VncSocketData;
+export type WebSocketSessionData = TerminalSocketData | VncSocketData | { kind: "cdp-view"; connection?: CdpViewConnection };
 
 interface JsonResponder {
   json(payload: unknown, status?: number): Response;
@@ -158,13 +159,18 @@ export class WebServerLifecycleGatewayService {
           fetch: (req, server) => this.handleFetch(req, server),
           websocket: {
             open: (ws) => {
-              if (ws.data?.kind === "vnc") {
+              if (ws.data?.kind === "cdp-view") {
+                const connection = ws.data.connection = new CdpViewConnection(ws);
+                void connection.list().catch(() => ws.close());
+                return;
+              } else if (ws.data?.kind === "vnc") {
                 this.deps.vncService.attachClient(ws as ServerWebSocket<VncSocketData>);
                 return;
               }
               this.deps.terminalService.attachClient(ws as ServerWebSocket<TerminalSocketData>);
             },
             message: (ws, message) => {
+              if (ws.data?.kind === "cdp-view") { ws.data.connection?.message(message); return; }
               if (ws.data?.kind === "vnc") {
                 this.deps.vncService.handleMessage(ws as ServerWebSocket<VncSocketData>, message as any);
                 return;
@@ -172,6 +178,7 @@ export class WebServerLifecycleGatewayService {
               this.deps.terminalService.handleMessage(ws as ServerWebSocket<TerminalSocketData>, message as any);
             },
             close: (ws) => {
+              if (ws.data?.kind === "cdp-view") { ws.data.connection?.close(); return; }
               if (ws.data?.kind === "vnc") {
                 this.deps.vncService.detachClient(ws as ServerWebSocket<VncSocketData>);
                 return;
@@ -225,6 +232,7 @@ export class WebServerLifecycleGatewayService {
   }
 
   async stop(): Promise<void> {
+    await closeCdpViewConnections();
     this.deps.sse.closeAll();
     this.deps.uiBridge.stop();
     this.deps.terminalService.shutdown();
@@ -251,6 +259,12 @@ export class WebServerLifecycleGatewayService {
 
   async handleFetch(req: Request, server?: Bun.Server<WebSocketSessionData>): Promise<Response | undefined> {
     const pathname = new URL(req.url).pathname;
+    if (pathname === "/cdp-view/ws") {
+      if (readAccessConfig().mode !== "single-user") return this.denyMultiUserUpgrade();
+      if (!this.deps.authGateway.isAuthEnabled() || !this.deps.authGateway.isAuthenticated(req)) return Response.json({ error: "Authentication required." }, { status: 401 });
+      if (!checkCsrfOrigin(req)) return Response.json({ error: "Invalid origin." }, { status: 403 });
+      return server?.upgrade(req, { data: { kind: "cdp-view" } }) ? undefined : Response.json({ error: "WebSocket upgrade failed." }, { status: 400 });
+    }
     if (pathname === "/terminal/ws") {
       return this.handleTerminalWebSocketUpgrade(req, server);
     }

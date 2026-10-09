@@ -1,0 +1,13 @@
+[
+  {
+    "provider": "mistral",
+    "model": "mistral-large-4",
+    "canonicalModel": "Mistral Large 4",
+    "basis": "public-first-party; undiscounted native Mistral API; retrieved 2026-10-06 (https://docs.mistral.ai/models/mistral-large-4-0)",
+    "inputPerMTok": 1.36,
+    "outputPerMTok": 4.18,
+    "cacheReadPerMTok": 0.14,
+    "cacheWritePerMTok": 1.36,
+    "notes": "No separate cache-write tariff; local separated write tokens use ordinary input estimator fallback, not an additional surcharge. The launch discount is excluded. No separate long-context uplift found; public preview can receive silent updates. No other provider route, subscription entitlement or invoice is inferred."
+  }
+]

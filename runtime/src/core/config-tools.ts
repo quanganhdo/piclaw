@@ -79,6 +79,7 @@ export interface ToolsIntegrationConfig {
   toolOutputPreviewLineChars: number;
   toolOutputRetentionMs: number;
   toolOutputCleanupIntervalMs: number;
+  localLitePromptProfileEnabled: boolean;
   toolResultCompactionEnabled: boolean;
   toolResultCompactionTools: string[];
   toolResultCompactionThresholdsByTool: Record<string, ToolResultCompactionThresholdPolicy>;
@@ -253,6 +254,11 @@ const toolsIntegrationDomainSchema = registerDomainConfig<ToolsIntegrationConfig
       precedence: ["compat-env", "persisted", "default"],
       secretClass: "none",
       compatibilityEnv: [{ envKey: "PICLAW_TOOL_OUTPUT_CLEANUP_INTERVAL_MS", replacement: "domains.tools.toolOutputCleanupIntervalMs", removalVersion: "3.0.0", parse: (raw) => parsePositiveInteger(raw), skipInvalid: true }],
+    }),
+    localLitePromptProfileEnabled: boolField({
+      key: "localLitePromptProfileEnabled", owner: "tools", secretClass: "none", defaultValue: false,
+      persistence: "json-config",
+      precedence: ["persisted", "default"],
     }),
     toolResultCompactionEnabled: boolField({
       key: "toolResultCompactionEnabled",
@@ -661,4 +667,13 @@ export const TOOL_OUTPUT_CONFIG = Object.freeze<ToolOutputConfig>({
 /** Return the grouped tool-output settings for startup wiring and tests. */
 export function getToolOutputConfig(): Readonly<ToolOutputConfig> {
   return TOOL_OUTPUT_CONFIG;
+}
+
+export function getLocalLitePromptProfileEnabled(): boolean {
+  return getToolsIntegrationConfig().localLitePromptProfileEnabled;
+}
+
+export function setLocalLitePromptProfileEnabled(enabled: boolean): boolean {
+  writeDomainConfigField(toolsIntegrationDomainSchema, getDomainConfigOptions(), "localLitePromptProfileEnabled", enabled);
+  return getLocalLitePromptProfileEnabled();
 }

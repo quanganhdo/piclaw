@@ -2,7 +2,7 @@
  * model-control – registers model and thinking level management tools
  * and appends tool-usage hints to the system prompt.
  *
- * Tools: get_model_state, list_models, switch_model, switch_thinking
+ * Tools: get_model_state, list_models, set_model, switch_model, switch_thinking
  */
 import type { ExtensionAPI, ExtensionFactory } from "@earendil-works/pi-coding-agent";
 import type { Api, Model } from "@earendil-works/pi-ai";
@@ -11,6 +11,7 @@ import { Type } from "typebox";
 import { findModel, parseModelInput } from "../utils/model-utils.js";
 import { resolveModelScope, type EnabledModelsSettingsProvider } from "../utils/scoped-models.js";
 import { getChatContext } from "../core/chat-context.js";
+import { getScopedModelsOnly } from "../core/config.js";
 import {
   formatThinkingLevelForDisplay,
   getAvailableThinkingLevelsForModel,
@@ -30,7 +31,8 @@ const TOOL_HINT = [
   "You can manage your own model and thinking level.",
   "Use get_model_state to see the current model + thinking level.",
   "Use list_models to discover available models when needed.",
-  "Use switch_model to change models and switch_thinking to change thinking level.",
+  'Use set_model({model:"provider/modelId", thinking_level:"high"}) to set either or both; omit both to inspect valid thinking levels.',
+  "Existing switch_model and switch_thinking tools remain available.",
   "Do not ask the user to run /model or /thinking when you can switch yourself.",
 ].join("\n");
 
@@ -158,6 +160,7 @@ export const modelControl: ExtensionFactory = (pi: ExtensionAPI) => {
           reasoning: m.reasoning || undefined,
           context_window: m.contextWindow || undefined,
           rate_limits: rateLimits,
+          available_thinking_levels: getAvailableLevels(m),
         };
       });
       if (query) entries = entries.filter((e) => e.label.toLowerCase().includes(query));
@@ -183,12 +186,61 @@ export const modelControl: ExtensionFactory = (pi: ExtensionAPI) => {
         const rpm = e.rate_limits?.rpm;
         const tpm = e.rate_limits?.tpm;
         const rateNote = rpm || tpm ? ` (RPM ${rpm ?? "?"}, TPM ${tpm ?? "?"})` : "";
-        return `• ${e.label}${currentSuffix}${rateNote}`;
+        return `• ${e.label}${currentSuffix}${rateNote} (thinking: ${e.available_thinking_levels.join(", ")})`;
       });
 
       return {
         content: [{ type: "text", text: `${header}${refreshNote}\n${lines.join("\n")}` }],
         details: { total: entries.length, count: page.length, offset, limit, current_model: current, refresh_error: refreshError, scoped_models_only: scopedModels.scopedModelsOnly, scoped_model_filter_active: scopedModels.scoped, enabled_model_patterns: scopedModels.patterns, models: page },
+      };
+    },
+  });
+
+  // Validate both choices before making any session change.
+  pi.registerTool({
+    name: "set_model",
+    label: "set_model",
+    description: "Set the current model, thinking level, or both. Omit both to inspect state and valid levels. Examples: {thinking_level:'high'} or {model:'provider/modelId',thinking_level:'medium'}.",
+    promptSnippet: "set_model: set model and/or thinking_level; {} shows current state and supported thinking levels.",
+    parameters: Type.Object({
+      model: Type.Optional(Type.String({ description: "Provider/modelId or unambiguous modelId; omit to keep current." })),
+      thinking_level: Type.Optional(Type.Union(THINKING_LEVELS.map((level) => Type.Literal(level)), { description: "Reasoning effort. Omit to keep current (a new model may clamp it); {} lists valid levels." })),
+    }),
+    async execute(_id, params, _signal, _update, ctx) {
+      let selected = ctx.model;
+      const previousModel = modelLabel(selected);
+      const previousThinking = formatThinkingLevelForDisplay(pi.getThinkingLevel(), selected);
+      const failure = (message: string) => ({
+        content: [{ type: "text" as const, text: message }],
+        details: { ok: false, current_model: previousModel, thinking_level: previousThinking, available_thinking_levels: getAvailableLevels(ctx.model) },
+      });
+      if (params.model !== undefined) {
+        const { provider, modelId } = parseModelInput(params.model);
+        if (!modelId) return failure("Provide a non-empty model identifier from list_models.");
+        try { await ctx.modelRegistry.refresh(); }
+        catch { return failure("Model catalog refresh failed. No settings changed; retry or use list_models to inspect the cached catalog."); }
+        const candidates = getScopedModelsOnly()
+          ? ctx.scopedModels.map((entry) => entry.model)
+          : ctx.modelRegistry.getAll();
+        const found = findModel(candidates, provider, modelId);
+        if (found.error || !found.model) return failure(found.error ?? "Model not found; use list_models.");
+        selected = found.model;
+      }
+      if (!selected) return failure("No model selected. Supply a model from list_models.");
+      const available = getAvailableLevels(selected);
+      const requested = params.thinking_level;
+      const resolved = requested === undefined ? undefined : resolveThinkingAlias(requested, selected) as ThinkingLevel;
+      if (requested !== undefined && (!THINKING_LEVELS.includes(requested) || (!selected.reasoning && requested !== "off") || !available.includes(formatThinkingLevelForDisplay(resolved!, selected) as ThinkingLevel))) {
+        return failure(`Unsupported thinking level ${requested} for ${modelLabel(selected)}. Available: ${available.join(", ")}. No settings changed.`);
+      }
+      if (params.model !== undefined && !(await pi.setModel(selected))) {
+        return failure("Model is not authenticated/configured. No thinking change applied; choose an available model from list_models.");
+      }
+      if (resolved !== undefined) pi.setThinkingLevel(resolved);
+      const applied = formatThinkingLevelForDisplay(pi.getThinkingLevel(), selected);
+      return {
+        content: [{ type: "text" as const, text: `Current model: ${modelLabel(selected)}. Thinking level: ${applied}. Available thinking levels: ${available.join(", ")}.` }],
+        details: { ok: true, previous_model: previousModel, current_model: modelLabel(selected), thinking_level: applied, requested_thinking_level: requested ?? null, available_thinking_levels: available },
       };
     },
   });

@@ -44,30 +44,30 @@ async function readPackage(name: string): Promise<Record<string, unknown>> {
 }
 
 describe("Earendil release churn gate", () => {
-  test("pins the repository and lockfile to the exact coherent 1.0.4 current loop", async () => {
-    const receipt = await Bun.file(resolve(runtimeRoot, "test/fixtures/earendil-package-admission/registry-1.0.4.json")).json() as Array<any>;
+  test("pins the repository and lockfile to the exact coherent 1.1.0 current loop", async () => {
+    const receipt = await Bun.file(resolve(runtimeRoot, "test/fixtures/earendil-package-admission/registry-1.1.0.json")).json() as Array<any>;
     const rootManifest = requireRecord(await Bun.file(resolve(repositoryRoot, "package.json")).json(), "repository package.json");
     const rootDependencies = requireRecord(rootManifest.dependencies, "repository dependencies");
-    for (const directName of ["@earendil-works/pi-agent-core", "@earendil-works/pi-ai", "@earendil-works/pi-coding-agent"]) expect(rootDependencies[directName]).toBe("1.0.4");
+    for (const directName of ["@earendil-works/pi-agent-core", "@earendil-works/pi-ai", "@earendil-works/pi-coding-agent"]) expect(rootDependencies[directName]).toBe("1.1.0");
     expect(rootDependencies.openai).toBe("7.5.0");
     const lock = await Bun.file(resolve(repositoryRoot, "bun.lock")).text();
     expect(receipt).toHaveLength(8);
     for (const evidence of receipt) {
       const entry = lockPackageEntry(lock, evidence.name);
       expect(entry, evidence.name).toBeDefined();
-      expect(entry!.startsWith(`    "${evidence.name}": ["${evidence.name}@1.0.4",`)).toBe(true);
+      expect(entry!.startsWith(`    "${evidence.name}": ["${evidence.name}@1.1.0",`)).toBe(true);
       expect(entry).toContain(`, "${evidence.dist.integrity}"],`);
-      expect(lock.match(new RegExp(`${evidence.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}@1\\.0\\.4`, "g"))).toHaveLength(1);
+      expect(lock.match(new RegExp(`${evidence.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}@1\\.1\\.0`, "g"))).toHaveLength(1);
     }
     expect(lockPackageEntry(lock, "openai")?.startsWith('    "openai": ["openai@7.5.0",')).toBe(true);
   });
 
-  test("matches installed 1.0.4 family manifests and keeps inactive Harness evidence at 0.87.1", async () => {
-    const receipt = await Bun.file(resolve(runtimeRoot, "test/fixtures/earendil-package-admission/registry-1.0.4.json")).json() as Array<any>;
+  test("matches installed 1.1.0 family manifests and keeps inactive Harness evidence at 0.87.1", async () => {
+    const receipt = await Bun.file(resolve(runtimeRoot, "test/fixtures/earendil-package-admission/registry-1.1.0.json")).json() as Array<any>;
     for (const evidence of receipt) {
       const installed = await readPackage(evidence.name);
       expect(installed.name).toBe(evidence.name);
-      expect(installed.version).toBe("1.0.4");
+      expect(installed.version).toBe("1.1.0");
       expect(installed.engines ? requireRecord(installed.engines, `${evidence.name} engines`).node : null).toBe(">=22.19.0");
     }
     const selected = EARENDIL_HARNESS_V3_COMPATIBILITY_MANIFEST.selected;

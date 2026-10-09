@@ -1,0 +1,49 @@
+name: Verified Playwright browser cache
+description: Cache only installed browser binaries; validate restored contents before normal installation.
+inputs:
+  bun-version:
+    required: true
+    description: Pinned Bun version
+  working-directory:
+    default: '.'
+    description: Package directory owning Playwright
+  browsers:
+    required: true
+    description: Playwright install arguments
+  variant:
+    required: true
+    description: Cache identity for the browser selection
+runs:
+  using: composite
+  steps:
+    - name: Resolve installed Playwright version
+      id: playwright
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        version="$(bun -e 'console.log(require("playwright-core/package.json").version)')"
+        test -n "$version"
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+    - name: Restore browser binaries
+      uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      id: cache
+      with:
+        path: ~/.cache/ms-playwright
+        key: browsers-v1-${{ runner.os }}-${{ runner.arch }}-bun${{ inputs.bun-version }}-${{ hashFiles('bun.lock', 'tests/e2e/bun.lock') }}-pw${{ steps.playwright.outputs.version }}-${{ inputs.variant }}
+    - name: Check restored browser integrity
+      shell: bash
+      run: bun "$GITHUB_WORKSPACE/scripts/playwright-cache-integrity.ts" verify
+    - name: Install required browsers
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      # Install remains mandatory: absent revisions download; system dependencies are not cached.
+      run: bunx playwright install ${{ inputs.browsers }}
+    - name: Record installed browser integrity
+      shell: bash
+      run: bun "$GITHUB_WORKSPACE/scripts/playwright-cache-integrity.ts" record
+    - name: Save browser binaries
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: ${{ steps.cache.outputs.cache-primary-key }}

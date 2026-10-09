@@ -5,7 +5,8 @@
  *   "role": "module"
  * }
  */
-import latestPricing from "./pricing-2026-09-29.json";
+import latestPricing from "./pricing-2026-10-06.json";
+import september29Pricing from "./pricing-2026-09-29.json";
 import refreshedPricing from "./pricing-2026-09-22.json";
 import previousPricing from "./pricing-2026-09-05.json";
 
@@ -28,7 +29,7 @@ interface ProviderModelPricingRule extends ProviderModelPricingReference {
 
 // Tag this reference snapshot with the commit date that introduced it so future
 // updates can track pricing provenance without guessing.
-export const PROVIDER_MODEL_PRICING_REFERENCE_TAG = "2026-09-29";
+export const PROVIDER_MODEL_PRICING_REFERENCE_TAG = "2026-10-06";
 
 const ANTHROPIC_PRICING_SOURCE = "https://docs.anthropic.com/en/docs/about-claude/pricing";
 const OPENAI_PRICING_SOURCE = "https://developers.openai.com/api/docs/pricing";
@@ -551,6 +552,7 @@ const PRICING_RULES: ProviderModelPricingRule[] = [
 function normalizeModel(model: string): string {
   const trimmed = model.trim().toLowerCase().replace(/_/g, "-");
   const aliasMap: Record<string, string> = {
+    "mistral-large-4-0": "mistral-large-4",
     "gpt-5-4": "gpt-5.4",
     "gpt-5-4-mini": "gpt-5.4-mini",
     "gpt-5-4-pro": "gpt-5.4-pro",
@@ -623,6 +625,13 @@ export function resolveProviderModelPricing(provider: string, model: string): Pr
   );
   if (latest) {
     const { provider: _provider, model: _model, ...reference } = latest;
+    return { ...reference, canonicalModel: rule?.canonicalModel ?? reference.canonicalModel };
+  }
+  const september29 = september29Pricing.find((entry) =>
+    entry.provider === normalizedProvider && normalizeModel(entry.model) === normalizedModel,
+  );
+  if (september29) {
+    const { provider: _provider, model: _model, ...reference } = september29;
     return { ...reference, canonicalModel: rule?.canonicalModel ?? reference.canonicalModel };
   }
   const refreshed = refreshedPricing.find((entry) =>

@@ -53,7 +53,7 @@ import {
     vim,
     MergeView,
 } from '#editor-vendor/codemirror';
-import { getWorkspaceBranch, getWorkspaceFile, updateWorkspaceFile, uploadWorkspaceFile } from '../../../web/src/api.js';
+import { getWorkspaceBranch, getWorkspaceFile, updateWorkspaceFile, createWorkspaceFile, uploadWorkspaceFile } from '../../../web/src/api.js';
 import { createFileConflictMonitor, type FileConflictMonitor } from '../../../web/src/panes/file-conflict-monitor.js';
 import type { WebPaneExtension, PaneContext, PaneInstance, PaneCapability, PaneHostAttachContext, PaneHostDetachContext } from '../../../web/src/panes/pane-types.js';
 import { frontmatterExtension } from './markdown/frontmatter.js';
@@ -549,6 +549,8 @@ export class StandaloneEditorInstance implements PaneInstance {
             const result = await updateWorkspaceFile(this.path, value);
             if (this.disposed) return;
 
+            const currentContent = this.view.state.doc.toString();
+            this.clearDirtyRecheckTimer();
             this.initialContent = value;
             this.initialContentLength = value.length;
             this.largeDocumentMode = isLargeDocumentContent(value);
@@ -556,12 +558,13 @@ export class StandaloneEditorInstance implements PaneInstance {
             this.conflictMonitor?.onSaved(this.currentMtime);
             if (this.isDiffMode()) {
                 const viewState = this.captureViewState();
-                this.renderEditorSurface(value, 'saved', viewState);
+                this.renderEditorSurface(currentContent, 'saved', viewState);
             }
-            this.setDirty(false);
+            const hasUnsavedChanges = currentContent !== value;
+            this.setDirty(hasUnsavedChanges);
             this.saving = false;
             this.updateSaveButton();
-            this.updateStatusText('All changes saved');
+            this.updateStatusText(hasUnsavedChanges ? 'Unsaved changes' : 'All changes saved');
         } catch (err: any) {
             if (this.disposed) return;
             this.saving = false;
@@ -1250,7 +1253,10 @@ export class StandaloneEditorInstance implements PaneInstance {
                 const content = this.view.state.doc.toString();
                 this.updateStatusText(`Saving copy to ${copyPath}…`);
                 try {
-                    await updateWorkspaceFile(copyPath, content);
+                    const slash = copyPath.lastIndexOf('/');
+                    const folder = slash < 0 ? '.' : copyPath.slice(0, slash);
+                    const name = copyPath.slice(slash + 1);
+                    await createWorkspaceFile(folder, name, content);
                     this.updateStatusText(`Copy saved as ${copyPath}`);
                 } catch (err: any) {
                     this.updateStatusText(`Save copy failed: ${err?.message || 'Unknown error'}`);

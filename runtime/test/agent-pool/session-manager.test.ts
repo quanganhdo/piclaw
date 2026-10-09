@@ -69,6 +69,28 @@ function createManager(overrides: Record<string, unknown> = {}) {
   return { manager, pool, sidePool, state };
 }
 
+test("memory reclamation stays blocked through protected runs and asynchronous disposal", async () => {
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  const fixture = createManager();
+  const runtime = createRuntime({ isStreaming: false, isBashRunning: false, isCompacting: false });
+  runtime.dispose = async () => { await gate; };
+  fixture.pool.set("web:cleanup", { runtime, lastUsed: Date.now() - 10000 });
+  expect(fixture.manager.hasActiveMemoryReclamationWork()).toBe(false);
+  const unprotect = fixture.manager.acquireEvictionProtection("web:cleanup");
+  expect(fixture.manager.hasActiveMemoryReclamationWork()).toBe(true);
+  unprotect();
+  runtime.session.isStreaming = true;
+  expect(fixture.manager.hasActiveMemoryReclamationWork()).toBe(true);
+  runtime.session.isStreaming = false;
+  fixture.manager.evictIdle({ mainIdleTtlMs: 1, sideIdleTtlMs: 1 });
+  expect(fixture.manager.hasActiveMemoryReclamationWork()).toBe(true);
+  release();
+  await waitFor(() => !fixture.manager.hasActiveMemoryReclamationWork());
+  expect(fixture.manager.hasActiveMemoryReclamationWork()).toBe(false);
+  await fixture.manager.shutdown();
+});
+
 test("AgentSessionManager creates, caches, and binds main sessions", async () => {
   let createCalls = 0;
   const session = {

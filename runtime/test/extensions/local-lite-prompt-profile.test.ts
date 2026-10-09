@@ -50,7 +50,7 @@ describe("local-lite prompt profile", () => {
   });
 
   test("shrinks active tools on local model and restores them after hosted model selection", async () => {
-    const { localLitePromptProfile } = await import("../../src/extensions/local-lite-prompt-profile.js");
+    const { createLocalLitePromptProfile } = await import("../../src/extensions/local-lite-prompt-profile.js");
     const fake = createFakeExtensionApi({
       allTools: [
         { name: "list_tools" },
@@ -63,7 +63,7 @@ describe("local-lite prompt profile", () => {
       activeTools: ["read", "bash", "edit", "messages", "list_tools", "activate_tools"],
     });
 
-    localLitePromptProfile(fake.api);
+    createLocalLitePromptProfile(() => true)(fake.api);
 
     const sessionStart = fake.handlers.find((entry) => entry.event === "session_start");
     const modelSelect = fake.handlers.find((entry) => entry.event === "model_select");
@@ -94,13 +94,13 @@ describe("local-lite prompt profile", () => {
   });
 
   test("rewrites system prompt only for local models", async () => {
-    const { localLitePromptProfile } = await import("../../src/extensions/local-lite-prompt-profile.js");
+    const { createLocalLitePromptProfile } = await import("../../src/extensions/local-lite-prompt-profile.js");
     const fake = createFakeExtensionApi({
       allTools: [{ name: "list_tools" }, { name: "activate_tools" }, { name: "read" }],
       activeTools: ["list_tools", "activate_tools", "read"],
     });
 
-    localLitePromptProfile(fake.api);
+    createLocalLitePromptProfile(() => true)(fake.api);
     const beforeAgentStart = fake.handlers.find((entry) => entry.event === "before_agent_start");
     expect(beforeAgentStart).toBeDefined();
 
@@ -140,4 +140,25 @@ describe("local-lite prompt profile", () => {
     const missingContextResult = await beforeAgentStart!.handler(event);
     expect(missingContextResult).toBeUndefined();
   });
+});
+
+test("disabled local-lite preserves prompt and tools and restores tools when switched off", async () => {
+  const { createLocalLitePromptProfile } = await import("../../src/extensions/local-lite-prompt-profile.js");
+  const fake = createFakeExtensionApi();
+  let enabled = false;
+  const normal = ["read", "bash", "edit", "list_tools", "activate_tools"];
+  fake.api.getAllTools = () => normal.map(name => ({ name, label: name, description: name, parameters: {} } as any));
+  fake.api.setActiveTools(normal);
+  createLocalLitePromptProfile(() => enabled)(fake.api);
+  const ctx: any = { model: { provider: "ollama", baseUrl: "http://192.168.1.2:11434/v1" } };
+  const before = fake.handlers.find(h => h.event === "before_agent_start")!;
+  const event: any = { systemPromptOptions: { cwd: "/workspace", selectedTools: normal } };
+  expect(await before.handler(event, ctx)).toBeUndefined();
+  expect(fake.api.getActiveTools()).toEqual(normal);
+  enabled = true;
+  expect(await before.handler(event, ctx)).toBeDefined();
+  expect(fake.api.getActiveTools()).toEqual(["list_tools", "activate_tools", "read"]);
+  enabled = false;
+  expect(await before.handler(event, ctx)).toBeUndefined();
+  expect(fake.api.getActiveTools()).toEqual(normal);
 });

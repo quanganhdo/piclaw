@@ -266,6 +266,12 @@ export function CompactionSection({
 
       <h3 className="settings-panel__subsection-title">Tool result compaction</h3>
 
+      <h3 className="settings-panel__subsection-title">Local models</h3>
+      <div className="settings-panel__field settings-panel__dense-row settings-panel__dense-row--checkbox">
+        <input id="localLitePromptProfileEnabled" type="checkbox" checked={data.localLitePromptProfileEnabled ?? false} onChange={(event) => onSaveCompaction("localLitePromptProfileEnabled", event.currentTarget.checked)} />
+        <label htmlFor="localLitePromptProfileEnabled" className="settings-panel__label">Local-lite prompt and tools</label>
+        <span className="settings-panel__hint">Off by default. Enables a compact prompt and minimal tools for local endpoints. Changes apply on the next turn.</span>
+      </div>
       <div className="settings-panel__field settings-panel__dense-row settings-panel__dense-row--checkbox">
         <input
           id="toolResultCompactionEnabled"

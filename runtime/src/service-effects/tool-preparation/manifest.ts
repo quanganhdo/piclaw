@@ -195,6 +195,18 @@ export const TOOL_PREPARATION_MANIFEST: readonly ToolPreparationSpec[] = Object.
     abortExpectation: "may_finish_late",
     protectedFields: ["params.query"],
   }),
+  ...rows(["set_model"], {
+    currentSource: source.models,
+    effectClass: "mutation", replay: "never", contextFields: [], serviceEffector: null,
+    abortExpectation: "may_finish_late",
+    protectedFields: ["params.model", "params.thinking_level", "result.content", "result.details"],
+  }),
+  ...rows(["provider_quota"], {
+    currentSource: "runtime/src/extensions/provider-quota.ts",
+    effectClass: "mixed", replay: "never", contextFields: [], serviceEffector: null,
+    abortExpectation: "may_finish_late",
+    protectedFields: ["params.provider", "params.refresh", "result.content", "result.details"],
+  }),
   ...rows(["switch_model", "switch_thinking"], {
     currentSource: source.models,
     effectClass: "mutation",

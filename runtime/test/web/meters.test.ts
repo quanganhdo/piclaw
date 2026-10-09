@@ -10,7 +10,18 @@ import {
   readStoredMetersEnabled,
   toggleMetersCollapsed,
 } from '../../web/src/ui/meters.ts';
-import { SYSTEM_METERS_COMPACT_BREAKPOINT_PX, buildCompactMetersSummary, buildSparklinePath, formatBytesCompact, resolveCurrentRssBytes, resolveGpuMeterSnapshots, shouldShowRss, shouldShowVram } from '../../web/src/components/system-meters-hud.ts';
+import { SYSTEM_METERS_COMPACT_BREAKPOINT_PX, buildCompactMetersSummary, buildSparklinePath, formatBytesCompact, resolveCurrentRssBytes, resolveGpuMeterSnapshots, GpuSnapshotTracker, shouldShowRss, shouldShowVram } from '../../web/src/components/system-meters-hud.ts';
+
+test('legacy NVIDIA aggregate memory remains discoverable through transient reader failure', () => {
+    const tracker = new GpuSnapshotTracker();
+    const good = { gpus: [], gpu_provider: 'nvml', vram_percent: 0, vram_total_bytes: 4096, vram_used_bytes: 0, vram_series: [0] };
+    expect(tracker.resolve({gpus:[]})).toEqual([]);
+    expect(tracker.resolve(good)).toHaveLength(1);
+    const [missing] = tracker.resolve({gpus:[],gpu_provider:null,vram_percent:null,vram_total_bytes:0});
+    expect(missing.provider).toBe('nvml');expect(missing.status).toBe('unavailable');expect(missing.memory.used_bytes).toBeUndefined();
+    const devices=[{id:'nv0',provider:'nvml',disabled:true}];expect(tracker.resolve({gpus:devices})).toEqual(devices);
+    expect(tracker.resolve({gpus:[]})).toEqual([]);
+});
 
 const originalWindow = globalThis.window;
 

@@ -182,6 +182,8 @@ function createFixture(overrides: Partial<WebServerLifecycleGatewayDeps> = {}) {
   return {
     state,
     server,
+    authGateway: deps.authGateway,
+    calls: state,
     terminalOwner,
     vncOwner,
     setWorkspaceVisible: (value: boolean) => {
@@ -195,6 +197,18 @@ function createFixture(overrides: Partial<WebServerLifecycleGatewayDeps> = {}) {
 }
 
 describe("web server lifecycle gateway service", () => {
+  test("CDP viewer upgrade requires authentication and same origin", async () => {
+    const fixture = createFixture();
+    const req = createRequest('/cdp-view/ws');
+    expect((await fixture.service.handleFetch(req, fixture.server))?.status).toBe(401);
+    fixture.authGateway.isAuthEnabled = () => true;
+    expect(await fixture.service.handleFetch(req, fixture.server)).toBeUndefined();
+    expect(fixture.state.upgradeCalls.at(-1)?.data).toEqual({ kind: 'cdp-view' });
+    fixture.authGateway.isAuthenticated = () => false;
+    expect((await fixture.service.handleFetch(req, fixture.server))?.status).toBe(401);
+    fixture.authGateway.isAuthenticated = () => true;
+    expect((await fixture.service.handleFetch(createRequest('/cdp-view/ws', { headers: { origin: 'https://evil.example', host: 'localhost' } }), fixture.server))?.status).toBe(403);
+  });
   test("dispatches websocket upgrade paths and delegates normal requests", async () => {
     const fixture = createFixture();
     const service = fixture.service as any;

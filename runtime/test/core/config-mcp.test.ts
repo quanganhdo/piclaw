@@ -68,3 +68,66 @@ test("MCP instance policy refuses non-private config permissions without changin
     expect(readMcpInstancePolicy(path)).toEqual(initial);
   } finally { ws.cleanup(); }
 });
+
+test("upgrade migration tightens legacy owner files and preserves bytes/revision", async () => {
+  const { migrateMcpInstanceConfigPermissions } = await import("../../src/core/config-mcp.js");
+  const { statSync } = await import("node:fs");
+  const ws = createTempWorkspace("mcp-policy-migrate-");
+  const path = join(ws.base, "config.json");
+  const content = '{"assistant":{"name":"KEEP"},"domains":{"mcp":{"engine":"adapter","codemode":"on"}}}\n';
+  try {
+    expect(migrateMcpInstanceConfigPermissions(path)).toBe("absent");
+    writeFileSync(path, content, { mode: 0o600 });
+    const initial = readMcpInstancePolicy(path);
+    for (const mode of [0o640, 0o644, 0o664, 0o666]) {
+      chmodSync(path, mode);
+      expect(migrateMcpInstanceConfigPermissions(path)).toBe("migrated");
+      expect(statSync(path).mode & 0o777).toBe(0o600);
+      expect(readFileSync(path, "utf8")).toBe(content);
+      expect(readMcpInstancePolicy(path)).toEqual(initial);
+      expect(migrateMcpInstanceConfigPermissions(path)).toBe("unchanged");
+    }
+  } finally { ws.cleanup(); }
+});
+
+test("upgrade migration never follows symlinks or modifies hardlinked/non-regular files", async () => {
+  const { migrateMcpInstanceConfigPermissions } = await import("../../src/core/config-mcp.js");
+  const { statSync, mkdirSync } = await import("node:fs");
+  const ws = createTempWorkspace("mcp-policy-migration-links-");
+  try {
+    const original = join(ws.base, "original.json"), link = join(ws.base, "link.json"), hard = join(ws.base, "hard.json"), directory = join(ws.base, "directory");
+    writeFileSync(original, "{}", { mode: 0o644 }); chmodSync(original, 0o644);
+    symlinkSync(original, link);
+    expect(() => migrateMcpInstanceConfigPermissions(link)).toThrow("regular");
+    expect(statSync(original).mode & 0o777).toBe(0o644);
+    linkSync(original, hard);
+    expect(() => migrateMcpInstanceConfigPermissions(hard)).toThrow("owned private regular");
+    expect(statSync(original).mode & 0o777).toBe(0o644);
+    mkdirSync(directory);
+    expect(() => migrateMcpInstanceConfigPermissions(directory)).toThrow("regular");
+    const fifo = join(ws.base, "fifo");
+    const process = Bun.spawnSync(["mkfifo", fifo]);
+    expect(process.exitCode).toBe(0);
+    expect(() => migrateMcpInstanceConfigPermissions(fifo)).toThrow("regular");
+    expect(() => readMcpInstancePolicy(fifo)).toThrow("regular");
+  } finally { ws.cleanup(); }
+});
+
+test("startup migration failure is nonfatal and never trusts foreign or unknown owners", async () => {
+  const { prepareMcpInstanceConfig, migrateMcpInstanceConfigPermissions, McpInstanceConfigError } = await import("../../src/core/config-mcp.js");
+  const { statSync } = await import("node:fs");
+  const ws = createTempWorkspace("mcp-migration-owner-");
+  const path = join(ws.base, "config.json");
+  const getuid = process.getuid;
+  try {
+    writeFileSync(path, '{"PRIVATE_SENTINEL":true}', { mode: 0o644 }); chmodSync(path, 0o644);
+    process.getuid = (() => statSync(path).uid + 1) as typeof process.getuid;
+    expect(() => migrateMcpInstanceConfigPermissions(path)).toThrow("owned private regular");
+    expect(prepareMcpInstanceConfig(path).migration).toBe("unavailable");
+    expect(statSync(path).mode & 0o777).toBe(0o644);
+    process.getuid = undefined;
+    expect(prepareMcpInstanceConfig(path).migration).toBe("unavailable");
+    expect(() => readMcpInstancePolicy(path)).toThrow(McpInstanceConfigError);
+    expect(readFileSync(path, "utf8")).toBe('{"PRIVATE_SENTINEL":true}');
+  } finally { process.getuid = getuid; ws.cleanup(); }
+});

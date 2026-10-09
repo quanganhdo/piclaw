@@ -6,6 +6,7 @@ import {
 import { inferAgentPreviewTotalLines } from './app-agent-previews.js';
 import { isMainTimelineView } from './app-realtime-timeline.js';
 import { parseStatusLastEventAt } from './status-duration.js';
+import { publishSubmissionRunStatus } from './submission-feedback.js';
 
 interface RefBox<T> {
   current: T;
@@ -37,6 +38,7 @@ function resolveExtensionWorkingRestoreState(value: unknown): ExtensionWorkingRe
 
 export interface RefreshAgentStatusForChatOptions {
   currentChatJid: string;
+  currentTurnIdRef?: RefBox<string | null>;
   getAgentStatus: (chatJid: string) => Promise<any>;
   activeChatJidRef: RefBox<string>;
   wasAgentActiveRef: RefBox<boolean>;
@@ -86,17 +88,25 @@ export async function refreshAgentStatusForChat(options: RefreshAgentStatusForCh
   } = options;
 
   const targetChatJid = currentChatJid;
+  const requestedTurn = options.currentTurnIdRef?.current;
+  const requestedStatus = agentStatusRef.current;
+  const requestedThought = thoughtBufferRef.current;
+  const requestedDraft = draftBufferRef.current;
 
   try {
     const response = await getAgentStatus(targetChatJid);
     onStateAccessResult?.(false);
-    if (activeChatJidRef.current !== targetChatJid) {
+    if (activeChatJidRef.current !== targetChatJid
+      || options.currentTurnIdRef?.current !== requestedTurn
+      || agentStatusRef.current !== requestedStatus
+      || thoughtBufferRef.current !== requestedThought
+      || draftBufferRef.current !== requestedDraft) {
       return null;
     }
 
     if (!response || response.status !== 'active' || !response.data) {
       const terminalType = response?.data?.type;
-      const hasTerminalPayload = terminalType === 'done' || terminalType === 'error';
+      const hasTerminalPayload = terminalType === 'done' || terminalType === 'error'; if (hasTerminalPayload) publishSubmissionRunStatus(targetChatJid, terminalType, response.data.thread_id);
       if ((wasAgentActiveRef.current || hasTerminalPayload) && isMainTimelineView(viewStateRef.current)) {
         void refreshTimeline();
       }
@@ -119,7 +129,7 @@ export async function refreshAgentStatusForChat(options: RefreshAgentStatusForCh
     agentStatusRef.current = payload;
 
     const activeTurn = readAgentTurnId(payload);
-    if (activeTurn) setActiveTurn(activeTurn);
+    if (typeof activeTurn === 'string' && activeTurn) setActiveTurn(activeTurn);
 
     noteAgentActivity({
       running: true,
@@ -127,7 +137,7 @@ export async function refreshAgentStatusForChat(options: RefreshAgentStatusForCh
       atMs: parseStatusLastEventAt(payload) ?? Date.now(),
     });
     clearLastActivityFlag();
-    setAgentStatus(payload);
+    setAgentStatus(payload); publishSubmissionRunStatus(targetChatJid, payload.type, payload.thread_id);
     setExtensionWorkingState(resolveExtensionWorkingRestoreState(response.extension_working));
 
     const thoughtRestore = resolveAgentPreviewRestoreState(response.thought);

@@ -63,6 +63,7 @@ function createFakeApi() {
   let thinkingLevel = "medium";
   let currentModel: Model<any> | undefined;
   let setModelResult = true;
+  const modelChanges: string[] = [];
 
   const api: ExtensionAPI = {
     on(event: string, handler: any) { handlers.push({ event, handler }); },
@@ -83,7 +84,7 @@ function createFakeApi() {
     getAllTools: () => [],
     setActiveTools() {},
     getCommands: () => [],
-    setModel: async () => setModelResult,
+    setModel: async (model: any) => { modelChanges.push(`${model.provider}/${model.id}`); if (setModelResult) currentModel = model; return setModelResult; },
     getThinkingLevel: () => thinkingLevel as any,
     setThinkingLevel: (level: any) => { thinkingLevel = level; },
     registerProvider() {},
@@ -128,6 +129,7 @@ function createFakeApi() {
     api,
     tools,
     handlers,
+    modelChanges,
     makeCtx,
     setCurrentModel(m: Model<any> | undefined) { currentModel = m; },
     getThinkingLevel() { return thinkingLevel; },
@@ -371,6 +373,91 @@ describe("model-control extension", () => {
     const ctx = fake.makeCtx();
     const result = await callTool(fake.tools, "list_models", {}, ctx);
     expect(result.details.current_model).toBeNull();
+  });
+
+  // -- set_model -------------------------------------------------------------
+  test("set_model reports current state and supported choices without mutation", async () => {
+    fake.setCurrentModel(makeReasoningModel());
+    const result = await callTool(fake.tools, "set_model", {}, fake.makeCtx());
+    expect(result.details.ok).toBe(true);
+    expect(result.content[0].text).toContain("Available thinking levels");
+    expect(result.details.thinking_level).toBe("medium");
+  });
+
+  test("set_model accepts thinking-only and combined changes", async () => {
+    fake.setCurrentModel(makeReasoningModel());
+    const result = await callTool(fake.tools, "set_model", { thinking_level: "high" }, fake.makeCtx());
+    expect(result.details.thinking_level).toBe("high");
+    const combined = await callTool(fake.tools, "set_model", { model: "test-provider/reasoning-model", thinking_level: "low" }, fake.makeCtx());
+    expect(combined.details.current_model).toBe("test-provider/reasoning-model");
+    expect(combined.details.thinking_level).toBe("low");
+  });
+
+  test("set_model validates thinking before switching and rejects unknown levels", async () => {
+    fake.setCurrentModel(makeReasoningModel());
+    const bad = await callTool(fake.tools, "set_model", { model: "test-provider/test-model", thinking_level: "high" }, fake.makeCtx());
+    expect(bad.details.ok).toBe(false);
+    expect(bad.content[0].text).toContain("No settings changed");
+    expect(fake.getThinkingLevel()).toBe("medium");
+    expect(fake.modelChanges).toEqual([]);
+    const unknown = await callTool(fake.tools, "set_model", { thinking_level: "bogus" }, fake.makeCtx());
+    expect(unknown.details.ok).toBe(false);
+  });
+
+  test("set_model does not apply thinking when model authentication fails", async () => {
+    fake.setCurrentModel(makeReasoningModel());
+    fake.setSetModelResult(false);
+    const result = await callTool(fake.tools, "set_model", { model: "test-provider/reasoning-model", thinking_level: "high" }, fake.makeCtx());
+    expect(result.details.ok).toBe(false);
+    expect(fake.getThinkingLevel()).toBe("medium");
+  });
+
+  test("set_model supports native and legacy max metadata", async () => {
+    fake.setCurrentModel(makeOpus46Model());
+    expect((await callTool(fake.tools, "set_model", { thinking_level: "max" }, fake.makeCtx())).details.thinking_level).toBe("max");
+    fake.setCurrentModel(makeLegacyMaxModel());
+    expect((await callTool(fake.tools, "set_model", { thinking_level: "max" }, fake.makeCtx())).details.thinking_level).toBe("max");
+    expect(fake.getThinkingLevel()).toBe("xhigh");
+  });
+
+  test("set_model rejects empty, ambiguous and missing models without thinking mutation", async () => {
+    fake.setCurrentModel(makeReasoningModel());
+    for (const model of ["", "shared-id", "missing/model"]) {
+      const result = await callTool(fake.tools, "set_model", { model, thinking_level: "high" }, fake.makeCtx());
+      expect(result.details.ok).toBe(false);
+      expect(fake.getThinkingLevel()).toBe("medium");
+    }
+    fake.setCurrentModel(undefined);
+    expect((await callTool(fake.tools, "set_model", { thinking_level: "high" }, fake.makeCtx())).details.ok).toBe(false);
+  });
+
+  test("set_model refuses failed catalog refresh without changing state", async () => {
+    fake.setCurrentModel(makeReasoningModel());
+    const ctx = fake.makeCtx({ modelRegistry: { refresh: async () => { throw new Error("secret auth content"); } } as any });
+    const result = await callTool(fake.tools, "set_model", { model: "test-provider/reasoning-model", thinking_level: "high" }, ctx);
+    expect(result.details.ok).toBe(false);
+    expect(JSON.stringify(result)).not.toContain("secret auth content");
+    expect(fake.modelChanges).toEqual([]);
+    expect(fake.getThinkingLevel()).toBe("medium");
+  });
+
+  test("set_model validates reasoning-only on a nonreasoning model and accepts off", async () => {
+    fake.setCurrentModel(makeModel());
+    expect((await callTool(fake.tools, "set_model", { thinking_level: "high" }, fake.makeCtx())).details.ok).toBe(false);
+    expect((await callTool(fake.tools, "set_model", { thinking_level: "off" }, fake.makeCtx())).details.thinking_level).toBe("off");
+  });
+
+  test("set_model honours the enabled model scope", async () => {
+    const previous = process.env.PICLAW_SCOPED_MODELS_ONLY;
+    process.env.PICLAW_SCOPED_MODELS_ONLY = "1";
+    try {
+      fake.setCurrentModel(makeReasoningModel());
+      const ctx = fake.makeCtx({ scopedModels: [{ model: makeModel({ provider: "other", id: "other-model" }) }] });
+      const result = await callTool(fake.tools, "set_model", { model: "test-provider/reasoning-model", thinking_level: "high" }, ctx);
+      expect(result.details.ok).toBe(false);
+      expect(fake.modelChanges).toEqual([]);
+      expect(fake.getThinkingLevel()).toBe("medium");
+    } finally { if (previous === undefined) delete process.env.PICLAW_SCOPED_MODELS_ONLY; else process.env.PICLAW_SCOPED_MODELS_ONLY = previous; }
   });
 
   // -- switch_model ----------------------------------------------------------

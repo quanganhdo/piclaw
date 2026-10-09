@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 
 import { handleAppSseEvent, type HandleAppSseEventDependencies } from '../../web/src/ui/app-sse-events.js';
+import { SubmissionFeedback } from '../../web/src/ui/submission-feedback.js';
 
 function applyUpdate<T>(current: T, next: T | ((prev: T) => T)): T {
   return typeof next === 'function' ? (next as (prev: T) => T)(current) : next;
@@ -366,6 +367,25 @@ test('new-turn and chat lifecycle changes invalidate stale trailing preview call
   expect(chatHarness.getThought().fullText).toBe('chat-a');
   expect(resetHarness.getDraft().fullText).toBe('reset-new');
   expect(reconnectHarness.getThought().fullText || '').not.toContain('reconnect-b');
+});
+
+test('reconnect terminal snapshot clears matching waiting feedback while idle-only stays uncertain', async () => {
+  const priorWindow = globalThis.window, priorEvent = globalThis.CustomEvent;
+  const states: unknown[] = [];
+  const feedback = new SubmissionFeedback(state => states.push(state));
+  (globalThis as any).CustomEvent = class { constructor(public type: string, public options: any) {} get detail() { return this.options.detail; } };
+  (globalThis as any).window = { dispatchEvent: (event: any) => { feedback.activity(event.detail.chat_jid, event.detail.thread_id); return true; } };
+  try {
+    for (const type of ['done', 'error']) {
+      const harness = createPreviewHarness();
+      harness.deps.getAgentStatus = async () => ({ status: 'idle', data: { type, thread_id: 'request-time' } });
+      const generation = feedback.begin('chat:preview');
+      feedback.acknowledged(generation, false, 12, 'request-time');
+      handleAppSseEvent('connected', {}, harness.deps);
+      await Bun.sleep(0);
+      expect(states.at(-1)).toBeNull();
+    }
+  } finally { (globalThis as any).window = priorWindow; (globalThis as any).CustomEvent = priorEvent; }
 });
 
 test('terminal status flushes authoritative preview state before clearing run refs', () => {

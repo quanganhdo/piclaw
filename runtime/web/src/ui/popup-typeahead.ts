@@ -2,6 +2,8 @@ export const POPUP_TYPEAHEAD_RESET_MS = 700;
 
 export interface PopupTypeaheadKeyEventLike {
   isComposing?: boolean;
+  defaultPrevented?: boolean;
+  repeat?: boolean;
   ctrlKey?: boolean;
   metaKey?: boolean;
   altKey?: boolean;
@@ -30,6 +32,7 @@ function labelMatchesQuery(label: unknown, query: unknown): boolean {
 
 export function isPopupTypeaheadKey(event: PopupTypeaheadKeyEventLike | null | undefined): boolean {
   if (!event) return false;
+  if (event.defaultPrevented || event.repeat) return false;
   if (event.isComposing) return false;
   if (event.ctrlKey || event.metaKey || event.altKey) return false;
   return typeof event.key === 'string' && event.key.length === 1 && /\S/.test(event.key);

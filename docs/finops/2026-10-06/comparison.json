@@ -1,0 +1,371 @@
+{
+  "asOf": "2026-10-06",
+  "units": "USD per million tokens",
+  "models": [
+    {
+      "id": "gpt-6.1-sol",
+      "name": "GPT-6.1 Sol",
+      "provider": "openai",
+      "short": {
+        "input": 2,
+        "read": 0.1,
+        "write": 2.5,
+        "output": 10
+      },
+      "long": {
+        "input": 4,
+        "read": 0.2,
+        "write": 5,
+        "output": 15
+      },
+      "threshold": 272000
+    },
+    {
+      "id": "gpt-6-sol",
+      "name": "GPT-6 Sol",
+      "provider": "openai",
+      "short": {
+        "input": 2,
+        "read": 0.2,
+        "write": 2.5,
+        "output": 10
+      },
+      "long": {
+        "input": 4,
+        "read": 0.4,
+        "write": 5,
+        "output": 15
+      },
+      "threshold": 272000
+    },
+    {
+      "id": "gpt-5.6-sol",
+      "name": "GPT-5.6 Sol",
+      "provider": "openai",
+      "short": {
+        "input": 4,
+        "read": 0.4,
+        "write": 5,
+        "output": 20
+      },
+      "long": {
+        "input": 8,
+        "read": 0.8,
+        "write": 10,
+        "output": 30
+      },
+      "threshold": 272000
+    },
+    {
+      "id": "gpt-5.6-terra",
+      "name": "GPT-5.6 Terra",
+      "provider": "openai",
+      "short": {
+        "input": 2,
+        "read": 0.2,
+        "write": 2.5,
+        "output": 12
+      },
+      "long": {
+        "input": 4,
+        "read": 0.4,
+        "write": 5,
+        "output": 18
+      },
+      "threshold": 272000
+    },
+    {
+      "id": "claude-opus-5.5",
+      "name": "Opus 5.5",
+      "provider": "anthropic",
+      "short": {
+        "input": 4,
+        "read": 0.2,
+        "write": 5,
+        "output": 20
+      },
+      "long": {
+        "input": 4,
+        "read": 0.2,
+        "write": 5,
+        "output": 20
+      },
+      "threshold": null,
+      "write1h": 8
+    },
+    {
+      "id": "claude-sonnet-5.5",
+      "name": "Sonnet 5.5",
+      "provider": "anthropic",
+      "short": {
+        "input": 2,
+        "read": 0.2,
+        "write": 2.5,
+        "output": 10
+      },
+      "long": {
+        "input": 2,
+        "read": 0.2,
+        "write": 2.5,
+        "output": 10
+      },
+      "threshold": null,
+      "write1h": 4
+    },
+    {
+      "id": "mistral-large-4",
+      "name": "Mistral Large 4",
+      "provider": "mistral",
+      "short": {
+        "input": 1.36,
+        "read": 0.14,
+        "write": 1.36,
+        "output": 4.18
+      },
+      "long": {
+        "input": 1.36,
+        "read": 0.14,
+        "write": 1.36,
+        "output": 4.18
+      },
+      "threshold": null,
+      "cacheWritePublished": false,
+      "notes": "No separate cache-write tariff; local separated write tokens use ordinary input estimator fallback, not an additional surcharge. The launch discount is excluded. No separate long-context uplift found; public preview can receive silent updates. No other provider route, subscription entitlement or invoice is inferred."
+    }
+  ],
+  "routes": [
+    {
+      "id": "openai/gpt-6.1-sol",
+      "short": {
+        "input": 2,
+        "read": 0.1,
+        "write": 2.5,
+        "output": 10
+      },
+      "long": {
+        "input": 4,
+        "read": 0.2,
+        "write": 5,
+        "output": 15
+      }
+    },
+    {
+      "id": "openai/gpt-6-sol",
+      "short": {
+        "input": 2,
+        "read": 0.2,
+        "write": 2.5,
+        "output": 10
+      },
+      "long": {
+        "input": 4,
+        "read": 0.4,
+        "write": 5,
+        "output": 15
+      }
+    },
+    {
+      "id": "openai/gpt-5.6-sol",
+      "short": {
+        "input": 2,
+        "read": 0.2,
+        "write": 2.5,
+        "output": 10
+      },
+      "long": {
+        "input": 4,
+        "read": 0.4,
+        "write": 5,
+        "output": 15
+      }
+    },
+    {
+      "id": "openai/gpt-5.6-terra",
+      "short": {
+        "input": 2,
+        "read": 0.2,
+        "write": 2.5,
+        "output": 12
+      },
+      "long": {
+        "input": 4,
+        "read": 0.4,
+        "write": 5,
+        "output": 18
+      }
+    },
+    {
+      "id": "anthropic/claude-opus-5.5",
+      "short": {
+        "input": 4,
+        "read": 0.2,
+        "write": 5,
+        "output": 20
+      },
+      "long": {
+        "input": 4,
+        "read": 0.2,
+        "write": 5,
+        "output": 20
+      }
+    },
+    {
+      "id": "anthropic/claude-sonnet-5.5",
+      "short": {
+        "input": 2,
+        "read": 0.2,
+        "write": 2.5,
+        "output": 10
+      },
+      "long": {
+        "input": 2,
+        "read": 0.2,
+        "write": 2.5,
+        "output": 10
+      }
+    }
+  ],
+  "examples": [
+    {
+      "name": "GPT-6.1 Sol",
+      "shortCached": 0.1315,
+      "shortCold": 0.3,
+      "longCached": 0.852,
+      "longCold": 2.2
+    },
+    {
+      "name": "GPT-6 Sol",
+      "shortCached": 0.1405,
+      "shortCold": 0.3,
+      "longCached": 0.924,
+      "longCold": 2.2
+    },
+    {
+      "name": "GPT-5.6 Sol",
+      "shortCached": 0.281,
+      "shortCold": 0.6,
+      "longCached": 1.848,
+      "longCold": 4.4
+    },
+    {
+      "name": "GPT-5.6 Terra",
+      "shortCached": 0.1605,
+      "shortCold": 0.32,
+      "longCached": 1.044,
+      "longCold": 2.32
+    },
+    {
+      "name": "Opus 5.5",
+      "shortCached": 0.263,
+      "shortCold": 0.6,
+      "longCached": 1.052,
+      "longCold": 2.4
+    },
+    {
+      "name": "Sonnet 5.5",
+      "shortCached": 0.1405,
+      "shortCold": 0.3,
+      "longCached": 0.562,
+      "longCold": 1.2
+    },
+    {
+      "name": "Mistral Large 4",
+      "shortCached": 0.068,
+      "shortCold": 0.1778,
+      "longCached": 0.272,
+      "longCold": 0.7112
+    }
+  ],
+  "assumptions": {
+    "inputMix": {
+      "fresh": 0.05,
+      "reads": 0.9,
+      "writes": 0.05
+    },
+    "short": {
+      "prompt": 100000,
+      "output": 10000
+    },
+    "long": {
+      "prompt": 400000,
+      "output": 40000
+    },
+    "basis": "Illustrative equal-token examples, not user behaviour or quality benchmarks"
+  },
+  "sources": [
+    {
+      "file": "mistral-announcement.html",
+      "url": "https://mistral.ai/news/mistral-large-4/",
+      "finalUrl": "https://mistral.ai/news/mistral-large-4/",
+      "status": 200,
+      "retrievedAt": "2026-10-06T16:20:16.864Z",
+      "sha256": "8c2f9484e2a59a4194ce83e580767b7a032005850f60a75c61c09ca58101ef4b"
+    },
+    {
+      "file": "mistral-model.html",
+      "url": "https://docs.mistral.ai/models/mistral-large-4-0",
+      "finalUrl": "https://docs.mistral.ai/models/mistral-large-4-0",
+      "status": 200,
+      "retrievedAt": "2026-10-06T16:20:17.015Z",
+      "sha256": "f8fa1bd16eb9c2f21f0e6bc18fb6c05d7095f8725c7c0f2dfb2061226d7bfbc8"
+    },
+    {
+      "file": "mistral-caching.md",
+      "url": "https://docs.mistral.ai/studio/conversations/advanced/prompt-caching.md",
+      "finalUrl": "https://docs.mistral.ai/studio/conversations/advanced/prompt-caching.md",
+      "status": 200,
+      "retrievedAt": "2026-10-06T16:20:17.064Z",
+      "sha256": "fc3dcbbbd09ecb172476c9f826ee51686f0a9bccdf111149e486a2938bdb3070"
+    },
+    {
+      "file": "mistral-lifecycle.md",
+      "url": "https://docs.mistral.ai/inference/model-lifecycle.md",
+      "finalUrl": "https://docs.mistral.ai/inference/model-lifecycle.md",
+      "status": 200,
+      "retrievedAt": "2026-10-06T16:20:17.098Z",
+      "sha256": "d048eab046c918272a889bdd324ef8068c027a925e3859048a6782c75f20e645"
+    },
+    {
+      "name": "openai",
+      "url": "https://developers.openai.com/api/docs/pricing.md",
+      "finalUrl": "https://developers.openai.com/api/docs/pricing.md",
+      "status": 200,
+      "file": "openai.md",
+      "retrievedAt": "2026-10-06T06:46:04.076Z",
+      "sha256": "0d9fb6b240209bb7b5a05d1d6ce0b8a796e0924b7e34c5ab183a3f1f890febe6"
+    },
+    {
+      "name": "anthropic",
+      "url": "https://platform.claude.com/docs/en/about-claude/pricing.md",
+      "finalUrl": "https://platform.claude.com/docs/en/about-claude/pricing.md",
+      "status": 200,
+      "file": "anthropic.md",
+      "retrievedAt": "2026-10-06T06:46:04.386Z",
+      "sha256": "245b5d0472659075015551126902de479990475fa61deb58c5fc20ef5e51a909"
+    },
+    {
+      "name": "copilot",
+      "url": "https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing.md",
+      "finalUrl": "https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing.md",
+      "status": 200,
+      "file": "copilot.md",
+      "retrievedAt": "2026-10-06T06:46:04.100Z",
+      "sha256": "23f4ec9a813ae9386264ce6ddab020f3a964036a1cb6a13e77e0e3222df5e613"
+    },
+    {
+      "name": "openrouter",
+      "url": "https://openrouter.ai/api/v1/models",
+      "finalUrl": "https://openrouter.ai/api/v1/models",
+      "status": 200,
+      "file": "openrouter.json",
+      "retrievedAt": "2026-10-06T06:46:04.038Z",
+      "sha256": "f678c752384a8c596cb78c18a394006eddf6d60c11aae8e5d9b447831a436c7c"
+    },
+    {
+      "file": "six-model-baseline.json",
+      "provenance": "Preserved six-model comparison; original source retrieval times retained above.",
+      "sha256": "7f22e20ef9b53d9cd40de988fcc73629e8f4f6092c95230e9ab900f7761382a9"
+    }
+  ],
+  "limitations": "Mistral undiscounted native prices; writes charged once as uncached input. No separate cache-write tariff or guaranteed cache hit/TTL. Other models use their 6 October 06:46 UTC captures. Equal token counts do not establish equal task quality; no promotional or self-hosted entry is ranked."
+}

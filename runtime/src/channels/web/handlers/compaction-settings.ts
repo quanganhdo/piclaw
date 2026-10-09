@@ -5,6 +5,8 @@ import {
 import {
   getCompactionRuntimeConfig,
   normalizeSmartCompactionMethod,
+  getLocalLitePromptProfileEnabled,
+  setLocalLitePromptProfileEnabled,
   getToolResultCompactionEnabled,
   getToolResultCompactionTools,
   getToolResultSemanticSummaryConfig,
@@ -36,6 +38,7 @@ export interface CompactionSettingsData {
   compactionBackoffDecayFactor: number;
   progressWatchdogEnabled: boolean;
   progressWatchdogTimeoutSec: number;
+  localLitePromptProfileEnabled: boolean;
   toolResultCompactionEnabled: boolean;
   toolResultCompactionTools: string[];
   toolResultSemanticSummaryEnabled: boolean;
@@ -71,6 +74,7 @@ export interface CompactionSettingsInput {
   compactionBackoffDecayFactor?: unknown;
   progressWatchdogEnabled?: unknown;
   progressWatchdogTimeoutSec?: unknown;
+  localLitePromptProfileEnabled?: unknown;
   toolResultCompactionEnabled?: unknown;
   toolResultCompactionTools?: unknown;
   toolResultSemanticSummaryEnabled?: unknown;
@@ -141,6 +145,7 @@ export function getCompactionSettingsData(): CompactionSettingsData {
     compactionBackoffDecayFactor: config.backoffDecayFactor,
     progressWatchdogEnabled: config.progressWatchdogEnabled,
     progressWatchdogTimeoutSec: Math.max(0, Math.round(config.progressWatchdogTimeoutMs / 1000)),
+    localLitePromptProfileEnabled: getLocalLitePromptProfileEnabled(),
     toolResultCompactionEnabled: getToolResultCompactionEnabled(),
     toolResultCompactionTools: [...getToolResultCompactionTools()],
     toolResultSemanticSummaryEnabled: summaryConfig.enabled,
@@ -250,6 +255,8 @@ export async function saveCompactionSettings(input: CompactionSettingsInput): Pr
     patch.backoffDecayFactor = nextDecay;
   }
 
+  const nextLocalLite = normalizeOptionalBoolean(input.localLitePromptProfileEnabled);
+  if (nextLocalLite !== undefined) setLocalLitePromptProfileEnabled(nextLocalLite);
   const nextToolResultCompactionEnabled = normalizeOptionalBoolean(input.toolResultCompactionEnabled);
   const nextToolResultCompactionTools = normalizeOptionalStringArray(input.toolResultCompactionTools);
   const nextToolResultSemanticSummaryEnabled = normalizeOptionalBoolean(input.toolResultSemanticSummaryEnabled);

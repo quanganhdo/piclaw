@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
+import Database from "bun:sqlite";
+import { join } from "node:path";
+import { createTempWorkspace } from "../helpers.js";
 import { resolveProviderModelPricing } from "../../skills/operator/token-chart/provider-model-pricing-reference.ts";
+import { generateProviderModelEstimatedCostChart } from "../../skills/operator/token-chart/token-cost-by-provider-model-chart.ts";
 
 describe("provider/model pricing reference", () => {
   test("keeps route-specific prices separate", () => {
@@ -117,6 +121,56 @@ describe("provider/model pricing reference", () => {
     expect(resolveProviderModelPricing("github-copilot", "gpt-6.1-sol").basis).toContain("Unpriced");
     expect(resolveProviderModelPricing("openrouter", "openai/gpt-6.1-sol").basis).toContain("Unpriced");
     expect(resolveProviderModelPricing("openai-codex", "gpt-6.1-sol").basis).toContain("Unpriced");
+  });
+
+  test("prices native Mistral Large 4 at undiscounted rates with an explicit write fallback", () => {
+    const native = resolveProviderModelPricing("mistral", "mistral-large-4");
+    expect(native).toMatchObject({
+      canonicalModel: "Mistral Large 4",
+      inputPerMTok: 1.36,
+      outputPerMTok: 4.18,
+      cacheReadPerMTok: 0.14,
+      cacheWritePerMTok: 1.36,
+    });
+    expect(native.basis).toContain("2026-10-06");
+    expect(native.notes).toContain("ordinary input estimator fallback");
+    expect(native.notes).toContain("launch discount is excluded");
+    expect(resolveProviderModelPricing(" MISTRAL ", " mistral_large_4_0 ")).toEqual(native);
+    const cost = (5_000 * native.inputPerMTok + 5_000 * native.cacheWritePerMTok
+      + 90_000 * native.cacheReadPerMTok + 10_000 * native.outputPerMTok) / 1e6;
+    expect(cost).toBeCloseTo(0.068, 12);
+  });
+
+  test("does not transfer Mistral Large 4 prices across routes, generations or unverified names", () => {
+    for (const provider of ["openrouter", "github-copilot", "azure-foundry", "unknown"]) {
+      for (const model of ["mistral-large-4", "mistral-large-4-0", "mistralai/mistral-large-4"]) {
+        expect(resolveProviderModelPricing(provider, model).basis).toContain("Unpriced");
+      }
+    }
+    expect(resolveProviderModelPricing("mistral", "mistral-large-latest").basis).toContain("Unpriced");
+    expect(resolveProviderModelPricing("mistral", "mistral-large-4-2610").basis).toContain("Unpriced");
+    expect(resolveProviderModelPricing("azure-foundry", "mistral-large-3").inputPerMTok).toBe(0.5);
+  });
+
+  test("the cost chart estimates separated Mistral token categories once at base prices", () => {
+    const fixture = createTempWorkspace("mistral-pricing-");
+    const dbPath = join(fixture.store, "usage.db");
+    try {
+      const db = new Database(dbPath);
+      db.exec("CREATE TABLE token_usage (run_at TEXT, provider TEXT, model TEXT, input_tokens INTEGER, output_tokens INTEGER, cache_read_tokens INTEGER, cache_write_tokens INTEGER)");
+      db.prepare("INSERT INTO token_usage VALUES (?, ?, ?, ?, ?, ?, ?)").run(
+        "2026-10-06T12:00:00Z", "mistral", "mistral-large-4-0", 5_000, 10_000, 90_000, 5_000,
+      );
+      db.close();
+      const chart = generateProviderModelEstimatedCostChart({days: 1, dbPath, now: new Date("2026-10-06T13:00:00Z")});
+      expect(chart.totalEstimatedCost).toBeCloseTo(0.068, 12);
+      expect(chart.seriesCount).toBe(1);
+      expect(chart.pricingReferenceTag).toBe("2026-10-06");
+      expect(chart.svg).toContain("mistral / mistral-large-4-0");
+      expect(chart.csv).toContain("0.068");
+    } finally {
+      fixture.cleanup();
+    }
   });
 
   test("preserves peer route differences and explicitly dated fallbacks", () => {

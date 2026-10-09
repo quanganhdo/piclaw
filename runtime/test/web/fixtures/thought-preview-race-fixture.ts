@@ -1,0 +1,10 @@
+import { handleAgentPanelToggle } from '../../../web/src/ui/app-agent-panel-toggle.js';
+let resolve!: (data: any) => void;
+const pending = new Promise(yes => { resolve = yes; });
+let state: any = { fullText: 'initial', totalLines: 1 };
+const buffer = { current: 'initial' };
+const paint = () => { document.getElementById('thought')!.textContent = state.fullText; };
+const options = { panelKey: 'thought', expanded: true, currentTurnIdRef: { current: 'turn-a' }, thoughtExpandedRef: { current: false }, draftExpandedRef: { current: false }, thoughtBufferRef: buffer, draftBufferRef: { current: '' }, setAgentThoughtVisibility: async () => {}, getAgentThought: async () => pending, setAgentThought: (next: any) => { state = typeof next === 'function' ? next(state) : next; paint(); }, setAgentDraft: () => {} };
+document.getElementById('expand')!.onclick = () => { void handleAgentPanelToggle(options).then(() => { document.body.dataset.settled = 'true'; }); };
+document.getElementById('live')!.onclick = () => { buffer.current = 'new live thought'; state.fullText = buffer.current; paint(); };
+document.getElementById('release')!.onclick = () => resolve({ text: 'previous thought snapshot', total_lines: 20 });

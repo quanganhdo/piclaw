@@ -1,5 +1,6 @@
 import { test, expect } from '../support/world';
 import { sel } from '../support/selectors';
+import { sendAndRead, seedCompaction, observedCompaction, stubControl } from '../support/deterministic-turn';
 
 // US-18: Compaction Indicator Instant Updates
 // US-19: Model Switching After Compaction
@@ -18,12 +19,13 @@ import { sel } from '../support/selectors';
 //   context usage recalculates for new model window
 
 async function stopAndClearQueue(page: import('@playwright/test').Page) {
-  await page.locator(sel.stopButton).click({ timeout: 1000 }).catch(() => {});
-  await page.getByRole('button', { name: /clear all/i }).click({ timeout: 1000 }).catch(() => {});
+  if (await page.locator(sel.stopButton).isVisible()) await page.locator(sel.stopButton).click({ timeout: 1000 });
+  const clear = page.getByRole('button', { name: /clear all/i });
+  if (await clear.isVisible()) await clear.click({ timeout: 1000 });
   await page.waitForFunction(() => {
     const stop = document.querySelector('[data-testid="stop-button"], .compose-stop, button.abort-mode, button[aria-label*="Stop response" i]');
     return !stop || (stop as HTMLElement).offsetParent === null;
-  }, { timeout: 5000 }).catch(() => {});
+  }, undefined, { timeout: 5000 });
 }
 
 test.beforeEach(async ({ authedPage: page }) => {
@@ -31,6 +33,7 @@ test.beforeEach(async ({ authedPage: page }) => {
 });
 
 test.afterEach(async ({ authedPage: page }) => {
+  await stubControl('clear');
   await stopAndClearQueue(page);
 });
 
@@ -81,22 +84,9 @@ async function getModelLabel(page: import('@playwright/test').Page): Promise<str
 
 test.describe('US-18: Compaction Indicator', () => {
   test('context pie shows token usage and percentage', async ({ authedPage: page }) => {
-    await page.waitForSelector(sel.timeline);
-
-    // Send a message to establish context usage
-    const compose = page.locator(sel.composeInput);
-    await compose.click();
-    await compose.fill('Tell me about testing software');
-    await page.keyboard.press('Enter');
-    await page.waitForTimeout(5000);
-
+    await sendAndRead(page, 'usage');
     const state = await getCompactionState(page);
-    if (!state.pieVisible) {
-      test.skip(undefined, 'Context pie not visible — provider may not report usage');
-      return;
-    }
-
-    // Pie title should contain usage info: "Context: XK / YK tokens (Z%)"
+    expect(state.pieVisible).toBe(true);
     expect(state.pieTitle).toContain('Context:');
     expect(state.usagePercent).not.toBeNull();
     expect(state.usagePercent!).toBeGreaterThanOrEqual(0);
@@ -104,118 +94,33 @@ test.describe('US-18: Compaction Indicator', () => {
   });
 
   test('/compact shows compaction indicator then updates usage', async ({ authedPage: page }) => {
-    await page.waitForSelector(sel.timeline);
-
-    // Build up some context first
-    const compose = page.locator(sel.composeInput);
-    await compose.click();
-    await compose.fill('Explain the history of computing in detail');
-    await page.keyboard.press('Enter');
-    await page.waitForTimeout(8000);
-
-    // Capture usage before compaction
+    await seedCompaction(page, 'compact-context');
     const before = await getCompactionState(page);
-    if (!before.pieVisible || before.usagePercent === null) {
-      test.skip(undefined, 'No context usage reported — cannot test compaction');
-      return;
-    }
-    const usageBefore = before.usagePercent;
-
-    // Trigger compaction
-    await compose.click();
-    await compose.fill('/compact');
-    await page.keyboard.press('Enter');
-
-    // During compaction: check for is-compacting and timer
-    await page.waitForTimeout(1000);
-    const during = await getCompactionState(page);
-    // Compaction may be too fast to catch — soft check
-    if (during.isCompacting) {
-      expect(during.hasTimer).toBe(true);
-      expect(during.pieAriaLabel.toLowerCase()).toMatch(/compact(?:ion|ing)/);
-    }
-
-    // Wait for compaction to complete
-    await page.waitForFunction(() => {
-      const pie = document.querySelector('.compose-context-pie');
-      return !pie?.classList.contains('is-compacting');
-    }, { timeout: 30000 }).catch(() => {});
-
-    // After compaction: indicator should clear and usage should be lower
+    await observedCompaction(page, 'compact-command', async () => {
+      await page.locator(sel.composeInput).fill('/compact');
+      await page.keyboard.press('Enter');
+    });
     const after = await getCompactionState(page);
-    expect(after.isCompacting).toBe(false);
-    expect(after.abortMode).toBe(false);
-    expect(after.hasTimer).toBe(false);
-
-    if (after.usagePercent !== null) {
-      // Usage should be less than or equal to before (compaction reduces context)
-      expect(after.usagePercent).toBeLessThanOrEqual(usageBefore);
-      // Pie title should show the updated value
-      expect(after.pieTitle).toContain(`${after.usagePercent}%`);
-    }
+    expect(after.usagePercent).not.toBeNull();
+    expect(after.usagePercent!).toBeLessThanOrEqual(before.usagePercent!);
+    expect(after.pieTitle).toContain(after.usagePercent + '%');
   });
 
   test('context pie is clickable and triggers compaction', async ({ authedPage: page }) => {
-    await page.waitForSelector(sel.timeline);
-
-    // Send a message to get context usage
-    const compose = page.locator(sel.composeInput);
-    await compose.click();
-    await compose.fill('Build some context');
-    await page.keyboard.press('Enter');
-    await page.waitForTimeout(5000);
-
-    const pie = page.locator('.compose-context-pie');
-    if (!(await pie.isVisible())) {
-      test.skip(undefined, 'Context pie not visible');
-      return;
-    }
-
-    // Click the pie — should trigger compaction
-    await pie.click();
-    await page.waitForTimeout(1000);
-
-    // Should show some compaction activity or at least not error
+    await seedCompaction(page, 'pie-context');
     const errors: string[] = [];
-    page.on('pageerror', (err) => errors.push(err.message));
-    await page.waitForTimeout(2000);
-    expect(errors.length).toBe(0);
+    page.on('pageerror', err => errors.push(err.message));
+    await observedCompaction(page, 'compact-pie', () => page.locator('.compose-context-pie').click());
+    expect(errors).toEqual([]);
   });
 
   test('abort button enters compacting mode during compaction', async ({ authedPage: page }) => {
-    await page.waitForSelector(sel.timeline);
-
-    // Build context
-    const compose = page.locator(sel.composeInput);
-    await compose.click();
-    await compose.fill('Write a detailed analysis of the global economy');
-    await page.keyboard.press('Enter');
-    await page.waitForTimeout(5000);
-
-    // Compact
-    await compose.click();
-    await compose.fill('/compact');
-    await page.keyboard.press('Enter');
-
-    // Poll for compacting state (may be brief)
-    let sawCompacting = false;
-    for (let i = 0; i < 20; i++) {
-      const state = await getCompactionState(page);
-      if (state.isCompacting || state.abortMode) {
-        sawCompacting = true;
-        break;
-      }
-      await page.waitForTimeout(250);
-    }
-
-    // Wait for completion
-    await page.waitForFunction(() => {
-      const pie = document.querySelector('.compose-context-pie');
-      return !pie?.classList.contains('is-compacting');
-    }, { timeout: 30000 }).catch(() => {});
-
-    // Soft: compaction may complete too fast to observe
-    expect(typeof sawCompacting).toBe('boolean');
+    await seedCompaction(page, 'abort-context');
+    await observedCompaction(page, 'compact-abort-mode', async () => {
+      await page.locator(sel.composeInput).fill('/compact');
+      await page.keyboard.press('Enter');
+      await expect(page.locator('.send-btn.compacting-mode')).toBeVisible({ timeout: 10_000 });
+    });
   });
 });
 
@@ -256,11 +161,10 @@ test.describe('US-19: Model Switching', () => {
     await compose.click();
     await compose.fill('/model');
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(2000);
+    await expect(page.locator(sel.postContent).last()).not.toHaveText(/^\s*$/);
 
     const lastPost = page.locator(sel.postContent).last();
-    const text = await lastPost.textContent();
-    expect(text?.length).toBeGreaterThan(0);
+    await expect(lastPost).toContainText(/model|opencode/i);
   });
 
   test('model switch updates compose bar label and context usage', async ({ authedPage: page }) => {
@@ -278,7 +182,7 @@ test.describe('US-19: Model Switching', () => {
     }
 
     await modelBtn.click();
-    await page.waitForTimeout(500);
+    await expect(page.locator('.compose-model-popup')).toBeVisible();
 
     // The compose picker is a searchable listbox. Select an option that is
     // not the active model; it deliberately does not use hidden radio inputs.
@@ -315,21 +219,12 @@ test.describe('US-19: Model Switching', () => {
     // Build context and compact
     const compose = page.locator(sel.composeInput);
     await compose.click();
-    await compose.fill('Build some context for model switch test');
-    await page.keyboard.press('Enter');
-    await page.waitForTimeout(5000);
+    await seedCompaction(page, 'model-context');
 
-    await compose.click();
-    await compose.fill('/compact');
-    await page.keyboard.press('Enter');
-
-    // Wait for compaction to complete
-    await page.waitForFunction(() => {
-      const pie = document.querySelector('.compose-context-pie');
-      return !pie?.classList.contains('is-compacting');
-    }, { timeout: 30000 }).catch(() => {});
-
-    await page.waitForTimeout(500);
+    await observedCompaction(page, 'compact-model', async () => {
+      await compose.fill('/compact');
+      await page.keyboard.press('Enter');
+    });
 
     // Model button should be immediately clickable
     const modelBtn = page.locator('.compose-model-hint, .compose-model-btn').first();

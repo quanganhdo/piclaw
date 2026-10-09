@@ -395,6 +395,19 @@ describe("core config", () => {
     }
   });
 
+  test("default session cache retains four mains while pressure remains capped at one", () => {
+    const workspace = createTempWorkspace("session-defaults-");
+    try {
+      const { snapshot: value } = runConfigSubprocess(workspace, ["call:getSessionPoolConfig"], { env: {
+        PICLAW_MAIN_SESSION_POOL_MAX_SIZE: undefined, PICLAW_SESSION_POOL_MAX_SIZE: undefined,
+        PICLAW_MAIN_SESSION_PRESSURE_POOL_MAX_SIZE: undefined, PICLAW_MAIN_SESSION_PRESSURE_RSS_BYTES: undefined,
+      } });
+      expect(value["call:getSessionPoolConfig"].mainSessionPoolMaxSize).toBe(4);
+      expect(value["call:getSessionPoolConfig"].memoryPressureMainSessionPoolMaxSize).toBe(1);
+      expect(value["call:getSessionPoolConfig"].memoryPressureRssBytes).toBe(384 * 1024 * 1024);
+    } finally { workspace.cleanup(); }
+  });
+
   test("session-pool domain persists across restart and preserves ordered generic aliases", () => {
     const workspace = createTempWorkspace("piclaw-domain-config-session-pool-");
     try {

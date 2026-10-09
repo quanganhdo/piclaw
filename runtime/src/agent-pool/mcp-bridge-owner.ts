@@ -43,6 +43,7 @@ export async function reloadAcknowledgedMcpSessions(receipt: McpShutdownReceipt,
 }
 
 export interface McpOwnerLifecycle {
+  assertReady?(): void;
   shutdown(reason?: string): Promise<void>;
 }
 
@@ -59,7 +60,7 @@ export function createMcpBridgeOwner(
 ) {
   const shutdownTimeoutMs = options.shutdownTimeoutMs ?? 30_000;
   if (!Number.isSafeInteger(shutdownTimeoutMs) || shutdownTimeoutMs <= 0) throw new Error("Invalid MCP owner cleanup deadline.");
-  let active: { release(): void; dispose(): void; shutdown(reason?: string): Promise<void>; loaded: boolean } | null = null;
+  let active: { release(): void; dispose(): void; shutdown(reason?: string): Promise<void>; assertReady(): void; loaded: boolean } | null = null;
   let disposed = false;
   let cleanupFailed = false;
   const factory: ExtensionFactory = async pi => {
@@ -71,6 +72,7 @@ export function createMcpBridgeOwner(
     let cleanupPromise: Promise<void> | undefined;
     const generation = {
       loaded: false,
+      assertReady() { lifecycle?.assertReady?.(); },
       shutdown(reason = "Piclaw MCP owner shutdown") {
         if (!shutdownPromise) {
           let timer: ReturnType<typeof setTimeout>;
@@ -121,6 +123,7 @@ export function createMcpBridgeOwner(
     assertLoaded(result: Pick<LoadExtensionsResult, "extensions" | "errors">) {
       // Factory completion precedes the SDK's registration commit. The SDK
       // can discard that extension and resolve reload with a diagnostic.
+      active?.assertReady();
       const published = result.extensions.filter(extension => extension.path === OWNER_PATH).length === 1
         && !result.errors.some(error => error.path === OWNER_PATH);
       if (disposed || cleanupFailed || !active?.loaded || !published) {
@@ -130,6 +133,7 @@ export function createMcpBridgeOwner(
     },
     blockAdmission() { cleanupFailed = true; },
     assertAdmission() {
+      active?.assertReady();
       if (disposed || cleanupFailed) throw new Error("MCP owner is disposed or cleanup is unresolved; operations remain blocked.");
     },
     async shutdown(reason?: string) { await active?.shutdown(reason); },

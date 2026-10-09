@@ -1,7 +1,8 @@
 import { html, useRef, useState, useEffect, useCallback, useMemo } from '../vendor/preact-htm.js';
 import { useTranslation } from '../utils/i18n.js';
-import { findPopupTypeaheadMatch, isPopupTypeaheadKey, resolvePopupTypeaheadMatch, updatePopupTypeaheadBuffer } from '../ui/popup-typeahead.js';
+import { isPopupTypeaheadKey, resolvePopupTypeaheadMatch, updatePopupTypeaheadBuffer } from '../ui/popup-typeahead.js';
 import { getAgentModels, sendAgentMessage } from '../api.js';
+import { SubmissionFeedback, isSubmissionRunStatus, type SubmissionFeedbackState } from '../ui/submission-feedback.js';
 import { uploadFileBatch, uploadChatAttachment } from '../ui/upload-transfers.js';
 import { getLocalStorageItem, setLocalStorageItem } from '../utils/storage.js';
 import { buildMentionValue, filterMentionAgents, parseMentionAutocompleteQuery } from '../ui/agent-mentions.js';
@@ -1251,6 +1252,19 @@ export function ComposeBox({
     const [mediaFiles, setMediaFiles] = useState([]);
     const [uploadProgress, setUploadProgress] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submissionFeedback, setSubmissionFeedback] = useState<SubmissionFeedbackState>(null);
+    const feedbackRef = useRef<SubmissionFeedback | null>(null);
+    if (!feedbackRef.current) feedbackRef.current = new SubmissionFeedback(setSubmissionFeedback);
+    useEffect(() => {
+        const feedback = feedbackRef.current!;
+        feedback.reset();
+        const listener = (event: Event) => {
+            const detail = (event as CustomEvent).detail;
+            if (isSubmissionRunStatus(detail?.type)) feedback.activity(detail.chat_jid, detail.thread_id);
+        };
+        window.addEventListener('piclaw:submission-run-status', listener);
+        return () => { feedback.reset(); window.removeEventListener('piclaw:submission-run-status', listener); };
+    }, [currentChatJid]);
     const [isDragActive, setIsDragActive] = useState(false);
     const [slashMatches, setSlashMatches] = useState([]);
     const [slashIndex, setSlashIndex] = useState(0);
@@ -1326,7 +1340,7 @@ export function ComposeBox({
     const sessionPopupEntriesRef = useRef([]);
     const [loadingModels, setLoadingModels] = useState(false);
     const [rollingUpSession, setRollingUpSession] = useState(false);
-    const [footerWidth, setFooterWidth] = useState(0);
+    const [, setFooterWidth] = useState(0);
     const resizeChatRef = useRef(currentChatJid);
     resizeChatRef.current = currentChatJid;
     const [submitError, setSubmitError] = useState(null);
@@ -2538,6 +2552,8 @@ export function ComposeBox({
         setSubmitError(null);
         setSubmitNotice(null);
 
+        const feedbackGeneration = trackSubmission ? feedbackRef.current!.begin(currentChatJid) : null;
+
         // Capture media/refs before clearing so the async send can use them
         const capturedMediaFiles = includeMedia ? [...mediaFiles] : [];
         const capturedFileRefs = includeFileRefs ? [...fileRefs] : [];
@@ -2641,6 +2657,10 @@ export function ComposeBox({
                 setUploadProgress(null);
                 const response = await sendMessage('default', message, null, mediaIds, resolveSubmitMode(submitMode), submissionChatJid);
                 onMessageResponse?.(response);
+                if (feedbackGeneration !== null) {
+                    if (response?.command?.status === 'error') feedbackRef.current!.failed(feedbackGeneration);
+                    else feedbackRef.current!.acknowledged(feedbackGeneration, Boolean(response?.queued) || Boolean(response?.command) || response?.ui_only === true || response?.relayed === true, response?.thread_id, response?.user_message?.data?.timestamp);
+                }
 
                 if (response?.command && response.command.status !== 'error') {
                     const recordsModelRecency = /^\/(?:model\s+\S+|cycle-model)\s*$/i.test(baseContent.trim());
@@ -2662,11 +2682,13 @@ export function ComposeBox({
                     restoreDraft();
                 }
                 const message = error?.message || 'Failed to send message.';
+                if (feedbackGeneration !== null) feedbackRef.current!.failed(feedbackGeneration);
                 setSubmitError(message);
                 onSubmitError?.(message);
                 console.error('Failed to post:', error);
             } finally {
                 if (trackSubmission) {
+                    if (feedbackGeneration !== null) feedbackRef.current!.finished(feedbackGeneration);
                     setUploadProgress(null);
                     setIsSubmitting(false);
                     submittingRef.current = false;
@@ -3386,7 +3408,8 @@ export function ComposeBox({
                 title=${t('compose.resizeInputHint')}
                 onMouseDown=${handleComposeResizeMouseDown}
                 onTouchStart=${handleComposeResizeTouchStart}
-            >${onJumpToLatest && html`<button type="button" class="compose-latest-handle" aria-label=${timelineHasNew ? 'New messages — jump to latest' : 'Jump to latest message'} title="Jump to latest message" onClick=${(event) => { if (event.detail === 0) onJumpToLatest(); }}><span class="compose-latest-chevron" aria-hidden="true">⌄</span></button>`}</div>
+            >${onJumpToLatest && html`<button type="button" class="compose-latest-handle" aria-label=${timelineHasNew ? 'New messages — jump to latest' : 'Jump to latest message'} title="Jump to latest message" onClick=${(event) => { if (event.detail === 0) onJumpToLatest(); }}><span class="compose-latest-chevron compose-latest-chevron-left" aria-hidden="true"></span><span class="compose-latest-chevron compose-latest-chevron-right" aria-hidden="true"></span></button>`}</div>
+            ${submissionFeedback && html`<div class="compose-submission-feedback" role="status" aria-live="polite" data-submission-state=${submissionFeedback}><span class="submission-feedback-spinner" aria-hidden="true"></span>${submissionFeedback === 'sending' ? 'Sending message…' : 'Message accepted. Waiting for agent…'}</div>`}
             ${speechUiVisible && html`
                 <div class=${`compose-inline-status compose-speech-status compose-speech-status-${speechUiState.kind}`} role="status" aria-live="polite">
                     <div class="compose-inline-status-row">

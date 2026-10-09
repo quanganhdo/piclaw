@@ -1,6 +1,6 @@
 /** Non-secret instance MCP owner/codemode settings. Runtime apply is separate. */
 import { createHash, randomUUID } from "node:crypto";
-import { closeSync, constants, fstatSync, fsyncSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
+import { closeSync, constants, fchmodSync, fstatSync, fsyncSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { getDomainConfigOptions } from "./config-context.js";
 import { registerDomainConfig, stringField, type DomainConfigField } from "./domain-config.js";
@@ -18,35 +18,66 @@ export interface McpInstancePolicySnapshot {
   /** Entire config revision fences unrelated concurrent edits as well. */
   revision: string;
 }
+/** Safe diagnostic: never includes config contents or secrets. */
+export class McpInstanceConfigError extends Error {}
+
+/** Tighten legacy owner-owned config files without following links or changing bytes. */
+export function migrateMcpInstanceConfigPermissions(configPath = getDomainConfigOptions().configPath): "absent" | "unchanged" | "migrated" {
+  let fd: number;
+  try { fd = openSync(configPath, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK); }
+  catch (error) {
+    if ((error as NodeJS.ErrnoException)?.code === "ENOENT") return "absent";
+    throw new McpInstanceConfigError("MCP settings require a private regular configuration file.");
+  }
+  try {
+    const stat = fstatSync(fd);
+    if (!stat.isFile() || stat.nlink !== 1 || stat.uid !== process.getuid?.()) {
+      throw new McpInstanceConfigError("MCP settings require an owned private regular configuration file.");
+    }
+    if ((stat.mode & 0o077) === 0) return "unchanged";
+    try { fchmodSync(fd, 0o600); }
+    catch { throw new McpInstanceConfigError("MCP settings permissions could not be migrated."); }
+    if ((fstatSync(fd).mode & 0o777) !== 0o600) throw new McpInstanceConfigError("MCP settings permissions could not be migrated.");
+    return "migrated";
+  } finally { closeSync(fd); }
+}
+/** Startup upgrade check is non-fatal; unsafe files remain untouched for MCP-only degradation. */
+export function prepareMcpInstanceConfig(configPath = getDomainConfigOptions().configPath): { migration: "absent" | "unchanged" | "migrated" | "unavailable"; reason?: string } {
+  try { return { migration: migrateMcpInstanceConfigPermissions(configPath) }; }
+  catch { return { migration: "unavailable", reason: "Instance configuration permissions could not be safely migrated." }; }
+}
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
 }
 function readConfig(path: string): { config: Record<string, unknown>; revision: string } {
   let fd: number;
-  try { fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW); }
+  try { fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK); }
   catch (error) {
     if ((error as NodeJS.ErrnoException)?.code === "ENOENT") return { config: {}, revision: "absent" };
     // Avoid exposing path/config diagnostics through settings responses.
     // eslint-disable-next-line preserve-caught-error
-    throw new Error("MCP settings require a private regular configuration file.");
+    throw new McpInstanceConfigError("MCP settings require a private regular configuration file.");
   }
   try {
     const stat = fstatSync(fd);
-    if (!stat.isFile() || stat.nlink !== 1 || stat.uid !== process.getuid?.() || (stat.mode & 0o077) !== 0) throw new Error("MCP settings require an owned private regular configuration file.");
+    if (!stat.isFile() || stat.nlink !== 1 || stat.uid !== process.getuid?.() || (stat.mode & 0o077) !== 0) throw new McpInstanceConfigError("MCP settings require an owned private regular configuration file.");
     const bytes = readFileSync(fd);
     let config: unknown;
     try { config = JSON.parse(bytes.toString("utf8")); }
-    catch { throw new Error("Invalid instance configuration JSON."); }
-    if (!isRecord(config)) throw new Error("Invalid instance configuration object.");
-    if (config.domains !== undefined && !isRecord(config.domains)) throw new Error("Invalid instance configuration domains.");
+    catch { throw new McpInstanceConfigError("Invalid instance configuration JSON."); }
+    if (!isRecord(config)) throw new McpInstanceConfigError("Invalid instance configuration object.");
+    if (config.domains !== undefined && !isRecord(config.domains)) throw new McpInstanceConfigError("Invalid instance configuration domains.");
     return { config, revision: createHash("sha256").update(bytes).digest("hex") };
   } finally { closeSync(fd); }
 }
 function snapshot(value: ReturnType<typeof readConfig>): McpInstancePolicySnapshot {
   const domains = value.config.domains as Record<string, unknown> | undefined;
   const block = domains?.mcp;
-  if (block !== undefined && !isRecord(block)) throw new Error("Invalid MCP settings block.");
-  return { policy: parseMcpEnginePolicy({ ...DEFAULT_MCP_ENGINE_POLICY, ...(block as Record<string, unknown> | undefined) }), revision: value.revision };
+  if (block !== undefined && !isRecord(block)) throw new McpInstanceConfigError("Invalid MCP settings block.");
+  let policy: Readonly<McpEnginePolicy>;
+  try { policy = parseMcpEnginePolicy({ ...DEFAULT_MCP_ENGINE_POLICY, ...(block as Record<string, unknown> | undefined) }); }
+  catch { throw new McpInstanceConfigError("Invalid MCP settings policy."); }
+  return { policy, revision: value.revision };
 }
 export function readMcpInstancePolicy(configPath = getDomainConfigOptions().configPath): McpInstancePolicySnapshot {
   return snapshot(readConfig(configPath));

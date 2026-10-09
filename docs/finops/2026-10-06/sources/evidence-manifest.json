@@ -1,0 +1,78 @@
+{
+  "asOf": "2026-10-06",
+  "sources": [
+    {
+      "file": "mistral-announcement.html",
+      "url": "https://mistral.ai/news/mistral-large-4/",
+      "finalUrl": "https://mistral.ai/news/mistral-large-4/",
+      "status": 200,
+      "retrievedAt": "2026-10-06T16:20:16.864Z",
+      "sha256": "8c2f9484e2a59a4194ce83e580767b7a032005850f60a75c61c09ca58101ef4b"
+    },
+    {
+      "file": "mistral-model.html",
+      "url": "https://docs.mistral.ai/models/mistral-large-4-0",
+      "finalUrl": "https://docs.mistral.ai/models/mistral-large-4-0",
+      "status": 200,
+      "retrievedAt": "2026-10-06T16:20:17.015Z",
+      "sha256": "f8fa1bd16eb9c2f21f0e6bc18fb6c05d7095f8725c7c0f2dfb2061226d7bfbc8"
+    },
+    {
+      "file": "mistral-caching.md",
+      "url": "https://docs.mistral.ai/studio/conversations/advanced/prompt-caching.md",
+      "finalUrl": "https://docs.mistral.ai/studio/conversations/advanced/prompt-caching.md",
+      "status": 200,
+      "retrievedAt": "2026-10-06T16:20:17.064Z",
+      "sha256": "fc3dcbbbd09ecb172476c9f826ee51686f0a9bccdf111149e486a2938bdb3070"
+    },
+    {
+      "file": "mistral-lifecycle.md",
+      "url": "https://docs.mistral.ai/inference/model-lifecycle.md",
+      "finalUrl": "https://docs.mistral.ai/inference/model-lifecycle.md",
+      "status": 200,
+      "retrievedAt": "2026-10-06T16:20:17.098Z",
+      "sha256": "d048eab046c918272a889bdd324ef8068c027a925e3859048a6782c75f20e645"
+    },
+    {
+      "name": "openai",
+      "url": "https://developers.openai.com/api/docs/pricing.md",
+      "finalUrl": "https://developers.openai.com/api/docs/pricing.md",
+      "status": 200,
+      "file": "openai.md",
+      "retrievedAt": "2026-10-06T06:46:04.076Z",
+      "sha256": "0d9fb6b240209bb7b5a05d1d6ce0b8a796e0924b7e34c5ab183a3f1f890febe6"
+    },
+    {
+      "name": "anthropic",
+      "url": "https://platform.claude.com/docs/en/about-claude/pricing.md",
+      "finalUrl": "https://platform.claude.com/docs/en/about-claude/pricing.md",
+      "status": 200,
+      "file": "anthropic.md",
+      "retrievedAt": "2026-10-06T06:46:04.386Z",
+      "sha256": "245b5d0472659075015551126902de479990475fa61deb58c5fc20ef5e51a909"
+    },
+    {
+      "name": "copilot",
+      "url": "https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing.md",
+      "finalUrl": "https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing.md",
+      "status": 200,
+      "file": "copilot.md",
+      "retrievedAt": "2026-10-06T06:46:04.100Z",
+      "sha256": "23f4ec9a813ae9386264ce6ddab020f3a964036a1cb6a13e77e0e3222df5e613"
+    },
+    {
+      "name": "openrouter",
+      "url": "https://openrouter.ai/api/v1/models",
+      "finalUrl": "https://openrouter.ai/api/v1/models",
+      "status": 200,
+      "file": "openrouter.json",
+      "retrievedAt": "2026-10-06T06:46:04.038Z",
+      "sha256": "f678c752384a8c596cb78c18a394006eddf6d60c11aae8e5d9b447831a436c7c"
+    },
+    {
+      "file": "six-model-baseline.json",
+      "provenance": "Preserved six-model comparison; original source retrieval times retained above.",
+      "sha256": "7f22e20ef9b53d9cd40de988fcc73629e8f4f6092c95230e9ab900f7761382a9"
+    }
+  ]
+}

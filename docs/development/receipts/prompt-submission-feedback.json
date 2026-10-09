@@ -1,0 +1,78 @@
+{
+  "recordedAt": "2026-10-07T20:20:03.364Z",
+  "baseMain": "8796113cf",
+  "qualifiedHead": "f1ba263550ff3a62cf0b016123f11f2548fcfe27",
+  "qualifiedTree": "7154140394b3d5584987e1ec58af9baa4407cb58",
+  "runtimeTree": "97d321cedd267d812d469850258e51638a93285e",
+  "full": {
+    "exit": 0,
+    "pass": 6670,
+    "skip": 71,
+    "fail": 0,
+    "assertions": 43311,
+    "files": 957,
+    "seconds": 663.73,
+    "log": "/workspace/exports/prompt-feedback-full/ci-fast.log",
+    "sha256": "2dd37c52a0e1e9e2ec88031f851b404932efff0259c66b26fe5566d2ff7ccd47",
+    "cleanUnchanged": true
+  },
+  "focused": {
+    "pass": 38,
+    "assertions": 114
+  },
+  "browser": {
+    "pass": 4,
+    "assertions": 68,
+    "skins": [
+      "Classic",
+      "Visual"
+    ],
+    "engines": [
+      "Chromium",
+      "WebKit"
+    ],
+    "log": "/workspace/exports/prompt-feedback-integrated-browser.log",
+    "sha256": "ffa052d41daedc356184a98a6f798d3829a4238c240ac01a85320aba66df5ab9"
+  },
+  "settings": {
+    "pass": 25,
+    "assertions": 253
+  },
+  "build": {
+    "pass": 9,
+    "assertions": 26
+  },
+  "privateReceipt": {
+    "id": "d1e60d88-1b1f-4b9c-a576-ea919eb77497",
+    "status": "passed",
+    "capability": "canonicalci-fast",
+    "aggregate": {
+      "pass": 6704,
+      "skip": 71,
+      "fail": 0
+    },
+    "logHash": "20429d8f3181f7437ba1a217218bf5e0456b696e64b8c367ca29eaa893cff78f",
+    "otherCapabilities": "not-run"
+  },
+  "review": "Explicit6.1scopedCLEAR afterterminalrecoveryblockerfixed",
+  "retainedLogs": [
+    {
+      "path": "/workspace/exports/prompt-feedback-browser-first.log",
+      "sha256": "a5282ef6db5dfdada7a5567419951854d48440306e914f84d3eff135e159623c"
+    },
+    {
+      "path": "/workspace/exports/prompt-feedback-focus-first.log",
+      "sha256": "fa6011693bf30c09f11d5945543a71e09d508e747b497e98d63c31f056979427"
+    },
+    {
+      "path": "/workspace/exports/prompt-feedback-types-first.log",
+      "sha256": "44162df98348c4d6f49a1a708eda60d3a84442698c15493df4a17fa5f1f4a42d"
+    }
+  ],
+  "limits": [
+    "BackendThinkingalreadybeforemetadata/sessionhydrate, earlierwaitcauseunproven",
+    "LocalSendingnotaccepted untilACK; Waitingnotmodelrunning",
+    "No liveprompt/provider/config/install/restart"
+  ],
+  "publicationDelta": "Docs/receipts only with runtimeparity"
+}

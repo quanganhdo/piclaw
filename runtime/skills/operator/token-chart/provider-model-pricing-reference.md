@@ -1,8 +1,16 @@
 # Provider/model pricing reference
 
-_Reference tag: 2026-09-29_
+_Reference tag: 2026-10-06_
 
-This file records the sources and assumptions behind the token chart's **estimated API-equivalent** costs. The executable resolver is `provider-model-pricing-reference.ts`. The native OpenAI `pricing-2026-09-29.json` addition takes precedence for GPT-6.1 Sol; the September 22 and September 5 snapshots and older rules remain dated fallbacks. No rate is inferred for Copilot, OpenRouter or Codex.
+This file records the sources and assumptions behind the token chart's **estimated API-equivalent** costs. The executable resolver is `provider-model-pricing-reference.ts`. The native Mistral `pricing-2026-10-06.json` addition takes precedence for Mistral Large 4; GPT-6.1 Sol retains its September 29 record. The September 22 and September 5 snapshots and older rules remain dated fallbacks. The new record does not infer prices for Copilot, OpenRouter or Azure.
+
+## 6 October 2026 — Mistral Large 4
+
+- Native Mistral API undiscounted prices per million tokens: **$1.36 input, $0.14 cached input and $4.18 output**, from the [model page](https://docs.mistral.ai/models/mistral-large-4-0). The resolver recognises the documented `mistral-large-4` and `mistral-large-4-0` names only on the `mistral` route.
+- The two-week 50% launch offer is excluded from the estimate and ranking. Its displayed $0.68/$0.07/$2.09 values remain in the captured evidence.
+- No separate cache-write tariff is published. The local write meter uses **$1.36 ordinary input as an explicit estimator fallback**, not a new write surcharge or a free write. Mistral's `prompt_tokens` already includes cached tokens; uncached input is `prompt_tokens - cached_tokens`.
+- The model page quotes 1M context and one price schedule; no separate long-context uplift was found. It is a public preview that can receive silent updates. Weights are promised for the end of October, not available in the announcement.
+- [Dated evidence, seven-model comparison and verifier](../../../../docs/finops/2026-10-06/README.md). The other six models retain their captured 6 October 06:46 UTC comparison rates; their runtime rows are not refreshed by this addition.
 
 ## 29 September 2026 — GPT-6.1 Sol
 

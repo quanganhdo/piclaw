@@ -18,8 +18,8 @@ run('Intel meters hide absent GPUs and expose accessible details on desktop/tabl
   const gpu={id:'0000:00:02.0',name:'Intel Iris Xe',provider:'intel-drm-fdinfo',driver:'i915',status:'partial',sample_time_ms:Date.now(),busy_percent:63,engines:[{name:'render',capacity:1,busy_percent:63},{name:'video',capacity:2,busy_percent:0}],memory:{resident_bytes:677*1024**2,total_bytes:800*1024**2,shared_bytes:null},coverage:{clients:3,scanned_processes:90,unreadable_processes:1,unreadable_clients:0,truncated:false},history:[{timestamp_ms:Date.now()-2000,busy_percent:null,resident_bytes:null},{timestamp_ms:Date.now(),busy_percent:63,resident_bytes:677*1024**2}]};
   let devices:any[]=[];
   const base={cpu_percent:24,ram_percent:46,cpu_series:[20,24],ram_series:[40,46],swap_percent:null,swap_total_bytes:0};
-  const css=await Bun.file(resolve(root,'web/static/classic/css/shell.css')).text();
-  server=Bun.serve({hostname:'127.0.0.1',port:0,fetch(req){const p=new URL(req.url).pathname;if(p==='/agent/system-metrics')return Response.json({...base,gpus:devices.map(d=>({...d,sample_time_ms:Date.now()}))});if(p==='/agent/ui-state')return Response.json({});if(p==='/entry.js')return new Response(Bun.file(join(tmp,'entry.js')),{headers:{'content-type':'text/javascript'}});return new Response(`<html><head><style>:root{--bg-primary:#111720;--text-primary:#edf3fc;--text-secondary:#a9b5c7;--border-color:#364254;--accent-color:#71a8ff;--success-color:#58c7a5}body{background:#111720;color:white;font:14px sans-serif;margin:0} ${css}</style></head><body><div id="root"></div><script type="module" src="/entry.js"></script></body></html>`,{headers:{'content-type':'text/html'}})}});
+  const css=(await Bun.file(resolve(root,'web/static/classic/css/shell.css')).text()) + '\n' + (await Bun.file(resolve(root,'web/static/common/css/workspace-theme.css')).text());
+  server=Bun.serve({hostname:'127.0.0.1',port:0,fetch(req){const p=new URL(req.url).pathname;if(p==='/agent/system-metrics')return Response.json({...base,gpus:devices.map(d=>({...d,sample_time_ms:Date.now()}))});if(p==='/agent/ui-state')return Response.json({});if(p==='/entry.js')return new Response(Bun.file(join(tmp,'entry.js')),{headers:{'content-type':'text/javascript'}});return new Response(`<html><head><style>:root{--bg-primary:#111720;--text-primary:#edf3fc;--text-secondary:#a9b5c7;--border-color:#364254;--accent-color:#71a8ff;--success-color:#58c7a5;--chart-1:#71a8ff;--chart-2:#58c7a5;--chart-5:#a855f7}body{background:#111720;color:white;font:14px sans-serif;margin:0} ${css}</style></head><body><div id="root"></div><script type="module" src="/entry.js"></script></body></html>`,{headers:{'content-type':'text/html'}})}});
   browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-gpu']});
   const page=await browser.newPage({viewport:{width:1100,height:850},hasTouch:true});
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
@@ -33,12 +33,26 @@ run('Intel meters hide absent GPUs and expose accessible details on desktop/tabl
   const memory=page.locator('.system-meters-row.intel-gmem');
   await activity.waitFor({timeout:8000});
   expect(await activity.innerText()).toContain('63%');
+  for (const row of [activity, memory]) {
+   expect(await row.locator('path').evaluate(el=>getComputedStyle(el).stroke)).not.toBe('none');
+   expect(await row.locator('path').evaluate(el=>(el as SVGPathElement).getTotalLength())).toBeGreaterThan(0);
+  }
+  devices=[{...gpu,busy_percent:0,memory:{resident_bytes:10*1024**2},history:[{busy_percent:0,resident_bytes:10*1024**2}]}];await page.reload();await activity.waitFor();
+  for (const row of [activity, memory]) {expect(await row.locator('path').evaluate(el=>getComputedStyle(el).stroke)).not.toBe('none');expect(await row.locator('path').evaluate(el=>(el as SVGPathElement).getTotalLength())).toBeGreaterThan(55);}
+  devices=[{...gpu,busy_percent:0,memory:{resident_bytes:null},history:[{busy_percent:0,resident_bytes:null}]}];await page.reload();await activity.waitFor();expect(await memory.count()).toBe(0);
+  devices=[{...gpu,busy_percent:0,memory:{resident_bytes:10*1024**2},history:[{busy_percent:null,resident_bytes:null}]}];await page.reload();await page.locator('.system-meters-row.cpu').waitFor();expect(await activity.count()).toBe(0);expect(await memory.count()).toBe(0);
+  devices=[gpu];await page.reload();await activity.waitFor();
   expect(await activity.evaluate(el=>el.tagName)).toBe('BUTTON');
   expect(await page.locator('.system-meters-gpu-trigger, .system-meters-gpu-controls').count()).toBe(0);
   expect(await page.getByRole('dialog').count()).toBe(0);
   await activity.click();await page.getByRole('dialog').waitFor();
   expect(await page.getByRole('dialog').innerText()).toContain('Observed memory');expect(await page.getByRole('dialog').innerText()).toContain('677');
   expect(await page.getByRole('dialog').innerText()).not.toContain('Engines');
+  devices=[{...gpu,status:'unavailable',busy_percent:null,memory:{resident_bytes:null},history:[],coverage:{clients:0},engines:[]}];
+  await page.waitForFunction(()=>document.querySelector('.system-meters-row.intel-gpu')?.textContent?.includes('—'));
+  expect(await activity.count()).toBe(1);expect(await memory.count()).toBe(1);expect(await page.getByRole('dialog').count()).toBe(1);
+  expect(await activity.locator('path').getAttribute('d')).not.toBe('');
+  devices=[gpu];await page.waitForFunction(()=>document.querySelector('.system-meters-row.intel-gpu')?.textContent?.includes('63%'));
   expect(await page.locator('button button').count()).toBe(0);
   expect(await activity.getAttribute('aria-expanded')).toBe('true');
   expect(await page.locator('.system-meters-hud.is-collapsed').count()).toBe(0);

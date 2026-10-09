@@ -1,0 +1,146 @@
+{
+  "recordedAt": "2026-10-07T21:20:53.062Z",
+  "issue": 1596,
+  "qualifiedHead": "757308fec5cc3a8c53572d233d322c0eea0a6258",
+  "qualifiedTree": "515c2ea9568686ff607f29f907fbc12273a42fae",
+  "runtimeTree": "802145235f2d7ffba08d98225687ab64c58fa254",
+  "full": {
+    "exit": 0,
+    "pass": 6686,
+    "skip": 71,
+    "fail": 0,
+    "assertions": 43444,
+    "files": 958,
+    "seconds": 657.02,
+    "log": "/workspace/exports/gpu1596-full/ci-fast.log",
+    "sha256": "e672c59cb37643441b857c01e340f735e74bff1a168adc0d3b947adf82b272bb",
+    "cleanUnchanged": true
+  },
+  "focused": {
+    "pass": 60,
+    "assertions": 466,
+    "files": 5
+  },
+  "browser": {
+    "pass": 9,
+    "assertions": 145,
+    "files": 2,
+    "skins": [
+      "Classic",
+      "Visual"
+    ],
+    "engines": [
+      "Chromium",
+      "WebKit"
+    ],
+    "log": "/workspace/exports/gpu1596-final-qualified-browser.log",
+    "sha256": "039dada1a1fb6de738cff8b979ccab05d8fa25f56fe498e6d7228d5cc1b4f870"
+  },
+  "settings": {
+    "pass": 25,
+    "assertions": 253
+  },
+  "build": {
+    "pass": 9,
+    "assertions": 26
+  },
+  "types": {
+    "pass": true,
+    "unchangedDiagnostics": 94
+  },
+  "privateReceipt": {
+    "id": "3ff124c1-f4ec-4662-82db-c10e8140a5d3",
+    "status": "passed",
+    "capability": "canonicalci-fast",
+    "aggregate": {
+      "pass": 6720,
+      "skip": 71,
+      "fail": 0,
+      "summaries": 3
+    },
+    "logHash": "139951e376aba12f300584827ca0585786ba94585211ed2d177e82fe0e83cb62",
+    "otherCapabilities": "not-run"
+  },
+  "review": "Explicit6.1 final scopedCLEAR afterhistorymerge/disablegeneration/initialseeddedupcorrections; no review tests",
+  "initialPatch": {
+    "comment": 6045818289,
+    "historicalIntelLoad": "SeparateauthorisedSigmafixture; notrerunonSmith",
+    "physicalNvidiaVerified": false
+  },
+  "retainedLogs": [
+    {
+      "path": "/workspace/exports/gpu1596-added-red.log",
+      "sha256": "2b2cda747f762b1668425332e7366a9861a2f522e7ea6ab44fa3773edbe68b14"
+    },
+    {
+      "path": "/workspace/exports/gpu1596-reviewed-browser.log",
+      "sha256": "272ba1545a80bc044af234f5a57f375a93e460961c73d9e733619a4f61bfdaab"
+    },
+    {
+      "path": "/workspace/exports/gpu1596-review-corrected.log",
+      "sha256": "2de227b7822a3d1209a393782e501c5947865df8932d5c1a29a70c534316208d"
+    }
+  ],
+  "limits": [
+    "Legacyaggregatenullcannotdistinguishphysicalremovalfromreaderfailure",
+    "Per-HUD capability only,no browserpersistence",
+    "No collector/hardware/provider/liveconfig/install/restart"
+  ],
+  "publicationDelta": "Docs/receipts only withruntimeparity",
+  "integration": {
+    "baseMain": "3d33978e873fdaebb79568292b24151139c8f8cc",
+    "head": "f6de1fc11e14498105a1577bbe11a1a794dba000",
+    "tree": "11ff94035ca5eedf1ac51cb8b87bef0cc5287501",
+    "runtimeTree": "bf79cbacfcbbce5f9b42c32cb322dfb9e2d3d983",
+    "full": {
+      "pass": 6686,
+      "skip": 71,
+      "fail": 0,
+      "assertions": 43444,
+      "files": 958,
+      "seconds": 688.49,
+      "log": "/workspace/exports/gpu1596-full-integrated-v2/ci-fast.log",
+      "sha256": "9a63edd6f414c6202e8ed26d136a14d0fef8537cfbbb7a41aeea8b1dce84f4b2",
+      "cleanUnchanged": true
+    },
+    "focused": {
+      "pass": 63,
+      "assertions": 485
+    },
+    "settings": {
+      "pass": 25,
+      "assertions": 253
+    },
+    "build": {
+      "pass": 9,
+      "assertions": 26
+    },
+    "privateReceipt": {
+      "id": "20a8c6ee-2904-4bf3-8108-c1f7b3577765",
+      "status": "passed",
+      "aggregate": {
+        "pass": 6720,
+        "skip": 71,
+        "fail": 0,
+        "summaries": 3
+      },
+      "logHash": "c2aed6f37a3784d49d5d29b3befa6d5561be8d2c0351c82ae551adb59cfbcccc"
+    },
+    "retainedFailedFull": {
+      "pass": 6685,
+      "skip": 71,
+      "fail": 1,
+      "assertions": 43444,
+      "reason": "Existing newest owner window receipt-retention test exceeded15000ms at33978.63ms",
+      "log": "/workspace/exports/gpu1596-full-integrated/ci-fast.log",
+      "sha256": "0f9a09be0791f2317f866cd5519535c117b77de44d6f54c20f33c6eb089495fb",
+      "privateReceiptId": "cf186183-33dc-4aec-ac12-afc255305778",
+      "unchangedIsolatedFile": {
+        "pass": 7,
+        "assertions": 146
+      },
+      "sourceChangedBetweenFullRuns": false,
+      "causeUnproven": true
+    }
+  }
+}

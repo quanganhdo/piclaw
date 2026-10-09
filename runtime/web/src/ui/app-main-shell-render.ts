@@ -123,6 +123,7 @@ export function renderMainShell(options: MainShellRenderOptions): any {
     openEditor,
     openTerminalTab,
     openVncTab,
+    openCdpTab,
     hasDockPanes,
     toggleDock,
     dockVisible,
@@ -335,6 +336,7 @@ export function renderMainShell(options: MainShellRenderOptions): any {
           active=${workspaceOpen || editorOpen}
           onOpenEditor=${openEditor}
           onOpenTerminalTab=${openTerminalTab}
+          onOpenCdpTab=${openCdpTab}
           onOpenVncTab=${openVncTab}
         />
         ${workspaceOpen && !zenMode && html`
@@ -458,7 +460,8 @@ export function renderMainShell(options: MainShellRenderOptions): any {
         chatOnlyMode=${chatOnlyMode}
         openEditor=${openEditor}
         onOpenTerminalTab=${openTerminalTab}
-        onOpenVncTab=${openVncTab}
+        onOpenCdpTab=${openCdpTab}
+          onOpenVncTab=${openVncTab}
       />
       <${TimelineQuickActions}
         activeChatAgents=${activeChatAgents}
@@ -468,7 +471,8 @@ export function renderMainShell(options: MainShellRenderOptions): any {
         onSwitchChat=${handleBranchPickerChange}
         onToggleWorkspace=${toggleWorkspace}
         onOpenTerminalTab=${openTerminalTab}
-        onOpenVncTab=${openVncTab}
+        onOpenCdpTab=${openCdpTab}
+          onOpenVncTab=${openVncTab}
         onPrefillCompose=${requestComposePrefill}
       />
       <div class="container">

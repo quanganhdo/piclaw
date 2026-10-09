@@ -10,6 +10,12 @@ import { withTempWorkspaceEnv } from "../helpers.js";
 import { createFakeExtensionApi } from "./fake-extension-api.js";
 
 describe("tool-activation extension", () => {
+  test("combined model control and quota access are active by default and discoverable", async () => {
+    const { getEffectiveDefaultActiveToolNames, TOOLSETS } = await import("../../src/extensions/tool-activation.js");
+    expect(getEffectiveDefaultActiveToolNames([{ name: "set_model" }, { name: "provider_quota" }, { name: "switch_thinking" }])).toEqual(["set_model", "provider_quota"]);
+    expect(TOOLSETS.find((set) => set.name === "model-control")?.toolNames).toContain("set_model");
+    expect(TOOLSETS.find((set) => set.name === "model-control")?.toolNames).toContain("provider_quota");
+  });
   test("registers activation tools and default baseline metadata", async () => {
     const { toolActivation, getDefaultActiveToolNames, getEffectiveDefaultActiveToolNames } = await import("../../src/extensions/tool-activation.js");
     const fake = createFakeExtensionApi({ allTools: [] });

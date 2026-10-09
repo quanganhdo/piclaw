@@ -759,6 +759,27 @@ test("agent pool protects a run before the session flips isStreaming", async () 
   await pool.shutdown();
 });
 
+test("agent pool coalesces forced GC and defers it until protected work is idle", async () => {
+  const ws = getTestWorkspace();
+  restoreEnv = setEnv({ PICLAW_WORKSPACE: ws.workspace, PICLAW_STORE: ws.store, PICLAW_DATA: ws.data, PICLAW_MAIN_SESSION_PRESSURE_RSS_BYTES: "1" });
+  const { AgentPool } = await importFresh<typeof import("../src/agent-pool.js")>("../src/agent-pool.js");
+  const pool = new AgentPool({ ...createAgentPoolModelOptions(), createSession: async () => { throw Error("unused"); } });
+  const originalGc = Bun.gc;
+  let collections = 0;
+  Bun.gc = (() => { collections++; return 0; }) as typeof Bun.gc;
+  const release = (pool as any).sessionManager.acquireEvictionProtection("web:busy");
+  try {
+    (pool as any).evictIdle();
+    expect(collections).toBe(0);
+    release();
+    (pool as any).evictIdle();
+    expect(collections).toBe(1);
+    (pool as any).evictIdle();
+    (pool as any).evictIdle();
+    expect(collections).toBe(1);
+  } finally { Bun.gc = originalGc; release(); await pool.shutdown(); }
+});
+
 test("agent pool applies the pressure pool cap immediately after acquiring a second session", async () => {
   const ws = getTestWorkspace();
   restoreEnv = setEnv({

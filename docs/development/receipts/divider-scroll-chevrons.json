@@ -1,0 +1,56 @@
+{
+  "recordedAt": "2026-10-06T08:28:52.015Z",
+  "qualifiedHead": "d1b314de7dc2437201f9f7db3c96b7b5a282ad90",
+  "qualifiedTree": "06d3148e0067c2d89f5c830250a78d9de6636f75",
+  "runtimeTree": "cca9ed69d41177044fc8ba62ed8a926a2c78a9e7",
+  "full": {
+    "exit": 0,
+    "pass": 6553,
+    "skip": 8,
+    "fail": 0,
+    "assertions": 42805,
+    "files": 931,
+    "seconds": 652.48,
+    "log": "/workspace/tmp/divider-chevron-full/ci-fast.log",
+    "sha256": "19950f50302ecc18cf29230fcdda5b9a9d361bbd07d086cbf54888c739468577"
+  },
+  "browser": {
+    "pass": 17,
+    "fail": 0,
+    "assertions": 168,
+    "engines": [
+      "Chromium",
+      "WebKit"
+    ],
+    "skins": [
+      "Classic",
+      "Visual"
+    ],
+    "widths": [
+      "desktop",
+      390
+    ],
+    "log": "/workspace/tmp/divider-chevron-final-browser.log",
+    "sha256": "6b3ffe190e69e2e951cc6264d8ff2ab38e77a89e75eadf5526c7377fc8a9d3a5"
+  },
+  "settings": {
+    "pass": 25,
+    "assertions": 246
+  },
+  "build": {
+    "pass": 9,
+    "assertions": 26
+  },
+  "review": "Explicit6.1 scopedCLEAR; initialtimeoutnotapproval",
+  "retainedFailure": {
+    "browser": {
+      "pass": 16,
+      "fail": 1,
+      "reason": "Unchanged WebKit tallviewport timeout",
+      "log": "/workspace/tmp/divider-chevron-browser.log",
+      "sha256": "9373ffc3509a4cdcba1e18506dccdd1425ff8fd24f7225d2ad7def603e4f5523"
+    }
+  },
+  "scope": "Chevronmarkup/styles/generatedbundles+regressions; eventhandlersunchanged; no install/restart/liveUI",
+  "publicationDelta": "Docs/receipts only; runtimeparityverified"
+}

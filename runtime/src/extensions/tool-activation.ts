@@ -32,7 +32,7 @@ export const TOOLSETS: ToolsetDefinition[] = [
   {
     name: "model-control",
     description: "Inspect and switch the current model and thinking level.",
-    toolNames: ["get_model_state", "list_models", "switch_model", "switch_thinking"],
+    toolNames: ["get_model_state", "list_models", "set_model", "switch_model", "switch_thinking", "provider_quota"],
   },
   {
     name: "data",
@@ -100,6 +100,8 @@ const DEFAULT_ACTIVE_TOOL_NAMES = [
   "keychain",
   "exit_process",
   "session_status",
+  "set_model",
+  "provider_quota",
 ] as const;
 
 const WINDOWS_DEFAULT_ACTIVE_TOOL_NAMES = [

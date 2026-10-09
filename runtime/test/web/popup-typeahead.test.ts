@@ -12,6 +12,9 @@ test('detects printable popup typeahead keys', () => {
   expect(isPopupTypeaheadKey({ key: ' ', ctrlKey: false, metaKey: false, altKey: false } as any)).toBe(false);
   expect(isPopupTypeaheadKey({ key: 'ArrowDown' } as any)).toBe(false);
   expect(isPopupTypeaheadKey({ key: 'k', ctrlKey: true } as any)).toBe(false);
+  expect(isPopupTypeaheadKey({ key: 'a', defaultPrevented: true })).toBe(false);
+  expect(isPopupTypeaheadKey({ key: 'a', repeat: true })).toBe(false);
+  expect(isPopupTypeaheadKey({ key: 'a', defaultPrevented: false, repeat: false })).toBe(true);
 });
 
 test('resets the typeahead buffer after idle timeout', () => {

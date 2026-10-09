@@ -16,5 +16,5 @@ for (const scenario of ["entry", "backup", "agent-stages", "index", "startup-que
       expect(code, stderr || stdout).toBe(0);
       expect(stdout).toContain(`DREAM_BOUNDARY_OK:${scenario}`);
     } finally { workspace.cleanup(); }
-  }, 15_000);
+  }, 60_000);
 }

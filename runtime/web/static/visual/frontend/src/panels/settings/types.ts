@@ -57,6 +57,7 @@ export interface Tool {
 export interface SettingsData {
   /* instance info */
   version?: string;
+  runtimeVersions?: { piclaw: string; piAi: string; bun: string };
   /* general */
   assistantName?: string;
   userName?: string;
@@ -105,6 +106,7 @@ export interface SettingsData {
   progressWatchdogTimeoutSec?: number;
   compactionBackoffs?: CompactionBackoff[];
   progressWatchdogPhases?: WatchdogPhase[];
+  localLitePromptProfileEnabled?: boolean;
   toolResultCompactionEnabled?: boolean;
   toolResultCompactionTools?: string[];
   toolResultSemanticSummaryEnabled?: boolean;

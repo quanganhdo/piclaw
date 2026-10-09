@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from "preact/hooks";
 import { useSignal, useComputed } from "@preact/signals";
 import { getChatJid } from "../../api/chat-jid";
+import { publishSubmissionRunStatus } from '../../../../../../src/ui/submission-feedback';
 import type { AgentStatus, AgentContext, ModelInfo, ProviderUsage } from "./types";
 import { addonHealthSignal } from "./addonHealthSignal";
 import { providerConfigured } from "../../app/providerState";
@@ -117,6 +118,8 @@ export function useStatusPolling(): UseStatusPollingResult {
       if (statusVersion.current !== myVersion || chatJid !== getChatJid()) return;
       const statusData = snapshot.status as AgentStatus;
       agentStatus.value = statusData;
+      const runStatus = (statusData as any)?.data;
+      if (runStatus) publishSubmissionRunStatus(chatJid, runStatus.type, runStatus.thread_id);
       addonHealthSignal.value = statusData.addon_api ?? null;
       error.value = snapshot.errors.includes("model") || snapshot.errors.includes("context");
       if (!error.value) lastSuccessAt.value = Date.now();

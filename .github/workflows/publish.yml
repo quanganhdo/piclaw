@@ -207,7 +207,6 @@ jobs:
             BUN_PREFER_BASELINE=${{ env.BUN_PREFER_BASELINE }}
 
       - name: Smoke test AMD64 image
-        continue-on-error: true
         timeout-minutes: 5
         env:
           STATIC_TIMEOUT_SEC: "120"
@@ -265,7 +264,6 @@ jobs:
             BUN_PREFER_BASELINE=${{ env.BUN_PREFER_BASELINE }}
 
       - name: Smoke test ARM64 image
-        continue-on-error: true
         timeout-minutes: 5
         env:
           STATIC_TIMEOUT_SEC: "120"

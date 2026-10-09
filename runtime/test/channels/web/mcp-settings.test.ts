@@ -35,14 +35,14 @@ test("MCP read and preview routes keep persisted and runtime policy distinct, wi
   expect(read?.headers.get("cache-control")).toBe("private, no-store");
   const state = await read!.json();
   expect(state.runtime).toEqual({ configuredFactory: "adapter", observedPolicy: { engine: "adapter", codemode: "auto" }, connectionStatus: "unknown", applyAvailable: true, phase: "ready" });
-  expect(state.readiness).toEqual({ adapter: true, native: false, codemode: true });
+  expect(state.readiness).toEqual({ adapter: true, native: true, codemode: true });
   expect(state.persisted).toEqual({ policy: { engine: "adapter", codemode: "auto" } });
   expect(state.applyAvailable).toBe(true);
   expect(typeof state.revision).toBe("string"); expect(state.plan).not.toHaveProperty("bridgeRevision");
   for (const policy of [{ engine: "native", codemode: "auto" }]) {
     const res = await call(channel(), policy, "/preview");
     expect(res?.status).toBe(200); const body = await res!.json();
-    expect(body.plan.applicable).toBe(false); expect(body.plan.issues.some((issue: any) => issue.code === "runtime_unavailable")).toBe(true);
+    expect(body.plan.applicable).toBe(true); expect(body.plan.issues).toEqual([]);
   }
   expect(await call(channel(), { engine: "adapter", codemode: "off" }, "/preview").then(r => r!.json())).toMatchObject({ plan: { applicable: true, codemodeEnabled: false }, applyAvailable: true });
   for (const suffix of ["/save", "/preview/", "-other"]) expect(await call(channel(), {}, suffix)).toBeNull();
@@ -52,7 +52,7 @@ test("MCP read and preview routes keep persisted and runtime policy distinct, wi
   expect(readFileSync(path, "utf8")).toBe(original);
 }));
 
-test("owner Apply requires acknowledgement and current revision, persists codemode and rejects native", async () => fixture(async path => {
+test("owner Apply requires acknowledgement and current revision, persists codemode and switches empty Native", async () => fixture(async path => {
   const c = channel();
   const preview = await call(c, {engine:"adapter",codemode:"on"}, "/preview").then(r => r!.json());
   const input = {policy:{engine:"adapter",codemode:"on"},revision:preview.revision,acknowledgeInterruptions:true};
@@ -64,8 +64,8 @@ test("owner Apply requires acknowledgement and current revision, persists codemo
   expect((await call(c,input,"/apply"))?.status).toBe(409);
   const native = await call(c,{engine:"native",codemode:"auto"},"/preview").then(r=>r!.json());
   const denied = await call(c,{policy:native.plan.policy,revision:native.revision,acknowledgeInterruptions:true},"/apply");
-  expect(denied?.status).toBe(422);expect(await denied!.text()).toContain("shutdown acknowledgement");
-  expect(JSON.parse(readFileSync(path,"utf8")).domains.mcp).toEqual(input.policy);
+  expect(denied?.status).toBe(200);
+  expect(JSON.parse(readFileSync(path,"utf8")).domains.mcp).toEqual({engine:'native',codemode:'auto'});
 }));
 
 test("MCP settings denies anonymous/member/family principals before body or state access", async () => fixture(async path => {

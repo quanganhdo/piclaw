@@ -1,6 +1,7 @@
 import {beforeAll,afterAll,expect,test} from 'bun:test';
 import {join} from 'node:path';
 import {chromium,webkit} from 'playwright';
+import {expectDividerChevrons} from './fixtures/divider-chevron-geometry.js';
 const enabled=process.env.PICLAW_RUN_OPTIONAL_BROWSER_TESTS==='1',browserTest=enabled?test:test.skip;
 let server:ReturnType<typeof Bun.serve>;
 let latestCount=160;
@@ -30,7 +31,7 @@ for(const[name,engine]of Object.entries({chromium,webkit}))browserTest(`${name}:
 },15000);
 for(const[name,engine]of Object.entries({chromium,webkit}))browserTest(`${name}: dragging the divider resizes without jumping; tapping it jumps`,async()=>{
  latestCount=160;const browser=await engine.launch({headless:true}),page=await browser.newPage({viewport:{width:1024,height:900}});await page.route('**/*',route=>new URL(route.request().url()).origin===server.url.origin?route.continue():route.abort());
- try{await page.goto(`${server.url}?count=160`);await page.waitForFunction(()=>document.body.dataset.ready==='a');await page.waitForTimeout(200);await page.locator('#fixture-timeline').evaluate((root:HTMLElement)=>{root.scrollTop=-900;});await page.waitForTimeout(150);const handle=page.locator('.compose-resize-handle'),box=await handle.boundingBox();expect(box).not.toBeNull();await page.mouse.move(box!.x+box!.width/2,box!.y+box!.height/2);await page.mouse.down();await page.mouse.move(box!.x+box!.width/2,box!.y-60,{steps:4});await page.mouse.up();expect(await page.locator('#fixture-timeline').evaluate((root:HTMLElement)=>root.scrollTop)).toBeLessThan(-100);await page.getByRole('button',{name:'Jump to latest message',exact:true}).click();await page.waitForTimeout(150);expect(Math.abs(await page.locator('#fixture-timeline').evaluate((root:HTMLElement)=>root.scrollTop))).toBeLessThan(2);
+ try{await page.goto(`${server.url}?count=160`);await page.waitForFunction(()=>document.body.dataset.ready==='a');await page.waitForTimeout(200);await page.locator('#fixture-timeline').evaluate((root:HTMLElement)=>{root.scrollTop=-900;});await page.waitForTimeout(150);await expectDividerChevrons(page,'.compose-resize-handle');const handle=page.locator('.compose-resize-handle'),box=await handle.boundingBox();expect(box).not.toBeNull();await page.mouse.move(box!.x+box!.width/2,box!.y+box!.height/2);await page.mouse.down();await page.mouse.move(box!.x+box!.width/2,box!.y-60,{steps:4});await page.mouse.up();expect(await page.locator('#fixture-timeline').evaluate((root:HTMLElement)=>root.scrollTop)).toBeLessThan(-100);await page.getByRole('button',{name:'Jump to latest message',exact:true}).click();await page.waitForTimeout(150);expect(Math.abs(await page.locator('#fixture-timeline').evaluate((root:HTMLElement)=>root.scrollTop))).toBeLessThan(2);
  }finally{await browser.close();}
 },15000);
 browserTest('failed older-page admission retries the same cursor rather than permanently suppressing it',async()=>{

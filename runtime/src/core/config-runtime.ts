@@ -229,7 +229,7 @@ const sessionPoolDomainSchema = registerDomainConfig<SessionPoolConfig>({
       { envKey: "PICLAW_SESSION_IDLE_TTL_MS", replacement: "domains.sessionPool.mainIdleTtlMs and sideIdleTtlMs", removalVersion: "3.0.0", skipInvalid: true },
     ] }),
     cleanupIntervalMs: integerField({ key: "cleanupIntervalMs", owner: "agent-runtime", defaultValue: 30_000, min: 1, bounds: "positive integer ms", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_SESSION_CLEANUP_INTERVAL_MS", replacement: "domains.sessionPool.cleanupIntervalMs", removalVersion: "3.0.0", skipInvalid: true }] }),
-    mainSessionPoolMaxSize: integerField({ key: "mainSessionPoolMaxSize", owner: "agent-runtime", defaultValue: 1, min: 0, bounds: "non-negative integer", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [
+    mainSessionPoolMaxSize: integerField({ key: "mainSessionPoolMaxSize", owner: "agent-runtime", defaultValue: 4, min: 0, bounds: "non-negative integer", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [
       { envKey: "PICLAW_MAIN_SESSION_POOL_MAX_SIZE", replacement: "domains.sessionPool.mainSessionPoolMaxSize", removalVersion: "3.0.0", skipInvalid: true },
       { envKey: "PICLAW_SESSION_POOL_MAX_SIZE", replacement: "domains.sessionPool.mainSessionPoolMaxSize", removalVersion: "3.0.0", skipInvalid: true },
     ] }),

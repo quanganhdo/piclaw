@@ -114,6 +114,7 @@ build-web: ## Build web JS/CSS bundles (+ sourcemaps) into static/classic/dist, 
 	@find runtime/web/static -type f \( -name '*.js' -o -name '*.css' -o -name '*.json' -o -name '*.svg' \) \
 		! -name '*.gz' ! -name '*.br' -size +1k \
 		-exec sh -c 'gzip -9 -k -f "$$1"' _ {} \;
+	@bun run scripts/check-vendor-compressed.ts
 	@ls -lh \
 		runtime/web/static/classic/dist/app.bundle.js \
 		runtime/web/static/classic/dist/app.bundle.js.map \

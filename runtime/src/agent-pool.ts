@@ -54,6 +54,7 @@ import { clearCompactionFailureBackoff, resetCompactionSuccessCount } from "./ag
 import { rotateSession, type SessionRotationResult } from "./session-rotation.js";
 import { type AgentRuntimeFacade, type AvailableModelsResult } from "./agent-pool/runtime-facade.js";
 import { createAgentPoolServices, type AgentPoolServices } from "./agent-pool/service-factory.js";
+import { MemoryReclamationGate } from "./agent-pool/memory-reclamation.js";
 import { type AgentSessionManagerInstrumentationSnapshot, type PoolEntry } from "./agent-pool/session-manager.js";
 import { ownAccountModelDefaults } from './agent-pool/family-model-defaults.js';
 import type { PiclawCredentialStore } from "./agent-pool/credential-store.js";
@@ -300,6 +301,7 @@ export class AgentPool {
   private cleanupTimer: ReturnType<typeof setInterval> | null = null;
   private shuttingDown = false;
   private memoryPressureActive = false;
+  private readonly memoryReclamation = new MemoryReclamationGate();
   private recoveryStats: AgentPoolRecoveryInstrumentationSnapshot = {
     attemptsTotal: 0,
     recoveredRuns: 0,
@@ -943,12 +945,14 @@ export class AgentPool {
     const runtime = await this.sessionManager.getOrCreate(chatJid);
     const pressure = this.getMemoryPressureMode();
     if (pressure.active && !this.shuttingDown) {
+      const poolSizeBefore = this.pool.size + this.sidePool.size;
       this.sessionManager.evictIdle({
         mainIdleTtlMs: pressure.mainIdleTtlMs,
         sideIdleTtlMs: this.config.sideIdleTtlMs,
         mainSessionMaxSizeOverride: pressure.mainSessionMaxSizeOverride,
         protectedChatJids: [chatJid],
       });
+      if (this.pool.size + this.sidePool.size < poolSizeBefore) this.memoryReclamation.request();
     }
     return runtime;
   }
@@ -995,9 +999,15 @@ export class AgentPool {
       mainSessionMaxSizeOverride: pressure.mainSessionMaxSizeOverride,
     });
     const poolSizeAfter = this.pool.size + this.sidePool.size;
-    // A3 + A4: After evicting sessions, release SQLite page-cache and force GC
-    // so dead session objects (large fileEntries arrays) are reclaimed promptly.
-    if (poolSizeAfter < poolSizeBefore || pressure.active) {
+    // Coalesce pressure/eviction requests and reclaim only after active runs
+    // and asynchronous disposal drain; do not interrupt another chat's work.
+    if (this.memoryReclamation.shouldReclaim({
+      pressure: pressure.active,
+      evicted: poolSizeAfter < poolSizeBefore,
+      busy: this.sessionManager.hasActiveMemoryReclamationWork(),
+      now: Date.now(),
+      intervalMs: this.config.cleanupIntervalMs,
+    })) {
       shrinkDatabaseMemory();
       Bun.gc(true);
     }

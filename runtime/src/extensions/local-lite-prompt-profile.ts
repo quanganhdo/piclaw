@@ -15,6 +15,7 @@ import type {
   ExtensionFactory,
 } from "@earendil-works/pi-coding-agent";
 import type { Api, Model } from "@earendil-works/pi-ai";
+import { getLocalLitePromptProfileEnabled } from "../core/config-tools.js";
 import { createLogger, debugSuppressedError } from "../utils/logger.js";
 
 const log = createLogger("local-lite-prompt-profile");
@@ -176,14 +177,15 @@ function sameToolSet(left: readonly string[], right: readonly string[]): boolean
 }
 
 /** Extension factory that applies local-lite prompt/tool behavior to local models. */
-export const localLitePromptProfile: ExtensionFactory = (pi: ExtensionAPI) => {
+export function createLocalLitePromptProfile(isEnabled = getLocalLitePromptProfileEnabled): ExtensionFactory {
+return function localLitePromptProfile(pi: ExtensionAPI) {
   let localProfileActive = false;
   let previousActiveTools: string[] | null = null;
 
   const applyToolProfile = (ctx?: Pick<ExtensionContext, "model">): void => {
     const model = ctx?.model as Model<Api> | undefined;
     try {
-      if (isLocalLitePromptModel(model)) {
+      if (isEnabled() && isLocalLitePromptModel(model)) {
         const localTools = filterAvailableTools(pi, LOCAL_LITE_ACTIVE_TOOLS);
         if (localTools.length === 0) return;
         const activeTools = pi.getActiveTools();
@@ -218,9 +220,13 @@ export const localLitePromptProfile: ExtensionFactory = (pi: ExtensionAPI) => {
     ctx?: ExtensionContext,
   ): Promise<BeforeAgentStartEventResult | undefined> => {
     const model = ctx?.model as Model<Api> | undefined;
-    if (!isLocalLitePromptModel(model)) return undefined;
+    if (!isEnabled() || !localProfileActive) applyToolProfile(ctx);
+    if (!isEnabled() || !isLocalLitePromptModel(model)) return undefined;
     return {
       systemPrompt: buildLocalLiteSystemPrompt(event.systemPromptOptions, model),
     };
   });
 };
+
+}
+export const localLitePromptProfile = createLocalLitePromptProfile();

@@ -17,3 +17,5 @@ export { webViewerPaneExtension } from './web-viewer-pane.js';
 export { highlightPreviewerPaneExtension } from './highlight-previewer-pane.js';
 export type { TabState, TabViewState } from './tab-store.js';
 export { tabStore } from './tab-store.js';
+
+export { cdpPaneExtension, CDP_TAB_PATH } from './cdp-pane.js';

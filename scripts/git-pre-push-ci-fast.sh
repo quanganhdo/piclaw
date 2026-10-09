@@ -13,6 +13,8 @@ repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
 
 ci_command="${PICLAW_PRE_PUSH_CI_COMMAND:-make ci-fast}"
+# Receipts and potentially sensitive raw logs stay outside the disposable source.
+receipt_dir="${PICLAW_PRE_PUSH_RECEIPT_DIR:-$(git rev-parse --path-format=absolute --git-common-dir)/local-ci-receipts}"
 zero_sha="0000000000000000000000000000000000000000"
 declare -a shas=()
 
@@ -68,7 +70,7 @@ for sha in "${shas[@]}"; do
     mkdir -p "$HOME" "$BUN_INSTALL_CACHE_DIR" "$BUN_TMPDIR" "$TMPDIR"
     bun install --frozen-lockfile --no-cache --cache-dir "$BUN_INSTALL_CACHE_DIR"
     echo "[pre-push-ci] Running: $ci_command" >&2
-    bash -lc "$ci_command"
+    bun "$worktree/scripts/local-ci-receipt.ts" "$worktree" "$receipt_dir" "$ci_command"
   )
   cleanup
   trap - EXIT

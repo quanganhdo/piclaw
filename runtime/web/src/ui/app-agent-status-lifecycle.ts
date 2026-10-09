@@ -192,6 +192,7 @@ export function useAgentStatusLifecycle(options: UseAgentStatusLifecycleOptions)
       run: async () => {
         return await refreshAgentStatusForChat({
           currentChatJid,
+          currentTurnIdRef,
           getAgentStatus,
           activeChatJidRef,
           wasAgentActiveRef,
@@ -215,7 +216,7 @@ export function useAgentStatusLifecycle(options: UseAgentStatusLifecycleOptions)
         });
       },
     });
-  }, [activeChatJidRef, agentStatusRef, clearAgentRunState, clearLastActivityFlag, currentChatJid, draftBufferRef, getAgentStatus, noteAgentActivity, pendingRequestRef, refreshTimeline, setActiveTurn, setAgentDraft, setAgentPlan, setAgentStatus, setAgentThought, setPendingRequest, setExtensionWorkingState, setStateAccessFailed, thoughtBufferRef, viewStateRef, wasAgentActiveRef]);
+  }, [activeChatJidRef, agentStatusRef, clearAgentRunState, clearLastActivityFlag, currentChatJid, currentTurnIdRef, draftBufferRef, getAgentStatus, noteAgentActivity, pendingRequestRef, refreshTimeline, setActiveTurn, setAgentDraft, setAgentPlan, setAgentStatus, setAgentThought, setPendingRequest, setExtensionWorkingState, setStateAccessFailed, thoughtBufferRef, viewStateRef, wasAgentActiveRef]);
 
   const reconcileSilentTurn = useCallback(async () => {
     return await reconcileSilentTurnState({

@@ -77,10 +77,16 @@ jobs:
         working-directory: tests/e2e
 
       - name: Install Playwright browsers
-        run: bunx playwright install chromium
-        working-directory: tests/e2e
+        uses: ./.github/actions/playwright-cache
+        with:
+          bun-version: ${{ steps.bun-version.outputs.version }}
+          working-directory: tests/e2e
+          browsers: chromium
+          variant: chromium
 
       - name: Start deterministic E2E LLM stub
+        env:
+          PICLAW_E2E_DISPOSABLE: '1'
         run: |
           bun run setup/local-openai-compatible-stub.ts > /tmp/piclaw-e2e-llm-stub.log 2>&1 &
           STUB_PID=$!
@@ -123,13 +129,15 @@ jobs:
         run: |
           # Generate a test internal secret
           export PICLAW_INTERNAL_SECRET=$(openssl rand -hex 16)
+          echo "::add-mask::$PICLAW_INTERNAL_SECRET"
           echo "PICLAW_INTERNAL_SECRET=$PICLAW_INTERNAL_SECRET" >> $GITHUB_ENV
 
           # Start piclaw in background with test config
           mkdir -p "$PICLAW_WORKSPACE/.piclaw"
 
           # Write minimal config and seed one known root file for workspace/editor UX tests.
-          echo '{"sessionAutoRotate":true}' > "$PICLAW_WORKSPACE/.piclaw/config.json"
+          (umask 077; printf '%s\n' '{"sessionAutoRotate":true}' > "$PICLAW_WORKSPACE/.piclaw/config.json")
+          chmod 600 "$PICLAW_WORKSPACE/.piclaw/config.json"
           cp AGENTS.md "$PICLAW_WORKSPACE/AGENTS.md"
 
           # Start server
@@ -172,7 +180,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Capture representative release layouts
-        if: always() && matrix.capture_evidence
+        if: success() && matrix.capture_evidence
         run: bun run scripts/capture-release-evidence.ts
         working-directory: tests/e2e
         env:
@@ -195,6 +203,8 @@ jobs:
             tests/e2e/reports/piclaw-e2e-report.pdf
             tests/e2e/reports/piclaw-e2e-report.html
             tests/e2e/reports/results.json
+            tests/e2e/reports/progress.jsonl
+            tests/e2e/reports/incomplete.json
             tests/e2e/reports/evidence/
           retention-days: 7
 

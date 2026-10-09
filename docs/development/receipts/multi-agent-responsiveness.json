@@ -1,0 +1,580 @@
+{
+  "recordedAt": "2026-10-07T17:51:29.175Z",
+  "base": "a2a3c8f5b",
+  "qualifiedHead": "f9a6e1938b7b386a278abc883ad22f721d1fc6f6",
+  "qualifiedTree": "42e32abbc985a9220b044a9d8de53a8f138680ed",
+  "runtimeTree": "efff2f66cd53645c47604dedb67eff5fb0bca6db",
+  "full": {
+    "exit": 0,
+    "pass": 6656,
+    "skip": 71,
+    "fail": 0,
+    "assertions": 43279,
+    "files": 955,
+    "seconds": 660.65,
+    "log": "/workspace/exports/responsiveness-20261007/full/ci-fast.log",
+    "sha256": "64707b4cb800cb7f140c0f6dc0aa723f07b4ae5b48ab928eb4aa297b82ad399f",
+    "cleanUnchanged": true
+  },
+  "focused": {
+    "pass": 117,
+    "assertions": 820
+  },
+  "settings": {
+    "pass": 25,
+    "assertions": 253
+  },
+  "build": {
+    "pass": 9,
+    "assertions": 26
+  },
+  "types": {
+    "pass": true,
+    "unchangedDiagnostics": 94
+  },
+  "review": "Explicit6.1 exactscopedDIFF/gateCLEAR; no reviewer tests",
+  "profiles": {
+    "groups": [
+      {
+        "type": "paired-final",
+        "cap": 1,
+        "runs": 3,
+        "medians": {
+          "creates": 24,
+          "bytesRead": 175403856,
+          "parseMs": 206.83574700000065,
+          "sdkMs": 33.86389899999972,
+          "contextMs": 13.195957000000135,
+          "wallMs": 732.0151639999999,
+          "meanRequestMs": 10.433543083333348,
+          "maxRequestMs": 18.473817000000054,
+          "maxTimerDelayMs": 28.582797000000028,
+          "endRss": 543649792,
+          "heapUsed": 110437467
+        },
+        "ranges": {
+          "creates": [
+            24,
+            24
+          ],
+          "bytesRead": [
+            175403856,
+            175403856
+          ],
+          "parseMs": [
+            197.35298100000023,
+            249.83738000000017
+          ],
+          "sdkMs": [
+            31.913176000000476,
+            37.86503399999992
+          ],
+          "contextMs": [
+            11.240274000000227,
+            16.793560999999045
+          ],
+          "wallMs": [
+            710.3999610000001,
+            814.3452849999999
+          ],
+          "meanRequestMs": [
+            10.032900541666683,
+            12.733128208333332
+          ],
+          "maxRequestMs": [
+            18.20244600000001,
+            23.469186000000036
+          ],
+          "maxTimerDelayMs": [
+            27.217174000000114,
+            34.774550999999974
+          ],
+          "endRss": [
+            497623040,
+            561741824
+          ],
+          "heapUsed": [
+            57864286,
+            147878238
+          ]
+        }
+      },
+      {
+        "type": "paired-final",
+        "cap": 4,
+        "runs": 3,
+        "medians": {
+          "creates": 4,
+          "bytesRead": 29233536,
+          "parseMs": 38.185523999999646,
+          "sdkMs": 9.668768,
+          "contextMs": 17.855857999998875,
+          "wallMs": 519.886851,
+          "meanRequestMs": 2.316530583333327,
+          "maxRequestMs": 18.050337999999897,
+          "maxTimerDelayMs": 24.612825999999927,
+          "endRss": 373084160,
+          "heapUsed": 156692593
+        },
+        "ranges": {
+          "creates": [
+            4,
+            4
+          ],
+          "bytesRead": [
+            29233536,
+            29233536
+          ],
+          "parseMs": [
+            37.16095899999982,
+            39.22279199999991
+          ],
+          "sdkMs": [
+            9.543284999999855,
+            10.176322000000141
+          ],
+          "contextMs": [
+            16.86439399999938,
+            19.329953999999816
+          ],
+          "wallMs": [
+            515.109259,
+            538.757313
+          ],
+          "meanRequestMs": [
+            2.1945928333333455,
+            2.3477512083333445
+          ],
+          "maxRequestMs": [
+            17.812994000000003,
+            18.274725999999987
+          ],
+          "maxTimerDelayMs": [
+            23.96931600000005,
+            26.165313999999967
+          ],
+          "endRss": [
+            323989504,
+            384192512
+          ],
+          "heapUsed": [
+            136296203,
+            239854315
+          ]
+        }
+      },
+      {
+        "type": "fullpool-rows1000",
+        "cap": 1,
+        "runs": 3,
+        "medians": {
+          "creates": 24,
+          "bytesRead": 35051856,
+          "parseMs": 55.522382000000334,
+          "sdkMs": 14.29239100000018,
+          "contextMs": 3.7548830000007456,
+          "wallMs": 381.4431750000001,
+          "meanRequestMs": 3.6564997083333424,
+          "maxRequestMs": 9.930441000000087,
+          "maxTimerDelayMs": 9.355278999999882,
+          "endRss": 223690752,
+          "heapUsed": 111422911
+        },
+        "ranges": {
+          "creates": [
+            24,
+            24
+          ],
+          "bytesRead": [
+            35051856,
+            35051856
+          ],
+          "parseMs": [
+            43.861943999999994,
+            58.524900999999545
+          ],
+          "sdkMs": [
+            14.263193000000683,
+            17.834173999999962
+          ],
+          "contextMs": [
+            3.6709959999996045,
+            5.104804000000627
+          ],
+          "wallMs": [
+            369.3427690000001,
+            404.4799189999999
+          ],
+          "meanRequestMs": [
+            3.155430666666651,
+            4.187503708333328
+          ],
+          "maxRequestMs": [
+            9.511092999999846,
+            15.410508000000164
+          ],
+          "maxTimerDelayMs": [
+            7.177656999999954,
+            12.711962000000085
+          ],
+          "endRss": [
+            211329024,
+            227725312
+          ],
+          "heapUsed": [
+            106989696,
+            112301840
+          ]
+        }
+      },
+      {
+        "type": "fullpool-rows1000",
+        "cap": 4,
+        "runs": 3,
+        "medians": {
+          "creates": 4,
+          "bytesRead": 5841536,
+          "parseMs": 10.262444999999957,
+          "sdkMs": 5.799700999999914,
+          "contextMs": 4.496483999999896,
+          "wallMs": 323.4287089999999,
+          "meanRequestMs": 1.1550944583333187,
+          "maxRequestMs": 12.71294499999999,
+          "maxTimerDelayMs": 10.29485299999999,
+          "endRss": 205926400,
+          "heapUsed": 79828952
+        },
+        "ranges": {
+          "creates": [
+            4,
+            4
+          ],
+          "bytesRead": [
+            5841536,
+            5841536
+          ],
+          "parseMs": [
+            7.936123000000066,
+            10.657235000000128
+          ],
+          "sdkMs": [
+            5.41820400000006,
+            7.250370000000316
+          ],
+          "contextMs": [
+            4.403931000000171,
+            4.853607000000011
+          ],
+          "wallMs": [
+            322.6264930000001,
+            323.55963899999995
+          ],
+          "meanRequestMs": [
+            0.9292403750000062,
+            1.233282791666653
+          ],
+          "maxRequestMs": [
+            9.607334000000037,
+            16.15505799999994
+          ],
+          "maxTimerDelayMs": [
+            7.341580000000022,
+            13.802583000000027
+          ],
+          "endRss": [
+            202338304,
+            215425024
+          ],
+          "heapUsed": [
+            72579869,
+            81277735
+          ]
+        }
+      },
+      {
+        "type": "fullpool-rows5000",
+        "cap": 1,
+        "runs": 3,
+        "medians": {
+          "creates": 24,
+          "bytesRead": 175403856,
+          "parseMs": 194.16314900000043,
+          "sdkMs": 32.44224800000052,
+          "contextMs": 13.776845999999296,
+          "wallMs": 708.006056,
+          "meanRequestMs": 10.293815541666666,
+          "maxRequestMs": 20.94108899999992,
+          "maxTimerDelayMs": 28.27161299999989,
+          "endRss": 508973056,
+          "heapUsed": 116557892
+        },
+        "ranges": {
+          "creates": [
+            24,
+            24
+          ],
+          "bytesRead": [
+            175403856,
+            175403856
+          ],
+          "parseMs": [
+            181.78940700000044,
+            198.30461300000024
+          ],
+          "sdkMs": [
+            31.917541000000142,
+            34.13265200000001
+          ],
+          "contextMs": [
+            12.072618999998781,
+            13.91486900000018
+          ],
+          "wallMs": [
+            706.4585539999999,
+            722.1667519999999
+          ],
+          "meanRequestMs": [
+            9.864886041666708,
+            10.520863166666677
+          ],
+          "maxRequestMs": [
+            20.432076999999936,
+            22.849778000000015
+          ],
+          "maxTimerDelayMs": [
+            26.82316000000003,
+            33.43336600000009
+          ],
+          "endRss": [
+            507875328,
+            520994816
+          ],
+          "heapUsed": [
+            93667293,
+            228908588
+          ]
+        }
+      },
+      {
+        "type": "fullpool-rows5000",
+        "cap": 4,
+        "runs": 3,
+        "medians": {
+          "creates": 4,
+          "bytesRead": 29233536,
+          "parseMs": 36.37397399999986,
+          "sdkMs": 9.738172999999733,
+          "contextMs": 17.19638699999973,
+          "wallMs": 533.992332,
+          "meanRequestMs": 2.314987041666664,
+          "maxRequestMs": 18.71189000000004,
+          "maxTimerDelayMs": 27.232216000000108,
+          "endRss": 319913984,
+          "heapUsed": 180978787
+        },
+        "ranges": {
+          "creates": [
+            4,
+            12
+          ],
+          "bytesRead": [
+            29233536,
+            87701664
+          ],
+          "parseMs": [
+            35.00962600000014,
+            106.31586400000072
+          ],
+          "sdkMs": [
+            9.556728000000135,
+            21.163556000000426
+          ],
+          "contextMs": [
+            15.481254000000376,
+            18.05749999999989
+          ],
+          "wallMs": [
+            518.3188049999999,
+            620.7956489999999
+          ],
+          "meanRequestMs": [
+            2.284856500000018,
+            6.046308166666658
+          ],
+          "maxRequestMs": [
+            18.70568000000003,
+            20.290242000000035
+          ],
+          "maxTimerDelayMs": [
+            24.56995699999993,
+            27.481145000000083
+          ],
+          "endRss": [
+            305897472,
+            416890880
+          ],
+          "heapUsed": [
+            178200695,
+            227651852
+          ]
+        }
+      },
+      {
+        "type": "cleanup-base",
+        "cap": 0,
+        "runs": 3,
+        "medians": {
+          "totalMs": 135.38800500000013,
+          "maxMs": 16.24065399999995
+        },
+        "ranges": {
+          "totalMs": [
+            131.69890899999996,
+            139.3173950000005
+          ],
+          "maxMs": [
+            14.560398000000077,
+            16.633174000000054
+          ]
+        }
+      },
+      {
+        "type": "cleanup-candidate",
+        "cap": 0,
+        "runs": 3,
+        "medians": {
+          "totalMs": 14.8870569999998,
+          "maxMs": 14.379233999999997
+        },
+        "ranges": {
+          "totalMs": [
+            14.380158000000165,
+            16.838803000000098
+          ],
+          "maxMs": [
+            13.932805000000144,
+            16.275160000000028
+          ]
+        }
+      }
+    ],
+    "sha256": "99ea977c067190e236da98a12f8f0de4c1257a2926de1bb11b5e66507ac125b5",
+    "path": "/workspace/exports/responsiveness-20261007/profile-report.json",
+    "diskSoak": {
+      "disk": true,
+      "database": [
+        {
+          "seq": 0,
+          "name": "main",
+          "file": "/tmp/piclaw-test-fs-gmKDvq/workspace/.piclaw/store/messages.db"
+        }
+      ],
+      "journal": {
+        "journal_mode": "wal"
+      },
+      "synchronous": {
+        "synchronous": 2
+      },
+      "protect": true,
+      "cadence": 30000,
+      "ticks": 3,
+      "collections": 1,
+      "rssSamples": [
+        161251328,
+        142721024,
+        142721024
+      ],
+      "firstIdleMs": 10.947864000001573,
+      "calls": [
+        0.32398799999987205,
+        0.011739999998098938,
+        0.027745999999751803
+      ],
+      "totalMs": 0.3634739999977228,
+      "maxMs": 0.32398799999987205,
+      "cpuUs": {
+        "user": 200294,
+        "system": 14130
+      },
+      "before": {
+        "rss": 161120256,
+        "heapTotal": 49337344,
+        "heapUsed": 34207850,
+        "external": 6477146,
+        "arrayBuffers": 719
+      },
+      "after": {
+        "rss": 142028800,
+        "heapTotal": 38979584,
+        "heapUsed": 34296929,
+        "external": 2987361,
+        "arrayBuffers": 606
+      },
+      "heldCount": 20000,
+      "scope": "Actual AgentPool cleanup under forced pressure, retained synthetic object graph, no sessions/provider calls/liveDB"
+    }
+  },
+  "retainedFailures": [
+    {
+      "path": "/workspace/exports/responsiveness-20261007/focused-final.log",
+      "sha256": "00d93ff1b05a9702c18d1c95d2b25809a4b4f6274cad2870f686d9799b896576"
+    },
+    {
+      "path": "/workspace/exports/responsiveness-20261007/defaults-test.log",
+      "sha256": "b38e15ab4099927efc6495297b3ff82e17409f9647eabeed0a953c9946a5db68"
+    },
+    {
+      "path": "/workspace/exports/responsiveness-20261007/profiles/cleanup-cadence-soak.log",
+      "sha256": "6439bda8b25fe9335aa7177b430fe5057096eda330a4e6380e6eb810f3969bd3"
+    }
+  ],
+  "limits": [
+    "Measured reconstruction/cleanup cost only; no universal deadlock or production latency fix claim",
+    "ContinuousworkmaydeferexplicitGC; normalGC enabled",
+    "Initialdisklabelwasmemory; correctedownedfileWAL/FULLsoakverified",
+    "Pressure384MiB/cap1/overrides/protections/durability unchanged"
+  ],
+  "operations": "Sourceonly no liveconfig/provider/install/restart",
+  "publicationDelta": "Docs/receipts only with runtimeparity",
+  "integration": {
+    "baseMain": "274a6cdbde1f2e6a9769ee9700d465c2f6d24993",
+    "head": "a13a3503c0f230644d4bf018b643db683ed8ab7f",
+    "tree": "79290d7c8be7e09f5f5284f431439e21c355aeaf",
+    "runtimeTree": "6a15950d9fb92afd6917baa537d0753b1c626fbb",
+    "full": {
+      "pass": 6656,
+      "skip": 71,
+      "fail": 0,
+      "assertions": 43279,
+      "files": 955,
+      "seconds": 660.81,
+      "log": "/workspace/exports/responsiveness-20261007/full-integrated/ci-fast.log",
+      "sha256": "62fe9554c9e62970a235b85792c771c416d8abd300169cdd0cdaed2e380e55e7",
+      "cleanUnchanged": true
+    },
+    "focused": {
+      "pass": 125,
+      "assertions": 909
+    },
+    "settings": {
+      "pass": 25,
+      "assertions": 253
+    },
+    "build": {
+      "pass": 9,
+      "assertions": 26
+    },
+    "privateReceipt": {
+      "id": "9e383c94-9f99-4e2a-b9a1-f8509897e560",
+      "status": "passed",
+      "ciFastCounts": {
+        "pass": 6690,
+        "skip": 71,
+        "fail": 0,
+        "summaries": 3
+      },
+      "logHash": "5fee11a5bccf143cfe8f8d71714544c4132b1d2b614a638a0a9fa09f780bee91",
+      "note": "Exact canonical ci-fast capability; other capabilities not run"
+    }
+  }
+}

@@ -1,146 +1,93 @@
 import { test, expect } from '../support/world';
 import { sel } from '../support/selectors';
+import { sendAndRead, stubControl, waitStubStarted } from '../support/deterministic-turn';
 
-// US-07: Resilient Reconnection
+async function disconnect(page: import('@playwright/test').Page) {
+  const errors = await page.evaluate(() => (window as any).__e2eSse.errors);
+  await page.context().setOffline(true);
+  // Chromium's offline switch may leave an established stream open. Inject
+  // the transport failure, then exercise the application's real reconnect.
+  await page.evaluate(() => { const source = (window as any).__e2eSse.sources.at(-1) as EventSource; source.close(); source.dispatchEvent(new Event('error')); });
+  await page.waitForFunction(before => (window as any).__e2eSse.errors > before, errors, { timeout: 10_000 });
+}
+async function reconnect(page: import('@playwright/test').Page) {
+  const opens = await page.evaluate(() => (window as any).__e2eSse.opens);
+  await page.context().setOffline(false);
+  await page.waitForFunction(before => (window as any).__e2eSse.opens > before, opens, { timeout: 10_000 });
+  await expect(page.locator(sel.composeInput)).toBeEditable();
+}
+
+test.afterEach(async ({ authedPage: page }) => {
+  await page.context().setOffline(false);
+  await stubControl('clear');
+});
 
 test.describe('US-07: SSE Reconnection', () => {
   test('SSE reconnects after network drop', async ({ authedPage: page }) => {
-    // Verify we're connected (agent status visible or timeline loaded)
-    await page.waitForSelector(sel.timeline);
-
-    // Go offline
-    await page.context().setOffline(true);
-    await page.waitForTimeout(3000);
-
-    // Come back online
-    await page.context().setOffline(false);
-
-    // Wait for reconnection indicator to clear
-    await page.waitForFunction(() => {
-      const hint = document.querySelector('.reconnect-hint, .connection-lost');
-      return !hint || (hint as HTMLElement).offsetParent === null;
-    }, { timeout: 10000 });
-
-    // Timeline should still be functional
-    await expect(page.locator(sel.timeline)).toBeVisible();
+    await disconnect(page);
+    await reconnect(page);
+    await sendAndRead(page, 'after-network-drop', 'Say hello');
   });
 
   test('messages delivered during disconnect appear after reconnect', async ({ authedPage: page }) => {
-    await page.waitForSelector(sel.timeline);
-
-    // Count current posts
-    const postsBefore = await page.locator(sel.post).count();
-
-    // Send a message that will complete while we're "offline"
-    const compose = page.locator(sel.composeInput);
-    await compose.click();
-    await compose.fill('Say hello');
+    await stubControl('hold', 'disconnected-response');
+    await page.locator(sel.composeInput).fill('[e2e-id:disconnected-response] Say hello');
     await page.keyboard.press('Enter');
-
-    // Brief delay then go offline
-    await page.waitForTimeout(500);
-    await page.context().setOffline(true);
-
-    // Wait for agent to likely complete (we're offline so won't see SSE)
-    await page.waitForTimeout(5000);
-
-    // Come back online
-    await page.context().setOffline(false);
-    await page.waitForTimeout(5000);
-
-    // Should have more posts than before (agent response arrived)
-    const postsAfter = await page.locator(sel.post).count();
-    expect(postsAfter).toBeGreaterThan(postsBefore);
+    await waitStubStarted('disconnected-response');
+    await disconnect(page);
+    await stubControl('release', 'disconnected-response');
+    const chat = new URL(page.url()).searchParams.get('chat_jid')!;
+    await expect.poll(async () => {
+      const response = await fetch(`${process.env.PICLAW_E2E_URL}/timeline?limit=100&chat_jid=${encodeURIComponent(chat)}`, { headers: { 'x-piclaw-internal-secret': process.env.PICLAW_E2E_INTERNAL_SECRET! }, signal: AbortSignal.timeout(5000) });
+      if (!response.ok) throw new Error(`Fixture timeline read failed: ${response.status}`);
+      const body = await response.json() as { posts?: Array<{ data?: { content?: string; type?: string } }> };
+      return body.posts?.filter(post => post.data?.type === 'agent_response' && String(post.data?.content).includes('E2E response disconnected-response.')).length || 0;
+    }, { timeout: 15_000 }).toBe(1);
+    await reconnect(page);
+    await expect(page.locator(sel.postContent).filter({ hasText: 'E2E response disconnected-response.' })).toHaveCount(1, { timeout: 15_000 });
   });
 
   test('no auto-reload loop on version drift', async ({ authedPage: page }) => {
-    // Inject a fake version drift SSE event
-    await page.evaluate(() => {
-      const event = new CustomEvent('piclaw:version-drift', {
-        detail: { serverVersion: '99.0.0' },
-      });
-      window.dispatchEvent(event);
-    });
-
-    await page.waitForTimeout(2000);
-
-    // Page should NOT have reloaded (URL still same, DOM still present)
-    await expect(page.locator(sel.timeline)).toBeVisible();
-
-    // May show an update notice
-    const notice = page.locator('.version-notice, .update-available, [data-testid="version-drift"]');
-    // Notice is acceptable; auto-reload is not
-    // Verify page didn't navigate
-    const isStable = await page.evaluate(() => document.readyState === 'complete');
-    expect(isStable).toBe(true);
+    let navigations = 0;
+    page.on('framenavigated', frame => { if (frame === page.mainFrame()) navigations++; });
+    const identity = await page.evaluate(() => { (window as any).__e2eDocumentIdentity = 'same-document'; return location.href; });
+    await page.evaluate(() => { const source = (window as any).__e2eSse.sources.at(-1) as EventSource; source.dispatchEvent(new MessageEvent('connected', { data: JSON.stringify({ app_asset_version: 'e2e-new-version' }) })); });
+    await expect(page.getByText('New UI available', { exact: true })).toBeVisible();
+    await sendAndRead(page, 'after-version-drift');
+    expect(navigations).toBe(0);
+    expect(page.url()).toBe(identity);
+    expect(await page.evaluate(() => (window as any).__e2eDocumentIdentity)).toBe('same-document');
   });
 
   test('agent status correct after reconnect', async ({ authedPage: page }) => {
-    await page.waitForSelector(sel.timeline);
-
-    // Go offline and back
-    await page.context().setOffline(true);
-    await page.waitForTimeout(2000);
-    await page.context().setOffline(false);
-    await page.waitForTimeout(5000);
-
-    // Agent status should not be stuck on "connecting"
-    const status = page.locator(sel.agentStatus);
-    if (await status.isVisible()) {
-      const text = await status.textContent();
-      expect(text?.toLowerCase()).not.toContain('connecting');
-    }
-
-    // Compose should be interactive
-    const compose = page.locator(sel.composeInput);
-    await expect(compose).toBeEditable();
+    await disconnect(page);
+    await reconnect(page);
+    await sendAndRead(page, 'status-after-reconnect');
+    await expect(page.locator(sel.stopButton)).not.toBeVisible();
   });
 
   test('page refresh recovers all state', async ({ authedPage: page }) => {
-    await page.waitForSelector(sel.timeline);
-    const postsBefore = await page.locator(sel.post).count();
-
-    // Full page refresh. The app keeps an SSE connection open, so networkidle is
-    // the wrong readiness signal here.
+    await sendAndRead(page, 'retained-on-refresh');
     await page.reload({ waitUntil: 'domcontentloaded' });
-
-    // Timeline should reload with same messages (or remain empty on a fresh test instance).
-    await page.locator(sel.timeline).waitFor({ state: 'visible', timeout: 10000 });
-    const postsAfter = await page.locator(sel.post).count();
-
-    // Should have roughly same number of posts (± recent activity)
-    expect(postsAfter).toBeGreaterThanOrEqual(Math.max(0, postsBefore - 2));
-
-    // Compose should be ready
-    const compose = page.locator(sel.composeInput);
-    await expect(compose).toBeEditable();
+    await expect(page.locator(sel.postContent).filter({ hasText: 'E2E response retained-on-refresh.' })).toHaveCount(1, { timeout: 10_000 });
+    await expect(page.locator(sel.composeInput)).toBeEditable();
   });
 
   test('queue state refreshes after reconnect', async ({ authedPage: page }) => {
-    const compose = page.locator(sel.composeInput);
-    await compose.click();
-    await compose.fill('Start a long task for reconnect test');
+    await stubControl('hold', 'queue-first');
+    await page.locator(sel.composeInput).fill('[e2e-id:queue-first] First queued test turn');
     await page.keyboard.press('Enter');
-
-    // Wait for agent to start
-    await page.waitForSelector(sel.stopButton, { timeout: 5000 }).catch(() => {});
-
-    // Queue a follow-up
-    await compose.click();
-    await compose.fill('Queued during reconnect test');
+    await waitStubStarted('queue-first');
+    await expect(page.locator(sel.stopButton)).toBeVisible();
+    await page.locator(sel.composeInput).fill('[e2e-id:queue-second] Named queued follow-up');
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(500);
-
-    // Go offline and back
-    await page.context().setOffline(true);
-    await page.waitForTimeout(2000);
-    await page.context().setOffline(false);
-    await page.waitForTimeout(3000);
-
-    // No stale or duplicated queue items — UI should be coherent
-    const queueItems = await page.locator(sel.queueItem).all();
-    const texts = await Promise.all(queueItems.map((q) => q.textContent()));
-    const unique = new Set(texts);
-    expect(unique.size).toBe(texts.length); // no duplicates
+    await expect(page.locator(sel.queueItem).filter({ hasText: 'Named queued follow-up' })).toHaveCount(1, { timeout: 10_000 });
+    await disconnect(page);
+    await reconnect(page);
+    await expect(page.locator(sel.queueItem).filter({ hasText: 'Named queued follow-up' })).toHaveCount(1);
+    await stubControl('release', 'queue-first');
+    await expect(page.locator(sel.postContent).filter({ hasText: 'E2E response queue-first.' })).toHaveCount(1, { timeout: 15_000 });
+    await expect(page.locator(sel.postContent).filter({ hasText: 'E2E response queue-second.' })).toHaveCount(1, { timeout: 15_000 });
+    await expect(page.locator(sel.queueItem).filter({ hasText: 'Named queued follow-up' })).toHaveCount(0);
   });
 });

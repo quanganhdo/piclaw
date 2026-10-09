@@ -211,6 +211,16 @@ const TOOL_CAPABILITIES: Record<string, ToolCapability> = {
       nouns: ["models", "providers", "model", "provider"],
     }),
   },
+  provider_quota: {
+    kind: "read-only", weight: "lightweight",
+    summary: "Inspect provider quota, credits, usage windows and resets; optional bounded shared refresh.",
+    recommend: rec({ domains: ["provider", "quota", "budget", "credits"], verbs: ["inspect", "check", "refresh"], nouns: ["quota", "balance", "usage", "remaining", "reset"] }),
+  },
+  set_model: {
+    kind: "mutating", weight: "lightweight",
+    summary: "Set model and/or thinking_level together; omit both for current state and valid thinking options.",
+    recommend: rec({ domains: ["models", "thinking", "reasoning"], verbs: ["set", "switch", "change"], nouns: ["model", "thinking", "effort", "level"] }),
+  },
   switch_model: {
     kind: "mutating",
     weight: "lightweight",

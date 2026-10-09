@@ -34,11 +34,17 @@ for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
     let accepted = 0;
     let sseFirst = false;
     let rejectNext = false;
+    let queueNext = false;
+    let releaseAck!: () => void;
+    let holdAck = new Promise<void>(resolve => { releaseAck = resolve; });
     let lastPost: any;
+    const durablePosts: any[] = [];
     let ackAt = 0;
     const modelPayload = () => ({ current: model, thinking_level: thinking, thinking_level_label: thinking, supports_thinking: true, available_model_count: 2, model_options: [{ id: model, context_window: 200000 }], oobe: { provider_ready_completed_instance: true } });
     const contextPayload = () => ({ tokens, percent: tokens / 2000, contextWindow: 200000, sessionGeneration: "fixture-generation" });
     await page.addInitScript(({ chatJid }) => {
+      (window as any).feedbackEvents = [];
+      window.addEventListener('piclaw:agent-status', (event: any) => (window as any).feedbackEvents.push(event.detail));
       localStorage.setItem("piclaw_wizard_dismissed", "1");
       localStorage.setItem("piclaw-active-panel", "chat");
       localStorage.setItem("piclaw_workspace_visible", "false");
@@ -72,20 +78,23 @@ for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
       let body: unknown;
       if (url.pathname.startsWith('/agent/') && url.pathname.endsWith('/message') && req.method() === 'POST') {
         if(rejectNext) return route.fulfill({status:500,json:{error:'Fixture submission rejected'}});
+        if(queueNext) { queueNext = false; return route.fulfill({ status:201,json:{thread_id:null,queued:'followup'} }); }
         accepted++;
         const id=777000+accepted;
-        lastPost={id,chat_jid:chatJid,type:'user',data:{type:'user_message',content:req.postDataJSON().content,timestamp:new Date().toISOString(),sender_name:'Fixture User',is_bot_message:false,thread_id:id}};
+        lastPost={id,chat_jid:url.searchParams.get("chat_jid") || chatJid,type:'user',data:{type:'user_message',content:req.postDataJSON().content,timestamp:new Date().toISOString(),sender_name:'Fixture User',is_bot_message:false,thread_id:id}};
+        durablePosts.push(lastPost);
         if(sseFirst){
-          await page.evaluate(post=>(window as any).emitShellEvent('new_post',post),lastPost);
+          await page.evaluate(post=>{(window as any).emitShellEvent('new_post',post);(window as any).emitShellEvent('agent_status',{chat_jid:post.chat_jid,thread_id:post.data.timestamp,type:'thinking',phase:'thinking',turn_id:'second-turn'});},lastPost);
           await Bun.sleep(100);
         }
+        await holdAck;
         ackAt=Date.now();
         body = {thread_id:id,user_message:lastPost};
       }
       else if (url.pathname === "/agent/status") body = { status: { status: "idle", state: "idle", data: null }, model: modelPayload(), context: contextPayload(), metrics: { cpu_percent: 2, ram_percent: 12 }, agent_name: "Fixture", errors: [] };
       else if (url.pathname === "/agent/models") body = modelPayload();
       else if (url.pathname === "/agent/context") body = contextPayload();
-      else if (url.pathname === "/timeline") body = { posts: [], has_more: false, chat_jid: chatJid, user: { name: "Fixture User" }, agent: { name: "Fixture" } };
+      else if (url.pathname === "/timeline") body = { posts: durablePosts, has_more: false, chat_jid: chatJid, user: { name: "Fixture User" }, agent: { name: "Fixture" } };
       else if (url.pathname === "/agent/addons/web-entries") body = { entries: [] };
       else if (url.pathname === "/agent/roster") body = { agents: [], default_agent: "fixture" };
       else if (url.pathname === "/agent/branches") body = { branches: [{ chat_jid: chatJid, root_chat_jid: "web:default", branch_id: "cold-start", agent_name: "fixture" }] };
@@ -117,12 +126,24 @@ for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
       const input=page.locator('textarea').filter({visible:true}).first();
       await input.fill('Latency probe submission');
       await input.press('Enter');
+      await page.locator('[data-submission-state="sending"]').waitFor({ timeout: 1500 });
+      expect(await page.locator('[data-submission-state="sending"]').textContent()).toContain('Sending message');
+      expect(await page.locator('#post-777001,[data-message-id="777001"]').count()).toBe(0);
+      releaseAck();
       await page.waitForFunction(()=>document.querySelector('#post-777001,[data-message-id="777001"]'),{},{timeout:1500});
       expect(accepted).toBe(1);
+      await page.locator('[data-submission-state="waiting"]').waitFor({ timeout: 1500 });
+      expect(await page.locator('[data-submission-state="waiting"]').textContent()).toContain('Message accepted');
+      await page.evaluate(payload=>(window as any).emitShellEvent('agent_status',payload),{chat_jid:lastPost.chat_jid,thread_id:777000,type:'tool_status',title:'Previous turn',turn_id:'previous'});
+      expect(await page.locator('[data-submission-state="waiting"]').count()).toBe(1);
+      await page.evaluate(payload=>(window as any).emitShellEvent('agent_status',payload),{chat_jid:lastPost.chat_jid,thread_id:lastPost.data.timestamp,type:'thinking',phase:'thinking',title:'Thinking...',turn_id:'accepted-turn'});
+      await page.locator('[data-submission-state]').waitFor({ state: 'hidden', timeout: 1500 });
       expect(Date.now()-ackAt).toBeLessThan(1500);
       await page.evaluate(post=>(window as any).emitShellEvent('new_post',post),lastPost);
       await page.waitForTimeout(100);
       expect(await page.locator('#post-777001,[data-message-id="777001"]').count()).toBe(1);
+      await page.evaluate(payload=>(window as any).emitShellEvent('agent_status',payload),{chat_jid:lastPost.chat_jid,thread_id:lastPost.data.timestamp,type:'done',turn_id:'accepted-turn'});
+      await page.waitForTimeout(150);
       // Event first, response later must likewise leave exactly one durable row.
       sseFirst=true;
       await input.fill('Second latency probe');await input.press('Enter');
@@ -130,16 +151,23 @@ for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
       await page.waitForTimeout(300);
       expect(accepted).toBe(2);
       expect(await page.locator('#post-777002,[data-message-id="777002"]').count()).toBe(1);
+      expect(await page.locator('[data-submission-state="waiting"]').count()).toBe(0);
+      queueNext=true;
+      await input.fill('Queued fixture prompt'); await input.press('Enter');
+      await page.waitForTimeout(300);
+      expect(await page.locator('[data-submission-state]').count()).toBe(0);
+      expect(accepted).toBe(2);
       // Rejected submissions are never made to look accepted in the timeline.
       rejectNext=true;
       await input.fill('Rejected latency probe');await input.press('Enter');
       await page.waitForTimeout(500);
       expect(accepted).toBe(2);
+      expect(await page.locator('[data-submission-state]').count()).toBe(0);
       expect(await page.locator('#post-777003,[data-message-id="777003"]').count()).toBe(0);
       expect(errors).toEqual([]);
       expect([...unhandled]).toEqual([]);
     } catch (error) {
-      console.log("SHELL_FAILURE", JSON.stringify({ engineName, skin, errors, unhandled: [...unhandled], requests, body: (await page.locator("body").innerText()).slice(-2500), badges: await page.locator(".model-badge-wrapper,.compose-model-meta").evaluateAll(nodes => nodes.map(n => n.outerHTML)), scripts: await page.locator("script[src]").evaluateAll(nodes => nodes.map(n => n.getAttribute("src"))) }));
+      console.log("SHELL_FAILURE", JSON.stringify({ engineName, skin, errors, unhandled: [...unhandled], requests, feedbackEvents: await page.evaluate(() => (window as any).feedbackEvents), body: (await page.locator("body").innerText()).slice(-2500), badges: await page.locator(".model-badge-wrapper,.compose-model-meta").evaluateAll(nodes => nodes.map(n => n.outerHTML)), scripts: await page.locator("script[src]").evaluateAll(nodes => nodes.map(n => n.getAttribute("src"))) }));
       throw error;
     } finally { await context.close(); await browser.close(); }
   }, 60000);

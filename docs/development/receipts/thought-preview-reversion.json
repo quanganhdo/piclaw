@@ -1,0 +1,94 @@
+{
+  "recordedAt": "2026-10-06T20:39:46.129Z",
+  "qualifiedHead": "86be609357426a76e158f3d8f12ad80117ab29cb",
+  "tree": "78c679149327032fbce968e5c02b65f3b4ec2936",
+  "runtimeTree": "9dbc6283fe1d0fd9b0ac7cf822a0e4fcc34169ab",
+  "full": {
+    "exit": 0,
+    "pass": 6583,
+    "skip": 71,
+    "fail": 0,
+    "assertions": 42834,
+    "files": 951,
+    "seconds": 723.74,
+    "log": "/workspace/exports/thought-preview-resume/full-v2/ci-fast.log",
+    "sha256": "ed4d0568493df6367e923ce25334dc5d3325ba0d314d00a9f68727803bc11d62",
+    "cleanUnchanged": true
+  },
+  "focused": {
+    "pass": 37,
+    "assertions": 111
+  },
+  "browser": {
+    "pass": 2,
+    "assertions": 4,
+    "engines": [
+      "Chromium",
+      "WebKit"
+    ],
+    "scope": "Classic production togglecontroller delayedresponse fixture"
+  },
+  "affected": {
+    "pass": 82,
+    "assertions": 1681,
+    "log": "/workspace/exports/thought-preview-resume/affected-tests.log",
+    "sha256": "11169375e8c1729b9e1a9fa6d5f4e73a9ecfb93cabd9549ffb1fc91381ab6215"
+  },
+  "settings": {
+    "pass": 25,
+    "assertions": 246
+  },
+  "build": {
+    "pass": 9,
+    "assertions": 26
+  },
+  "review": "Explicit6.1 scopedCLEAR, no reviewer tests",
+  "failedFull": {
+    "pass": 6578,
+    "skip": 71,
+    "fail": 5,
+    "error": 1,
+    "assertions": 42724,
+    "log": "/workspace/exports/thought-preview-resume/thought-races-full/ci-fast.log",
+    "sha256": "ce89defe77b68809aac764955e2c45c75e7f629052de5276f99a0c45f5de95af",
+    "unchangedAfterRecovery": true,
+    "causesNotFullyEstablished": true
+  },
+  "scope": "ClassicHTTPstaleresponseguards; VisualSSEunchanged",
+  "publicationDelta": "Docs/receipts only with runtimeparity",
+  "operations": "No featuremerge/install/restart; cleanup/reload separatelyauthorised completedbyotherowner",
+  "integration": {
+    "baseMain": "296187fd6dfb5768ffdd4e14c497d7f1cb32c5f4",
+    "qualifiedHead": "cfab718a8cf24330697bc3e756b99dc7d3426dba",
+    "tree": "0ae8a6bc7bc2b70358eee3228e718b18ded64e58",
+    "runtimeTree": "b12973e4510ab84565c83a93a5d31a027b949fb1",
+    "full": {
+      "pass": 6633,
+      "skip": 71,
+      "fail": 0,
+      "assertions": 43169,
+      "files": 952,
+      "seconds": 656.47,
+      "sha256": "49a07a09a77de94e51bdf3fad605a2b4dd0b7a940326a982341df2d59c924d9f",
+      "log": "/workspace/exports/thought-preview-resume/full-integrated/ci-fast.log",
+      "cleanUnchanged": true
+    },
+    "focused": {
+      "pass": 123,
+      "assertions": 450
+    },
+    "browser": {
+      "pass": 2,
+      "assertions": 4,
+      "initialWebkitTimeoutRetained": true
+    },
+    "settings": {
+      "pass": 25,
+      "assertions": 246
+    },
+    "build": {
+      "pass": 9,
+      "assertions": 26
+    }
+  }
+}
