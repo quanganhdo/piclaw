@@ -51,6 +51,7 @@ export interface ChatTransportRequest {
   attachments?: ChatTransportAttachment[];
   idempotency_key?: string;
   in_reply_to?: string;
+  signal?: AbortSignal;
 }
 
 export interface ChatTransportResult {
@@ -151,6 +152,7 @@ export async function sendViaChatTransport(
   request: ChatTransportRequest,
   options: { annotate?: boolean } = {},
 ): Promise<ChatTransportResult> {
+  request.signal?.throwIfAborted();
   if (readAccessConfig().mode !== "single-user") throw new ChatAccessDenied();
   const transport = getChatTransport(request.address.kind);
   if (!transport) {

@@ -500,6 +500,7 @@ test("agent pool evicts idle sessions and recreates them", async () => {
   entry.lastUsed = Date.now() - 16 * 60 * 1000;
   (pool as any).evictIdle();
 
+  await Bun.sleep(0); // Disposal is registered before its callback executes.
   expect(disposed).toBe(1);
   expect((pool as any).pool.has("web:default")).toBe(false);
 
@@ -752,6 +753,7 @@ test("agent pool protects a run before the session flips isStreaming", async () 
   entry.lastUsed = Date.now() - 10_000;
   (pool as any).evictIdle();
   expect((pool as any).pool.has("web:protected")).toBe(false);
+  await Bun.sleep(0); // Observe the asynchronously scheduled disposal.
   expect(disposed).toBe(1);
 
   await pool.shutdown();

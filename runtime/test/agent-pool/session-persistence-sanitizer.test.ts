@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { SessionManager, SettingsManager, getAgentDir } from "@earendil-works/pi-coding-agent";
-import "../helpers.js";
+import { setEnv } from "../helpers.js";
 import { createSessionInDir, trimPreCompactionEntries } from "../../src/agent-pool/session.ts";
 import { createRealTestModelServices } from "../model-services-fixture.js";
 
@@ -14,6 +14,13 @@ function makeAssistantMessage(text = "ready") {
     stopReason: "end_turn",
     timestamp: Date.now(),
   } as any;
+}
+
+function privateWorkspace(tempRoot: string) {
+  const workspace = join(tempRoot, "workspace");
+  mkdirSync(join(workspace, ".piclaw"), { recursive: true });
+  writeFileSync(join(workspace, ".piclaw/config.json"), JSON.stringify({ domains: { access: { mode: "single-user" } } }), { mode: 0o600 });
+  return { workspace, restore: setEnv({ PICLAW_WORKSPACE: workspace, PICLAW_STORE: join(tempRoot, "store"), PICLAW_DATA: join(tempRoot, "data") }) };
 }
 
 function makeOversizedReadToolResult(imageChars = 1_500_000) {
@@ -47,11 +54,13 @@ describe("session persistence sanitizer", () => {
     console.warn = () => {};
     const tempRoot = mkdtempSync(join(tmpdir(), "piclaw-session-sanitize-resume-"));
     const sessionDir = join(tempRoot, "session");
-    const workspaceDir = process.env.PICLAW_WORKSPACE || "/workspace";
-    const { modelRuntime } = await createRealTestModelServices(join(tempRoot, "agent"));
-    const settingsManager = SettingsManager.create(workspaceDir, getAgentDir());
+    const isolated = privateWorkspace(tempRoot);
+    const workspaceDir = isolated.workspace;
+    let runtime: Awaited<ReturnType<typeof createSessionInDir>> | null = null;
 
     try {
+      const { modelRuntime } = await createRealTestModelServices(join(tempRoot, "agent"));
+      const settingsManager = SettingsManager.create(workspaceDir, getAgentDir());
       const seed = SessionManager.create(workspaceDir, sessionDir);
       seed.appendMessage(makeAssistantMessage());
       seed.appendMessage(makeOversizedReadToolResult());
@@ -63,7 +72,7 @@ describe("session persistence sanitizer", () => {
       const beforeText = readFileSync(sessionFile!, "utf8");
       expect(beforeText).toContain('"type":"image"');
 
-      const runtime = await createSessionInDir(sessionDir, {
+      runtime = await createSessionInDir(sessionDir, {
         modelRuntime,
         settingsManager,
         tools: [],
@@ -82,8 +91,9 @@ describe("session persistence sanitizer", () => {
       expect(toolResult.content.some((block: any) => block?.type === "image")).toBe(false);
       expect(toolResult.content.some((block: any) => block?.type === "text" && String(block.text || "").includes("Persisted tool result sanitized"))).toBe(true);
 
-      await runtime.dispose();
     } finally {
+      await runtime?.dispose();
+      isolated.restore();
       rmSync(tempRoot, { recursive: true, force: true });
     }
   });
@@ -149,12 +159,14 @@ describe("session persistence sanitizer", () => {
     console.warn = () => {};
     const tempRoot = mkdtempSync(join(tmpdir(), "piclaw-session-sanitize-append-"));
     const sessionDir = join(tempRoot, "session");
-    const workspaceDir = process.env.PICLAW_WORKSPACE || "/workspace";
-    const { modelRuntime } = await createRealTestModelServices(join(tempRoot, "agent"));
-    const settingsManager = SettingsManager.create(workspaceDir, getAgentDir());
+    const isolated = privateWorkspace(tempRoot);
+    const workspaceDir = isolated.workspace;
+    let runtime: Awaited<ReturnType<typeof createSessionInDir>> | null = null;
 
     try {
-      const runtime = await createSessionInDir(sessionDir, {
+      const { modelRuntime } = await createRealTestModelServices(join(tempRoot, "agent"));
+      const settingsManager = SettingsManager.create(workspaceDir, getAgentDir());
+      runtime = await createSessionInDir(sessionDir, {
         modelRuntime,
         settingsManager,
         tools: [],
@@ -179,8 +191,9 @@ describe("session persistence sanitizer", () => {
       expect(toolResult.content.some((block: any) => block?.type === "image")).toBe(false);
       expect(toolResult.content.some((block: any) => block?.type === "text" && String(block.text || "").includes("Persisted tool result sanitized"))).toBe(true);
 
-      await runtime.dispose();
     } finally {
+      await runtime?.dispose();
+      isolated.restore();
       rmSync(tempRoot, { recursive: true, force: true });
     }
   });

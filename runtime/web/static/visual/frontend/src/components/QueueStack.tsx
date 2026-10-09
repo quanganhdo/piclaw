@@ -2,7 +2,9 @@
  * QueueStack.tsx — Shows queued followup messages between status panel and compose.
  * Each item can be steered (inject now), edited (return to compose), or cancelled.
  */
-import { useEffect, useState, useCallback } from "preact/hooks";
+import { useEffect, useState, useRef } from "preact/hooks";
+import { buildChatUrl, getChatJid } from '../api/chat-jid';
+import { createQueueStateController } from './queue-state-controller';
 
 export interface QueueItem {
   row_id: number;
@@ -16,94 +18,95 @@ interface QueueStackProps {
 
 export function QueueStack({ onEdit }: QueueStackProps) {
   const [items, setItems] = useState<QueueItem[]>([]);
+  const [chatJid] = useState(() => getChatJid());
+  const [actionPending, setActionPending] = useState(false);
+  const controller = useRef<ReturnType<typeof createQueueStateController> | null>(null);
 
   // Listen for SSE queue events
   useEffect(() => {
+    const current = createQueueStateController({
+      chatJid, isCurrent: () => getChatJid() === chatJid, publish: setItems,
+      request: async signal => {
+        const response = await fetch(buildChatUrl('/agent/queue-state', { chat_jid: chatJid }), { credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.any([signal, AbortSignal.timeout(15000)]) });
+        if (!response.ok) throw Error('Queue unavailable');
+        return response.json();
+      },
+      onError: () => window.dispatchEvent(new CustomEvent('piclaw:status-flash', { detail: { message: 'Queue could not be refreshed. Reconnect or try again.', type: 'error' } })),
+    });
+    controller.current = current;
     const handleQueued = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (!detail?.row_id || !detail?.content) return;
-      setItems((prev) => {
-        if (prev.some((i) => i.row_id === detail.row_id)) return prev;
-        return [...prev, { row_id: detail.row_id, content: detail.content, timestamp: detail.timestamp }];
-      });
+      current.queued((e as CustomEvent).detail);
     };
 
     const handleConsumed = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (!detail?.row_id) return;
-      setItems((prev) => prev.filter((i) => i.row_id !== detail.row_id));
+      current.removed((e as CustomEvent).detail);
     };
 
     const handleRemoved = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (!detail?.row_id) return;
-      setItems((prev) => prev.filter((i) => i.row_id !== detail.row_id));
+      current.removed((e as CustomEvent).detail);
     };
+    const refresh = () => { void current.refresh(); };
+    const acknowledged = (event: Event) => { if ((event as CustomEvent).detail?.chat_jid === chatJid) refresh(); };
 
     window.addEventListener("piclaw:followup-queued", handleQueued);
     window.addEventListener("piclaw:followup-consumed", handleConsumed);
     window.addEventListener("piclaw:followup-removed", handleRemoved);
+    window.addEventListener('piclaw:queue-acknowledged', acknowledged);
+    window.addEventListener('piclaw:sse-connected', refresh);
+    window.addEventListener('piclaw:agent-turn-end', refresh);
+    void current.refresh();
     return () => {
+      current.stop();
+      if (controller.current === current) controller.current = null;
       window.removeEventListener("piclaw:followup-queued", handleQueued);
       window.removeEventListener("piclaw:followup-consumed", handleConsumed);
       window.removeEventListener("piclaw:followup-removed", handleRemoved);
+      window.removeEventListener('piclaw:queue-acknowledged', acknowledged);
+      window.removeEventListener('piclaw:sse-connected', refresh);
+      window.removeEventListener('piclaw:agent-turn-end', refresh);
     };
-  }, []);
+  }, [chatJid]);
 
-  // Clear queue when agent turn ends
-  useEffect(() => {
-    const handler = () => setItems([]);
-    window.addEventListener("piclaw:agent-turn-end", handler);
-    return () => window.removeEventListener("piclaw:agent-turn-end", handler);
-  }, []);
-
-  const handleSteer = useCallback(async (item: QueueItem) => {
+  const action = async (path: string, body: unknown, removeRowId?: number) => {
+    const current = controller.current;
+    if (!current || actionPending || getChatJid() !== chatJid) return false;
+    setActionPending(true);
     try {
-      const res = await fetch("/agent/queue-steer", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ row_id: item.row_id }),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setItems((prev) => prev.filter((i) => i.row_id !== item.row_id));
+      return await current.mutate(async () => {
+        const res = await fetch(buildChatUrl(path, { chat_jid: chatJid }), {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(15000),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (path === '/agent/queue-remove' || path === '/agent/queue-reorder') {
+          const result = await res.json();
+          if (path.endsWith('remove') ? result?.removed !== true : result?.reordered !== true) throw Error('Queue changed before the action');
+        }
+      }, removeRowId);
+    } catch {
+      if (getChatJid() === chatJid && controller.current === current) window.dispatchEvent(new CustomEvent('piclaw:status-flash', { detail: { message: 'Queue action failed. Refresh to check the saved state.', type: 'error' } }));
+      return false;
+    } finally { if (controller.current === current) setActionPending(false); }
+  };
+
+  const handleSteer = async (item: QueueItem) => {
+    if (await action('/agent/queue-steer', { row_id: item.row_id }, item.row_id)) {
       window.dispatchEvent(new CustomEvent("piclaw:status-flash", {
         detail: { message: "Steering injected", type: "success" },
       }));
-    } catch {
-      window.dispatchEvent(new CustomEvent("piclaw:status-flash", {
-        detail: { message: "Steer failed", type: "error" },
-      }));
     }
-  }, []);
+  };
 
-  const handleCancel = useCallback(async (item: QueueItem) => {
-    setItems((prev) => prev.filter((i) => i.row_id !== item.row_id));
-    try {
-      await fetch("/agent/queue-remove", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ row_id: item.row_id }),
-      });
-    } catch {
-      // Optimistic removal already done
-    }
-  }, []);
+  const handleCancel = (item: QueueItem) => action('/agent/queue-remove', { row_id: item.row_id }, item.row_id);
 
-  const handleEdit = useCallback((item: QueueItem) => {
-    onEdit(item);
-    setItems((prev) => prev.filter((i) => i.row_id !== item.row_id));
-  }, [onEdit]);
+  const handleEdit = async (item: QueueItem) => {
+    if (await action('/agent/queue-remove', { row_id: item.row_id }, item.row_id)) onEdit(item);
+  };
 
-  const handleMove = useCallback((from: number, to: number) => {
-    setItems((prev) => {
-      const next = [...prev];
-      const [moved] = next.splice(from, 1);
-      next.splice(to, 0, moved);
-      return next;
-    });
-  }, []);
+  const handleMove = (from: number, to: number) => action('/agent/queue-reorder', { from_index: from, to_index: to });
 
   if (items.length === 0) return null;
 
@@ -120,7 +123,7 @@ export function QueueStack({ onEdit }: QueueStackProps) {
                 <button
                   type="button"
                   className="queue-stack__btn queue-stack__btn--move"
-                  disabled={index === 0}
+                  disabled={actionPending || index === 0}
                   onClick={() => handleMove(index, index - 1)}
                   title="Move up"
                 >
@@ -129,7 +132,7 @@ export function QueueStack({ onEdit }: QueueStackProps) {
                 <button
                   type="button"
                   className="queue-stack__btn queue-stack__btn--move"
-                  disabled={index === items.length - 1}
+                  disabled={actionPending || index === items.length - 1}
                   onClick={() => handleMove(index, index + 1)}
                   title="Move down"
                 >
@@ -140,6 +143,7 @@ export function QueueStack({ onEdit }: QueueStackProps) {
             <button
               type="button"
               className="queue-stack__btn queue-stack__btn--edit"
+              disabled={actionPending}
               onClick={() => handleEdit(item)}
               title="Edit in compose"
             >
@@ -148,6 +152,7 @@ export function QueueStack({ onEdit }: QueueStackProps) {
             <button
               type="button"
               className="queue-stack__btn queue-stack__btn--steer"
+              disabled={actionPending}
               onClick={() => handleSteer(item)}
               title="Inject as steering now"
             >
@@ -156,6 +161,7 @@ export function QueueStack({ onEdit }: QueueStackProps) {
             <button
               type="button"
               className="queue-stack__btn queue-stack__btn--remove"
+              disabled={actionPending}
               onClick={() => handleCancel(item)}
               title="Remove from queue"
             >

@@ -157,7 +157,7 @@ export async function enforceRequestGuards(
     }
   }
 
-  if (flags.isMutating && !hasInternalAccess) {
+  if ((flags.isMutating || req.method === "GET" && pathname === "/agent/settings/mcp") && !hasInternalAccess) {
     const dataRule = getDataRateLimitRule(req.method, pathname);
     if (dataRule && isRateLimited(req, dataRule.bucket, DATA_RATE_WINDOW_MS, dataRule.limit)) {
       return rateLimitResponse(dataRule.message);

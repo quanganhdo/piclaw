@@ -1,8 +1,9 @@
 import "../helpers.js";
 
 import { describe, expect, test } from "bun:test";
-import { ExecutionError } from "@earendil-works/pi-agent-core";
-import { BACKGROUND_CONTEXT, withAbortSignal, type Context } from "@earendil-works/pi-agent-core/harness/context";
+import { ExecutionError } from "../../src/service-effects/contracts/execution-env.js";
+import { BACKGROUND_CONTEXT, withAbortSignal } from "@earendil-works/chord/context";
+import type { Context } from "@earendil-works/chord";
 
 import { FakeExecutionEnv } from "../../src/service-effects/testing/fakes/fake-execution-env.js";
 

@@ -3,7 +3,7 @@ import type Database from "bun:sqlite";
 import {
   Result,
   type Result as ResultValue,
-} from "@earendil-works/pi-agent-core";
+} from "../contracts/result.js";
 
 import type {
   EffectCertainty,

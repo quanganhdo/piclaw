@@ -30,7 +30,7 @@ function run<T>(snapshot: ExecutionIdentity, callback: () => T | Promise<T>): Pr
 const invoke = (tool: ToolDefinition, params: unknown, onUpdate?: any) => tool.execute('call', params, undefined, onUpdate, {} as any);
 beforeEach(() => {
   ws = createTempWorkspace('piclaw-family-builtins-'); restore = setEnv({ PICLAW_WORKSPACE: ws.workspace, PICLAW_STORE: ws.store, PICLAW_DATA: ws.data });
-  mkdirSync(join(ws.workspace, '.piclaw')); writeFileSync(join(ws.workspace, '.piclaw/config.json'), JSON.stringify({ domains: { access: { mode: 'family-shared' } } }));
+  mkdirSync(join(ws.workspace, '.piclaw')); writeFileSync(join(ws.workspace, '.piclaw/config.json'), JSON.stringify({ domains: { access: { mode: 'family-shared' } } }), { mode: 0o600 });
   closeDatabase(); initDatabase(); admin = actor('default');
   const users = ['alice', 'bob'].map(name => {
     const user = provisionFamilyAccount(getDb(), admin, { username: name, displayName: name });

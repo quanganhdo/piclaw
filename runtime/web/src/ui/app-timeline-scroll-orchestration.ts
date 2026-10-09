@@ -5,7 +5,7 @@ interface RefBox<T> {
   current: T;
 }
 
-export function shouldAutoScrollToBottom(scrollTop: number, threshold = 150): boolean {
+export function shouldAutoScrollToBottom(scrollTop: number, threshold = 60): boolean {
   return Math.abs(scrollTop) <= threshold;
 }
 
@@ -37,16 +37,16 @@ export function useTimelineScrollOrchestration(options: {
     const { currentHashtag: activeHashtag, searchQuery: activeSearch, searchOpen: activeSearchOpen } = viewStateRef.current || {};
     const reverseTimeline = !((activeSearch || activeSearchOpen) && !activeHashtag);
     const anchor = reverseTimeline
-      ? container.scrollHeight - container.scrollTop
+      ? container.scrollHeight + container.scrollTop
       : container.scrollTop;
 
     mutate();
 
     requestAnimationFrame(() => {
       const target = timelineRef.current;
-      if (!target) return;
+      if (!target || target !== container) return;
       if (reverseTimeline) {
-        const nextTop = Math.max(target.scrollHeight - anchor, 0);
+        const nextTop = Math.min(anchor - target.scrollHeight, 0);
         target.scrollTop = nextTop;
       } else {
         const maxScroll = Math.max(target.scrollHeight - target.clientHeight, 0);
@@ -66,7 +66,7 @@ export function useTimelineScrollOrchestration(options: {
     mutate();
     requestAnimationFrame(() => {
       const target = timelineRef.current;
-      if (!target) return;
+      if (!target || target !== container) return;
       const maxScroll = Math.max(target.scrollHeight - target.clientHeight, 0);
       target.scrollTop = Math.min(anchor, maxScroll);
     });

@@ -13,6 +13,8 @@ import { getIdentityConfig } from "../core/config.js";
 import { createMedia, getChatBranchByAgentName, getChatBranchByChatJid } from "../db.js";
 import { createLogger, debugSuppressedError } from "../utils/logger.js";
 import type { ChatRelayRequest, ChatRelayResult } from "./chat-tool.js";
+import { bindInputRequestAuthority, releaseInputRequestAuthority } from '../channels/web/messaging/input-request-authority.js';
+import { getExecutionIdentity } from '../core/execution-context.js';
 
 const log = createLogger("extensions.chat-tool-runtime");
 
@@ -33,6 +35,7 @@ type ChatBranchLike = {
   root_chat_jid?: string | null;
   parent_branch_id?: string | null;
   agent_name: string;
+  archived_at?: string | null;
 };
 
 type ChatToolRelayAgentPool = Pick<AgentPool, "findChatByAgentName" | "getAgentHandleForChat" | "listActiveChats" | "listKnownChats">;
@@ -86,15 +89,18 @@ function resolveChatIdentity(
   const normalized = chatJid.trim();
   if (!normalized) return null;
 
+  let branch: ChatBranchLike | null = null;
   try {
-    const branch = (options.getChatBranchByChatJid || getChatBranchByChatJid)(normalized);
-    if (branch?.agent_name) return identityFromBranch(branch, displayName);
+    branch = (options.getChatBranchByChatJid || getChatBranchByChatJid)(normalized);
   } catch (error) {
     debugSuppressedError(log, "Failed to resolve chat branch while handling chat tool relay; falling back to AgentPool state.", error, {
       operation: "chat_tool_runtime.resolve_chat_branch",
       chatJid: normalized,
     });
   }
+  // A persisted archive is authoritative; never revive it via stale Pool state.
+  if (branch?.archived_at) return null;
+  if (branch?.agent_name) return identityFromBranch(branch, displayName);
 
   const active = agentPool.listActiveChats().find((chat) => chat.chat_jid === normalized);
   if (active?.agent_name) return identityFromBranch(active, displayName);
@@ -128,21 +134,23 @@ function resolveTargetIdentity(
   const targetAgentName = normalizeAgentName(request.target_agent_name);
   if (!targetAgentName) return null;
 
+  let branch: ChatBranchLike | null = null;
   try {
-    const branch = (options.getChatBranchByAgentName || getChatBranchByAgentName)(targetAgentName);
-    if (branch?.agent_name) return identityFromBranch(branch, displayName);
+    branch = (options.getChatBranchByAgentName || getChatBranchByAgentName)(targetAgentName);
   } catch (error) {
     debugSuppressedError(log, "Failed to resolve chat branch alias while handling chat tool relay; falling back to AgentPool state.", error, {
       operation: "chat_tool_runtime.resolve_agent_alias",
       agentName: targetAgentName,
     });
   }
+  if (branch?.archived_at) return null;
+  if (branch?.agent_name) return identityFromBranch(branch, displayName);
 
   const found = agentPool.findChatByAgentName(targetAgentName);
   if (!found?.chat_jid || !found.agent_name) return null;
   return resolveChatIdentity(agentPool, found.chat_jid, displayName, {
     getChatBranchByChatJid: options.getChatBranchByChatJid,
-  }) || identityFromBranch(found, displayName);
+  });
 }
 
 function buildSessionTreeDescriptor(identity: ChatIdentity): Record<string, unknown> {
@@ -223,6 +231,9 @@ export function createDirectChatToolRelayHandler(
   return async (request) => {
     // Direct callers must not bypass the registry's durable-delivery gate.
     if (readAccessConfig().mode !== "single-user") throw new ChatAccessDenied();
+    request.signal?.throwIfAborted();
+    const origin = getExecutionIdentity();
+    if (origin && origin.mode !== 'single-user') throw new ChatAccessDenied();
     const displayName = getRuntimeAgentDisplayName(options);
     const source = resolveChatIdentity(agentPool, request.source_chat_jid, displayName, {
       allowDerivedFallback: true,
@@ -257,24 +268,32 @@ export function createDirectChatToolRelayHandler(
       "X-Piclaw-Reply-To-Chat-Jid": source.chat_jid,
       "X-Piclaw-Persist-Steer": "1",
     });
+    const body = JSON.stringify({
+      content: buildForwardedContent(source, target, content), content_blocks: contentBlocks,
+      ...(mediaIds.length ? { media_ids: mediaIds } : {}), mode: normalizeMode(request.mode), persist_steer: true,
+    });
     const forwardReq = new Request(
       `http://internal${pathname}?chat_jid=${encodeURIComponent(target.chat_jid)}`,
       {
         method: "POST",
         headers,
-        body: JSON.stringify({
-          content: buildForwardedContent(source, target, content),
-          content_blocks: contentBlocks,
-          ...(mediaIds.length ? { media_ids: mediaIds } : {}),
-          mode: normalizeMode(request.mode),
-          persist_steer: true,
-        }),
+        body,
+        signal: request.signal,
       },
     );
-
-    const forwardRes = typeof web.handleAgentMessage === "function"
-      ? await web.handleAgentMessage(forwardReq, pathname)
-      : await web.handleRequest?.(forwardReq);
+    const identityKey = (value: ChatIdentity | null) => JSON.stringify(value && [value.chat_jid, value.branch_id, value.agent_name]);
+    bindInputRequestAuthority(forwardReq, target.chat_jid, body, () => {
+      request.signal?.throwIfAborted();
+      if (readAccessConfig().mode !== 'single-user' || getExecutionIdentity() !== origin
+        || identityKey(resolveChatIdentity(agentPool, source.chat_jid, displayName, { allowDerivedFallback: true, getChatBranchByChatJid: options.getChatBranchByChatJid })) !== identityKey(source)
+        || identityKey(resolveTargetIdentity(agentPool, request, displayName, options)) !== identityKey(target)) throw new ChatAccessDenied();
+    });
+    let forwardRes: Response | undefined;
+    try {
+      forwardRes = typeof web.handleAgentMessage === "function"
+        ? await web.handleAgentMessage(forwardReq, pathname)
+        : await web.handleRequest?.(forwardReq);
+    } finally { releaseInputRequestAuthority(forwardReq); }
     if (!forwardRes) throw new Error("Cross-session chat relay is unavailable in this runtime.");
     if (!forwardRes.ok) {
       const body = await forwardRes.json().catch(() => ({} as Record<string, unknown>));

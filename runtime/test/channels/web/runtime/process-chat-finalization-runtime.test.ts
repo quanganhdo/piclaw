@@ -192,3 +192,20 @@ describe("process chat finalization runtime", () => {
     });
   });
 });
+
+
+for (const sample of [
+  {name:'completed boundary is not run-terminal while another stream starts',cause:'completed_boundary',terminal:true,textPhase:null,role:'unknown',bit:false},
+  {name:'provider final answer before tool continuation',cause:'tool_use',terminal:false,textPhase:'final_answer',role:'final',bit:false},
+  {name:'commentary before tool dispatch',cause:'tool_use',terminal:false,textPhase:'commentary',role:'intermediate',bit:false},
+  {name:'unphased tool lead-in',cause:'tool_use',terminal:false,textPhase:null,role:'unknown',bit:false},
+  {name:'unphased completed boundary without terminal evidence',cause:'completed_boundary',terminal:false,textPhase:null,role:'unknown',bit:false},
+  {name:'aborted explicit final draft stays unknown',cause:'failed_boundary',terminal:false,textPhase:'final_answer',role:'unknown',bit:false},
+]) test(sample.name,()=>{
+  let stored:any;
+  const channel:any={consumeQueuedFollowupPlaceholder:()=>null,storeMessage:(_c:any,_t:any,_b:any,_m:any,options:any)=>{stored=options;return{id:80,chat_jid:'web:test'};},broadcastEvent(){}};
+  persistIntermediateProcessChatTurn({channel,emitter:emitter([])as any,chatJid:'web:test',text:'identical visible text',attachments:[],channelName:'web',threadId:8,skipPlaceholder:true,timingBlock:{type:'agent_timing',turn_id:'turn-role'},turnKind:'intermediate',cause:sample.cause as any,followedByToolUse:sample.cause==='tool_use',terminal:sample.terminal,textPhase:sample.textPhase as any,buildThinkingRefBlocks:()=>[],consumePersistedPreviewsForRow:()=>{}});
+  expect(stored.isTerminalAgentReply).toBe(sample.bit);
+  expect(stored.contentBlocks).toContainEqual({type:'agent_message_role',version:1,role:sample.role,terminal:sample.bit});
+  if(sample.bit)expect(stored.contentBlocks).not.toContainEqual(expect.objectContaining({type:'agent_turn_marker'}));
+});

@@ -1,9 +1,10 @@
 import { createVisibleInterval } from '../ui/visible-interval.js';
-import { html, useEffect, useMemo, useState } from '../vendor/preact-htm.js';
+import { html, useEffect, useMemo, useRef, useState } from '../vendor/preact-htm.js';
 import { getSystemMetrics } from '../api.js';
 import { AGENT_UI_POLL_MS } from '../ui/agent-ui-snapshot.js';
 import { METERS_COLLAPSED_EVENT_NAME, METERS_EVENT_NAME, applyMetersCollapsed, readStoredMetersCollapsed, readStoredMetersEnabled } from '../ui/meters.js';
 import { renderDisclosureTriangle } from '../ui/disclosure-triangle.js';
+import { buildGpuCompactSummaryParts, GpuDetailsPopover, GpuMeterRows, getGpuMeterRows, normalizeGpuSnapshots } from './intel-gpu-meters.js';
 
 export const SYSTEM_METERS_COMPACT_BREAKPOINT_PX = 600;
 
@@ -49,6 +50,12 @@ export function buildSparklinePath(series, width = 56, height = 16, options = {}
 function formatPercent(value) {
     return `${Math.round(Number(value) || 0)}%`;
 }
+function optionalPercent(value) {
+    return value !== null && value !== undefined && value !== '' && typeof value !== 'boolean' && Number.isFinite(Number(value)) && Number(value) >= 0 && Number(value) <= 100 ? Number(value) : null;
+}
+function optionalBytes(value) {
+    return value !== null && value !== undefined && value !== '' && typeof value !== 'boolean' && Number.isFinite(Number(value)) && Number(value) >= 0 ? Number(value) : null;
+}
 
 export function formatBytesCompact(value) {
     const bytes = Number(value);
@@ -64,10 +71,11 @@ export function formatBytesCompact(value) {
     return `${scaled.toFixed(digits)}${units[unitIndex]}`;
 }
 
-export function buildCompactMetersSummary(metrics) {
+export function buildCompactMetersSummary(metrics, gpuMeters = []) {
     const parts = [
-        `CPU ${formatPercent(metrics?.cpu_percent)}`,
-        `RAM ${formatPercent(metrics?.ram_percent)}`,
+        ...(optionalPercent(metrics?.cpu_percent) !== null ? [`CPU ${formatPercent(metrics.cpu_percent)}`] : []),
+        ...(optionalPercent(metrics?.ram_percent) !== null ? [`RAM ${formatPercent(metrics.ram_percent)}`] : []),
+        ...buildGpuCompactSummaryParts(gpuMeters),
     ];
     if (Number(metrics?.buffer_cache_bytes) > 0) {
         parts.push(`BUF ${formatBytesCompact(metrics?.buffer_cache_bytes)}`);
@@ -75,7 +83,7 @@ export function buildCompactMetersSummary(metrics) {
     if (shouldShowVram(metrics)) {
         parts.push(`VRAM ${formatPercent(metrics?.vram_percent)}`);
     }
-    if (Number.isFinite(Number(metrics?.swap_percent)) && Number(metrics?.swap_total_bytes) > 0) {
+    if (optionalPercent(metrics?.swap_percent) !== null && Number(metrics?.swap_total_bytes) > 0) {
         parts.push(`SWP ${formatPercent(metrics?.swap_percent)}`);
     }
     return parts.join(' • ');
@@ -92,12 +100,23 @@ export function shouldShowRss(metrics) {
 }
 
 export function shouldShowVram(metrics) {
-    return metrics?.vram_percent !== null
-        && metrics?.vram_percent !== undefined
-        && Number.isFinite(Number(metrics?.vram_percent))
+    return optionalPercent(metrics?.vram_percent) !== null
         && Number(metrics?.vram_total_bytes) > 0
+        && Number.isFinite(Number(metrics?.vram_total_bytes))
+        && metrics?.vram_used_bytes !== null && metrics?.vram_used_bytes !== undefined
+        && Number.isFinite(Number(metrics?.vram_used_bytes))
         && Number(metrics?.vram_used_bytes) >= 0
+        && Number(metrics?.vram_used_bytes) <= Number(metrics?.vram_total_bytes)
         && sanitizeSeries(metrics?.vram_series).length > 0;
+}
+
+/** Existing aggregate device-memory telemetry has no activity counters. */
+export function resolveGpuMeterSnapshots(metrics) {
+    const devices = Array.isArray(metrics?.gpus) ? metrics.gpus : [];
+    if (!shouldShowVram(metrics) || devices.some(gpu => gpu?.provider === metrics.gpu_provider)) return devices;
+    return [...devices, { id: `memory-${metrics.gpu_provider || 'gpu'}`, name: 'GPU', provider: metrics.gpu_provider || 'device-memory', status: 'ok',
+        memory: { used_bytes: Number(metrics.vram_used_bytes), total_bytes: Number(metrics.vram_total_bytes) },
+        history: metrics.vram_series.map(percent => ({ resident_bytes: Number(metrics.vram_total_bytes) * Number(percent) / 100 })) }];
 }
 
 function readIsNarrowLayout() {
@@ -110,8 +129,8 @@ export function SystemMetersHud({ mode = 'overlay' }) {
     const [collapsed, setCollapsed] = useState(() => readStoredMetersCollapsed(false));
     const [isNarrowLayout, setIsNarrowLayout] = useState(() => readIsNarrowLayout());
     const [metrics, setMetrics] = useState({
-        cpu_percent: 0,
-        ram_percent: 0,
+        cpu_percent: null,
+        ram_percent: null,
         swap_percent: null,
         cpu_series: [],
         ram_series: [],
@@ -121,6 +140,7 @@ export function SystemMetersHud({ mode = 'overlay' }) {
         vram_total_bytes: 0,
         vram_used_bytes: 0,
         gpu_provider: null,
+        gpus: [],
         buffer_cache_bytes: null,
         buffer_cache_series_bytes: [],
         process_rss_series_bytes: [],
@@ -134,6 +154,10 @@ export function SystemMetersHud({ mode = 'overlay' }) {
         platform: '',
     });
     const [loading, setLoading] = useState(false);
+    const [openGpuId, setOpenGpuId] = useState(null);
+    const gpuTriggerRef = useRef(null);
+    const [lastSuccessfulRefreshMs, setLastSuccessfulRefreshMs] = useState(null);
+    const [nowMs, setNowMs] = useState(() => Date.now());
 
     useEffect(() => {
         const onMetersChange = (event) => {
@@ -141,6 +165,7 @@ export function SystemMetersHud({ mode = 'overlay' }) {
         };
         const onMetersCollapsedChange = (event) => {
             setCollapsed(Boolean(event?.detail?.collapsed));
+            setOpenGpuId(null);
         };
         window.addEventListener(METERS_EVENT_NAME, onMetersChange);
         window.addEventListener(METERS_COLLAPSED_EVENT_NAME, onMetersCollapsedChange);
@@ -176,17 +201,18 @@ export function SystemMetersHud({ mode = 'overlay' }) {
                 const next = await getSystemMetrics();
                 if (cancelled) return;
                 setMetrics({
-                    cpu_percent: Number(next?.cpu_percent) || 0,
-                    ram_percent: Number(next?.ram_percent) || 0,
-                    swap_percent: Number.isFinite(Number(next?.swap_percent)) ? Number(next?.swap_percent) : null,
-                    vram_percent: Number.isFinite(Number(next?.vram_percent)) ? Number(next?.vram_percent) : null,
+                    cpu_percent: optionalPercent(next?.cpu_percent),
+                    ram_percent: optionalPercent(next?.ram_percent),
+                    swap_percent: optionalPercent(next?.swap_percent),
+                    vram_percent: next?.vram_percent !== null && next?.vram_percent !== undefined && Number.isFinite(Number(next.vram_percent)) ? Number(next.vram_percent) : null,
                     cpu_series: clampPercentSeries(next?.cpu_series),
                     ram_series: clampPercentSeries(next?.ram_series),
                     swap_series: clampPercentSeries(next?.swap_series),
                     vram_series: clampPercentSeries(next?.vram_series),
-                    vram_total_bytes: Number(next?.vram_total_bytes) || 0,
-                    vram_used_bytes: Number(next?.vram_used_bytes) || 0,
+                    vram_total_bytes: optionalBytes(next?.vram_total_bytes),
+                    vram_used_bytes: optionalBytes(next?.vram_used_bytes),
                     gpu_provider: typeof next?.gpu_provider === 'string' && next.gpu_provider.trim() ? next.gpu_provider.trim() : null,
+                    gpus: Array.isArray(next?.gpus) ? next.gpus : [],
                     buffer_cache_bytes: Number.isFinite(Number(next?.buffer_cache_bytes)) ? Number(next?.buffer_cache_bytes) : null,
                     buffer_cache_series_bytes: sanitizeSeries(next?.buffer_cache_series_bytes),
                     process_rss_series_bytes: sanitizeSeries(next?.process_rss_series_bytes),
@@ -199,8 +225,12 @@ export function SystemMetersHud({ mode = 'overlay' }) {
                     sample_interval_ms: Number(next?.sample_interval_ms) || 2000,
                     platform: String(next?.platform || ''),
                 });
+                const refreshedAt = Date.now();
+                setLastSuccessfulRefreshMs(refreshedAt);
+                setNowMs(refreshedAt);
             } catch {
                 if (cancelled) return;
+                setNowMs(Date.now());
             } finally {
                 if (!cancelled) setLoading(false);
             }
@@ -218,15 +248,28 @@ export function SystemMetersHud({ mode = 'overlay' }) {
     const cpuPath = useMemo(() => buildSparklinePath(metrics.cpu_series, 56, 16, { min: 0, max: 100 }), [metrics.cpu_series]);
     const ramPath = useMemo(() => buildSparklinePath(metrics.ram_series, 56, 16, { min: 0, max: 100 }), [metrics.ram_series]);
     const swapPath = useMemo(() => buildSparklinePath(metrics.swap_series, 56, 16, { min: 0, max: 100 }), [metrics.swap_series]);
-    const vramPath = useMemo(() => buildSparklinePath(metrics.vram_series, 56, 16, { min: 0, max: 100 }), [metrics.vram_series]);
     const bufferCachePath = useMemo(() => buildSparklinePath(metrics.buffer_cache_series_bytes), [metrics.buffer_cache_series_bytes]);
     const rssPath = useMemo(() => buildSparklinePath(metrics.process_rss_series_bytes), [metrics.process_rss_series_bytes]);
+    const gpuMeters = useMemo(
+        () => normalizeGpuSnapshots(resolveGpuMeterSnapshots(metrics), { nowMs, lastSuccessAtMs: lastSuccessfulRefreshMs }).filter(meter => getGpuMeterRows(meter).length > 0),
+        [metrics, nowMs, lastSuccessfulRefreshMs],
+    );
     const showBufferCache = Number(metrics.buffer_cache_bytes) > 0 && sanitizeSeries(metrics.buffer_cache_series_bytes).length > 0;
-    const showSwap = Number.isFinite(Number(metrics.swap_percent)) && metrics.swap_total_bytes > 0;
-    const showVram = shouldShowVram(metrics);
+    const showSwap = optionalPercent(metrics.swap_percent) !== null && metrics.swap_total_bytes > 0;
     const currentRssBytes = resolveCurrentRssBytes(metrics);
     const showRss = shouldShowRss(metrics);
-    const compactSummary = useMemo(() => buildCompactMetersSummary(metrics), [metrics]);
+    // GPU rows already have their own details buttons; do not duplicate an
+    // aggregate VRAM line in the compact system summary.
+    const compactSummary = useMemo(() => buildCompactMetersSummary({ ...metrics, vram_percent: null }), [metrics]);
+    const handleGpuOpen = (id, trigger) => {
+        if (trigger) gpuTriggerRef.current = trigger;
+        setOpenGpuId((current) => trigger && current === id ? null : id);
+    };
+
+    useEffect(() => { setOpenGpuId(null); }, [isNarrowLayout, enabled]);
+    useEffect(() => {
+        if (openGpuId && (!gpuMeters.some(meter => meter.id === openGpuId) || !gpuTriggerRef.current?.isConnected)) setOpenGpuId(null);
+    }, [gpuMeters, openGpuId]);
 
     if (!enabled || !isActiveInstance) return null;
 
@@ -238,76 +281,66 @@ export function SystemMetersHud({ mode = 'overlay' }) {
         event?.stopPropagation?.();
         const nextCollapsed = !collapsed;
         setCollapsed(nextCollapsed);
+        setOpenGpuId(null);
         applyMetersCollapsed(nextCollapsed);
     };
 
     return html`
         <div class=${`system-meters-hud system-meters-hud-${mode}${collapsed ? ' is-collapsed' : ''}`} aria-live="polite">
-            <button
-                class="system-meters-card"
-                type="button"
-                title=${title}
-                aria-label=${title}
-                aria-expanded=${collapsed ? 'false' : 'true'}
-                onClick=${handleToggleCollapsed}
-            >
+            <div class="system-meters-card" role="group" aria-label="System meters">
                 ${collapsed
-                    ? html`<span class="system-meters-collapse-tab" aria-hidden="true">${renderDisclosureTriangle('left')}</span>`
+                    ? html`<button class="system-meters-meter-button system-meters-collapse-tab" type="button" title=${title} aria-label=${title} aria-expanded="false" onClick=${handleToggleCollapsed}>${renderDisclosureTriangle('left')}</button>`
                     : isNarrowLayout
-                        ? html`<span class="system-meters-compact-summary">${compactSummary}</span>`
+                        ? html`<div class="system-meters-compact-summary">
+                            <button class="system-meters-meter-button system-meters-compact-system" type="button" title=${title} aria-label=${title} aria-expanded="true" onClick=${handleToggleCollapsed}>${compactSummary}</button>
+                            <${GpuMeterRows} meters=${gpuMeters} compact=${true} openGpuId=${openGpuId} onOpen=${handleGpuOpen} />
+                        </div>`
                         : html`
-                            <div class="system-meters-row cpu">
+                            ${metrics.cpu_percent !== null && html`<button class="system-meters-meter-button system-meters-row cpu" type="button" aria-label=${title} aria-expanded="true" onClick=${handleToggleCollapsed}>
                                 <span class="system-meters-label">CPU</span>
                                 <svg class="system-meters-spark" viewBox="0 0 56 16" preserveAspectRatio="none" aria-hidden="true">
                                     <path d=${cpuPath}></path>
                                 </svg>
                                 <span class="system-meters-value">${formatPercent(metrics.cpu_percent)}</span>
-                            </div>
-                            <div class="system-meters-row ram">
+                            </button>`}
+                            ${metrics.ram_percent !== null && html`<button class="system-meters-meter-button system-meters-row ram" type="button" aria-label=${title} aria-expanded="true" onClick=${handleToggleCollapsed}>
                                 <span class="system-meters-label">RAM</span>
                                 <svg class="system-meters-spark" viewBox="0 0 56 16" preserveAspectRatio="none" aria-hidden="true">
                                     <path d=${ramPath}></path>
                                 </svg>
                                 <span class="system-meters-value">${formatPercent(metrics.ram_percent)}</span>
-                            </div>
+                            </button>`}
                             ${showRss && html`
-                                <div class="system-meters-row rss">
+                                <button class="system-meters-meter-button system-meters-row rss" type="button" aria-label=${title} aria-expanded="true" onClick=${handleToggleCollapsed}>
                                     <span class="system-meters-label">RSS</span>
                                     <svg class="system-meters-spark" viewBox="0 0 56 16" preserveAspectRatio="none" aria-hidden="true">
                                         <path d=${rssPath}></path>
                                     </svg>
                                     <span class="system-meters-value">${formatBytesCompact(currentRssBytes)}</span>
-                                </div>
+                                </button>
                             `}
-                            ${showVram && html`
-                                <div class="system-meters-row vram" title=${metrics.gpu_provider ? `GPU telemetry: ${metrics.gpu_provider}` : 'GPU memory telemetry'}>
-                                    <span class="system-meters-label">VRAM</span>
-                                    <svg class="system-meters-spark" viewBox="0 0 56 16" preserveAspectRatio="none" aria-hidden="true">
-                                        <path d=${vramPath}></path>
-                                    </svg>
-                                    <span class="system-meters-value">${formatPercent(metrics.vram_percent)}</span>
-                                </div>
-                            `}
+                            ${gpuMeters.length > 0 && html`<${GpuMeterRows} meters=${gpuMeters} openGpuId=${openGpuId} onOpen=${handleGpuOpen} />`}
                             ${showBufferCache && html`
-                                <div class="system-meters-row buf">
+                                <button class="system-meters-meter-button system-meters-row buf" type="button" aria-label=${title} aria-expanded="true" onClick=${handleToggleCollapsed}>
                                     <span class="system-meters-label">BUF</span>
                                     <svg class="system-meters-spark" viewBox="0 0 56 16" preserveAspectRatio="none" aria-hidden="true">
                                         <path d=${bufferCachePath}></path>
                                     </svg>
                                     <span class="system-meters-value">${formatBytesCompact(metrics.buffer_cache_bytes)}</span>
-                                </div>
+                                </button>
                             `}
                             ${showSwap && html`
-                                <div class="system-meters-row swap">
+                                <button class="system-meters-meter-button system-meters-row swap" type="button" aria-label=${title} aria-expanded="true" onClick=${handleToggleCollapsed}>
                                     <span class="system-meters-label">SWP</span>
                                     <svg class="system-meters-spark" viewBox="0 0 56 16" preserveAspectRatio="none" aria-hidden="true">
                                         <path d=${swapPath}></path>
                                     </svg>
                                     <span class="system-meters-value">${formatPercent(metrics.swap_percent)}</span>
-                                </div>
+                                </button>
                             `}
                         `}
-            </button>
+            </div>
+            ${!collapsed && gpuMeters.length > 0 && html`<${GpuDetailsPopover} meters=${gpuMeters} openGpuId=${openGpuId} onOpen=${handleGpuOpen} triggerRef=${gpuTriggerRef} />`}
         </div>
     `;
 }

@@ -8,7 +8,7 @@ import {
   type Context,
   type ExecutionEnv,
   type ShellOutputView,
-} from "@earendil-works/pi-agent-core";
+} from "../../contracts/execution-env.js";
 
 import type { ExecutionContextResolver, ResolveExecutionContextRequest } from "../../contracts/execution-context-resolver.js";
 import { runParameterisedContractSuite, type ContractCaseResult, type ContractSubjectFactory, type ContractTestContext, type ParameterisedContractCase } from "../contract-suite.js";

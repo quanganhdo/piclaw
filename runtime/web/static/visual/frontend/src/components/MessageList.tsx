@@ -7,6 +7,7 @@ import { MessageItem } from "./message-list/MessageItem";
 import { useCollapsedMessages } from "./message-list/useCollapsedMessages";
 import type { Interaction } from "./message-list/types";
 import { shouldHideTimelineInteraction } from "./message-list/helpers";
+import { bindTimelineLatest, jumpTimelineToLatest } from '../../../../../src/ui/timeline-latest';
 
 export function MessageList() {
   const [connected, setConnected] = useState<boolean | null>(null);
@@ -22,6 +23,7 @@ export function MessageList() {
   }, []);
 
   const { listRef, scrollToBottom, userScrolledRef } = useScrollManager(onReplaceMessages);
+  const latestController = useRef<ReturnType<typeof bindTimelineLatest> | null>(null);
 
   const { isCollapsed, toggle: toggleCollapse } = useCollapsedMessages();
 
@@ -41,6 +43,7 @@ export function MessageList() {
   const {
     messages,
     setMessages,
+    replaceMessages,
     hasMore,
     loadingMore,
     fetchTimeline,
@@ -49,7 +52,18 @@ export function MessageList() {
   } = useTimelineFetch({ setConnected, scrollToBottom, timelineError, listRef });
 
   // Keep replaceMessagesRef in sync (setMessages is a stable setState setter)
-  replaceMessagesRef.current = (posts: Interaction[]) => setMessages(() => posts);
+  replaceMessagesRef.current = replaceMessages;
+  useEffect(() => {
+    const root = listRef.current; if (!root) return;
+    const binding = bindTimelineLatest(root, state => window.dispatchEvent(new CustomEvent('piclaw:timeline-latest-state', { detail: { ...state, scroller: root } })));
+    latestController.current = binding;
+    const jump = () => { userScrolledRef.current = false; jumpTimelineToLatest(root); };
+    const arrivals = () => binding.markNewMessages();
+    root.addEventListener('piclaw:timeline-arrivals', arrivals);
+    window.addEventListener('piclaw:jump-latest', jump);
+    return () => { binding.dispose(); latestController.current = null; root.removeEventListener('piclaw:timeline-arrivals', arrivals); window.removeEventListener('piclaw:jump-latest', jump); };
+  }, []);
+  useEffect(() => { latestController.current?.noteLatest(Math.max(0, ...messages.map(message => Number(message.id) || 0))); }, [messages]);
 
   useTimelineStream({
     setMessages,

@@ -1,0 +1,91 @@
+import type { WebChannelLike } from "../core/web-channel-contracts.js";
+import { canPrincipalAct, type AuthenticatedPrincipal } from "../auth/principal.js";
+import { readAccessConfig } from "../../../core/config-access.js";
+import { readMcpInstancePolicy } from "../../../core/config-mcp.js";
+import { getMcpBridgeSnapshot } from "../../../secure/mcp-keychain.js";
+import { planMcpEnginePolicy } from "../../../agent-pool/mcp-engine-plan.js";
+import { MCP_ENGINE_SWITCH_EFFECT, parseMcpEnginePolicy } from "../../../agent-pool/mcp-engine-policy.js";
+import { createLogger, debugSuppressedError } from "../../../utils/logger.js";
+
+const log = createLogger("web.mcp-settings");
+const BASE = "/agent/settings/mcp";
+const MAX_BODY_BYTES = 2048;
+// The existing factory always installs the adapter. The instance transition
+// host and native/codemode factories are not wired yet; never imply readiness.
+const READINESS = Object.freeze({ adapter: true, native: false, codemode: false });
+const RUNTIME = Object.freeze({ configuredFactory: "adapter", observedPolicy: null, connectionStatus: "unknown", applyAvailable: false });
+
+class RequestFailure extends Error {
+  constructor(readonly status: number, message: string) { super(message); }
+}
+function reply(body: object, status = 200): Response {
+  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "private, no-store", Vary: "Cookie" } });
+}
+function owner(channel: WebChannelLike, req: Request): AuthenticatedPrincipal {
+  const principal = channel.authGateway.getPrincipal?.(req, true);
+  if (!principal || principal.mode !== "single-user" || !canPrincipalAct(principal, "instance.configure") || readAccessConfig().mode !== "single-user") {
+    throw new RequestFailure(403, "MCP instance settings are owner-only.");
+  }
+  return principal;
+}
+function ownerKey(principal: AuthenticatedPrincipal): string {
+  return JSON.stringify([principal.kind, principal.userId, principal.role, principal.mode, principal.authentication]);
+}
+async function readPolicy(req: Request): Promise<ReturnType<typeof parseMcpEnginePolicy>> {
+  if (!req.body) throw new RequestFailure(400, "A JSON policy body is required.");
+  const reader = req.body.getReader();
+  const bytes = new Uint8Array(MAX_BODY_BYTES); let used = 0;
+  let reject!: (error: RequestFailure) => void;
+  const interrupted = new Promise<never>((_resolve, fail) => { reject = fail; });
+  const abort = () => reject(new RequestFailure(400, "MCP preview request cancelled."));
+  const timer = setTimeout(() => reject(new RequestFailure(408, "MCP preview body timed out.")), 5000);
+  req.signal.addEventListener("abort", abort, { once: true });
+  if (req.signal.aborted) abort();
+  try {
+    for (;;) {
+      const chunk = await Promise.race([reader.read().catch(() => { throw new RequestFailure(400, "Could not read MCP preview body."); }), interrupted]);
+      if (chunk.done) break;
+      if (used + chunk.value.length > bytes.length) throw new RequestFailure(413, "MCP preview body exceeds 2 KiB.");
+      bytes.set(chunk.value, used); used += chunk.value.length;
+    }
+    try { return parseMcpEnginePolicy(JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, used)))); }
+    catch { throw new RequestFailure(400, "Expected only engine (adapter/native) and codemode (auto/on/off)."); }
+  } finally {
+    clearTimeout(timer); req.signal.removeEventListener("abort", abort);
+    void reader.cancel().catch(error => debugSuppressedError(log, "MCP preview reader cancellation failed.", error));
+    try { reader.releaseLock(); } catch (error) { debugSuppressedError(log, "MCP preview reader release deferred.", error); }
+  }
+}
+
+/** Read and preview only. No hydration, credentials, sessions or configuration writes. */
+export async function handleMcpSettings(channel: WebChannelLike, req: Request, url: URL): Promise<Response> {
+  try {
+    const identity = ownerKey(owner(channel, req));
+    const check = () => {
+      if (ownerKey(owner(channel, req)) !== identity) throw new RequestFailure(403, "MCP instance settings are owner-only.");
+      if (req.signal.aborted) throw new RequestFailure(400, "MCP preview request cancelled.");
+    };
+    check();
+    if (url.search) throw new RequestFailure(400, "MCP instance settings do not accept query parameters.");
+    const preview = req.method === "POST" && url.pathname === `${BASE}/preview`;
+    if (!preview && !(req.method === "GET" && url.pathname === BASE)) throw new RequestFailure(405, "Method not allowed.");
+    const policy = preview ? await readPolicy(req) : undefined;
+    check();
+    const persisted = readMcpInstancePolicy();
+    const snapshot = getMcpBridgeSnapshot();
+    const plan = planMcpEnginePolicy(policy ?? persisted.policy, snapshot, READINESS);
+    const { bridgeRevision: _bridgeRevision, ...publicPlan } = plan;
+    const payload = {
+      ok: true, persisted: { policy: persisted.policy },
+      runtime: RUNTIME, readiness: READINESS, effect: MCP_ENGINE_SWITCH_EFFECT,
+      // Never expose raw config, paths, native preview errors or startup diagnostics.
+      servers: snapshot.dryRun.rows.map(row => ({ name: row.serverName, status: row.status })),
+      plan: publicPlan, applyAvailable: false,
+    };
+    check();
+    return reply(payload);
+  } catch (error) {
+    if (error instanceof RequestFailure) return reply({ ok: false, error: error.message }, error.status);
+    return reply({ ok: false, error: "MCP settings are unavailable; check instance configuration." }, 503);
+  }
+}

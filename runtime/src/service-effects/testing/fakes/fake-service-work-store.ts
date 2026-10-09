@@ -1,7 +1,7 @@
 import {
   Result,
   type Result as ResultValue,
-} from "@earendil-works/pi-agent-core";
+} from "../../contracts/result.js";
 
 import type { NormalisedTraceInput } from "../../contracts/common.js";
 import type {

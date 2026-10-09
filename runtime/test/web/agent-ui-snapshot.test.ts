@@ -7,7 +7,21 @@ import {
   getAgentStatus,
   getAgentContext,
   getAgentModelState,
+  getSystemMetrics,
 } from "../../web/src/api";
+test("enabled meters use a dedicated coalesced GPU-demand endpoint", async () => {
+  let finish!: (response: Response) => void;
+  const gate = new Promise<Response>((resolve) => { finish = resolve; });
+  const urls: string[] = [];
+  globalThis.fetch = (async (input) => { urls.push(String(input)); return gate; }) as typeof fetch;
+  const a = getSystemMetrics();
+  const b = getSystemMetrics();
+  expect(urls).toEqual(["/agent/system-metrics"]);
+  finish(Response.json({ cpu_percent: 1, gpus: [] }));
+  expect(await a).toEqual({ cpu_percent: 1, gpus: [] });
+  expect(await b).toEqual({ cpu_percent: 1, gpus: [] });
+});
+
 const originalFetch = globalThis.fetch;
 afterEach(() => {
   globalThis.fetch = originalFetch;

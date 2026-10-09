@@ -23,6 +23,12 @@ function Fixture() {
   const queueIds = useRef(new Set());
   const timeline = useMainAppTimelineComposition({ timelineRef, viewStateRef, followupQueueRowIdsRef: queueIds, currentChatJid: chat, currentHashtag: null, searchQuery: null, followupQueueItems: queue });
   useEffect(() => {
+    (window as any).timelineFixture = { replace: timeline.setPosts, refresh: timeline.refreshTimeline, loadMore: timeline.loadMore,
+      preserve: timeline.preserveTimelineScroll, preserveTop: timeline.preserveTimelineScrollTop,
+      arrive(post: any) { timeline.setPosts(previous => [...(previous || []), post]); timeline.scrollToBottom(); } };
+    return () => { delete (window as any).timelineFixture; };
+  }, [timeline.setPosts, timeline.refreshTimeline]);
+  useEffect(() => {
     let cancelled = false;
     void runTimelineLoadFlow({ currentChatJid: chat, currentRootChatJid: chat, currentHashtag: null, searchQuery: null, searchScope: 'current', loadPosts: timeline.loadPosts, searchPosts: async () => ({ results: [] }), setPosts: timeline.setPosts, setHasMore: timeline.setHasMore, scrollToBottom: timeline.scrollToBottom, isCancelled: () => cancelled, onTimelineFirstPaint: () => { document.body.dataset.ready = chat; } });
     return () => { cancelled = true; };

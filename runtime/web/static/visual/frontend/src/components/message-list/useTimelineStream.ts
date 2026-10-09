@@ -116,7 +116,7 @@ export function useTimelineStream({
           if (prev.some((m) => m.id === interaction.id)) return prev;
           return [...prev, interaction];
         });
-        scrollToBottomRef.current(true);
+        scrollToBottomRef.current();
       } catch (err) {
         log.warn("SSE parse error", err);
       }
@@ -176,7 +176,7 @@ export function useTimelineStream({
         });
         draftDeltaActiveRef.current = false;
         thoughtDeltaActiveRef.current = false;
-        scrollToBottomRef.current(true);
+        scrollToBottomRef.current();
         // Notify for browser notifications
         window.dispatchEvent(new CustomEvent("piclaw:new-message", { detail: { content: interaction.content, type: "agent" } }));
         // Signal that agent turn is complete (clears compaction badge, etc.)
@@ -188,7 +188,7 @@ export function useTimelineStream({
         log.warn("SSE parse error:", err);
         draftDeltaActiveRef.current = false;
         thoughtDeltaActiveRef.current = false;
-        scrollToBottomRef.current(true);
+        scrollToBottomRef.current();
         window.dispatchEvent(new CustomEvent("piclaw:agent-turn-end"));
         window.dispatchEvent(
           new CustomEvent("piclaw:agent-status", { detail: { type: "done" } })

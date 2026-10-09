@@ -350,7 +350,7 @@ describe("EF-S07 SQLite hardening", () => {
     }
   });
 
-  test("claim, bind, renew, abandon, and cleanup checkpoints are atomic", async () => {
+  test("claim checkpoints are atomic", async () => {
     for (const [index, checkpoint] of (["occurrence_insert", "lease_insert", "decision_insert"] as ScheduledRunStatement[]).entries()) {
       const subject = isolated();
       try {
@@ -362,6 +362,9 @@ describe("EF-S07 SQLite hardening", () => {
       } finally { subject.dispose?.(); }
     }
 
+  });
+
+  test("source binding checkpoints are atomic", async () => {
     for (const checkpoint of ["source_binding_insert", "source_binding_update", "decision_insert"] as ScheduledRunStatement[]) {
       const subject = isolated();
       try {
@@ -385,6 +388,9 @@ describe("EF-S07 SQLite hardening", () => {
       } finally { subject.dispose?.(); }
     }
 
+  });
+
+  test("renewal checkpoints are atomic", async () => {
     for (const checkpoint of ["renewal_insert", "lease_history_update", "lease_renew", "decision_insert"] as ScheduledRunStatement[]) {
       const subject = isolated();
       try {
@@ -402,6 +408,9 @@ describe("EF-S07 SQLite hardening", () => {
       } finally { subject.dispose?.(); }
     }
 
+  });
+
+  test("abandonment checkpoints are atomic", async () => {
     for (const checkpoint of ["next_decision_insert", "abandonment_insert", "task_head_update", "occurrence_terminal_update", "decision_insert"] as ScheduledRunStatement[]) {
       const subject = isolated();
       try {
@@ -418,6 +427,9 @@ describe("EF-S07 SQLite hardening", () => {
       } finally { subject.dispose?.(); }
     }
 
+  });
+
+  test("retention cleanup checkpoints are atomic", async () => {
     for (const checkpoint of ["tombstone_insert", "retention_delete", "decision_insert"] as ScheduledRunStatement[]) {
       const subject = isolated();
       try {
@@ -525,25 +537,28 @@ describe("EF-S07 SQLite hardening", () => {
     } finally { subject.dispose?.(); }
   });
 
-  test("malformed lease decision tombstone source and outbox projections are bounded corrupt_state", async () => {
-    const probes: Array<(subject: SqliteSubject, lease: ScheduledRunLease, request: CompleteScheduledRunRequest) => Promise<void> | void> = [
-      (subject, lease) => { subject.database.exec("PRAGMA ignore_check_constraints=ON"); subject.database.query("UPDATE service_effect_s07_leases SET lease_expires_at='2026-08-16T01:03:00.000Z' WHERE run_id=?").run(lease.record.runId); },
-      async (subject, _lease, request) => { const done = await subject.store.complete(request); expect(done.ok).toBe(true); subject.database.query("UPDATE service_effect_s07_decisions SET result_json='{}' WHERE decision_key=?").run(`effect:${request.effect.idempotencyKey}`); },
-      async (subject, lease, request) => { const done = await subject.store.complete(request); expect(done.ok).toBe(true); const cleanup = await subject.store.cleanupTerminal({ settledBefore: "2026-08-16T01:01:00.000Z", limit: 1 }); expect(cleanup.ok).toBe(true); subject.database.exec("PRAGMA ignore_check_constraints=ON"); subject.database.query("UPDATE service_effect_s07_tombstones SET status=NULL WHERE run_id=?").run(lease.record.runId); },
-      async (subject, lease, request) => { const intent = deliveryIntent("corrupt-link"); const composed = completion(lease, request.effect.idempotencyKey, request.completedAt, [intent]); const done = await subject.store.complete(composed); expect(done.ok).toBe(true); subject.database.exec("PRAGMA foreign_keys=OFF; PRAGMA ignore_check_constraints=ON"); subject.database.query("UPDATE service_effect_s07_outbox_links SET ordinal=9 WHERE run_id=?").run(lease.record.runId); },
-    ];
-    for (const [index, probe] of probes.entries()) {
+  // Each independent disk-backed vector keeps the default five-second deadline.
+  const probes: Array<(subject: SqliteSubject, lease: ScheduledRunLease, request: CompleteScheduledRunRequest) => Promise<void> | void> = [
+    (subject, lease) => { subject.database.exec("PRAGMA ignore_check_constraints=ON"); subject.database.query("UPDATE service_effect_s07_leases SET lease_expires_at='2026-08-16T01:03:00.000Z' WHERE run_id=?").run(lease.record.runId); },
+    async (subject, _lease, request) => { const done = await subject.store.complete(request); expect(done.ok).toBe(true); subject.database.query("UPDATE service_effect_s07_decisions SET result_json='{}' WHERE decision_key=?").run(`effect:${request.effect.idempotencyKey}`); },
+    async (subject, lease, request) => { const done = await subject.store.complete(request); expect(done.ok).toBe(true); const cleanup = await subject.store.cleanupTerminal({ settledBefore: "2026-08-16T01:01:00.000Z", limit: 1 }); expect(cleanup.ok).toBe(true); subject.database.exec("PRAGMA ignore_check_constraints=ON"); subject.database.query("UPDATE service_effect_s07_tombstones SET status=NULL WHERE run_id=?").run(lease.record.runId); },
+    async (subject, lease, request) => { const intent = deliveryIntent("corrupt-link"); const composed = completion(lease, request.effect.idempotencyKey, request.completedAt, [intent]); const done = await subject.store.complete(composed); expect(done.ok).toBe(true); subject.database.exec("PRAGMA foreign_keys=OFF; PRAGMA ignore_check_constraints=ON"); subject.database.query("UPDATE service_effect_s07_outbox_links SET ordinal=9 WHERE run_id=?").run(lease.record.runId); },
+  ];
+  for (const [index, probe] of probes.entries()) {
+    test(`malformed projection ${["lease", "decision", "tombstone", "outbox link"][index]} is bounded corrupt_state`, async () => {
       const subject = isolated();
       try {
         subject.authority.create(authorityTask(`task:projection-corrupt-${index}`, { scheduleType: "once", scheduleValue: "2026-08-16T01:00:00.000Z" }));
-        const claimed = await subject.store.claimDue(dueClaim(`projection-corrupt-${index}`)); expect(claimed.ok).toBe(true); if (!claimed.ok) continue;
+        const claimed = await subject.store.claimDue(dueClaim(`projection-corrupt-${index}`)); expect(claimed.ok).toBe(true); if (!claimed.ok) return;
         const lease = claimed.value[0], request = completion(lease, `projection-corrupt-${index}`);
         await probe(subject, lease, request);
         const result = index === 1 ? await subject.store.complete(request) : await subject.store.get(lease.record.runId);
         expect(!result.ok && result.error._tag).toBe("corrupt_state");
       } finally { subject.dispose?.(); }
-    }
+    });
+  }
 
+  test("malformed attempt overflow is bounded corrupt_state", async () => {
     const overflowSubject = isolated();
     try {
       overflowSubject.authority.create(authorityTask("task:attempt-overflow"));
@@ -553,17 +568,19 @@ describe("EF-S07 SQLite hardening", () => {
       const overflow = await overflowSubject.store.claimDue({ ...dueClaim("attempt-overflow-reclaim", "2026-08-16T01:00:02.000Z"), reclaimAuthorities: [{ runId: lease.record.runId, expectedAttempt: Number.MAX_SAFE_INTEGER, kind: "repeatable", reconciliationRef: null }] });
       expect(!overflow.ok && overflow.error._tag).toBe("corrupt_state");
     } finally { overflowSubject.dispose?.(); }
+  });
 
-    for (const variant of ["binding", "source_owner", "primary_source", "outbox_operation", "outbox_source"] as const) {
+  for (const variant of ["binding", "source_owner", "primary_source", "outbox_operation", "outbox_source"] as const) {
+    test(`malformed source projection ${variant} is bounded corrupt_state`, async () => {
       const sourceSubject = isolated();
       try {
         sourceSubject.authority.create(authorityTask(`task:${variant}-corrupt`, { kind: "agent", executionRepeatability: "agent_source" }));
-        const claimed = await sourceSubject.store.claimDue(dueClaim(`${variant}-corrupt`)); expect(claimed.ok).toBe(true); if (!claimed.ok) continue;
+        const claimed = await sourceSubject.store.claimDue(dueClaim(`${variant}-corrupt`)); expect(claimed.ok).toBe(true); if (!claimed.ok) return;
         const lease = claimed.value[0], operationId = `operation:${variant}-corrupt`, sourceSeq = 1;
         acceptSqliteSource(sourceSubject.database, { runId: lease.record.runId, chatJid: lease.task.chatJid, sourceSeq, operationId });
         const request = { effect: { idempotencyKey: `bind:${variant}-corrupt`, requestHash: "", operationId, sourceSeq, provenanceRef: "provenance:source-corrupt", redactionClass: "private" as const }, runId: lease.record.runId, workerId: lease.record.workerId, expectedAttempt: 1, expectedTaskRevision: 1, leaseToken: lease.leaseToken, now: "2026-08-16T01:00:05.000Z", sourceSeq, operationId, boundAt: "2026-08-16T01:00:05.000Z" };
         request.effect.requestHash = hashCanonicalRequest(request as unknown as CanonicalJsonValue);
-        const bound = await sourceSubject.store.bindAcceptedSource(request); expect(bound.ok).toBe(true); if (!bound.ok) continue;
+        const bound = await sourceSubject.store.bindAcceptedSource(request); expect(bound.ok).toBe(true); if (!bound.ok) return;
         const boundLease = { ...lease, record: bound.value as ScheduledRunLease["record"] };
         if (variant.startsWith("outbox")) {
           const done = await sourceSubject.store.complete(completion(boundLease, `complete:${variant}`, "2026-08-16T01:00:10.000Z", [agentDeliveryIntent(variant, operationId, sourceSeq)]));
@@ -578,8 +595,8 @@ describe("EF-S07 SQLite hardening", () => {
         const corrupt = await sourceSubject.store.get(lease.record.runId);
         expect(!corrupt.ok && corrupt.error._tag).toBe("corrupt_state");
       } finally { sourceSubject.dispose?.(); }
-    }
-  });
+    });
+  }
 
   test("current recurrence utility pins UTC and Lisbon DST vectors", () => {
     expect(computeNextRun("cron", "*/5 * * * *", { currentDate: "2024-01-01T00:00:00.000Z", timezone: "UTC" })).toBe("2024-01-01T00:05:00.000Z");

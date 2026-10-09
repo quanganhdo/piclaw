@@ -1,4 +1,4 @@
-import { BACKGROUND_CONTEXT, Result, type ExecutionEnv, type Result as ResultValue } from "@earendil-works/pi-agent-core";
+import { BACKGROUND_CONTEXT, Result, type ExecutionEnv, type Result as ResultValue } from "../../contracts/execution-env.js";
 
 import type {
   ExecutionContextError,

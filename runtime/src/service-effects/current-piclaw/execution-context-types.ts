@@ -1,7 +1,7 @@
 import type {
   ExecutionEnv,
   Result,
-} from "@earendil-works/pi-agent-core";
+} from "../contracts/execution-env.js";
 
 import type { ExecutionContextError } from "../contracts/execution-context-resolver.js";
 

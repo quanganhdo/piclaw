@@ -1,0 +1,141 @@
+{
+  "target": {
+    "version": "1.0.3",
+    "gitHead": "d78dc83d633229d12f8b79631384c4c2717c399f",
+    "releasedAt": "2026-10-05T08:38:23Z",
+    "base": "67958760c5531e84ab6672a3eeb7233ac4b4e293",
+    "wrapper": "dddfcf630508f42c169889c11dee94e69b746e7c"
+  },
+  "archives": {
+    "count": 8,
+    "sha1sha512Verified": true
+  },
+  "broad": {
+    "pass": 364,
+    "skip": 8,
+    "fail": 0,
+    "assertions": 4303,
+    "seconds": 188.66,
+    "logSha256": "533c5c1f90d12efa3ff512995396de0a04b2f7690991c22e38fa00c6fd3fba91"
+  },
+  "auth": {
+    "device": 22,
+    "codexDevice": 6,
+    "browser": 20,
+    "copyCode": 17,
+    "packagedCli": 10,
+    "privateUi": {
+      "pass": 10,
+      "assertions": 1342,
+      "logSha256": "4741dab66bedda14a7bcc19be61d6ee49c443351ede7ffef2789f9384fe6ad39"
+    }
+  },
+  "mcpSettingsBrowser": {
+    "pass": 14,
+    "fail": 0,
+    "assertions": 590,
+    "logSha256": "2b3b3fa740f6affdf866cf6ba9010b8c44bff724a9fcd20a67231f8578e11243",
+    "terminalSummaryComplete": true,
+    "launcherExitCaptured": false
+  },
+  "sdkProfile": {
+    "version": "1.0.3",
+    "runs": 8,
+    "cpuRuns": 2,
+    "elapsedMs": [
+      {
+        "exposure": "deferred",
+        "cpu": false,
+        "elapsedMs": 827.2187220000001
+      },
+      {
+        "exposure": "deferred",
+        "cpu": false,
+        "elapsedMs": 614.1978060000001
+      },
+      {
+        "exposure": "deferred",
+        "cpu": false,
+        "elapsedMs": 613.4327479999997
+      },
+      {
+        "exposure": "deferred",
+        "cpu": true,
+        "elapsedMs": 654.4830959999999
+      },
+      {
+        "exposure": "codemode",
+        "cpu": false,
+        "elapsedMs": 581.4201940000003
+      },
+      {
+        "exposure": "codemode",
+        "cpu": false,
+        "elapsedMs": 601.5695030000002
+      },
+      {
+        "exposure": "codemode",
+        "cpu": false,
+        "elapsedMs": 586.8867999999998
+      },
+      {
+        "exposure": "codemode",
+        "cpu": true,
+        "elapsedMs": 662.3348699999997
+      }
+    ],
+    "scope": "whole-child publicSDKsyntheticMCP lifecycle,14scriptedresponses/reload/dispose; includesmoduleloading; noDB/liveproviders/standardwrapperperformancebaseline"
+  },
+  "historical102": {
+    "jsonCount": 12,
+    "unchanged": true,
+    "hashFixture": "runtime/test/fixtures/earendil-102-preserved-hashes.json",
+    "retiredExecutableCount": 17
+  },
+  "scope": {
+    "sourceOnly": true,
+    "installed": false,
+    "restarted": false,
+    "liveAccounts": false,
+    "providerSpend": false,
+    "durable": false,
+    "nativeReplacement": false,
+    "productionDelegate": false
+  },
+  "remaining": [
+    "Raw provider/auth settlement and account-generation contracts",
+    "Immutable Delegate/core/exposure/family/secret/owner/orphan qualification",
+    "Deeper GC/family/write/scheduler claim-loop performance coverage",
+    "Separate deployment/restart/live canary/soak/rollback approval"
+  ],
+  "full": {
+    "head": "ff8667b67c95882f333cd303c71b030599334cdf",
+    "tree": "6145b826e474155383e9468be41b5b3b09bd5491",
+    "exit": 0,
+    "pass": 6516,
+    "skip": 8,
+    "fail": 0,
+    "assertions": 42702,
+    "files": 929,
+    "seconds": 643.04,
+    "startedAt": "2026-10-05T13:12:53Z",
+    "finishedAt": "2026-10-05T13:23:46Z",
+    "unchangedClean": true,
+    "features": {
+      "pass": 25,
+      "assertions": 246
+    },
+    "web": {
+      "pass": 9,
+      "assertions": 26
+    },
+    "logSha256": "bd1a7ec8c148e15900f116e520531efc3011ccfa176cfbc61ae39f714950b002"
+  },
+  "failedFull": {
+    "head": "071a6b8017dd84d1f7193c466820da1b0ea284a4",
+    "exit": 2,
+    "stage": "static silent-promise-catch guard before tests",
+    "qualifying": false,
+    "logSha256": "024e6cd1a89778c227d0b77dff0a34a9b61f6513afeff98a707f8ac015976496"
+  }
+}

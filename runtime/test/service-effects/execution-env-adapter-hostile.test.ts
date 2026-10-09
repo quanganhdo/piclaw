@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { describe, expect, test } from "bun:test";
-import { BACKGROUND_CONTEXT, ExecutionError, Result, type Context, type ShellExecOptions } from "@earendil-works/pi-agent-core";
+import { BACKGROUND_CONTEXT, ExecutionError, Result, type Context, type ShellExecOptions } from "../../src/service-effects/contracts/execution-env.js";
 
 import { CurrentPiclawExecutionContextResolver } from "../../src/service-effects/current-piclaw/execution-context-resolver.js";
 import { PiclawExecutionEnv } from "../../src/service-effects/current-piclaw/execution-env-adapter.js";

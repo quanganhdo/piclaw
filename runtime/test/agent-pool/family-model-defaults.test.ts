@@ -43,7 +43,7 @@ const read = (owner = alice) => ownAccountModelDefaults(getDb(), owner, runtime,
 const save = (value: unknown = input(), owner = alice) => ownAccountModelDefaults(getDb(), owner, runtime, settings, value);
 beforeEach(() => {
   ws = createTempWorkspace('piclaw-family-model-defaults-'); restore = setEnv({ PICLAW_WORKSPACE: ws.workspace, PICLAW_STORE: ws.store, PICLAW_DATA: ws.data, PICLAW_SCOPED_MODELS_ONLY: '1' });
-  mkdirSync(join(ws.workspace, '.piclaw')); writeFileSync(join(ws.workspace, '.piclaw/config.json'), JSON.stringify({ domains: { access: { mode: 'family-shared' } } }));
+  mkdirSync(join(ws.workspace, '.piclaw')); writeFileSync(join(ws.workspace, '.piclaw/config.json'), JSON.stringify({ domains: { access: { mode: 'family-shared' } } }), { mode: 0o600 });
   closeDatabase(); initDatabase(); resetRateLimiterStateForTests(); admin = actor('default');
   const users = ['alice', 'bob'].map(name => {
     const user = provisionFamilyAccount(getDb(), admin, { username: name, displayName: name });

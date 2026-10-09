@@ -1,0 +1,1177 @@
+{
+  "recordedAt": "2026-10-05T15:33:40.668Z",
+  "pi": "1.0.3",
+  "bun": "1.4.2",
+  "base": "80ec14fff50b01708892880c7309ccfb544b9929",
+  "sourceBinding": {
+    "before": {
+      "head": "ba4da661c95f8a3556e7ed242f00ea544b946a8b",
+      "tree": "a9f2df99d5cde738fcf8e1f607e704cfaa1df710",
+      "status": "",
+      "runtimeDependencyParity": true,
+      "fixtures": {
+        "pi103-history-soak.ts": "153d2de9be737288e52022b17e2aabb27dfea90db65e4a346c72e8e41df067d9",
+        "pi103-scheduler-agent.ts": "2c3ace43c26015907f3a406d18a23dc1c23b5a7d768d656fcc1d33dd10e3446b"
+      }
+    },
+    "after": {
+      "head": "ba4da661c95f8a3556e7ed242f00ea544b946a8b",
+      "tree": "a9f2df99d5cde738fcf8e1f607e704cfaa1df710",
+      "status": "",
+      "runtimeDependencyParity": true,
+      "fixtures": {
+        "pi103-history-soak.ts": "153d2de9be737288e52022b17e2aabb27dfea90db65e4a346c72e8e41df067d9",
+        "pi103-scheduler-agent.ts": "2c3ace43c26015907f3a406d18a23dc1c23b5a7d768d656fcc1d33dd10e3446b"
+      }
+    },
+    "scope": "Corrected-soak invocation only; scheduler rows retain their own earlier source bindings"
+  },
+  "validation": {
+    "expectedNineRuns": true,
+    "rawLogResultsEqual": true,
+    "perRowSourceBeforeAfterEqual": true,
+    "committedFixtureHashesVerified": true,
+    "schedulerImportedRuntimeScriptsExtensionsDependenciesParity": true,
+    "fullQualificationPending": true
+  },
+  "historicalSmoke": {
+    "pass": 4,
+    "assertions": 18,
+    "logSha256": "0f29fe7cbb791a97f359eb55ce5737dcb2bff5c51bce4ab94a4925196fc3f78a",
+    "executionTimeSourceAttestation": false,
+    "typeLogSha256": "dfd0c6d3af373830a215c2274b74fba3950b6edffc950c5db83eccf51ae8e409",
+    "lintProvenance": "tool transcript; final static gate to be separately bound"
+  },
+  "rows": [
+    {
+      "job": {
+        "name": "scheduler-0",
+        "fixture": "pi103-scheduler-agent.ts",
+        "args": [],
+        "cpu": false,
+        "offline": true
+      },
+      "sourceBefore": {
+        "head": "943e1e0b98b87c225afdf19ecb8a89d3689e153c",
+        "tree": "d9d48b1bd444786de3dfd8b6d5888c13ed3834e5",
+        "status": "",
+        "runtimeDependencyParity": true,
+        "fixtures": {
+          "pi103-history-soak.ts": "06a0c15911ae264578627e7f7f8dbaada7fa1a606fc2d01ecdb490bb6d5d30f4",
+          "pi103-scheduler-agent.ts": "2c3ace43c26015907f3a406d18a23dc1c23b5a7d768d656fcc1d33dd10e3446b"
+        }
+      },
+      "sourceAfter": {
+        "head": "943e1e0b98b87c225afdf19ecb8a89d3689e153c",
+        "tree": "d9d48b1bd444786de3dfd8b6d5888c13ed3834e5",
+        "status": "",
+        "runtimeDependencyParity": true,
+        "fixtures": {
+          "pi103-history-soak.ts": "06a0c15911ae264578627e7f7f8dbaada7fa1a606fc2d01ecdb490bb6d5d30f4",
+          "pi103-scheduler-agent.ts": "2c3ace43c26015907f3a406d18a23dc1c23b5a7d768d656fcc1d33dd10e3446b"
+        }
+      },
+      "exit": 0,
+      "logSha256": "320990262d7584a04cb45c2ca8155d7e9ca333c918aa7e5fa54279de3c52a8ce",
+      "launcherWallMs": 2854.8719649999985,
+      "result": {
+        "runtime": "1.4.2",
+        "providerCalls": 2,
+        "deliveries": 1,
+        "realAgentPool": true,
+        "realSessionConstruction": true,
+        "realLeafRestored": true,
+        "scheduledBranchPersisted": true,
+        "scheduledBranchExcludedFromActiveContext": true,
+        "durableSourceSettled": true,
+        "recurrenceVerified": true,
+        "entriesBefore": 5,
+        "entriesAfter": 7,
+        "sessionBytes": 60260,
+        "queue": {
+          "enqueued": 1,
+          "deduplicated": 0,
+          "started": 1,
+          "succeeded": 1,
+          "failed": 0,
+          "retriesScheduled": 0
+        },
+        "scheduler": {
+          "polls": 1,
+          "tasksEnqueued": 1,
+          "taskRunsStarted": 1,
+          "taskRunsSucceeded": 1,
+          "taskRunsFailed": 0,
+          "lastPollAt": "2026-10-05T15:21:23.777Z"
+        },
+        "networkAttempts": 0,
+        "childProcessAttempts": 0,
+        "wallMs": 1758.2084799999998,
+        "cpu": {
+          "user": 192122,
+          "system": 42010
+        },
+        "eventLoop": {
+          "samples": 889,
+          "maxMs": 490.191472,
+          "meanMs": 0.9445281979752531
+        },
+        "scope": "Actual scheduler claim/AgentQueue/AgentPool.runAgent/Piclaw session construction/public Pi SDK prompting and leaf navigation over owned disk state. Native synthetic provider emits deterministic zero-cost responses; outbound sink observes delivery only, no live provider/account/transport. No raw auth/provider/account-generation contract qualification."
+      }
+    },
+    {
+      "job": {
+        "name": "scheduler-1",
+        "fixture": "pi103-scheduler-agent.ts",
+        "args": [],
+        "cpu": false,
+        "offline": true
+      },
+      "sourceBefore": {
+        "head": "943e1e0b98b87c225afdf19ecb8a89d3689e153c",
+        "tree": "d9d48b1bd444786de3dfd8b6d5888c13ed3834e5",
+        "status": "",
+        "runtimeDependencyParity": true,
+        "fixtures": {
+          "pi103-history-soak.ts": "06a0c15911ae264578627e7f7f8dbaada7fa1a606fc2d01ecdb490bb6d5d30f4",
+          "pi103-scheduler-agent.ts": "2c3ace43c26015907f3a406d18a23dc1c23b5a7d768d656fcc1d33dd10e3446b"
+        }
+      },
+      "sourceAfter": {
+        "head": "943e1e0b98b87c225afdf19ecb8a89d3689e153c",
+        "tree": "d9d48b1bd444786de3dfd8b6d5888c13ed3834e5",
+        "status": "",
+        "runtimeDependencyParity": true,
+        "fixtures": {
+          "pi103-history-soak.ts": "06a0c15911ae264578627e7f7f8dbaada7fa1a606fc2d01ecdb490bb6d5d30f4",
+          "pi103-scheduler-agent.ts": "2c3ace43c26015907f3a406d18a23dc1c23b5a7d768d656fcc1d33dd10e3446b"
+        }
+      },
+      "exit": 0,
+      "logSha256": "bab92c6e27db09405eb4c71bca2a349cb92712c6f019090f5014e825aa5c8a4e",
+      "launcherWallMs": 2371.023414999945,
+      "result": {
+        "runtime": "1.4.2",
+        "providerCalls": 2,
+        "deliveries": 1,
+        "realAgentPool": true,
+        "realSessionConstruction": true,
+        "realLeafRestored": true,
+        "scheduledBranchPersisted": true,
+        "scheduledBranchExcludedFromActiveContext": true,
+        "durableSourceSettled": true,
+        "recurrenceVerified": true,
+        "entriesBefore": 5,
+        "entriesAfter": 7,
+        "sessionBytes": 60260,
+        "queue": {
+          "enqueued": 1,
+          "deduplicated": 0,
+          "started": 1,
+          "succeeded": 1,
+          "failed": 0,
+          "retriesScheduled": 0
+        },
+        "scheduler": {
+          "polls": 1,
+          "tasksEnqueued": 1,
+          "taskRunsStarted": 1,
+          "taskRunsSucceeded": 1,
+          "taskRunsFailed": 0,
+          "lastPollAt": "2026-10-05T15:21:26.598Z"
+        },
+        "networkAttempts": 0,
+        "childProcessAttempts": 0,
+        "wallMs": 1326.805799,
+        "cpu": {
+          "user": 192848,
+          "system": 31990
+        },
+        "eventLoop": {
+          "samples": 892,
+          "maxMs": 74.968462,
+          "meanMs": 0.45751819506726454
+        },
+        "scope": "Actual scheduler claim/AgentQueue/AgentPool.runAgent/Piclaw session construction/public Pi SDK prompting and leaf navigation over owned disk state. Native synthetic provider emits deterministic zero-cost responses; outbound sink observes delivery only, no live provider/account/transport. No raw auth/provider/account-generation contract qualification."
+      }
+    },
+    {
+      "job": {
+        "name": "scheduler-2",
+        "fixture": "pi103-scheduler-agent.ts",
+        "args": [],
+        "cpu": true,
+        "offline": true
+      },
+      "sourceBefore": {
+        "head": "943e1e0b98b87c225afdf19ecb8a89d3689e153c",
+        "tree": "d9d48b1bd444786de3dfd8b6d5888c13ed3834e5",
+        "status": "",
+        "runtimeDependencyParity": true,
+        "fixtures": {
+          "pi103-history-soak.ts": "06a0c15911ae264578627e7f7f8dbaada7fa1a606fc2d01ecdb490bb6d5d30f4",
+          "pi103-scheduler-agent.ts": "2c3ace43c26015907f3a406d18a23dc1c23b5a7d768d656fcc1d33dd10e3446b"
+        }
+      },
+      "sourceAfter": {
+        "head": "943e1e0b98b87c225afdf19ecb8a89d3689e153c",
+        "tree": "d9d48b1bd444786de3dfd8b6d5888c13ed3834e5",
+        "status": "",
+        "runtimeDependencyParity": true,
+        "fixtures": {
+          "pi103-history-soak.ts": "06a0c15911ae264578627e7f7f8dbaada7fa1a606fc2d01ecdb490bb6d5d30f4",
+          "pi103-scheduler-agent.ts": "2c3ace43c26015907f3a406d18a23dc1c23b5a7d768d656fcc1d33dd10e3446b"
+        }
+      },
+      "exit": 0,
+      "logSha256": "3404fff3b8261a7d9e96ea0f15c319e67ac28c3508ec8b7fb864753c0cc53ab4",
+      "launcherWallMs": 2629.203305000032,
+      "result": {
+        "runtime": "1.4.2",
+        "providerCalls": 2,
+        "deliveries": 1,
+        "realAgentPool": true,
+        "realSessionConstruction": true,
+        "realLeafRestored": true,
+        "scheduledBranchPersisted": true,
+        "scheduledBranchExcludedFromActiveContext": true,
+        "durableSourceSettled": true,
+        "recurrenceVerified": true,
+        "entriesBefore": 5,
+        "entriesAfter": 7,
+        "sessionBytes": 60260,
+        "queue": {
+          "enqueued": 1,
+          "deduplicated": 0,
+          "started": 1,
+          "succeeded": 1,
+          "failed": 0,
+          "retriesScheduled": 0
+        },
+        "scheduler": {
+          "polls": 1,
+          "tasksEnqueued": 1,
+          "taskRunsStarted": 1,
+          "taskRunsSucceeded": 1,
+          "taskRunsFailed": 0,
+          "lastPollAt": "2026-10-05T15:21:29.206Z"
+        },
+        "networkAttempts": 0,
+        "childProcessAttempts": 0,
+        "wallMs": 1398.019074,
+        "cpu": {
+          "user": 185174,
+          "system": 43581
+        },
+        "eventLoop": {
+          "samples": 895,
+          "maxMs": 101.843165,
+          "meanMs": 0.4995243932960894
+        },
+        "scope": "Actual scheduler claim/AgentQueue/AgentPool.runAgent/Piclaw session construction/public Pi SDK prompting and leaf navigation over owned disk state. Native synthetic provider emits deterministic zero-cost responses; outbound sink observes delivery only, no live provider/account/transport. No raw auth/provider/account-generation contract qualification."
+      }
+    },
+    {
+      "job": {
+        "name": "soak-linear-0",
+        "fixture": "pi103-history-soak.ts",
+        "args": [
+          "linear",
+          "5000",
+          "60000"
+        ],
+        "cpu": false,
+        "offline": false
+      },
+      "sourceBefore": {
+        "head": "ba4da661c95f8a3556e7ed242f00ea544b946a8b",
+        "tree": "a9f2df99d5cde738fcf8e1f607e704cfaa1df710",
+        "status": "",
+        "runtimeDependencyParity": true,
+        "fixtures": {
+          "pi103-history-soak.ts": "153d2de9be737288e52022b17e2aabb27dfea90db65e4a346c72e8e41df067d9",
+          "pi103-scheduler-agent.ts": "2c3ace43c26015907f3a406d18a23dc1c23b5a7d768d656fcc1d33dd10e3446b"
+        }
+      },
+      "sourceAfter": {
+        "head": "ba4da661c95f8a3556e7ed242f00ea544b946a8b",
+        "tree": "a9f2df99d5cde738fcf8e1f607e704cfaa1df710",
+        "status": "",
+        "runtimeDependencyParity": true,
+        "fixtures": {
+          "pi103-history-soak.ts": "153d2de9be737288e52022b17e2aabb27dfea90db65e4a346c72e8e41df067d9",
+          "pi103-scheduler-agent.ts": "2c3ace43c26015907f3a406d18a23dc1c23b5a7d768d656fcc1d33dd10e3446b"
+        }
+      },
+      "exit": 0,
+      "logSha256": "c7e529744d4d61bb2d446048ccf51c271b74f9e2fa7313cc7aa413bc1883c6e5",
+      "launcherWallMs": 60454.65984,
+      "result": {
+        "runtime": "1.4.2",
+        "shape": "linear",
+        "entries": 5000,
+        "contextMessages": 5000,
+        "exactContextPayloadAndOrder": true,
+        "requestedMs": 60000,
+        "wallMs": 60069.918913,
+        "cpu": {
+          "user": 4256829,
+          "system": 2960239
+        },
+        "memoryBefore": {
+          "rss": 166932480,
+          "heapTotal": 23238656,
+          "heapUsed": 51620463,
+          "external": 37993663,
+          "arrayBuffers": 3154704
+        },
+        "memoryAfter": {
+          "rss": 202334208,
+          "heapTotal": 21972992,
+          "heapUsed": 62646586,
+          "external": 23230793,
+          "arrayBuffers": 9476080
+        },
+        "memoryReadRetries": 0,
+        "openedDroppedManagers": 174,
+        "naturalFinalizedManagers": 171,
+        "retainedControls": 3,
+        "noHeldFinalizers": true,
+        "explicitGcCalls": 0,
+        "fixtureBytes": 5980708,
+        "eventLoop": {
+          "samples": 50399,
+          "maxMs": 74.044044,
+          "meanMs": 0.19186396624933036
+        },
+        "samples": {
+          "count": 58,
+          "first": {
+            "elapsedMs": 1064.582375,
+            "cycleMs": 1064.469997,
+            "opened": 3,
+            "naturalFinalized": 2,
+            "memory": {
+              "rss": 139120640,
+              "heapTotal": 17811456,
+              "heapUsed": 63867998,
+              "external": 47220814,
+              "arrayBuffers": 6313296
+            },
+            "eventLoopMaxMs": 63.361984
+          },
+          "last": {
+            "elapsedMs": 60069.31092,
+            "cycleMs": 69.50831299999845,
+            "opened": 174,
+            "naturalFinalized": 171,
+            "memory": {
+              "rss": 202199040,
+              "heapTotal": 21972992,
+              "heapUsed": 62646586,
+              "external": 20255550,
+              "arrayBuffers": 9476080
+            },
+            "eventLoopMaxMs": 74.044044
+          },
+          "maxHeapUsed": 74142092,
+          "maxRss": 202199040,
+          "minNaturalFinalized": 2,
+          "maxNaturalFinalized": 171
+        },
+        "scope": "Public SessionManager disk open/context soak with linear, ten independent branch chains or complete user/tool-call/tool-result triples. Three held controls, three dropped managers per work-plus-up-to-1s-rest cycle, exact selected-context payload/order, no forced GC. Process-wide memory and nondeterministic finalizers are observations, not leak absence or per-GC pause attribution; no Agent inference/provider/live credentials/state. Reported CPU excludes setup; external whole-child profile includes it."
+      }
+    },
+    {
+      "job": {
+        "name": "soak-linear-1",
+        "fixture": "pi103-history-soak.ts",
+        "args": [
+          "linear",
+          "5000",
+          "60000"
+        ],
+        "cpu": true,
+        "offline": false
+      },
+      "sourceBefore": {
+        "head": "ba4da661c95f8a3556e7ed242f00ea544b946a8b",
+        "tree": "a9f2df99d5cde738fcf8e1f607e704cfaa1df710",
+        "status": "",
+        "runtimeDependencyParity": true,
+        "fixtures": {
+          "pi103-history-soak.ts": "153d2de9be737288e52022b17e2aabb27dfea90db65e4a346c72e8e41df067d9",
+          "pi103-scheduler-agent.ts": "2c3ace43c26015907f3a406d18a23dc1c23b5a7d768d656fcc1d33dd10e3446b"
+        }
+      },
+      "sourceAfter": {
+        "head": "ba4da661c95f8a3556e7ed242f00ea544b946a8b",
+        "tree": "a9f2df99d5cde738fcf8e1f607e704cfaa1df710",
+        "status": "",
+        "runtimeDependencyParity": true,
+        "fixtures": {
+          "pi103-history-soak.ts": "153d2de9be737288e52022b17e2aabb27dfea90db65e4a346c72e8e41df067d9",
+          "pi103-scheduler-agent.ts": "2c3ace43c26015907f3a406d18a23dc1c23b5a7d768d656fcc1d33dd10e3446b"
+        }
+      },
+      "exit": 0,
+      "logSha256": "cbadaa8aae9d716771a9d217ec400eaf335c7e4e98c6f8e62a327b8209a0fe5b",
+      "launcherWallMs": 60476.18948200001,
+      "result": {
+        "runtime": "1.4.2",
+        "shape": "linear",
+        "entries": 5000,
+        "contextMessages": 5000,
+        "exactContextPayloadAndOrder": true,
+        "requestedMs": 60000,
+        "wallMs": 60062.802094,
+        "cpu": {
+          "user": 4868182,
+          "system": 3492210
+        },
+        "memoryBefore": {
+          "rss": 150278144,
+          "heapTotal": 22343680,
+          "heapUsed": 39233339,
+          "external": 24952075,
+          "arrayBuffers": 3150512
+        },
+        "memoryAfter": {
+          "rss": 210735104,
+          "heapTotal": 22116352,
+          "heapUsed": 64798501,
+          "external": 46260501,
+          "arrayBuffers": 9476080
+        },
+        "memoryReadRetries": 0,
+        "openedDroppedManagers": 174,
+        "naturalFinalizedManagers": 171,
+        "retainedControls": 3,
+        "noHeldFinalizers": true,
+        "explicitGcCalls": 0,
+        "fixtureBytes": 5980708,
+        "eventLoop": {
+          "samples": 50868,
+          "maxMs": 76.124988,
+          "meanMs": 0.18072236805064087
+        },
+        "samples": {
+          "count": 58,
+          "first": {
+            "elapsedMs": 1063.845537,
+            "cycleMs": 1063.690421,
+            "opened": 3,
+            "naturalFinalized": 1,
+            "memory": {
+              "rss": 141922304,
+              "heapTotal": 18349056,
+              "heapUsed": 57561610,
+              "external": 39996218,
+              "arrayBuffers": 6309104
+            },
+            "eventLoopMaxMs": 62.670055
+          },
+          "last": {
+            "elapsedMs": 60062.257203,
+            "cycleMs": 62.36784400000033,
+            "opened": 174,
+            "naturalFinalized": 171,
+            "memory": {
+              "rss": 210456576,
+              "heapTotal": 22116352,
+              "heapUsed": 64798501,
+              "external": 46260501,
+              "arrayBuffers": 9476080
+            },
+            "eventLoopMaxMs": 76.124988
+          },
+          "maxHeapUsed": 65741946,
+          "maxRss": 210456576,
+          "minNaturalFinalized": 1,
+          "maxNaturalFinalized": 171
+        },
+        "scope": "Public SessionManager disk open/context soak with linear, ten independent branch chains or complete user/tool-call/tool-result triples. Three held controls, three dropped managers per work-plus-up-to-1s-rest cycle, exact selected-context payload/order, no forced GC. Process-wide memory and nondeterministic finalizers are observations, not leak absence or per-GC pause attribution; no Agent inference/provider/live credentials/state. Reported CPU excludes setup; external whole-child profile includes it."
+      }
+    },
+    {
+      "job": {
+        "name": "soak-branched-0",
+        "fixture": "pi103-history-soak.ts",
+        "args": [
+          "branched",
+          "5000",
+          "60000"
+        ],
+        "cpu": false,
+        "offline": false
+      },
+      "sourceBefore": {
+        "head": "ba4da661c95f8a3556e7ed242f00ea544b946a8b",
+        "tree": "a9f2df99d5cde738fcf8e1f607e704cfaa1df710",
+        "status": "",
+        "runtimeDependencyParity": true,
+        "fixtures": {
+          "pi103-history-soak.ts": "153d2de9be737288e52022b17e2aabb27dfea90db65e4a346c72e8e41df067d9",
+          "pi103-scheduler-agent.ts": "2c3ace43c26015907f3a406d18a23dc1c23b5a7d768d656fcc1d33dd10e3446b"
+        }
+      },
+      "sourceAfter": {
+        "head": "ba4da661c95f8a3556e7ed242f00ea544b946a8b",
+        "tree": "a9f2df99d5cde738fcf8e1f607e704cfaa1df710",
+        "status": "",
+        "runtimeDependencyParity": true,
+        "fixtures": {
+          "pi103-history-soak.ts": "153d2de9be737288e52022b17e2aabb27dfea90db65e4a346c72e8e41df067d9",
+          "pi103-scheduler-agent.ts": "2c3ace43c26015907f3a406d18a23dc1c23b5a7d768d656fcc1d33dd10e3446b"
+        }
+      },
+      "exit": 0,
+      "logSha256": "5f4d40b6e1eadc66465e8842211de9c4115915a884536c97e9036b2ab2f0939d",
+      "launcherWallMs": 60360.674266000016,
+      "result": {
+        "runtime": "1.4.2",
+        "shape": "branched",
+        "entries": 5000,
+        "contextMessages": 500,
+        "exactContextPayloadAndOrder": true,
+        "requestedMs": 60000,
+        "wallMs": 60000.641396,
+        "cpu": {
+          "user": 3039807,
+          "system": 3055960
+        },
+        "memoryBefore": {
+          "rss": 155541504,
+          "heapTotal": 22733824,
+          "heapUsed": 30258862,
+          "external": 19368126,
+          "arrayBuffers": 3154704
+        },
+        "memoryAfter": {
+          "rss": 110063616,
+          "heapTotal": 15720448,
+          "heapUsed": 32181670,
+          "external": 18572294,
+          "arrayBuffers": 304
+        },
+        "memoryReadRetries": 0,
+        "openedDroppedManagers": 174,
+        "naturalFinalizedManagers": 174,
+        "retainedControls": 3,
+        "noHeldFinalizers": true,
+        "explicitGcCalls": 0,
+        "fixtureBytes": 5980647,
+        "eventLoop": {
+          "samples": 51135,
+          "maxMs": 48.626757,
+          "meanMs": 0.173372679182556
+        },
+        "samples": {
+          "count": 58,
+          "first": {
+            "elapsedMs": 1034.272571,
+            "cycleMs": 1034.1574150000001,
+            "opened": 3,
+            "naturalFinalized": 1,
+            "memory": {
+              "rss": 129409024,
+              "heapTotal": 17851392,
+              "heapUsed": 50246184,
+              "external": 32825656,
+              "arrayBuffers": 1048976
+            },
+            "eventLoopMaxMs": 33.229603
+          },
+          "last": {
+            "elapsedMs": 59999.979869,
+            "cycleMs": 853.262705000001,
+            "opened": 174,
+            "naturalFinalized": 174,
+            "memory": {
+              "rss": 109522944,
+              "heapTotal": 15654912,
+              "heapUsed": 32181670,
+              "external": 18572294,
+              "arrayBuffers": 304
+            },
+            "eventLoopMaxMs": 48.626757
+          },
+          "maxHeapUsed": 66096409,
+          "maxRss": 129695744,
+          "minNaturalFinalized": 1,
+          "maxNaturalFinalized": 174
+        },
+        "scope": "Public SessionManager disk open/context soak with linear, ten independent branch chains or complete user/tool-call/tool-result triples. Three held controls, three dropped managers per work-plus-up-to-1s-rest cycle, exact selected-context payload/order, no forced GC. Process-wide memory and nondeterministic finalizers are observations, not leak absence or per-GC pause attribution; no Agent inference/provider/live credentials/state. Reported CPU excludes setup; external whole-child profile includes it."
+      }
+    },
+    {
+      "job": {
+        "name": "soak-branched-1",
+        "fixture": "pi103-history-soak.ts",
+        "args": [
+          "branched",
+          "5000",
+          "60000"
+        ],
+        "cpu": true,
+        "offline": false
+      },
+      "sourceBefore": {
+        "head": "ba4da661c95f8a3556e7ed242f00ea544b946a8b",
+        "tree": "a9f2df99d5cde738fcf8e1f607e704cfaa1df710",
+        "status": "",
+        "runtimeDependencyParity": true,
+        "fixtures": {
+          "pi103-history-soak.ts": "153d2de9be737288e52022b17e2aabb27dfea90db65e4a346c72e8e41df067d9",
+          "pi103-scheduler-agent.ts": "2c3ace43c26015907f3a406d18a23dc1c23b5a7d768d656fcc1d33dd10e3446b"
+        }
+      },
+      "sourceAfter": {
+        "head": "ba4da661c95f8a3556e7ed242f00ea544b946a8b",
+        "tree": "a9f2df99d5cde738fcf8e1f607e704cfaa1df710",
+        "status": "",
+        "runtimeDependencyParity": true,
+        "fixtures": {
+          "pi103-history-soak.ts": "153d2de9be737288e52022b17e2aabb27dfea90db65e4a346c72e8e41df067d9",
+          "pi103-scheduler-agent.ts": "2c3ace43c26015907f3a406d18a23dc1c23b5a7d768d656fcc1d33dd10e3446b"
+        }
+      },
+      "exit": 0,
+      "logSha256": "4e0fbdf7d7fea1044b4c55e7f64a8d12b66951ebfa8b02d095d261bcf81d6339",
+      "launcherWallMs": 60430.85355900001,
+      "result": {
+        "runtime": "1.4.2",
+        "shape": "branched",
+        "entries": 5000,
+        "contextMessages": 500,
+        "exactContextPayloadAndOrder": true,
+        "requestedMs": 60000,
+        "wallMs": 60000.713106,
+        "cpu": {
+          "user": 3518630,
+          "system": 3715844
+        },
+        "memoryBefore": {
+          "rss": 155348992,
+          "heapTotal": 22799360,
+          "heapUsed": 40787628,
+          "external": 27922972,
+          "arrayBuffers": 3154704
+        },
+        "memoryAfter": {
+          "rss": 123293696,
+          "heapTotal": 16880640,
+          "heapUsed": 42270016,
+          "external": 27050256,
+          "arrayBuffers": 3158896
+        },
+        "memoryReadRetries": 0,
+        "openedDroppedManagers": 174,
+        "naturalFinalizedManagers": 173,
+        "retainedControls": 3,
+        "noHeldFinalizers": true,
+        "explicitGcCalls": 0,
+        "fixtureBytes": 5980647,
+        "eventLoop": {
+          "samples": 51646,
+          "maxMs": 47.156125,
+          "meanMs": 0.16174791503698255
+        },
+        "samples": {
+          "count": 58,
+          "first": {
+            "elapsedMs": 1034.106347,
+            "cycleMs": 1033.990675,
+            "opened": 3,
+            "naturalFinalized": 2,
+            "memory": {
+              "rss": 135127040,
+              "heapTotal": 17274880,
+              "heapUsed": 59933488,
+              "external": 44022000,
+              "arrayBuffers": 6313296
+            },
+            "eventLoopMaxMs": 33.466699
+          },
+          "last": {
+            "elapsedMs": 59999.972664,
+            "cycleMs": 763.5955029999968,
+            "opened": 174,
+            "naturalFinalized": 173,
+            "memory": {
+              "rss": 122888192,
+              "heapTotal": 16815104,
+              "heapUsed": 42270016,
+              "external": 27050256,
+              "arrayBuffers": 3158896
+            },
+            "eventLoopMaxMs": 47.156125
+          },
+          "maxHeapUsed": 59933488,
+          "maxRss": 135127040,
+          "minNaturalFinalized": 2,
+          "maxNaturalFinalized": 173
+        },
+        "scope": "Public SessionManager disk open/context soak with linear, ten independent branch chains or complete user/tool-call/tool-result triples. Three held controls, three dropped managers per work-plus-up-to-1s-rest cycle, exact selected-context payload/order, no forced GC. Process-wide memory and nondeterministic finalizers are observations, not leak absence or per-GC pause attribution; no Agent inference/provider/live credentials/state. Reported CPU excludes setup; external whole-child profile includes it."
+      }
+    },
+    {
+      "job": {
+        "name": "soak-tools-0",
+        "fixture": "pi103-history-soak.ts",
+        "args": [
+          "tools",
+          "4998",
+          "60000"
+        ],
+        "cpu": false,
+        "offline": false
+      },
+      "sourceBefore": {
+        "head": "ba4da661c95f8a3556e7ed242f00ea544b946a8b",
+        "tree": "a9f2df99d5cde738fcf8e1f607e704cfaa1df710",
+        "status": "",
+        "runtimeDependencyParity": true,
+        "fixtures": {
+          "pi103-history-soak.ts": "153d2de9be737288e52022b17e2aabb27dfea90db65e4a346c72e8e41df067d9",
+          "pi103-scheduler-agent.ts": "2c3ace43c26015907f3a406d18a23dc1c23b5a7d768d656fcc1d33dd10e3446b"
+        }
+      },
+      "sourceAfter": {
+        "head": "ba4da661c95f8a3556e7ed242f00ea544b946a8b",
+        "tree": "a9f2df99d5cde738fcf8e1f607e704cfaa1df710",
+        "status": "",
+        "runtimeDependencyParity": true,
+        "fixtures": {
+          "pi103-history-soak.ts": "153d2de9be737288e52022b17e2aabb27dfea90db65e4a346c72e8e41df067d9",
+          "pi103-scheduler-agent.ts": "2c3ace43c26015907f3a406d18a23dc1c23b5a7d768d656fcc1d33dd10e3446b"
+        }
+      },
+      "exit": 0,
+      "logSha256": "f8aa5f62cc8d9e17f87bd62048b39a052b80495e8f171518326d464bd1b46322",
+      "launcherWallMs": 60466.11590199999,
+      "result": {
+        "runtime": "1.4.2",
+        "shape": "tools",
+        "entries": 4998,
+        "contextMessages": 4998,
+        "exactContextPayloadAndOrder": true,
+        "requestedMs": 60000,
+        "wallMs": 60057.045306,
+        "cpu": {
+          "user": 5098439,
+          "system": 3068887
+        },
+        "memoryBefore": {
+          "rss": 148504576,
+          "heapTotal": 24185856,
+          "heapUsed": 31691939,
+          "external": 19022627,
+          "arrayBuffers": 2101840
+        },
+        "memoryAfter": {
+          "rss": 203329536,
+          "heapTotal": 26394624,
+          "heapUsed": 59204967,
+          "external": 38027159,
+          "arrayBuffers": 6317488
+        },
+        "memoryReadRetries": 0,
+        "openedDroppedManagers": 174,
+        "naturalFinalizedManagers": 172,
+        "retainedControls": 3,
+        "noHeldFinalizers": true,
+        "explicitGcCalls": 0,
+        "fixtureBytes": 6673964,
+        "eventLoop": {
+          "samples": 49652,
+          "maxMs": 100.914252,
+          "meanMs": 0.20954215767743495
+        },
+        "samples": {
+          "count": 58,
+          "first": {
+            "elapsedMs": 1101.9567499999998,
+            "cycleMs": 1101.8349839999998,
+            "opened": 3,
+            "naturalFinalized": 1,
+            "memory": {
+              "rss": 145227776,
+              "heapTotal": 22380544,
+              "heapUsed": 62728478,
+              "external": 40753246,
+              "arrayBuffers": 5260432
+            },
+            "eventLoopMaxMs": 100.914252
+          },
+          "last": {
+            "elapsedMs": 60056.567363999995,
+            "cycleMs": 56.89904999999999,
+            "opened": 174,
+            "naturalFinalized": 172,
+            "memory": {
+              "rss": 203067392,
+              "heapTotal": 26394624,
+              "heapUsed": 59204967,
+              "external": 38027159,
+              "arrayBuffers": 6317488
+            },
+            "eventLoopMaxMs": 100.914252
+          },
+          "maxHeapUsed": 73886698,
+          "maxRss": 203067392,
+          "minNaturalFinalized": 1,
+          "maxNaturalFinalized": 172
+        },
+        "scope": "Public SessionManager disk open/context soak with linear, ten independent branch chains or complete user/tool-call/tool-result triples. Three held controls, three dropped managers per work-plus-up-to-1s-rest cycle, exact selected-context payload/order, no forced GC. Process-wide memory and nondeterministic finalizers are observations, not leak absence or per-GC pause attribution; no Agent inference/provider/live credentials/state. Reported CPU excludes setup; external whole-child profile includes it."
+      }
+    },
+    {
+      "job": {
+        "name": "soak-tools-1",
+        "fixture": "pi103-history-soak.ts",
+        "args": [
+          "tools",
+          "4998",
+          "60000"
+        ],
+        "cpu": true,
+        "offline": false
+      },
+      "sourceBefore": {
+        "head": "ba4da661c95f8a3556e7ed242f00ea544b946a8b",
+        "tree": "a9f2df99d5cde738fcf8e1f607e704cfaa1df710",
+        "status": "",
+        "runtimeDependencyParity": true,
+        "fixtures": {
+          "pi103-history-soak.ts": "153d2de9be737288e52022b17e2aabb27dfea90db65e4a346c72e8e41df067d9",
+          "pi103-scheduler-agent.ts": "2c3ace43c26015907f3a406d18a23dc1c23b5a7d768d656fcc1d33dd10e3446b"
+        }
+      },
+      "sourceAfter": {
+        "head": "ba4da661c95f8a3556e7ed242f00ea544b946a8b",
+        "tree": "a9f2df99d5cde738fcf8e1f607e704cfaa1df710",
+        "status": "",
+        "runtimeDependencyParity": true,
+        "fixtures": {
+          "pi103-history-soak.ts": "153d2de9be737288e52022b17e2aabb27dfea90db65e4a346c72e8e41df067d9",
+          "pi103-scheduler-agent.ts": "2c3ace43c26015907f3a406d18a23dc1c23b5a7d768d656fcc1d33dd10e3446b"
+        }
+      },
+      "exit": 0,
+      "logSha256": "86e44be8cc09ad690a48f83dc5a75763acbe7251a7572b68985fcc57643f8254",
+      "launcherWallMs": 60495.317081000016,
+      "result": {
+        "runtime": "1.4.2",
+        "shape": "tools",
+        "entries": 4998,
+        "contextMessages": 4998,
+        "exactContextPayloadAndOrder": true,
+        "requestedMs": 60000,
+        "wallMs": 60058.105336,
+        "cpu": {
+          "user": 5679788,
+          "system": 3692139
+        },
+        "memoryBefore": {
+          "rss": 155029504,
+          "heapTotal": 24586240,
+          "heapUsed": 42414590,
+          "external": 25389518,
+          "arrayBuffers": 3154704
+        },
+        "memoryAfter": {
+          "rss": 235347968,
+          "heapTotal": 28370944,
+          "heapUsed": 63236458,
+          "external": 47422391,
+          "arrayBuffers": 9476080
+        },
+        "memoryReadRetries": 0,
+        "openedDroppedManagers": 174,
+        "naturalFinalizedManagers": 171,
+        "retainedControls": 3,
+        "noHeldFinalizers": true,
+        "explicitGcCalls": 0,
+        "fixtureBytes": 6673964,
+        "eventLoop": {
+          "samples": 50064,
+          "maxMs": 96.81151,
+          "meanMs": 0.19960419337248322
+        },
+        "samples": {
+          "count": 58,
+          "first": {
+            "elapsedMs": 1068.665936,
+            "cycleMs": 1068.523312,
+            "opened": 3,
+            "naturalFinalized": 3,
+            "memory": {
+              "rss": 114786304,
+              "heapTotal": 18670592,
+              "heapUsed": 37095768,
+              "external": 20220616,
+              "arrayBuffers": 304
+            },
+            "eventLoopMaxMs": 68.431019
+          },
+          "last": {
+            "elapsedMs": 60057.489535,
+            "cycleMs": 57.4954360000047,
+            "opened": 174,
+            "naturalFinalized": 171,
+            "memory": {
+              "rss": 243150848,
+              "heapTotal": 28370944,
+              "heapUsed": 63236458,
+              "external": 47422391,
+              "arrayBuffers": 9476080
+            },
+            "eventLoopMaxMs": 96.81151
+          },
+          "maxHeapUsed": 63372734,
+          "maxRss": 243150848,
+          "minNaturalFinalized": 3,
+          "maxNaturalFinalized": 171
+        },
+        "scope": "Public SessionManager disk open/context soak with linear, ten independent branch chains or complete user/tool-call/tool-result triples. Three held controls, three dropped managers per work-plus-up-to-1s-rest cycle, exact selected-context payload/order, no forced GC. Process-wide memory and nondeterministic finalizers are observations, not leak absence or per-GC pause attribution; no Agent inference/provider/live credentials/state. Reported CPU excludes setup; external whole-child profile includes it."
+      }
+    }
+  ],
+  "profiles": [
+    {
+      "job": "scheduler-2",
+      "sha256": "7058b556df5e659114d6ff3858f03efbc8a8f424bffa0448505ab0f6ce45e0aa",
+      "samples": 457,
+      "wholeChildIncludesSetup": true,
+      "topSelfSamples": [
+        {
+          "frame": "(native)@native",
+          "count": 128
+        },
+        {
+          "frame": "anonymous@native",
+          "count": 83
+        },
+        {
+          "frame": "run@native",
+          "count": 73
+        },
+        {
+          "frame": "(native)@v4/classic/schemas.js",
+          "count": 10
+        },
+        {
+          "frame": "DateTimeFormat@native",
+          "count": 7
+        },
+        {
+          "frame": "get@native",
+          "count": 7
+        },
+        {
+          "frame": "deepMergeObjects@dist/core/settings-manager.js",
+          "count": 5
+        },
+        {
+          "frame": "stringify@native",
+          "count": 5
+        },
+        {
+          "frame": "parse@native",
+          "count": 4
+        },
+        {
+          "frame": "(native)@client/dist/ajvProvider-97rDpkRx.mjs",
+          "count": 4
+        }
+      ]
+    },
+    {
+      "job": "soak-linear-1",
+      "sha256": "ac61d259b246584d31464494c82c6030d121cd89e628d5e74d68b38e83b69c05",
+      "samples": 3054,
+      "wholeChildIncludesSetup": true,
+      "topSelfSamples": [
+        {
+          "frame": "parse@native",
+          "count": 672
+        },
+        {
+          "frame": "strictEqual@node:assert",
+          "count": 647
+        },
+        {
+          "frame": "repeat@native",
+          "count": 515
+        },
+        {
+          "frame": "write@native",
+          "count": 294
+        },
+        {
+          "frame": "loadEntriesFromFile@dist/core/session-manager.js",
+          "count": 279
+        },
+        {
+          "frame": "readSync@native",
+          "count": 156
+        },
+        {
+          "frame": "validateContext@test/fixtures/pi103-history-soak.ts",
+          "count": 104
+        },
+        {
+          "frame": "buildSessionPath@dist/core/session-manager.js",
+          "count": 86
+        },
+        {
+          "frame": "_buildIndex@dist/core/session-manager.js",
+          "count": 50
+        },
+        {
+          "frame": "anonymous@native",
+          "count": 33
+        }
+      ]
+    },
+    {
+      "job": "soak-branched-1",
+      "sha256": "6ab78eaed0c20aa5d0f51a457a4f570471430496f69df734f5f23e39f2d827dd",
+      "samples": 2061,
+      "wholeChildIncludesSetup": true,
+      "topSelfSamples": [
+        {
+          "frame": "parse@native",
+          "count": 818
+        },
+        {
+          "frame": "write@native",
+          "count": 373
+        },
+        {
+          "frame": "loadEntriesFromFile@dist/core/session-manager.js",
+          "count": 302
+        },
+        {
+          "frame": "readSync@native",
+          "count": 138
+        },
+        {
+          "frame": "strictEqual@node:assert",
+          "count": 99
+        },
+        {
+          "frame": "repeat@native",
+          "count": 80
+        },
+        {
+          "frame": "_buildIndex@dist/core/session-manager.js",
+          "count": 60
+        },
+        {
+          "frame": "anonymous@native",
+          "count": 36
+        },
+        {
+          "frame": "filter@native",
+          "count": 26
+        },
+        {
+          "frame": "parseSessionEntryLine@dist/core/session-manager.js",
+          "count": 25
+        }
+      ]
+    },
+    {
+      "job": "soak-tools-1",
+      "sha256": "f176d6bcb471b87fb2ca493b8c6c67d8cdae74f9ebf710a80aaab672ef541198",
+      "samples": 3594,
+      "wholeChildIncludesSetup": true,
+      "topSelfSamples": [
+        {
+          "frame": "parse@native",
+          "count": 986
+        },
+        {
+          "frame": "strictEqual@node:assert",
+          "count": 692
+        },
+        {
+          "frame": "repeat@native",
+          "count": 504
+        },
+        {
+          "frame": "loadEntriesFromFile@dist/core/session-manager.js",
+          "count": 350
+        },
+        {
+          "frame": "write@native",
+          "count": 344
+        },
+        {
+          "frame": "readSync@native",
+          "count": 143
+        },
+        {
+          "frame": "validateContext@test/fixtures/pi103-history-soak.ts",
+          "count": 130
+        },
+        {
+          "frame": "buildSessionPath@dist/core/session-manager.js",
+          "count": 120
+        },
+        {
+          "frame": "_buildIndex@dist/core/session-manager.js",
+          "count": 66
+        },
+        {
+          "frame": "anonymous@native",
+          "count": 44
+        }
+      ]
+    }
+  ],
+  "priorSeries": {
+    "qualifyingForCorrectedSoak": false,
+    "retained": true,
+    "reason": "Review found length-only branch assertion and last-wait control observation gaps; six old soak runs retained locally, excluded from corrected qualification.",
+    "sha256": "6050f9c71cd5dbc65a08cfc5406744e22faecbad82ea5c609ecb8a4edcaef563",
+    "unchangedSchedulerRowsRetained": true
+  },
+  "failures": [
+    {
+      "kind": "Initial scheduler fixture config was not private0600; admission denied",
+      "qualifying": false,
+      "logSha256": "45700c377be63d455577349596dda193c667ca0b9e064ccd03188b90722903ff"
+    },
+    {
+      "kind": "Broad read-only review timeout150s",
+      "qualifying": false,
+      "provenance": "chat tool result"
+    }
+  ],
+  "reviews": {
+    "history": "Read-only recheck clear: exact latest branch payload/order, complete tools, observed cadence, final held controls and CPU scope",
+    "scheduler": "Read-only qualified clear: actual AgentPool/SDK path; only live pooled leaf restoration and coarse persisted side branch, not full reopened topology/assistant persistence",
+    "runByReviewer": false
+  },
+  "limitations": [
+    "Six60ssoaks and3scheduler samples on Smith Linux/Bun1.4.2 only; no multi-hour leak absence or per-GC pause attribution. Finalization timing/process-wide memory are observational.",
+    "Branched shape is ten independent chains with latestchain context; tools4998entries are complete user/call/result triples. Cadence is work plus up to1srest; no fixed throughput or platform acceptance.",
+    "Actual scheduler/AgentPool/session construction/SDK run and live leaf navigation are tested. Native provider emits deterministic zero-cost responses, external delivery is a sink, no live/provider/account/credential qualification.",
+    "Persisted SDK reopen proves scheduled prompt presence and entry count only; no complete persisted topology or reopen-leaf restoration claim.",
+    "Three scheduler rows retain head943e1e0b9 with identical scheduler fixture and imported runtime/scripts/extensions/dependency parity; corrected six soak rows use ba4da661c. No whole-series single-head claim.",
+    "Fixture contains no explicit forced-GC calls; zero field is a static fixture declaration, not instrumentation of every SDK/engine GC entrypoint.",
+    "Whole-child CPU includes seed and process cleanup, measured report deltas exclude setup.",
+    "Public raw auth/provider settlement/account-generation contracts and production Delegate remain unavailable; longer/cross-platform/live canary and deployment/rollback require separate scope/approval."
+  ],
+  "scope": {
+    "liveState": false,
+    "credentials": false,
+    "paidInference": false,
+    "deployment": false,
+    "restart": false,
+    "wholePlanAccepted": false
+  }
+}

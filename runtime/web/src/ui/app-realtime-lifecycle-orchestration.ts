@@ -363,12 +363,18 @@ export function useRealtimeLifecycleOrchestration(options: UseRealtimeLifecycleO
   }, [connectionStatus, isAgentActive, refreshAgentStatus, refreshAutoresearchStatus, refreshContextUsage, refreshQueueState, refreshTimeline, viewStateRef]);
 
   useEffect(() => {
+    let refreshPending = false;
     return watchReturnToApp(() => {
       invalidateAgentUiSnapshot(currentChatJid);
       void refreshAgentStatus();
       void refreshContextUsage();
       void refreshQueueState();
       void refreshAutoresearchStatus();
+      const view = viewStateRef.current || {};
+      if (!view.currentHashtag && !view.searchQuery && !view.searchOpen && !refreshPending) {
+        refreshPending = true;
+        void Promise.resolve(refreshTimeline()).finally(() => { refreshPending = false; });
+      }
     });
-  }, [currentChatJid, refreshAgentStatus, refreshAutoresearchStatus, refreshContextUsage, refreshQueueState]);
+  }, [currentChatJid, refreshAgentStatus, refreshAutoresearchStatus, refreshContextUsage, refreshQueueState, refreshTimeline, viewStateRef]);
 }

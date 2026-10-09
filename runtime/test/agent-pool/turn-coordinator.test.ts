@@ -61,6 +61,8 @@ test("AgentTurnCoordinator tracks streamed turns and fallback assistant text aft
     attachments: [sampleAttachment],
     turnKind: "intermediate",
     cause: "completed_boundary",
+    textPhase: "final_answer",
+    terminal: false,
   }]);
   expect(tracker.getTurnCount()).toBe(1);
   expect(tracker.getFinalText()).toBe("fallback answer");
@@ -107,6 +109,8 @@ test("AgentTurnCoordinator preserves unphased provider-error text as a failed bo
   tracker.handleMessageUpdate({ type: "message_update", assistantMessageEvent: { type: "text_start" } } as any);
   expect(completed).toEqual([{
     text: "Reading gate summaries.", attachments: [], turnKind: "intermediate", cause: "failed_boundary",
+      textPhase: null,
+      terminal: false,
   }]);
 });
 
@@ -244,6 +248,8 @@ test("AgentTurnCoordinator persists completed visible commentary before a later 
     attachments: [],
     turnKind: "intermediate",
     cause: "completed_boundary",
+    textPhase: "commentary",
+    terminal: false,
   }]);
   expect(tracker.getTurnCount()).toBe(1);
   expect(tracker.getFinalText()).toBe("done");
@@ -443,6 +449,8 @@ test("AgentTurnCoordinator snapshots visible final-answer draft when a new text_
     attachments: [],
     turnKind: "draft_snapshot",
     cause: "interrupted_text_start",
+    textPhase: "final_answer",
+    terminal: false,
   }]);
   expect(tracker.getTurnCount()).toBe(1);
 
@@ -459,6 +467,8 @@ test("AgentTurnCoordinator snapshots visible final-answer draft when a new text_
     attachments: [],
     turnKind: "draft_snapshot",
     cause: "interrupted_text_start",
+    textPhase: "final_answer",
+    terminal: false,
   }]);
   expect(tracker.getTurnCount()).toBe(1);
   expect(tracker.getFinalText()).toBe("fallback answer");
@@ -509,6 +519,8 @@ test("AgentTurnCoordinator commits assistant text as soon as its tool-use messag
     turnKind: "intermediate",
     cause: "tool_use",
     followedByToolUse: true,
+    textPhase: null,
+    terminal: false,
   }]);
   expect(tracker.getTurnCount()).toBe(1);
   expect(tracker.getFinalText()).toBe("");
@@ -535,6 +547,8 @@ test("AgentTurnCoordinator commits assistant text as soon as its tool-use messag
     turnKind: "intermediate",
     cause: "tool_use",
     followedByToolUse: true,
+    textPhase: null,
+    terminal: false,
   }]);
   expect(tracker.getTurnCount()).toBe(1);
   expect(tracker.getFinalText()).toBe("done");
@@ -590,6 +604,8 @@ test("AgentTurnCoordinator persists visible commentary at a tool-use boundary", 
     turnKind: "intermediate",
     cause: "tool_use",
     followedByToolUse: true,
+    textPhase: "commentary",
+    terminal: false,
   }]);
   expect(tracker.getFinalText()).toBe("");
 
@@ -639,6 +655,8 @@ test("AgentTurnCoordinator commits explicit final-answer text at a tool-use boun
     turnKind: "intermediate",
     cause: "tool_use",
     followedByToolUse: true,
+    textPhase: "final_answer",
+    terminal: false,
   }]);
   expect(tracker.getFinalText()).toBe("");
 });
@@ -876,4 +894,12 @@ test("AgentTurnCoordinator reports timed-out abort failures without leaking reje
 
   expect(timedOutRef.value).toBe(true);
   expect(warns).toContain("Failed to abort timed-out prompt");
+});
+
+
+for(const phase of ['commentary','final_answer',null])test('boundary callback carries phase and positive terminal evidence: '+phase,()=>{
+  const turns:any[]=[];const coordinator=new AgentTurnCoordinator({touchSession:()=>{},takeAttachments:()=>[]});const tracker=coordinator.createTracker('web:phase',turn=>turns.push(turn));
+  tracker.handleMessageUpdate({type:'message_end',message:{role:'assistant',stopReason:'stop',content:[{type:'text',text:'same content',...(phase?{textSignature:JSON.stringify({phase})}:{})}]}}as any);
+  tracker.handleMessageUpdate({type:'message_update',assistantMessageEvent:{type:'text_start',contentIndex:0,partial:{content:[{type:'text',text:'next'}]}}}as any);
+  expect(turns).toHaveLength(1);expect(turns[0]).toMatchObject({textPhase:phase,terminal:phase!=='commentary',cause:'completed_boundary'});
 });

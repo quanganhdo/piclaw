@@ -346,6 +346,7 @@ test("AgentSessionManager protects pending and in-flight chats from TTL and pool
   fixture.pool.get("web:protected")!.lastUsed = Date.now() - 10_000;
   fixture.manager.evictIdle({ mainIdleTtlMs: 1, sideIdleTtlMs: 1, mainSessionMaxSizeOverride: 1 });
   expect(fixture.pool.has("web:protected")).toBe(false);
+  await waitFor(() => disposed === 2);
   expect(disposed).toBe(2);
 });
 
@@ -376,6 +377,7 @@ test("AgentSessionManager evicts idle sessions and shuts down remaining sessions
 
   expect(fixture.pool.has("web:old")).toBe(false);
   expect(fixture.pool.has("web:active")).toBe(true);
+  await waitFor(() => disposed === 1);
   expect(disposed).toBe(1);
 
   await fixture.manager.shutdown();
@@ -412,6 +414,7 @@ test("AgentSessionManager evicts idle side sessions more aggressively than main 
 
   expect(fixture.pool.has("web:main")).toBe(true);
   expect(fixture.sidePool.has("web:main")).toBe(false);
+  await waitFor(() => disposed === 1);
   expect(disposed).toBe(1);
 
   await fixture.manager.shutdown();
@@ -694,8 +697,13 @@ test("AgentSessionManager does not retain a prewarm-created runtime when shutdow
 
   expect(fixture.manager.prewarm("web:shutdown-race")).toBe(true);
   await Bun.sleep(10);
-  await fixture.manager.shutdown();
+  let shutdownCompleted = false;
+  const shutdown = fixture.manager.shutdown().then(() => { shutdownCompleted = true; });
+  await Bun.sleep(0);
+  expect(shutdownCompleted).toBe(false);
+  expect(disposed).toBe(0);
   releaseCreate();
+  await shutdown;
   await waitFor(() => disposed === 1, 1_000, 10);
 
   expect(fixture.pool.has("web:shutdown-race")).toBe(false);

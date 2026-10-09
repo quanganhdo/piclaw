@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Result as ResultValue } from "@earendil-works/pi-agent-core";
+import type { Result as ResultValue } from "../../src/service-effects/contracts/result.js";
 import type {
   CanonicalJsonValue,
   EffectIdentity,

@@ -28,30 +28,42 @@ interface Options {
   markerStorage?: Pick<Storage, "getItem" | "setItem">;
   onError?: (message: string) => void;
 }
-const browserRequest = async (
+/** Retry only explicit server contention, never denied/ambiguous writes. The
+ * deadline covers the entire logical request, including retry delays. */
+export const requestPickerPins = async (
   method: "GET" | "POST",
   body?: unknown,
+  request: typeof fetch = fetch,
+  lifecycle?: AbortSignal,
 ): Promise<Snapshot> => {
-  const res = await fetch("/agent/picker-pins", {
-    method,
-    credentials: "same-origin",
-    cache: "no-store",
-    signal: AbortSignal.timeout(15000),
-    ...(body === undefined
-      ? {}
-      : {
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        }),
-  });
-  if (!res.ok) throw Error("Pins could not be saved.");
-  return res.json();
+  const signal = AbortSignal.any([AbortSignal.timeout(15000), ...(lifecycle ? [lifecycle] : [])]);
+  const encodedBody = body === undefined ? undefined : JSON.stringify(body);
+  for (let attempt = 0; ; attempt++) {
+    signal.throwIfAborted();
+    const res = await request("/agent/picker-pins", {
+      method, credentials: "same-origin", cache: "no-store", signal,
+      ...(encodedBody === undefined ? {} : { headers: { "Content-Type": "application/json" }, body: encodedBody }),
+    });
+    if (res.status === 503 && res.headers.get("Retry-After") === "1" && attempt < 3) {
+      await res.body?.cancel();
+      await new Promise<void>((resolve, reject) => {
+        const abort = () => { clearTimeout(timer); signal.removeEventListener("abort", abort); reject(signal.reason); };
+        const timer = setTimeout(() => { signal.removeEventListener("abort", abort); resolve(); }, 1000);
+        signal.addEventListener("abort", abort, { once: true });
+        if (signal.aborted) abort();
+      });
+      continue;
+    }
+    if (!res.ok) throw Error("Pins could not be saved.");
+    return res.json();
+  }
 };
 /** One lifecycle per page/account. Recents and sort stay browser-local; only
  * pin intents go to the server. No interval, polling or durable offline queue. */
 export function startPickerPinSync(options: Options = {}) {
   const runtime = options.runtime ?? (window as unknown as Runtime);
-  const request = options.request ?? browserRequest;
+  const controller = new AbortController();
+  const request = options.request ?? ((method, body) => requestPickerPins(method, body, fetch, controller.signal));
   let stopped = false,
     ready = false,
     snapshot: Snapshot | null = null,
@@ -227,6 +239,7 @@ export function startPickerPinSync(options: Options = {}) {
     refresh,
     stop: () => {
       stopped = true;
+      controller.abort();
       runtime.removeEventListener(PICKER_PIN_WRITE_EVENT, write);
       runtime.removeEventListener(PICKER_PINS_CHANGED_EVENT, onRefresh);
       runtime.removeEventListener("piclaw:sse-connected", onRefresh);

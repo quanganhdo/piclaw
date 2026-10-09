@@ -1,0 +1,810 @@
+{
+  "recordedAt": "2026-10-04T11:53:45.176Z",
+  "baseMain": "97053085d927e430038f80589885f5e27cb54440",
+  "runtime": "Bun 1.4.2",
+  "host": "Smith LXC",
+  "measurements": [
+    {
+      "log": "picker-pins-load-profile.log",
+      "logSha256": "287ffabdccd7ffbe0cecda39cd181cd0bfe055160806678d667babe68c8baaf9",
+      "kind": "picker-pin-load-profile",
+      "busyTimeout": {
+        "timeout": 5000
+      },
+      "results": [
+        {
+          "mode": "idle",
+          "pin": {
+            "status": 200,
+            "ms": 9.845556999999644,
+            "body": {
+              "scope": "synthetic-scope",
+              "revision": 2,
+              "models": [
+                "fixture/baseline",
+                "fixture/idle"
+              ],
+              "sessions": []
+            }
+          },
+          "input": {
+            "status": 200,
+            "ms": 9.886037999999644,
+            "body": {
+              "ack": true
+            }
+          },
+          "timerDelayMs": 10.185545999999704
+        },
+        {
+          "mode": "writer-lock",
+          "pin": {
+            "status": 200,
+            "ms": 2050.392186,
+            "body": {
+              "scope": "synthetic-scope",
+              "revision": 3,
+              "models": [
+                "fixture/baseline",
+                "fixture/idle",
+                "fixture/writer-lock"
+              ],
+              "sessions": []
+            }
+          },
+          "input": {
+            "status": 200,
+            "ms": 2050.421757,
+            "body": {
+              "ack": true
+            }
+          },
+          "timerDelayMs": 2049.8767390000003
+        }
+      ],
+      "scope": "real pin backend + disposable WAL lock; unrelated synthetic HTTP input ACK shows shared event-loop blockage, not full production admission/browser",
+      "network": "owned loopback only"
+    },
+    {
+      "log": "picker-pins-load-profile-candidate.log",
+      "logSha256": "40325863eb994e7573e6d0790222342738369ca70e2d76aedb50324f05cbe2a6",
+      "kind": "picker-pin-load-profile",
+      "busyTimeout": {
+        "timeout": 5000
+      },
+      "results": [
+        {
+          "mode": "idle",
+          "pin": {
+            "status": 200,
+            "ms": 15.108388000000105,
+            "body": {
+              "scope": "synthetic-scope",
+              "revision": 2,
+              "models": [
+                "fixture/baseline",
+                "fixture/idle"
+              ],
+              "sessions": []
+            }
+          },
+          "input": {
+            "status": 200,
+            "ms": 15.201199999999972,
+            "body": {
+              "ack": true
+            }
+          },
+          "timerDelayMs": 15.003460999999788
+        },
+        {
+          "mode": "writer-lock",
+          "pin": {
+            "status": 503,
+            "ms": 0.9133590000001277,
+            "body": {
+              "error": "Pin storage is busy. Retry shortly."
+            }
+          },
+          "input": {
+            "status": 200,
+            "ms": 0.9286200000001372,
+            "body": {
+              "ack": true
+            }
+          },
+          "timerDelayMs": 10.08039800000006
+        }
+      ],
+      "scope": "real pin backend + disposable WAL lock; unrelated synthetic HTTP input ACK shows shared event-loop blockage, not full production admission/browser",
+      "network": "owned loopback only"
+    },
+    {
+      "log": "ux-actual-input-load.log",
+      "logSha256": "e4965a48cedfd7869d5f5837670810669d1d563436d36c2c8af59e2839a13eec",
+      "kind": "actual-input-pin-load-profile",
+      "results": [
+        {
+          "mode": "idle",
+          "pin": {
+            "status": 200,
+            "ms": 30.102821000000404,
+            "body": {
+              "scope": "synthetic-scope",
+              "revision": 2,
+              "models": [
+                "fixture/initial",
+                "fixture/idle"
+              ],
+              "sessions": []
+            }
+          },
+          "input": {
+            "status": 201,
+            "ms": 30.156085000000076,
+            "body": {
+              "queued": "followup",
+              "thread_id": null
+            }
+          },
+          "sse": {
+            "ms": 30.173453000000336,
+            "received": true
+          },
+          "timerDelayMs": 30.041106000000127,
+          "events": [
+            {
+              "type": "picker_pins_changed",
+              "ms": 17.13149300000032
+            },
+            {
+              "type": "agent_followup_queued",
+              "ms": 29.88074000000006
+            }
+          ]
+        },
+        {
+          "mode": "writer-lock",
+          "pin": {
+            "status": 503,
+            "ms": 2089.715659,
+            "body": {
+              "error": "Pin storage is busy. Retry shortly."
+            }
+          },
+          "input": {
+            "status": 201,
+            "ms": 2089.7570410000003,
+            "body": {
+              "queued": "followup",
+              "thread_id": null
+            }
+          },
+          "sse": {
+            "ms": 2089.9037089999997,
+            "received": true
+          },
+          "timerDelayMs": 2088.6195920000005,
+          "events": [
+            {
+              "type": "agent_followup_queued",
+              "ms": 2086.006581
+            }
+          ]
+        }
+      ],
+      "busyTimeout": {
+        "timeout": 5000
+      },
+      "scope": "real agent message admission + durable disk queue + SSE delivery and pin handler; synthetic busy agent; no browser/authgateway/provider, owned loopback only"
+    },
+    {
+      "log": "ux-actual-input-load-candidate.log",
+      "logSha256": "d4e1a0f99109775d3c17d2161197159d31a124d211c5fec7a8045148f7de4bb2",
+      "kind": "actual-input-pin-load-profile",
+      "results": [
+        {
+          "mode": "idle",
+          "pin": {
+            "status": 200,
+            "ms": 28.648113000000194,
+            "body": {
+              "scope": "synthetic-scope",
+              "revision": 2,
+              "models": [
+                "fixture/initial",
+                "fixture/idle"
+              ],
+              "sessions": []
+            }
+          },
+          "input": {
+            "status": 201,
+            "ms": 28.712632000000212,
+            "body": {
+              "queued": "followup",
+              "thread_id": null
+            }
+          },
+          "sse": {
+            "ms": 28.82158900000013,
+            "received": true
+          },
+          "timerDelayMs": 28.541396000000077,
+          "events": [
+            {
+              "type": "picker_pins_changed",
+              "ms": 10.692633999999998
+            },
+            {
+              "type": "agent_followup_queued",
+              "ms": 28.30469600000015
+            }
+          ]
+        },
+        {
+          "mode": "writer-lock",
+          "pin": {
+            "status": 503,
+            "ms": 1.6194940000000315,
+            "body": {
+              "error": "Pin storage is busy. Retry shortly."
+            }
+          },
+          "input": {
+            "status": 201,
+            "ms": 2037.001177,
+            "body": {
+              "queued": "followup",
+              "thread_id": null
+            }
+          },
+          "sse": {
+            "ms": 2036.9908720000003,
+            "received": true
+          },
+          "timerDelayMs": 10.081325000000106,
+          "events": [
+            {
+              "type": "agent_followup_queued",
+              "ms": 2036.730896
+            }
+          ]
+        }
+      ],
+      "busyTimeout": {
+        "timeout": 5000
+      },
+      "scope": "real agent message admission + durable disk queue + SSE delivery and pin handler; synthetic busy agent; no browser/authgateway/provider, owned loopback only"
+    },
+    {
+      "log": "ux-input-final-profile-1.log",
+      "logSha256": "6a07c2db835285615af495d33e6b9458a24c52565edc3ca9e24e9ef5b1224cf0",
+      "kind": "actual-input-pin-load-profile",
+      "results": [
+        {
+          "mode": "idle",
+          "pin": {
+            "status": 200,
+            "ms": 30.72463400000015,
+            "body": {
+              "scope": "synthetic-scope",
+              "revision": 2,
+              "models": [
+                "fixture/initial",
+                "fixture/idle"
+              ],
+              "sessions": []
+            }
+          },
+          "input": {
+            "status": 201,
+            "ms": 30.756412000000182,
+            "body": {
+              "queued": "followup",
+              "thread_id": null
+            }
+          },
+          "sse": {
+            "ms": 30.831614000000172,
+            "received": true
+          },
+          "timerDelayMs": 30.67152299999998,
+          "events": [
+            {
+              "type": "picker_pins_changed",
+              "ms": 17.258890000000065
+            },
+            {
+              "type": "agent_followup_queued",
+              "ms": 30.554749999999785
+            }
+          ]
+        },
+        {
+          "mode": "writer-lock",
+          "pin": {
+            "status": 503,
+            "ms": 1.4383649999999761,
+            "body": {
+              "error": "Pin storage is busy. Retry shortly."
+            }
+          },
+          "input": {
+            "status": 201,
+            "ms": 2026.8669649999997,
+            "body": {
+              "queued": "followup",
+              "thread_id": null
+            }
+          },
+          "sse": {
+            "ms": 2026.857442,
+            "received": true
+          },
+          "timerDelayMs": 10.265555999999833,
+          "events": [
+            {
+              "type": "agent_followup_queued",
+              "ms": 2026.6230419999997
+            }
+          ]
+        }
+      ],
+      "busyTimeout": {
+        "timeout": 5000
+      },
+      "scope": "real agent message admission + durable disk queue + SSE delivery and pin handler; synthetic busy agent; no browser/authgateway/provider, owned loopback only"
+    },
+    {
+      "log": "ux-input-final-profile-2.log",
+      "logSha256": "f173f21f5588a039aa535650217e7249a8e20003b6fe565efe90471a6ea1b3bb",
+      "kind": "actual-input-pin-load-profile",
+      "results": [
+        {
+          "mode": "idle",
+          "pin": {
+            "status": 200,
+            "ms": 30.534112999999707,
+            "body": {
+              "scope": "synthetic-scope",
+              "revision": 2,
+              "models": [
+                "fixture/initial",
+                "fixture/idle"
+              ],
+              "sessions": []
+            }
+          },
+          "input": {
+            "status": 201,
+            "ms": 30.624640999999883,
+            "body": {
+              "queued": "followup",
+              "thread_id": null
+            }
+          },
+          "sse": {
+            "ms": 30.645402999999988,
+            "received": true
+          },
+          "timerDelayMs": 30.472654999999577,
+          "events": [
+            {
+              "type": "picker_pins_changed",
+              "ms": 16.62040799999977
+            },
+            {
+              "type": "agent_followup_queued",
+              "ms": 30.30806199999961
+            }
+          ]
+        },
+        {
+          "mode": "writer-lock",
+          "pin": {
+            "status": 503,
+            "ms": 1.4782640000003084,
+            "body": {
+              "error": "Pin storage is busy. Retry shortly."
+            }
+          },
+          "input": {
+            "status": 201,
+            "ms": 2025.1351610000006,
+            "body": {
+              "queued": "followup",
+              "thread_id": null
+            }
+          },
+          "sse": {
+            "ms": 2025.1275950000004,
+            "received": true
+          },
+          "timerDelayMs": 10.159495000000334,
+          "events": [
+            {
+              "type": "agent_followup_queued",
+              "ms": 2024.8541019999998
+            }
+          ]
+        }
+      ],
+      "busyTimeout": {
+        "timeout": 5000
+      },
+      "scope": "real agent message admission + durable disk queue + SSE delivery and pin handler; synthetic busy agent; no browser/authgateway/provider, owned loopback only"
+    },
+    {
+      "log": "ux-input-final-profile-3.log",
+      "logSha256": "50419a927d4d362d2de7adb4d714aed433638b4905346e04baae7200dd9694ac",
+      "kind": "actual-input-pin-load-profile",
+      "results": [
+        {
+          "mode": "idle",
+          "pin": {
+            "status": 200,
+            "ms": 59.83944500000007,
+            "body": {
+              "scope": "synthetic-scope",
+              "revision": 2,
+              "models": [
+                "fixture/initial",
+                "fixture/idle"
+              ],
+              "sessions": []
+            }
+          },
+          "input": {
+            "status": 201,
+            "ms": 59.90455599999996,
+            "body": {
+              "queued": "followup",
+              "thread_id": null
+            }
+          },
+          "sse": {
+            "ms": 59.92627600000014,
+            "received": true
+          },
+          "timerDelayMs": 59.76275200000009,
+          "events": [
+            {
+              "type": "picker_pins_changed",
+              "ms": 35.012416999999914
+            },
+            {
+              "type": "agent_followup_queued",
+              "ms": 59.59805499999993
+            }
+          ]
+        },
+        {
+          "mode": "writer-lock",
+          "pin": {
+            "status": 503,
+            "ms": 1.5675940000000992,
+            "body": {
+              "error": "Pin storage is busy. Retry shortly."
+            }
+          },
+          "input": {
+            "status": 201,
+            "ms": 2032.3322439999997,
+            "body": {
+              "queued": "followup",
+              "thread_id": null
+            }
+          },
+          "sse": {
+            "ms": 2032.323221,
+            "received": true
+          },
+          "timerDelayMs": 10.282680000000255,
+          "events": [
+            {
+              "type": "agent_followup_queued",
+              "ms": 2032.109465
+            }
+          ]
+        }
+      ],
+      "busyTimeout": {
+        "timeout": 5000
+      },
+      "scope": "real agent message admission + durable disk queue + SSE delivery and pin handler; synthetic busy agent; no browser/authgateway/provider, owned loopback only"
+    },
+    {
+      "log": "ux-input-cpu-profile.log",
+      "logSha256": "2bd3daf844d44a23c1c13ebf05ae3c26acdde88323beb21ab902739843302a1e",
+      "kind": "actual-input-pin-load-profile",
+      "results": [
+        {
+          "mode": "idle",
+          "pin": {
+            "status": 200,
+            "ms": 29.922179000000142,
+            "body": {
+              "scope": "synthetic-scope",
+              "revision": 2,
+              "models": [
+                "fixture/initial",
+                "fixture/idle"
+              ],
+              "sessions": []
+            }
+          },
+          "input": {
+            "status": 201,
+            "ms": 29.953781000000163,
+            "body": {
+              "queued": "followup",
+              "thread_id": null
+            }
+          },
+          "sse": {
+            "ms": 30.084804000000076,
+            "received": true
+          },
+          "timerDelayMs": 29.851508000000194,
+          "events": [
+            {
+              "type": "picker_pins_changed",
+              "ms": 13.711385999999948
+            },
+            {
+              "type": "agent_followup_queued",
+              "ms": 29.627690000000257
+            }
+          ]
+        },
+        {
+          "mode": "writer-lock",
+          "pin": {
+            "status": 503,
+            "ms": 1.4253850000000057,
+            "body": {
+              "error": "Pin storage is busy. Retry shortly."
+            }
+          },
+          "input": {
+            "status": 201,
+            "ms": 2029.0745589999997,
+            "body": {
+              "queued": "followup",
+              "thread_id": null
+            }
+          },
+          "sse": {
+            "ms": 2029.064902,
+            "received": true
+          },
+          "timerDelayMs": 10.112083999999868,
+          "events": [
+            {
+              "type": "agent_followup_queued",
+              "ms": 2028.8456070000002
+            }
+          ]
+        }
+      ],
+      "busyTimeout": {
+        "timeout": 5000
+      },
+      "scope": "real agent message admission + durable disk queue + SSE delivery and pin handler; synthetic busy agent; no browser/authgateway/provider, owned loopback only"
+    }
+  ],
+  "browser": {
+    "tests": 8,
+    "assertions": 64,
+    "failures": 0,
+    "logSha256": "8df48a89bd1f2f3b54a64895b044a66528f9373b6bf3b1e5173a8d1f74ca9a80",
+    "queueCases": [
+      {
+        "kind": "queue-visibility-browser",
+        "engine": "chromium",
+        "submitToVisibleMs": 35.73503399999754,
+        "queueStateRequests": 10,
+        "realMessageHandler": true,
+        "realDiskQueue": false,
+        "SSE": "absent except controlled race events",
+        "displayPanels": "fixture stubs; real ChatPanel and QueueStack"
+      },
+      {
+        "kind": "queue-visibility-browser",
+        "engine": "webkit",
+        "submitToVisibleMs": 35.86106800000198,
+        "queueStateRequests": 10,
+        "realMessageHandler": true,
+        "realDiskQueue": false,
+        "SSE": "absent except controlled race events",
+        "displayPanels": "fixture stubs; real ChatPanel and QueueStack"
+      }
+    ],
+    "scope": "real Visual ChatPanel/QueueStack and message handler; display panels stubbed; in-memory queue; existing Classic/Visual pins browser regression"
+  },
+  "cpu": {
+    "profileSha256": "5dcabfce768ec14702d11cede61afbd3cf0a7fdab259d1a6c343acfad1b05448",
+    "samples": 360,
+    "durationUs": 5723784.25,
+    "topFunctions": [
+      {
+        "functionName": "run",
+        "samples": 237
+      },
+      {
+        "functionName": "anonymous",
+        "samples": 61
+      },
+      {
+        "functionName": "get",
+        "samples": 6
+      },
+      {
+        "functionName": "(module)",
+        "samples": 4
+      },
+      {
+        "functionName": "(anonymous)",
+        "samples": 3
+      },
+      {
+        "functionName": "require",
+        "samples": 2
+      },
+      {
+        "functionName": "fromEntries",
+        "samples": 2
+      },
+      {
+        "functionName": "prepare",
+        "samples": 2
+      },
+      {
+        "functionName": "getServerUiMetersConfig",
+        "samples": 2
+      },
+      {
+        "functionName": "handleAgentMessage",
+        "samples": 2
+      },
+      {
+        "functionName": "resolve",
+        "samples": 2
+      },
+      {
+        "functionName": "setName",
+        "samples": 1
+      },
+      {
+        "functionName": "ownKeys",
+        "samples": 1
+      },
+      {
+        "functionName": "node:child_process",
+        "samples": 1
+      },
+      {
+        "functionName": "Comparator",
+        "samples": 1
+      }
+    ],
+    "limitations": [
+      "whole process includes fresh schema and module loading",
+      "Bun frame URLs empty; names cannot identify precise source",
+      "raw profile local only"
+    ]
+  },
+  "sourceSha256": {
+    "runtime/src/db/sqlite-async-admission.ts": "a653b72f239db5a7d433ea61d30c7f949798366d7375f6efec54e433bbb9dd65",
+    "runtime/src/channels/web/handlers/picker-pins.ts": "36e84d58466aa9a46f052b2ea5fc1fa5ff63faa700f6d844cc743e2e792e7da8",
+    "runtime/src/channels/web/handlers/agent.ts": "aec90eed5d5e0c6017a633d48d7e495858630eff02e07b64e9bde7eb02c9227e",
+    "runtime/src/channels/web/runtime/queued-followup-lifecycle-service.ts": "0bdad0e59599a160f7cd2284018fd2dab1a00de4a38c9631ff31337bd28b1fae",
+    "runtime/web/src/ui/picker-pin-sync.ts": "97958f1b0b7c37164f6350951019680c9055d7e6fc6472b84abafb84207872b3",
+    "runtime/web/static/visual/frontend/src/components/QueueStack.tsx": "a0991aa2023f595b09285e526779d5bb2d5107f0f7b800fb79d5f99cb9983650",
+    "runtime/web/static/visual/frontend/src/components/queue-state-controller.ts": "7ac798aef7e23a2994de247bc01fc333b3b00af2658cebe8bd374bb4d270eae1",
+    "runtime/web/static/visual/frontend/src/panels/ChatPanel.tsx": "cba6087b98cb5f62e1ea1ee88c61f6bf7c39c523b606c413f011a3e59a368ded"
+  },
+  "limitations": [
+    "two-second owned WAL writer with synthetic busy agent; auth gateway/provider/browser CPU load not measured by disk fixture",
+    "no full production thirty-second trace or complete-cause claim",
+    "inputs acknowledged only after durable commit; a real writer still delays acceptance",
+    "no production state, credentials, provider calls or durability settings changed",
+    "baseline profiles single run; candidate three repeats and one CPU run; no strict comparative whole-system benchmark",
+    "other synchronous auth/message/maintenance operations remain unmeasured"
+  ],
+  "wakeContractCorrection": {
+    "recordedAt": "2026-10-04T12:31:13.544Z",
+    "scope": "compose idle wake opt-in, manual queue deferred; fresh active OR streaming",
+    "profile": {
+      "logSha256": "206d588513a488a82fb3f6f1891778d7bd8f7fb6855d3725f79d154258627fda",
+      "kind": "actual-input-pin-load-profile",
+      "results": [
+        {
+          "mode": "idle",
+          "pin": {
+            "status": 200,
+            "ms": 36.390965999999935,
+            "body": {
+              "scope": "synthetic-scope",
+              "revision": 2,
+              "models": [
+                "fixture/initial",
+                "fixture/idle"
+              ],
+              "sessions": []
+            }
+          },
+          "input": {
+            "status": 201,
+            "ms": 36.426996000000145,
+            "body": {
+              "queued": "followup",
+              "thread_id": null
+            }
+          },
+          "sse": {
+            "ms": 36.4803179999999,
+            "received": true
+          },
+          "timerDelayMs": 36.31059099999993,
+          "events": [
+            {
+              "type": "picker_pins_changed",
+              "ms": 19.129173999999693
+            },
+            {
+              "type": "agent_followup_queued",
+              "ms": 36.11671299999989
+            }
+          ]
+        },
+        {
+          "mode": "writer-lock",
+          "pin": {
+            "status": 503,
+            "ms": 1.3230220000000372,
+            "body": {
+              "error": "Pin storage is busy. Retry shortly."
+            }
+          },
+          "input": {
+            "status": 201,
+            "ms": 2026.1873419999997,
+            "body": {
+              "queued": "followup",
+              "thread_id": null
+            }
+          },
+          "sse": {
+            "ms": 2026.177897,
+            "received": true
+          },
+          "timerDelayMs": 10.085872000000109,
+          "events": [
+            {
+              "type": "agent_followup_queued",
+              "ms": 2025.9272729999998
+            }
+          ]
+        }
+      ],
+      "busyTimeout": {
+        "timeout": 5000
+      },
+      "scope": "real agent message admission + durable disk queue + SSE delivery and pin handler; synthetic busy agent; no browser/authgateway/provider, owned loopback only"
+    },
+    "browser": {
+      "tests": 2,
+      "assertions": 28,
+      "failures": 0,
+      "logSha256": "7ecd3ca1c66d359204367429f1fdecb00c24cd92deb006ba39adcd75e276935d"
+    },
+    "focused": {
+      "tests": 143,
+      "assertions": 807,
+      "failures": 0
+    },
+    "types": "five stages passed with unchanged baseline"
+  }
+}

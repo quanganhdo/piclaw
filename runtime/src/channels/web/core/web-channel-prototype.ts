@@ -187,6 +187,11 @@ export function installWebChannelPrototype(
         (service, chatJid: string): QueuedFollowupItem | null => service.peekQueuedFollowupItem(chatJid),
       ),
     },
+    admitQueuedFollowupItem: {
+      configurable: true,
+      writable: true,
+      value: withRuntimePublicSurface((service, args: Parameters<WebChannelRuntimePublicSurfaceService['enqueueQueuedFollowupItem']>, authorise: () => void, signal: AbortSignal) => service.admitQueuedFollowupItem(args, authorise, signal)),
+    },
     consumeQueuedFollowupItem: {
       configurable: true,
       writable: true,
@@ -725,6 +730,11 @@ export function installWebChannelPrototype(
           consumeDeferredFollowupRowId?: number | null;
         } = {},
       ): InteractionRow | null => service.storeMessage(chatJid, content, isBot, mediaIds, options)),
+    },
+    admitUserMessage: {
+      configurable: true,
+      writable: true,
+      value: withRuntimePublicSurface((service, ...args: Parameters<WebChannelRuntimePublicSurfaceService['admitUserMessage']>) => service.admitUserMessage(...args)),
     },
     serveStatic: {
       configurable: true,

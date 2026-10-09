@@ -19,6 +19,7 @@ import { installSessionUsageRecorder } from "./usage.js";
 import type { AgentPoolOptions } from "./contracts.js";
 import type { AgentBashOperations } from "./tool-factory.js";
 import type { PiclawCredentialStore } from "./credential-store.js";
+import { McpCodemodeController } from "./mcp-codemode-runtime.js";
 
 /** Shared logger callbacks used across extracted AgentPool services. */
 export interface AgentPoolLogHooks {
@@ -45,6 +46,7 @@ export interface AgentPoolServiceFactoryOptions extends AgentPoolLogHooks {
 
 /** Concrete helper instances composed into AgentPool. */
 export interface AgentPoolServices {
+  mcpSettings: McpCodemodeController;
   attachments: ReturnType<typeof getAttachmentRegistry>;
   sessionBinder: AgentSessionBinder;
   toolFactory: AgentToolFactory;
@@ -150,6 +152,7 @@ export function createAgentPoolServices(options: AgentPoolServiceFactoryOptions)
   });
 
   return {
+    mcpSettings: new McpCodemodeController(sessionManager),
     attachments,
     sessionBinder,
     toolFactory,

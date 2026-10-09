@@ -1,0 +1,50 @@
+[
+  {
+    "path": "docs/design/earendil-agent-harness-integration-adr/evidence/receipts/earendil-102-mcp-public.json",
+    "sha256": "05f1c2c583a36e15813d2f2f376c39e8d0f60734780bfb7f78703fdb386cf643"
+  },
+  {
+    "path": "docs/design/earendil-agent-harness-integration-adr/evidence/receipts/earendil-102-packaged-cli-auth-bun.json",
+    "sha256": "b44ae22f82ac45b67d154db9d7184a9996c99dcad4fd71eb6bac0f3ed43ca9a1"
+  },
+  {
+    "path": "docs/design/earendil-agent-harness-integration-adr/evidence/receipts/earendil-102-provider-browser-bun.json",
+    "sha256": "0045d2a75994fd372a1cbb69b1ba75de3a8ff6e8861e8a02f33327953290d7cf"
+  },
+  {
+    "path": "docs/design/earendil-agent-harness-integration-adr/evidence/receipts/earendil-102-package-admission.json",
+    "sha256": "1ca2146c0e29f7ec992ccfc7f4f45500b95d9216d62eef8b4c656256f45849af"
+  },
+  {
+    "path": "docs/design/earendil-agent-harness-integration-adr/evidence/receipts/earendil-102-provider-devices-bun.json",
+    "sha256": "d78f03b27bd2967eeaca5ecca5743bf33dd941a7f772eae963b94901b7f0a2af"
+  },
+  {
+    "path": "docs/design/earendil-agent-harness-integration-adr/evidence/receipts/earendil-102-anthropic-private-ui.json",
+    "sha256": "29b5d49e6c14070a3df9e6a93add46292fc3e88299f63e3ccc154f7aaf8ffb42"
+  },
+  {
+    "path": "docs/design/earendil-agent-harness-integration-adr/evidence/receipts/earendil-102-registry.json",
+    "sha256": "19780b6442199f55113cccb291c7dafb08e6fee90a0c75f6de9a7a52aa317af8"
+  },
+  {
+    "path": "docs/design/earendil-agent-harness-integration-adr/evidence/receipts/earendil-102-provider-auth.json",
+    "sha256": "3b09ca73dbb70a64646f57809bb2129e4b01b235da06d895966580d91a39553c"
+  },
+  {
+    "path": "docs/design/earendil-agent-harness-integration-adr/evidence/receipts/earendil-102-codex-device-bun.json",
+    "sha256": "47b8e75e7c7503305c62d478798e82710c5e933265f2d96096ed8724a8cda060"
+  },
+  {
+    "path": "runtime/test/fixtures/provider-auth-inventory-102.json",
+    "sha256": "d7e414155c268af7e759c58dd5f6c0095db2f8121dfccfe6eadb987239fc4653"
+  },
+  {
+    "path": "runtime/test/fixtures/earendil-package-admission/registry-1.0.2.json",
+    "sha256": "19780b6442199f55113cccb291c7dafb08e6fee90a0c75f6de9a7a52aa317af8"
+  },
+  {
+    "path": "runtime/test/fixtures/earendil-package-admission/cli-artifact-1.0.2.json",
+    "sha256": "ab2b0bdfb7c9ebba2dd2b9cab47dac2d13775f1868a7c4d75bbbbd0ddb60258e"
+  }
+]

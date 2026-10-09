@@ -14,6 +14,7 @@ import type { AgentEventEmitter } from "../sse/agent-events.js";
 import { formatOutbound, type ChatChannel } from "../../../router.js";
 import { createLogger, debugSuppressedError } from "../../../utils/logger.js";
 import { readAccessConfig } from "../../../core/config-access.js";
+import { AGENT_MESSAGE_ROLE_BLOCK, buildAgentMessageRoleBlock } from "../../../db/agent-message-role.js";
 import { sendStoredAgentReplyWebPushNotification } from "../push/web-push-service.js";
 
 const log = createLogger("web.agent-message-store");
@@ -106,6 +107,8 @@ export function storeAgentTurn(
     skipPlaceholder?: boolean;
     /** True only for the terminal persisted assistant message of a run. */
     isTerminalAgentReply?: boolean;
+    /** Host-derived output role; provider final-answer phase can precede tool continuation. */
+    agentMessageRole?: "final" | "intermediate" | "unknown";
     /** Atomically remove stale protected handoff intent with terminal insert. */
     removeProtectedContinuationForSourceMessageId?: string | null;
     extraContentBlocks?: Array<Record<string, unknown>>;
@@ -120,7 +123,10 @@ export function storeAgentTurn(
   const { mediaIds, contentBlocks } = buildAttachmentBlocks(params.attachments);
   const mergedContentBlocks = [
     ...contentBlocks,
-    ...(Array.isArray(params.extraContentBlocks) ? params.extraContentBlocks.filter((block) => block && typeof block === "object") : []),
+    ...(Array.isArray(params.extraContentBlocks) ? params.extraContentBlocks.filter((block) => block && typeof block === "object" && block.type !== AGENT_MESSAGE_ROLE_BLOCK) : []),
+    // Only explicit host evidence classifies a response; unknown writers remain untagged.
+    ...(params.agentMessageRole ? [buildAgentMessageRoleBlock(params.agentMessageRole, params.isTerminalAgentReply === true)]
+      : params.isTerminalAgentReply === true ? [buildAgentMessageRoleBlock("final", true)] : []),
   ];
   maybeWarnOnEscapedSvgSource(params, mergedContentBlocks);
   const formatted = formatOutbound(params.text, params.channelName);

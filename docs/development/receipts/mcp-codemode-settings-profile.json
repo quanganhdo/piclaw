@@ -1,0 +1,483 @@
+{
+  "recordedAt": "2026-10-04T09:10:30.419Z",
+  "sourceHead": "a715611d62bd597636722b22d0827f60bbc19de6",
+  "runtime": "Bun 1.4.2",
+  "scope": "candidate-only synthetic direct preview handler; new Apply transition not timed",
+  "measurements": [
+    {
+      "variant": "plain-1",
+      "logSha256": "e6b26649f2733dd55a84256689118f17c3b542c217b12ba992eb812fad95bd6a",
+      "name": "mcp-settings-preview",
+      "instrument": false,
+      "requests": 1000,
+      "servers": 100,
+      "configPaddingBytes": 20000,
+      "elapsedMs": 323.40208299999995,
+      "batchesMs": [
+        48.1605440000003,
+        25.163464000000204,
+        19.884720000000016,
+        18.78320199999962,
+        23.526450999999724,
+        37.88390299999992,
+        35.88181999999961,
+        25.74479699999938,
+        18.541581000000406,
+        18.373500000000604
+      ],
+      "metrics": {},
+      "sqlite": {
+        "journalMode": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        }
+      },
+      "eventLoop": {
+        "samples": 49,
+        "maxMs": 36.915494,
+        "p50Ms": 0.092863,
+        "p95Ms": 25.559039,
+        "p99Ms": 36.929535
+      },
+      "memory": {
+        "rss": 141709312,
+        "heapTotal": 28099584,
+        "heapUsed": 21344518,
+        "external": 9095084,
+        "arrayBuffers": 2568874
+      },
+      "networkAttempts": 0,
+      "limitations": [
+        "synthetic serialized request batches",
+        "no server or provider execution",
+        "DB wrappers aggregate method time without SQL or bind values",
+        "CPU profile must be collected on this process",
+        "no claim of lock contention or transaction throughput"
+      ]
+    },
+    {
+      "variant": "plain-2",
+      "logSha256": "42c6e5bad56a88e6c0d9382e774edd136112dae9bffd919aae24583e77295097",
+      "name": "mcp-settings-preview",
+      "instrument": false,
+      "requests": 1000,
+      "servers": 100,
+      "configPaddingBytes": 20000,
+      "elapsedMs": 316.5327580000003,
+      "batchesMs": [
+        55.61328599999979,
+        25.066391000000294,
+        26.0382010000003,
+        20.677700000000186,
+        19.845746000000418,
+        23.552488000000267,
+        22.4166180000002,
+        19.016963000000032,
+        24.940344000000096,
+        27.848089000000073
+      ],
+      "metrics": {},
+      "sqlite": {
+        "journalMode": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        }
+      },
+      "eventLoop": {
+        "samples": 48,
+        "maxMs": 26.878437,
+        "p50Ms": 0.129279,
+        "p95Ms": 24.182783,
+        "p99Ms": 26.886143
+      },
+      "memory": {
+        "rss": 139526144,
+        "heapTotal": 27661312,
+        "heapUsed": 21338322,
+        "external": 9100696,
+        "arrayBuffers": 2550884
+      },
+      "networkAttempts": 0,
+      "limitations": [
+        "synthetic serialized request batches",
+        "no server or provider execution",
+        "DB wrappers aggregate method time without SQL or bind values",
+        "CPU profile must be collected on this process",
+        "no claim of lock contention or transaction throughput"
+      ]
+    },
+    {
+      "variant": "plain-3",
+      "logSha256": "8e8b65ba7e0477a4b36576efe3b3f819cd67af7a834886903a1296b001a546d0",
+      "name": "mcp-settings-preview",
+      "instrument": false,
+      "requests": 1000,
+      "servers": 100,
+      "configPaddingBytes": 20000,
+      "elapsedMs": 400.60172999999986,
+      "batchesMs": [
+        39.04570899999999,
+        34.11399100000017,
+        39.43518300000005,
+        36.476778000000195,
+        23.571878000000197,
+        38.486507000000074,
+        36.467895000000226,
+        43.23144699999966,
+        22.339923,
+        36.096586000000116
+      ],
+      "metrics": {},
+      "sqlite": {
+        "journalMode": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        }
+      },
+      "eventLoop": {
+        "samples": 49,
+        "maxMs": 43.062556,
+        "p50Ms": 0.088767,
+        "p95Ms": 37.519359,
+        "p99Ms": 43.089919
+      },
+      "memory": {
+        "rss": 140226560,
+        "heapTotal": 28512256,
+        "heapUsed": 21415572,
+        "external": 9167338,
+        "arrayBuffers": 2568753
+      },
+      "networkAttempts": 0,
+      "limitations": [
+        "synthetic serialized request batches",
+        "no server or provider execution",
+        "DB wrappers aggregate method time without SQL or bind values",
+        "CPU profile must be collected on this process",
+        "no claim of lock contention or transaction throughput"
+      ]
+    },
+    {
+      "variant": "cpu",
+      "logSha256": "3bd6d4f0dc35a542459de2294b4f88796e36e8b178a80a4290b9df757feae393",
+      "name": "mcp-settings-preview",
+      "instrument": true,
+      "requests": 1000,
+      "servers": 100,
+      "configPaddingBytes": 20000,
+      "elapsedMs": 291.072956,
+      "batchesMs": [
+        48.26092699999981,
+        23.59904600000027,
+        20.89590599999974,
+        23.947795999999926,
+        20.160879999999906,
+        20.50536299999976,
+        19.757736999999906,
+        20.479977000000417,
+        19.878578999999718,
+        22.188407000000097
+      ],
+      "metrics": {
+        "json.parse": {
+          "count": 8001,
+          "ms": 29.398593000017172
+        },
+        "sqlite.query": {
+          "count": 6000,
+          "ms": 2.158469999978024
+        },
+        "sqlite.statement.get": {
+          "count": 6000,
+          "ms": 16.3811329999985
+        },
+        "json.stringify": {
+          "count": 4000,
+          "ms": 23.344366000005266
+        }
+      },
+      "sqlite": {
+        "journalMode": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        }
+      },
+      "eventLoop": {
+        "samples": 48,
+        "maxMs": 23.681344,
+        "p50Ms": 0.089535,
+        "p95Ms": 21.217279,
+        "p99Ms": 23.691263
+      },
+      "memory": {
+        "rss": 143470592,
+        "heapTotal": 28195840,
+        "heapUsed": 22126717,
+        "external": 9697994,
+        "arrayBuffers": 2582079
+      },
+      "networkAttempts": 0,
+      "limitations": [
+        "synthetic serialized request batches",
+        "no server or provider execution",
+        "DB wrappers aggregate method time without SQL or bind values",
+        "CPU profile must be collected on this process",
+        "no claim of lock contention or transaction throughput"
+      ]
+    },
+    {
+      "variant": "instrument-2",
+      "logSha256": "a5434ef8cd6df8c845bb19e36063eb8832c019411f699a5abf477e13e104b960",
+      "name": "mcp-settings-preview",
+      "instrument": true,
+      "requests": 1000,
+      "servers": 100,
+      "configPaddingBytes": 20000,
+      "elapsedMs": 283.8176229999999,
+      "batchesMs": [
+        31.85797100000036,
+        26.62841199999957,
+        26.658292999999958,
+        25.1398879999997,
+        21.366172000000006,
+        19.9755839999998,
+        20.490114000000176,
+        20.13992099999996,
+        20.319359000000077,
+        20.007848000000195
+      ],
+      "metrics": {
+        "json.parse": {
+          "count": 8001,
+          "ms": 30.04969299998129
+        },
+        "sqlite.query": {
+          "count": 6000,
+          "ms": 1.9082590000107302
+        },
+        "sqlite.statement.get": {
+          "count": 6000,
+          "ms": 15.514717000026394
+        },
+        "json.stringify": {
+          "count": 4000,
+          "ms": 23.014287999998487
+        }
+      },
+      "sqlite": {
+        "journalMode": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        }
+      },
+      "eventLoop": {
+        "samples": 49,
+        "maxMs": 26.18688,
+        "p50Ms": 0.097023,
+        "p95Ms": 24.887295,
+        "p99Ms": 26.198015
+      },
+      "memory": {
+        "rss": 130273280,
+        "heapTotal": 26548224,
+        "heapUsed": 23001151,
+        "external": 10291545,
+        "arrayBuffers": 2660368
+      },
+      "networkAttempts": 0,
+      "limitations": [
+        "synthetic serialized request batches",
+        "no server or provider execution",
+        "DB wrappers aggregate method time without SQL or bind values",
+        "CPU profile must be collected on this process",
+        "no claim of lock contention or transaction throughput"
+      ]
+    },
+    {
+      "variant": "instrument-3",
+      "logSha256": "9434d0ffa17ed5a4f590756bdde43a07fef679ee4841f51160cfd95d9b743865",
+      "name": "mcp-settings-preview",
+      "instrument": true,
+      "requests": 1000,
+      "servers": 100,
+      "configPaddingBytes": 20000,
+      "elapsedMs": 275.83359100000007,
+      "batchesMs": [
+        36.41306499999973,
+        25.460180000000037,
+        19.74491300000045,
+        19.66589599999952,
+        23.175294000000576,
+        19.4171809999998,
+        19.183141000000433,
+        18.889573000000382,
+        20.71681499999977,
+        21.53276200000073
+      ],
+      "metrics": {
+        "json.parse": {
+          "count": 8001,
+          "ms": 26.92726799999855
+        },
+        "sqlite.query": {
+          "count": 6000,
+          "ms": 1.9831140000324012
+        },
+        "sqlite.statement.get": {
+          "count": 6000,
+          "ms": 15.62078599996812
+        },
+        "json.stringify": {
+          "count": 4000,
+          "ms": 22.809065000003557
+        }
+      },
+      "sqlite": {
+        "journalMode": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        }
+      },
+      "eventLoop": {
+        "samples": 48,
+        "maxMs": 25.528898,
+        "p50Ms": 0.115583,
+        "p95Ms": 20.578303,
+        "p99Ms": 25.542655
+      },
+      "memory": {
+        "rss": 140988416,
+        "heapTotal": 27956224,
+        "heapUsed": 21613044,
+        "external": 9299377,
+        "arrayBuffers": 2521457
+      },
+      "networkAttempts": 0,
+      "limitations": [
+        "synthetic serialized request batches",
+        "no server or provider execution",
+        "DB wrappers aggregate method time without SQL or bind values",
+        "CPU profile must be collected on this process",
+        "no claim of lock contention or transaction throughput"
+      ]
+    }
+  ],
+  "cpu": {
+    "profileSha256": "41725a84f0013467b1432f419aee073931c6f4f421401d85f488da58b7cfe9be",
+    "sampleCount": 527,
+    "durationUs": 3754332,
+    "topFunctions": [
+      {
+        "functionName": "run",
+        "samples": 224
+      },
+      {
+        "functionName": "anonymous",
+        "samples": 49
+      },
+      {
+        "functionName": "readFileSync",
+        "samples": 36
+      },
+      {
+        "functionName": "stringify",
+        "samples": 22
+      },
+      {
+        "functionName": "parse",
+        "samples": 21
+      },
+      {
+        "functionName": "get",
+        "samples": 18
+      },
+      {
+        "functionName": "json",
+        "samples": 18
+      },
+      {
+        "functionName": "update",
+        "samples": 14
+      },
+      {
+        "functionName": "map",
+        "samples": 10
+      },
+      {
+        "functionName": "handleMcpSettings",
+        "samples": 6
+      },
+      {
+        "functionName": "(anonymous)",
+        "samples": 5
+      },
+      {
+        "functionName": "planMcpEnginePolicy",
+        "samples": 5
+      },
+      {
+        "functionName": "entries",
+        "samples": 5
+      },
+      {
+        "functionName": "toString",
+        "samples": 4
+      },
+      {
+        "functionName": "copyDataProperties",
+        "samples": 4
+      },
+      {
+        "functionName": "Map",
+        "samples": 4
+      },
+      {
+        "functionName": "(module)",
+        "samples": 3
+      },
+      {
+        "functionName": "onRSDefaultControllerStartFulfilled",
+        "samples": 3
+      },
+      {
+        "functionName": "addEventListener",
+        "samples": 3
+      },
+      {
+        "functionName": "Response",
+        "samples": 3
+      }
+    ],
+    "limitations": [
+      "whole-process samples include module loading and schema creation",
+      "Bun CPU frames lack source URLs; names alone cannot assign exact call sites",
+      "raw profile retained locally only"
+    ]
+  },
+  "sourceSha256": {
+    "runtime/src/agent-pool/mcp-codemode-runtime.ts": "f09574ca459ec6e963b1f9b4840f4d05e105af91ee1ad4f29cb51468d28ac575",
+    "runtime/src/channels/web/handlers/mcp-settings.ts": "e453405c8498aba3a4c0aa148792c28a7e305abe8126462596771f46a2d380c7",
+    "runtime/test/fixtures/mcp-settings-profile.ts": "2049f1ac9945009b0926603f20f09392c8e5f85bbd0f2b93897751b9bb467b99"
+  },
+  "limitations": [
+    "three plain runs, two method-instrumented runs and one method+CPU run; instrumentation modes differ",
+    "no comparable current baseline or speed claim",
+    "serialized 100-request batches; loop samples include inter-batch sleeps",
+    "no raw SQL, bind values, prompt/tool content or live state collected",
+    "no transaction/lock-contention qualification",
+    "startup auto_vacuum migration is outside timed request loop",
+    "no provider/network/server calls"
+  ]
+}

@@ -1213,6 +1213,9 @@ export function ComposeBox({
     onContentChange,
     onSubmissionStateChange,
     disabled = false,
+    onJumpToLatest,
+    timelineAway = false,
+    timelineHasNew = false,
     inputId,
     sendButtonId,
 }) {
@@ -1324,6 +1327,8 @@ export function ComposeBox({
     const [loadingModels, setLoadingModels] = useState(false);
     const [rollingUpSession, setRollingUpSession] = useState(false);
     const [footerWidth, setFooterWidth] = useState(0);
+    const resizeChatRef = useRef(currentChatJid);
+    resizeChatRef.current = currentChatJid;
     const [submitError, setSubmitError] = useState(null);
     const [submitNotice, setSubmitNotice] = useState(null);
     const [speechSupport, setSpeechSupport] = useState(() => allowSpeech ? getSpeechInputSupport() : { showButton: false, canStart: false });
@@ -2051,11 +2056,14 @@ export function ComposeBox({
         if (!textarea || !handle) return;
 
         let nextHeight = startHeight;
+        let moved = false;
+        const resizeChat = currentChatJid;
         handle.classList.add('dragging');
         document.body.style.cursor = 'row-resize';
         document.body.style.userSelect = 'none';
 
         const applyNextHeight = (clientY) => {
+            if (Math.abs(clientY - startY) > 4) moved = true;
             nextHeight = applyTextareaHeight(textarea, startHeight + (startY - clientY));
             manualTextareaHeightRef.current = nextHeight;
         };
@@ -2071,7 +2079,7 @@ export function ComposeBox({
             applyNextHeight(touch.clientY);
         };
 
-        const stop = () => {
+        const stop = (event) => {
             handle.classList.remove('dragging');
             document.body.style.cursor = '';
             document.body.style.userSelect = '';
@@ -2081,6 +2089,7 @@ export function ComposeBox({
             document.removeEventListener('touchmove', onTouchMove);
             document.removeEventListener('touchend', stop);
             document.removeEventListener('touchcancel', stop);
+            if (!moved && event?.type !== 'touchcancel' && textarea.isConnected && resizeChatRef.current === resizeChat) onJumpToLatest?.();
         };
 
         document.addEventListener('mousemove', onMouseMove);
@@ -3370,14 +3379,14 @@ export function ComposeBox({
     return html`
         <div class="compose-box" data-testid="compose-box" aria-disabled=${disabled ? 'true' : 'false'}>
             <div
-                class="compose-resize-handle"
+                class=${`compose-resize-handle ${timelineAway ? 'away-from-latest' : ''} ${timelineHasNew ? 'has-new-messages' : ''}`}
                 role="separator"
                 aria-orientation="horizontal"
                 aria-label=${t('compose.resizeInput')}
                 title=${t('compose.resizeInputHint')}
                 onMouseDown=${handleComposeResizeMouseDown}
                 onTouchStart=${handleComposeResizeTouchStart}
-            ></div>
+            >${onJumpToLatest && html`<button type="button" class="compose-latest-handle" aria-label=${timelineHasNew ? 'New messages — jump to latest' : 'Jump to latest message'} title="Jump to latest message" onClick=${(event) => { if (event.detail === 0) onJumpToLatest(); }}><span class="compose-latest-chevron" aria-hidden="true">⌄</span></button>`}</div>
             ${speechUiVisible && html`
                 <div class=${`compose-inline-status compose-speech-status compose-speech-status-${speechUiState.kind}`} role="status" aria-live="polite">
                     <div class="compose-inline-status-row">

@@ -144,6 +144,9 @@ export interface PersistIntermediateTurnOptions {
   turnKind?: AgentTurnKind;
   cause?: AgentTurnCause;
   followedByToolUse?: boolean;
+  /** Positive terminal evidence supplied by the agent turn coordinator. */
+  terminal?: boolean;
+  textPhase?: "commentary" | "final_answer" | null;
   buildThinkingRefBlocks(): Array<Record<string, unknown>>;
   consumePersistedPreviewsForRow(rowId: number, persistedThreadId?: string | number | null): void;
 }
@@ -170,9 +173,17 @@ function buildAgentTurnMarker(options: PersistIntermediateTurnOptions): Record<s
   };
 }
 
-/** Persist one non-terminal agent turn, then consume its Draft and Thought previews before broadcast. */
+/** Persist a completed boundary, retaining positive terminal evidence before preview consumption. */
 export function persistIntermediateProcessChatTurn(options: PersistIntermediateTurnOptions): number | null {
+  // This callback runs because the provider started another response. Its
+  // completed-boundary evidence is not proof that the enclosing run has ended.
   const marker = buildAgentTurnMarker(options);
+  const finalPhase = Boolean(marker) && options.textPhase === "final_answer"
+    && (options.cause === "tool_use" || options.cause === "completed_boundary");
+  // Provider final-answer phase is not the same as ending the whole run.
+  // Missing phase/terminal evidence stays unknown; timing/prose is not evidence.
+  const role = finalPhase ? "final"
+    : marker && options.textPhase === "commentary" ? "intermediate" : "unknown";
   return storeAgentTurn(options.channel, options.emitter, {
     chatJid: options.chatJid,
     text: options.text,
@@ -180,6 +191,8 @@ export function persistIntermediateProcessChatTurn(options: PersistIntermediateT
     channelName: options.channelName,
     threadId: options.threadId,
     skipPlaceholder: options.skipPlaceholder,
+    isTerminalAgentReply: false,
+    agentMessageRole: role,
     extraContentBlocks: [
       options.timingBlock,
       ...(marker ? [marker] : []),

@@ -1,0 +1,1050 @@
+{
+  "consumerRoot": "<qualification>/consumer",
+  "expected": {
+    "version": "1.0.2",
+    "gitHead": "cd32f7725fdbddbaecdff5b1e68491563394e0ca"
+  },
+  "directDependency": {
+    "name": "@earendil-works/pi-coding-agent",
+    "specifier": "1.0.2"
+  },
+  "packages": [
+    {
+      "name": "@earendil-works/pi-ai",
+      "version": "1.0.2",
+      "packageJson": "<qualification>/consumer/node_modules/@earendil-works/pi-ai/package.json"
+    },
+    {
+      "name": "@earendil-works/pi-agent-core",
+      "version": "1.0.2",
+      "packageJson": "<qualification>/consumer/node_modules/@earendil-works/pi-agent-core/package.json"
+    },
+    {
+      "name": "@earendil-works/pi-coding-agent",
+      "version": "1.0.2",
+      "packageJson": "<qualification>/consumer/node_modules/@earendil-works/pi-coding-agent/package.json"
+    },
+    {
+      "name": "@earendil-works/pi-tui",
+      "version": "1.0.2",
+      "packageJson": "<qualification>/consumer/node_modules/@earendil-works/pi-tui/package.json"
+    },
+    {
+      "name": "@earendil-works/pi-telemetry",
+      "version": "1.0.2",
+      "packageJson": "<qualification>/consumer/node_modules/@earendil-works/pi-telemetry/package.json"
+    },
+    {
+      "name": "@earendil-works/chord",
+      "version": "1.0.2",
+      "packageJson": "<qualification>/consumer/node_modules/@earendil-works/chord/package.json"
+    },
+    {
+      "name": "@earendil-works/pi-mcp",
+      "version": "1.0.2",
+      "packageJson": "<qualification>/consumer/node_modules/@earendil-works/pi-mcp/package.json"
+    },
+    {
+      "name": "@earendil-works/pi-codemode",
+      "version": "1.0.2",
+      "packageJson": "<qualification>/consumer/node_modules/@earendil-works/pi-codemode/package.json"
+    }
+  ],
+  "registryReceipt": {
+    "path": "<qualification>/registry.json",
+    "nodeEngine": ">=22.19.0",
+    "packages": [
+      {
+        "name": "@earendil-works/chord",
+        "version": "1.0.2",
+        "gitHead": "cd32f7725fdbddbaecdff5b1e68491563394e0ca",
+        "shasum": "481516ce8b3c32c3d3f2175a4e61c46bc91f7f23",
+        "integrity": "sha512-eUXGZjigyEQsFiT/oBJUOaCrzYZRmqf8AgLrlbyuS4u02hjSVhLYRi3xqk1o4UERCgRfjRegqwj/oucawIR7YQ==",
+        "tarball": "https://registry.npmjs.org/@earendil-works/chord/-/chord-1.0.2.tgz"
+      },
+      {
+        "name": "@earendil-works/pi-agent-core",
+        "version": "1.0.2",
+        "gitHead": "cd32f7725fdbddbaecdff5b1e68491563394e0ca",
+        "shasum": "3c4925221694722007e26762310ee5c5e682dd7a",
+        "integrity": "sha512-VRfewY1R5mbedJzlm01PxdCmqU8QrSXjXXhV50bp6rvVuT8YYQv1inTXRY4YzssmGAYpkC2rXipJKP5BpBFXew==",
+        "tarball": "https://registry.npmjs.org/@earendil-works/pi-agent-core/-/pi-agent-core-1.0.2.tgz"
+      },
+      {
+        "name": "@earendil-works/pi-ai",
+        "version": "1.0.2",
+        "gitHead": "cd32f7725fdbddbaecdff5b1e68491563394e0ca",
+        "shasum": "491b32ed7dd8e333a58a55dfc18ff61e31bc43c9",
+        "integrity": "sha512-JP59xGlSAQ/HhQ6EHN5qmneBlWfDyu6FPPryAvAaSo8A38ubAsEpS9YisCM5Jbbns0srrDffLZonE0OXorHI5A==",
+        "tarball": "https://registry.npmjs.org/@earendil-works/pi-ai/-/pi-ai-1.0.2.tgz"
+      },
+      {
+        "name": "@earendil-works/pi-codemode",
+        "version": "1.0.2",
+        "gitHead": "cd32f7725fdbddbaecdff5b1e68491563394e0ca",
+        "shasum": "2bb448ee639e7db6317d878798631b91c248bbcd",
+        "integrity": "sha512-tvfDSVz984ra/4y/hIFmYGpP5ojC+C6/ey+DNbjTzfJvbXviW4JYTXwVcm33KAceI0xcOuE+P1yRGLtQgis0/w==",
+        "tarball": "https://registry.npmjs.org/@earendil-works/pi-codemode/-/pi-codemode-1.0.2.tgz"
+      },
+      {
+        "name": "@earendil-works/pi-coding-agent",
+        "version": "1.0.2",
+        "gitHead": "cd32f7725fdbddbaecdff5b1e68491563394e0ca",
+        "shasum": "aba0009c736a1de4e045665acceb017cdb791371",
+        "integrity": "sha512-3ZdIghMSELMGV3sKi5iASOb1Jwb696fLjmNu0aezaqDxTLLWWoRpqBYkGxJ1CgAMCbtfqXWEF0lcRrlVXmiEGQ==",
+        "tarball": "https://registry.npmjs.org/@earendil-works/pi-coding-agent/-/pi-coding-agent-1.0.2.tgz"
+      },
+      {
+        "name": "@earendil-works/pi-mcp",
+        "version": "1.0.2",
+        "gitHead": "cd32f7725fdbddbaecdff5b1e68491563394e0ca",
+        "shasum": "a48b3b1e83281076a1de7e15fd1c8b4a91171782",
+        "integrity": "sha512-ED3+q41xLQkxzdadZIQy68SLYcqCJbve8iGbGkZoWjPJ9OZCPHTKcof24fjMO1LfnbIl1uMfhRBueS6IfdiCbQ==",
+        "tarball": "https://registry.npmjs.org/@earendil-works/pi-mcp/-/pi-mcp-1.0.2.tgz"
+      },
+      {
+        "name": "@earendil-works/pi-telemetry",
+        "version": "1.0.2",
+        "gitHead": "cd32f7725fdbddbaecdff5b1e68491563394e0ca",
+        "shasum": "4abc269759cbc6fa434b252d5789003947b828a4",
+        "integrity": "sha512-Ev5h9TE8nEXHCfRKhWj0qpUFhQgVqNteS95vsM2KNGRGm533vOO2ruDPaEwImBKPMBKXy4omz3D6V2cm41gLOQ==",
+        "tarball": "https://registry.npmjs.org/@earendil-works/pi-telemetry/-/pi-telemetry-1.0.2.tgz"
+      },
+      {
+        "name": "@earendil-works/pi-tui",
+        "version": "1.0.2",
+        "gitHead": "cd32f7725fdbddbaecdff5b1e68491563394e0ca",
+        "shasum": "0169e89755e3bc7d9b5df2760032f84991f183e7",
+        "integrity": "sha512-ElfzjnckohEjzHK5Q5iOpqLpQ1YbM/c/XmjBdPVR5k4uoorQPnny5BtT+rvC0cAjVVCUOHWAWppust7FAaEsOQ==",
+        "tarball": "https://registry.npmjs.org/@earendil-works/pi-tui/-/pi-tui-1.0.2.tgz"
+      }
+    ]
+  },
+  "providerAuthReceipt": {
+    "path": "<qualification>/provider-auth.json",
+    "version": "1.0.2",
+    "gitHead": "cd32f7725fdbddbaecdff5b1e68491563394e0ca",
+    "providers": [
+      {
+        "id": "amazon-bedrock",
+        "name": "Amazon Bedrock",
+        "apiKey": true,
+        "oauth": false
+      },
+      {
+        "id": "ant-ling",
+        "name": "Ant Ling",
+        "apiKey": true,
+        "oauth": false
+      },
+      {
+        "id": "anthropic",
+        "name": "Anthropic",
+        "apiKey": true,
+        "oauth": true
+      },
+      {
+        "id": "azure-openai-responses",
+        "name": "Azure OpenAI",
+        "apiKey": true,
+        "oauth": false
+      },
+      {
+        "id": "baseten",
+        "name": "Baseten",
+        "apiKey": true,
+        "oauth": false
+      },
+      {
+        "id": "cerebras",
+        "name": "Cerebras",
+        "apiKey": true,
+        "oauth": false
+      },
+      {
+        "id": "cloudflare-ai-gateway",
+        "name": "Cloudflare AI Gateway",
+        "apiKey": true,
+        "oauth": false
+      },
+      {
+        "id": "cloudflare-workers-ai",
+        "name": "Cloudflare Workers AI",
+        "apiKey": true,
+        "oauth": false
+      },
+      {
+        "id": "deepseek",
+        "name": "DeepSeek",
+        "apiKey": true,
+        "oauth": false
+      },
+      {
+        "id": "fireworks",
+        "name": "Fireworks",
+        "apiKey": true,
+        "oauth": false
+      },
+      {
+        "id": "github-copilot",
+        "name": "GitHub Copilot",
+        "apiKey": true,
+        "oauth": true
+      },
+      {
+        "id": "google",
+        "name": "Google",
+        "apiKey": true,
+        "oauth": false
+      },
+      {
+        "id": "google-vertex",
+        "name": "Google Vertex AI",
+        "apiKey": true,
+        "oauth": false
+      },
+      {
+        "id": "groq",
+        "name": "Groq",
+        "apiKey": true,
+        "oauth": false
+      },
+      {
+        "id": "huggingface",
+        "name": "Hugging Face",
+        "apiKey": true,
+        "oauth": false
+      },
+      {
+        "id": "kimi-coding",
+        "name": "Kimi For Coding",
+        "apiKey": true,
+        "oauth": true
+      },
+      {
+        "id": "meta",
+        "name": "Meta",
+        "apiKey": true,
+        "oauth": true
+      },
+      {
+        "id": "minimax",
+        "name": "MiniMax",
+        "apiKey": true,
+        "oauth": false
+      },
+      {
+        "id": "minimax-cn",
+        "name": "MiniMax CN",
+        "apiKey": true,
+        "oauth": false
+      },
+      {
+        "id": "mistral",
+        "name": "Mistral",
+        "apiKey": true,
+        "oauth": false
+      },
+      {
+        "id": "moonshotai",
+        "name": "Moonshot AI",
+        "apiKey": true,
+        "oauth": false
+      },
+      {
+        "id": "moonshotai-cn",
+        "name": "Moonshot AI CN",
+        "apiKey": true,
+        "oauth": false
+      },
+      {
+        "id": "nvidia",
+        "name": "NVIDIA",
+        "apiKey": true,
+        "oauth": false
+      },
+      {
+        "id": "openai",
+        "name": "OpenAI",
+        "apiKey": true,
+        "oauth": true
+      },
+      {
+        "id": "openai-codex",
+        "name": "OpenAI Codex (legacy)",
+        "apiKey": false,
+        "oauth": true
+      },
+      {
+        "id": "opencode",
+        "name": "OpenCode Zen",
+        "apiKey": true,
+        "oauth": false
+      },
+      {
+        "id": "opencode-go",
+        "name": "OpenCode Go",
+        "apiKey": true,
+        "oauth": false
+      },
+      {
+        "id": "openrouter",
+        "name": "OpenRouter",
+        "apiKey": true,
+        "oauth": true
+      },
+      {
+        "id": "qwen-token-plan",
+        "name": "Qwen Token Plan",
+        "apiKey": true,
+        "oauth": false
+      },
+      {
+        "id": "qwen-token-plan-cn",
+        "name": "Qwen Token Plan CN",
+        "apiKey": true,
+        "oauth": false
+      },
+      {
+        "id": "qwen-token-plan-individual",
+        "name": "Qwen Token Plan Individual",
+        "apiKey": true,
+        "oauth": false
+      },
+      {
+        "id": "radius",
+        "name": "Radius",
+        "apiKey": true,
+        "oauth": true
+      },
+      {
+        "id": "together",
+        "name": "Together",
+        "apiKey": true,
+        "oauth": false
+      },
+      {
+        "id": "typesafe",
+        "name": "TypeSafe",
+        "apiKey": true,
+        "oauth": false
+      },
+      {
+        "id": "vercel-ai-gateway",
+        "name": "Vercel AI Gateway",
+        "apiKey": true,
+        "oauth": false
+      },
+      {
+        "id": "xai",
+        "name": "xAI",
+        "apiKey": true,
+        "oauth": true
+      },
+      {
+        "id": "xiaomi",
+        "name": "Xiaomi",
+        "apiKey": true,
+        "oauth": false
+      },
+      {
+        "id": "xiaomi-token-plan-ams",
+        "name": "Xiaomi Token Plan AMS",
+        "apiKey": true,
+        "oauth": false
+      },
+      {
+        "id": "xiaomi-token-plan-cn",
+        "name": "Xiaomi Token Plan CN",
+        "apiKey": true,
+        "oauth": false
+      },
+      {
+        "id": "xiaomi-token-plan-sgp",
+        "name": "Xiaomi Token Plan SGP",
+        "apiKey": true,
+        "oauth": false
+      },
+      {
+        "id": "zai",
+        "name": "Z.AI",
+        "apiKey": true,
+        "oauth": false
+      },
+      {
+        "id": "zai-coding-cn",
+        "name": "Z.AI Coding CN",
+        "apiKey": true,
+        "oauth": false
+      }
+    ]
+  },
+  "tarballVerification": [
+    {
+      "name": "@earendil-works/chord",
+      "tarball": "<qualification>/tarballs/chord-1.0.2.tgz",
+      "shasum": "481516ce8b3c32c3d3f2175a4e61c46bc91f7f23",
+      "integrity": "sha512-eUXGZjigyEQsFiT/oBJUOaCrzYZRmqf8AgLrlbyuS4u02hjSVhLYRi3xqk1o4UERCgRfjRegqwj/oucawIR7YQ==",
+      "installedTreeSha256": "1ba91a725369737120058498e7b19e50aa52b0cd9443cf4f05d5885688cd6581"
+    },
+    {
+      "name": "@earendil-works/pi-agent-core",
+      "tarball": "<qualification>/tarballs/pi-agent-core-1.0.2.tgz",
+      "shasum": "3c4925221694722007e26762310ee5c5e682dd7a",
+      "integrity": "sha512-VRfewY1R5mbedJzlm01PxdCmqU8QrSXjXXhV50bp6rvVuT8YYQv1inTXRY4YzssmGAYpkC2rXipJKP5BpBFXew==",
+      "installedTreeSha256": "71185ccae3c85020b0a71820eef3db269d30433ac89df579de9dfed21b3d09a9"
+    },
+    {
+      "name": "@earendil-works/pi-ai",
+      "tarball": "<qualification>/tarballs/pi-ai-1.0.2.tgz",
+      "shasum": "491b32ed7dd8e333a58a55dfc18ff61e31bc43c9",
+      "integrity": "sha512-JP59xGlSAQ/HhQ6EHN5qmneBlWfDyu6FPPryAvAaSo8A38ubAsEpS9YisCM5Jbbns0srrDffLZonE0OXorHI5A==",
+      "installedTreeSha256": "78cfb4e7ae3e5b566d1428e6bd697b15e5f4517d78d06694c5839a32e822b402"
+    },
+    {
+      "name": "@earendil-works/pi-codemode",
+      "tarball": "<qualification>/tarballs/pi-codemode-1.0.2.tgz",
+      "shasum": "2bb448ee639e7db6317d878798631b91c248bbcd",
+      "integrity": "sha512-tvfDSVz984ra/4y/hIFmYGpP5ojC+C6/ey+DNbjTzfJvbXviW4JYTXwVcm33KAceI0xcOuE+P1yRGLtQgis0/w==",
+      "installedTreeSha256": "1a71bb07bd498396c4ddd270d39f891c1481f77564b20a4964525f9408d97306"
+    },
+    {
+      "name": "@earendil-works/pi-coding-agent",
+      "tarball": "<qualification>/tarballs/pi-coding-agent-1.0.2.tgz",
+      "shasum": "aba0009c736a1de4e045665acceb017cdb791371",
+      "integrity": "sha512-3ZdIghMSELMGV3sKi5iASOb1Jwb696fLjmNu0aezaqDxTLLWWoRpqBYkGxJ1CgAMCbtfqXWEF0lcRrlVXmiEGQ==",
+      "installedTreeSha256": "9fbf0d45d3a18bbb46c84ffc9cc3b5b27ac63bc15caeed77a8e37e6f814c2cb8"
+    },
+    {
+      "name": "@earendil-works/pi-mcp",
+      "tarball": "<qualification>/tarballs/pi-mcp-1.0.2.tgz",
+      "shasum": "a48b3b1e83281076a1de7e15fd1c8b4a91171782",
+      "integrity": "sha512-ED3+q41xLQkxzdadZIQy68SLYcqCJbve8iGbGkZoWjPJ9OZCPHTKcof24fjMO1LfnbIl1uMfhRBueS6IfdiCbQ==",
+      "installedTreeSha256": "ed336eb419a3ec39f768fcd8c8a274e632b39dfd575d94d57137479cdb501611"
+    },
+    {
+      "name": "@earendil-works/pi-telemetry",
+      "tarball": "<qualification>/tarballs/pi-telemetry-1.0.2.tgz",
+      "shasum": "4abc269759cbc6fa434b252d5789003947b828a4",
+      "integrity": "sha512-Ev5h9TE8nEXHCfRKhWj0qpUFhQgVqNteS95vsM2KNGRGm533vOO2ruDPaEwImBKPMBKXy4omz3D6V2cm41gLOQ==",
+      "installedTreeSha256": "aa34df829fb3d97697a8d316159b9800e4539d4fee983e2dcca2f37b73c10c10"
+    },
+    {
+      "name": "@earendil-works/pi-tui",
+      "tarball": "<qualification>/tarballs/pi-tui-1.0.2.tgz",
+      "shasum": "0169e89755e3bc7d9b5df2760032f84991f183e7",
+      "integrity": "sha512-ElfzjnckohEjzHK5Q5iOpqLpQ1YbM/c/XmjBdPVR5k4uoorQPnny5BtT+rvC0cAjVVCUOHWAWppust7FAaEsOQ==",
+      "installedTreeSha256": "6ec649d96e60dd5fbe24533321080b6db17df8371ce668fdf4d917238080f78f"
+    }
+  ],
+  "gitHeadMetadata": {
+    "source": "caller-supplied registry/release receipt",
+    "expected": "cd32f7725fdbddbaecdff5b1e68491563394e0ca",
+    "installedPackageJsonValues": [],
+    "packageMetadataVerification": "matched where present",
+    "note": "npm tarballs may omit gitHead; verify the supplied receipt against registry or release provenance separately"
+  },
+  "codingAgentExports": {
+    "root": {
+      "admitted": true,
+      "targets": [
+        {
+          "conditions": [
+            "types"
+          ],
+          "target": "./dist/index.d.ts",
+          "absolutePath": "<qualification>/consumer/node_modules/@earendil-works/pi-coding-agent/dist/index.d.ts",
+          "exists": true
+        },
+        {
+          "conditions": [
+            "import"
+          ],
+          "target": "./dist/index.js",
+          "absolutePath": "<qualification>/consumer/node_modules/@earendil-works/pi-coding-agent/dist/index.js",
+          "exists": true
+        }
+      ]
+    },
+    "sourceOnly": [
+      {
+        "subpath": "./client",
+        "admitted": false,
+        "targets": [
+          {
+            "conditions": [
+              "source"
+            ],
+            "target": "./src/client/index.ts",
+            "absolutePath": "<qualification>/consumer/node_modules/@earendil-works/pi-coding-agent/src/client/index.ts",
+            "exists": false
+          }
+        ]
+      },
+      {
+        "subpath": "./experimental/plugin",
+        "admitted": false,
+        "targets": [
+          {
+            "conditions": [
+              "source"
+            ],
+            "target": "./src/experimental/plugin.ts",
+            "absolutePath": "<qualification>/consumer/node_modules/@earendil-works/pi-coding-agent/src/experimental/plugin.ts",
+            "exists": false
+          }
+        ]
+      }
+    ]
+  },
+  "modernPublicExports": [
+    {
+      "packageName": "@earendil-works/pi-mcp",
+      "subpath": ".",
+      "targets": [
+        {
+          "conditions": [
+            "source"
+          ],
+          "target": "./src/index.ts",
+          "absolutePath": "<qualification>/consumer/node_modules/@earendil-works/pi-mcp/src/index.ts",
+          "exists": false
+        },
+        {
+          "conditions": [
+            "types"
+          ],
+          "target": "./dist/index.d.ts",
+          "absolutePath": "<qualification>/consumer/node_modules/@earendil-works/pi-mcp/dist/index.d.ts",
+          "exists": true
+        },
+        {
+          "conditions": [
+            "import"
+          ],
+          "target": "./dist/index.js",
+          "absolutePath": "<qualification>/consumer/node_modules/@earendil-works/pi-mcp/dist/index.js",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "packageName": "@earendil-works/pi-mcp",
+      "subpath": "./oauth",
+      "targets": [
+        {
+          "conditions": [
+            "source"
+          ],
+          "target": "./src/oauth/index.ts",
+          "absolutePath": "<qualification>/consumer/node_modules/@earendil-works/pi-mcp/src/oauth/index.ts",
+          "exists": false
+        },
+        {
+          "conditions": [
+            "types"
+          ],
+          "target": "./dist/oauth/index.d.ts",
+          "absolutePath": "<qualification>/consumer/node_modules/@earendil-works/pi-mcp/dist/oauth/index.d.ts",
+          "exists": true
+        },
+        {
+          "conditions": [
+            "import"
+          ],
+          "target": "./dist/oauth/index.js",
+          "absolutePath": "<qualification>/consumer/node_modules/@earendil-works/pi-mcp/dist/oauth/index.js",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "packageName": "@earendil-works/pi-ai",
+      "subpath": "./bun-oauth",
+      "targets": [
+        {
+          "conditions": [
+            "types"
+          ],
+          "target": "./dist/bun-oauth.d.ts",
+          "absolutePath": "<qualification>/consumer/node_modules/@earendil-works/pi-ai/dist/bun-oauth.d.ts",
+          "exists": true
+        },
+        {
+          "conditions": [
+            "import"
+          ],
+          "target": "./dist/bun-oauth.js",
+          "absolutePath": "<qualification>/consumer/node_modules/@earendil-works/pi-ai/dist/bun-oauth.js",
+          "exists": true
+        }
+      ]
+    }
+  ],
+  "admitted": true,
+  "probeEnvironment": {
+    "inheritedSecrets": false,
+    "offlineRequested": true,
+    "telemetry": "disabled",
+    "networkSandboxed": false
+  },
+  "sideEffectEnforcement": [
+    {
+      "runtime": "bun",
+      "mode": "bun-preload",
+      "networkDenied": true,
+      "childProcessDenied": true,
+      "networkAttempts": 0,
+      "childProcessAttempts": 0
+    }
+  ],
+  "runtimes": [
+    {
+      "requestedRuntime": "bun",
+      "requestedExecutable": "<bun>/bin/bun",
+      "actualRuntime": {
+        "execPath": "<bun>/bin/bun",
+        "release": "node",
+        "version": "v26.3.0",
+        "node": "26.3.0",
+        "bun": "1.4.2"
+      },
+      "rootExports": {
+        "createAgentSession": "function",
+        "createAgentSessionRuntime": "function",
+        "ModelRuntime": "function",
+        "createMcpExtension": "function",
+        "createToolSearchExtension": "function",
+        "createCodemodeExtension": "function"
+      },
+      "mcpRootExports": {
+        "McpClient": "function",
+        "StdioTransport": "function",
+        "StreamableHttpTransport": "function"
+      },
+      "mcpOauthExports": {
+        "OAuthCallbackServer": "function",
+        "buildAuthorizationServerDiscoveryUrls": "function",
+        "discoverAuthorizationServerMetadata": "function",
+        "discoverOAuthServerInfo": "function",
+        "discoverProtectedResourceMetadata": "function",
+        "parseWwwAuthenticate": "function",
+        "resourceUrlFromServerUrl": "function",
+        "selectResource": "function",
+        "McpOAuthAuthorizationRequiredError": "function",
+        "OAuthError": "function",
+        "OAuthInsecureEndpointError": "function",
+        "OAuthIssuerMismatchError": "function",
+        "OAuthRegistrationError": "function",
+        "adaptOAuthProvider": "function",
+        "authorizeMcp": "function",
+        "exchangeAuthorizationCode": "function",
+        "refreshAuthorization": "function",
+        "registerClient": "function",
+        "startAuthorization": "function",
+        "McpOAuthProvider": "function",
+        "MemoryOAuthStateStore": "function"
+      },
+      "bunOauth": {
+        "registerBunOAuthFlows": "function",
+        "called": true
+      },
+      "sideEffectEnforcement": {
+        "mode": "bun-preload",
+        "networkDenied": true,
+        "childProcessDenied": true,
+        "networkAttempts": 0,
+        "childProcessAttempts": 0
+      },
+      "providerAuth": [
+        {
+          "id": "amazon-bedrock",
+          "name": "Amazon Bedrock",
+          "apiKey": true,
+          "oauth": false
+        },
+        {
+          "id": "ant-ling",
+          "name": "Ant Ling",
+          "apiKey": true,
+          "oauth": false
+        },
+        {
+          "id": "anthropic",
+          "name": "Anthropic",
+          "apiKey": true,
+          "oauth": true
+        },
+        {
+          "id": "azure-openai-responses",
+          "name": "Azure OpenAI",
+          "apiKey": true,
+          "oauth": false
+        },
+        {
+          "id": "baseten",
+          "name": "Baseten",
+          "apiKey": true,
+          "oauth": false
+        },
+        {
+          "id": "cerebras",
+          "name": "Cerebras",
+          "apiKey": true,
+          "oauth": false
+        },
+        {
+          "id": "cloudflare-ai-gateway",
+          "name": "Cloudflare AI Gateway",
+          "apiKey": true,
+          "oauth": false
+        },
+        {
+          "id": "cloudflare-workers-ai",
+          "name": "Cloudflare Workers AI",
+          "apiKey": true,
+          "oauth": false
+        },
+        {
+          "id": "deepseek",
+          "name": "DeepSeek",
+          "apiKey": true,
+          "oauth": false
+        },
+        {
+          "id": "fireworks",
+          "name": "Fireworks",
+          "apiKey": true,
+          "oauth": false
+        },
+        {
+          "id": "github-copilot",
+          "name": "GitHub Copilot",
+          "apiKey": true,
+          "oauth": true
+        },
+        {
+          "id": "google",
+          "name": "Google",
+          "apiKey": true,
+          "oauth": false
+        },
+        {
+          "id": "google-vertex",
+          "name": "Google Vertex AI",
+          "apiKey": true,
+          "oauth": false
+        },
+        {
+          "id": "groq",
+          "name": "Groq",
+          "apiKey": true,
+          "oauth": false
+        },
+        {
+          "id": "huggingface",
+          "name": "Hugging Face",
+          "apiKey": true,
+          "oauth": false
+        },
+        {
+          "id": "kimi-coding",
+          "name": "Kimi For Coding",
+          "apiKey": true,
+          "oauth": true
+        },
+        {
+          "id": "meta",
+          "name": "Meta",
+          "apiKey": true,
+          "oauth": true
+        },
+        {
+          "id": "minimax",
+          "name": "MiniMax",
+          "apiKey": true,
+          "oauth": false
+        },
+        {
+          "id": "minimax-cn",
+          "name": "MiniMax CN",
+          "apiKey": true,
+          "oauth": false
+        },
+        {
+          "id": "mistral",
+          "name": "Mistral",
+          "apiKey": true,
+          "oauth": false
+        },
+        {
+          "id": "moonshotai",
+          "name": "Moonshot AI",
+          "apiKey": true,
+          "oauth": false
+        },
+        {
+          "id": "moonshotai-cn",
+          "name": "Moonshot AI CN",
+          "apiKey": true,
+          "oauth": false
+        },
+        {
+          "id": "nvidia",
+          "name": "NVIDIA",
+          "apiKey": true,
+          "oauth": false
+        },
+        {
+          "id": "openai",
+          "name": "OpenAI",
+          "apiKey": true,
+          "oauth": true
+        },
+        {
+          "id": "openai-codex",
+          "name": "OpenAI Codex (legacy)",
+          "apiKey": false,
+          "oauth": true
+        },
+        {
+          "id": "opencode",
+          "name": "OpenCode Zen",
+          "apiKey": true,
+          "oauth": false
+        },
+        {
+          "id": "opencode-go",
+          "name": "OpenCode Go",
+          "apiKey": true,
+          "oauth": false
+        },
+        {
+          "id": "openrouter",
+          "name": "OpenRouter",
+          "apiKey": true,
+          "oauth": true
+        },
+        {
+          "id": "qwen-token-plan",
+          "name": "Qwen Token Plan",
+          "apiKey": true,
+          "oauth": false
+        },
+        {
+          "id": "qwen-token-plan-cn",
+          "name": "Qwen Token Plan CN",
+          "apiKey": true,
+          "oauth": false
+        },
+        {
+          "id": "qwen-token-plan-individual",
+          "name": "Qwen Token Plan Individual",
+          "apiKey": true,
+          "oauth": false
+        },
+        {
+          "id": "radius",
+          "name": "Radius",
+          "apiKey": true,
+          "oauth": true
+        },
+        {
+          "id": "together",
+          "name": "Together",
+          "apiKey": true,
+          "oauth": false
+        },
+        {
+          "id": "typesafe",
+          "name": "TypeSafe",
+          "apiKey": true,
+          "oauth": false
+        },
+        {
+          "id": "vercel-ai-gateway",
+          "name": "Vercel AI Gateway",
+          "apiKey": true,
+          "oauth": false
+        },
+        {
+          "id": "xai",
+          "name": "xAI",
+          "apiKey": true,
+          "oauth": true
+        },
+        {
+          "id": "xiaomi",
+          "name": "Xiaomi",
+          "apiKey": true,
+          "oauth": false
+        },
+        {
+          "id": "xiaomi-token-plan-ams",
+          "name": "Xiaomi Token Plan AMS",
+          "apiKey": true,
+          "oauth": false
+        },
+        {
+          "id": "xiaomi-token-plan-cn",
+          "name": "Xiaomi Token Plan CN",
+          "apiKey": true,
+          "oauth": false
+        },
+        {
+          "id": "xiaomi-token-plan-sgp",
+          "name": "Xiaomi Token Plan SGP",
+          "apiKey": true,
+          "oauth": false
+        },
+        {
+          "id": "zai",
+          "name": "Z.AI",
+          "apiKey": true,
+          "oauth": false
+        },
+        {
+          "id": "zai-coding-cn",
+          "name": "Z.AI Coding CN",
+          "apiKey": true,
+          "oauth": false
+        }
+      ],
+      "sourceOnlyDeepPaths": [
+        {
+          "specifier": "@earendil-works/pi-coding-agent/client",
+          "admitted": false,
+          "status": "rejected",
+          "error": {
+            "name": "ResolveMessage",
+            "code": "ERR_MODULE_NOT_FOUND",
+            "message": "Cannot find package '@earendil-works/pi-coding-agent' imported from <qualification>/consumer/[eval]"
+          }
+        },
+        {
+          "specifier": "@earendil-works/pi-coding-agent/experimental/plugin",
+          "admitted": false,
+          "status": "rejected",
+          "error": {
+            "name": "ResolveMessage",
+            "code": "ERR_MODULE_NOT_FOUND",
+            "message": "Cannot find package '@earendil-works/pi-coding-agent' imported from <qualification>/consumer/[eval]"
+          }
+        }
+      ],
+      "privateDeepPaths": [
+        {
+          "specifier": "@earendil-works/pi-mcp/dist/client.js",
+          "admitted": false,
+          "status": "rejected",
+          "error": {
+            "name": "ResolveMessage",
+            "code": "ERR_MODULE_NOT_FOUND",
+            "message": "Cannot find package '@earendil-works/pi-mcp' imported from <qualification>/consumer/[eval]"
+          }
+        },
+        {
+          "specifier": "@earendil-works/pi-ai/dist/auth/oauth/openai-chatgpt.js",
+          "admitted": false,
+          "status": "rejected",
+          "error": {
+            "name": "ResolveMessage",
+            "code": "ERR_MODULE_NOT_FOUND",
+            "message": "Cannot find package '@earendil-works/pi-ai' imported from <qualification>/consumer/[eval]"
+          }
+        }
+      ],
+      "removedImports": [
+        {
+          "specifier": "@earendil-works/pi-agent-core/node",
+          "admitted": false,
+          "status": "rejected",
+          "error": {
+            "name": "ResolveMessage",
+            "code": "ERR_MODULE_NOT_FOUND",
+            "message": "Cannot find package '@earendil-works/pi-agent-core' imported from <qualification>/consumer/[eval]"
+          }
+        },
+        {
+          "specifier": "@earendil-works/pi-agent-core/harness/context",
+          "admitted": false,
+          "status": "rejected",
+          "error": {
+            "name": "ResolveMessage",
+            "code": "ERR_MODULE_NOT_FOUND",
+            "message": "Cannot find package '@earendil-works/pi-agent-core' imported from <qualification>/consumer/[eval]"
+          }
+        },
+        {
+          "specifier": "@earendil-works/pi-agent-core/harness/env/nodejs",
+          "admitted": false,
+          "status": "rejected",
+          "error": {
+            "name": "ResolveMessage",
+            "code": "ERR_MODULE_NOT_FOUND",
+            "message": "Cannot find package '@earendil-works/pi-agent-core' imported from <qualification>/consumer/[eval]"
+          }
+        },
+        {
+          "specifier": "@earendil-works/pi-agent-core/harness/session",
+          "admitted": false,
+          "status": "rejected",
+          "error": {
+            "name": "ResolveMessage",
+            "code": "ERR_MODULE_NOT_FOUND",
+            "message": "Cannot find package '@earendil-works/pi-agent-core' imported from <qualification>/consumer/[eval]"
+          }
+        },
+        {
+          "specifier": "@earendil-works/pi-agent-core/harness/session/testing",
+          "admitted": false,
+          "status": "rejected",
+          "error": {
+            "name": "ResolveMessage",
+            "code": "ERR_MODULE_NOT_FOUND",
+            "message": "Cannot find package '@earendil-works/pi-agent-core' imported from <qualification>/consumer/[eval]"
+          }
+        },
+        {
+          "specifier": "@earendil-works/pi-agent-core/session/testing",
+          "admitted": false,
+          "status": "rejected",
+          "error": {
+            "name": "ResolveMessage",
+            "code": "ERR_MODULE_NOT_FOUND",
+            "message": "Cannot find package '@earendil-works/pi-agent-core' imported from <qualification>/consumer/[eval]"
+          }
+        },
+        {
+          "specifier": "@earendil-works/pi-agent-core/experimental/pico3",
+          "admitted": false,
+          "status": "rejected",
+          "error": {
+            "name": "ResolveMessage",
+            "code": "ERR_MODULE_NOT_FOUND",
+            "message": "Cannot find package '@earendil-works/pi-agent-core' imported from <qualification>/consumer/[eval]"
+          }
+        },
+        {
+          "specifier": "@earendil-works/pi-agent-core/experimental/pico3/testing",
+          "admitted": false,
+          "status": "rejected",
+          "error": {
+            "name": "ResolveMessage",
+            "code": "ERR_MODULE_NOT_FOUND",
+            "message": "Cannot find package '@earendil-works/pi-agent-core' imported from <qualification>/consumer/[eval]"
+          }
+        }
+      ],
+      "removedCoreExports": {
+        "AgentHarness": "undefined",
+        "ExecutionEnv": "undefined",
+        "Result": "undefined",
+        "MemorySessionRepo": "undefined",
+        "JsonlSessionRepo": "undefined",
+        "NodeExecutionEnv": "undefined"
+      }
+    }
+  ],
+  "rawReceiptSha256": "6535b61f3ea0be6ea2ded615e2c34c640e89fe4eff2568cd984b1a6865e0122b"
+}

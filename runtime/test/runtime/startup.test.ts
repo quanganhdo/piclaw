@@ -214,6 +214,8 @@ export {};
       expect(remainingChat).toBeNull();
       expect(remainingBranch).toBeNull();
     } finally {
+      const { stopToolOutputCleanup } = await import("../../src/tool-output.js");
+      stopToolOutputCleanup();
       closeDbQuietly(dbMod);
       restoreEnv();
       ws.cleanup();

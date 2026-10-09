@@ -63,6 +63,19 @@ describe("request guards", () => {
     expect(response?.headers.get("location")).toBe("/login");
   });
 
+  test("MCP read and preview share the enforced rate bucket", async () => {
+    const path = "/agent/settings/mcp";
+    const req = new Request("https://example.com" + path);
+    const limit = getDataRateLimitRule("GET", path)!.limit;
+    const channel = createChannel({ authGateway: { isInternalSecretEnabled: () => false } });
+    for (let i = 0; i < limit; i++) expect(await enforceRequestGuards(channel, req, path, getRouteFlags(req, path))).toBeNull();
+    expect((await enforceRequestGuards(channel, req, path, getRouteFlags(req, path)))?.status).toBe(429);
+    const preview = new Request("https://example.com" + path + "/preview", { method: "POST", headers: { origin: "https://example.com", host: "example.com" } });
+    expect((await enforceRequestGuards(channel, preview, path + "/preview", getRouteFlags(preview, path + "/preview")))?.status).toBe(429);
+    const apply = new Request("https://example.com" + path + "/apply", { method: "POST", headers: { origin: "https://example.com", host: "example.com" } });
+    expect((await enforceRequestGuards(channel, apply, path + "/apply", getRouteFlags(apply, path + "/apply")))?.status).toBe(429);
+  });
+
   test("rejects mutating requests that fail the CSRF origin check", async () => {
     const response = await enforceRequestGuards(
       createChannel({

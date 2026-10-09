@@ -139,6 +139,26 @@ test("family upload and message admission bind media to one owner and consume it
   expect(()=>admitFamilyMessage(alice,{content:"reuse",requestId:"reuse",mediaIds:[mediaId]})).toThrow();
 });
 
+test("postcommit publication failure preserves admission and an exact retry recovers the wake", async () => {
+  let wakes = 0;
+  const ingress = router({
+    broadcastEvent: () => { throw Error("synthetic postcommit publication failure"); },
+    resumeChat: () => { wakes++; },
+  });
+  const body = { content: "durable despite publication failure", request_id: "postcommit-retry" };
+  // Characterise the existing handler limitation: the error response does not
+  // mean rollback. This change must retain the committed row and retry identity.
+  expect((await ingress.handle(request(body))).status).toBe(400);
+  const count = (table: string) => (getDb().query(`SELECT count(*) AS n FROM ${table}`).get() as { n: number }).n;
+  for (const table of ["messages", "message_execution_authorities", "family_turn_queue"]) expect(count(table)).toBe(1);
+  expect(wakes).toBe(0);
+  const replay = await ingress.handle(request(body));
+  expect(replay.status).toBe(200);
+  expect((await replay.json()).created).toBe(false);
+  expect(wakes).toBe(1);
+  for (const table of ["messages", "message_execution_authorities", "family_turn_queue"]) expect(count(table)).toBe(1);
+});
+
 test("upload requires current pins and origin and failed admission retains the pending claim",async()=>{
   const ingress=router();
   expect((await ingress.handle(uploadRequest(alice,new File(["x"],"x.txt"),null))).status).toBe(403);

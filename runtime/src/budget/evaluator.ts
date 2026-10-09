@@ -7,12 +7,35 @@ import type { BudgetBlocker, BudgetCap, BudgetDecision, BudgetDecisionAction, Bu
 
 type UsageTotal = { known_usage: number; unknown_events: number };
 
+export interface BudgetPendingRequest {
+  amountMicros: number | null;
+}
+
+/** Outstanding requests reserve capacity across all calendar windows until settled.
+ * This deliberately overblocks rollover rather than losing an uncertain charge. */
+function pendingUsage(workIds: string[] | undefined, excludeId: string | undefined, database: Database): UsageTotal {
+  const where = ["state IN ('reserved','dispatched','unresolved')"];
+  const values: unknown[] = [];
+  if (workIds) {
+    if (workIds.length === 0) return { known_usage: 0, unknown_events: 0 };
+    where.push(`work_id IN (${workIds.map(() => '?').join(',')})`); values.push(...workIds);
+  }
+  if (excludeId) { where.push('id<>?'); values.push(excludeId); }
+  const row = database.prepare(`SELECT
+    COALESCE(SUM(amount_microusd),0) AS known_usage,
+    COALESCE(SUM(CASE WHEN state='unresolved' OR amount_microusd IS NULL THEN 1 ELSE 0 END),0) AS unknown_events
+    FROM budget_request_reservations WHERE ${where.join(' AND ')}`).get(...values as any[]) as UsageTotal;
+  const known = Number(row.known_usage), unknown = Number(row.unknown_events);
+  if (!Number.isSafeInteger(known) || known < 0 || !Number.isSafeInteger(unknown) || unknown < 0) throw new Error('Outstanding model request totals exceed safe integer accounting.');
+  return { known_usage: known, unknown_events: unknown };
+}
+
 function ancestorIds(workId: string, database: Database): string[] {
-  return (database.prepare(`WITH RECURSIVE ancestors(id,parent_work_id) AS (
-    SELECT id,parent_work_id FROM budget_work WHERE id=?
+  return (database.prepare(`WITH RECURSIVE ancestors(id,parent_work_id,depth) AS (
+    SELECT id,parent_work_id,0 FROM budget_work WHERE id=?
     UNION ALL
-    SELECT work.id,work.parent_work_id FROM budget_work work JOIN ancestors ON work.id=ancestors.parent_work_id
-  ) SELECT id FROM ancestors`).all(workId) as Array<{ id: string }>).map((row) => row.id);
+    SELECT work.id,work.parent_work_id,ancestors.depth+1 FROM budget_work work JOIN ancestors ON work.id=ancestors.parent_work_id
+  ) SELECT id FROM ancestors ORDER BY depth`).all(workId) as Array<{ id: string }>).map((row) => row.id);
 }
 
 function descendantIds(workId: string, database: Database): string[] {
@@ -105,12 +128,21 @@ export function evaluateBudget(input: {
   now?: Date;
   providerEvidence?: BudgetProviderEvidence[];
   providerId?: string;
+  /** Host-only prospective spend; never accept a child/tool-provided ceiling. */
+  pendingRequest?: BudgetPendingRequest;
+  excludeReservationId?: string;
 }, database: Database = getDb()): BudgetDecision {
+  if (input.pendingRequest && input.pendingRequest.amountMicros !== null
+    && (!Number.isSafeInteger(input.pendingRequest.amountMicros) || input.pendingRequest.amountMicros < 0)) throw new Error('Invalid prospective model request cost.');
   const work = getBudgetWork(input.workId, database);
   if (!work) throw new Error(`Unknown budget work: ${input.workId}`);
   const ancestors = ancestorIds(work.id, database);
   const descendants = descendantIds(work.id, database);
-  return evaluateWork(input, work, ancestors, descendants, database, false);
+  // A delegated child inherits the scheduled occurrence's cap and its whole
+  // subtree, never a fresh per-child allowance or another scheduled run's spend.
+  const scheduledRoot = ancestors.map(id => getBudgetWork(id, database)).find(ancestor => ancestor?.scheduled_task_id);
+  return evaluateWork(input, { ...work, scheduled_task_id: scheduledRoot?.scheduled_task_id ?? work.scheduled_task_id,
+    scheduledBudgetWorkId: scheduledRoot?.id ?? work.id }, ancestors, descendants, database, false);
 }
 
 /** Advisory check for a fresh scheduled run; never creates work, windows or allowances. */
@@ -124,8 +156,8 @@ export function evaluateScheduledBudget(input: {
   return evaluateWork(input, work, [], [], database, true);
 }
 
-function evaluateWork(input: { now?: Date; providerEvidence?: BudgetProviderEvidence[]; providerId?: string },
-  work: { id: string; execution_kind: string; scheduled_task_id: string | null },
+function evaluateWork(input: { now?: Date; providerEvidence?: BudgetProviderEvidence[]; providerId?: string; pendingRequest?: BudgetPendingRequest; excludeReservationId?: string },
+  work: { id: string; execution_kind: string; scheduled_task_id: string | null; scheduledBudgetWorkId?: string },
   ancestors: string[], descendants: string[], database: Database, readOnly: boolean): BudgetDecision {
   const nowDate = input.now ?? new Date();
   const now = nowDate.toISOString();
@@ -150,8 +182,9 @@ function evaluateWork(input: { now?: Date; providerEvidence?: BudgetProviderEvid
       windowId = `work:${cap.work_id}:r${cap.revision}`;
       total = usageTotal({ workIds: descendantIds(cap.work_id!, database) }, database);
     } else if (cap.scope === "scheduled_run") {
-      windowId = `run:${work.id}:r${cap.revision}`;
-      total = usageTotal({ workIds: descendants }, database);
+      const scheduledWorkId = work.scheduledBudgetWorkId ?? work.id;
+      windowId = `run:${scheduledWorkId}:r${cap.revision}`;
+      total = usageTotal({ workIds: descendantIds(scheduledWorkId, database) }, database);
     } else {
       const evidence = input.providerEvidence?.find((item) => item.capId === cap.id);
       const evidenceWindow = evidence?.windowId ?? "provider:unknown";
@@ -160,18 +193,29 @@ function evaluateWork(input: { now?: Date; providerEvidence?: BudgetProviderEvid
       if (blocker) blockers.push(blocker);
       continue;
     }
+    const pendingWorkIds = cap.scope === 'task' ? descendantIds(cap.work_id!, database)
+      : cap.scope === 'scheduled_run' ? descendantIds(work.scheduledBudgetWorkId ?? work.id, database) : undefined;
+    const pending = pendingUsage(pendingWorkIds, input.excludeReservationId, database);
+    total.known_usage += pending.known_usage;
+    total.unknown_events += pending.unknown_events;
+    if (input.pendingRequest) {
+      total.known_usage += input.pendingRequest.amountMicros ?? 0;
+      if (input.pendingRequest.amountMicros === null) total.unknown_events += 1;
+    }
     const allowance = allowanceFor(cap, windowId, ancestors, now, database);
+    if (!Number.isSafeInteger(total.known_usage) || !Number.isSafeInteger(cap.amount + allowance)) throw new Error('Budget totals exceed safe integer accounting.');
     if (total.unknown_events > 0) {
       blockers.push({
         capId: cap.id, capRevision: cap.revision, scope: cap.scope, metric: cap.metric, windowId,
         limit: cap.amount, allowance, knownUsage: total.known_usage, remaining: null,
         unknownEvents: total.unknown_events, reason: "unknown_pricing",
-        detail: `${total.unknown_events} billable usage event(s) lack complete API-equivalent pricing.`,
+        detail: `${total.unknown_events} usage or outstanding request outcome(s) lack complete API-equivalent pricing.`,
       });
       continue;
     }
     const remaining = cap.amount + allowance - total.known_usage;
-    if (remaining <= 0) {
+    const beforeRequest = cap.amount + allowance - total.known_usage + (input.pendingRequest?.amountMicros ?? 0);
+    if (input.pendingRequest ? remaining < 0 || beforeRequest <= 0 : remaining <= 0) {
       blockers.push({
         capId: cap.id, capRevision: cap.revision, scope: cap.scope, metric: cap.metric, windowId,
         limit: cap.amount, allowance, knownUsage: total.known_usage, remaining,

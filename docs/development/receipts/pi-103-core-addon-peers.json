@@ -1,0 +1,205 @@
+{
+  "recordedAt": "2026-10-05T18:37:59.015Z",
+  "pi": "1.0.3",
+  "source": {
+    "head": "09a7597b1bb8073f78dcbfc7321486dbbf28286f",
+    "tree": "d1c2470b45d2a7656c098acbd4638699fcc89c9b",
+    "status": "",
+    "lockSha256": "5bf82bf6f35ed1bd7cc49bc5f521c7e39a22004b0b2570e774ea2cbf5628ee49"
+  },
+  "finalSource": {
+    "head": "09a7597b1bb8073f78dcbfc7321486dbbf28286f",
+    "tree": "d1c2470b45d2a7656c098acbd4638699fcc89c9b",
+    "status": "",
+    "lockSha256": "5bf82bf6f35ed1bd7cc49bc5f521c7e39a22004b0b2570e774ea2cbf5628ee49"
+  },
+  "qualification": [
+    {
+      "name": "focused",
+      "command": [
+        "/usr/local/lib/bun/bin/bun",
+        "--no-env-file",
+        "runtime/scripts/local-test-priority.ts",
+        "--cwd",
+        "/workspace/piclaw-worktrees/core-addon-seed-host-peers/runtime",
+        "--env",
+        "PICLAW_DB_IN_MEMORY=1",
+        "--",
+        "/usr/local/lib/bun/bin/bun",
+        "--no-env-file",
+        "test",
+        "test/runtime/core-addon-defaults.test.ts"
+      ],
+      "exit": 0,
+      "before": {
+        "head": "09a7597b1bb8073f78dcbfc7321486dbbf28286f",
+        "tree": "d1c2470b45d2a7656c098acbd4638699fcc89c9b",
+        "status": "",
+        "lockSha256": "5bf82bf6f35ed1bd7cc49bc5f521c7e39a22004b0b2570e774ea2cbf5628ee49"
+      },
+      "after": {
+        "head": "09a7597b1bb8073f78dcbfc7321486dbbf28286f",
+        "tree": "d1c2470b45d2a7656c098acbd4638699fcc89c9b",
+        "status": "",
+        "lockSha256": "5bf82bf6f35ed1bd7cc49bc5f521c7e39a22004b0b2570e774ea2cbf5628ee49"
+      },
+      "wallMs": 1949.61124,
+      "logSha256": "e3fa247c214ffb4bfbe68df39512c3106386df98aabe3f278a940b64a25dd9db",
+      "suites": [
+        {
+          "pass": 7,
+          "skip": 0,
+          "fail": 0,
+          "assertions": 32
+        }
+      ]
+    },
+    {
+      "name": "ci-fast",
+      "command": [
+        "timeout",
+        "--signal=TERM",
+        "2400",
+        "/usr/local/lib/bun/bin/bun",
+        "--no-env-file",
+        "runtime/scripts/local-test-priority.ts",
+        "--",
+        "make",
+        "ci-fast"
+      ],
+      "exit": 0,
+      "before": {
+        "head": "09a7597b1bb8073f78dcbfc7321486dbbf28286f",
+        "tree": "d1c2470b45d2a7656c098acbd4638699fcc89c9b",
+        "status": "",
+        "lockSha256": "5bf82bf6f35ed1bd7cc49bc5f521c7e39a22004b0b2570e774ea2cbf5628ee49"
+      },
+      "after": {
+        "head": "09a7597b1bb8073f78dcbfc7321486dbbf28286f",
+        "tree": "d1c2470b45d2a7656c098acbd4638699fcc89c9b",
+        "status": "",
+        "lockSha256": "5bf82bf6f35ed1bd7cc49bc5f521c7e39a22004b0b2570e774ea2cbf5628ee49"
+      },
+      "wallMs": 661340.5541239999,
+      "logSha256": "356d34e4db7c9539eb74ed3851ca65c2d331a4f722cd7adbc6d892406247131d",
+      "suites": [
+        {
+          "pass": 6537,
+          "skip": 8,
+          "fail": 0,
+          "assertions": 42781
+        },
+        {
+          "pass": 25,
+          "skip": 0,
+          "fail": 0,
+          "assertions": 246
+        },
+        {
+          "pass": 9,
+          "skip": 0,
+          "fail": 0,
+          "assertions": 26
+        }
+      ]
+    }
+  ],
+  "actualPackageSeedImport": {
+    "rows": [
+      {
+        "name": "@rcarmo/piclaw-addon-code-review",
+        "version": "0.1.8",
+        "entryImported": true
+      },
+      {
+        "name": "@rcarmo/piclaw-addon-delegate",
+        "version": "0.2.13",
+        "entryImported": true
+      },
+      {
+        "name": "@rcarmo/piclaw-addon-goal",
+        "version": "0.1.48",
+        "entryImported": true
+      },
+      {
+        "name": "@rcarmo/piclaw-addon-observability",
+        "version": "0.1.17",
+        "entryImported": true
+      },
+      {
+        "name": "@rcarmo/piclaw-addon-plan-sidebar",
+        "version": "0.1.25",
+        "entryImported": true
+      },
+      {
+        "name": "@rcarmo/piclaw-addon-restic",
+        "version": "0.1.3",
+        "entryImported": true
+      },
+      {
+        "name": "@rcarmo/piclaw-addon-session-dashboard",
+        "version": "0.2.4",
+        "entryImported": true
+      }
+    ],
+    "networkAttempts": 0,
+    "childProcessAttempts": 0,
+    "allRealPinnedCoreEntriesImported": true,
+    "hostPeerIdentity": true,
+    "existingWorkspaceMutated": false,
+    "network": false,
+    "scope": "Candidate seam and original pinnedcanarypackage seed; sourcequalificationseparate",
+    "logSha256": "84bcd8684296561318db4e67041fd5a22787d432d0eabcf0b7cb92df1fb80fb9",
+    "executionTimeHeadCaptured": false
+  },
+  "red": {
+    "logSha256": "c290ee14e73f5122243122ac658df414b3f741aefb8d04246ddd3e4690499108",
+    "failed": 1,
+    "reason": "Workspace seededextension Cannot findpackage typebox"
+  },
+  "retainedFailedAttempts": [
+    {
+      "reason": "Preliminary emptytargetreservation invalidonWindows",
+      "qualifying": false
+    },
+    {
+      "reason": "Isolatedcopiedmodule missingpeer fixture inheritedBunresolution; replacedwithinjectedresolverfailurefixture",
+      "qualifying": false
+    }
+  ],
+  "productionChange": {
+    "freshWorkspacesOnly": true,
+    "allowlistedHostPeers": [
+      "typebox",
+      "@sinclair/typebox",
+      "@earendil-works/pi-ai",
+      "@earendil-works/pi-coding-agent",
+      "@earendil-works/pi-tui"
+    ],
+    "copiedSdk": false,
+    "networkInstall": false,
+    "existingWorkspacesTouched": false,
+    "corePinsChanged": false,
+    "siblingExclusivePublisherLock": true,
+    "staleLockRecovery": "Fail closed; no automatic lock deletion"
+  },
+  "reviews": {
+    "boundedPeerlinkReviewer": "qualifiedclear",
+    "publicationGuardReview": "danglingtargetfixed, siblingsseedlock serializes publishers, Windows renameabsenttarget",
+    "timeoutsSupplyApproval": false
+  },
+  "limits": [
+    "Source peerlink fix only; imports7entries, notaddon runtime/UI/execution acceptance or paidDelegate activation.",
+    "Absolutehostpeerlinks bind newlyseededworkspace to creating runtimepackage; relocating/removingthat hostpackage needsseparate migration. Existingworkspace install/update remainsunchanged.",
+    "Startupalreadyownsworkspace runtime lock; lexicalexistence+siblingseedpublisherlock preventscooperatingseeders replacingtarget. No hostile filesystemactor race/no-clobber guarantee.",
+    "Crashleft seed-lock is notautomatically erased; recovery requiresownerdecision. Windowsjunction branch is sourcequalified, notnativeWindows executed.",
+    "Publicprovider/authrawsettlement/accountgeneration contracts absent, liveMemento/accounts/Azure/Smithrollout separate."
+  ],
+  "scope": {
+    "restart": false,
+    "deploy": false,
+    "providerSpend": false,
+    "liveState": false,
+    "wholePlanAccepted": false
+  }
+}

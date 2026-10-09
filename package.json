@@ -1,6 +1,6 @@
 {
   "name": "piclaw",
-  "version": "3.2.5",
+  "version": "3.3.0",
   "description": "Personal pi coding agent assistant. Lightweight nanoclaw-style orchestrator using Bun and pi.",
   "type": "module",
   "license": "MIT",
@@ -79,7 +79,7 @@
     "test": "bun run test:controlled",
     "test:local": "bun run runtime/scripts/local-test-priority.ts --",
     "test:raw": "bun run test:local --cwd runtime --env PICLAW_DB_IN_MEMORY=1 -- bun test --max-concurrency=1",
-    "test:controlled": "bun run test:local -- bun run runtime/scripts/controlled-test-runner.ts",
+    "test:controlled": "bun run test:local --cwd . -- bun run runtime/scripts/controlled-test-runner.ts",
     "test:coverage": "rm -rf runtime/generated/coverage && bun run test:local --cwd runtime --env PICLAW_DB_IN_MEMORY=1 -- bun test --max-concurrency=1 --coverage --coverage-dir=generated/coverage --coverage-reporter=text --coverage-reporter=lcov",
     "test:optional:browser-isolation": "bun run test:local --cwd runtime --env PICLAW_DB_IN_MEMORY=1 --env PICLAW_RUN_OPTIONAL_BROWSER_TESTS=1 -- bun test --max-concurrency=1 --timeout=30000 test/channels/web/browser-chat-isolation.optional.test.ts",
     "test:oobe:local-container": "./scripts/ensure-playwright-browser-isolation.sh && bun run test:local -- bun run runtime/scripts/playwright/oobe-local-container.ts",
@@ -101,7 +101,7 @@
     "check:env-surface": "bun run scripts/audit-piclaw-env-surface.ts --check",
     "ci:fast": "bun run check:silent-swallows && bun run check:structured-logging && bun run check:dependency-pins && bun run check:actions-workflows && bun run check:env-surface && bun run check:circular-dependencies && bun run check:local-test-entrypoints && bun run ci:fast:tests && bun run ci:fast:features && make build-web",
     "ci:fast:tests": "bun run test:local --cwd runtime --env PICLAW_DB_IN_MEMORY=1 -- bun test --max-concurrency=1 --path-ignore-patterns='**/features/**' --path-ignore-patterns='**/scripts/**' --path-ignore-patterns='**/*.optional.test.ts'",
-    "ci:fast:features": "bun run test:local -- bun run runtime/test/features/run-feature-tests.ts",
+    "ci:fast:features": "bun run test:local --cwd . -- bun run runtime/test/features/run-feature-tests.ts",
     "ci:integration": "bun run scripts/integration-test-suite.ts",
     "ci:publish-smoke": "./scripts/docker/publish-smoke-test.sh \"$IMAGE_REF\" \"$PLATFORM\" \"$EXPECTED_BUN_VERSION\" \"$EXPECTED_RESTIC_VERSION\"",
     "quality": "bun run lint && bun run typecheck && bun run test && bun run check:pack-hygiene && bun run check:stale-dist && bun run check:import-boundaries && bun run check:env-surface && bun run check:circular-dependencies && bun run check:unused-exports && bun run check:hook-tdz && bun run check:silent-swallows && bun run check:structured-logging",
@@ -126,9 +126,9 @@
   },
   "dependencies": {
     "@e965/xlsx": "0.20.3",
-    "@earendil-works/pi-agent-core": "0.99.1",
-    "@earendil-works/pi-ai": "0.99.1",
-    "@earendil-works/pi-coding-agent": "0.99.1",
+    "@earendil-works/pi-agent-core": "1.0.4",
+    "@earendil-works/pi-ai": "1.0.4",
+    "@earendil-works/pi-coding-agent": "1.0.4",
     "@fontsource-variable/inter": "5.3.0",
     "@lezer/highlight": "1.2.3",
     "@simplewebauthn/server": "13.3.2",
@@ -147,7 +147,7 @@
     "katex": "0.18.4",
     "marked": "18.0.10",
     "openai": "7.5.0",
-    "pi-mcp-adapter": "github:piclaw-bot/pi-mcp-adapter#41f10ee5f54e66adb569182de7bb81f0801105d6",
+    "pi-mcp-adapter": "github:piclaw-bot/pi-mcp-adapter#dddfcf630508f42c169889c11dee94e69b746e7c",
     "pptxviewjs": "1.1.9",
     "preact": "10.29.8",
     "proper-lockfile": "4.1.2",
@@ -155,7 +155,8 @@
     "sharp": "0.35.4",
     "strip-json-comments": "5.0.3",
     "typebox": "1.3.16",
-    "web-push": "3.6.7"
+    "web-push": "3.6.7",
+    "@earendil-works/chord": "1.0.4"
   },
   "devDependencies": {
     "@assemblyscript/loader": "0.28.20",
@@ -200,6 +201,14 @@
   },
   "x-dependency-policy": "Pinned exact versions only (no ^/~ ranges).",
   "overrides": {
+    "@earendil-works/chord": "1.0.4",
+    "@earendil-works/pi-agent-core": "1.0.4",
+    "@earendil-works/pi-ai": "1.0.4",
+    "@earendil-works/pi-codemode": "1.0.4",
+    "@earendil-works/pi-coding-agent": "1.0.4",
+    "@earendil-works/pi-mcp": "1.0.4",
+    "@earendil-works/pi-telemetry": "1.0.4",
+    "@earendil-works/pi-tui": "1.0.4",
     "@codemirror/commands": "6.11.0",
     "@codemirror/state": "6.7.1",
     "@codemirror/view": "6.43.9",
@@ -210,10 +219,13 @@
     "ip-address": "10.7.2",
     "protobufjs": "8.6.6",
     "@protobufjs/utf8": "1.1.1",
-    "brace-expansion": "5.0.9",
+    "brace-expansion": "5.0.12",
     "fast-uri": "3.1.8",
-    "hono": "4.13.5",
+    "hono": "4.13.13",
     "qs": "6.16.0",
-    "ws": "8.21.0"
+    "ws": "8.21.0",
+    "proxy-addr": "2.0.8",
+    "basic-ftp": "6.2.2",
+    "smol-toml": "1.9.0"
   }
 }

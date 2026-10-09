@@ -22,6 +22,7 @@ describe("budget accounting foundation", () => {
       "budget_decisions",
       "budget_overrides",
       "budget_provider_evidence",
+      "budget_request_reservations",
       "budget_usage_events",
       "budget_work",
     ]);

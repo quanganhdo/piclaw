@@ -1,12 +1,7 @@
 import "../helpers.js";
 
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-
 import { describe, expect, test } from "bun:test";
-import { Result, applyShellOutputUpdate, type ShellOutputUpdate, type ShellOutputView } from "@earendil-works/pi-agent-core";
-import { BACKGROUND_CONTEXT, withAbortSignal } from "@earendil-works/pi-agent-core/harness/context";
+import { Result, BACKGROUND_CONTEXT } from "../../src/service-effects/contracts/execution-env.js";
 
 import type { NormalisedEffectTrace } from "../../src/service-effects/contracts/common.js";
 import { CurrentPiclawExecutionContextResolver } from "../../src/service-effects/current-piclaw/execution-context-resolver.js";
@@ -18,7 +13,6 @@ import type {
   SshExecutionProfileSnapshotLookup,
 } from "../../src/service-effects/current-piclaw/execution-context-types.js";
 import { PiclawExecutionEnv } from "../../src/service-effects/current-piclaw/execution-env-adapter.js";
-import { CurrentPiclawLocalExecutionEnvFactory } from "../../src/service-effects/current-piclaw/local-execution-env.js";
 import { CurrentPiclawSshExecutionEnvFactory } from "../../src/service-effects/current-piclaw/ssh-execution-env.js";
 import { defineExecutionContextResolverContract, type ExecutionContextResolverContractSubject } from "../../src/service-effects/testing/contract-suites/execution-context-resolver-contract.js";
 import type { ContractSubjectFactory, ContractTestContext } from "../../src/service-effects/testing/contract-suite.js";
@@ -39,32 +33,8 @@ for (const [name, fake] of [["current-Piclaw adapter", false], ["independent det
   });
 }
 
-describe("EF-H01 local NodeExecutionEnv adapter under Bun", () => {
-  test("creates fresh snapshots and owns timeout, abort, and cleanup process groups", async () => {
-    const cwd = await mkdtemp(join(tmpdir(), "piclaw-ef-h01-"));
-    const factory = new CurrentPiclawLocalExecutionEnvFactory({ cwd, prepareShellEnvironment: () => ({ PATH: process.env.PATH ?? "/usr/bin:/bin" }) });
-    const first = factory.createLocalEnv(); const second = factory.createLocalEnv();
-    expect(first.ok && second.ok).toBeTrue();
-    if (!first.ok || !second.ok) return;
-    expect(first.value).not.toBe(second.value);
-    const timeoutPids: number[] = [];
-    const capture = { limits: { maxBytes: 4096, maxLines: 20, retain: "head" as const } };
-    const timed = await first.value.exec("sleep 30 & echo \"$$ $!\"; wait", { timeout: 0.05, capture, onUpdate: collectPids(timeoutPids) }, BACKGROUND_CONTEXT);
-    expect(timed.ok).toBeFalse(); expect(!timed.ok && timed.error.code).toBe("timeout");
-    await expectGone(timeoutPids);
-
-    const abort = new AbortController(); const abortPids: number[] = []; let started!: () => void;
-    const observed = new Promise<void>((resolve) => { started = resolve; });
-    const pending = first.value.exec("sleep 30 & echo \"$$ $!\"; wait", { capture, onUpdate: collectPids(abortPids, started) }, withAbortSignal(abort.signal, BACKGROUND_CONTEXT));
-    await observed;
-    await second.value.cleanup(BACKGROUND_CONTEXT);
-    expect(abortPids.every(isAlive)).toBeTrue();
-    abort.abort(); const aborted = await pending;
-    expect(aborted.ok).toBeFalse(); expect(!aborted.ok && aborted.error.code).toBe("aborted");
-    await expectGone(abortPids);
-    await first.value.cleanup(BACKGROUND_CONTEXT); await first.value.cleanup(BACKGROUND_CONTEXT); await rm(cwd, { recursive: true, force: true });
-  }, 10_000);
-});
+// The retired local SDK backend/process-group tests run in the historical consumer.
+// Current production tools use coding-agent/SSH operations, not this dormant port.
 
 function subjectFactory(name: string, fake: boolean): ContractSubjectFactory<ExecutionContextResolverContractSubject> {
   let state = new SubjectState(fake);
@@ -168,18 +138,3 @@ function callback(fault: CallbackFault, value: unknown): never | unknown {
 }
 function rejectingThenable(): PromiseLike<never> { return { then(_resolve, reject) { reject?.(new Error("thenable fault")); } }; }
 function changingEnvironment(): object { let reads = 0; return { get EF_H01_FIXTURE_AUTH() { return reads++ === 0 ? "first" : "second"; } }; }
-function collectPids(pids: number[], started?: () => void): (update: ShellOutputUpdate) => void {
-  let view: ShellOutputView | undefined;
-  return (update) => {
-    view = applyShellOutputUpdate(view, update);
-    pids.splice(0, pids.length, ...readPids(view.text));
-    if (pids.length >= 2) started?.();
-  };
-}
-function readPids(chunk: string): number[] { return chunk.trim().split(/\s+/).map(Number).filter((value) => Number.isInteger(value) && value > 1); }
-function isAlive(pid: number): boolean { try { process.kill(pid, 0); return true; } catch { return false; } }
-async function expectGone(pids: readonly number[]): Promise<void> {
-  expect(pids.length).toBeGreaterThanOrEqual(2);
-  for (let attempt = 0; attempt < 100 && pids.some(isAlive); attempt += 1) await Bun.sleep(10);
-  expect(pids.some(isAlive)).toBeFalse();
-}

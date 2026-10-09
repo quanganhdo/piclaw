@@ -1,6 +1,6 @@
 import { AgentStatusPanel } from "../components/AgentStatusPanel";
 import { QueueStack, type QueueItem } from "../components/QueueStack";
-import { getMessageUrl } from "../api/chat-jid";
+import { getMessageUrl, getChatJid } from "../api/chat-jid";
 import { useRef, useEffect, useState } from "preact/hooks";
 import { useSignal, signal } from "@preact/signals";
 import { MessageList } from "../components/MessageList";
@@ -64,6 +64,8 @@ export function ChatPanel({ onOpenPalette }: ChatPanelProps = {}) {
   const [isDragOver, setIsDragOver] = useState(false);
   const dragCounterRef = useRef(0);
   const [isListening, setIsListening] = useState(false);
+  const [latestState, setLatestState] = useState({ away: false, hasNew: false });
+  useEffect(() => { const handler = (event: Event) => { const detail = (event as CustomEvent).detail; if (detail?.scroller?.isConnected) setLatestState({ away: !!detail.away, hasNew: !!detail.hasNew }); }; window.addEventListener('piclaw:timeline-latest-state', handler); return () => window.removeEventListener('piclaw:timeline-latest-state', handler); }, []);
   const recognitionRef = useRef<any>(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
     return safeGetItem("piclaw:notifications") === "on";
@@ -386,6 +388,8 @@ export function ChatPanel({ onOpenPalette }: ChatPanelProps = {}) {
     const content = el.value.trim();
     const capturedAttachments = [...attachmentsRef.current];
     if (!content && capturedAttachments.length === 0) return;
+    const submissionChatJid = getChatJid();
+    const submissionUrl = getMessageUrl();
 
     // Shift+Send = steer (inject mid-stream); default when busy = queue
     const mode = isAgentRunning.value ? (forceSteer ? "steer" : "queue") : undefined;
@@ -439,7 +443,7 @@ export function ChatPanel({ onOpenPalette }: ChatPanelProps = {}) {
       const timeout = setTimeout(() => controller.abort(), 15000);
       let res: Response;
       try {
-        res = await fetch(getMessageUrl(), {
+        res = await fetch(submissionUrl, {
           method: "POST",
           credentials: "same-origin",
           headers: { "Content-Type": "application/json" },
@@ -476,7 +480,10 @@ export function ChatPanel({ onOpenPalette }: ChatPanelProps = {}) {
       sendError.value = null;
       setAttachments([]);
       const data = await res.json();
-      if (data?.user_message) {
+      if (data?.queued === 'followup' || data?.queued === 'steer') {
+        window.dispatchEvent(new CustomEvent('piclaw:queue-acknowledged', { detail: { chat_jid: submissionChatJid } }));
+      }
+      if (data?.user_message && getChatJid() === submissionChatJid) {
         window.dispatchEvent(new CustomEvent("piclaw:new-message", { detail: data.user_message }));
       }
     } catch (err: any) {
@@ -527,6 +534,7 @@ export function ChatPanel({ onOpenPalette }: ChatPanelProps = {}) {
           )}
 
           <div className="chat__compose">
+            <button type="button" className={`compose-latest-divider ${latestState.away ? 'away-from-latest' : ''} ${latestState.hasNew ? 'has-new-messages' : ''}`} aria-label={latestState.hasNew ? 'New messages — jump to latest' : 'Jump to latest message'} onClick={() => window.dispatchEvent(new Event('piclaw:jump-latest'))}><span className="compose-latest-chevron" aria-hidden="true">⌄</span></button>
             <input
               ref={fileInputRef}
               type="file"

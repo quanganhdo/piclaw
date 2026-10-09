@@ -1,0 +1,409 @@
+{
+  "recordedAt": "2026-10-05T09:33:58.067Z",
+  "target": {
+    "pi": "1.0.2",
+    "upstream": "cd32f7725fdbddbaecdff5b1e68491563394e0ca",
+    "core": "d26e9b7858895d883f36c88d2e8ab2377643b662",
+    "adapterRuntime": "dddfcf630508f42c169889c11dee94e69b746e7c",
+    "bun": "1.4.2"
+  },
+  "settings": {
+    "publishedHead": "42b9058b68a195e361ad922d18d9e9708cd7790e",
+    "hostedCi": {
+      "id": 37286187765,
+      "conclusion": "success",
+      "url": "https://github.com/rcarmo/piclaw/actions/runs/37286187765"
+    },
+    "full": {
+      "head": "04d6c9917f3e66e9255784874de83b6a3c548388",
+      "tree": "edbb79d707e76fb1500583ac77c34b0c5be3d9f2",
+      "startedAt": "2026-10-05T08:38:20Z",
+      "finishedAt": "2026-10-05T08:49:03Z",
+      "exit": 0,
+      "pass": 6456,
+      "skip": 8,
+      "fail": 0,
+      "assertions": 42138,
+      "total": 6464,
+      "files": 917,
+      "seconds": 632.5,
+      "features": {
+        "pass": 25,
+        "assertions": 246
+      },
+      "web": {
+        "pass": 9,
+        "assertions": 26
+      },
+      "logSha256": "7a7661ce3b3e63f51db5c3375609b1092f47a0bd65145064667bfa4c8431b601",
+      "unchangedClean": true
+    }
+  },
+  "tests": [
+    {
+      "name": "core-combined-frozen",
+      "exit": 0,
+      "pass": 100,
+      "fail": 0,
+      "assertions": 405,
+      "logSha256": "031ab6e40e4b0a3ff7ea98716d31519bcc3bebf40a51e8ecfd890a2742a44f39",
+      "scope": "frozen Pi1.0.2 source/synthetic fixture"
+    },
+    {
+      "name": "wrapper-frozen",
+      "exit": 0,
+      "pass": 316,
+      "fail": 0,
+      "assertions": null,
+      "logSha256": "2f8cf0e38f5abb9a0059636bc6f96960d218dc738e246ef2ffc4ae3aa03ea9c8",
+      "scope": "frozen Pi1.0.2 source/synthetic fixture"
+    },
+    {
+      "name": "wrapper-auth-reviewed-final",
+      "exit": 0,
+      "pass": 144,
+      "fail": 0,
+      "assertions": null,
+      "logSha256": "cfaf47b4ce57fbe7fb0e405ee485e14fae2de8094015def795911ce3752de1c9",
+      "scope": "qualified installed runtime with explicit corrected test fixture"
+    },
+    {
+      "name": "adapter-auth-final",
+      "exit": 0,
+      "pass": 144,
+      "fail": 0,
+      "assertions": null,
+      "logSha256": "298dd9d0e222dc3966feeb3e4e5b78f0327ad85f8ed4e684cfe12fe2883706d3",
+      "scope": "test-only adapter PR11"
+    },
+    {
+      "name": "adapter-postmerge",
+      "exit": 0,
+      "pass": 27,
+      "fail": 0,
+      "assertions": null,
+      "logSha256": "55226775edc4febf6de9b52a4a1e3b230cd427b383186db585d29471c2e94046",
+      "scope": "test-only adapter PR11"
+    },
+    {
+      "name": "auth-current-final",
+      "exit": 0,
+      "pass": 24,
+      "fail": 0,
+      "assertions": 1060,
+      "logSha256": "4a6e42c56a4f11fd7eab19c51d06d6341fbcfa2fa17e7c8ad597ad39ee974b58",
+      "scope": "frozen Pi1.0.2 source/synthetic fixture"
+    }
+  ],
+  "authCurrentSkip": {
+    "count": 1,
+    "kind": "existing opt-in pre-write-holder-crash",
+    "newQualification": false
+  },
+  "sourceAttestations": [
+    {
+      "name": "core-bound-final",
+      "startedAt": "2026-10-05T09:29:00.136Z",
+      "finishedAt": "2026-10-05T09:29:15.968Z",
+      "before": {
+        "head": "d26e9b7858895d883f36c88d2e8ab2377643b662",
+        "tree": "9a6aa80fe53428953ecaecfcc7be9ca4b8f37a35",
+        "status": "M docs/design/earendil-agent-harness-integration-adr/README.md\n M docs/design/earendil-agent-harness-integration-adr/evidence/README.md\n?? docs/design/earendil-agent-harness-integration-adr/evidence/earendil-102-remaining-acceptance.md\n?? docs/development/receipts/pi-102-acceptance-checkpoint.json",
+        "runtimeDependencyTestScriptParity": true,
+        "adapterConfigSha256": "39ebd8c2bf0e66a83feea93b471fd48004013807484399289ab4d82ac64ff2cb",
+        "adapterRuntime": "dddfcf630508f42c169889c11dee94e69b746e7c"
+      },
+      "after": {
+        "head": "d26e9b7858895d883f36c88d2e8ab2377643b662",
+        "tree": "9a6aa80fe53428953ecaecfcc7be9ca4b8f37a35",
+        "status": "M docs/design/earendil-agent-harness-integration-adr/README.md\n M docs/design/earendil-agent-harness-integration-adr/evidence/README.md\n?? docs/design/earendil-agent-harness-integration-adr/evidence/earendil-102-remaining-acceptance.md\n?? docs/development/receipts/pi-102-acceptance-checkpoint.json",
+        "runtimeDependencyTestScriptParity": true,
+        "adapterConfigSha256": "39ebd8c2bf0e66a83feea93b471fd48004013807484399289ab4d82ac64ff2cb",
+        "adapterRuntime": "dddfcf630508f42c169889c11dee94e69b746e7c"
+      },
+      "exit": 0,
+      "logSha256": "30aeae71c33e2a29c70cc4fb8ea04ba0905e29e0b5668c89c7d2da53ed70e28f",
+      "command": [
+        "bun",
+        "--no-env-file",
+        "test",
+        "--max-concurrency=1",
+        "test/agent-pool/mcp-adapter-bundled.test.ts",
+        "test/agent-pool/mcp-public-shutdown-consumer.test.ts",
+        "test/agent-pool/mcp-engine-plan.test.ts",
+        "test/secure/mcp-keychain.test.ts",
+        "test/agent-control/provider-auth-stream-errors-102.test.ts",
+        "test/agent-pool/pi-102-sampling.test.ts",
+        "test/agent-pool/model-services.test.ts",
+        "test/budget/request-reservation-admission.test.ts",
+        "test/budget/shared-model-request-boundary.test.ts",
+        "test/addons/child-request-host.test.ts",
+        "test/addons/child-request-scope.test.ts",
+        "test/addons/child-request-accounting.test.ts"
+      ]
+    },
+    {
+      "name": "wrapper-bound-final",
+      "startedAt": "2026-10-05T09:29:15.992Z",
+      "finishedAt": "2026-10-05T09:29:27.762Z",
+      "before": {
+        "head": "d26e9b7858895d883f36c88d2e8ab2377643b662",
+        "tree": "9a6aa80fe53428953ecaecfcc7be9ca4b8f37a35",
+        "status": "M docs/design/earendil-agent-harness-integration-adr/README.md\n M docs/design/earendil-agent-harness-integration-adr/evidence/README.md\n?? docs/design/earendil-agent-harness-integration-adr/evidence/earendil-102-remaining-acceptance.md\n?? docs/development/receipts/pi-102-acceptance-checkpoint.json",
+        "runtimeDependencyTestScriptParity": true,
+        "adapterConfigSha256": "39ebd8c2bf0e66a83feea93b471fd48004013807484399289ab4d82ac64ff2cb",
+        "adapterRuntime": "dddfcf630508f42c169889c11dee94e69b746e7c"
+      },
+      "after": {
+        "head": "d26e9b7858895d883f36c88d2e8ab2377643b662",
+        "tree": "9a6aa80fe53428953ecaecfcc7be9ca4b8f37a35",
+        "status": "M docs/design/earendil-agent-harness-integration-adr/README.md\n M docs/design/earendil-agent-harness-integration-adr/evidence/README.md\n?? docs/design/earendil-agent-harness-integration-adr/evidence/earendil-102-remaining-acceptance.md\n?? docs/development/receipts/pi-102-acceptance-checkpoint.json",
+        "runtimeDependencyTestScriptParity": true,
+        "adapterConfigSha256": "39ebd8c2bf0e66a83feea93b471fd48004013807484399289ab4d82ac64ff2cb",
+        "adapterRuntime": "dddfcf630508f42c169889c11dee94e69b746e7c"
+      },
+      "exit": 0,
+      "logSha256": "806c743b8b371d4af9fa438c0822c4e91b180a846217aff7d4f8900c440c74da",
+      "command": [
+        "bun",
+        "--no-env-file",
+        "/workspace/pi-mcp-adapter/node_modules/vitest/vitest.mjs",
+        "run",
+        "--pool=forks",
+        "--maxWorkers=1",
+        "--minWorkers=1",
+        "__tests__/prompts.test.ts",
+        "__tests__/prompts-regressions.test.ts",
+        "__tests__/prompts-sdk-integration.test.ts",
+        "__tests__/resources-capability.test.ts",
+        "__tests__/resource-tool-materialization.test.ts",
+        "__tests__/output-schema-validation.test.ts",
+        "__tests__/mcp-output-guard.test.ts",
+        "__tests__/proxy-prefixed-policy.test.ts",
+        "__tests__/ui-server.test.ts",
+        "__tests__/ui-resource-handler.test.ts",
+        "__tests__/ui-session-messages.test.ts",
+        "__tests__/ui-integration.test.ts",
+        "__tests__/ui-tool-visibility.test.ts",
+        "__tests__/ui-streaming.test.ts",
+        "__tests__/oauth-handler.test.ts",
+        "__tests__/mcp-oauth-provider.test.ts",
+        "__tests__/sampling-handler.test.ts",
+        "__tests__/elicitation-handler.test.ts",
+        "__tests__/init-elicitation.test.ts",
+        "__tests__/elicitation-sdk-integration.test.ts",
+        "__tests__/server-manager-sampling.test.ts"
+      ],
+      "wrapperScope": "copy of installed adapter; test transformer TS5.9.3; root runtime config SHA equals frozen closure"
+    },
+    {
+      "name": "auth-bound-final",
+      "startedAt": "2026-10-05T09:29:27.783Z",
+      "finishedAt": "2026-10-05T09:30:09.225Z",
+      "before": {
+        "head": "d26e9b7858895d883f36c88d2e8ab2377643b662",
+        "tree": "9a6aa80fe53428953ecaecfcc7be9ca4b8f37a35",
+        "status": "M docs/design/earendil-agent-harness-integration-adr/README.md\n M docs/design/earendil-agent-harness-integration-adr/evidence/README.md\n?? docs/design/earendil-agent-harness-integration-adr/evidence/earendil-102-remaining-acceptance.md\n?? docs/development/receipts/pi-102-acceptance-checkpoint.json",
+        "runtimeDependencyTestScriptParity": true,
+        "adapterConfigSha256": "39ebd8c2bf0e66a83feea93b471fd48004013807484399289ab4d82ac64ff2cb",
+        "adapterRuntime": "dddfcf630508f42c169889c11dee94e69b746e7c"
+      },
+      "after": {
+        "head": "d26e9b7858895d883f36c88d2e8ab2377643b662",
+        "tree": "9a6aa80fe53428953ecaecfcc7be9ca4b8f37a35",
+        "status": "M docs/design/earendil-agent-harness-integration-adr/README.md\n M docs/design/earendil-agent-harness-integration-adr/evidence/README.md\n?? docs/design/earendil-agent-harness-integration-adr/evidence/earendil-102-remaining-acceptance.md\n?? docs/development/receipts/pi-102-acceptance-checkpoint.json",
+        "runtimeDependencyTestScriptParity": true,
+        "adapterConfigSha256": "39ebd8c2bf0e66a83feea93b471fd48004013807484399289ab4d82ac64ff2cb",
+        "adapterRuntime": "dddfcf630508f42c169889c11dee94e69b746e7c"
+      },
+      "exit": 0,
+      "logSha256": "c3b372eea43275bce7bff7c919883549b70e65ee5d6ed0056b70bfddacf87e79",
+      "command": [
+        "bun",
+        "--no-env-file",
+        "test",
+        "--max-concurrency=1",
+        "test/agent-control/provider-auth-lifecycle.test.ts",
+        "test/agent-control/provider-auth-cross-process.test.ts",
+        "test/agent-control/provider-external-auth-102.test.ts",
+        "test/agent-control/provider-auth-cli-102-receipt.test.ts",
+        "test/agent-control/provider-browser-matrix-102-receipt.test.ts",
+        "test/agent-control/anthropic-private-ui-102-receipt.test.ts",
+        "test/agent-control/provider-auth-package-102-admission.test.ts"
+      ]
+    }
+  ],
+  "executedWrapperSourceAttestation": {
+    "startedAt": "2026-10-05T09:33:14.073Z",
+    "finishedAt": "2026-10-05T09:33:25.921Z",
+    "before": {
+      "executedRoot": "/workspace/tmp/pi-102-final-audit/qualified-adapter",
+      "installedRoot": "/workspace/piclaw-worktrees/pi-102-final-audit/node_modules/pi-mcp-adapter",
+      "executedTreeSha256": "d34f69d76b596d5b3e2e539434201430c1d575fc51940f6ea89ba53a11238862",
+      "installedTreeSha256": "576b71ee63d7ce61bce47acee084bb629e17d32248456942b7b01557db9ff8d4",
+      "files": 283,
+      "runtimeAndUnmodifiedTestsParity": true,
+      "changedPaths": [
+        "mcp-callback-server.test.ts"
+      ],
+      "callbackFixtureSha256": "4f578e9d7f30071e751bf48470dbbb7223a1776566ace8866ed906c3e9d7d871",
+      "testTransformer": {
+        "typescript": "5.9.3",
+        "productionDependencyChanged": false
+      }
+    },
+    "after": {
+      "executedRoot": "/workspace/tmp/pi-102-final-audit/qualified-adapter",
+      "installedRoot": "/workspace/piclaw-worktrees/pi-102-final-audit/node_modules/pi-mcp-adapter",
+      "executedTreeSha256": "d34f69d76b596d5b3e2e539434201430c1d575fc51940f6ea89ba53a11238862",
+      "installedTreeSha256": "576b71ee63d7ce61bce47acee084bb629e17d32248456942b7b01557db9ff8d4",
+      "files": 283,
+      "runtimeAndUnmodifiedTestsParity": true,
+      "changedPaths": [
+        "mcp-callback-server.test.ts"
+      ],
+      "callbackFixtureSha256": "4f578e9d7f30071e751bf48470dbbb7223a1776566ace8866ed906c3e9d7d871",
+      "testTransformer": {
+        "typescript": "5.9.3",
+        "productionDependencyChanged": false
+      }
+    },
+    "exit": 0,
+    "pass": 316,
+    "logSha256": "2ce68df6f762c2a052cacd949defdabf52d37a0de0288ca028e3ada1ebb504f6"
+  },
+  "callbackFixture": {
+    "head": "0992e5daa51ef644cf674c38bd2ac11bbf807c76",
+    "merge": "c7f8c1ccb9270bb247cffa4350d47881669533c3",
+    "headTree": "2a82a7407c82eefaa18c053544335cfb3204fff0",
+    "mergeTree": "2a82a7407c82eefaa18c053544335cfb3204fff0",
+    "treeParity": true,
+    "changedPaths": [
+      "mcp-callback-server.test.ts"
+    ],
+    "typecheck": {
+      "exit": 0,
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "hostedChecks": [],
+    "productionSourceChanged": false,
+    "corePinChanged": false,
+    "overlayExplicit": true
+  },
+  "rollback": {
+    "status": "pass",
+    "scope": "disposable stopped-writer SQLite/session/config snapshot; synthetic keys; no core/addon process deployment, account rotation or live rollback",
+    "baseline": "62a71d139",
+    "candidate": "d26e9b785",
+    "snapshotBytesVerified": true,
+    "postCutoverWritesQuarantined": true,
+    "postCutoverWritesReplayed": false,
+    "automaticDowngradeOfNewState": false,
+    "realCredentials": false,
+    "rows": [
+      {
+        "phase": "seed",
+        "version": "1.0.1",
+        "schemaSha256": "0228bacd81736917276974f297b2c59883c11c0fa1c14d3f2daa0129763090d5",
+        "journalMode": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "networkAttempts": 0,
+        "probeRows": 1
+      },
+      {
+        "phase": "candidate",
+        "version": "1.0.2",
+        "schemaSha256": "0228bacd81736917276974f297b2c59883c11c0fa1c14d3f2daa0129763090d5",
+        "journalMode": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "networkAttempts": 0,
+        "probeRows": 2
+      },
+      {
+        "phase": "restored",
+        "version": "1.0.1",
+        "schemaSha256": "0228bacd81736917276974f297b2c59883c11c0fa1c14d3f2daa0129763090d5",
+        "journalMode": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "networkAttempts": 0,
+        "probeRows": 2
+      }
+    ]
+  },
+  "rollbackReceiptSha256": "78f7d4d0c549ab48fd37502dc451a96aac9fc12d83be4e77edb09fa7ebcdbb86",
+  "failures": [
+    {
+      "name": "stale-canonical-adapter",
+      "corePass": 99,
+      "coreFail": 1,
+      "qualifying": false
+    },
+    {
+      "name": "Bun-localhost-callback-fixture",
+      "pass": 141,
+      "fail": 3,
+      "qualifying": false
+    },
+    {
+      "name": "compilerAPIandBadTestPaths",
+      "qualifying": false
+    }
+  ],
+  "scope": {
+    "synthetic": true,
+    "productionDatabase": false,
+    "liveCredentials": false,
+    "providerSpend": false,
+    "installation": false,
+    "restart": false,
+    "nativeReplacement": false,
+    "durable": false,
+    "productionDelegateActivated": false
+  },
+  "remaining": [
+    "Public raw provider/auth settlement and account-generation contracts",
+    "Production Delegate/shared-boundary wiring and fresh parent/child credential-source agreement",
+    "Matching immutable core/add-on provenance, exposure/family policy, credential scan, sole owner and orphan-process cleanup",
+    "Live server/account approval and canary/soak",
+    "Operational matching core/addon/token rollback",
+    "Mixed/background/large-history/GC performance coverage"
+  ],
+  "checkpointQualification": {
+    "head": "b7d741c68dcd123ed764a3b95157204c55c9055e",
+    "tree": "8f9a3e0a4af4b22afb254b3105b6e4847b54dc84",
+    "finishedAt": "2026-10-05T09:46:09Z",
+    "pass": 6456,
+    "skip": 8,
+    "fail": 0,
+    "assertions": 42138,
+    "seconds": 641.6,
+    "features": {
+      "pass": 25,
+      "assertions": 246
+    },
+    "web": {
+      "pass": 9,
+      "assertions": 26
+    },
+    "logSha256": "41bda4f996ef7677c93fd0a84d3d55fa63daed9db78ecdc5dbde4a24b0184395",
+    "unchangedClean": true,
+    "scriptsExcludedFromFull": true,
+    "checkpointStructuralTests": {
+      "pass": 6,
+      "assertions": 217,
+      "separate": true
+    }
+  }
+}

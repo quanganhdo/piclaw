@@ -506,6 +506,11 @@
     background: color-mix(in srgb, var(--border-color) 75%, var(--text-secondary) 25%);
     transition: background-color var(--ui-transition-fast), transform var(--ui-transition-fast);
 }
+.compose-latest-handle { position: absolute; width: 48px; height: 20px; padding: 0; border: 0; background: transparent; color: var(--text-secondary); cursor: pointer; touch-action: manipulation; }
+.compose-latest-chevron { display: none; position: absolute; inset: -3px 0 auto; font-size: 20px; line-height: 20px; font-weight: bold; }
+.compose-resize-handle.away-from-latest .compose-latest-chevron { display: block; }
+.compose-resize-handle.has-new-messages::before { background: var(--accent-color); }
+.compose-resize-handle.has-new-messages .compose-latest-handle { color: var(--accent-color); }
 
 .compose-resize-handle:hover::before,
 .compose-resize-handle.dragging::before,
@@ -1056,9 +1061,7 @@
 }
 
 .compose-session-section-heading {
-    position: sticky;
-    top: 0;
-    z-index: 2;
+    position: relative;
     padding: 5px 8px 3px;
     border-bottom: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
     background: var(--bg-secondary);
@@ -1539,9 +1542,7 @@
 }
 
 .compose-model-catalogue-section-heading {
-    position: sticky;
-    top: 0;
-    z-index: 1;
+    position: relative;
     padding: 7px 10px 5px;
     background: color-mix(in srgb, var(--bg-secondary) 94%, transparent);
     backdrop-filter: blur(8px);

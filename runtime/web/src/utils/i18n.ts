@@ -129,6 +129,7 @@ type MessageKey =
   | 'settings.section.environment'
   | 'settings.section.providers'
   | 'settings.section.models'
+  | 'settings.section.mcp'
   | 'settings.section.theme'
   | 'settings.section.scheduled-tasks'
   | 'settings.section.quick-actions'
@@ -783,6 +784,7 @@ const EN: Record<MessageKey, string> = {
   'settings.section.environment': 'Environment',
   'settings.section.providers': 'Providers',
   'settings.section.models': 'Models',
+  'settings.section.mcp': 'MCP',
   'settings.section.theme': 'Appearance',
   'settings.section.scheduled-tasks': 'Scheduled Tasks',
   'settings.section.quick-actions': 'Quick Actions',
@@ -1431,6 +1433,7 @@ const ZH_CN: Partial<Record<MessageKey, string>> = {
   'settings.section.environment': '环境',
   'settings.section.providers': '提供商',
   'settings.section.models': '模型',
+  'settings.section.mcp': 'MCP',
   'settings.section.theme': '外观',
   'settings.section.scheduled-tasks': '计划任务',
   'settings.section.quick-actions': '快捷操作',
@@ -2079,6 +2082,7 @@ const JA: Partial<Record<MessageKey, string>> = {
   'settings.section.environment': '環境',
   'settings.section.providers': 'プロバイダー',
   'settings.section.models': 'モデル',
+  'settings.section.mcp': 'MCP',
   'settings.section.theme': '外観',
   'settings.section.scheduled-tasks': 'スケジュールタスク',
   'settings.section.quick-actions': 'クイックアクション',

@@ -1,0 +1,8 @@
+
+import {expect,test} from 'bun:test';
+import {readFileSync} from 'node:fs';import {resolve,join} from 'node:path';
+import {checkMcpPublic104,matchNegativeDiagnostics,missingSeams} from '../../../scripts/check-earendil-mcp-public-104.js';
+const root=resolve(import.meta.dir,'../../..'),receipts=join(root,'docs/design/earendil-agent-harness-integration-adr/evidence/receipts');
+test('exact 1.0.4 public MCP contract remains documented without requiring Native replacement',()=>{const measured=checkMcpPublic104(root);const receipt=JSON.parse(readFileSync(join(receipts,'earendil-104-mcp-public.json'),'utf8'));expect(measured.runtime).toBe(`Bun ${Bun.version}`);expect(measured).toEqual({...receipt.compile,runtime:measured.runtime});expect(measured.nativeParity).toBe('not_qualified');expect(measured.productionActivation).toBe(false);expect(measured.negative).toHaveLength(10);},70000);
+test('active lifecycle callers select fresh 1.0.4 fixtures',()=>{for(const [file,fixture] of [['provider-auth-lifecycle.test.ts','provider-auth-lifecycle'],['provider-auth-cross-process.test.ts','provider-auth-cross-process']]){const source=readFileSync(join(root,'runtime/test/agent-control',file),'utf8');expect(source).toContain(fixture+'-104.ts');expect(source).not.toContain(fixture+'-101.ts');}});
+test('missing or altered 1.0.4 public diagnostics reject',()=>{const text=missingSeams.map(row=>`negative.ts(1,1): error ${row.code}: synthetic ${row.symbol}`).join('\n');expect(matchNegativeDiagnostics(text)).toHaveLength(10);expect(()=>matchNegativeDiagnostics(text.split('\n').slice(1).join('\n'))).toThrow('exactly 10');expect(()=>matchNegativeDiagnostics(text.replace('TS2740','TS2307'))).toThrow();});

@@ -1,0 +1,911 @@
+{
+  "recordedAt": "2026-10-05T14:40:56.670Z",
+  "target": {
+    "pi": "1.0.3",
+    "bun": "1.4.2",
+    "base": "6ceaeaed19c3ca0f5589cc616774c529b631c689",
+    "fixtureAndCandidateHead": "850790917fb0139be35e4da60e4a41766e7e3b3b"
+  },
+  "disposition": "scoped correctness and measurements; whole-plan acceptance incomplete",
+  "workloads": [
+    {
+      "fixture": "pi103-durable-scheduler-profile",
+      "size": 0,
+      "plainRuns": 3,
+      "cpuRuns": 1,
+      "wallMs": {
+        "min": 889.6095959999998,
+        "median": 899.849763,
+        "max": 1120.4586530000001
+      },
+      "eventLoopMaxMs": {
+        "min": 209.185736,
+        "median": 221.992913,
+        "max": 298.933173
+      },
+      "scope": "Actual startSchedulerLoop initial poll plus repeat pollScheduledRunsOnce + disk EF-S07 stores + AgentQueue lane/dedup + source bind/complete/abandon/recurrence. Agent execution/restore and outbound sinks are injected; no inference, real SDK history restoration, live scheduler or real delivery. CPU excludes seed; external whole-child CPU includes it.",
+      "sourceHeads": [
+        "23f74e540f955fc8b00622eb51215df7aa96edaa"
+      ],
+      "logHashes": [
+        {
+          "mode": "plain",
+          "run": 0,
+          "sha256": "f15e8b2e939c876183b4d1e13faa15e17e2ee6cfc70b2dc42f46dba8750e762d",
+          "exit": 0
+        },
+        {
+          "mode": "plain",
+          "run": 1,
+          "sha256": "00879551b2373e19b474eb985d06816bb28532d251f303b1d6782ae17eec9c02",
+          "exit": 0
+        },
+        {
+          "mode": "plain",
+          "run": 2,
+          "sha256": "8023c9c2c46fb7679d09b5a481c9ce8f3c8aacfd872e7320d43f3b0fa7b4f251",
+          "exit": 0
+        },
+        {
+          "mode": "cpu",
+          "run": 0,
+          "sha256": "719b822fb24e0039918a64ce7dd8985ca884113917016347534ee50956a7fd60",
+          "exit": 0
+        }
+      ]
+    },
+    {
+      "fixture": "pi103-family-write-profile",
+      "size": 0,
+      "plainRuns": 3,
+      "cpuRuns": 1,
+      "wallMs": {
+        "min": 292.5355770000001,
+        "median": 316.18978200000004,
+        "max": 316.19066999999995
+      },
+      "eventLoopMaxMs": {
+        "min": 64.748757,
+        "median": 70.56547,
+        "max": 100.728415
+      },
+      "scope": "Direct DB/service account/session setup, then actual owned loopback RequestRouter family mutation/CSRF/browserpins/admission/idempotency/immutable owner SQL/queue writes. Sameprocessrequests atconcurrency4; SQLite serializes transactions. Wake/broadcast are sinks, no Agent/dequeue/delivery/provider; optional crossprocess IMMEDIATE writer holds500ms then commits release or targetlogin revocation. Initial queue/authority counts refer to pre-contention phase; no live accounts. Wall/CPU includes intentional sleeps; replaced global fetch counts only calls through that wrapper, not universal network isolation.",
+      "sourceHeads": [
+        "23f74e540f955fc8b00622eb51215df7aa96edaa",
+        "850790917fb0139be35e4da60e4a41766e7e3b3b"
+      ],
+      "logHashes": [
+        {
+          "mode": "plain",
+          "run": 0,
+          "sha256": "2a92b7febd3e0c4019500e7f7a34441491eaed9b6dd8d0554f79bad8570cceda",
+          "exit": 0
+        },
+        {
+          "mode": "plain",
+          "run": 1,
+          "sha256": "92358c2df3bafa03069200ffdb7978140f02ebe205fada5ac59c197856d7eddb",
+          "exit": 0
+        },
+        {
+          "mode": "plain",
+          "run": 2,
+          "sha256": "96214f616027f0cbe195c9e8554fa69a08beb73f96cb3b0c17268f5a8052b9ca",
+          "exit": 0
+        },
+        {
+          "mode": "cpu",
+          "run": 0,
+          "sha256": "9414f845447641b5ce3e958aa10098553a2dbf2a5577b979ecc802b01723f0ab",
+          "exit": 0
+        }
+      ]
+    },
+    {
+      "fixture": "pi103-history-retention-profile",
+      "size": 2000,
+      "plainRuns": 3,
+      "cpuRuns": 1,
+      "wallMs": {
+        "min": 405.245574,
+        "median": 412.333554,
+        "max": 435.42706100000004
+      },
+      "eventLoopMaxMs": {
+        "min": 32.426825,
+        "median": 32.787724,
+        "max": 40.57961
+      },
+      "naturalFinalization": [
+        {
+          "count": 49,
+          "registered": 60,
+          "retainedControls": 10,
+          "memoryBefore": {
+            "rss": 124620800,
+            "heapTotal": 21983232,
+            "heapUsed": 22424116,
+            "external": 12757860,
+            "arrayBuffers": 304
+          },
+          "memoryAfter": {
+            "rss": 314363904,
+            "heapTotal": 28045312,
+            "heapUsed": 126342080,
+            "external": 109982896,
+            "arrayBuffers": 50533584
+          },
+          "forcedDiagnostic": {
+            "wallMs": 26.31100499999991,
+            "memoryBefore": {
+              "rss": 309137408,
+              "heapTotal": 20193280,
+              "heapUsed": 126342080,
+              "external": 109982896,
+              "arrayBuffers": 50533584
+            },
+            "memoryAfter": {
+              "rss": 308076544,
+              "heapTotal": 13622272,
+              "heapUsed": 13555096,
+              "external": 4025448,
+              "arrayBuffers": 304
+            },
+            "collectedAfterExplicitGc": 60,
+            "heapAfterExplicitGc": {
+              "heapSize": 13555096,
+              "objectCount": 132629
+            }
+          }
+        },
+        {
+          "count": 48,
+          "registered": 60,
+          "retainedControls": 10,
+          "memoryBefore": {
+            "rss": 124297216,
+            "heapTotal": 21438464,
+            "heapUsed": 22389597,
+            "external": 12755565,
+            "arrayBuffers": 304
+          },
+          "memoryAfter": {
+            "rss": 317538304,
+            "heapTotal": 27650048,
+            "heapUsed": 130488378,
+            "external": 113375226,
+            "arrayBuffers": 49480720
+          },
+          "forcedDiagnostic": {
+            "wallMs": 27.837128000000007,
+            "memoryBefore": {
+              "rss": 314421248,
+              "heapTotal": 20630528,
+              "heapUsed": 130488378,
+              "external": 113375226,
+              "arrayBuffers": 49480720
+            },
+            "memoryAfter": {
+              "rss": 313491456,
+              "heapTotal": 13387776,
+              "heapUsed": 13554975,
+              "external": 4026447,
+              "arrayBuffers": 304
+            },
+            "collectedAfterExplicitGc": 60,
+            "heapAfterExplicitGc": {
+              "heapSize": 13554975,
+              "objectCount": 132512
+            }
+          }
+        },
+        {
+          "count": 50,
+          "registered": 60,
+          "retainedControls": 10,
+          "memoryBefore": {
+            "rss": 126369792,
+            "heapTotal": 22114304,
+            "heapUsed": 17958797,
+            "external": 8254173,
+            "arrayBuffers": 304
+          },
+          "memoryAfter": {
+            "rss": 286568448,
+            "heapTotal": 26555392,
+            "heapUsed": 121092976,
+            "external": 105819728,
+            "arrayBuffers": 53692176
+          },
+          "forcedDiagnostic": {
+            "wallMs": 25.47229200000004,
+            "memoryBefore": {
+              "rss": 284655616,
+              "heapTotal": 19263488,
+              "heapUsed": 121092976,
+              "external": 105819728,
+              "arrayBuffers": 53692176
+            },
+            "memoryAfter": {
+              "rss": 283717632,
+              "heapTotal": 13577216,
+              "heapUsed": 13558402,
+              "external": 4023762,
+              "arrayBuffers": 304
+            },
+            "collectedAfterExplicitGc": 60,
+            "heapAfterExplicitGc": {
+              "heapSize": 13558402,
+              "objectCount": 132843
+            }
+          }
+        }
+      ],
+      "scope": "Owned synthetic public SessionManager open/context workload. No explicit GC in measured loop; natural finalizers and memory samples establish reclamation observations only. Finalization timing is nondeterministic, event-loop stalls cannot be uniquely attributed to GC; in-report measured CPU excludes setup and forced diagnostics; an external whole-child CPU profile includes both. Memory samples are process-wide, not manager-specific. Fixture byte size varies with the synthetic workspace path in the header. No leak absence, automatic GC per-pause guarantee, real prompts/model/provider/live state.",
+      "sourceHeads": [
+        "850790917fb0139be35e4da60e4a41766e7e3b3b"
+      ],
+      "logHashes": [
+        {
+          "mode": "plain",
+          "run": 0,
+          "sha256": "b96d1e9ae3f029f1ae66a5845c08f1e5ec5e2c38f6e2cb54d1a6b710ad65d7c3",
+          "exit": 0
+        },
+        {
+          "mode": "plain",
+          "run": 1,
+          "sha256": "0041b1b2bd3efd874e76efdeb0da9994c20e22de997969a6764d87245625d64e",
+          "exit": 0
+        },
+        {
+          "mode": "plain",
+          "run": 2,
+          "sha256": "63c487772b88b4b4d56385309ecad5a2cc1843433a74908fcfc00a18200bf0c9",
+          "exit": 0
+        },
+        {
+          "mode": "cpu",
+          "run": 0,
+          "sha256": "650899f1c0cb23262f5c5da54d146ae9341c29ce5307758077946575682c586a",
+          "exit": 0
+        }
+      ]
+    },
+    {
+      "fixture": "pi103-history-retention-profile",
+      "size": 5000,
+      "plainRuns": 3,
+      "cpuRuns": 1,
+      "wallMs": {
+        "min": 750.1189420000001,
+        "median": 827.277732,
+        "max": 828.817316
+      },
+      "eventLoopMaxMs": {
+        "min": 78.811041,
+        "median": 80.075977,
+        "max": 89.832027
+      },
+      "naturalFinalization": [
+        {
+          "count": 50,
+          "registered": 60,
+          "retainedControls": 10,
+          "memoryBefore": {
+            "rss": 147824640,
+            "heapTotal": 21406720,
+            "heapUsed": 30181804,
+            "external": 20538700,
+            "arrayBuffers": 304
+          },
+          "memoryAfter": {
+            "rss": 560467968,
+            "heapTotal": 35286016,
+            "heapUsed": 193977390,
+            "external": 168677374,
+            "arrayBuffers": 56846576
+          },
+          "forcedDiagnostic": {
+            "wallMs": 28.88688000000002,
+            "memoryBefore": {
+              "rss": 551104512,
+              "heapTotal": 35695616,
+              "heapUsed": 193977630,
+              "external": 168677374,
+              "arrayBuffers": 56846576
+            },
+            "memoryAfter": {
+              "rss": 91000832,
+              "heapTotal": 13395968,
+              "heapUsed": 13547190,
+              "external": 4022006,
+              "arrayBuffers": 304
+            },
+            "collectedAfterExplicitGc": 60,
+            "heapAfterExplicitGc": {
+              "heapSize": 13547190,
+              "objectCount": 132711
+            }
+          }
+        },
+        {
+          "count": 48,
+          "registered": 60,
+          "retainedControls": 10,
+          "memoryBefore": {
+            "rss": 149975040,
+            "heapTotal": 22305792,
+            "heapUsed": 30196448,
+            "external": 20544672,
+            "arrayBuffers": 304
+          },
+          "memoryAfter": {
+            "rss": 806645760,
+            "heapTotal": 43344896,
+            "heapUsed": 173789694,
+            "external": 145331550,
+            "arrayBuffers": 11577616
+          },
+          "forcedDiagnostic": {
+            "wallMs": 28.754572000000053,
+            "memoryBefore": {
+              "rss": 782450688,
+              "heapTotal": 28647424,
+              "heapUsed": 173789694,
+              "external": 145331550,
+              "arrayBuffers": 11577616
+            },
+            "memoryAfter": {
+              "rss": 781647872,
+              "heapTotal": 13704192,
+              "heapUsed": 13564934,
+              "external": 4031814,
+              "arrayBuffers": 304
+            },
+            "collectedAfterExplicitGc": 60,
+            "heapAfterExplicitGc": {
+              "heapSize": 13564934,
+              "objectCount": 132802
+            }
+          }
+        },
+        {
+          "count": 49,
+          "registered": 60,
+          "retainedControls": 10,
+          "memoryBefore": {
+            "rss": 146485248,
+            "heapTotal": 22297600,
+            "heapUsed": 24229505,
+            "external": 14590865,
+            "arrayBuffers": 304
+          },
+          "memoryAfter": {
+            "rss": 764461056,
+            "heapTotal": 42812416,
+            "heapUsed": 155412891,
+            "external": 128559899,
+            "arrayBuffers": 6313296
+          },
+          "forcedDiagnostic": {
+            "wallMs": 27.392119999999977,
+            "memoryBefore": {
+              "rss": 750825472,
+              "heapTotal": 27768832,
+              "heapUsed": 155412891,
+              "external": 128559899,
+              "arrayBuffers": 6313296
+            },
+            "memoryAfter": {
+              "rss": 749735936,
+              "heapTotal": 13726720,
+              "heapUsed": 13549235,
+              "external": 4029923,
+              "arrayBuffers": 304
+            },
+            "collectedAfterExplicitGc": 60,
+            "heapAfterExplicitGc": {
+              "heapSize": 13549235,
+              "objectCount": 132489
+            }
+          }
+        }
+      ],
+      "scope": "Owned synthetic public SessionManager open/context workload. No explicit GC in measured loop; natural finalizers and memory samples establish reclamation observations only. Finalization timing is nondeterministic, event-loop stalls cannot be uniquely attributed to GC; in-report measured CPU excludes setup and forced diagnostics; an external whole-child CPU profile includes both. Memory samples are process-wide, not manager-specific. Fixture byte size varies with the synthetic workspace path in the header. No leak absence, automatic GC per-pause guarantee, real prompts/model/provider/live state.",
+      "sourceHeads": [
+        "850790917fb0139be35e4da60e4a41766e7e3b3b"
+      ],
+      "logHashes": [
+        {
+          "mode": "plain",
+          "run": 0,
+          "sha256": "d9cc052115ff4db92b12a1c2c57e2bebd5de9df18c623899922c5f8a2f0e4e7e",
+          "exit": 0
+        },
+        {
+          "mode": "plain",
+          "run": 1,
+          "sha256": "aa9fbe20f1cc446a05433326a726db7f3940b3555b5ecebc6c15d4e2b3a587c6",
+          "exit": 0
+        },
+        {
+          "mode": "plain",
+          "run": 2,
+          "sha256": "1dde276b03874508a98d6b83e5d975a7dcab982baa77340d8b6d592c035066e2",
+          "exit": 0
+        },
+        {
+          "mode": "cpu",
+          "run": 0,
+          "sha256": "b4aca7d42760866db2a7e9d18856478d4aafdd2ded388d7170c4248a87b4d553",
+          "exit": 0
+        }
+      ]
+    }
+  ],
+  "cpu": [
+    {
+      "fixture": "pi103-durable-scheduler-profile",
+      "size": 0,
+      "wholeChildIncludesSetupAndDiagnostic": true,
+      "samples": 365,
+      "topSelfSamples": [
+        {
+          "frame": "run@native",
+          "samples": 127
+        },
+        {
+          "frame": "(native)@native",
+          "samples": 84
+        },
+        {
+          "frame": "anonymous@native",
+          "samples": 66
+        },
+        {
+          "frame": "DateTimeFormat@native",
+          "samples": 8
+        },
+        {
+          "frame": "prepare@native",
+          "samples": 6
+        },
+        {
+          "frame": "get@native",
+          "samples": 5
+        },
+        {
+          "frame": "executeScheduledTask@runtime/src/task-scheduler.ts",
+          "samples": 5
+        },
+        {
+          "frame": "register@client/dist/src-D_zzAWoS.mjs",
+          "samples": 3
+        },
+        {
+          "frame": "values@native",
+          "samples": 2
+        },
+        {
+          "frame": "RegExp@native",
+          "samples": 2
+        },
+        {
+          "frame": "(native)@v4/classic/schemas.js",
+          "samples": 2
+        },
+        {
+          "frame": "(native)@v4/core/schemas.js",
+          "samples": 2
+        }
+      ],
+      "sha256": "fc3f14c3997c45189f914be73684d7f4a8c7ef3027e51951fb1c456748f894c8"
+    },
+    {
+      "fixture": "pi103-family-write-profile",
+      "size": 0,
+      "wholeChildIncludesSetupAndDiagnostic": true,
+      "samples": 182,
+      "topSelfSamples": [
+        {
+          "frame": "run@native",
+          "samples": 69
+        },
+        {
+          "frame": "anonymous@native",
+          "samples": 44
+        },
+        {
+          "frame": "get@native",
+          "samples": 7
+        },
+        {
+          "frame": "prepare@native",
+          "samples": 5
+        },
+        {
+          "frame": "internal:perf_hooks/monitorEventLoopDelay@internal:perf_hooks/monitorEventLoopDelay",
+          "samples": 3
+        },
+        {
+          "frame": "readFileSync@native",
+          "samples": 3
+        },
+        {
+          "frame": "handleFamilyRequest@web/http/family-authorisation.ts",
+          "samples": 2
+        },
+        {
+          "frame": "createConvenienceMethod@node:zlib",
+          "samples": 1
+        },
+        {
+          "frame": "reduce@native",
+          "samples": 1
+        },
+        {
+          "frame": "patch@node_modules/graceful-fs/polyfills.js",
+          "samples": 1
+        },
+        {
+          "frame": "(native)@dist/nodes/YAMLMap.js",
+          "samples": 1
+        },
+        {
+          "frame": "@lazy@native",
+          "samples": 1
+        }
+      ],
+      "sha256": "d2d0e8d094a382c6b2eadbe31c142e8471016f491bae5f4946ac40768f623e83"
+    },
+    {
+      "fixture": "pi103-history-retention-profile",
+      "size": 2000,
+      "wholeChildIncludesSetupAndDiagnostic": true,
+      "samples": 344,
+      "topSelfSamples": [
+        {
+          "frame": "parse@native",
+          "samples": 104
+        },
+        {
+          "frame": "write@native",
+          "samples": 44
+        },
+        {
+          "frame": "anonymous@native",
+          "samples": 42
+        },
+        {
+          "frame": "readSync@native",
+          "samples": 26
+        },
+        {
+          "frame": "loadEntriesFromFile@dist/core/session-manager.js",
+          "samples": 25
+        },
+        {
+          "frame": "heapStats@native",
+          "samples": 11
+        },
+        {
+          "frame": "stringify@native",
+          "samples": 10
+        },
+        {
+          "frame": "_buildIndex@dist/core/session-manager.js",
+          "samples": 5
+        },
+        {
+          "frame": "gc@native",
+          "samples": 5
+        },
+        {
+          "frame": "buildSessionPath@dist/core/session-manager.js",
+          "samples": 4
+        },
+        {
+          "frame": "RegExp@native",
+          "samples": 3
+        },
+        {
+          "frame": "writeFileSync@native",
+          "samples": 3
+        }
+      ],
+      "sha256": "19fc04d6291158afcaeb471769442289be1f12ff2bb8ee74675345b57e1ed3de"
+    },
+    {
+      "fixture": "pi103-history-retention-profile",
+      "size": 5000,
+      "wholeChildIncludesSetupAndDiagnostic": true,
+      "samples": 668,
+      "topSelfSamples": [
+        {
+          "frame": "parse@native",
+          "samples": 231
+        },
+        {
+          "frame": "loadEntriesFromFile@dist/core/session-manager.js",
+          "samples": 97
+        },
+        {
+          "frame": "write@native",
+          "samples": 93
+        },
+        {
+          "frame": "readSync@native",
+          "samples": 64
+        },
+        {
+          "frame": "anonymous@native",
+          "samples": 49
+        },
+        {
+          "frame": "buildSessionPath@dist/core/session-manager.js",
+          "samples": 15
+        },
+        {
+          "frame": "_buildIndex@dist/core/session-manager.js",
+          "samples": 14
+        },
+        {
+          "frame": "stringify@native",
+          "samples": 9
+        },
+        {
+          "frame": "filter@native",
+          "samples": 8
+        },
+        {
+          "frame": "heapStats@native",
+          "samples": 7
+        },
+        {
+          "frame": "flatIntoArray@native",
+          "samples": 6
+        },
+        {
+          "frame": "gc@native",
+          "samples": 6
+        }
+      ],
+      "sha256": "fff6ca928b1fa37454fb22b0bc8e1039d3e09a140c8948dde6bc8f61431ddc0c"
+    }
+  ],
+  "comparisons": [
+    {
+      "mode": "release",
+      "revision": "baseline",
+      "runs": 3,
+      "contentionBatchMs": {
+        "min": 545.859895,
+        "median": 556.5997120000002,
+        "max": 557.2997660000001
+      },
+      "unrelatedReadMs": {
+        "min": 545.840727,
+        "median": 556.5662570000002,
+        "max": 557.276689
+      },
+      "timerMs": {
+        "min": 543.6352730000001,
+        "median": 553.2427670000002,
+        "max": 555.03712
+      },
+      "eventLoopMaxMs": {
+        "min": 542.632927,
+        "median": 552.219686,
+        "max": 554.16436
+      },
+      "responseStatus": 201,
+      "rowsAfter": 17,
+      "noRevokedAdmission": false,
+      "logHashes": [
+        "b39384b264d90eb3824e95ec34065fe0440c04599b273ed742383d11bec5c3e3",
+        "23d014281372018b81f2a3c07b7928fe4c14c95327ca266b7f01221156f9950d",
+        "5ddead671ea1898c882e7f3087ddffdb8c161641616e32d6e63703399cbb5431"
+      ]
+    },
+    {
+      "mode": "release",
+      "revision": "candidate",
+      "runs": 3,
+      "contentionBatchMs": {
+        "min": 519.8193259999998,
+        "median": 521.377508,
+        "max": 568.6622350000002
+      },
+      "unrelatedReadMs": {
+        "min": 3.6121120000000246,
+        "median": 3.78397300000006,
+        "max": 4.312447999999904
+      },
+      "timerMs": {
+        "min": 10.235895000000028,
+        "median": 10.293942000000015,
+        "max": 10.358766999999943
+      },
+      "eventLoopMaxMs": {
+        "min": 11.07004,
+        "median": 12.95182,
+        "max": 59.772241
+      },
+      "responseStatus": 201,
+      "rowsAfter": 17,
+      "noRevokedAdmission": false,
+      "logHashes": [
+        "69230b2e149a668c580852c1e0e78d5c8998a2696bf48611c9d3d56e6d3c91bf",
+        "8f09de274d953e00178c0fe7ae015ed39f0cc592b05494b151dc02f425fb1d25",
+        "ae0dcc52e395d512b616178beb28983c411868718f83d7100d8606ffb735964d"
+      ]
+    },
+    {
+      "mode": "revoke",
+      "revision": "baseline",
+      "runs": 3,
+      "contentionBatchMs": {
+        "min": 535.3370730000001,
+        "median": 536.0370399999999,
+        "max": 536.070082
+      },
+      "unrelatedReadMs": {
+        "min": 535.2376570000001,
+        "median": 536.012915,
+        "max": 536.0424489999998
+      },
+      "timerMs": {
+        "min": 532.3187090000001,
+        "median": 532.4882299999999,
+        "max": 535.1794120000002
+      },
+      "eventLoopMaxMs": {
+        "min": 531.298813,
+        "median": 531.471206,
+        "max": 534.193944
+      },
+      "responseStatus": 403,
+      "rowsAfter": 16,
+      "noRevokedAdmission": true,
+      "logHashes": [
+        "d2748a1f765d17b1816fad759a9e9f91741cab1451550aa82c57820c260a0c9c",
+        "70a3923145d45212e3cfdfee2ab4e785d42ac89457c30d61e055f66870a086d3",
+        "fbec8027fe4c20bb5e90c8ebbe6e30d48ac041a411911102cbdf1c88f9f60c2b"
+      ]
+    },
+    {
+      "mode": "revoke",
+      "revision": "candidate",
+      "runs": 3,
+      "contentionBatchMs": {
+        "min": 531.108005,
+        "median": 556.9458259999999,
+        "max": 736.0922269999999
+      },
+      "unrelatedReadMs": {
+        "min": 2.848310999999967,
+        "median": 2.9119409999998425,
+        "max": 3.9223279999998795
+      },
+      "timerMs": {
+        "min": 10.211798999999928,
+        "median": 10.295543999999836,
+        "max": 10.365455999999995
+      },
+      "eventLoopMaxMs": {
+        "min": 0.915666,
+        "median": 1.75539,
+        "max": 1.760263
+      },
+      "responseStatus": 403,
+      "rowsAfter": 16,
+      "noRevokedAdmission": true,
+      "logHashes": [
+        "8bf1058598dced0df4def842f18c9b16826d35d7f2313c08b74dc1dc550ab901",
+        "87844f666c2015f085d386118d209a6dc8811fc53487c6fc6ab3349d1f705b78",
+        "8eb3cb88bf3ac68ec028de8b460d6f68894bc9ee548e8d4de5c576576b75d9be"
+      ]
+    }
+  ],
+  "comparisonBinding": {
+    "baselineHead": "71eecdb586e90e66eaf9c62c50256a144dd7920a",
+    "candidateRuntimeHead": "23f74e540f955fc8b00622eb51215df7aa96edaa",
+    "executionTimeSourceCaptured": false,
+    "statedHeadsAreHistoricalContextOnly": true,
+    "currentBaselineRuntimeParityVerified": true,
+    "fixtureTelemetryLaterOnlyEintrRetryNotTimedWork": true,
+    "baseFixtureSha256": "c2793027befccf6608fc2ea873b253dcb262102fc0f0317b47e62ae01f24e771"
+  },
+  "sourceBinding": {
+    "before": {
+      "head": "850790917fb0139be35e4da60e4a41766e7e3b3b",
+      "tree": "5896394a2bb7c8eddaa3b67f4d91b8a65143c869",
+      "status": "",
+      "runtimeDeltaSha256": "160876f2d0cfc9c8fd8090c274d0cb0e89ba09dbd8a5ba5417417401e12b0446",
+      "dependencyParity": true
+    },
+    "after": {
+      "head": "850790917fb0139be35e4da60e4a41766e7e3b3b",
+      "tree": "5896394a2bb7c8eddaa3b67f4d91b8a65143c869",
+      "status": "",
+      "runtimeDeltaSha256": "160876f2d0cfc9c8fd8090c274d0cb0e89ba09dbd8a5ba5417417401e12b0446",
+      "dependencyParity": true
+    }
+  },
+  "correctness": {
+    "pass": 75,
+    "fail": 0,
+    "assertions": 763,
+    "files": 7,
+    "executionTimeSourceCaptured": false,
+    "logSha256": "a28a73827e388bb39d5f59b47db0d8640db462ea1cc8a74be60396155586d07b"
+  },
+  "runtimeChange": {
+    "paths": [
+      "runtime/src/channels/web/messaging/family-message-authority.ts",
+      "runtime/src/channels/web/http/family-message-ingress.ts"
+    ],
+    "asyncRetryMs": 5000,
+    "durabilityChanged": false,
+    "publicationBeforeCommit": false,
+    "schemaChanged": false,
+    "revalidates": [
+      "database handle/file inode/roots",
+      "family access mode",
+      "live actor/login",
+      "captured target root and branch incarnation",
+      "captured immutable request"
+    ],
+    "abortRollback": true
+  },
+  "limitations": [
+    "Natural FinalizationRegistry counts are nondeterministic; process-wide memory and CPU/event-loop samples cannot identify every GC pause or prove no leak. Explicit GC is a separate diagnostic only.",
+    "Scheduler claim/queue/store/source/recurrence are real; agent, restoration and outbound are synthetic sinks. Fixture FULL/FK settings do not establish scheduler private-connection settings.",
+    "Family mutation requests are concurrent in one loop; SQLite serializes transactions. Cross-process writer release/revocation modes are bounded synthetic workloads, not live-account or multi-host qualification.",
+    "Async admission avoids blocking lock waits; durable commit and scheduler transaction stalls persist. ACK remains after durable commit and no tail latency guarantee is established.",
+    "Global-fetch guards are not a universal OS network sandbox.",
+    "Pre-existing postcommit wake/broadcast exceptions can return an error despite a durable row; this correction does not qualify all publication/failure handling.",
+    "Public Delegate raw provider/auth settlement and account-generation contracts remain unavailable.",
+    "Deployment/restart/live account/server canary/soak/token rollback require separate permission."
+  ],
+  "failures": [
+    {
+      "kind": "initial queue invocation checked before deferred start",
+      "qualifying": false,
+      "logSha256": "cfe7511dc526c42127b4e8c86b35f49810cfdab0d76dae4f4bb841883e8dcbb7"
+    },
+    {
+      "kind": "family setup missing synthetic cookie",
+      "qualifying": false,
+      "logSha256": "38707586233e2180ba51539ec98270cff817a93274c52a5c675990525126f102"
+    },
+    {
+      "kind": "review proof gaps",
+      "qualifying": false,
+      "corrected": true,
+      "transcriptOnly": true
+    },
+    {
+      "kind": "CPUprofile process.memoryUsage EINTR",
+      "qualifying": false,
+      "logSha256": "d6c07f3c90d6055850b94be00fe0edac74b3c1fad56c9a37fd952274779c45c3",
+      "telemetryRetry": "at most2 retries for errno4 only; unrelated errors propagate"
+    },
+    {
+      "kind": "broader delegate review timeout after90s",
+      "qualifying": false,
+      "transcriptOnly": true
+    }
+  ],
+  "ledgerScope": "Successful workload rows only; failures above retain available hashes or explicit transcript-only provenance. This is not a complete failure ledger.",
+  "scope": {
+    "productionDatabase": false,
+    "liveCredentials": false,
+    "inference": false,
+    "restart": false,
+    "deployment": false,
+    "wholeSystemPerformanceAcceptance": false,
+    "productionDelegateActivated": false
+  }
+}

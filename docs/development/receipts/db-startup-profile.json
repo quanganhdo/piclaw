@@ -1,0 +1,3062 @@
+{
+  "version": 1,
+  "date": "2026-10-03",
+  "host": "Smith Linux LXC",
+  "runtime": "Bun 1.4.2",
+  "base": "7e9e5071c9f4d41623c8b4ca444e8ac3faf0e405",
+  "connectionSha256": {
+    "baseline": "a012a210014d3bd5199c0876ec141d96e721a268e7c9a5b9be0eda733a8fa22d",
+    "candidate": "403feefb27dc6b603b2753a38ccaf25cc30056cb96cf4ad448676f5f04f6b65b"
+  },
+  "journalHelperSha256": "e12350645fb034b2abe4525b27401860c9393139f196a177fbee5cc22b9ce2bc",
+  "summaries": {
+    "baseline": {
+      "plain": {
+        "fresh": {
+          "medianMs": 3906.4226000000003,
+          "minMs": 3609.934546,
+          "maxMs": 4202.85861,
+          "medianCpuMs": 117.247
+        },
+        "reuse": {
+          "medianMs": 4.074445000000196,
+          "minMs": 2.4160750000000917,
+          "maxMs": 4.510221000000001,
+          "medianCpuMs": 4.991
+        },
+        "reopen": {
+          "medianMs": 4.100994999999784,
+          "minMs": 3.8844239999998535,
+          "maxMs": 6.685120999999981,
+          "medianCpuMs": 4.795
+        }
+      },
+      "instrument": {
+        "fresh": {
+          "medianMs": 3769.099874,
+          "minMs": 3230.950969,
+          "maxMs": 4527.183467,
+          "medianCpuMs": 118.132
+        },
+        "reuse": {
+          "medianMs": 2.74962400000004,
+          "minMs": 2.483412000000044,
+          "maxMs": 4.655036999999538,
+          "medianCpuMs": 4.623
+        },
+        "reopen": {
+          "medianMs": 3.81407500000023,
+          "minMs": 3.7948989999999867,
+          "maxMs": 6.545748999999887,
+          "medianCpuMs": 4.635
+        }
+      },
+      "cpu": {
+        "fresh": {
+          "medianMs": 3749.5605680000003,
+          "minMs": 3140.049227,
+          "maxMs": 4376.538705,
+          "medianCpuMs": 142.029
+        },
+        "reuse": {
+          "medianMs": 2.5755350000004,
+          "minMs": 2.530033000000003,
+          "maxMs": 4.833123000000342,
+          "medianCpuMs": 4.352
+        },
+        "reopen": {
+          "medianMs": 4.748623999999836,
+          "minMs": 4.483068000000458,
+          "maxMs": 5.216407999999774,
+          "medianCpuMs": 5.375
+        }
+      }
+    },
+    "candidate": {
+      "plain": {
+        "fresh": {
+          "medianMs": 2851.017257,
+          "minMs": 2442.515503,
+          "maxMs": 2891.572825,
+          "medianCpuMs": 94.905
+        },
+        "reuse": {
+          "medianMs": 2.4718520000001263,
+          "minMs": 2.3115670000001955,
+          "maxMs": 2.583223999999973,
+          "medianCpuMs": 3.002
+        },
+        "reopen": {
+          "medianMs": 3.8008959999997387,
+          "minMs": 3.769209000000046,
+          "maxMs": 3.8246829999998226,
+          "medianCpuMs": 4.583
+        }
+      },
+      "instrument": {
+        "fresh": {
+          "medianMs": 2801.002452,
+          "minMs": 2641.4274649999998,
+          "maxMs": 2905.5277920000003,
+          "medianCpuMs": 81.833
+        },
+        "reuse": {
+          "medianMs": 2.554081000000224,
+          "minMs": 2.4606730000000425,
+          "maxMs": 2.5704209999998966,
+          "medianCpuMs": 4.133
+        },
+        "reopen": {
+          "medianMs": 3.9100579999999354,
+          "minMs": 3.8505079999999907,
+          "maxMs": 4.073940000000221,
+          "medianCpuMs": 4.651
+        }
+      },
+      "cpu": {
+        "fresh": {
+          "medianMs": 2714.550817,
+          "minMs": 2477.937201,
+          "maxMs": 2910.230032,
+          "medianCpuMs": 110.644
+        },
+        "reuse": {
+          "medianMs": 4.197352000000137,
+          "minMs": 2.705891000000065,
+          "maxMs": 4.825623999999607,
+          "medianCpuMs": 5.138
+        },
+        "reopen": {
+          "medianMs": 4.798231000000214,
+          "minMs": 3.8970439999998234,
+          "maxMs": 7.104713000000174,
+          "medianCpuMs": 5.445
+        }
+      }
+    }
+  },
+  "freshMedianReductionPercent": 27.01718301035838,
+  "schemaComparisons": 54,
+  "baseline": [
+    {
+      "run": 0,
+      "mode": "plain",
+      "name": "db-startup",
+      "runtime": "1.4.2",
+      "instrument": false,
+      "rows": [
+        {
+          "phase": "fresh",
+          "ms": 3906.4226000000003,
+          "cpu": {
+            "user": 75773,
+            "system": 32488
+          },
+          "eventLoop": {
+            "samples": 7,
+            "maxMs": 3921.70981
+          },
+          "metrics": {},
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reuse",
+          "ms": 2.4160750000000917,
+          "cpu": {
+            "user": 3136,
+            "system": 67
+          },
+          "eventLoop": {
+            "samples": 7,
+            "maxMs": 1.938254
+          },
+          "metrics": {},
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reopen",
+          "ms": 4.100994999999784,
+          "cpu": {
+            "user": 4795,
+            "system": 0
+          },
+          "eventLoop": {
+            "samples": 8,
+            "maxMs": 3.134894
+          },
+          "metrics": {},
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 437
+        }
+      ],
+      "limits": [
+        "synthetic fresh schema and empty store",
+        "method timings can include nested calls and I/O",
+        "not a live DB migration or crash test"
+      ]
+    },
+    {
+      "run": 0,
+      "mode": "instrument",
+      "name": "db-startup",
+      "runtime": "1.4.2",
+      "instrument": true,
+      "rows": [
+        {
+          "phase": "fresh",
+          "ms": 4527.183467,
+          "cpu": {
+            "user": 83748,
+            "system": 37187
+          },
+          "eventLoop": {
+            "samples": 6,
+            "maxMs": 4527.186186
+          },
+          "metrics": {
+            "query.PRAGMA": {
+              "count": 11,
+              "ms": 0.3419600000000784
+            },
+            "exec.PRAGMA": {
+              "count": 14,
+              "ms": 160.6292930000004
+            },
+            "prepare.other": {
+              "count": 8,
+              "ms": 0.24844100000004232
+            },
+            "exec.DDL": {
+              "count": 66,
+              "ms": 4149.511020999999
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.24001799999996365
+            },
+            "query.other": {
+              "count": 4,
+              "ms": 0.22443900000007488
+            },
+            "exec.DML": {
+              "count": 1,
+              "ms": 11.162866000000122
+            },
+            "prepare.DML": {
+              "count": 2,
+              "ms": 0.060821000000032654
+            },
+            "query.DML": {
+              "count": 1,
+              "ms": 0.025939999999991414
+            },
+            "exec.VACUUM": {
+              "count": 1,
+              "ms": 80.01239499999974
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reuse",
+          "ms": 4.655036999999538,
+          "cpu": {
+            "user": 6159,
+            "system": 377
+          },
+          "eventLoop": {
+            "samples": 7,
+            "maxMs": 4.536449
+          },
+          "metrics": {
+            "prepare.other": {
+              "count": 8,
+              "ms": 0.1932440000000497
+            },
+            "query.PRAGMA": {
+              "count": 11,
+              "ms": 0.06716899999810266
+            },
+            "exec.PRAGMA": {
+              "count": 11,
+              "ms": 0.07748699999956443
+            },
+            "exec.DDL": {
+              "count": 43,
+              "ms": 2.442315000003873
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.11232299999937823
+            },
+            "query.other": {
+              "count": 6,
+              "ms": 0.055619000001570384
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reopen",
+          "ms": 6.545748999999887,
+          "cpu": {
+            "user": 6221,
+            "system": 1051
+          },
+          "eventLoop": {
+            "samples": 8,
+            "maxMs": 5.616126
+          },
+          "metrics": {
+            "query.PRAGMA": {
+              "count": 11,
+              "ms": 0.15091199999733362
+            },
+            "exec.PRAGMA": {
+              "count": 11,
+              "ms": 2.2996819999989384
+            },
+            "prepare.other": {
+              "count": 7,
+              "ms": 0.09402600000066741
+            },
+            "exec.DDL": {
+              "count": 43,
+              "ms": 2.3175789999995686
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.09727900000052614
+            },
+            "query.other": {
+              "count": 6,
+              "ms": 0.11559499999839318
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 437
+        }
+      ],
+      "limits": [
+        "synthetic fresh schema and empty store",
+        "method timings can include nested calls and I/O",
+        "not a live DB migration or crash test"
+      ]
+    },
+    {
+      "run": 0,
+      "mode": "cpu",
+      "name": "db-startup",
+      "runtime": "1.4.2",
+      "instrument": true,
+      "rows": [
+        {
+          "phase": "fresh",
+          "ms": 3140.049227,
+          "cpu": {
+            "user": 85547,
+            "system": 56482
+          },
+          "eventLoop": {
+            "samples": 5,
+            "maxMs": 3140.124083
+          },
+          "metrics": {
+            "query.PRAGMA": {
+              "count": 11,
+              "ms": 0.45376599999956113
+            },
+            "exec.PRAGMA": {
+              "count": 14,
+              "ms": 98.41962100000059
+            },
+            "prepare.other": {
+              "count": 8,
+              "ms": 0.44797100000013756
+            },
+            "exec.DDL": {
+              "count": 66,
+              "ms": 2873.133525999999
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.3199329999999918
+            },
+            "query.other": {
+              "count": 4,
+              "ms": 0.24472400000013295
+            },
+            "exec.DML": {
+              "count": 1,
+              "ms": 13.533683999999994
+            },
+            "prepare.DML": {
+              "count": 2,
+              "ms": 0.05753099999992628
+            },
+            "query.DML": {
+              "count": 1,
+              "ms": 0.03919999999993706
+            },
+            "exec.VACUUM": {
+              "count": 1,
+              "ms": 65.48949300000004
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reuse",
+          "ms": 2.5755350000004,
+          "cpu": {
+            "user": 4352,
+            "system": 0
+          },
+          "eventLoop": {
+            "samples": 8,
+            "maxMs": 1.614208
+          },
+          "metrics": {
+            "prepare.other": {
+              "count": 8,
+              "ms": 0.09444000000030428
+            },
+            "query.PRAGMA": {
+              "count": 11,
+              "ms": 0.03650599999991755
+            },
+            "exec.PRAGMA": {
+              "count": 11,
+              "ms": 0.040653000000475004
+            },
+            "exec.DDL": {
+              "count": 43,
+              "ms": 1.3641700000007404
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.06881400000020221
+            },
+            "query.other": {
+              "count": 6,
+              "ms": 0.022584000000733795
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reopen",
+          "ms": 4.748623999999836,
+          "cpu": {
+            "user": 5375,
+            "system": 0
+          },
+          "eventLoop": {
+            "samples": 8,
+            "maxMs": 4.532931
+          },
+          "metrics": {
+            "query.PRAGMA": {
+              "count": 11,
+              "ms": 0.09824599999956263
+            },
+            "exec.PRAGMA": {
+              "count": 11,
+              "ms": 2.126843000000008
+            },
+            "prepare.other": {
+              "count": 7,
+              "ms": 0.0500609999999142
+            },
+            "exec.DDL": {
+              "count": 43,
+              "ms": 1.3924969999993664
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.049830000000383734
+            },
+            "query.other": {
+              "count": 6,
+              "ms": 0.04741799999965224
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 437
+        }
+      ],
+      "limits": [
+        "synthetic fresh schema and empty store",
+        "method timings can include nested calls and I/O",
+        "not a live DB migration or crash test"
+      ]
+    },
+    {
+      "run": 1,
+      "mode": "plain",
+      "name": "db-startup",
+      "runtime": "1.4.2",
+      "instrument": false,
+      "rows": [
+        {
+          "phase": "fresh",
+          "ms": 3609.934546,
+          "cpu": {
+            "user": 88504,
+            "system": 28743
+          },
+          "eventLoop": {
+            "samples": 7,
+            "maxMs": 3609.917423
+          },
+          "metrics": {},
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reuse",
+          "ms": 4.510221000000001,
+          "cpu": {
+            "user": 5287,
+            "system": 0
+          },
+          "eventLoop": {
+            "samples": 8,
+            "maxMs": 4.397297
+          },
+          "metrics": {},
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reopen",
+          "ms": 6.685120999999981,
+          "cpu": {
+            "user": 6613,
+            "system": 716
+          },
+          "eventLoop": {
+            "samples": 8,
+            "maxMs": 6.110029
+          },
+          "metrics": {},
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 437
+        }
+      ],
+      "limits": [
+        "synthetic fresh schema and empty store",
+        "method timings can include nested calls and I/O",
+        "not a live DB migration or crash test"
+      ]
+    },
+    {
+      "run": 1,
+      "mode": "instrument",
+      "name": "db-startup",
+      "runtime": "1.4.2",
+      "instrument": true,
+      "rows": [
+        {
+          "phase": "fresh",
+          "ms": 3769.099874,
+          "cpu": {
+            "user": 91215,
+            "system": 26917
+          },
+          "eventLoop": {
+            "samples": 7,
+            "maxMs": 3769.169307
+          },
+          "metrics": {
+            "query.PRAGMA": {
+              "count": 11,
+              "ms": 0.4988609999999696
+            },
+            "exec.PRAGMA": {
+              "count": 14,
+              "ms": 80.76729500000002
+            },
+            "prepare.other": {
+              "count": 8,
+              "ms": 0.3139950000001619
+            },
+            "exec.DDL": {
+              "count": 66,
+              "ms": 3497.4052520000014
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.24070100000085404
+            },
+            "query.other": {
+              "count": 4,
+              "ms": 0.19509199999970406
+            },
+            "exec.DML": {
+              "count": 1,
+              "ms": 11.148186000000123
+            },
+            "prepare.DML": {
+              "count": 2,
+              "ms": 0.05168899999989662
+            },
+            "query.DML": {
+              "count": 1,
+              "ms": 0.045420999999805645
+            },
+            "exec.VACUUM": {
+              "count": 1,
+              "ms": 89.49771499999997
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reuse",
+          "ms": 2.483412000000044,
+          "cpu": {
+            "user": 3877,
+            "system": 298
+          },
+          "eventLoop": {
+            "samples": 8,
+            "maxMs": 1.522165
+          },
+          "metrics": {
+            "prepare.other": {
+              "count": 8,
+              "ms": 0.09489799999846582
+            },
+            "query.PRAGMA": {
+              "count": 11,
+              "ms": 0.03504199999952107
+            },
+            "exec.PRAGMA": {
+              "count": 11,
+              "ms": 0.03750599999921178
+            },
+            "exec.DDL": {
+              "count": 43,
+              "ms": 1.3231869999990522
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.05307899999888832
+            },
+            "query.other": {
+              "count": 6,
+              "ms": 0.020125000000007276
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reopen",
+          "ms": 3.81407500000023,
+          "cpu": {
+            "user": 4342,
+            "system": 57
+          },
+          "eventLoop": {
+            "samples": 8,
+            "maxMs": 2.854782
+          },
+          "metrics": {
+            "query.PRAGMA": {
+              "count": 11,
+              "ms": 0.10344900000109192
+            },
+            "exec.PRAGMA": {
+              "count": 11,
+              "ms": 1.445376999999553
+            },
+            "prepare.other": {
+              "count": 7,
+              "ms": 0.0487409999996089
+            },
+            "exec.DDL": {
+              "count": 43,
+              "ms": 1.275777999998354
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.04594899999892732
+            },
+            "query.other": {
+              "count": 6,
+              "ms": 0.04655499999989843
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 437
+        }
+      ],
+      "limits": [
+        "synthetic fresh schema and empty store",
+        "method timings can include nested calls and I/O",
+        "not a live DB migration or crash test"
+      ]
+    },
+    {
+      "run": 1,
+      "mode": "cpu",
+      "name": "db-startup",
+      "runtime": "1.4.2",
+      "instrument": true,
+      "rows": [
+        {
+          "phase": "fresh",
+          "ms": 4376.538705,
+          "cpu": {
+            "user": 99795,
+            "system": 50249
+          },
+          "eventLoop": {
+            "samples": 6,
+            "maxMs": 4376.45302
+          },
+          "metrics": {
+            "query.PRAGMA": {
+              "count": 11,
+              "ms": 0.33786299999994185
+            },
+            "exec.PRAGMA": {
+              "count": 14,
+              "ms": 179.7334749999992
+            },
+            "prepare.other": {
+              "count": 8,
+              "ms": 0.3021160000003249
+            },
+            "exec.DDL": {
+              "count": 66,
+              "ms": 4016.6437729999993
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.293500000000563
+            },
+            "query.other": {
+              "count": 4,
+              "ms": 0.24660399999947913
+            },
+            "exec.DML": {
+              "count": 1,
+              "ms": 11.009375000000091
+            },
+            "prepare.DML": {
+              "count": 2,
+              "ms": 0.0581609999999273
+            },
+            "query.DML": {
+              "count": 1,
+              "ms": 0.048059999999850334
+            },
+            "exec.VACUUM": {
+              "count": 1,
+              "ms": 78.91606799999954
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reuse",
+          "ms": 2.530033000000003,
+          "cpu": {
+            "user": 3838,
+            "system": 514
+          },
+          "eventLoop": {
+            "samples": 8,
+            "maxMs": 1.567047
+          },
+          "metrics": {
+            "prepare.other": {
+              "count": 8,
+              "ms": 0.08584299999984069
+            },
+            "query.PRAGMA": {
+              "count": 11,
+              "ms": 0.025947000000996923
+            },
+            "exec.PRAGMA": {
+              "count": 11,
+              "ms": 0.05501599999934115
+            },
+            "exec.DDL": {
+              "count": 43,
+              "ms": 1.3488060000017867
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.05248899999969581
+            },
+            "query.other": {
+              "count": 6,
+              "ms": 0.030760000002374
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reopen",
+          "ms": 4.483068000000458,
+          "cpu": {
+            "user": 4954,
+            "system": 329
+          },
+          "eventLoop": {
+            "samples": 7,
+            "maxMs": 4.354344
+          },
+          "metrics": {
+            "query.PRAGMA": {
+              "count": 11,
+              "ms": 0.11902800000007119
+            },
+            "exec.PRAGMA": {
+              "count": 11,
+              "ms": 1.6882779999996274
+            },
+            "prepare.other": {
+              "count": 7,
+              "ms": 0.057148000000779575
+            },
+            "exec.DDL": {
+              "count": 43,
+              "ms": 1.41800400000011
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.05354999999872234
+            },
+            "query.other": {
+              "count": 6,
+              "ms": 0.05052499999965221
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 437
+        }
+      ],
+      "limits": [
+        "synthetic fresh schema and empty store",
+        "method timings can include nested calls and I/O",
+        "not a live DB migration or crash test"
+      ]
+    },
+    {
+      "run": 2,
+      "mode": "plain",
+      "name": "db-startup",
+      "runtime": "1.4.2",
+      "instrument": false,
+      "rows": [
+        {
+          "phase": "fresh",
+          "ms": 4202.85861,
+          "cpu": {
+            "user": 73772,
+            "system": 47451
+          },
+          "eventLoop": {
+            "samples": 7,
+            "maxMs": 4202.756481
+          },
+          "metrics": {},
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reuse",
+          "ms": 4.074445000000196,
+          "cpu": {
+            "user": 3693,
+            "system": 1298
+          },
+          "eventLoop": {
+            "samples": 8,
+            "maxMs": 3.939195
+          },
+          "metrics": {},
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reopen",
+          "ms": 3.8844239999998535,
+          "cpu": {
+            "user": 3398,
+            "system": 1163
+          },
+          "eventLoop": {
+            "samples": 8,
+            "maxMs": 3.771424
+          },
+          "metrics": {},
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 437
+        }
+      ],
+      "limits": [
+        "synthetic fresh schema and empty store",
+        "method timings can include nested calls and I/O",
+        "not a live DB migration or crash test"
+      ]
+    },
+    {
+      "run": 2,
+      "mode": "instrument",
+      "name": "db-startup",
+      "runtime": "1.4.2",
+      "instrument": true,
+      "rows": [
+        {
+          "phase": "fresh",
+          "ms": 3230.950969,
+          "cpu": {
+            "user": 77725,
+            "system": 35843
+          },
+          "eventLoop": {
+            "samples": 7,
+            "maxMs": 3230.788977
+          },
+          "metrics": {
+            "query.PRAGMA": {
+              "count": 11,
+              "ms": 0.3353329999997854
+            },
+            "exec.PRAGMA": {
+              "count": 14,
+              "ms": 110.63569800000027
+            },
+            "prepare.other": {
+              "count": 8,
+              "ms": 0.19679199999958996
+            },
+            "exec.DDL": {
+              "count": 66,
+              "ms": 2928.4666100000013
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.1906349999998156
+            },
+            "query.other": {
+              "count": 4,
+              "ms": 0.21222899999975198
+            },
+            "exec.DML": {
+              "count": 1,
+              "ms": 11.753311000000167
+            },
+            "prepare.DML": {
+              "count": 2,
+              "ms": 0.027098000000023603
+            },
+            "query.DML": {
+              "count": 1,
+              "ms": 0.02320899999995163
+            },
+            "exec.VACUUM": {
+              "count": 1,
+              "ms": 79.514185
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reuse",
+          "ms": 2.74962400000004,
+          "cpu": {
+            "user": 4038,
+            "system": 585
+          },
+          "eventLoop": {
+            "samples": 8,
+            "maxMs": 1.796814
+          },
+          "metrics": {
+            "prepare.other": {
+              "count": 8,
+              "ms": 0.12945999999965352
+            },
+            "query.PRAGMA": {
+              "count": 11,
+              "ms": 0.0320280000000821
+            },
+            "exec.PRAGMA": {
+              "count": 11,
+              "ms": 0.06432100000120045
+            },
+            "exec.DDL": {
+              "count": 43,
+              "ms": 1.3392820000003667
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.04995399999870642
+            },
+            "query.other": {
+              "count": 6,
+              "ms": 0.030429000000367523
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reopen",
+          "ms": 3.7948989999999867,
+          "cpu": {
+            "user": 3444,
+            "system": 1191
+          },
+          "eventLoop": {
+            "samples": 8,
+            "maxMs": 3.605506
+          },
+          "metrics": {
+            "query.PRAGMA": {
+              "count": 11,
+              "ms": 0.10386899999866728
+            },
+            "exec.PRAGMA": {
+              "count": 11,
+              "ms": 1.3716369999997369
+            },
+            "prepare.other": {
+              "count": 7,
+              "ms": 0.05330900000080874
+            },
+            "exec.DDL": {
+              "count": 43,
+              "ms": 1.3270919999999933
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.046741999999539985
+            },
+            "query.other": {
+              "count": 6,
+              "ms": 0.04704799999990428
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 437
+        }
+      ],
+      "limits": [
+        "synthetic fresh schema and empty store",
+        "method timings can include nested calls and I/O",
+        "not a live DB migration or crash test"
+      ]
+    },
+    {
+      "run": 2,
+      "mode": "cpu",
+      "name": "db-startup",
+      "runtime": "1.4.2",
+      "instrument": true,
+      "rows": [
+        {
+          "phase": "fresh",
+          "ms": 3749.5605680000003,
+          "cpu": {
+            "user": 87554,
+            "system": 48377
+          },
+          "eventLoop": {
+            "samples": 6,
+            "maxMs": 3749.500609
+          },
+          "metrics": {
+            "query.PRAGMA": {
+              "count": 11,
+              "ms": 0.3558159999996775
+            },
+            "exec.PRAGMA": {
+              "count": 14,
+              "ms": 110.6348129999999
+            },
+            "prepare.other": {
+              "count": 8,
+              "ms": 0.29168499999968844
+            },
+            "exec.DDL": {
+              "count": 66,
+              "ms": 3468.7330249999973
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.28339800000026116
+            },
+            "query.other": {
+              "count": 4,
+              "ms": 0.19785600000022896
+            },
+            "exec.DML": {
+              "count": 1,
+              "ms": 11.09872200000018
+            },
+            "prepare.DML": {
+              "count": 2,
+              "ms": 0.030268000000205575
+            },
+            "query.DML": {
+              "count": 1,
+              "ms": 0.03347199999984696
+            },
+            "exec.VACUUM": {
+              "count": 1,
+              "ms": 69.03204899999992
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reuse",
+          "ms": 4.833123000000342,
+          "cpu": {
+            "user": 6102,
+            "system": 633
+          },
+          "eventLoop": {
+            "samples": 7,
+            "maxMs": 3.892525
+          },
+          "metrics": {
+            "prepare.other": {
+              "count": 8,
+              "ms": 0.17847299999948518
+            },
+            "query.PRAGMA": {
+              "count": 11,
+              "ms": 0.06485399999883157
+            },
+            "exec.PRAGMA": {
+              "count": 11,
+              "ms": 0.1804719999995541
+            },
+            "exec.DDL": {
+              "count": 43,
+              "ms": 2.6515269999999873
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.11884200000031342
+            },
+            "query.other": {
+              "count": 6,
+              "ms": 0.057231999999658
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reopen",
+          "ms": 5.216407999999774,
+          "cpu": {
+            "user": 6003,
+            "system": 122
+          },
+          "eventLoop": {
+            "samples": 8,
+            "maxMs": 4.265517
+          },
+          "metrics": {
+            "query.PRAGMA": {
+              "count": 11,
+              "ms": 0.10330699999985882
+            },
+            "exec.PRAGMA": {
+              "count": 11,
+              "ms": 2.3448780000003353
+            },
+            "prepare.other": {
+              "count": 7,
+              "ms": 0.09246900000016467
+            },
+            "exec.DDL": {
+              "count": 43,
+              "ms": 1.3978929999984757
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.04899400000067544
+            },
+            "query.other": {
+              "count": 6,
+              "ms": 0.047743000000536995
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 437
+        }
+      ],
+      "limits": [
+        "synthetic fresh schema and empty store",
+        "method timings can include nested calls and I/O",
+        "not a live DB migration or crash test"
+      ]
+    }
+  ],
+  "candidate": [
+    {
+      "run": 0,
+      "mode": "plain",
+      "name": "db-startup",
+      "runtime": "1.4.2",
+      "instrument": false,
+      "rows": [
+        {
+          "phase": "fresh",
+          "ms": 2891.572825,
+          "cpu": {
+            "user": 64980,
+            "system": 29925
+          },
+          "eventLoop": {
+            "samples": 7,
+            "maxMs": 2891.470145
+          },
+          "metrics": {},
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reuse",
+          "ms": 2.583223999999973,
+          "cpu": {
+            "user": 1361,
+            "system": 1706
+          },
+          "eventLoop": {
+            "samples": 7,
+            "maxMs": 2.451832
+          },
+          "metrics": {},
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reopen",
+          "ms": 3.8246829999998226,
+          "cpu": {
+            "user": 4262,
+            "system": 321
+          },
+          "eventLoop": {
+            "samples": 7,
+            "maxMs": 2.850647
+          },
+          "metrics": {},
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 437
+        }
+      ],
+      "limits": [
+        "synthetic fresh schema and empty store",
+        "method timings can include nested calls and I/O",
+        "not a live DB migration or crash test"
+      ]
+    },
+    {
+      "run": 0,
+      "mode": "instrument",
+      "name": "db-startup",
+      "runtime": "1.4.2",
+      "instrument": true,
+      "rows": [
+        {
+          "phase": "fresh",
+          "ms": 2905.5277920000003,
+          "cpu": {
+            "user": 71640,
+            "system": 36254
+          },
+          "eventLoop": {
+            "samples": 7,
+            "maxMs": 2905.333327
+          },
+          "metrics": {
+            "exec.PRAGMA": {
+              "count": 15,
+              "ms": 22.507389999999774
+            },
+            "query.other": {
+              "count": 5,
+              "ms": 0.3885410000000533
+            },
+            "query.PRAGMA": {
+              "count": 13,
+              "ms": 0.3665920000003524
+            },
+            "prepare.other": {
+              "count": 8,
+              "ms": 0.2565280000000456
+            },
+            "exec.DDL": {
+              "count": 66,
+              "ms": 2605.6686159999995
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.31241500000029987
+            },
+            "exec.DML": {
+              "count": 1,
+              "ms": 11.12029300000006
+            },
+            "prepare.DML": {
+              "count": 2,
+              "ms": 0.08180000000004384
+            },
+            "query.DML": {
+              "count": 1,
+              "ms": 0.028524999999945067
+            },
+            "exec.VACUUM": {
+              "count": 1,
+              "ms": 79.49139500000001
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reuse",
+          "ms": 2.5704209999998966,
+          "cpu": {
+            "user": 4183,
+            "system": 0
+          },
+          "eventLoop": {
+            "samples": 7,
+            "maxMs": 1.611908
+          },
+          "metrics": {
+            "prepare.other": {
+              "count": 8,
+              "ms": 0.08269899999913832
+            },
+            "exec.PRAGMA": {
+              "count": 12,
+              "ms": 0.05291100000067672
+            },
+            "query.other": {
+              "count": 7,
+              "ms": 0.09225500000002285
+            },
+            "query.PRAGMA": {
+              "count": 13,
+              "ms": 0.057856000000811036
+            },
+            "exec.DDL": {
+              "count": 43,
+              "ms": 1.3098130000003039
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.05118400000037582
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reopen",
+          "ms": 3.9100579999999354,
+          "cpu": {
+            "user": 4558,
+            "system": 143
+          },
+          "eventLoop": {
+            "samples": 7,
+            "maxMs": 2.94963
+          },
+          "metrics": {
+            "exec.PRAGMA": {
+              "count": 12,
+              "ms": 0.058117999999922176
+            },
+            "query.other": {
+              "count": 7,
+              "ms": 1.4885430000008455
+            },
+            "query.PRAGMA": {
+              "count": 13,
+              "ms": 0.039834000000155356
+            },
+            "prepare.other": {
+              "count": 7,
+              "ms": 0.052643999999418156
+            },
+            "exec.DDL": {
+              "count": 43,
+              "ms": 1.289027000002534
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.03757900000027803
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 437
+        }
+      ],
+      "limits": [
+        "synthetic fresh schema and empty store",
+        "method timings can include nested calls and I/O",
+        "not a live DB migration or crash test"
+      ]
+    },
+    {
+      "run": 0,
+      "mode": "cpu",
+      "name": "db-startup",
+      "runtime": "1.4.2",
+      "instrument": true,
+      "rows": [
+        {
+          "phase": "fresh",
+          "ms": 2477.937201,
+          "cpu": {
+            "user": 70945,
+            "system": 39699
+          },
+          "eventLoop": {
+            "samples": 6,
+            "maxMs": 2477.904014
+          },
+          "metrics": {
+            "exec.PRAGMA": {
+              "count": 15,
+              "ms": 22.180466000000244
+            },
+            "query.other": {
+              "count": 5,
+              "ms": 0.5035279999998892
+            },
+            "query.PRAGMA": {
+              "count": 13,
+              "ms": 0.48648399999997594
+            },
+            "prepare.other": {
+              "count": 8,
+              "ms": 0.25326499999997054
+            },
+            "exec.DDL": {
+              "count": 66,
+              "ms": 2146.1853330000013
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.22703099999984033
+            },
+            "exec.DML": {
+              "count": 1,
+              "ms": 13.05082600000003
+            },
+            "prepare.DML": {
+              "count": 2,
+              "ms": 0.0392980000000307
+            },
+            "query.DML": {
+              "count": 1,
+              "ms": 0.034843000000023494
+            },
+            "exec.VACUUM": {
+              "count": 1,
+              "ms": 74.98076499999979
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reuse",
+          "ms": 2.705891000000065,
+          "cpu": {
+            "user": 3963,
+            "system": 299
+          },
+          "eventLoop": {
+            "samples": 8,
+            "maxMs": 2.539881
+          },
+          "metrics": {
+            "prepare.other": {
+              "count": 8,
+              "ms": 0.07345900000018446
+            },
+            "exec.PRAGMA": {
+              "count": 12,
+              "ms": 0.06494599999950879
+            },
+            "query.other": {
+              "count": 7,
+              "ms": 0.09081400000013673
+            },
+            "query.PRAGMA": {
+              "count": 13,
+              "ms": 0.06292599999960657
+            },
+            "exec.DDL": {
+              "count": 43,
+              "ms": 1.4825399999999718
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.05650599999989936
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reopen",
+          "ms": 4.798231000000214,
+          "cpu": {
+            "user": 4624,
+            "system": 821
+          },
+          "eventLoop": {
+            "samples": 7,
+            "maxMs": 3.849907
+          },
+          "metrics": {
+            "exec.PRAGMA": {
+              "count": 12,
+              "ms": 0.11491399999931673
+            },
+            "query.other": {
+              "count": 7,
+              "ms": 1.5325740000002952
+            },
+            "query.PRAGMA": {
+              "count": 13,
+              "ms": 0.05041899999969246
+            },
+            "prepare.other": {
+              "count": 7,
+              "ms": 0.06932600000027378
+            },
+            "exec.DDL": {
+              "count": 43,
+              "ms": 1.8300819999999476
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.07051900000078604
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 437
+        }
+      ],
+      "limits": [
+        "synthetic fresh schema and empty store",
+        "method timings can include nested calls and I/O",
+        "not a live DB migration or crash test"
+      ]
+    },
+    {
+      "run": 1,
+      "mode": "plain",
+      "name": "db-startup",
+      "runtime": "1.4.2",
+      "instrument": false,
+      "rows": [
+        {
+          "phase": "fresh",
+          "ms": 2851.017257,
+          "cpu": {
+            "user": 64196,
+            "system": 29265
+          },
+          "eventLoop": {
+            "samples": 8,
+            "maxMs": 2850.137111
+          },
+          "metrics": {},
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reuse",
+          "ms": 2.3115670000001955,
+          "cpu": {
+            "user": 259,
+            "system": 2539
+          },
+          "eventLoop": {
+            "samples": 7,
+            "maxMs": 2.163357
+          },
+          "metrics": {},
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reopen",
+          "ms": 3.769209000000046,
+          "cpu": {
+            "user": 4353,
+            "system": 241
+          },
+          "eventLoop": {
+            "samples": 8,
+            "maxMs": 3.625322
+          },
+          "metrics": {},
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 437
+        }
+      ],
+      "limits": [
+        "synthetic fresh schema and empty store",
+        "method timings can include nested calls and I/O",
+        "not a live DB migration or crash test"
+      ]
+    },
+    {
+      "run": 1,
+      "mode": "instrument",
+      "name": "db-startup",
+      "runtime": "1.4.2",
+      "instrument": true,
+      "rows": [
+        {
+          "phase": "fresh",
+          "ms": 2641.4274649999998,
+          "cpu": {
+            "user": 53423,
+            "system": 27511
+          },
+          "eventLoop": {
+            "samples": 7,
+            "maxMs": 2640.587438
+          },
+          "metrics": {
+            "exec.PRAGMA": {
+              "count": 15,
+              "ms": 22.246193999999704
+            },
+            "query.other": {
+              "count": 5,
+              "ms": 0.36469899999998745
+            },
+            "query.PRAGMA": {
+              "count": 13,
+              "ms": 0.2875409999996634
+            },
+            "prepare.other": {
+              "count": 8,
+              "ms": 0.20705399999997098
+            },
+            "exec.DDL": {
+              "count": 66,
+              "ms": 2319.7775340000017
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.22806200000016474
+            },
+            "exec.DML": {
+              "count": 1,
+              "ms": 13.004193999999984
+            },
+            "prepare.DML": {
+              "count": 2,
+              "ms": 0.0406870000000481
+            },
+            "query.DML": {
+              "count": 1,
+              "ms": 0.02525900000000547
+            },
+            "exec.VACUUM": {
+              "count": 1,
+              "ms": 74.2672819999998
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reuse",
+          "ms": 2.554081000000224,
+          "cpu": {
+            "user": 3522,
+            "system": 611
+          },
+          "eventLoop": {
+            "samples": 8,
+            "maxMs": 2.130355
+          },
+          "metrics": {
+            "prepare.other": {
+              "count": 8,
+              "ms": 0.08305600000130653
+            },
+            "exec.PRAGMA": {
+              "count": 12,
+              "ms": 0.05054000000109227
+            },
+            "query.other": {
+              "count": 7,
+              "ms": 0.08601800000042203
+            },
+            "query.PRAGMA": {
+              "count": 13,
+              "ms": 0.06314199999997072
+            },
+            "exec.DDL": {
+              "count": 43,
+              "ms": 1.3728240000004917
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.05229899999949339
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reopen",
+          "ms": 3.8505079999999907,
+          "cpu": {
+            "user": 4320,
+            "system": 155
+          },
+          "eventLoop": {
+            "samples": 8,
+            "maxMs": 3.503819
+          },
+          "metrics": {
+            "exec.PRAGMA": {
+              "count": 12,
+              "ms": 0.05600000000004002
+            },
+            "query.other": {
+              "count": 7,
+              "ms": 1.481263000000581
+            },
+            "query.PRAGMA": {
+              "count": 13,
+              "ms": 0.04201299999931507
+            },
+            "prepare.other": {
+              "count": 7,
+              "ms": 0.0625450000006822
+            },
+            "exec.DDL": {
+              "count": 43,
+              "ms": 1.301998000000367
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.03918799999883049
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 437
+        }
+      ],
+      "limits": [
+        "synthetic fresh schema and empty store",
+        "method timings can include nested calls and I/O",
+        "not a live DB migration or crash test"
+      ]
+    },
+    {
+      "run": 1,
+      "mode": "cpu",
+      "name": "db-startup",
+      "runtime": "1.4.2",
+      "instrument": true,
+      "rows": [
+        {
+          "phase": "fresh",
+          "ms": 2910.230032,
+          "cpu": {
+            "user": 59464,
+            "system": 44506
+          },
+          "eventLoop": {
+            "samples": 5,
+            "maxMs": 2910.238742
+          },
+          "metrics": {
+            "exec.PRAGMA": {
+              "count": 15,
+              "ms": 22.30035400000005
+            },
+            "query.other": {
+              "count": 5,
+              "ms": 0.3188440000000128
+            },
+            "query.PRAGMA": {
+              "count": 13,
+              "ms": 0.5518160000002155
+            },
+            "prepare.other": {
+              "count": 8,
+              "ms": 0.20257799999995996
+            },
+            "exec.DDL": {
+              "count": 66,
+              "ms": 2581.171376999999
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.22750200000015752
+            },
+            "exec.DML": {
+              "count": 1,
+              "ms": 11.29093499999999
+            },
+            "prepare.DML": {
+              "count": 2,
+              "ms": 0.04076699999995981
+            },
+            "query.DML": {
+              "count": 1,
+              "ms": 0.020780000000058862
+            },
+            "exec.VACUUM": {
+              "count": 1,
+              "ms": 67.1007880000002
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reuse",
+          "ms": 4.197352000000137,
+          "cpu": {
+            "user": 3781,
+            "system": 1357
+          },
+          "eventLoop": {
+            "samples": 8,
+            "maxMs": 3.243582
+          },
+          "metrics": {
+            "prepare.other": {
+              "count": 8,
+              "ms": 0.14376399999991918
+            },
+            "exec.PRAGMA": {
+              "count": 12,
+              "ms": 0.08596899999974994
+            },
+            "query.other": {
+              "count": 7,
+              "ms": 0.11226399999986825
+            },
+            "query.PRAGMA": {
+              "count": 13,
+              "ms": 0.07620800000086092
+            },
+            "exec.DDL": {
+              "count": 43,
+              "ms": 2.635153999999602
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.0548279999998158
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reopen",
+          "ms": 3.8970439999998234,
+          "cpu": {
+            "user": 4725,
+            "system": 237
+          },
+          "eventLoop": {
+            "samples": 8,
+            "maxMs": 3.4777
+          },
+          "metrics": {
+            "exec.PRAGMA": {
+              "count": 12,
+              "ms": 0.05045900000004622
+            },
+            "query.other": {
+              "count": 7,
+              "ms": 1.5316009999996822
+            },
+            "query.PRAGMA": {
+              "count": 13,
+              "ms": 0.0383519999991222
+            },
+            "prepare.other": {
+              "count": 7,
+              "ms": 0.050815999999940686
+            },
+            "exec.DDL": {
+              "count": 43,
+              "ms": 1.3109629999999015
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.03788899999881323
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 437
+        }
+      ],
+      "limits": [
+        "synthetic fresh schema and empty store",
+        "method timings can include nested calls and I/O",
+        "not a live DB migration or crash test"
+      ]
+    },
+    {
+      "run": 2,
+      "mode": "plain",
+      "name": "db-startup",
+      "runtime": "1.4.2",
+      "instrument": false,
+      "rows": [
+        {
+          "phase": "fresh",
+          "ms": 2442.515503,
+          "cpu": {
+            "user": 70719,
+            "system": 37058
+          },
+          "eventLoop": {
+            "samples": 7,
+            "maxMs": 2442.518647
+          },
+          "metrics": {},
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reuse",
+          "ms": 2.4718520000001263,
+          "cpu": {
+            "user": 3002,
+            "system": 0
+          },
+          "eventLoop": {
+            "samples": 8,
+            "maxMs": 1.498753
+          },
+          "metrics": {},
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reopen",
+          "ms": 3.8008959999997387,
+          "cpu": {
+            "user": 4110,
+            "system": 371
+          },
+          "eventLoop": {
+            "samples": 7,
+            "maxMs": 2.852243
+          },
+          "metrics": {},
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 437
+        }
+      ],
+      "limits": [
+        "synthetic fresh schema and empty store",
+        "method timings can include nested calls and I/O",
+        "not a live DB migration or crash test"
+      ]
+    },
+    {
+      "run": 2,
+      "mode": "instrument",
+      "name": "db-startup",
+      "runtime": "1.4.2",
+      "instrument": true,
+      "rows": [
+        {
+          "phase": "fresh",
+          "ms": 2801.002452,
+          "cpu": {
+            "user": 51983,
+            "system": 29850
+          },
+          "eventLoop": {
+            "samples": 8,
+            "maxMs": 2801.116512
+          },
+          "metrics": {
+            "exec.PRAGMA": {
+              "count": 15,
+              "ms": 26.62172500000031
+            },
+            "query.other": {
+              "count": 5,
+              "ms": 0.40924200000004873
+            },
+            "query.PRAGMA": {
+              "count": 13,
+              "ms": 0.19588300000004466
+            },
+            "prepare.other": {
+              "count": 8,
+              "ms": 0.2666719999998577
+            },
+            "exec.DDL": {
+              "count": 66,
+              "ms": 2327.200384
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.3027999999998485
+            },
+            "exec.DML": {
+              "count": 1,
+              "ms": 79.71859100000006
+            },
+            "prepare.DML": {
+              "count": 2,
+              "ms": 0.08370599999989281
+            },
+            "query.DML": {
+              "count": 1,
+              "ms": 0.04141600000002654
+            },
+            "exec.VACUUM": {
+              "count": 1,
+              "ms": 61.541477000000214
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reuse",
+          "ms": 2.4606730000000425,
+          "cpu": {
+            "user": 3962,
+            "system": 0
+          },
+          "eventLoop": {
+            "samples": 7,
+            "maxMs": 2.232481
+          },
+          "metrics": {
+            "prepare.other": {
+              "count": 8,
+              "ms": 0.07309200000008786
+            },
+            "exec.PRAGMA": {
+              "count": 12,
+              "ms": 0.04732399999966219
+            },
+            "query.other": {
+              "count": 7,
+              "ms": 0.0814820000000509
+            },
+            "query.PRAGMA": {
+              "count": 13,
+              "ms": 0.06070400000044174
+            },
+            "exec.DDL": {
+              "count": 43,
+              "ms": 1.3211799999994582
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.05253300000094896
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reopen",
+          "ms": 4.073940000000221,
+          "cpu": {
+            "user": 4488,
+            "system": 163
+          },
+          "eventLoop": {
+            "samples": 8,
+            "maxMs": 3.112242
+          },
+          "metrics": {
+            "exec.PRAGMA": {
+              "count": 12,
+              "ms": 0.07595200000014302
+            },
+            "query.other": {
+              "count": 7,
+              "ms": 1.4570709999998144
+            },
+            "query.PRAGMA": {
+              "count": 13,
+              "ms": 0.04172400000106791
+            },
+            "prepare.other": {
+              "count": 7,
+              "ms": 0.06825800000069648
+            },
+            "exec.DDL": {
+              "count": 43,
+              "ms": 1.439314999997805
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.04353099999934784
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 437
+        }
+      ],
+      "limits": [
+        "synthetic fresh schema and empty store",
+        "method timings can include nested calls and I/O",
+        "not a live DB migration or crash test"
+      ]
+    },
+    {
+      "run": 2,
+      "mode": "cpu",
+      "name": "db-startup",
+      "runtime": "1.4.2",
+      "instrument": true,
+      "rows": [
+        {
+          "phase": "fresh",
+          "ms": 2714.550817,
+          "cpu": {
+            "user": 71748,
+            "system": 44985
+          },
+          "eventLoop": {
+            "samples": 6,
+            "maxMs": 2714.535707
+          },
+          "metrics": {
+            "exec.PRAGMA": {
+              "count": 15,
+              "ms": 22.178252000000143
+            },
+            "query.other": {
+              "count": 5,
+              "ms": 0.3820720000001572
+            },
+            "query.PRAGMA": {
+              "count": 13,
+              "ms": 0.31346299999994187
+            },
+            "prepare.other": {
+              "count": 8,
+              "ms": 0.24147400000011032
+            },
+            "exec.DDL": {
+              "count": 66,
+              "ms": 2398.709175000001
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.2890079999997397
+            },
+            "exec.DML": {
+              "count": 1,
+              "ms": 11.25781799999993
+            },
+            "prepare.DML": {
+              "count": 2,
+              "ms": 0.07350400000007085
+            },
+            "query.DML": {
+              "count": 1,
+              "ms": 0.039310999999997875
+            },
+            "exec.VACUUM": {
+              "count": 1,
+              "ms": 72.08387099999982
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reuse",
+          "ms": 4.825623999999607,
+          "cpu": {
+            "user": 6568,
+            "system": 0
+          },
+          "eventLoop": {
+            "samples": 8,
+            "maxMs": 4.695422
+          },
+          "metrics": {
+            "prepare.other": {
+              "count": 8,
+              "ms": 0.1662650000002941
+            },
+            "exec.PRAGMA": {
+              "count": 12,
+              "ms": 0.10738500000024942
+            },
+            "query.other": {
+              "count": 7,
+              "ms": 0.19688999999971202
+            },
+            "query.PRAGMA": {
+              "count": 13,
+              "ms": 0.16178999999965527
+            },
+            "exec.DDL": {
+              "count": 43,
+              "ms": 2.5056149999982154
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.1154570000021522
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 436
+        },
+        {
+          "phase": "reopen",
+          "ms": 7.104713000000174,
+          "cpu": {
+            "user": 6310,
+            "system": 1553
+          },
+          "eventLoop": {
+            "samples": 8,
+            "maxMs": 6.166253
+          },
+          "metrics": {
+            "exec.PRAGMA": {
+              "count": 12,
+              "ms": 0.09552000000076077
+            },
+            "query.other": {
+              "count": 7,
+              "ms": 2.6303210000005492
+            },
+            "query.PRAGMA": {
+              "count": 13,
+              "ms": 0.10114899999916815
+            },
+            "prepare.other": {
+              "count": 7,
+              "ms": 0.13869699999941076
+            },
+            "exec.DDL": {
+              "count": 43,
+              "ms": 2.481587999999647
+            },
+            "prepare.PRAGMA": {
+              "count": 13,
+              "ms": 0.09523000000081083
+            }
+          },
+          "settings": {
+            "journal": {
+              "journal_mode": "wal"
+            },
+            "synchronous": {
+              "synchronous": 2
+            },
+            "autoVacuum": {
+              "auto_vacuum": 2
+            },
+            "foreignKeys": {
+              "foreign_keys": 0
+            }
+          },
+          "schemaSha256": "a4dbfa6be463a3c2dab6b47ee1065417f1d63084c565621ec4beacec4f7bca31",
+          "schemaObjects": 437
+        }
+      ],
+      "limits": [
+        "synthetic fresh schema and empty store",
+        "method timings can include nested calls and I/O",
+        "not a live DB migration or crash test"
+      ]
+    }
+  ],
+  "limits": [
+    "disposable fresh empty database, not production data",
+    "WAL synchronous2 preserved",
+    "instrument method durations include sync I/O and may nest",
+    "profile CPU samples include native waiting; process.cpuUsage records actual CPU",
+    "reuse/reopen repeated schema checks remain",
+    "not migration throughput, power loss, diskfull or SIGKILL recovery qualification"
+  ]
+}

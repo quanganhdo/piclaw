@@ -374,6 +374,12 @@ export function pruneToolOutputs(maxAgeMs = DEFAULT_TOOL_OUTPUT_RETENTION_MS): n
 /** Guard to ensure the cleanup interval is only started once. */
 let cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
+/** Stop retention before its database/workspace owner is closed. */
+export function stopToolOutputCleanup(): void {
+  if (cleanupTimer) clearInterval(cleanupTimer);
+  cleanupTimer = null;
+}
+
 /**
  * Start a periodic timer that prunes old tool outputs.
  * Called once by runtime.ts during startup.
@@ -391,19 +397,20 @@ export function startToolOutputCleanup(
     if (error instanceof ToolOutputAccessDenied) return;
     throw error;
   }
-  cleanupTimer = setInterval(() => {
+  const timer = setInterval(() => {
+    // A queued callback from a stopped/replaced owner must not use its database.
+    if (cleanupTimer !== timer) return;
     if (!canUseLegacyToolOutput()) {
-      if (cleanupTimer) clearInterval(cleanupTimer);
-      cleanupTimer = null;
+      stopToolOutputCleanup();
       return;
     }
     try { pruneToolOutputs(maxAgeMs); } catch (error) {
       if (!(error instanceof ToolOutputAccessDenied)) throw error;
-      if (cleanupTimer) clearInterval(cleanupTimer);
-      cleanupTimer = null;
+      stopToolOutputCleanup();
     }
   }, intervalMs);
-  cleanupTimer.unref();
+  cleanupTimer = timer;
+  timer.unref();
 }
 
 /**

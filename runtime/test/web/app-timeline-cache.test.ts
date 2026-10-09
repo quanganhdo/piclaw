@@ -22,6 +22,9 @@ test('timeline cache stores and reloads fresh snapshots from memory', () => {
 
   clearTimelineSnapshotCache();
 });
+test('cached individual arrivals cannot overwrite the verified page boundary',()=>{
+  clearTimelineSnapshotCache();cacheTimelineSnapshot('web:a',{posts:[{id:20},{id:145}],has_more:true,contiguousThroughId:20});expect(getCachedTimelineSnapshot('web:a')?.contiguousThroughId).toBe(20);
+});
 
 test('resolveRecentTimelinePrewarmChatJids excludes the active chat and dedupes rows', () => {
   const chatJids = resolveRecentTimelinePrewarmChatJids([

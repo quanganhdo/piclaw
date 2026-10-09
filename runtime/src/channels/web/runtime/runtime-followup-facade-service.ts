@@ -22,6 +22,7 @@ type RuntimeFollowupMessageWriteService = Pick<
 type RuntimeFollowupQueuedLifecycle = Pick<
   QueuedFollowupLifecycleService,
   | "enqueueQueuedFollowupItem"
+  | "admitQueuedFollowupItem"
   | "peekQueuedFollowupItem"
   | "consumeQueuedFollowupItem"
   | "prependQueuedFollowupItem"
@@ -101,6 +102,10 @@ export class WebChannelRuntimeFollowupFacadeService {
       queuedAt,
       extras,
     );
+  }
+
+  admitQueuedFollowupItem(args: Parameters<QueuedFollowupLifecycleService['enqueueQueuedFollowupItem']>, authorise: () => void, signal: AbortSignal): Promise<number> {
+    return this.deps.getQueuedFollowupLifecycle().admitQueuedFollowupItem(args, authorise, signal);
   }
 
   peekQueuedFollowupItem(chatJid: string): QueuedFollowupItem | null {

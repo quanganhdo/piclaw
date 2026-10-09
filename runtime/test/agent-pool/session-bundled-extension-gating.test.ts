@@ -1,21 +1,15 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { SettingsManager, getAgentDir } from "@earendil-works/pi-coding-agent";
-import "../helpers.js";
+import { SettingsManager } from "@earendil-works/pi-coding-agent";
+import { createTempWorkspace, setEnv } from "../helpers.js";
 import { createSessionInDir } from "../../src/agent-pool/session.ts";
 import { createRealTestModelServices } from "../model-services-fixture.js";
 
 describe("bundled extension gating by channel/platform", () => {
   test("removed viewer tools stay out of bundled session bootstrap while platform-gated tools remain gated", async () => {
-    const tempRoot = mkdtempSync(join(tmpdir(), "piclaw-session-gating-"));
-    const { modelRuntime } = await createRealTestModelServices(join(tempRoot, "agent"));
-    const settingsManager = SettingsManager.create("/workspace", getAgentDir());
-    const webSessionDir = join(tempRoot, "web-session");
-    const whatsappSessionDir = join(tempRoot, "wa-session");
-    const workspaceDir = join(tempRoot, "workspace");
-    mkdirSync(workspaceDir, { recursive: true });
+    const workspace = createTempWorkspace("piclaw-session-gating-");
+    const tempRoot = workspace.base, workspaceDir = workspace.workspace;
+    const restore = setEnv({ PICLAW_WORKSPACE: workspaceDir, PICLAW_STORE: workspace.store, PICLAW_DATA: workspace.data });
     const warnings: string[] = [];
     const originalWarn = console.warn;
     console.warn = (...args: unknown[]) => {
@@ -23,6 +17,10 @@ describe("bundled extension gating by channel/platform", () => {
     };
 
     try {
+      const { modelRuntime } = await createRealTestModelServices(join(tempRoot, "agent"));
+      const settingsManager = SettingsManager.create(workspaceDir, join(tempRoot, "agent"));
+      const webSessionDir = join(tempRoot, "web-session");
+      const whatsappSessionDir = join(tempRoot, "wa-session");
       const webRuntime = await createSessionInDir(webSessionDir, {
         modelRuntime,
         settingsManager,
@@ -54,7 +52,8 @@ describe("bundled extension gating by channel/platform", () => {
       whatsappRuntime.dispose?.();
     } finally {
       console.warn = originalWarn;
-      rmSync(tempRoot, { recursive: true, force: true });
+      restore();
+      workspace.cleanup();
     }
   }, 15000);
 });

@@ -160,7 +160,13 @@ function contextFor(scope: Scope): AddonLocalContext {
       // The host bridge attaches durable provenance. Any optional reference is validated here and bound only to host-owned authority records.
       try {
         const deliver = enqueueMessage;
-        const result = await withAddonLocalDispatch(target, request.content, reference, () => deliver({ chatJid: target.chatJid, content: request.content, mode: "queue", source: "addon.local-context" }));
+        const result = await withAddonLocalDispatch(target, request.content, reference, () => deliver({ chatJid: target.chatJid, content: request.content, mode: "queue", source: "addon.local-context" }), {
+          signal: scope.request?.signal,
+          validate: () => {
+            check(); scope.request?.signal.throwIfAborted();
+            if (!resolveTarget({ chatJid: target.chatJid, incarnation: target.incarnation })) throw new AddonLocalContextError('stale_target', 'The local target changed before admission.');
+          },
+        });
         if (result.status !== "ok" || result.chat_jid !== target.chatJid) throw new Error("Unrecognised host queue receipt.");
         return { status: "accepted" as const, chatJid: target.chatJid, incarnation: target.incarnation,
           rowId: result.row_id ?? null, threadId: result.thread_id ?? null, queued: Boolean(result.queued) };

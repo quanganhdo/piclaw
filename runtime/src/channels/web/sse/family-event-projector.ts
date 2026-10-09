@@ -28,7 +28,7 @@ function copyAllowed(record: Record<string, unknown>, keys = commonKeys): Record
 
 function projectCoreBlocks(value: unknown): unknown[] | undefined {
   if (!Array.isArray(value)) return undefined;
-  const allowedBlockTypes = new Set(["agent_timing", "thinking_ref", "turn_outcome_marker", "agent_turn_marker"]);
+  const allowedBlockTypes = new Set(["agent_timing", "thinking_ref", "turn_outcome_marker", "agent_turn_marker", "agent_message_role"]);
   const blocks = value.filter(block => block && typeof block === "object" && allowedBlockTypes.has(String((block as Record<string, unknown>).type || "")));
   return blocks.length ? structuredClone(blocks) : undefined;
 }
@@ -44,7 +44,7 @@ export function projectFamilySseEvent(eventType: string, data: unknown): unknown
     if (input.data && typeof input.data === "object" && !Array.isArray(input.data)) {
       projected.data = copyAllowed(input.data as Record<string, unknown>, new Set([
         "type", "content", "content_meta", "agent_id", "thread_id", "media_ids", "content_blocks",
-        "link_previews", "annotations", "screen_hint",
+        "link_previews", "annotations", "screen_hint", "agent_message_role", "is_terminal_agent_reply",
       ]));
       const blocks = projectCoreBlocks((input.data as Record<string, unknown>).content_blocks);
       if (blocks) (projected.data as Record<string, unknown>).content_blocks = blocks;

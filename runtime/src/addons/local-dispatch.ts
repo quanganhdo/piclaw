@@ -19,6 +19,7 @@ interface Dispatch {
   incarnation: string;
   digest: string;
   reference?: AddonLocalAuthorityReference;
+  admission?: { validate: () => void; signal?: AbortSignal };
 }
 
 const dispatchScope = new AsyncLocalStorage<Dispatch>();
@@ -70,16 +71,19 @@ function storedReference(row: { addon_id: string | null; intent_id: string | nul
 /** Called by the localContext operator-only queue method, never with wire metadata. */
 export function withAddonLocalDispatch<T>(target: { chatJid: string; incarnation: string }, content: string, run: () => Promise<T>): Promise<T>;
 export function withAddonLocalDispatch<T>(target: { chatJid: string; incarnation: string }, content: string, reference: AddonLocalAuthorityReference | null, run: () => Promise<T>): Promise<T>;
+export function withAddonLocalDispatch<T>(target: { chatJid: string; incarnation: string }, content: string, reference: AddonLocalAuthorityReference | null, run: () => Promise<T>, admission: { validate: () => void; signal?: AbortSignal }): Promise<T>;
 export async function withAddonLocalDispatch<T>(
   target: { chatJid: string; incarnation: string },
   content: string,
   referenceOrRun: AddonLocalAuthorityReference | null | (() => Promise<T>),
   maybeRun?: () => Promise<T>,
+  admission?: { validate: () => void; signal?: AbortSignal },
 ): Promise<T> {
   const run = typeof referenceOrRun === "function" ? referenceOrRun : maybeRun;
   if (typeof run !== "function") throw new Error("Addon local dispatch requires a callback.");
   const reference = typeof referenceOrRun === "function" ? null : parseAddonLocalAuthorityReference(referenceOrRun);
-  const dispatch: Dispatch = { id: randomUUID(), ...target, digest: digest(content), ...(reference ? { reference } : {}) };
+  admission?.validate();
+  const dispatch: Dispatch = { id: randomUUID(), ...target, digest: digest(content), ...(reference ? { reference } : {}), ...(admission ? { admission } : {}) };
   database().query(`
     INSERT INTO addon_local_dispatch_authorities(
       id, chat_jid, incarnation, content_sha256, message_id, addon_id, intent_id, created_at
@@ -94,6 +98,15 @@ export async function withAddonLocalDispatch<T>(
     new Date().toISOString(),
   );
   return dispatchScope.run(dispatch, run);
+}
+
+/** Fresh scope authority is separate from durable provenance blocks. */
+export function captureAddonLocalDispatchAdmission(chatJid: string, content: string): { validate: () => void; signal?: AbortSignal } | null {
+  const dispatch = dispatchScope.getStore();
+  if (!dispatch) return null;
+  if (dispatch.chatJid !== chatJid || dispatch.digest !== digest(content) || !dispatch.admission) throw Error('Local dispatch admission mismatch.');
+  dispatch.admission.validate();
+  return dispatch.admission;
 }
 
 /** Internal enqueue bridge brands its actual Request rather than serialising an authority field. */

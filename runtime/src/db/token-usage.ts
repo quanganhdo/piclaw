@@ -11,6 +11,7 @@
  *   - The token-chart skill reads the table to generate usage visualisations.
  */
 
+import type Database from 'bun:sqlite';
 import { getDb } from "./connection.js";
 import { insertBudgetUsageEvent } from "./budget-limits.js";
 
@@ -155,8 +156,7 @@ export interface TokenUsageRecord {
 }
 
 /** Insert a token-usage record for a completed agent run. */
-export function storeTokenUsage(record: TokenUsageRecord): void {
-  const db = getDb();
+export function storeTokenUsage(record: TokenUsageRecord, db: Database = getDb()): void {
   db.transaction(() => {
     const result = db.prepare(
     `INSERT OR IGNORE INTO token_usage (

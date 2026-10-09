@@ -20,8 +20,8 @@ import {
   type ShellOutputTruncation,
   type ShellOutputUpdate,
   type ShellOutputView,
-} from "@earendil-works/pi-agent-core";
-import type { Context } from "@earendil-works/pi-agent-core/harness/context";
+} from "../contracts/execution-env.js";
+import type { Context } from "@earendil-works/chord";
 import type { TextLineEnvironment, TextLineReader, TextLineRecord } from './text-line-reader-compat.js';
 import { createLogger, debugSuppressedError } from '../../utils/logger.js';
 

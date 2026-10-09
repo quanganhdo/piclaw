@@ -130,6 +130,12 @@ describe("chat tool extension", () => {
     expect(tool).toBeDefined();
     expect(tool.name).toBe("chat");
   });
+  test('tool cancellation reaches the local relay without becoming a wire argument', async () => {
+    const {tool,chatToolModule}=await getTool();const controller=new AbortController();let entered!:()=>void;const admitted=new Promise<void>(resolve=>{entered=resolve;});
+    let signal:AbortSignal|undefined;
+    chatToolModule.setChatToolRelayFn(async request=>{signal=request.signal;entered();await new Promise<void>((_resolve,reject)=>request.signal!.addEventListener('abort',()=>reject(request.signal!.reason),{once:true}));throw Error('unexpected');});
+    const pending=withChatContext(chatJid,'web',()=>tool.execute('cancel-test',{target_agent_name:'target',content:'held',mode:'queue'},controller.signal));await admitted;expect(signal).toBe(controller.signal);controller.abort(Error('tool cancelled'));const result=await pending;expect(result.content[0].text).toContain('tool cancelled');
+  });
 
   test("relays to target_agent_name and strips a leading @ before resolution", async () => {
     const { tool, chatToolModule } = await getTool();

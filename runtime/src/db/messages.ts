@@ -20,6 +20,7 @@
 import type Database from "bun:sqlite";
 
 import { getDb } from "./connection.js";
+import { AGENT_MESSAGE_ROLE_BLOCK, buildAgentMessageRoleBlock, getAgentMessageRole } from "./agent-message-role.js";
 import { ensureChatBranch } from "./chat-branches.js";
 import { clampWebContent } from "./web-content.js";
 import type { InteractionRow } from "./types.js";
@@ -59,10 +60,11 @@ interface StoredMessageRow {
   thread_id: number | null;
   timestamp: string;
   is_bot_message: number;
+  is_terminal_agent_reply: number;
 }
 
 /** Column list used in SELECT queries to ensure a consistent shape. */
-const MESSAGE_COLUMNS = "rowid, chat_jid, sender, sender_name, content, screen_hint, content_blocks, link_previews, annotations, thread_id, timestamp, is_bot_message";
+const MESSAGE_COLUMNS = "rowid, chat_jid, sender, sender_name, content, screen_hint, content_blocks, link_previews, annotations, thread_id, timestamp, is_bot_message, is_terminal_agent_reply";
 
 function ensureMonotonicMessageTimestampInDatabase(
   database: Database,
@@ -110,6 +112,10 @@ function buildInteraction(row: StoredMessageRow, mediaIds: number[] = []): Inter
     agent_id: "default",
     media_ids: mediaIds,
   };
+  if (row.is_bot_message) {
+    data.is_terminal_agent_reply = Boolean(row.is_terminal_agent_reply);
+    data.agent_message_role = getAgentMessageRole(true, Boolean(row.is_terminal_agent_reply), contentBlocks ?? []) ?? "unknown";
+  }
   if (row.screen_hint) data.screen_hint = row.screen_hint;
   if (contentBlocks?.length) data.content_blocks = contentBlocks;
   if (linkPreviews?.length) data.link_previews = linkPreviews;
@@ -122,6 +128,27 @@ function buildInteraction(row: StoredMessageRow, mediaIds: number[] = []): Inter
     timestamp: row.timestamp,
     data,
   };
+}
+
+/** Promote only the exact boundary row captured by the current successful run. */
+export function promoteCompletedAgentReply(chatJid: string, rowId: number): boolean {
+  const db = getDb();
+  return db.transaction(() => {
+    const row = db.query("SELECT content_blocks, is_bot_message, is_terminal_agent_reply FROM messages WHERE chat_jid=? AND rowid=?")
+      .get(chatJid, rowId) as { content_blocks: string | null; is_bot_message: number; is_terminal_agent_reply: number } | null;
+    if (!row?.is_bot_message || row.is_terminal_agent_reply) return false;
+    const blocks = parseJsonArray(row.content_blocks) ?? [];
+    const tags = blocks.filter((block: any) => block?.type === AGENT_MESSAGE_ROLE_BLOCK) as Array<Record<string, unknown>>;
+    if (tags.length !== 1 || tags[0].version !== 1 || tags[0].terminal !== false
+      || !["final", "unknown"].includes(String(tags[0].role))) return false;
+    const completed = blocks.some((block: any) => block?.type === "agent_turn_marker"
+      && block.kind === "intermediate" && block.cause === "completed_boundary" && !block.followed_by_tool_use);
+    if (!completed) return false;
+    const next = blocks.filter((block: any) => block?.type !== AGENT_MESSAGE_ROLE_BLOCK);
+    next.push(buildAgentMessageRoleBlock("final", true));
+    return db.query("UPDATE messages SET is_terminal_agent_reply=1, content_blocks=? WHERE chat_jid=? AND rowid=?")
+      .run(JSON.stringify(next), chatJid, rowId).changes > 0;
+  }).immediate();
 }
 
 /**

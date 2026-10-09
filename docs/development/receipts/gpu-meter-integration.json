@@ -1,0 +1,63 @@
+{
+  "frozen": {
+    "head": "e19c834eb1af0a49be7593bb14934279d7173c74",
+    "tree": "2ddf226047dca3d9ec6861a6437aa7c9d3300095"
+  },
+  "inputs": [
+    {
+      "pr": 1553,
+      "head": "c408af43c485d011d6e8c935410263899bf3f0b5",
+      "ci": 37297645243
+    },
+    {
+      "pr": 1554,
+      "head": "c383f45ed8b1ff4f56c78713e37d5cd26eb62c35",
+      "ci": 37295628218
+    }
+  ],
+  "full": {
+    "pass": 6496,
+    "skip": 8,
+    "fail": 0,
+    "assertions": 42503,
+    "seconds": 655.48,
+    "features": {
+      "pass": 25,
+      "assertions": 246
+    },
+    "web": {
+      "pass": 9,
+      "assertions": 26
+    },
+    "logSha256": "419955663950e040472b68a31995af671602e68efe4b81851c8e9d878f11255b",
+    "launcherExitCaptured": false,
+    "terminalStagesComplete": true,
+    "sourceUnchanged": true,
+    "worktreeClean": true
+  },
+  "focused": {
+    "pass": 53,
+    "assertions": 531,
+    "logSha256": "b11272a56b0bd6ce6a2b91fa9fbd5ef98c353f436c800c546ddad7c23f501142"
+  },
+  "browser": {
+    "pass": 1,
+    "assertions": 30,
+    "exit": 0,
+    "logSha256": "9c9365bf3ec99965aefcf442b9a58f94c7036bb2afbd1ef9e969f86ce9960996"
+  },
+  "types": {
+    "exit": 0,
+    "composeBaselineDiagnostics": 95
+  },
+  "scope": {
+    "deployment": false,
+    "restart": false,
+    "gpuWorkload": false,
+    "nativeHardwareValidationOnSmith": false
+  },
+  "corrections": [
+    "Skip both GPU readers during passive UI polling without erasing VRAM history",
+    "Retain bounded known Intel devices across incomplete discovery until complete removal evidence"
+  ]
+}

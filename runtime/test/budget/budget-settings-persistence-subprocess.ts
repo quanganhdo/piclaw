@@ -11,6 +11,11 @@ import {
 
 const now = new Date("2026-09-09T12:00:00Z");
 initDatabase();
+if (process.argv[2] === "setup") {
+  closeDatabase();
+  console.log(JSON.stringify({ setup: "private disk schema initialised" }));
+  process.exit(0);
+}
 ensureBudgetWork({ id: "settings:restart", chatJid: "web:restart", executionKind: "interactive" });
 storeTokenUsage({
   chat_jid: "web:restart", run_at: now.toISOString(), input_tokens: 1, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0,

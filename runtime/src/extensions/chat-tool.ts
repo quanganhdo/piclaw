@@ -34,6 +34,7 @@ export type ChatRelayRequest = {
   content: string;
   mode: ChatRelayMode;
   attachments?: ChatTransportAttachment[];
+  signal?: AbortSignal;
 };
 
 export type ChatRelayResult = {
@@ -75,6 +76,7 @@ export function setChatToolRelayFn(fn: ChatToolRelayFn | undefined): void {
         content: request.content,
         mode: request.mode,
         attachments: request.attachments,
+        signal: request.signal,
       });
       return result;
     },
@@ -240,7 +242,7 @@ export const chatTool: ExtensionFactory = (pi: ExtensionAPI) => {
     description: "List usable chat destinations or send text and files to a local session or installed one-hop transport. Use explicit mode='steer' for priority/blocking messages (handoffs, confirmations, blockers, stop/wait and restart coordination); use mode='queue' only for non-urgent updates. Never queue a reply the recipient needs before proceeding. Remote modes must be advertised by action='directory'.",
     promptSnippet: "chat: discover destinations with action='directory'; send text/files with mode='steer' for priority/blocking coordination, or 'queue' only for non-urgent updates. Respect advertised remote modes.",
     parameters: ChatSchema,
-    async execute(_toolCallId, params: ChatToolParams) {
+    async execute(_toolCallId, params: ChatToolParams, signal) {
       if ((params.action || "send") === "directory") {
         const directories = await getChatTransportDirectories();
         const entries = directories.flatMap((directory) => directory.entries);
@@ -280,6 +282,7 @@ export const chatTool: ExtensionFactory = (pi: ExtensionAPI) => {
           address,
           content,
           mode: params.mode || (targetAddress.includes("!") ? "queue" : "steer"),
+          signal,
           ...(attachments.length ? { attachments } : {}),
           ...(params.idempotency_key?.trim() ? { idempotency_key: params.idempotency_key.trim() } : {}),
           ...(params.in_reply_to?.trim() ? { in_reply_to: params.in_reply_to.trim() } : {}),

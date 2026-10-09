@@ -1,0 +1,110 @@
+{
+  "runtime": "Bun 1.4.2",
+  "removed": [
+    {
+      "path": "@earendil-works/pi-agent-core/harness",
+      "rejected": true,
+      "code": "ERR_MODULE_NOT_FOUND"
+    },
+    {
+      "path": "@earendil-works/pi-agent-core/harness/session",
+      "rejected": true,
+      "code": "ERR_MODULE_NOT_FOUND"
+    },
+    {
+      "path": "@earendil-works/pi-agent-core/harness/session/testing",
+      "rejected": true,
+      "code": "ERR_MODULE_NOT_FOUND"
+    },
+    {
+      "path": "@earendil-works/pi-agent-core/harness/context",
+      "rejected": true,
+      "code": "ERR_MODULE_NOT_FOUND"
+    },
+    {
+      "path": "@earendil-works/pi-agent-core/harness/env",
+      "rejected": true,
+      "code": "ERR_MODULE_NOT_FOUND"
+    },
+    {
+      "path": "@earendil-works/pi-agent-core/harness/env/nodejs",
+      "rejected": true,
+      "code": "ERR_MODULE_NOT_FOUND"
+    },
+    {
+      "path": "@earendil-works/pi-agent-core/experimental/pico3",
+      "rejected": true,
+      "code": "ERR_MODULE_NOT_FOUND"
+    },
+    {
+      "path": "@earendil-works/pi-agent-core/node",
+      "rejected": true,
+      "code": "ERR_MODULE_NOT_FOUND"
+    }
+  ],
+  "exports": {
+    "Harness": "object",
+    "MemoryStorage": "function",
+    "createSession": "function",
+    "createRegistry": "function",
+    "defineTool": "function",
+    "defineTask": "function",
+    "defineDoc": "function",
+    "watchEvents": "function",
+    "env": [
+      "ExecutionError",
+      "FileError",
+      "err",
+      "getOrThrow",
+      "getOrUndefined",
+      "ok",
+      "toError"
+    ],
+    "tools": [
+      "CodingTools",
+      "createBashTool",
+      "createEditTool",
+      "createReadTool",
+      "createWriteTool"
+    ],
+    "storage/memory": [
+      "MemoryStorage"
+    ],
+    "storage/jsonl": [
+      "JsonlCorruptionError",
+      "JsonlStorage",
+      "JsonlStoragePoisonedError"
+    ],
+    "storage/sqlite": [
+      "CURRENT_SQLITE_SCHEMA_VERSION",
+      "SQLITE_MIGRATIONS",
+      "SqliteStorage",
+      "applySqliteMigrations"
+    ],
+    "testing": [
+      "STORAGE_MEMORY_SCALES",
+      "STORAGE_READ_BENCHMARKS",
+      "STORAGE_WRITE_BENCHMARKS",
+      "TIMING_SCALE",
+      "createExpectAssertions",
+      "createStorageConformance",
+      "registerStorageConformance",
+      "seedStorageBenchmark",
+      "seedStorageWriteBenchmark",
+      "storageBenchmarkPrimaryRecordCount"
+    ]
+  },
+  "checks": [
+    "open/root/inspect without scheduling",
+    "public conversation watch delivers committed configure frame and stops",
+    "close without provider execution"
+  ],
+  "providerCalls": 0,
+  "guard": {
+    "mode": "bun-preload",
+    "networkDenied": true,
+    "childProcessDenied": true,
+    "networkAttempts": 0,
+    "childProcessAttempts": 0
+  }
+}

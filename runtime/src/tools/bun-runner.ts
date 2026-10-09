@@ -305,24 +305,36 @@ export async function runBunScript(
     });
 
     child.on("close", (exitCode) => {
+      // Event callbacks run outside the Promise executor. Settle storage failures
+      // here so they cannot escape into the host after the script has executed.
+      if (settled) return;
       cleanup(timeoutHandle);
 
       if (aborted || signal?.aborted) {
-        reject(new Error("aborted"));
+        fail(new Error("aborted"));
         return;
       }
       if (timedOut) {
-        reject(new Error(`timeout:${target.timeoutSec}`));
+        fail(new Error(`timeout:${target.timeoutSec}`));
         return;
       }
 
-      finish({
-        ...target,
-        bunPath,
-        exitCode,
-        stdout: finalizeCapturedStream("stdout", target, stdoutCapture),
-        stderr: finalizeCapturedStream("stderr", target, stderrCapture),
-      });
+      try {
+        finish({
+          ...target,
+          bunPath,
+          exitCode,
+          stdout: finalizeCapturedStream("stdout", target, stdoutCapture),
+          stderr: finalizeCapturedStream("stderr", target, stderrCapture),
+        });
+      } catch (error) {
+        // No script retry or unindexed output fallback: side effects may have
+        // occurred, and normal output ownership checks must still apply.
+        fail(new Error(
+          `Bun script exited (code ${exitCode ?? "unknown"}), but captured output could not be finalized. The script may already have made changes; inspect before retrying.`,
+          { cause: error },
+        ));
+      }
     });
   });
 }

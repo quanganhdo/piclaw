@@ -1,0 +1,56 @@
+{
+  "recordedAt": "2026-10-06T10:48:29.202Z",
+  "qualifiedHead": "7a8ff331736cff8fd0bf8c47e5925c95e285e310",
+  "qualifiedTree": "c4908bf0f0456fa2db5a16b449234cc626f352ff",
+  "runtimeTree": "72803739b56baaf4eea6a340bdd012e8e3ef1e8c",
+  "full": {
+    "exit": 0,
+    "pass": 6553,
+    "skip": 8,
+    "fail": 0,
+    "assertions": 42805,
+    "files": 931,
+    "seconds": 699.29,
+    "log": "/workspace/tmp/popup-heading-full/ci-fast.log",
+    "sha256": "4acef0f68d1110dbccf9516813203af93765705f25d98fc64550dfc5558eb137",
+    "cleanUnchanged": true
+  },
+  "browser": {
+    "pass": 7,
+    "fail": 0,
+    "assertions": 85,
+    "log": "/workspace/tmp/popup-heading-corrected-browser.log",
+    "sha256": "8c34124cd5abb429cf8c060864029e5edfabf3b23381514565e22e45c05822d9",
+    "coverage": "actualPinned modelgroups Classic/Visual Chromium/WebKit820+390, Enter; existingClassic pinnedsession/keyboard/tablet/phone"
+  },
+  "focused": {
+    "pass": 16,
+    "assertions": 122
+  },
+  "settings": {
+    "pass": 25,
+    "assertions": 246
+  },
+  "build": {
+    "pass": 9,
+    "assertions": 26
+  },
+  "review": "Explicit6.1scopedCLEAR after fixtureAPIcorrection, no reviewer tests",
+  "retainedLogs": [
+    {
+      "path": "/workspace/tmp/popup-heading-confirmed-red.log",
+      "sha256": "1acec2a82ee811c9763f1659785783442c27566b069999d6e565cd81a59b65e8"
+    },
+    {
+      "path": "/workspace/tmp/popup-heading-final-browser.log",
+      "sha256": "fc3a7ea1066b4186a27fb1d22340a5df8243049032339c5b1387347113bb688b"
+    },
+    {
+      "path": "/workspace/tmp/popup-heading-red.log",
+      "sha256": "ff7058000b492f6fd3dc48607a320e5d721a30f72d5e6947f29998853f92b581"
+    }
+  ],
+  "scope": "ThreeCSSpopupheadingrules+generatedCSS/cachebust+regressions; handlers unchanged",
+  "publicationDelta": "Docs/receipts only; runtimeparityverified",
+  "operations": "No installation/restart/liveUI/provider/configchanges"
+}

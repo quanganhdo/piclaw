@@ -85,7 +85,10 @@ createInterface({ input: process.stdin }).on("line", (line) => {
       });
       await Bun.sleep(100);
       expect(events(), "MCP must not spawn before Piclaw binds the session").toEqual([]);
-      await runtime.session.bindExtensions({});
+      const extensionErrors: string[] = [];
+      // The SDK only restarts extensions on reload when it has bindings. Match
+      // Piclaw's real session binder, which always installs an error listener.
+      await runtime.session.bindExtensions({ onError: error => extensionErrors.push(error.error) });
 
       const allTools = (runtime.session as any)._extensionRunner?.getAllRegisteredTools?.() ?? [];
       const mcpTool = allTools.find((tool: any) => tool.definition?.name === "mcp")?.definition;
@@ -107,15 +110,29 @@ createInterface({ input: process.stdin }).on("line", (line) => {
       expect(events().some(({ event }) => event === "request:server/discover")).toBe(false);
       expect(events().filter(({ event }) => event === "start")).toHaveLength(1);
 
-      await runtime.newSession();
+      runtime.session.sessionManager.appendMessage({ role: "user", content: "Synthetic reload history", timestamp: 1 });
+      const sessionId = runtime.session.sessionId;
+      const history = JSON.stringify(runtime.session.sessionManager.getEntries());
+      await runtime.session.reload();
+      expect(extensionErrors).toEqual([]);
       await waitFor(() => events().filter(({ event }) => event === "exit").length >= 1);
-      await runtime.session.bindExtensions({});
       await waitFor(() => events().filter(({ event }) => event === "start").length >= 2);
-      expect(events().filter(({ event }) => event === "start")).toHaveLength(2);
+      expect(runtime.session.sessionId).toBe(sessionId);
+      expect(JSON.stringify(runtime.session.sessionManager.getEntries())).toBe(history);
+      const afterReload = events();
+      expect(afterReload.filter(({ event }) => event === "start")).toHaveLength(2);
+      expect(afterReload.findIndex(({ event }) => event === "exit"))
+        .toBeLessThan(afterReload.findIndex(({ event, pid }) => event === "start" && pid !== initialStarts[0].pid));
+
+      await runtime.newSession();
+      await waitFor(() => events().filter(({ event }) => event === "exit").length >= 2);
+      await runtime.session.bindExtensions({});
+      await waitFor(() => events().filter(({ event }) => event === "start").length >= 3);
+      expect(events().filter(({ event }) => event === "start")).toHaveLength(3);
 
       await runtime.dispose();
       runtime = null;
-      await waitFor(() => events().filter(({ event }) => event === "exit").length >= 2);
+      await waitFor(() => events().filter(({ event }) => event === "exit").length >= 3);
     } finally {
       if (runtime) await runtime.dispose();
       resetMcpStartupStateForTests();

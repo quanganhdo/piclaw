@@ -1,0 +1,31 @@
+{
+  "version": "1.0.4",
+  "gitHead": "7c10bd4337495ee613f2224843ecdf349b80d1df",
+  "packages": [
+    {
+      "name": "@earendil-works/pi-coding-agent",
+      "version": "1.0.4",
+      "gitHead": "7c10bd4337495ee613f2224843ecdf349b80d1df",
+      "shasum": "878235d4ecc2ad3ac6fad0adfeffcf233b8159d7",
+      "integrity": "sha512-+956nfMFHr5lDUVY/2Q4k+YzojzBuCaBXFgj0eSlXVGr7QVliVddKdc1Pz6yVg1dOlJQmb67doOVrlMsIcIdaw==",
+      "files": 1248,
+      "treeSha256": "49953b089b9c0a3617cdb86e5de9f7aaa11eb30440975fbc6754688f74ce9f68"
+    },
+    {
+      "name": "@earendil-works/pi-ai",
+      "version": "1.0.4",
+      "gitHead": "7c10bd4337495ee613f2224843ecdf349b80d1df",
+      "shasum": "f398aa4469437bfa0c6326bcb61f7bc4f25840e6",
+      "integrity": "sha512-/Eu5R0gfor6wcmRcVyOmulUiZmsHJ0bKu5wXXnpCoSHF3y4FnW4fgnjRlLjNza8NJWXdvW5Uew90Zukx7Sh2rw==",
+      "files": 817,
+      "treeSha256": "73da0405eba6fa15624fc22e31cd10be891a9b62c9e240e5d43c5054e767a733"
+    }
+  ],
+  "bin": "dist/bundle/cli.js",
+  "bundleFileCount": 75,
+  "bundleSha256": "f7c427c573beb75f6656eb382d8c8eaa292d2f7546a9057ad6007cab12b12318",
+  "sdkFileSha256": {
+    "openai-chatgpt.js": "43ed8ff9d5ec6c18af868fd727b8778520153fb88e7a1e90fcbfc244fd2a2150",
+    "openai-codex.js": "0740315fb80f9c90ccee677b3cfdce4bce289610090b64b74af8f002e230868f"
+  }
+}

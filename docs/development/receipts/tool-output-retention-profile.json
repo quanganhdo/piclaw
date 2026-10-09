@@ -1,0 +1,2186 @@
+{
+  "at": "2026-10-03T19:43:00.048Z",
+  "base": "23dc0aa19b702ab820dd72f7fe6944fc307d8bde",
+  "runtime": "Bun 1.4.2",
+  "host": "Smith Debian LXC",
+  "processes": 34,
+  "workload": {
+    "sizes": [
+      10,
+      100,
+      1000
+    ],
+    "chunksPerOutput": 10,
+    "expiredFraction": 0.5,
+    "modes": {
+      "plain": 18,
+      "instrument": 6,
+      "cpu": 10
+    },
+    "interleavedOrder": [
+      "baseline",
+      "candidate",
+      "candidate",
+      "baseline",
+      "baseline",
+      "candidate"
+    ]
+  },
+  "comparisons": [
+    {
+      "size": 10,
+      "tag": "baseline",
+      "processes": 3,
+      "expired": 5,
+      "retentionMs": {
+        "min": 21.745550999999978,
+        "median": 21.90827300000001,
+        "max": 22.450404000000162,
+        "observations": [
+          21.90827300000001,
+          21.745550999999978,
+          22.450404000000162
+        ]
+      },
+      "retentionCpuMs": {
+        "min": 0.732,
+        "median": 0.927,
+        "max": 0.928,
+        "observations": [
+          0.927,
+          0.928,
+          0.732
+        ]
+      },
+      "timerMs": {
+        "min": 21.901674000000185,
+        "median": 22.024697999999717,
+        "max": 22.57135900000003,
+        "observations": [
+          22.024697999999717,
+          21.901674000000185,
+          22.57135900000003
+        ]
+      },
+      "searchWarm100Ms": {
+        "common": {
+          "min": 8.869260999999824,
+          "median": 9.479025000000092,
+          "max": 13.872316999999839,
+          "observations": [
+            10.641319999999723,
+            9.124656999999843,
+            8.869260999999824,
+            13.872316999999839,
+            9.479025000000092,
+            9.721348000000035,
+            10.079572000000098,
+            9.384095999999772,
+            9.146983000000091
+          ]
+        },
+        "rare": {
+          "min": 4.314552000000276,
+          "median": 4.728098999999929,
+          "max": 5.091082999999799,
+          "observations": [
+            4.462316000000101,
+            4.455201000000216,
+            4.314552000000276,
+            4.855378000000201,
+            4.873611999999866,
+            4.728098999999929,
+            4.827248000000054,
+            5.091082999999799,
+            4.705594999999903
+          ]
+        }
+      },
+      "counts": {
+        "prepare": {
+          "calls": 11,
+          "ms": 0.07577700000138066
+        },
+        "all": {
+          "calls": 1,
+          "ms": 0.02702399999998306,
+          "rows": 5
+        },
+        "run": {
+          "calls": 10,
+          "ms": 0.21777099999962957
+        }
+      },
+      "finalDigest": "03171b686bd54775e95f55e3e55639dce8e934a6a39ef85b2c73e1f6610ec8fb"
+    },
+    {
+      "size": 10,
+      "tag": "candidate",
+      "processes": 3,
+      "expired": 5,
+      "retentionMs": {
+        "min": 16.688628000000335,
+        "median": 19.96313199999986,
+        "max": 21.721575999999914,
+        "observations": [
+          19.96313199999986,
+          16.688628000000335,
+          21.721575999999914
+        ]
+      },
+      "retentionCpuMs": {
+        "min": 0.827,
+        "median": 0.856,
+        "max": 0.901,
+        "observations": [
+          0.856,
+          0.901,
+          0.827
+        ]
+      },
+      "timerMs": {
+        "min": 16.80533800000012,
+        "median": 20.08213799999976,
+        "max": 21.857598000000053,
+        "observations": [
+          20.08213799999976,
+          16.80533800000012,
+          21.857598000000053
+        ]
+      },
+      "searchWarm100Ms": {
+        "common": {
+          "min": 8.951740999999856,
+          "median": 9.301698999999644,
+          "max": 10.13780399999996,
+          "observations": [
+            9.988394999999855,
+            9.17243899999994,
+            9.147801000000072,
+            10.13780399999996,
+            9.26493900000014,
+            8.951740999999856,
+            9.441665000000285,
+            9.335479999999734,
+            9.301698999999644
+          ]
+        },
+        "rare": {
+          "min": 4.309177000000091,
+          "median": 4.701336999999967,
+          "max": 4.911669999999958,
+          "observations": [
+            4.911669999999958,
+            4.701336999999967,
+            4.713999000000058,
+            4.827962000000298,
+            4.5173939999999675,
+            4.309177000000091,
+            4.610697000000073,
+            4.765261999999893,
+            4.685713999999734
+          ]
+        }
+      },
+      "counts": {
+        "prepare": {
+          "calls": 7,
+          "ms": 0.06403099999943151
+        },
+        "all": {
+          "calls": 1,
+          "ms": 0.024320999999872583,
+          "rows": 5
+        },
+        "run": {
+          "calls": 6,
+          "ms": 0.17547500000046057
+        },
+        "query": {
+          "calls": 5,
+          "ms": 0
+        },
+        "get": {
+          "calls": 5,
+          "ms": 0.009222000000590924
+        }
+      },
+      "finalDigest": "03171b686bd54775e95f55e3e55639dce8e934a6a39ef85b2c73e1f6610ec8fb"
+    },
+    {
+      "size": 100,
+      "tag": "baseline",
+      "processes": 3,
+      "expired": 50,
+      "retentionMs": {
+        "min": 31.555031999999755,
+        "median": 32.14110400000027,
+        "max": 33.650216,
+        "observations": [
+          32.14110400000027,
+          31.555031999999755,
+          33.650216
+        ]
+      },
+      "retentionCpuMs": {
+        "min": 7.86,
+        "median": 8.546,
+        "max": 8.626,
+        "observations": [
+          8.546,
+          7.86,
+          8.626
+        ]
+      },
+      "timerMs": {
+        "min": 31.669155000000046,
+        "median": 32.26165399999991,
+        "max": 33.80094700000018,
+        "observations": [
+          32.26165399999991,
+          31.669155000000046,
+          33.80094700000018
+        ]
+      },
+      "searchWarm100Ms": {
+        "common": {
+          "min": 45.25202300000001,
+          "median": 48.67950800000017,
+          "max": 50.2619380000001,
+          "observations": [
+            50.21726699999999,
+            47.67625700000008,
+            48.766979999999876,
+            45.25202300000001,
+            48.67950800000017,
+            49.539132999999765,
+            46.49734899999976,
+            48.43926199999987,
+            50.2619380000001
+          ]
+        },
+        "rare": {
+          "min": 4.4480610000000524,
+          "median": 4.712379000000055,
+          "max": 5.228904999999941,
+          "observations": [
+            4.496537999999873,
+            4.4480610000000524,
+            4.492888000000221,
+            4.712379000000055,
+            4.771999000000051,
+            4.6747629999999845,
+            5.137540999999601,
+            5.177568000000065,
+            5.228904999999941
+          ]
+        }
+      },
+      "counts": {
+        "prepare": {
+          "calls": 101,
+          "ms": 0.3944640000036088
+        },
+        "all": {
+          "calls": 1,
+          "ms": 0.05542599999989761,
+          "rows": 50
+        },
+        "run": {
+          "calls": 100,
+          "ms": 7.417655999995077
+        }
+      },
+      "finalDigest": "0ecf39f66fa4355d6b9df408c7ca7aa352f1c2408ae1d65a5b380ff5b3376eca"
+    },
+    {
+      "size": 100,
+      "tag": "candidate",
+      "processes": 3,
+      "expired": 50,
+      "retentionMs": {
+        "min": 13.834709999999632,
+        "median": 15.114262000000053,
+        "max": 245.8529450000001,
+        "observations": [
+          13.834709999999632,
+          245.8529450000001,
+          15.114262000000053
+        ]
+      },
+      "retentionCpuMs": {
+        "min": 2.499,
+        "median": 2.507,
+        "max": 2.742,
+        "observations": [
+          2.507,
+          2.742,
+          2.499
+        ]
+      },
+      "timerMs": {
+        "min": 13.9637859999998,
+        "median": 15.249395999999706,
+        "max": 245.9916720000001,
+        "observations": [
+          13.9637859999998,
+          245.9916720000001,
+          15.249395999999706
+        ]
+      },
+      "searchWarm100Ms": {
+        "common": {
+          "min": 47.007284000000254,
+          "median": 50.19591100000025,
+          "max": 61.31030400000009,
+          "observations": [
+            50.006786999999804,
+            49.434719000000314,
+            50.37221400000044,
+            50.180857999999716,
+            50.304239999999936,
+            61.31030400000009,
+            47.007284000000254,
+            50.517729000000145,
+            50.19591100000025
+          ]
+        },
+        "rare": {
+          "min": 4.549678000000313,
+          "median": 4.962144999999964,
+          "max": 5.975381000000198,
+          "observations": [
+            4.962144999999964,
+            4.696275000000242,
+            4.549678000000313,
+            5.975381000000198,
+            4.649447999999666,
+            4.736782999999832,
+            5.007724000000053,
+            4.965131999999812,
+            5.105091999999786
+          ]
+        }
+      },
+      "counts": {
+        "prepare": {
+          "calls": 52,
+          "ms": 0.250398000000132
+        },
+        "all": {
+          "calls": 1,
+          "ms": 0.044857999999749154,
+          "rows": 50
+        },
+        "run": {
+          "calls": 51,
+          "ms": 1.0855810000020938
+        },
+        "query": {
+          "calls": 50,
+          "ms": 0
+        },
+        "get": {
+          "calls": 50,
+          "ms": 0.04234200000109922
+        }
+      },
+      "finalDigest": "0ecf39f66fa4355d6b9df408c7ca7aa352f1c2408ae1d65a5b380ff5b3376eca"
+    },
+    {
+      "size": 1000,
+      "tag": "baseline",
+      "processes": 3,
+      "expired": 500,
+      "retentionMs": {
+        "min": 577.2844020000002,
+        "median": 589.3097200000002,
+        "max": 590.1326529999988,
+        "observations": [
+          590.1326529999988,
+          577.2844020000002,
+          589.3097200000002
+        ]
+      },
+      "retentionCpuMs": {
+        "min": 532.16,
+        "median": 533.8,
+        "max": 553.836,
+        "observations": [
+          532.16,
+          533.8,
+          553.836
+        ]
+      },
+      "timerMs": {
+        "min": 577.4872190000006,
+        "median": 589.4705469999999,
+        "max": 590.3175550000014,
+        "observations": [
+          590.3175550000014,
+          577.4872190000006,
+          589.4705469999999
+        ]
+      },
+      "searchWarm100Ms": {
+        "common": {
+          "min": 467.15991699999904,
+          "median": 469.7295039999999,
+          "max": 482.3955470000001,
+          "observations": [
+            468.14242699999977,
+            467.15991699999904,
+            467.4906290000017,
+            479.94674399999985,
+            469.7295039999999,
+            473.521076,
+            482.3955470000001,
+            469.3880530000006,
+            480.8182160000006
+          ]
+        },
+        "rare": {
+          "min": 5.23352899999918,
+          "median": 5.649312000000464,
+          "max": 6.03588899999977,
+          "observations": [
+            5.660697999999684,
+            5.537741999998616,
+            5.23352899999918,
+            5.7836630000001605,
+            5.649312000000464,
+            5.328647999999703,
+            6.03588899999977,
+            5.780835999999908,
+            5.4485909999993964
+          ]
+        }
+      },
+      "counts": {
+        "prepare": {
+          "calls": 1001,
+          "ms": 3.907963999978165
+        },
+        "all": {
+          "calls": 1,
+          "ms": 0.3478869999999006,
+          "rows": 500
+        },
+        "run": {
+          "calls": 1000,
+          "ms": 527.8890949999914
+        }
+      },
+      "finalDigest": "8cd4519310addc2c27b93e63691a4250efdb523a1a170fb3c60e394774564562"
+    },
+    {
+      "size": 1000,
+      "tag": "candidate",
+      "processes": 3,
+      "expired": 500,
+      "retentionMs": {
+        "min": 58.56041499999992,
+        "median": 59.51421499999924,
+        "max": 228.19519899999977,
+        "observations": [
+          228.19519899999977,
+          59.51421499999924,
+          58.56041499999992
+        ]
+      },
+      "retentionCpuMs": {
+        "min": 24.231,
+        "median": 25.519,
+        "max": 27.509,
+        "observations": [
+          27.509,
+          25.519,
+          24.231
+        ]
+      },
+      "timerMs": {
+        "min": 58.68906600000082,
+        "median": 59.704955000000155,
+        "max": 228.36322699999982,
+        "observations": [
+          228.36322699999982,
+          59.704955000000155,
+          58.68906600000082
+        ]
+      },
+      "searchWarm100Ms": {
+        "common": {
+          "min": 468.53669100000116,
+          "median": 477.29061900000033,
+          "max": 557.3755460000002,
+          "observations": [
+            499.64180900000065,
+            468.53669100000116,
+            472.1688919999997,
+            557.3755460000002,
+            495.1508539999995,
+            476.3333480000001,
+            480.6366929999999,
+            477.29061900000033,
+            470.96509100000003
+          ]
+        },
+        "rare": {
+          "min": 5.314476999999897,
+          "median": 5.914115000000493,
+          "max": 6.715888000000632,
+          "observations": [
+            6.149047999999311,
+            6.715888000000632,
+            6.136993000000075,
+            5.914115000000493,
+            5.824582000000191,
+            5.849809999999707,
+            5.939334999999119,
+            5.630169999999453,
+            5.314476999999897
+          ]
+        }
+      },
+      "counts": {
+        "prepare": {
+          "calls": 506,
+          "ms": 2.1710810000104175
+        },
+        "all": {
+          "calls": 1,
+          "ms": 0.35615099999995437,
+          "rows": 500
+        },
+        "run": {
+          "calls": 505,
+          "ms": 18.52104899999904
+        },
+        "query": {
+          "calls": 500,
+          "ms": 0
+        },
+        "get": {
+          "calls": 500,
+          "ms": 0.23917399999572808
+        }
+      },
+      "finalDigest": "8cd4519310addc2c27b93e63691a4250efdb523a1a170fb3c60e394774564562"
+    }
+  ],
+  "profiles": [
+    {
+      "file": "10-baseline-cpu-8.cpuprofile",
+      "tag": "baseline",
+      "size": 10,
+      "sha256": "c52004b4b4ff61917cbad380bd6db994bf36343e56692c105452fafe5af63836",
+      "scopes": {
+        "wholeChild": {
+          "samples": 340,
+          "topSelfFrames": [
+            {
+              "name": "run",
+              "file": "",
+              "samples": 220
+            },
+            {
+              "name": "all",
+              "file": "",
+              "samples": 46
+            },
+            {
+              "name": "prepare",
+              "file": "",
+              "samples": 24
+            },
+            {
+              "name": "anonymous",
+              "file": "",
+              "samples": 16
+            },
+            {
+              "name": "get",
+              "file": "",
+              "samples": 8
+            },
+            {
+              "name": "readFileSync",
+              "file": "",
+              "samples": 4
+            },
+            {
+              "name": "readDomainConfig",
+              "file": "runtime/src/core/domain-config.ts",
+              "samples": 4
+            },
+            {
+              "name": "close",
+              "file": "",
+              "samples": 3
+            },
+            {
+              "name": "resolveFieldValue",
+              "file": "runtime/src/core/domain-config.ts",
+              "samples": 2
+            },
+            {
+              "name": "entries",
+              "file": "",
+              "samples": 2
+            },
+            {
+              "name": "makeSafe",
+              "file": "internal:primordials",
+              "samples": 1
+            },
+            {
+              "name": "(anonymous)",
+              "file": "node_modules/cron-parser/dist/index.js",
+              "samples": 1
+            }
+          ]
+        },
+        "retention": {
+          "samples": 0,
+          "topSelfFrames": []
+        },
+        "search": {
+          "samples": 85,
+          "topSelfFrames": [
+            {
+              "name": "all",
+              "file": "",
+              "samples": 46
+            },
+            {
+              "name": "prepare",
+              "file": "",
+              "samples": 20
+            },
+            {
+              "name": "get",
+              "file": "",
+              "samples": 5
+            },
+            {
+              "name": "readDomainConfig",
+              "file": "runtime/src/core/domain-config.ts",
+              "samples": 4
+            },
+            {
+              "name": "readFileSync",
+              "file": "",
+              "samples": 3
+            },
+            {
+              "name": "resolveFieldValue",
+              "file": "runtime/src/core/domain-config.ts",
+              "samples": 2
+            },
+            {
+              "name": "entries",
+              "file": "",
+              "samples": 2
+            },
+            {
+              "name": "searchToolOutputSnippets",
+              "file": "runtime/src/db/tool-outputs.ts",
+              "samples": 1
+            },
+            {
+              "name": "readDomainBlock",
+              "file": "runtime/src/core/domain-config.ts",
+              "samples": 1
+            },
+            {
+              "name": "#all",
+              "file": "bun:sqlite",
+              "samples": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "file": "10-candidate-cpu-9.cpuprofile",
+      "tag": "candidate",
+      "size": 10,
+      "sha256": "ac518c05ca466ec02303aef0b69263a902e4f87eef43a2332026aa1c6becdffe",
+      "scopes": {
+        "wholeChild": {
+          "samples": 365,
+          "topSelfFrames": [
+            {
+              "name": "run",
+              "file": "",
+              "samples": 228
+            },
+            {
+              "name": "all",
+              "file": "",
+              "samples": 42
+            },
+            {
+              "name": "prepare",
+              "file": "",
+              "samples": 25
+            },
+            {
+              "name": "anonymous",
+              "file": "",
+              "samples": 15
+            },
+            {
+              "name": "readFileSync",
+              "file": "",
+              "samples": 11
+            },
+            {
+              "name": "get",
+              "file": "",
+              "samples": 6
+            },
+            {
+              "name": "resolveFieldValue",
+              "file": "runtime/src/core/domain-config.ts",
+              "samples": 5
+            },
+            {
+              "name": "copyDataProperties",
+              "file": "",
+              "samples": 3
+            },
+            {
+              "name": "#all",
+              "file": "bun:sqlite",
+              "samples": 3
+            },
+            {
+              "name": "close",
+              "file": "",
+              "samples": 3
+            },
+            {
+              "name": "readDomainConfig",
+              "file": "runtime/src/core/domain-config.ts",
+              "samples": 2
+            },
+            {
+              "name": "uncurryThis",
+              "file": "internal:primordials",
+              "samples": 1
+            }
+          ]
+        },
+        "retention": {
+          "samples": 1,
+          "topSelfFrames": [
+            {
+              "name": "(anonymous)",
+              "file": "runtime/src/db/tool-outputs.ts",
+              "samples": 1
+            }
+          ]
+        },
+        "search": {
+          "samples": 96,
+          "topSelfFrames": [
+            {
+              "name": "all",
+              "file": "",
+              "samples": 40
+            },
+            {
+              "name": "prepare",
+              "file": "",
+              "samples": 19
+            },
+            {
+              "name": "readFileSync",
+              "file": "",
+              "samples": 10
+            },
+            {
+              "name": "resolveFieldValue",
+              "file": "runtime/src/core/domain-config.ts",
+              "samples": 5
+            },
+            {
+              "name": "copyDataProperties",
+              "file": "",
+              "samples": 3
+            },
+            {
+              "name": "#all",
+              "file": "bun:sqlite",
+              "samples": 3
+            },
+            {
+              "name": "get",
+              "file": "",
+              "samples": 3
+            },
+            {
+              "name": "readDomainConfig",
+              "file": "runtime/src/core/domain-config.ts",
+              "samples": 2
+            },
+            {
+              "name": "getToolOutputById",
+              "file": "runtime/src/db/tool-outputs.ts",
+              "samples": 1
+            },
+            {
+              "name": "trim",
+              "file": "",
+              "samples": 1
+            },
+            {
+              "name": "validate",
+              "file": "runtime/src/core/config-tools.ts",
+              "samples": 1
+            },
+            {
+              "name": "/^[\\p{L}\\p{N}_]+$/u",
+              "file": "",
+              "samples": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "file": "100-baseline-cpu-8.cpuprofile",
+      "tag": "baseline",
+      "size": 100,
+      "sha256": "fc1af4d096b9965969149ca834a3a36b0e1c8d2cad8fdb9d4c6bdfe600a1cfb2",
+      "scopes": {
+        "wholeChild": {
+          "samples": 474,
+          "topSelfFrames": [
+            {
+              "name": "run",
+              "file": "",
+              "samples": 225
+            },
+            {
+              "name": "all",
+              "file": "",
+              "samples": 172
+            },
+            {
+              "name": "prepare",
+              "file": "",
+              "samples": 29
+            },
+            {
+              "name": "anonymous",
+              "file": "",
+              "samples": 16
+            },
+            {
+              "name": "get",
+              "file": "",
+              "samples": 9
+            },
+            {
+              "name": "readDomainConfig",
+              "file": "runtime/src/core/domain-config.ts",
+              "samples": 4
+            },
+            {
+              "name": "close",
+              "file": "",
+              "samples": 3
+            },
+            {
+              "name": "copyDataProperties",
+              "file": "",
+              "samples": 2
+            },
+            {
+              "name": "resolveFieldValue",
+              "file": "runtime/src/core/domain-config.ts",
+              "samples": 2
+            },
+            {
+              "name": "readFileSync",
+              "file": "",
+              "samples": 2
+            },
+            {
+              "name": "@lazy",
+              "file": "",
+              "samples": 1
+            },
+            {
+              "name": "freeze",
+              "file": "",
+              "samples": 1
+            }
+          ]
+        },
+        "retention": {
+          "samples": 6,
+          "topSelfFrames": [
+            {
+              "name": "run",
+              "file": "",
+              "samples": 5
+            },
+            {
+              "name": "prepare",
+              "file": "",
+              "samples": 1
+            }
+          ]
+        },
+        "search": {
+          "samples": 197,
+          "topSelfFrames": [
+            {
+              "name": "all",
+              "file": "",
+              "samples": 172
+            },
+            {
+              "name": "prepare",
+              "file": "",
+              "samples": 13
+            },
+            {
+              "name": "readDomainConfig",
+              "file": "runtime/src/core/domain-config.ts",
+              "samples": 4
+            },
+            {
+              "name": "readFileSync",
+              "file": "",
+              "samples": 2
+            },
+            {
+              "name": "every",
+              "file": "",
+              "samples": 1
+            },
+            {
+              "name": "get",
+              "file": "",
+              "samples": 1
+            },
+            {
+              "name": "resolve",
+              "file": "",
+              "samples": 1
+            },
+            {
+              "name": "copyDataProperties",
+              "file": "",
+              "samples": 1
+            },
+            {
+              "name": "resolveFieldValue",
+              "file": "runtime/src/core/domain-config.ts",
+              "samples": 1
+            },
+            {
+              "name": "entries",
+              "file": "",
+              "samples": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "file": "100-candidate-cpu-9.cpuprofile",
+      "tag": "candidate",
+      "size": 100,
+      "sha256": "cfaf83c0eb0c1da1dce379e393a7e77de3a1777d4f5c03751cb1828ccaa978f0",
+      "scopes": {
+        "wholeChild": {
+          "samples": 483,
+          "topSelfFrames": [
+            {
+              "name": "run",
+              "file": "",
+              "samples": 231
+            },
+            {
+              "name": "all",
+              "file": "",
+              "samples": 166
+            },
+            {
+              "name": "prepare",
+              "file": "",
+              "samples": 27
+            },
+            {
+              "name": "anonymous",
+              "file": "",
+              "samples": 18
+            },
+            {
+              "name": "get",
+              "file": "",
+              "samples": 10
+            },
+            {
+              "name": "readFileSync",
+              "file": "",
+              "samples": 6
+            },
+            {
+              "name": "resolveFieldValue",
+              "file": "runtime/src/core/domain-config.ts",
+              "samples": 3
+            },
+            {
+              "name": "close",
+              "file": "",
+              "samples": 3
+            },
+            {
+              "name": "node:assert",
+              "file": "node:assert",
+              "samples": 1
+            },
+            {
+              "name": "setName",
+              "file": "node:fs",
+              "samples": 1
+            },
+            {
+              "name": "node:crypto",
+              "file": "node:crypto",
+              "samples": 1
+            },
+            {
+              "name": "@lazy",
+              "file": "",
+              "samples": 1
+            }
+          ]
+        },
+        "retention": {
+          "samples": 2,
+          "topSelfFrames": [
+            {
+              "name": "(anonymous)",
+              "file": "runtime/src/db/tool-outputs.ts",
+              "samples": 1
+            },
+            {
+              "name": "run",
+              "file": "",
+              "samples": 1
+            }
+          ]
+        },
+        "search": {
+          "samples": 194,
+          "topSelfFrames": [
+            {
+              "name": "all",
+              "file": "",
+              "samples": 166
+            },
+            {
+              "name": "prepare",
+              "file": "",
+              "samples": 12
+            },
+            {
+              "name": "readFileSync",
+              "file": "",
+              "samples": 5
+            },
+            {
+              "name": "resolveFieldValue",
+              "file": "runtime/src/core/domain-config.ts",
+              "samples": 3
+            },
+            {
+              "name": "get",
+              "file": "",
+              "samples": 3
+            },
+            {
+              "name": "copyDataProperties",
+              "file": "",
+              "samples": 1
+            },
+            {
+              "name": "(anonymous)",
+              "file": "runtime/src/core/config-tools.ts",
+              "samples": 1
+            },
+            {
+              "name": "(anonymous)",
+              "file": "runtime/src/utils/fts-query.ts",
+              "samples": 1
+            },
+            {
+              "name": "entries",
+              "file": "",
+              "samples": 1
+            },
+            {
+              "name": "readDomainBlock",
+              "file": "runtime/src/core/domain-config.ts",
+              "samples": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "file": "1000-baseline-cpu-8.cpuprofile",
+      "tag": "baseline",
+      "size": 1000,
+      "sha256": "14bf05498affd94aa656d7c388156f806c4a33447d84c00f7e3eace202c4ea8a",
+      "scopes": {
+        "wholeChild": {
+          "samples": 3180,
+          "topSelfFrames": [
+            {
+              "name": "all",
+              "file": "",
+              "samples": 2109
+            },
+            {
+              "name": "run",
+              "file": "",
+              "samples": 775
+            },
+            {
+              "name": "prepare",
+              "file": "",
+              "samples": 169
+            },
+            {
+              "name": "get",
+              "file": "",
+              "samples": 46
+            },
+            {
+              "name": "readFileSync",
+              "file": "",
+              "samples": 22
+            },
+            {
+              "name": "anonymous",
+              "file": "",
+              "samples": 15
+            },
+            {
+              "name": "getToolOutputById",
+              "file": "runtime/src/db/tool-outputs.ts",
+              "samples": 4
+            },
+            {
+              "name": "close",
+              "file": "",
+              "samples": 4
+            },
+            {
+              "name": "defineProperties",
+              "file": "",
+              "samples": 3
+            },
+            {
+              "name": "prepare",
+              "file": "bun:sqlite",
+              "samples": 3
+            },
+            {
+              "name": "normalizeToolResultCompactionTools",
+              "file": "runtime/src/core/config-tools.ts",
+              "samples": 3
+            },
+            {
+              "name": "entries",
+              "file": "",
+              "samples": 2
+            }
+          ]
+        },
+        "retention": {
+          "samples": 513,
+          "topSelfFrames": [
+            {
+              "name": "run",
+              "file": "",
+              "samples": 504
+            },
+            {
+              "name": "prepare",
+              "file": "",
+              "samples": 8
+            },
+            {
+              "name": "remove",
+              "file": "runtime/src/db/tool-outputs.ts",
+              "samples": 1
+            }
+          ]
+        },
+        "search": {
+          "samples": 2161,
+          "topSelfFrames": [
+            {
+              "name": "all",
+              "file": "",
+              "samples": 2107
+            },
+            {
+              "name": "readFileSync",
+              "file": "",
+              "samples": 22
+            },
+            {
+              "name": "prepare",
+              "file": "",
+              "samples": 13
+            },
+            {
+              "name": "get",
+              "file": "",
+              "samples": 3
+            },
+            {
+              "name": "normalizeToolResultCompactionTools",
+              "file": "runtime/src/core/config-tools.ts",
+              "samples": 3
+            },
+            {
+              "name": "entries",
+              "file": "",
+              "samples": 2
+            },
+            {
+              "name": "copyDataProperties",
+              "file": "",
+              "samples": 2
+            },
+            {
+              "name": "isFtsOperatorQuery",
+              "file": "runtime/src/utils/fts-query.ts",
+              "samples": 1
+            },
+            {
+              "name": "readDomainConfig",
+              "file": "runtime/src/core/domain-config.ts",
+              "samples": 1
+            },
+            {
+              "name": "sanitizeFtsQuery",
+              "file": "runtime/src/utils/fts-query.ts",
+              "samples": 1
+            },
+            {
+              "name": "(anonymous)",
+              "file": "runtime/src/utils/fts-query.ts",
+              "samples": 1
+            },
+            {
+              "name": "getToolOutputById",
+              "file": "runtime/src/db/tool-outputs.ts",
+              "samples": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "file": "1000-candidate-cpu-9.cpuprofile",
+      "tag": "candidate",
+      "size": 1000,
+      "sha256": "85299f4dfd9d6c34d8d23a64992d786ec07aabb94a3509cddc4c102c6f30601d",
+      "scopes": {
+        "wholeChild": {
+          "samples": 2603,
+          "topSelfFrames": [
+            {
+              "name": "all",
+              "file": "",
+              "samples": 2047
+            },
+            {
+              "name": "run",
+              "file": "",
+              "samples": 277
+            },
+            {
+              "name": "prepare",
+              "file": "",
+              "samples": 177
+            },
+            {
+              "name": "get",
+              "file": "",
+              "samples": 28
+            },
+            {
+              "name": "anonymous",
+              "file": "",
+              "samples": 15
+            },
+            {
+              "name": "readFileSync",
+              "file": "",
+              "samples": 8
+            },
+            {
+              "name": "copyDataProperties",
+              "file": "",
+              "samples": 6
+            },
+            {
+              "name": "close",
+              "file": "",
+              "samples": 5
+            },
+            {
+              "name": "(anonymous)",
+              "file": "runtime/src/db/tool-outputs.ts",
+              "samples": 4
+            },
+            {
+              "name": "@lazy",
+              "file": "",
+              "samples": 2
+            },
+            {
+              "name": "getToolOutputById",
+              "file": "runtime/src/db/tool-outputs.ts",
+              "samples": 2
+            },
+            {
+              "name": "#run",
+              "file": "bun:sqlite",
+              "samples": 2
+            }
+          ]
+        },
+        "retention": {
+          "samples": 18,
+          "topSelfFrames": [
+            {
+              "name": "run",
+              "file": "",
+              "samples": 15
+            },
+            {
+              "name": "all",
+              "file": "",
+              "samples": 1
+            },
+            {
+              "name": "prepare",
+              "file": "",
+              "samples": 1
+            },
+            {
+              "name": "(anonymous)",
+              "file": "runtime/src/db/tool-outputs.ts",
+              "samples": 1
+            }
+          ]
+        },
+        "search": {
+          "samples": 2100,
+          "topSelfFrames": [
+            {
+              "name": "all",
+              "file": "",
+              "samples": 2043
+            },
+            {
+              "name": "prepare",
+              "file": "",
+              "samples": 23
+            },
+            {
+              "name": "readFileSync",
+              "file": "",
+              "samples": 8
+            },
+            {
+              "name": "copyDataProperties",
+              "file": "",
+              "samples": 6
+            },
+            {
+              "name": "get",
+              "file": "",
+              "samples": 5
+            },
+            {
+              "name": "resolveFieldValue",
+              "file": "runtime/src/core/domain-config.ts",
+              "samples": 2
+            },
+            {
+              "name": "cloneObject",
+              "file": "",
+              "samples": 2
+            },
+            {
+              "name": "replace",
+              "file": "",
+              "samples": 1
+            },
+            {
+              "name": "getToolsIntegrationConfig",
+              "file": "runtime/src/core/config-tools.ts",
+              "samples": 1
+            },
+            {
+              "name": "parse",
+              "file": "",
+              "samples": 1
+            },
+            {
+              "name": "map",
+              "file": "",
+              "samples": 1
+            },
+            {
+              "name": "tokenizeFtsFallbackTerms",
+              "file": "runtime/src/utils/fts-query.ts",
+              "samples": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "file": "1000-baseline-cpu-10.cpuprofile",
+      "tag": "baseline",
+      "size": 1000,
+      "sha256": "72a23e996dcb05a2ff994f9545fa75e4e9717eeb570a127e4d4f518114da0205",
+      "scopes": {
+        "wholeChild": {
+          "samples": 3155,
+          "topSelfFrames": [
+            {
+              "name": "all",
+              "file": "",
+              "samples": 2130
+            },
+            {
+              "name": "run",
+              "file": "",
+              "samples": 745
+            },
+            {
+              "name": "prepare",
+              "file": "",
+              "samples": 173
+            },
+            {
+              "name": "get",
+              "file": "",
+              "samples": 37
+            },
+            {
+              "name": "anonymous",
+              "file": "",
+              "samples": 15
+            },
+            {
+              "name": "readFileSync",
+              "file": "",
+              "samples": 7
+            },
+            {
+              "name": "close",
+              "file": "",
+              "samples": 5
+            },
+            {
+              "name": "readDomainConfig",
+              "file": "runtime/src/core/domain-config.ts",
+              "samples": 4
+            },
+            {
+              "name": "resolveFieldValue",
+              "file": "runtime/src/core/domain-config.ts",
+              "samples": 4
+            },
+            {
+              "name": "getToolOutputById",
+              "file": "runtime/src/db/tool-outputs.ts",
+              "samples": 3
+            },
+            {
+              "name": "copyDataProperties",
+              "file": "",
+              "samples": 3
+            },
+            {
+              "name": "replace",
+              "file": "",
+              "samples": 2
+            }
+          ]
+        },
+        "retention": {
+          "samples": 481,
+          "topSelfFrames": [
+            {
+              "name": "run",
+              "file": "",
+              "samples": 475
+            },
+            {
+              "name": "prepare",
+              "file": "",
+              "samples": 4
+            },
+            {
+              "name": "all",
+              "file": "",
+              "samples": 1
+            },
+            {
+              "name": "prepare",
+              "file": "bun:sqlite",
+              "samples": 1
+            }
+          ]
+        },
+        "search": {
+          "samples": 2184,
+          "topSelfFrames": [
+            {
+              "name": "all",
+              "file": "",
+              "samples": 2127
+            },
+            {
+              "name": "prepare",
+              "file": "",
+              "samples": 19
+            },
+            {
+              "name": "get",
+              "file": "",
+              "samples": 8
+            },
+            {
+              "name": "readFileSync",
+              "file": "",
+              "samples": 7
+            },
+            {
+              "name": "copyDataProperties",
+              "file": "",
+              "samples": 3
+            },
+            {
+              "name": "readDomainConfig",
+              "file": "runtime/src/core/domain-config.ts",
+              "samples": 3
+            },
+            {
+              "name": "resolveFieldValue",
+              "file": "runtime/src/core/domain-config.ts",
+              "samples": 3
+            },
+            {
+              "name": "entries",
+              "file": "",
+              "samples": 2
+            },
+            {
+              "name": "tokenizeFtsFallbackTerms",
+              "file": "runtime/src/utils/fts-query.ts",
+              "samples": 2
+            },
+            {
+              "name": "getToolOutputById",
+              "file": "runtime/src/db/tool-outputs.ts",
+              "samples": 2
+            },
+            {
+              "name": "replace",
+              "file": "",
+              "samples": 1
+            },
+            {
+              "name": "freeze",
+              "file": "",
+              "samples": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "file": "1000-candidate-cpu-11.cpuprofile",
+      "tag": "candidate",
+      "size": 1000,
+      "sha256": "42eb5fa3489e37541b32f4abd947c5050f997d514cacb2466ff315ef4a2484b9",
+      "scopes": {
+        "wholeChild": {
+          "samples": 2595,
+          "topSelfFrames": [
+            {
+              "name": "all",
+              "file": "",
+              "samples": 2055
+            },
+            {
+              "name": "run",
+              "file": "",
+              "samples": 286
+            },
+            {
+              "name": "prepare",
+              "file": "",
+              "samples": 154
+            },
+            {
+              "name": "get",
+              "file": "",
+              "samples": 34
+            },
+            {
+              "name": "anonymous",
+              "file": "",
+              "samples": 13
+            },
+            {
+              "name": "readFileSync",
+              "file": "",
+              "samples": 12
+            },
+            {
+              "name": "(anonymous)",
+              "file": "runtime/src/db/tool-outputs.ts",
+              "samples": 5
+            },
+            {
+              "name": "close",
+              "file": "",
+              "samples": 5
+            },
+            {
+              "name": "(anonymous)",
+              "file": "runtime/test/fixtures/tool-output-retention-profile.ts",
+              "samples": 2
+            },
+            {
+              "name": "#get",
+              "file": "bun:sqlite",
+              "samples": 2
+            },
+            {
+              "name": "defineProperties",
+              "file": "",
+              "samples": 2
+            },
+            {
+              "name": "copyDataProperties",
+              "file": "",
+              "samples": 2
+            }
+          ]
+        },
+        "retention": {
+          "samples": 25,
+          "topSelfFrames": [
+            {
+              "name": "run",
+              "file": "",
+              "samples": 19
+            },
+            {
+              "name": "prepare",
+              "file": "",
+              "samples": 3
+            },
+            {
+              "name": "(anonymous)",
+              "file": "runtime/src/db/tool-outputs.ts",
+              "samples": 2
+            },
+            {
+              "name": "get",
+              "file": "",
+              "samples": 1
+            }
+          ]
+        },
+        "search": {
+          "samples": 2097,
+          "topSelfFrames": [
+            {
+              "name": "all",
+              "file": "",
+              "samples": 2053
+            },
+            {
+              "name": "prepare",
+              "file": "",
+              "samples": 19
+            },
+            {
+              "name": "readFileSync",
+              "file": "",
+              "samples": 11
+            },
+            {
+              "name": "copyDataProperties",
+              "file": "",
+              "samples": 2
+            },
+            {
+              "name": "get",
+              "file": "",
+              "samples": 2
+            },
+            {
+              "name": "resolveFieldValue",
+              "file": "runtime/src/core/domain-config.ts",
+              "samples": 1
+            },
+            {
+              "name": "parse",
+              "file": "",
+              "samples": 1
+            },
+            {
+              "name": "readDomainBlock",
+              "file": "runtime/src/core/domain-config.ts",
+              "samples": 1
+            },
+            {
+              "name": "getDomainConfigOptions",
+              "file": "runtime/src/core/config-context.ts",
+              "samples": 1
+            },
+            {
+              "name": "readDomainConfig",
+              "file": "runtime/src/core/domain-config.ts",
+              "samples": 1
+            },
+            {
+              "name": "map",
+              "file": "",
+              "samples": 1
+            },
+            {
+              "name": "validate",
+              "file": "runtime/src/core/config-tools.ts",
+              "samples": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "file": "1000-candidate-cpu-12.cpuprofile",
+      "tag": "candidate",
+      "size": 1000,
+      "sha256": "0de059e5e55738de0367b090500bb39027f918d8ec046f8a2b5bad5ca8ab3a22",
+      "scopes": {
+        "wholeChild": {
+          "samples": 2612,
+          "topSelfFrames": [
+            {
+              "name": "all",
+              "file": "",
+              "samples": 2080
+            },
+            {
+              "name": "run",
+              "file": "",
+              "samples": 278
+            },
+            {
+              "name": "prepare",
+              "file": "",
+              "samples": 155
+            },
+            {
+              "name": "get",
+              "file": "",
+              "samples": 41
+            },
+            {
+              "name": "anonymous",
+              "file": "",
+              "samples": 15
+            },
+            {
+              "name": "readFileSync",
+              "file": "",
+              "samples": 5
+            },
+            {
+              "name": "close",
+              "file": "",
+              "samples": 5
+            },
+            {
+              "name": "scopeWhere",
+              "file": "runtime/src/db/tool-outputs.ts",
+              "samples": 4
+            },
+            {
+              "name": "(anonymous)",
+              "file": "runtime/src/db/tool-outputs.ts",
+              "samples": 2
+            },
+            {
+              "name": "defineProperties",
+              "file": "",
+              "samples": 2
+            },
+            {
+              "name": "readDomainConfig",
+              "file": "runtime/src/core/domain-config.ts",
+              "samples": 2
+            },
+            {
+              "name": "(module)",
+              "file": "runtime/test/fixtures/tool-output-retention-profile.ts",
+              "samples": 2
+            }
+          ]
+        },
+        "retention": {
+          "samples": 20,
+          "topSelfFrames": [
+            {
+              "name": "run",
+              "file": "",
+              "samples": 15
+            },
+            {
+              "name": "prepare",
+              "file": "",
+              "samples": 2
+            },
+            {
+              "name": "(anonymous)",
+              "file": "runtime/src/db/tool-outputs.ts",
+              "samples": 1
+            },
+            {
+              "name": "get",
+              "file": "",
+              "samples": 1
+            },
+            {
+              "name": "deleteToolOutputsBefore",
+              "file": "runtime/src/db/tool-outputs.ts",
+              "samples": 1
+            }
+          ]
+        },
+        "search": {
+          "samples": 2117,
+          "topSelfFrames": [
+            {
+              "name": "all",
+              "file": "",
+              "samples": 2078
+            },
+            {
+              "name": "prepare",
+              "file": "",
+              "samples": 17
+            },
+            {
+              "name": "get",
+              "file": "",
+              "samples": 6
+            },
+            {
+              "name": "readFileSync",
+              "file": "",
+              "samples": 5
+            },
+            {
+              "name": "readDomainConfig",
+              "file": "runtime/src/core/domain-config.ts",
+              "samples": 2
+            },
+            {
+              "name": "toUpperCase",
+              "file": "",
+              "samples": 1
+            },
+            {
+              "name": "entries",
+              "file": "",
+              "samples": 1
+            },
+            {
+              "name": "bound resolve",
+              "file": "",
+              "samples": 1
+            },
+            {
+              "name": "resolve",
+              "file": "",
+              "samples": 1
+            },
+            {
+              "name": "validate",
+              "file": "runtime/src/core/config-tools.ts",
+              "samples": 1
+            },
+            {
+              "name": "copyDataProperties",
+              "file": "",
+              "samples": 1
+            },
+            {
+              "name": "normalizeToolResultCompactionTools",
+              "file": "runtime/src/core/config-tools.ts",
+              "samples": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "file": "1000-baseline-cpu-13.cpuprofile",
+      "tag": "baseline",
+      "size": 1000,
+      "sha256": "eb24ae70b94bf9150dbfe4e6542a5dd27d8ef9b39083021566f9b9b7b81d69a9",
+      "scopes": {
+        "wholeChild": {
+          "samples": 3219,
+          "topSelfFrames": [
+            {
+              "name": "all",
+              "file": "",
+              "samples": 2181
+            },
+            {
+              "name": "run",
+              "file": "",
+              "samples": 765
+            },
+            {
+              "name": "prepare",
+              "file": "",
+              "samples": 158
+            },
+            {
+              "name": "get",
+              "file": "",
+              "samples": 43
+            },
+            {
+              "name": "anonymous",
+              "file": "",
+              "samples": 18
+            },
+            {
+              "name": "readFileSync",
+              "file": "",
+              "samples": 6
+            },
+            {
+              "name": "copyDataProperties",
+              "file": "",
+              "samples": 5
+            },
+            {
+              "name": "close",
+              "file": "",
+              "samples": 5
+            },
+            {
+              "name": "resolveFieldValue",
+              "file": "runtime/src/core/domain-config.ts",
+              "samples": 4
+            },
+            {
+              "name": "(anonymous)",
+              "file": "runtime/src/db/tool-outputs.ts",
+              "samples": 3
+            },
+            {
+              "name": "getToolOutputById",
+              "file": "runtime/src/db/tool-outputs.ts",
+              "samples": 3
+            },
+            {
+              "name": "Statement",
+              "file": "bun:sqlite",
+              "samples": 2
+            }
+          ]
+        },
+        "retention": {
+          "samples": 507,
+          "topSelfFrames": [
+            {
+              "name": "run",
+              "file": "",
+              "samples": 503
+            },
+            {
+              "name": "prepare",
+              "file": "",
+              "samples": 3
+            },
+            {
+              "name": "(anonymous)",
+              "file": "runtime/src/db/tool-outputs.ts",
+              "samples": 1
+            }
+          ]
+        },
+        "search": {
+          "samples": 2225,
+          "topSelfFrames": [
+            {
+              "name": "all",
+              "file": "",
+              "samples": 2179
+            },
+            {
+              "name": "prepare",
+              "file": "",
+              "samples": 16
+            },
+            {
+              "name": "readFileSync",
+              "file": "",
+              "samples": 6
+            },
+            {
+              "name": "copyDataProperties",
+              "file": "",
+              "samples": 5
+            },
+            {
+              "name": "get",
+              "file": "",
+              "samples": 3
+            },
+            {
+              "name": "resolveFieldValue",
+              "file": "runtime/src/core/domain-config.ts",
+              "samples": 3
+            },
+            {
+              "name": "validate",
+              "file": "runtime/src/core/config-tools.ts",
+              "samples": 2
+            },
+            {
+              "name": "getToolOutputById",
+              "file": "runtime/src/db/tool-outputs.ts",
+              "samples": 2
+            },
+            {
+              "name": "tokenizeFtsFallbackTerms",
+              "file": "runtime/src/utils/fts-query.ts",
+              "samples": 2
+            },
+            {
+              "name": "getDb",
+              "file": "runtime/src/db/connection.ts",
+              "samples": 1
+            },
+            {
+              "name": "every",
+              "file": "",
+              "samples": 1
+            },
+            {
+              "name": "replace",
+              "file": "",
+              "samples": 1
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "settings": {
+    "journal": "wal",
+    "synchronous": 2,
+    "busyTimeoutMs": 5000
+  },
+  "manifest": {
+    "at": "2026-10-03T19:29:57.001Z",
+    "base": "23dc0aa19b702ab820dd72f7fe6944fc307d8bde",
+    "runtime": "1.4.2",
+    "hashes": {
+      "baseline": "83be25ea75fd99f6a73fd76e2e4e5837bb0642614e14d0bd6f24c6333a7e8adf",
+      "candidate": "bea0dfada6766f7733836a30f9860325730e06214c93739d219dfd0aed613bcb",
+      "fixture": "9e6c1c3476f71d2469ff6d792dc10b6799766f6215785ba4a6310ee0df86adf8",
+      "runner": "0ab098cd6e0075cbe85d012499e20d96e426a270c7dc1ca049cd009df93b96bd"
+    }
+  },
+  "fingerprintContract": {
+    "algorithm": "sha256 raw UTF-8 file bytes",
+    "baseline": "git show 23dc0aa19:runtime/src/db/tool-outputs.ts",
+    "candidate": "runtime/src/db/tool-outputs.ts as saved before comparison and restored after it",
+    "fixture": "runtime/test/fixtures/tool-output-retention-profile.ts",
+    "runner": "local measurement orchestrator measure.ts; source hash captured before execution",
+    "currentCandidateSha256": "bea0dfada6766f7733836a30f9860325730e06214c93739d219dfd0aed613bcb"
+  },
+  "cpuScopeMethod": {
+    "selection": "Walk sample node and its recorded parent ancestry; include sample in wholeChild, and in retention/search when a matching ancestor exists. Group self samples by functionName and normalised relative URL.",
+    "retentionNamedAncestors": [
+      "deleteToolOutputsBefore",
+      "deleteToolOutputById"
+    ],
+    "searchNamedAncestors": [
+      "searchToolOutputSnippets"
+    ],
+    "anonymousRetentionCallback": {
+      "source": "runtime/src/db/tool-outputs.ts",
+      "lineNumberConvention": "zero-based Chrome CPU profile callFrame.lineNumber",
+      "baselineLines": [
+        83
+      ],
+      "candidateRangeInclusive": [
+        83,
+        111
+      ],
+      "functionName": "empty"
+    },
+    "rawArtifacts": "Raw .cpuprofile files retained locally; report records per-profile file hashes and sample counts. Raw profiles are not bundled or remotely attested."
+  },
+  "retrospectiveCorrectnessHashes": {
+    "runtime/test/db/tool-output-retention.test.ts": "aa80b1406409777efb6a07f7b258b2fc6e59c24840149fa9368daf0769a4d3c3",
+    "runtime/test/fixtures/tool-output-retention-disk.ts": "9a2dc7ccedb6e1cd42b1852c44b5e6ebda732d260857ab7a19cb4c666cfdd6a4"
+  },
+  "correctness": {
+    "focusedTests": 44,
+    "assertions": 266,
+    "strictFixtures": "pass",
+    "sourceReview": "narrow source review found no blockers before expanded disk fixture"
+  },
+  "limits": [
+    "DB-only synthetic legacy unowned performance fixture; family/FS/callback/rollback tested separately without comparative performance claims",
+    "full-child CPU includes startup and transactional seed; retention/search sample ancestors reported separately; anonymous transaction callbacks identified by revision-bound source line range",
+    "three plain processes per size/revision; candidate100output245.85ms and1000output228.20ms wall outliers retained",
+    "no OS cold-cache, live HTTP/background scheduler, contending writer, physical-I/O or heap/GC measurement",
+    "common-term FTS search cost unchanged and remains separate work",
+    "SELECT changes() direct metadata count excludes Bun trigger-side writes; return contract tightened to actual deleted rows",
+    "metadata-to-FTS ordering changes within same immediate transaction; arbitrary trigger reinsertion/netstate behaviour not supported by these contracts",
+    "no deployed code, live data, real credentials, model calls or restart"
+  ],
+  "failureHistory": [
+    {
+      "file": "focused.log",
+      "result": "42pass1fail: trigger-side writes inflated Bun run.changes; corrected with SELECT changes() then43/264 anddisk44/266pass",
+      "changedTimeouts": false
+    }
+  ]
+}

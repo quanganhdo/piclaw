@@ -21,6 +21,10 @@ import {
   type QueuedFollowupItem,
 } from "../../../queued-followups.js";
 import { FollowupPlaceholderStore } from "./followup-placeholders.js";
+import { getDb, getDatabaseBinding } from '../../../db/connection.js';
+import { admitSqliteWrite } from '../../../db/sqlite-async-admission.js';
+import { getWorkspaceDir, getStoreDir, getConfigPath } from '../../../core/config.js';
+import { statSync } from 'node:fs';
 
 export interface QueuedFollowupStateItem {
   row_id: number;
@@ -99,6 +103,23 @@ export class QueuedFollowupLifecycleService {
     }
     this.setDeferredQueuedFollowupItems(chatJid, queued);
     return resolvedRowId;
+  }
+
+  async admitQueuedFollowupItem(
+    args: Parameters<QueuedFollowupLifecycleService['enqueueQueuedFollowupItem']>,
+    authorise: (phase?: 'before' | 'after') => void,
+    signal: AbortSignal,
+  ): Promise<number> {
+    const database = getDb();
+    const binding = getDatabaseBinding();
+    const paths = JSON.stringify([getWorkspaceDir(), getStoreDir(), getConfigPath()]);
+    const assertBinding = () => {
+      if (getDb() !== database || JSON.stringify(getDatabaseBinding()) !== JSON.stringify(binding)
+        || JSON.stringify([getWorkspaceDir(), getStoreDir(), getConfigPath()]) !== paths) throw Error('Queue database binding changed.');
+      if (binding) { const stat=statSync(binding.path); if(`${stat.dev}:${stat.ino}` !== binding.identity) throw Error('Queue database file changed.'); }
+    };
+    const check = (phase: 'before' | 'after') => { assertBinding(); authorise(phase); };
+    return admitSqliteWrite(database, () => this.enqueueQueuedFollowupItem(...args), check, signal, 5000, assertBinding);
   }
 
   peekQueuedFollowupItem(chatJid: string): QueuedFollowupItem | null {

@@ -4,6 +4,7 @@ import {
   findTimelineIndexAtOffset,
   getLatestTimelineWindow,
   getTimelineWindowAroundIndex,
+  getTimelineViewportWindow,
   haveSameTimelineProps,
 } from '../../web/src/components/timeline.js';
 
@@ -48,4 +49,9 @@ test('timeline height estimate is bounded and accounts for rich content', () => 
   expect(estimateTimelinePostHeight({ data: { content: '' } })).toBe(76);
   expect(estimateTimelinePostHeight({ data: { content: 'x'.repeat(100), media_ids: [1] } })).toBe(318);
   expect(estimateTimelinePostHeight({ data: { content: 'x'.repeat(10000) } })).toBe(1200);
+});
+test('viewport windows cover tall viewports with short messages and retain a row buffer', () => {
+  const prefix=Array.from({length:201},(_,n)=>n*72);
+  const latest=getTimelineViewportWindow(prefix,0,1800,true);expect(latest.end).toBe(200);expect(latest.end-latest.start).toBeGreaterThan(25);
+  const middle=getTimelineViewportWindow(prefix,5000,1000);expect(prefix[middle.start]).toBeLessThanOrEqual(5000);expect(prefix[middle.end]).toBeGreaterThanOrEqual(6000);
 });

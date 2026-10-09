@@ -625,45 +625,48 @@ test("initDatabase migrates legacy chat branch uniqueness so pruned handles can 
 
   try {
     const legacyDb = new Database(`${ws.store}/messages.db`);
-    legacyDb.exec(`
-      CREATE TABLE chats (
-        jid TEXT PRIMARY KEY,
-        name TEXT,
-        last_message_time TEXT
-      );
-      CREATE TABLE chat_branches (
-        branch_id TEXT PRIMARY KEY,
-        chat_jid TEXT NOT NULL UNIQUE,
-        root_chat_jid TEXT NOT NULL,
-        parent_branch_id TEXT,
-        agent_name TEXT NOT NULL UNIQUE,
-        display_name TEXT,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        archived_at TEXT,
-        FOREIGN KEY (chat_jid) REFERENCES chats(jid)
-      );
-    `);
+    // Fixture seed is one atomic legacy state, with unchanged schema/data.
+    legacyDb.transaction(() => {
+      legacyDb.exec(`
+        CREATE TABLE chats (
+          jid TEXT PRIMARY KEY,
+          name TEXT,
+          last_message_time TEXT
+        );
+        CREATE TABLE chat_branches (
+          branch_id TEXT PRIMARY KEY,
+          chat_jid TEXT NOT NULL UNIQUE,
+          root_chat_jid TEXT NOT NULL,
+          parent_branch_id TEXT,
+          agent_name TEXT NOT NULL UNIQUE,
+          display_name TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          archived_at TEXT,
+          FOREIGN KEY (chat_jid) REFERENCES chats(jid)
+        );
+      `);
 
-    const now = new Date().toISOString();
-    legacyDb.prepare("INSERT INTO chats (jid, name, last_message_time) VALUES (?, ?, ?)").run("web:default", "Root", now);
-    legacyDb.prepare("INSERT INTO chats (jid, name, last_message_time) VALUES (?, ?, ?)").run("web:default:branch:old", "Old", now);
-    legacyDb.prepare("INSERT INTO chats (jid, name, last_message_time) VALUES (?, ?, ?)").run("web:default:branch:new", "New", now);
-    legacyDb.prepare(
-      `INSERT INTO chat_branches (
-        branch_id, chat_jid, root_chat_jid, parent_branch_id, agent_name, display_name, created_at, updated_at, archived_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run("branch-root", "web:default", "web:default", null, "root", "Root", now, now, null);
-    legacyDb.prepare(
-      `INSERT INTO chat_branches (
-        branch_id, chat_jid, root_chat_jid, parent_branch_id, agent_name, display_name, created_at, updated_at, archived_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run("branch-old", "web:default:branch:old", "web:default", "branch-root", "reusable", "Old", now, now, now);
-    legacyDb.prepare(
-      `INSERT INTO chat_branches (
-        branch_id, chat_jid, root_chat_jid, parent_branch_id, agent_name, display_name, created_at, updated_at, archived_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run("branch-new", "web:default:branch:new", "web:default", "branch-root", "new-handle", "New", now, now, null);
+      const now = new Date().toISOString();
+      legacyDb.prepare("INSERT INTO chats (jid, name, last_message_time) VALUES (?, ?, ?)").run("web:default", "Root", now);
+      legacyDb.prepare("INSERT INTO chats (jid, name, last_message_time) VALUES (?, ?, ?)").run("web:default:branch:old", "Old", now);
+      legacyDb.prepare("INSERT INTO chats (jid, name, last_message_time) VALUES (?, ?, ?)").run("web:default:branch:new", "New", now);
+      legacyDb.prepare(
+        `INSERT INTO chat_branches (
+          branch_id, chat_jid, root_chat_jid, parent_branch_id, agent_name, display_name, created_at, updated_at, archived_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).run("branch-root", "web:default", "web:default", null, "root", "Root", now, now, null);
+      legacyDb.prepare(
+        `INSERT INTO chat_branches (
+          branch_id, chat_jid, root_chat_jid, parent_branch_id, agent_name, display_name, created_at, updated_at, archived_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).run("branch-old", "web:default:branch:old", "web:default", "branch-root", "reusable", "Old", now, now, now);
+      legacyDb.prepare(
+        `INSERT INTO chat_branches (
+          branch_id, chat_jid, root_chat_jid, parent_branch_id, agent_name, display_name, created_at, updated_at, archived_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).run("branch-new", "web:default:branch:new", "web:default", "branch-root", "new-handle", "New", now, now, null);
+      }).immediate();
     legacyDb.close();
 
     const script = `
@@ -704,34 +707,37 @@ test("token usage migration adds provenance columns without rewriting legacy row
   try {
     const databasePath = resolve(ws.store, "messages.db");
     const legacyDb = new Database(databasePath);
-    legacyDb.exec(`
-      CREATE TABLE token_usage (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        chat_jid TEXT NOT NULL,
-        run_at TEXT NOT NULL,
-        input_tokens INTEGER DEFAULT 0,
-        output_tokens INTEGER DEFAULT 0,
-        cache_read_tokens INTEGER DEFAULT 0,
-        cache_write_tokens INTEGER DEFAULT 0,
-        total_tokens INTEGER DEFAULT 0,
-        cost_input REAL DEFAULT 0,
-        cost_output REAL DEFAULT 0,
-        cost_cache_read REAL DEFAULT 0,
-        cost_cache_write REAL DEFAULT 0,
-        cost_total REAL DEFAULT 0,
-        model TEXT,
-        provider TEXT,
-        api TEXT,
-        turns INTEGER DEFAULT 0
-      );
-      INSERT INTO token_usage (
-        chat_jid, run_at, input_tokens, output_tokens, cache_read_tokens,
-        cache_write_tokens, total_tokens, cost_total, model, provider
-      ) VALUES (
-        'web:legacy-usage', '2026-01-01T00:00:00.000Z', 100, 20, 0,
-        0, 120, 0.01, 'legacy-model', 'legacy-provider'
-      );
-    `);
+    // Fixture seed is one atomic legacy state, with unchanged schema/data.
+    legacyDb.transaction(() => {
+      legacyDb.exec(`
+        CREATE TABLE token_usage (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          chat_jid TEXT NOT NULL,
+          run_at TEXT NOT NULL,
+          input_tokens INTEGER DEFAULT 0,
+          output_tokens INTEGER DEFAULT 0,
+          cache_read_tokens INTEGER DEFAULT 0,
+          cache_write_tokens INTEGER DEFAULT 0,
+          total_tokens INTEGER DEFAULT 0,
+          cost_input REAL DEFAULT 0,
+          cost_output REAL DEFAULT 0,
+          cost_cache_read REAL DEFAULT 0,
+          cost_cache_write REAL DEFAULT 0,
+          cost_total REAL DEFAULT 0,
+          model TEXT,
+          provider TEXT,
+          api TEXT,
+          turns INTEGER DEFAULT 0
+        );
+        INSERT INTO token_usage (
+          chat_jid, run_at, input_tokens, output_tokens, cache_read_tokens,
+          cache_write_tokens, total_tokens, cost_total, model, provider
+        ) VALUES (
+          'web:legacy-usage', '2026-01-01T00:00:00.000Z', 100, 20, 0,
+          0, 120, 0.01, 'legacy-model', 'legacy-provider'
+        );
+      `);
+      }).immediate();
     legacyDb.close();
 
     const script = `

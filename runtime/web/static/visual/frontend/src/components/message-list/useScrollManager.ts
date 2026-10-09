@@ -55,15 +55,15 @@ export function useScrollManager(
   const userScrolledRef = useRef(false);
 
   const scrollToBottom = useCallback((force = false) => {
-    if (force || !userScrolledRef.current) {
+    if (force || (!userScrolledRef.current && Math.abs(listRef.current?.scrollTop ?? 0) < 60)) {
       const doScroll = () => {
         const el = listRef.current;
         // column-reverse: scrollTop 0 = visual bottom
-        if (el) el.scrollTop = 0;
+        if (el && (force || Math.abs(el.scrollTop) < 60)) el.scrollTop = 0;
       };
       doScroll();
       // Double-tap: ensure scroll after Preact render cycle
-      requestAnimationFrame(doScroll);
+      requestAnimationFrame(() => { if (Math.abs(listRef.current?.scrollTop ?? 0) < 60) doScroll(); });
     }
   }, []);
 
@@ -98,6 +98,7 @@ export function useScrollManager(
     const handler = async (e: Event) => {
       const id = (e as CustomEvent).detail?.id;
       if (!id || !listRef.current) return;
+      const capturedRoot = listRef.current, capturedChat = buildChatUrl('/timeline');
 
       // Try to find in DOM first
       let el = listRef.current.querySelector(
@@ -124,11 +125,14 @@ export function useScrollManager(
           const data = (await res.json()) as {
             posts?: Array<Record<string, unknown>>;
           };
-          const posts = (data.posts ?? []).map(normalizePost);
+          if (listRef.current !== capturedRoot || !capturedRoot.isConnected || buildChatUrl('/timeline') !== capturedChat) return;
+          if (!Array.isArray(data.posts)) throw Error('Invalid history page.');
+          const posts = data.posts.map(normalizePost);
           if (posts.length) {
             onReplaceMessages(posts);
             // Wait for render, then scroll
             setTimeout(() => {
+              if (listRef.current !== capturedRoot || !capturedRoot.isConnected || buildChatUrl('/timeline') !== capturedChat) return;
               el = listRef.current?.querySelector(
                 `[data-message-id="${id}"]`
               ) as HTMLElement;

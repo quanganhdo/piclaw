@@ -1,34 +1,38 @@
 import { expect, test } from "bun:test";
 
-import { SettingsManager, getAgentDir } from "@earendil-works/pi-coding-agent";
+import { ModelRegistry, ModelRuntime, SettingsManager } from "@earendil-works/pi-coding-agent";
 
 import { createAgentPoolServices } from "../../src/agent-pool/service-factory.js";
 import { createTempWorkspace } from "../helpers.js";
-import { createRealTestModelServices } from "../model-services-fixture.js";
+import { FileCredentialStore } from '../../src/agent-pool/credential-store.js';
 
-function createSettingsManager() {
-  return SettingsManager.create("/workspace", getAgentDir());
+async function createFactoryModelServices(agentDir: string) {
+  const credentialStore = new FileCredentialStore(`${agentDir}/auth.json`);
+  // These tests exercise collaborator wiring and attachment isolation, not
+  // provider catalogue/auth discovery (covered by model-runtime fixtures).
+  const modelRuntime = await ModelRuntime.create({ credentials: credentialStore, modelsPath: null, allowModelNetwork: false, refreshOnCreate: false });
+  return { credentialStore, modelRuntime, modelRegistry: new ModelRegistry(modelRuntime) };
 }
 
-function createServicesOptions(modelServices: Awaited<ReturnType<typeof createRealTestModelServices>>) {
+function createServicesOptions(modelServices: Awaited<ReturnType<typeof createFactoryModelServices>>, workspaceDir: string) {
   return {
     authStorage: modelServices.credentialStore,
     modelRuntime: modelServices.modelRuntime,
     modelRegistry: modelServices.modelRegistry,
-    settingsManager: createSettingsManager(),
-    workspaceDir: "/workspace",
+    settingsManager: SettingsManager.inMemory(),
+    workspaceDir,
   };
 }
 
 test("createAgentPoolServices wires the extracted helper services together", async () => {
   const workspace = createTempWorkspace("service-factory-");
   try {
-    const modelServices = await createRealTestModelServices(workspace.base);
+    const modelServices = await createFactoryModelServices(workspace.base);
     const services = createAgentPoolServices({
       pool: new Map(),
       sidePool: new Map(),
       activeForkBaseLeafByChat: new Map(),
-      ...createServicesOptions(modelServices),
+      ...createServicesOptions(modelServices, workspace.workspace),
     });
 
     expect(services.attachments).toBeDefined();
@@ -47,8 +51,8 @@ test("createAgentPoolServices wires the extracted helper services together", asy
 test("createAgentPoolServices scopes attachment registries per pool", async () => {
   const workspace = createTempWorkspace("service-factory-scope-");
   try {
-    const modelServices = await createRealTestModelServices(workspace.base);
-    const options = createServicesOptions(modelServices);
+    const modelServices = await createFactoryModelServices(workspace.base);
+    const options = createServicesOptions(modelServices, workspace.workspace);
     const first = createAgentPoolServices({
       pool: new Map(), sidePool: new Map(), activeForkBaseLeafByChat: new Map(), ...options,
     });

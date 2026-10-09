@@ -1,7 +1,11 @@
 import { createHash } from "node:crypto";
 import type { AuthenticatedPrincipal } from "../../../core/access-types.js";
 import type { ExecutionProvenance } from "../../../core/execution-context.js";
-import { getDb } from "../../../db/connection.js";
+import { getDb, getDatabaseBinding } from "../../../db/connection.js";
+import { statSync } from 'node:fs';
+import { admitSqliteWrite } from '../../../db/sqlite-async-admission.js';
+import { getWorkspaceDir, getStoreDir, getDataDir, getConfigPath } from '../../../core/config-context.js';
+import { readAccessConfig } from '../../../core/config-access.js';
 import { requireAccountActor } from "../../../db/account-administration.js";
 import { ChatAccessDenied, resolveAuthorisedChat } from "../../../db/session-ownership.js";
 import { getMessageByRowId, storeMessageInDatabase } from "../../../db/messages.js";
@@ -72,6 +76,36 @@ export function resolveFamilyMessageAuthority(chatJid: string, messageId: string
   const identity = authoriseExecutionIdentity(db, "family-shared", chatJid, provenance);
   if (!identity) throw new ChatAccessDenied();
   return identity;
+}
+
+/** Yield during SQLite contention, retaining the original actor and target incarnation. */
+export async function admitFamilyHttpMessage(actor: AuthenticatedPrincipal, input: Parameters<typeof admitFamilyMessage>[1], signal: AbortSignal) {
+  signal.throwIfAborted();
+  const database = getDb(), binding = getDatabaseBinding();
+  const paths = JSON.stringify([getWorkspaceDir(), getStoreDir(), getDataDir(), getConfigPath()]);
+  requireAccountActor(database, actor);
+  const target = resolveAuthorisedChat(database, actor, input.chatJid, 'session.write');
+  const branch = database.query('SELECT branch_id FROM chat_branches WHERE chat_jid=?').get(target.chatJid) as { branch_id: string } | null;
+  if (!branch || readAccessConfig().mode !== 'family-shared') throw new ChatAccessDenied();
+  const captured = structuredClone(input);
+  const assertBinding = () => {
+    if (getDb() !== database || JSON.stringify(getDatabaseBinding()) !== JSON.stringify(binding)
+      || JSON.stringify([getWorkspaceDir(), getStoreDir(), getDataDir(), getConfigPath()]) !== paths) throw new ChatAccessDenied();
+    if (binding) {
+      const stat = statSync(binding.path);
+      if (`${stat.dev}:${stat.ino}` !== binding.identity) throw new ChatAccessDenied();
+    }
+  };
+  const check = () => {
+    assertBinding();
+    if (readAccessConfig().mode !== 'family-shared') throw new ChatAccessDenied();
+    requireAccountActor(database, actor);
+    const current = resolveAuthorisedChat(database, actor, captured.chatJid, 'session.write');
+    const currentBranch = database.query('SELECT branch_id FROM chat_branches WHERE chat_jid=?').get(current.chatJid) as { branch_id: string } | null;
+    if (current.chatJid !== target.chatJid || current.rootBranchId !== target.rootBranchId
+      || currentBranch?.branch_id !== branch.branch_id) throw new ChatAccessDenied();
+  };
+  return admitSqliteWrite(database, () => admitFamilyMessage(actor, captured), check, signal, 5000, assertBinding);
 }
 
 /** Message and authority commit together; retries cannot substitute a different body or target. */

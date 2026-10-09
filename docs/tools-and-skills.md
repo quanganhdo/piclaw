@@ -654,7 +654,7 @@ Direct commands (no LLM round-trip):
 | `/exit` | Exit the current piclaw process immediately so the service manager restarts it |
 | `/commands` | List available commands (shows sourceInfo provenance: scope, source, and origin for extension commands, templates, and skills) |
 | `/btw <question>` | Open a side-conversation panel in the web UI and stream an answer without interrupting the main chat |
-| `/meters on\|off\|toggle` | Toggle the web UI CPU/RAM HUD |
+| `/meters on\|off\|toggle` | Toggle system meters, including optional [Intel GPU activity/memory](intel-gpu-meters.md) |
 | `/tasks [filter]` | List scheduled tasks (via extension) |
 | `/scheduled [filter]` | Alias for `/tasks` |
 | `/budget [status\|cap\|allow\|warnings-only\|resume\|cancel]` | Inspect or manage [opt-in budget limits](budget-limits.md) |

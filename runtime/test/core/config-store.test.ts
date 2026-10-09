@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { existsSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, readFileSync, statSync, writeFileSync } from "fs";
+import { mkdirSync } from "node:fs";
 import { join } from "path";
 
 import "../helpers.js";
@@ -23,6 +24,37 @@ describe("config-store helpers", () => {
     } finally {
       workspace.cleanup();
     }
+  });
+
+  test("new and replaced configuration files remain private under the normal process umask", () => {
+    const workspace = createTempWorkspace("piclaw-config-store-private-");
+    const previousMask = process.umask(0o022);
+    try {
+      const path = join(workspace.workspace, "config.json");
+      writeJsonConfig(path, { web: { widgetToken: "synthetic-private-token" } });
+      expect(statSync(path).mode & 0o777).toBe(0o600);
+      writeJsonConfig(path, { web: { widgetToken: "synthetic-replaced-token" } });
+      expect(statSync(path).mode & 0o777).toBe(0o600);
+      expect(readJsonConfig(path)).toEqual({ web: { widgetToken: "synthetic-replaced-token" } });
+    } finally { process.umask(previousMask); workspace.cleanup(); }
+  });
+
+  test("widget bootstrap persistence does not invalidate the strict MCP config reader", async () => {
+    const workspace = createTempWorkspace("piclaw-config-store-widget-");
+    const { setEnv } = await import("../helpers.js");
+    const restore = setEnv({ PICLAW_WORKSPACE: workspace.workspace });
+    const previousMask = process.umask(0o022);
+    const { setWebWidgetToken, getWebRuntimeConfig } = await import("../../src/core/config-web.js");
+    const previousToken = getWebRuntimeConfig().widgetToken;
+    try {
+      const path = join(workspace.workspace, ".piclaw", "config.json");
+      mkdirSync(join(workspace.workspace, ".piclaw"));
+      writeFileSync(path, JSON.stringify({ domains: { access: { mode: "single-user" } } }), { mode: 0o600 });
+      const { readMcpInstancePolicy } = await import("../../src/core/config-mcp.js");
+      setWebWidgetToken("synthetic-bootstrap-widget-token");
+      expect(statSync(path).mode & 0o777).toBe(0o600);
+      expect(readMcpInstancePolicy().policy).toEqual({ engine: "adapter", codemode: "auto" });
+    } finally { getWebRuntimeConfig().widgetToken = previousToken; process.umask(previousMask); restore(); workspace.cleanup(); }
   });
 
   test("writeJsonConfig creates parent directories and pretty-prints with a trailing newline", () => {

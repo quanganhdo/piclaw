@@ -53,6 +53,7 @@ import { STORE_DIR, WORKSPACE_DIR, getRuntimeBootstrapPathOverrides } from "../c
 import { createLogger, debugSuppressedError } from "../utils/logger.js";
 import { recompressExistingMedia } from "./media-recompress.js";
 import { createVerifiedSqliteBackup, type SqliteBackupManifest } from "./backup.js";
+import { enableSqliteWal } from "./sqlite-journal.js";
 import { ensureOwnedMigrationLedger } from "./migrations.js";
 import { migrateScheduledTaskAuthorities } from "./scheduled-task-authority.js";
 import { installScheduledRunCompositionSchema } from "../service-effects/current-piclaw/scheduled-run-schema.js";
@@ -975,9 +976,11 @@ export function initDatabase(): void {
     throw new Error("Database initialization failed");
   }
 
-  const foreignKeysBeforeInitialization = (db.query("PRAGMA foreign_keys").get() as { foreign_keys?: number } | undefined)?.foreign_keys === 1;
-  db.exec(useMemory ? "PRAGMA journal_mode = MEMORY;" : "PRAGMA journal_mode = WAL;");
+  // Configure lock waiting before schema inspection and file-header pragmas.
   db.exec("PRAGMA busy_timeout = 5000;");
+  const foreignKeysBeforeInitialization = (db.query("PRAGMA foreign_keys").get() as { foreign_keys?: number } | undefined)?.foreign_keys === 1;
+  if (useMemory) db.exec("PRAGMA journal_mode = MEMORY;");
+  else enableSqliteWal(db);
   db.exec("PRAGMA foreign_keys = ON;");
   db.exec("PRAGMA secure_delete = ON;");
   if (!useMemory) {
@@ -993,53 +996,12 @@ export function initDatabase(): void {
       db.exec("PRAGMA cache_size = -1000;"); // 1 MB (was default 2 MB)
     }
   }
-  migrateLegacyConfigTables(db);
-  createSchema(db);
-  ensureOwnedMigrationLedger(db);
-  ensureChatBranchConstraints(db);
-  initializeChatProjects(db);
-  ensureMessageColumns(db);
-  ensureKeychainNoteColumns(db);
-  ensureTokenUsageColumns(db);
-  initializeBudgetLimitsSchema(db);
-  initializeAddonOperationsSchema(db);
-  ensureScheduledTaskColumns(db);
-  installScheduledRunCompositionSchema(db);
-  migrateScheduledTaskAuthorities(db);
-  ensureWebSessionColumns(db);
-  ensureWebSessionIdentity(db);
-  ensureFts(db);
-  ensureChatCursorColumns(db);
-  migrateChatCursors(db);
-  dropChatBranchDisplayName(db);
-  dropObsoleteRemoteInteropSchema(db);
-  ensureMediaCompression(db);
-  ensureThinkingContentDuration(db);
-  initializeAccessSchema(db);
-  initializeSessionOwnershipSchema(db);
-  initializeToolOutputOwnership(db);
-  initializeOwnedForkSchema(db);
-  initializeMessageAuthoritySchema(db);
-  initializeFamilyMediaUploads(db);
-  initializeAuthFactorSchema(db);
-  initializeAuthLabelsSchema(db);
-  initializeFamilyToolRestrictions(db);
-  initializeAccountPreferences(db);
-  initializePickerPins(db);
-  initializeAccountAvatars(db);
-  initializeAccountModelDefaults(db);
-  initializeFamilyScheduledGrants(db);
-  initializeFamilyTaskAdmission(db);
-  initializeFamilyScheduledOccurrences(db);
-  initializeFamilyScheduledExecutions(db);
-  initializeFamilyScheduledDispatch(db);
-  initializeFamilyScheduledExpiry(db);
-  initializeFamilyScheduledInterruptions(db);
-  initializeFamilyScheduledCancellations(db);
-  initializeFamilyExecutionAdmission(db);
-  initializeFamilyWorkspaceIndex(db);
-  initializeFamilyMemory(db);
-  initializeFamilyScheduledPublications(db);
+  const database = db;
+  // Serialize schema inspection and migration in one writer transaction. This
+  // prevents competing initializers starving behind separately committed DDL
+  // and keeps the ordered schema/owned-ledger updates atomic. Nested migration
+  // transactions become savepoints; file-header pragmas and VACUUM stay outside.
+  database.transaction(() => initializeSchema(database)).immediate();
   // The legacy live store historically runs without global FK enforcement.
   // EF-S07 uses a dedicated FK-enabled scheduler connection in production;
   // restore the caller's prior setting so unrelated legacy write paths retain
@@ -1048,6 +1010,57 @@ export function initDatabase(): void {
   if (!useMemory) {
     ensureIncrementalAutoVacuum(db);
   }
+}
+
+/** Schema work only; foreign-key policy and VACUUM remain outside the batch. */
+function initializeSchema(database: Database): void {
+  migrateLegacyConfigTables(database);
+  createSchema(database);
+  ensureOwnedMigrationLedger(database);
+  ensureChatBranchConstraints(database);
+  initializeChatProjects(database);
+  ensureMessageColumns(database);
+  ensureKeychainNoteColumns(database);
+  ensureTokenUsageColumns(database);
+  initializeBudgetLimitsSchema(database);
+  initializeAddonOperationsSchema(database);
+  ensureScheduledTaskColumns(database);
+  installScheduledRunCompositionSchema(database);
+  migrateScheduledTaskAuthorities(database);
+  ensureWebSessionColumns(database);
+  ensureWebSessionIdentity(database);
+  ensureFts(database);
+  ensureChatCursorColumns(database);
+  migrateChatCursors(database);
+  dropChatBranchDisplayName(database);
+  dropObsoleteRemoteInteropSchema(database);
+  ensureMediaCompression(database);
+  ensureThinkingContentDuration(database);
+  initializeAccessSchema(database);
+  initializeSessionOwnershipSchema(database);
+  initializeToolOutputOwnership(database);
+  initializeOwnedForkSchema(database);
+  initializeMessageAuthoritySchema(database);
+  initializeFamilyMediaUploads(database);
+  initializeAuthFactorSchema(database);
+  initializeAuthLabelsSchema(database);
+  initializeFamilyToolRestrictions(database);
+  initializeAccountPreferences(database);
+  initializePickerPins(database);
+  initializeAccountAvatars(database);
+  initializeAccountModelDefaults(database);
+  initializeFamilyScheduledGrants(database);
+  initializeFamilyTaskAdmission(database);
+  initializeFamilyScheduledOccurrences(database);
+  initializeFamilyScheduledExecutions(database);
+  initializeFamilyScheduledDispatch(database);
+  initializeFamilyScheduledExpiry(database);
+  initializeFamilyScheduledInterruptions(database);
+  initializeFamilyScheduledCancellations(database);
+  initializeFamilyExecutionAdmission(database);
+  initializeFamilyWorkspaceIndex(database);
+  initializeFamilyMemory(database);
+  initializeFamilyScheduledPublications(database);
 }
 
 /** Add a non-secret login identifier without rewriting existing bearer tokens. */

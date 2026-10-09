@@ -2,9 +2,13 @@
  * web/agent/system-metrics.ts – Lightweight host CPU/RAM/swap metrics for the web HUD.
  */
 
-import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
+import { IntelGpuMetrics } from "./intel-gpu-metrics.js";
+import type { IntelGpuSnapshot } from "./intel-gpu-accounting.js";
+import { readGpuVramUsage } from "./gpu-metrics.js";
+import type { GpuVramUsageSnapshot } from "./gpu-metrics-cache.js";
+export type { GpuVramUsageSnapshot } from "./gpu-metrics-cache.js";
 
 import type { AgentPoolMemoryInstrumentationSnapshot } from "../../../agent-pool.js";
 import { createLogger, debugSuppressedError } from "../../../utils/logger.js";
@@ -76,6 +80,7 @@ export interface SystemMetricsSnapshot {
   vram_total_bytes: number;
   vram_used_bytes: number;
   gpu_provider: string | null;
+  gpus: IntelGpuSnapshot[];
 }
 
 export interface SystemMetricsContext {
@@ -99,13 +104,6 @@ interface SwapUsageSnapshot {
   totalBytes: number;
   usedBytes: number;
   percent: number;
-}
-
-export interface GpuVramUsageSnapshot {
-  totalBytes: number;
-  usedBytes: number;
-  percent: number;
-  provider: string;
 }
 
 interface ProcStatusSnapshot {
@@ -180,52 +178,6 @@ function parseKbLine(text: string, label: string): number | null {
   if (!match) return null;
   const kb = Number(match[1]);
   return Number.isFinite(kb) && kb >= 0 ? kb * 1024 : null;
-}
-
-export function parseNvidiaSmiMemoryCsv(text: string): GpuVramUsageSnapshot | null {
-  const rows = String(text || "")
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  let usedMiB = 0;
-  let totalMiB = 0;
-  for (const row of rows) {
-    const columns = row.split(",").map((value) => value.trim().replace(/\s*MiB$/i, ""));
-    if (columns.length < 2) return null;
-    const used = Number(columns[0]);
-    const total = Number(columns[1]);
-    if (!Number.isFinite(used) || !Number.isFinite(total) || used < 0 || total <= 0) return null;
-    usedMiB += used;
-    totalMiB += total;
-  }
-
-  if (totalMiB <= 0) return null;
-  const usedBytes = Math.round(usedMiB * 1024 * 1024);
-  const totalBytes = Math.round(totalMiB * 1024 * 1024);
-  return {
-    totalBytes,
-    usedBytes: Math.min(usedBytes, totalBytes),
-    percent: roundPercent((Math.min(usedMiB, totalMiB) / totalMiB) * 100),
-    provider: "nvidia-smi",
-  };
-}
-
-function readGpuVramUsage(): GpuVramUsageSnapshot | null {
-  try {
-    const result = spawnSync("nvidia-smi", [
-      "--query-gpu=memory.used,memory.total",
-      "--format=csv,noheader,nounits",
-    ], {
-      encoding: "utf8",
-      timeout: 1000,
-      windowsHide: true,
-    });
-    if (result.status !== 0 || result.error) return null;
-    return parseNvidiaSmiMemoryCsv(result.stdout || "");
-  } catch {
-    return null;
-  }
 }
 
 function parseIntLine(text: string, label: string): number | null {
@@ -376,7 +328,7 @@ export class SystemMetricsSampler {
     private readonly gpuVramReader: () => GpuVramUsageSnapshot | null = readGpuVramUsage,
   ) {}
 
-  readSnapshot(runtimeMemorySnapshot?: AgentPoolMemoryInstrumentationSnapshot | null): SystemMetricsSnapshot {
+  readSnapshot(runtimeMemorySnapshot?: AgentPoolMemoryInstrumentationSnapshot | null, gpus: IntelGpuSnapshot[] = [], collectGpu = true): SystemMetricsSnapshot {
     const currentCpuTotals = readCpuTotals();
     let cpuPercent = 0;
     if (this.lastCpuTotals) {
@@ -388,7 +340,7 @@ export class SystemMetricsSampler {
 
     const ramUsage = readRamUsage();
     const swapUsage = readSwapUsage();
-    const gpuVramUsage = this.gpuVramReader();
+    const gpuVramUsage = collectGpu ? this.gpuVramReader() : null;
     const cpuValue = roundPercent(cpuPercent);
     const ramValue = ramUsage.percent;
     const swapValue = swapUsage ? roundPercent(swapUsage.percent) : null;
@@ -396,7 +348,7 @@ export class SystemMetricsSampler {
     this.cpuSeries = pushSample(this.cpuSeries, cpuValue, this.maxSamples);
     this.ramSeries = pushSample(this.ramSeries, ramValue, this.maxSamples);
     this.swapSeries = swapValue === null ? [] : pushSample(this.swapSeries, swapValue, this.maxSamples);
-    this.vramSeries = vramValue === null ? [] : pushSample(this.vramSeries, vramValue, this.maxSamples);
+    if (collectGpu) this.vramSeries = vramValue === null ? [] : pushSample(this.vramSeries, vramValue, this.maxSamples);
     this.bufferCacheSeriesBytes = ramUsage.bufferCacheBytes === null
       ? []
       : pushSample(this.bufferCacheSeriesBytes, ramUsage.bufferCacheBytes, this.maxSamples);
@@ -416,10 +368,11 @@ export class SystemMetricsSampler {
       ram_series: [...this.ramSeries],
       swap_series: [...this.swapSeries],
       vram_percent: vramValue,
-      vram_series: [...this.vramSeries],
+      vram_series: collectGpu ? [...this.vramSeries] : [],
       vram_total_bytes: gpuVramUsage?.totalBytes ?? 0,
       vram_used_bytes: gpuVramUsage?.usedBytes ?? 0,
       gpu_provider: gpuVramUsage?.provider ?? null,
+      gpus,
       buffer_cache_bytes: ramUsage.bufferCacheBytes,
       buffer_cache_series_bytes: [...this.bufferCacheSeriesBytes],
       process_rss_series_bytes: [...this.processRssSeriesBytes],
@@ -453,7 +406,11 @@ export class SystemMetricsSampler {
 }
 
 const defaultSampler = new SystemMetricsSampler();
+const defaultIntelGpuMetrics = new IntelGpuMetrics();
 
-export function handleSystemMetricsRequest(ctx: SystemMetricsContext, sampler: SystemMetricsSampler = defaultSampler): Response {
-  return ctx.json(sampler.readSnapshot(ctx.getRuntimeMemorySnapshot?.() ?? null), 200);
+export function handleSystemMetricsRequest(
+  ctx: SystemMetricsContext, sampler: SystemMetricsSampler = defaultSampler,
+  gpuMetrics: Pick<IntelGpuMetrics, "read"> | null = defaultIntelGpuMetrics,
+): Response {
+  return ctx.json(sampler.readSnapshot(ctx.getRuntimeMemorySnapshot?.() ?? null, gpuMetrics?.read() ?? [], gpuMetrics !== null), 200);
 }

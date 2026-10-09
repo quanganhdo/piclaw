@@ -1,0 +1,247 @@
+{
+  "before": {
+    "head": "654600355caa9a560852f6aeb9e6d3c2317a2b45",
+    "tree": "1f8bc756eb2a4305c22748846255f5362220a530",
+    "status": "",
+    "lockSha256": "5bf82bf6f35ed1bd7cc49bc5f521c7e39a22004b0b2570e774ea2cbf5628ee49"
+  },
+  "startedAt": "2026-10-05T15:34:15.738Z",
+  "bun": "1.4.2",
+  "gates": [
+    {
+      "name": "types",
+      "command": [
+        "/usr/local/lib/bun/bin/bun",
+        "--no-env-file",
+        "run",
+        "typecheck"
+      ],
+      "exit": 0,
+      "wallMs": 5317.032256,
+      "sourceBefore": {
+        "head": "654600355caa9a560852f6aeb9e6d3c2317a2b45",
+        "tree": "1f8bc756eb2a4305c22748846255f5362220a530",
+        "status": "",
+        "lockSha256": "5bf82bf6f35ed1bd7cc49bc5f521c7e39a22004b0b2570e774ea2cbf5628ee49"
+      },
+      "sourceAfter": {
+        "head": "654600355caa9a560852f6aeb9e6d3c2317a2b45",
+        "tree": "1f8bc756eb2a4305c22748846255f5362220a530",
+        "status": "",
+        "lockSha256": "5bf82bf6f35ed1bd7cc49bc5f521c7e39a22004b0b2570e774ea2cbf5628ee49"
+      },
+      "logSha256": "b605163ffcb602bcf33ea34c119bd1a9d742a316bb27575d8b36c3d69249fac8",
+      "childSamples": 5
+    },
+    {
+      "name": "scoped-lint",
+      "command": [
+        "/usr/local/lib/bun/bin/bun",
+        "--no-env-file",
+        "node_modules/oxlint/bin/oxlint",
+        "--config",
+        ".oxlintrc.json",
+        "runtime/test/fixtures/pi103-history-soak.ts",
+        "runtime/test/fixtures/pi103-scheduler-agent.ts",
+        "runtime/test/runtime/pi103-soak-agent.test.ts",
+        "runtime/test/scripts/pi103-soak-agent-receipt.test.ts"
+      ],
+      "exit": 0,
+      "wallMs": 65.46571200000017,
+      "sourceBefore": {
+        "head": "654600355caa9a560852f6aeb9e6d3c2317a2b45",
+        "tree": "1f8bc756eb2a4305c22748846255f5362220a530",
+        "status": "",
+        "lockSha256": "5bf82bf6f35ed1bd7cc49bc5f521c7e39a22004b0b2570e774ea2cbf5628ee49"
+      },
+      "sourceAfter": {
+        "head": "654600355caa9a560852f6aeb9e6d3c2317a2b45",
+        "tree": "1f8bc756eb2a4305c22748846255f5362220a530",
+        "status": "",
+        "lockSha256": "5bf82bf6f35ed1bd7cc49bc5f521c7e39a22004b0b2570e774ea2cbf5628ee49"
+      },
+      "logSha256": "60de1e14eb085d572f738d3d4361ae897beb477b80aa97f12ee84621bc2c0d8a",
+      "childSamples": 0
+    },
+    {
+      "name": "diff-check",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit": 0,
+      "wallMs": 34.65263600000071,
+      "sourceBefore": {
+        "head": "654600355caa9a560852f6aeb9e6d3c2317a2b45",
+        "tree": "1f8bc756eb2a4305c22748846255f5362220a530",
+        "status": "",
+        "lockSha256": "5bf82bf6f35ed1bd7cc49bc5f521c7e39a22004b0b2570e774ea2cbf5628ee49"
+      },
+      "sourceAfter": {
+        "head": "654600355caa9a560852f6aeb9e6d3c2317a2b45",
+        "tree": "1f8bc756eb2a4305c22748846255f5362220a530",
+        "status": "",
+        "lockSha256": "5bf82bf6f35ed1bd7cc49bc5f521c7e39a22004b0b2570e774ea2cbf5628ee49"
+      },
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "childSamples": 0
+    },
+    {
+      "name": "focused",
+      "command": [
+        "/usr/local/lib/bun/bin/bun",
+        "--no-env-file",
+        "runtime/scripts/local-test-priority.ts",
+        "--cwd",
+        "/workspace/piclaw-worktrees/pi103-soak-agent/runtime",
+        "--env",
+        "PICLAW_DB_IN_MEMORY=1",
+        "--",
+        "/usr/local/lib/bun/bin/bun",
+        "--no-env-file",
+        "test",
+        "test/runtime/pi103-soak-agent.test.ts",
+        "test/scripts/pi103-soak-agent-receipt.test.ts",
+        "test/scripts/piclaw-env-surface-audit.test.ts",
+        "test/runtime/scheduler.test.ts",
+        "test/runtime/scheduler-family-boundary.test.ts"
+      ],
+      "exit": 0,
+      "wallMs": 10412.958227,
+      "sourceBefore": {
+        "head": "654600355caa9a560852f6aeb9e6d3c2317a2b45",
+        "tree": "1f8bc756eb2a4305c22748846255f5362220a530",
+        "status": "",
+        "lockSha256": "5bf82bf6f35ed1bd7cc49bc5f521c7e39a22004b0b2570e774ea2cbf5628ee49"
+      },
+      "sourceAfter": {
+        "head": "654600355caa9a560852f6aeb9e6d3c2317a2b45",
+        "tree": "1f8bc756eb2a4305c22748846255f5362220a530",
+        "status": "",
+        "lockSha256": "5bf82bf6f35ed1bd7cc49bc5f521c7e39a22004b0b2570e774ea2cbf5628ee49"
+      },
+      "logSha256": "210afb44c67c3388921fc8a6f9d1abdc4216017052dfbac04a7072dac3ad076d",
+      "childSamples": 10
+    },
+    {
+      "name": "ci-fast",
+      "command": [
+        "timeout",
+        "--signal=TERM",
+        "2400",
+        "/usr/local/lib/bun/bin/bun",
+        "--no-env-file",
+        "runtime/scripts/local-test-priority.ts",
+        "--",
+        "make",
+        "ci-fast"
+      ],
+      "exit": 0,
+      "wallMs": 656818.2142929999,
+      "sourceBefore": {
+        "head": "654600355caa9a560852f6aeb9e6d3c2317a2b45",
+        "tree": "1f8bc756eb2a4305c22748846255f5362220a530",
+        "status": "",
+        "lockSha256": "5bf82bf6f35ed1bd7cc49bc5f521c7e39a22004b0b2570e774ea2cbf5628ee49"
+      },
+      "sourceAfter": {
+        "head": "654600355caa9a560852f6aeb9e6d3c2317a2b45",
+        "tree": "1f8bc756eb2a4305c22748846255f5362220a530",
+        "status": "",
+        "lockSha256": "5bf82bf6f35ed1bd7cc49bc5f521c7e39a22004b0b2570e774ea2cbf5628ee49"
+      },
+      "logSha256": "88d30d6ba2115b982b0fe9fd4f3529a5c59b0292a1504ece5f8606ce2b1d6956",
+      "childSamples": 656
+    }
+  ],
+  "scope": {
+    "syntheticOnly": true,
+    "deployment": false,
+    "restart": false,
+    "providerSpend": false
+  },
+  "after": {
+    "head": "654600355caa9a560852f6aeb9e6d3c2317a2b45",
+    "tree": "1f8bc756eb2a4305c22748846255f5362220a530",
+    "status": "",
+    "lockSha256": "5bf82bf6f35ed1bd7cc49bc5f521c7e39a22004b0b2570e774ea2cbf5628ee49"
+  },
+  "finishedAt": "2026-10-05T15:45:28.405Z",
+  "success": true,
+  "details": [
+    {
+      "name": "types",
+      "suites": [],
+      "childObservations": {
+        "sha256": "4b633460d1a59cff3c3957f0e615547e8855e10b5c08e5804525fc6c884ba832",
+        "samples": 5,
+        "method": "procfs descendants every1s; CPU ticks,RSS pages,niceness. Coarse process samples not function hotspots or all short-lived children."
+      }
+    },
+    {
+      "name": "scoped-lint",
+      "suites": [],
+      "childObservations": {
+        "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+        "samples": 0,
+        "method": "procfs descendants every1s; CPU ticks,RSS pages,niceness. Coarse process samples not function hotspots or all short-lived children."
+      }
+    },
+    {
+      "name": "diff-check",
+      "suites": [],
+      "childObservations": {
+        "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+        "samples": 0,
+        "method": "procfs descendants every1s; CPU ticks,RSS pages,niceness. Coarse process samples not function hotspots or all short-lived children."
+      }
+    },
+    {
+      "name": "focused",
+      "suites": [
+        {
+          "pass": 45,
+          "skip": 0,
+          "fail": 0,
+          "assertions": 2659
+        }
+      ],
+      "childObservations": {
+        "sha256": "48fd9c2b4aef99f7ab0395861da0c38edfa43bb0d793fe06d32fe9b5ed5e6200",
+        "samples": 10,
+        "method": "procfs descendants every1s; CPU ticks,RSS pages,niceness. Coarse process samples not function hotspots or all short-lived children."
+      }
+    },
+    {
+      "name": "ci-fast",
+      "suites": [
+        {
+          "pass": 6531,
+          "skip": 8,
+          "fail": 0,
+          "assertions": 42751
+        },
+        {
+          "pass": 25,
+          "skip": 0,
+          "fail": 0,
+          "assertions": 246
+        },
+        {
+          "pass": 9,
+          "skip": 0,
+          "fail": 0,
+          "assertions": 26
+        }
+      ],
+      "childObservations": {
+        "sha256": "1e70fd25a68b6d42e060bf15eb3234e074e8d4a8f623eb39173a9be2bc9fcc67",
+        "samples": 656,
+        "method": "procfs descendants every1s; CPU ticks,RSS pages,niceness. Coarse process samples not function hotspots or all short-lived children."
+      }
+    }
+  ],
+  "wholePlanAccepted": false,
+  "reviewScope": "Read-only scheduler qualified clear and corrected-history/evidence clear; broad review timeout is not approval"
+}

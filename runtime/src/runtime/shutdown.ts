@@ -4,6 +4,7 @@
 
 import { runPreShutdownHooksOnce } from "./shutdown-registry.js";
 import { createLogger } from "../utils/logger.js";
+import { stopToolOutputCleanup } from "../tool-output.js";
 
 const log = createLogger("runtime.shutdown");
 
@@ -59,6 +60,7 @@ export function createShutdownHandler(deps: ShutdownDeps): (signal: string) => P
       process.exit(0);
     }, 15000);
 
+    stopToolOutputCleanup();
     await withTimeout(runPreShutdownHooksOnce(), 5000, "pre-shutdown hooks");
     await withTimeout(deps.stopIpcWatcher(), 4000, "ipc watcher stop");
     deps.stopSchedulerLoop();

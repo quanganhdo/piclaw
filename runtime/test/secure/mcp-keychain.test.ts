@@ -347,18 +347,20 @@ describe("MCP keychain credential hydration", () => {
 
   test("writes project overrides atomically with authorization and revision checks", async () => {
     const root=workspace({mcpServers:{}});await hydrateMcpKeychainCredentials(root,resolveEntry);
-    const authority=createMcpConfigWriteAuthority(),initial=getMcpBridgeSnapshot().revision;
-    const written=await writeMcpProjectOverride({workspaceDir:root,expectedRevision:initial,config:{mcpServers:{demo:{command:"node"}}},authority,resolveEntry});
+    const authority=createMcpConfigWriteAuthority({workspaceDir:root,authorise:()=>{},signal:new AbortController().signal}),initial=getMcpBridgeSnapshot().revision;
+    const written=await writeMcpProjectOverride({workspaceDir:root,expectedRevision:initial,config:{mcpServers:{demo:{command:"node"}}},authority});
     expect(JSON.parse(readFileSync(written.path,"utf8"))).toEqual({mcpServers:{demo:{command:"node"}}});
-    expect(written.revision).not.toBe(initial);expect(getPreparedMcpConfig().mcpServers.demo).toMatchObject({command:"node"});
-    await expect(writeMcpProjectOverride({workspaceDir:root,expectedRevision:initial,config:{mcpServers:{}},authority,resolveEntry})).rejects.toThrow("revision conflict");
-    await expect(writeMcpProjectOverride({workspaceDir:root,expectedRevision:written.revision,config:{mcpServers:{ambiguous:{command:"node",url:"https://example.test"}}},authority,resolveEntry})).rejects.toThrow("exactly one");
-    await expect(writeMcpProjectOverride({workspaceDir:root,expectedRevision:written.revision,config:{mcpServers:{secret:{url:"https://example.test",headers:{Authorization:"literal-secret"}}}},authority,resolveEntry})).rejects.toThrow("literal secret");
+    expect(written.committed).toBe(true);expect(getPreparedMcpConfig().mcpServers.demo).toBeUndefined();
+    await hydrateMcpKeychainCredentials(root,resolveEntry);const revision=getMcpBridgeSnapshot().revision;
+    expect(revision).not.toBe(initial);expect(getPreparedMcpConfig().mcpServers.demo).toMatchObject({command:"node"});
+    await expect(writeMcpProjectOverride({workspaceDir:root,expectedRevision:initial,config:{mcpServers:{}},authority})).rejects.toThrow("revision conflict");
+    await expect(writeMcpProjectOverride({workspaceDir:root,expectedRevision:revision,config:{mcpServers:{ambiguous:{command:"node",url:"https://example.test"}}},authority})).rejects.toThrow("exactly one");
+    await expect(writeMcpProjectOverride({workspaceDir:root,expectedRevision:revision,config:{mcpServers:{secret:{url:"https://example.test",headers:{Authorization:"literal-secret"}}}},authority})).rejects.toThrow("literal secret");
     writeFileSync(written.path,JSON.stringify({mcpServers:{external:{command:"node"}}}));
-    await expect(writeMcpProjectOverride({workspaceDir:root,expectedRevision:written.revision,config:{mcpServers:{}},authority,resolveEntry})).rejects.toThrow("revision conflict");
-    await expect(writeMcpProjectOverride({workspaceDir:root,expectedRevision:written.revision,config:{mcpServers:{}},authority:{} as any,resolveEntry})).rejects.toThrow("not authorized");
+    await expect(writeMcpProjectOverride({workspaceDir:root,expectedRevision:revision,config:{mcpServers:{}},authority})).rejects.toThrow("revision conflict");
+    await expect(writeMcpProjectOverride({workspaceDir:root,expectedRevision:revision,config:{mcpServers:{}},authority:{} as any})).rejects.toThrow("not authorized");
     const shared=join(root,".mcp.json");writeFileSync(shared,JSON.stringify({mcpServers:{changed:{command:"node"}}}));
-    await expect(writeMcpProjectOverride({workspaceDir:root,expectedRevision:written.revision,config:{mcpServers:{}},authority,resolveEntry})).rejects.toThrow("revision conflict");
+    await expect(writeMcpProjectOverride({workspaceDir:root,expectedRevision:revision,config:{mcpServers:{}},authority})).rejects.toThrow("revision conflict");
   });
 
   test("does not overwrite an existing environment variable", async () => {

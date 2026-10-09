@@ -1,0 +1,2186 @@
+{
+  "before": {
+    "head": "d8a95676a7e0ad70e34255902e71d2945b901bb7",
+    "tree": "3334ed9685052a0745c36c760e4de18283e9c50c",
+    "status": "",
+    "lockSha256": "5bf82bf6f35ed1bd7cc49bc5f521c7e39a22004b0b2570e774ea2cbf5628ee49"
+  },
+  "startedAt": "2026-10-05T14:44:39.838Z",
+  "bun": "1.4.2",
+  "gates": [
+    {
+      "name": "types",
+      "command": [
+        "/usr/local/lib/bun/bin/bun",
+        "--no-env-file",
+        "run",
+        "typecheck"
+      ],
+      "exit": 0,
+      "wallMs": 5305.768268999999,
+      "sourceBefore": {
+        "head": "d8a95676a7e0ad70e34255902e71d2945b901bb7",
+        "tree": "3334ed9685052a0745c36c760e4de18283e9c50c",
+        "status": "",
+        "lockSha256": "5bf82bf6f35ed1bd7cc49bc5f521c7e39a22004b0b2570e774ea2cbf5628ee49"
+      },
+      "sourceAfter": {
+        "head": "d8a95676a7e0ad70e34255902e71d2945b901bb7",
+        "tree": "3334ed9685052a0745c36c760e4de18283e9c50c",
+        "status": "",
+        "lockSha256": "5bf82bf6f35ed1bd7cc49bc5f521c7e39a22004b0b2570e774ea2cbf5628ee49"
+      },
+      "logSha256": "b605163ffcb602bcf33ea34c119bd1a9d742a316bb27575d8b36c3d69249fac8",
+      "childSamples": 5
+    },
+    {
+      "name": "scoped-lint",
+      "command": [
+        "/usr/local/lib/bun/bin/bun",
+        "--no-env-file",
+        "node_modules/oxlint/bin/oxlint",
+        "--config",
+        ".oxlintrc.json",
+        "runtime/src/channels/web/messaging/family-message-authority.ts",
+        "runtime/src/channels/web/http/family-message-ingress.ts",
+        "runtime/test/fixtures/pi103-family-async-admission.ts",
+        "runtime/test/fixtures/pi103-family-write-profile.ts",
+        "runtime/test/fixtures/pi103-durable-scheduler-profile.ts",
+        "runtime/test/fixtures/pi103-history-retention-profile.ts",
+        "runtime/test/channels/web/family-async-admission.test.ts",
+        "runtime/test/channels/web/family-message-provenance.test.ts",
+        "runtime/test/scripts/pi-103-deeper-performance.test.ts"
+      ],
+      "exit": 0,
+      "wallMs": 69.30710399999953,
+      "sourceBefore": {
+        "head": "d8a95676a7e0ad70e34255902e71d2945b901bb7",
+        "tree": "3334ed9685052a0745c36c760e4de18283e9c50c",
+        "status": "",
+        "lockSha256": "5bf82bf6f35ed1bd7cc49bc5f521c7e39a22004b0b2570e774ea2cbf5628ee49"
+      },
+      "sourceAfter": {
+        "head": "d8a95676a7e0ad70e34255902e71d2945b901bb7",
+        "tree": "3334ed9685052a0745c36c760e4de18283e9c50c",
+        "status": "",
+        "lockSha256": "5bf82bf6f35ed1bd7cc49bc5f521c7e39a22004b0b2570e774ea2cbf5628ee49"
+      },
+      "logSha256": "9b29488a098e0ec334ffd259120034753bd30820f513a5a13ed571fa91ce7c29",
+      "childSamples": 0
+    },
+    {
+      "name": "diff-check",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit": 0,
+      "wallMs": 41.7517170000001,
+      "sourceBefore": {
+        "head": "d8a95676a7e0ad70e34255902e71d2945b901bb7",
+        "tree": "3334ed9685052a0745c36c760e4de18283e9c50c",
+        "status": "",
+        "lockSha256": "5bf82bf6f35ed1bd7cc49bc5f521c7e39a22004b0b2570e774ea2cbf5628ee49"
+      },
+      "sourceAfter": {
+        "head": "d8a95676a7e0ad70e34255902e71d2945b901bb7",
+        "tree": "3334ed9685052a0745c36c760e4de18283e9c50c",
+        "status": "",
+        "lockSha256": "5bf82bf6f35ed1bd7cc49bc5f521c7e39a22004b0b2570e774ea2cbf5628ee49"
+      },
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "childSamples": 0
+    },
+    {
+      "name": "focused",
+      "command": [
+        "/usr/local/lib/bun/bin/bun",
+        "--no-env-file",
+        "runtime/scripts/local-test-priority.ts",
+        "--cwd",
+        "/workspace/piclaw-worktrees/pi-103-deeper-coverage/runtime",
+        "--env",
+        "PICLAW_DB_IN_MEMORY=1",
+        "--",
+        "/usr/local/lib/bun/bin/bun",
+        "--no-env-file",
+        "test",
+        "test/channels/web/family-async-admission.test.ts",
+        "test/channels/web/family-message-provenance.test.ts",
+        "test/channels/web/family-turn-queue.test.ts",
+        "test/channels/web/family-authorisation.test.ts",
+        "test/runtime/scheduler.test.ts",
+        "test/runtime/scheduler-family-boundary.test.ts",
+        "test/db/sqlite-async-admission.test.ts",
+        "test/scripts/pi-103-deeper-performance.test.ts"
+      ],
+      "exit": 0,
+      "wallMs": 10730.546327,
+      "sourceBefore": {
+        "head": "d8a95676a7e0ad70e34255902e71d2945b901bb7",
+        "tree": "3334ed9685052a0745c36c760e4de18283e9c50c",
+        "status": "",
+        "lockSha256": "5bf82bf6f35ed1bd7cc49bc5f521c7e39a22004b0b2570e774ea2cbf5628ee49"
+      },
+      "sourceAfter": {
+        "head": "d8a95676a7e0ad70e34255902e71d2945b901bb7",
+        "tree": "3334ed9685052a0745c36c760e4de18283e9c50c",
+        "status": "",
+        "lockSha256": "5bf82bf6f35ed1bd7cc49bc5f521c7e39a22004b0b2570e774ea2cbf5628ee49"
+      },
+      "logSha256": "4b835862291fa68b50c20c3aee29a2e532f69bb15d02651bca81ddb9420d9a96",
+      "childSamples": 10
+    },
+    {
+      "name": "ci-fast",
+      "command": [
+        "timeout",
+        "--signal=TERM",
+        "2400",
+        "/usr/local/lib/bun/bin/bun",
+        "--no-env-file",
+        "runtime/scripts/local-test-priority.ts",
+        "--",
+        "make",
+        "ci-fast"
+      ],
+      "exit": 0,
+      "wallMs": 652108.431207,
+      "sourceBefore": {
+        "head": "d8a95676a7e0ad70e34255902e71d2945b901bb7",
+        "tree": "3334ed9685052a0745c36c760e4de18283e9c50c",
+        "status": "",
+        "lockSha256": "5bf82bf6f35ed1bd7cc49bc5f521c7e39a22004b0b2570e774ea2cbf5628ee49"
+      },
+      "sourceAfter": {
+        "head": "d8a95676a7e0ad70e34255902e71d2945b901bb7",
+        "tree": "3334ed9685052a0745c36c760e4de18283e9c50c",
+        "status": "",
+        "lockSha256": "5bf82bf6f35ed1bd7cc49bc5f521c7e39a22004b0b2570e774ea2cbf5628ee49"
+      },
+      "logSha256": "a2da1f18aa8e39d4b8cd5d0dfa532018a839c4da1370d63e11b8eeb4d5382ccb",
+      "childSamples": 651
+    }
+  ],
+  "scope": {
+    "syntheticOnly": true,
+    "deployment": false,
+    "restart": false,
+    "providerSpend": false
+  },
+  "after": {
+    "head": "d8a95676a7e0ad70e34255902e71d2945b901bb7",
+    "tree": "3334ed9685052a0745c36c760e4de18283e9c50c",
+    "status": "",
+    "lockSha256": "5bf82bf6f35ed1bd7cc49bc5f521c7e39a22004b0b2570e774ea2cbf5628ee49"
+  },
+  "finishedAt": "2026-10-05T14:55:48.112Z",
+  "success": true,
+  "parsed": [
+    {
+      "name": "types",
+      "summaries": [],
+      "childProfiling": {
+        "method": "Linux procfs descendant samples every1000ms; sampled cumulative user+system CPU ticks/RSS pages/niceness; no inference of CPU hotspots",
+        "sampleCount": 5,
+        "observedChildren": [
+          {
+            "pid": 2975838,
+            "comm": "bun",
+            "minNice": 0,
+            "maxCpuTicks": 0,
+            "maxRssPages": 1441
+          },
+          {
+            "pid": 2975839,
+            "comm": "bun",
+            "minNice": 0,
+            "maxCpuTicks": 0,
+            "maxRssPages": 1397
+          },
+          {
+            "pid": 2975840,
+            "comm": "bun",
+            "minNice": 0,
+            "maxCpuTicks": 0,
+            "maxRssPages": 4860
+          },
+          {
+            "pid": 2975846,
+            "comm": "tsc",
+            "minNice": 0,
+            "maxCpuTicks": 782,
+            "maxRssPages": 303739
+          },
+          {
+            "pid": 2975864,
+            "comm": "bun",
+            "minNice": 0,
+            "maxCpuTicks": 0,
+            "maxRssPages": 4870
+          },
+          {
+            "pid": 2975870,
+            "comm": "tsc",
+            "minNice": 0,
+            "maxCpuTicks": 672,
+            "maxRssPages": 294769
+          },
+          {
+            "pid": 2975924,
+            "comm": "bun",
+            "minNice": 0,
+            "maxCpuTicks": 0,
+            "maxRssPages": 3791
+          },
+          {
+            "pid": 2975927,
+            "comm": "tsc",
+            "minNice": 0,
+            "maxCpuTicks": 40,
+            "maxRssPages": 33807
+          }
+        ],
+        "rawSha256": "e2c4826169ef8d5d5ed29e377e6c60063810c68cba949ad25d1d974a2ab485f4"
+      }
+    },
+    {
+      "name": "scoped-lint",
+      "summaries": [],
+      "childProfiling": {
+        "method": "Linux procfs descendant samples every1000ms; sampled cumulative user+system CPU ticks/RSS pages/niceness; no inference of CPU hotspots",
+        "sampleCount": 0,
+        "observedChildren": [],
+        "rawSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+      }
+    },
+    {
+      "name": "diff-check",
+      "summaries": [],
+      "childProfiling": {
+        "method": "Linux procfs descendant samples every1000ms; sampled cumulative user+system CPU ticks/RSS pages/niceness; no inference of CPU hotspots",
+        "sampleCount": 0,
+        "observedChildren": [],
+        "rawSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+      }
+    },
+    {
+      "name": "focused",
+      "summaries": [
+        {
+          "pass": 77,
+          "skip": 0,
+          "fail": 0,
+          "assertions": 841
+        }
+      ],
+      "childProfiling": {
+        "method": "Linux procfs descendant samples every1000ms; sampled cumulative user+system CPU ticks/RSS pages/niceness; no inference of CPU hotspots",
+        "sampleCount": 10,
+        "observedChildren": [
+          {
+            "pid": 2976032,
+            "comm": "bun",
+            "minNice": 0,
+            "maxCpuTicks": 0,
+            "maxRssPages": 5401
+          },
+          {
+            "pid": 2976040,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 219,
+            "maxRssPages": 48327
+          },
+          {
+            "pid": 2976088,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 5,
+            "maxRssPages": 8029
+          },
+          {
+            "pid": 2976101,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 59,
+            "maxRssPages": 27479
+          },
+          {
+            "pid": 2976114,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 59,
+            "maxRssPages": 26930
+          },
+          {
+            "pid": 2976127,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 63,
+            "maxRssPages": 28513
+          },
+          {
+            "pid": 2976153,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 28,
+            "maxRssPages": 16195
+          },
+          {
+            "pid": 2976166,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 61,
+            "maxRssPages": 28533
+          },
+          {
+            "pid": 2976192,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 23,
+            "maxRssPages": 14848
+          }
+        ],
+        "rawSha256": "04d4519aab1f67822a8db91638cc0971af6a33695347f41b8a93176a4ecab860"
+      }
+    },
+    {
+      "name": "ci-fast",
+      "summaries": [
+        {
+          "pass": 6527,
+          "skip": 8,
+          "fail": 0,
+          "assertions": 42737
+        },
+        {
+          "pass": 25,
+          "skip": 0,
+          "fail": 0,
+          "assertions": 246
+        },
+        {
+          "pass": 9,
+          "skip": 0,
+          "fail": 0,
+          "assertions": 26
+        }
+      ],
+      "childProfiling": {
+        "method": "Linux procfs descendant samples every1000ms; sampled cumulative user+system CPU ticks/RSS pages/niceness; no inference of CPU hotspots",
+        "sampleCount": 651,
+        "observedChildren": [
+          {
+            "pid": 2976263,
+            "comm": "timeout",
+            "minNice": 0,
+            "maxCpuTicks": 0,
+            "maxRssPages": 286
+          },
+          {
+            "pid": 2976264,
+            "comm": "bun",
+            "minNice": 0,
+            "maxCpuTicks": 3,
+            "maxRssPages": 5472
+          },
+          {
+            "pid": 2976272,
+            "comm": "make",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 407
+          },
+          {
+            "pid": 2976274,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 1449
+          },
+          {
+            "pid": 2976275,
+            "comm": "make",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 548
+          },
+          {
+            "pid": 2976276,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 1397
+          },
+          {
+            "pid": 2976277,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 106,
+            "maxRssPages": 15466
+          },
+          {
+            "pid": 2976366,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 1398
+          },
+          {
+            "pid": 2976367,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 1431
+          },
+          {
+            "pid": 2976368,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 4,
+            "maxRssPages": 6542
+          },
+          {
+            "pid": 2976377,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 10717,
+            "maxRssPages": 198867
+          },
+          {
+            "pid": 2976384,
+            "comm": "sudo",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 1033
+          },
+          {
+            "pid": 2976412,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 55,
+            "maxRssPages": 25805
+          },
+          {
+            "pid": 2976454,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 1,
+            "maxRssPages": 5983
+          },
+          {
+            "pid": 2976461,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 55,
+            "maxRssPages": 18488
+          },
+          {
+            "pid": 2976491,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 25,
+            "maxRssPages": 17035
+          },
+          {
+            "pid": 2976506,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 26,
+            "maxRssPages": 17612
+          },
+          {
+            "pid": 2976571,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 52,
+            "maxRssPages": 24537
+          },
+          {
+            "pid": 2976578,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 87,
+            "maxRssPages": 35564
+          },
+          {
+            "pid": 2976592,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 41,
+            "maxRssPages": 19472
+          },
+          {
+            "pid": 2976606,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 18,
+            "maxRssPages": 13984
+          },
+          {
+            "pid": 2976617,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 8,
+            "maxRssPages": 9430
+          },
+          {
+            "pid": 2976685,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 68,
+            "maxRssPages": 24570
+          },
+          {
+            "pid": 2976699,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 69,
+            "maxRssPages": 22606
+          },
+          {
+            "pid": 2976712,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 67,
+            "maxRssPages": 22247
+          },
+          {
+            "pid": 2976743,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 68,
+            "maxRssPages": 23292
+          },
+          {
+            "pid": 2976783,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 117,
+            "maxRssPages": 28287
+          },
+          {
+            "pid": 2976796,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 133,
+            "maxRssPages": 25121
+          },
+          {
+            "pid": 2976815,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 190,
+            "maxRssPages": 26742
+          },
+          {
+            "pid": 2976849,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 159,
+            "maxRssPages": 27329
+          },
+          {
+            "pid": 2976920,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 74,
+            "maxRssPages": 27047
+          },
+          {
+            "pid": 2976947,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 78,
+            "maxRssPages": 27413
+          },
+          {
+            "pid": 2976963,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 117,
+            "maxRssPages": 28005
+          },
+          {
+            "pid": 2976979,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 93,
+            "maxRssPages": 26677
+          },
+          {
+            "pid": 2977006,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 119,
+            "maxRssPages": 28316
+          },
+          {
+            "pid": 2977035,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 71,
+            "maxRssPages": 25910
+          },
+          {
+            "pid": 2977049,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 122,
+            "maxRssPages": 27842
+          },
+          {
+            "pid": 2977080,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 118,
+            "maxRssPages": 27987
+          },
+          {
+            "pid": 2977093,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 126,
+            "maxRssPages": 28114
+          },
+          {
+            "pid": 2977108,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 6,
+            "maxRssPages": 9761
+          },
+          {
+            "pid": 2977158,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 3520
+          },
+          {
+            "pid": 2977173,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 79,
+            "maxRssPages": 22899
+          },
+          {
+            "pid": 2977186,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 81,
+            "maxRssPages": 21982
+          },
+          {
+            "pid": 2977206,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 80,
+            "maxRssPages": 23183
+          },
+          {
+            "pid": 2977219,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 77,
+            "maxRssPages": 22947
+          },
+          {
+            "pid": 2977235,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 78,
+            "maxRssPages": 22014
+          },
+          {
+            "pid": 2977248,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 77,
+            "maxRssPages": 23543
+          },
+          {
+            "pid": 2977293,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 100,
+            "maxRssPages": 23657
+          },
+          {
+            "pid": 2977306,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 99,
+            "maxRssPages": 23065
+          },
+          {
+            "pid": 2977323,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 98,
+            "maxRssPages": 23419
+          },
+          {
+            "pid": 2977344,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 79,
+            "maxRssPages": 23124
+          },
+          {
+            "pid": 2977360,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 76,
+            "maxRssPages": 22765
+          },
+          {
+            "pid": 2977373,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 78,
+            "maxRssPages": 22986
+          },
+          {
+            "pid": 2977510,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 5,
+            "maxRssPages": 9723
+          },
+          {
+            "pid": 2977670,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 1,
+            "maxRssPages": 7653
+          },
+          {
+            "pid": 2978187,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 5309
+          },
+          {
+            "pid": 2978246,
+            "comm": "bash",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 735
+          },
+          {
+            "pid": 2978262,
+            "comm": "cp",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 320
+          },
+          {
+            "pid": 2978418,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 5,
+            "maxRssPages": 8613
+          },
+          {
+            "pid": 2978429,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 53,
+            "maxRssPages": 25679
+          },
+          {
+            "pid": 2978459,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 47,
+            "maxRssPages": 21807
+          },
+          {
+            "pid": 2978475,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 36,
+            "maxRssPages": 17922
+          },
+          {
+            "pid": 2978489,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 20,
+            "maxRssPages": 13912
+          },
+          {
+            "pid": 2978529,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 56,
+            "maxRssPages": 24761
+          },
+          {
+            "pid": 2978547,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 63,
+            "maxRssPages": 26520
+          },
+          {
+            "pid": 2978573,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 38,
+            "maxRssPages": 18111
+          },
+          {
+            "pid": 2978664,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 4,
+            "maxRssPages": 9034
+          },
+          {
+            "pid": 2978692,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 2,
+            "maxRssPages": 6436
+          },
+          {
+            "pid": 2978718,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 10,
+            "maxRssPages": 10228
+          },
+          {
+            "pid": 2978727,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 5452
+          },
+          {
+            "pid": 2978748,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 7,
+            "maxRssPages": 9505
+          },
+          {
+            "pid": 2978778,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 1,
+            "maxRssPages": 5408
+          },
+          {
+            "pid": 2978793,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 11,
+            "maxRssPages": 10908
+          },
+          {
+            "pid": 2978802,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 1,
+            "maxRssPages": 5469
+          },
+          {
+            "pid": 2978823,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 5,
+            "maxRssPages": 8723
+          },
+          {
+            "pid": 2978853,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 6,
+            "maxRssPages": 9464
+          },
+          {
+            "pid": 2978868,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 8,
+            "maxRssPages": 10488
+          },
+          {
+            "pid": 2978877,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 1,
+            "maxRssPages": 5918
+          },
+          {
+            "pid": 2978898,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 4,
+            "maxRssPages": 8154
+          },
+          {
+            "pid": 2978913,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 8,
+            "maxRssPages": 10589
+          },
+          {
+            "pid": 2978922,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 1,
+            "maxRssPages": 5925
+          },
+          {
+            "pid": 2978949,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 2,
+            "maxRssPages": 8284
+          },
+          {
+            "pid": 2978964,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 8,
+            "maxRssPages": 10479
+          },
+          {
+            "pid": 2978973,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 1,
+            "maxRssPages": 5927
+          },
+          {
+            "pid": 2978997,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 9,
+            "maxRssPages": 10432
+          },
+          {
+            "pid": 2979006,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 1,
+            "maxRssPages": 5925
+          },
+          {
+            "pid": 2979012,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 8,
+            "maxRssPages": 10168
+          },
+          {
+            "pid": 2979045,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 8,
+            "maxRssPages": 10061
+          },
+          {
+            "pid": 2979060,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 10,
+            "maxRssPages": 10473
+          },
+          {
+            "pid": 2979068,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 1,
+            "maxRssPages": 0
+          },
+          {
+            "pid": 2979074,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 11,
+            "maxRssPages": 11436
+          },
+          {
+            "pid": 2979102,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 4201
+          },
+          {
+            "pid": 2979141,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 9,
+            "maxRssPages": 12220
+          },
+          {
+            "pid": 2979180,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 4,
+            "maxRssPages": 8154
+          },
+          {
+            "pid": 2979208,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 16,
+            "maxRssPages": 11579
+          },
+          {
+            "pid": 2979218,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 8,
+            "maxRssPages": 10722
+          },
+          {
+            "pid": 2979234,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 7,
+            "maxRssPages": 10055
+          },
+          {
+            "pid": 2979281,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 3,
+            "maxRssPages": 8397
+          },
+          {
+            "pid": 2979315,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 7,
+            "maxRssPages": 9547
+          },
+          {
+            "pid": 2979332,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 10,
+            "maxRssPages": 9779
+          },
+          {
+            "pid": 2979341,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 8,
+            "maxRssPages": 10944
+          },
+          {
+            "pid": 2979372,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 15,
+            "maxRssPages": 13278
+          },
+          {
+            "pid": 2979409,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 17,
+            "maxRssPages": 13304
+          },
+          {
+            "pid": 2979446,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 9,
+            "maxRssPages": 9853
+          },
+          {
+            "pid": 2979483,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 8,
+            "maxRssPages": 9875
+          },
+          {
+            "pid": 2979492,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 8,
+            "maxRssPages": 10937
+          },
+          {
+            "pid": 2979517,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 8,
+            "maxRssPages": 9382
+          },
+          {
+            "pid": 2979551,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 9,
+            "maxRssPages": 10352
+          },
+          {
+            "pid": 2979560,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 3,
+            "maxRssPages": 9394
+          },
+          {
+            "pid": 2979571,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 9,
+            "maxRssPages": 9789
+          },
+          {
+            "pid": 2979580,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 7,
+            "maxRssPages": 10876
+          },
+          {
+            "pid": 2979591,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 18,
+            "maxRssPages": 14118
+          },
+          {
+            "pid": 2979645,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 5,
+            "maxRssPages": 9365
+          },
+          {
+            "pid": 2979679,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 4,
+            "maxRssPages": 8420
+          },
+          {
+            "pid": 2979713,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 9,
+            "maxRssPages": 10438
+          },
+          {
+            "pid": 2979722,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 3,
+            "maxRssPages": 9186
+          },
+          {
+            "pid": 2979751,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 12,
+            "maxRssPages": 10119
+          },
+          {
+            "pid": 2979761,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 5,
+            "maxRssPages": 9697
+          },
+          {
+            "pid": 2979787,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 9,
+            "maxRssPages": 9883
+          },
+          {
+            "pid": 2979796,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 6,
+            "maxRssPages": 10946
+          },
+          {
+            "pid": 2979828,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 16,
+            "maxRssPages": 13915
+          },
+          {
+            "pid": 2979848,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 45,
+            "maxRssPages": 19664
+          },
+          {
+            "pid": 2979870,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 25,
+            "maxRssPages": 17960
+          },
+          {
+            "pid": 2979891,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 11,
+            "maxRssPages": 10084
+          },
+          {
+            "pid": 2979900,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 229,
+            "maxRssPages": 16009
+          },
+          {
+            "pid": 2979923,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 9,
+            "maxRssPages": 10104
+          },
+          {
+            "pid": 2979932,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 4,
+            "maxRssPages": 10231
+          },
+          {
+            "pid": 2979944,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 7,
+            "maxRssPages": 10007
+          },
+          {
+            "pid": 2979964,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 58,
+            "maxRssPages": 19708
+          },
+          {
+            "pid": 2979986,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 12,
+            "maxRssPages": 9964
+          },
+          {
+            "pid": 2979995,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 7,
+            "maxRssPages": 11179
+          },
+          {
+            "pid": 2980006,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 10,
+            "maxRssPages": 10557
+          },
+          {
+            "pid": 2980015,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 6,
+            "maxRssPages": 10461
+          },
+          {
+            "pid": 2980029,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 7,
+            "maxRssPages": 9537
+          },
+          {
+            "pid": 2980049,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 9,
+            "maxRssPages": 10188
+          },
+          {
+            "pid": 2980069,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 35,
+            "maxRssPages": 19125
+          },
+          {
+            "pid": 2980078,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 4,
+            "maxRssPages": 9454
+          },
+          {
+            "pid": 2980089,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 117,
+            "maxRssPages": 21650
+          },
+          {
+            "pid": 2980101,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 288,
+            "maxRssPages": 18986
+          },
+          {
+            "pid": 2980114,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 145,
+            "maxRssPages": 20977
+          },
+          {
+            "pid": 2980127,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 87,
+            "maxRssPages": 20486
+          },
+          {
+            "pid": 2980140,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 140,
+            "maxRssPages": 20933
+          },
+          {
+            "pid": 2980157,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 155,
+            "maxRssPages": 21548
+          },
+          {
+            "pid": 2980188,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 380,
+            "maxRssPages": 18508
+          },
+          {
+            "pid": 2980214,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 100,
+            "maxRssPages": 21025
+          },
+          {
+            "pid": 2980224,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 16,
+            "maxRssPages": 13590
+          },
+          {
+            "pid": 2980252,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 8,
+            "maxRssPages": 10857
+          },
+          {
+            "pid": 2980317,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 8,
+            "maxRssPages": 10069
+          },
+          {
+            "pid": 2980331,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 7,
+            "maxRssPages": 10985
+          },
+          {
+            "pid": 2980375,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 5,
+            "maxRssPages": 9858
+          },
+          {
+            "pid": 2980420,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 3,
+            "maxRssPages": 7760
+          },
+          {
+            "pid": 2980448,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 8,
+            "maxRssPages": 10853
+          },
+          {
+            "pid": 2980492,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 946
+          },
+          {
+            "pid": 2980506,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 8,
+            "maxRssPages": 10663
+          },
+          {
+            "pid": 2980543,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 4,
+            "maxRssPages": 9736
+          },
+          {
+            "pid": 2980574,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 8,
+            "maxRssPages": 10389
+          },
+          {
+            "pid": 2980583,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 3,
+            "maxRssPages": 9664
+          },
+          {
+            "pid": 2980608,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 18,
+            "maxRssPages": 13377
+          },
+          {
+            "pid": 2980659,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 2,
+            "maxRssPages": 6821
+          },
+          {
+            "pid": 2980676,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 9,
+            "maxRssPages": 10410
+          },
+          {
+            "pid": 2980685,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 3,
+            "maxRssPages": 9050
+          },
+          {
+            "pid": 2980710,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 15,
+            "maxRssPages": 13285
+          },
+          {
+            "pid": 2980762,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 3,
+            "maxRssPages": 8348
+          },
+          {
+            "pid": 2980796,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 7,
+            "maxRssPages": 9387
+          },
+          {
+            "pid": 2980830,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 8,
+            "maxRssPages": 10480
+          },
+          {
+            "pid": 2980839,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 4,
+            "maxRssPages": 9747
+          },
+          {
+            "pid": 2980847,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 16,
+            "maxRssPages": 13758
+          },
+          {
+            "pid": 2980881,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 107,
+            "maxRssPages": 21243
+          },
+          {
+            "pid": 2980891,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 13,
+            "maxRssPages": 14082
+          },
+          {
+            "pid": 2981220,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 2,
+            "maxRssPages": 0
+          },
+          {
+            "pid": 2981440,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 9,
+            "maxRssPages": 10438
+          },
+          {
+            "pid": 2981489,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 10,
+            "maxRssPages": 11049
+          },
+          {
+            "pid": 2981541,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 6,
+            "maxRssPages": 10311
+          },
+          {
+            "pid": 2981550,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 3606
+          },
+          {
+            "pid": 2981556,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 7,
+            "maxRssPages": 10497
+          },
+          {
+            "pid": 2981598,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 120
+          },
+          {
+            "pid": 2981663,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 71,
+            "maxRssPages": 32821
+          },
+          {
+            "pid": 2981727,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 47,
+            "maxRssPages": 19902
+          },
+          {
+            "pid": 2981882,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 63,
+            "maxRssPages": 28094
+          },
+          {
+            "pid": 2981908,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 41,
+            "maxRssPages": 18798
+          },
+          {
+            "pid": 2981921,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 49,
+            "maxRssPages": 21739
+          },
+          {
+            "pid": 2981947,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 54,
+            "maxRssPages": 20224
+          },
+          {
+            "pid": 2981974,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 9,
+            "maxRssPages": 10583
+          },
+          {
+            "pid": 2981988,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 73,
+            "maxRssPages": 28968
+          },
+          {
+            "pid": 2982015,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 47,
+            "maxRssPages": 18982
+          },
+          {
+            "pid": 2982029,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 97,
+            "maxRssPages": 33136
+          },
+          {
+            "pid": 2982056,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 71,
+            "maxRssPages": 28432
+          },
+          {
+            "pid": 2982095,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 48,
+            "maxRssPages": 19906
+          },
+          {
+            "pid": 2982151,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 45,
+            "maxRssPages": 19597
+          },
+          {
+            "pid": 2982191,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 51,
+            "maxRssPages": 19849
+          },
+          {
+            "pid": 2982292,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 72,
+            "maxRssPages": 0
+          },
+          {
+            "pid": 2982357,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 70,
+            "maxRssPages": 32267
+          },
+          {
+            "pid": 2982370,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 744
+          },
+          {
+            "pid": 2982414,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 69,
+            "maxRssPages": 27903
+          },
+          {
+            "pid": 2982444,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 47,
+            "maxRssPages": 21007
+          },
+          {
+            "pid": 2982457,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 66,
+            "maxRssPages": 28059
+          },
+          {
+            "pid": 2982484,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 39,
+            "maxRssPages": 18834
+          },
+          {
+            "pid": 2982497,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 65,
+            "maxRssPages": 28473
+          },
+          {
+            "pid": 2982523,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 33,
+            "maxRssPages": 17244
+          },
+          {
+            "pid": 2982536,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 69,
+            "maxRssPages": 28531
+          },
+          {
+            "pid": 2982549,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 10,
+            "maxRssPages": 11645
+          },
+          {
+            "pid": 2982583,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 4,
+            "maxRssPages": 8383
+          },
+          {
+            "pid": 2982590,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 1409
+          },
+          {
+            "pid": 2982591,
+            "comm": "bash",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 558
+          },
+          {
+            "pid": 2982592,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 1398
+          },
+          {
+            "pid": 2982593,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 1409
+          },
+          {
+            "pid": 2982674,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 1399
+          },
+          {
+            "pid": 2982675,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 5613
+          },
+          {
+            "pid": 2982679,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 1399
+          },
+          {
+            "pid": 2982680,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 3,
+            "maxRssPages": 10996
+          },
+          {
+            "pid": 2982693,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 1409
+          },
+          {
+            "pid": 2982694,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 4602
+          },
+          {
+            "pid": 2982698,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 4206
+          },
+          {
+            "pid": 2982701,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 220,
+            "maxRssPages": 62257
+          },
+          {
+            "pid": 2982716,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 2,
+            "maxRssPages": 6124
+          },
+          {
+            "pid": 2982868,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 4,
+            "maxRssPages": 8071
+          },
+          {
+            "pid": 2982909,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 6135
+          },
+          {
+            "pid": 2982918,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 10,
+            "maxRssPages": 10918
+          },
+          {
+            "pid": 2982932,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 5192
+          },
+          {
+            "pid": 2982942,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 9,
+            "maxRssPages": 11214
+          },
+          {
+            "pid": 2983005,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 1410
+          },
+          {
+            "pid": 2983006,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 1399
+          },
+          {
+            "pid": 2983007,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 6120
+          },
+          {
+            "pid": 2983016,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 3664
+          },
+          {
+            "pid": 2983017,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 14,
+            "maxRssPages": 13840
+          },
+          {
+            "pid": 2983042,
+            "comm": "sh",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 284
+          },
+          {
+            "pid": 2983043,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 1394
+          },
+          {
+            "pid": 2983044,
+            "comm": "bash",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 560
+          },
+          {
+            "pid": 2983045,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 1409
+          },
+          {
+            "pid": 2983046,
+            "comm": "bash",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 565
+          },
+          {
+            "pid": 2983145,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 1407
+          },
+          {
+            "pid": 2983146,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 4631
+          },
+          {
+            "pid": 2983150,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 4220
+          },
+          {
+            "pid": 2983153,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 314,
+            "maxRssPages": 64996
+          },
+          {
+            "pid": 2983235,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 1387
+          },
+          {
+            "pid": 2983236,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 6283
+          },
+          {
+            "pid": 2983245,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 1,
+            "maxRssPages": 6808
+          },
+          {
+            "pid": 2983255,
+            "comm": "sudo",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 1451
+          },
+          {
+            "pid": 2983257,
+            "comm": "umount",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 422
+          },
+          {
+            "pid": 2983263,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 1405
+          },
+          {
+            "pid": 2983264,
+            "comm": "bash",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 542
+          },
+          {
+            "pid": 2983265,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 1400
+          },
+          {
+            "pid": 2983266,
+            "comm": "bash",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 558
+          },
+          {
+            "pid": 2983363,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 1342
+          },
+          {
+            "pid": 2983364,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 4585
+          },
+          {
+            "pid": 2983368,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 4211
+          },
+          {
+            "pid": 2983371,
+            "comm": "bun",
+            "minNice": 10,
+            "maxCpuTicks": 347,
+            "maxRssPages": 72371
+          },
+          {
+            "pid": 2983440,
+            "comm": "sh",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 286
+          },
+          {
+            "pid": 2983441,
+            "comm": "find",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 419
+          },
+          {
+            "pid": 2983522,
+            "comm": "sh",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 270
+          },
+          {
+            "pid": 2983523,
+            "comm": "gzip",
+            "minNice": 10,
+            "maxCpuTicks": 0,
+            "maxRssPages": 337
+          }
+        ],
+        "rawSha256": "234d8e0ea1ef363e248e8c1bd42b6b4144f70cf1425304c8764523c7fe3a10ee"
+      }
+    }
+  ],
+  "reviews": {
+    "recordedAt": "2026-10-05T14:47:00Z",
+    "scope": "Read-only delegate reviews recorded from tool results in this chat; no formal GitHub approval implied.",
+    "runtime": {
+      "head": "d8a95676a7e0ad70e34255902e71d2945b901bb7",
+      "result": "Qualified clear, no concrete runtime blockers",
+      "checks": [
+        "Account/login/mode/target/root/branch revalidation",
+        "Captured request and DB handle/binding/inode/path checks",
+        "Nested immediate transaction rollback and cancellation before outer commit",
+        "Postcommit publication-failure regression retains durable rows and exact retry wake"
+      ],
+      "testsRunByReviewer": false
+    },
+    "evidenceInitial": {
+      "result": "Corrections required",
+      "findings": [
+        "Comparison source identities and fixture equality were asserted without execution capture",
+        "ACK metric included batch/writer exit/assertions",
+        "Timeout/review/failure and static-check provenance incomplete"
+      ],
+      "disposition": "Corrected by explicit exploratory/historical limits, contentionBatchMs naming, available failure hashes and transcript-only review provenance"
+    },
+    "evidenceCorrected": {
+      "head": "d8a95676a7e0ad70e34255902e71d2945b901bb7",
+      "result": "Internally consistent; full gate awaited",
+      "verified": [
+        "16 measurement launch rows, 7/9 head split",
+        "Resumed-only sourceBinding",
+        "Exploratory comparison disclaimer",
+        "Frozen static and focused 77/841 qualification"
+      ],
+      "wholePlanAccepted": false
+    },
+    "earlierBroaderReview": {
+      "result": "Timed out after 90 seconds",
+      "approval": false,
+      "originalProvenance": "Chat tool result"
+    }
+  },
+  "nonQualifyingRuns": [
+    {
+      "kind": "First new documentation contract test failed on missing explicit GC phrase; corrected prose, retained failure log",
+      "qualifying": false,
+      "logSha256": "1f2bb6dca8c97609604585450bc405d52f8c6a50ae7c8779085e134ecbdbe145"
+    }
+  ],
+  "qualificationScope": "Exact frozen head; publication is a documentation-only overlay verified separately. Types/scoped lint/focused/full gate. No deployment or whole-plan acceptance.",
+  "resourceLimitations": "Sampled descendant maxima are incomplete for short-lived children and RSS is not additive shared-memory accounting. Function-level CPU profiles exist for synthetic workload fixtures separately."
+}

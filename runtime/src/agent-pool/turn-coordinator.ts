@@ -32,6 +32,7 @@ export interface AgentTurnOutput {
   followedByToolUse?: boolean;
   /** Positive evidence of a successful terminal assistant response, not merely a persisted checkpoint. */
   terminal?: boolean;
+  textPhase?: "commentary" | "final_answer" | null;
 }
 
 /** Error state captured from an assistant message with stopReason "error". */
@@ -199,12 +200,12 @@ export class AgentTurnCoordinator {
           ...(currentTurnUsage ? { usage: currentTurnUsage } : {}),
           turnKind: options.turnKind,
           cause: options.cause,
+          textPhase: currentTurnPhase,
           ...(options.followedByToolUse ? { followedByToolUse: true } : {}),
-          ...(options.cause === "completed_boundary"
+          terminal: options.cause === "completed_boundary"
             && lastAssistantState?.stopReason === "stop"
             && !lastAssistantState.hadToolCallContent
-            && currentTurnPhase !== "commentary"
-            ? { terminal: true } : {}),
+            && currentTurnPhase !== "commentary",
         });
         turnCount += 1;
       }

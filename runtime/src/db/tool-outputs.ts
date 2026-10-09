@@ -81,7 +81,32 @@ export function deleteToolOutputById(id: string,scope:ToolOutputScope|null=null)
  * Returns the deleted records. Used by the periodic retention cleanup.
  */
 export function deleteToolOutputsBefore(cutoffIso: string,scope:ToolOutputScope|null=null,validate?:()=>void,validateRecord?:(record:ToolOutputRecord)=>void): ToolOutputRecord[] {
-  const db=getDb(),where=scopeWhere(scope);return db.transaction(()=>{validate?.();const rows=db.prepare(`SELECT * FROM tool_outputs WHERE created_at<? AND ${where.sql}`).all(cutoffIso,...where.params) as ToolOutputRecord[];for(const row of rows)validateRecord?.(row);for(const row of rows)deleteToolOutputById(row.id,scope);validate?.();return rows;}).immediate();
+  const db = getDb(), where = scopeWhere(scope);
+  return db.transaction(() => {
+    validate?.();
+    const rows = db.prepare(`SELECT * FROM tool_outputs WHERE created_at<? AND ${where.sql}`)
+      .all(cutoffIso, ...where.params) as ToolOutputRecord[];
+    // Validate every selected path before deleting anything. Return only rows
+    // actually removed, so a suppressed delete cannot authorize file unlinking.
+    for (const row of rows) validateRecord?.(row);
+    const removed: ToolOutputRecord[] = [];
+    for (const row of rows) {
+      db.prepare(`DELETE FROM tool_outputs WHERE id=? AND ${where.sql}`).run(row.id, ...where.params);
+      // Bun's run().changes includes trigger-side writes. SQLite changes()
+      // reports the direct DELETE only, including zero for RAISE(IGNORE).
+      const result = db.query("SELECT changes() AS n").get() as { n: number };
+      if (result.n === 1) removed.push(row);
+    }
+    // output_id is UNINDEXED in FTS5. Batch membership checks avoid a complete
+    // virtual-table scan for each expired output; all steps still roll back
+    // together on SQL or final authority validation failure.
+    for (let offset = 0; offset < removed.length; offset += 100) {
+      const ids = removed.slice(offset, offset + 100).map(row => row.id);
+      db.prepare(`DELETE FROM tool_outputs_fts WHERE output_id IN (${ids.map(() => "?").join(",")})`).run(...ids);
+    }
+    validate?.();
+    return removed;
+  }).immediate();
 }
 
 /**

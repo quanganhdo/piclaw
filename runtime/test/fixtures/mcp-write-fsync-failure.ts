@@ -1,0 +1,12 @@
+import '../setup-filesystem-isolation.js';
+import assert from 'node:assert/strict';
+import * as fs from 'node:fs';
+import {mock} from 'bun:test';
+import {join} from 'node:path';
+import {getWorkspaceDir} from '../../src/core/config.js';
+const originalFsync=fs.fsyncSync,originalFstat=fs.fstatSync;
+mock.module('node:fs',()=>({...fs,fsyncSync(fd:number){if(originalFstat(fd).isDirectory())throw Error('synthetic directory fsync failed');return originalFsync(fd);}}));
+const {createMcpConfigWriteAuthority,getMcpBridgeSnapshot,hydrateMcpKeychainCredentials,McpConfigWriteError,writeMcpProjectOverride}=await import('../../src/secure/mcp-keychain.js');
+const root=getWorkspaceDir();fs.mkdirSync(join(root,'.pi'),{recursive:true});await hydrateMcpKeychainCredentials(root,()=>{throw Error('Keychain forbidden');});
+const error=await writeMcpProjectOverride({workspaceDir:root,expectedRevision:getMcpBridgeSnapshot().revision,config:{mcpServers:{demo:{command:'never-run'}}},authority:createMcpConfigWriteAuthority({workspaceDir:root,authorise:()=>{},signal:new AbortController().signal})}).then(()=>null,cause=>cause);
+assert(error instanceof McpConfigWriteError);assert.equal(error.receipt.committed,true);assert.equal(JSON.parse(fs.readFileSync(error.receipt.path,'utf8')).mcpServers.demo.command,'never-run');assert(fs.readdirSync(join(root,'.pi')).every(name=>!name.endsWith('.tmp')));console.log(JSON.stringify({directoryFsyncFailed:true,committedReceipt:true,stagedFilesClean:true}));

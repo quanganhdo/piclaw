@@ -1,0 +1,68 @@
+{
+  "frozen": {
+    "head": "936a6ac53bb4ab4e27329db92ea4fc4f1180f9b9",
+    "tree": "43fcaf7ecb708b1daa600f1e406998294f18bf2f",
+    "unchangedClean": true
+  },
+  "inputs": {
+    "timelinePr": 1556,
+    "timelineHead": "753f0a533123f563e7c752463550f6cebfa259cf",
+    "metersMain": "e3fbf6cf1d378b2bd9b71969ec9c69f89cdbed5c"
+  },
+  "full": {
+    "pass": 6508,
+    "skip": 8,
+    "fail": 0,
+    "assertions": 42649,
+    "seconds": 619.77,
+    "exit": 0,
+    "features": {
+      "pass": 25,
+      "assertions": 246
+    },
+    "web": {
+      "pass": 9,
+      "assertions": 26
+    },
+    "logSha256": "17f7282b1547b4b9cb01f15321330749052352e636498375d4fff23361ce325b"
+  },
+  "browser": {
+    "pass": 26,
+    "fail": 0,
+    "skip": 0,
+    "assertions": 182,
+    "terminalSummaryComplete": true,
+    "launcherExitCaptured": false,
+    "logSha256": "95085e7781143046b78c2538a4b05e5ee2a20703beb74f19d3646399a3b68cdb"
+  },
+  "focused": {
+    "pass": 77,
+    "fail": 0,
+    "assertions": 733,
+    "exit": 0,
+    "logSha256": "de9e2c03f5d3638997b120a039cad7142b66c084c95a918bd77e1d69eaf6c884"
+  },
+  "conflicts": {
+    "generatedClassicPaths": 6,
+    "sourceConflicts": 0,
+    "classicAndVisualRebuilt": true
+  },
+  "parity": {
+    "timelineSource": true,
+    "meterBackend": true,
+    "meterUi": true,
+    "runtimeFtsQueryUnchanged": true
+  },
+  "scope": {
+    "pi": "1.0.2",
+    "auditPerformanceAcceptance": false,
+    "productionInstalled": false,
+    "restarted": false,
+    "liveAccounts": false,
+    "providerSpend": false
+  },
+  "nextTarget": {
+    "version": "1.0.3",
+    "authorisedAfterThisMerge": true
+  }
+}

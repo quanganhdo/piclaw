@@ -1,0 +1,88 @@
+{
+  "version": "1.0.0",
+  "gitHead": "a13d35a742c6ef8462812a28fbe1d8c8b7431c32",
+  "archive": {
+    "sha1": "82596ad7fc3d33441ffb67ded915e3c7fa4e0e49",
+    "integrity": "sha512-PvjCIdy5jRsBoJDRpCCI0RfwBax2ZPnMT5aw/tRQxcQOqbGGj2mq1z0WuVxoyimWWi+WYSYT2VySg3RO1qzySw=="
+  },
+  "spec": {
+    "gitBlob": "e30cc93687cd8dadf502b57688e8eeaddb097774",
+    "sha256": "889acf45f5911f0d079e5a931701abe662dd6117f2bfddca71a85047f0e2ace3",
+    "lines": 4601,
+    "url": "https://github.com/earendil-works/pi/blob/a13d35a742c6ef8462812a28fbe1d8c8b7431c32/packages/durable/docs/spec.md"
+  },
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "3531c856b03bb0ce6538a9cdfd47a7fb0a50d75e3509233896f4d97de0a959ff"
+    },
+    {
+      "path": "package.json",
+      "sha256": "4d8e327675213c8989494979be54c69bf39d4658de954f7322995389aef5d335"
+    },
+    {
+      "path": "dist/index.d.ts",
+      "sha256": "00ad53e400e9d105dfc32c1d35655074055b24932bb2f8e07b49e0e6d7fbf5dc"
+    },
+    {
+      "path": "dist/harness/types.d.ts",
+      "sha256": "e43204b515221672fa795e0e6e537ed76ef993f7a19c2e6914a28585806f32b0"
+    },
+    {
+      "path": "dist/harness/tool.js",
+      "sha256": "0ac5bd2649b6cec01387da78f3e3803c2c89328dee40e1459ab0808cb7fc5d2b"
+    },
+    {
+      "path": "dist/harness/harness.js",
+      "sha256": "5456223287ef144f656aeab73c4ba2933dc5baa5dd8010f9d617c697d5b6bd0e"
+    },
+    {
+      "path": "dist/storage/sqlite/database.d.ts",
+      "sha256": "407cd085a5d9a513091420276036d94e73be92aac15a878b21e6c4808f569b52"
+    },
+    {
+      "path": "dist/storage/sqlite/migrations.js",
+      "sha256": "2e3c0134615e89c060c19c7a62f4485025c78516ba26b0662310a48fe8776e68"
+    },
+    {
+      "path": "dist/types.d.ts",
+      "sha256": "1c965118f36b316f83b2cadc8aa79d4e84afad7fe4734d408db2c808a97bb47c"
+    },
+    {
+      "path": "dist/harness/scheduler.js",
+      "sha256": "8f051549eb5b8729888fe90bd598e7a1782bd728501c7c08c0e61074233c2083"
+    },
+    {
+      "path": "dist/harness/submissions.js",
+      "sha256": "1aa0780fee380912ba8123f0da003a087f7bee7a8b20b4157f99b60d42e68dd2"
+    },
+    {
+      "path": "dist/harness/generation.js",
+      "sha256": "0b114f672c018c8c11c4e0448223c094b42ecbdab82ddffe10c987e9d42aa801"
+    },
+    {
+      "path": "dist/harness/context.js",
+      "sha256": "a68930d726bf900036729780be304c37a2f409b16d14d44c929df691710023eb"
+    },
+    {
+      "path": "dist/harness/compaction.js",
+      "sha256": "e2a34cade8f5b8cce6be325ca24cd8a4a68b548e657c12ac21b1e5781ec50a92"
+    },
+    {
+      "path": "dist/session/session.js",
+      "sha256": "cab0d448e74369526690c05765b7f99aedd4c63313f275e3a7ed56fe05594a92"
+    },
+    {
+      "path": "dist/storage/jsonl/storage.js",
+      "sha256": "fce3f914489cbca9ee3862e4cb190bfb0e88ad8475388db9c8900792fef4fc69"
+    },
+    {
+      "path": "dist/storage/sqlite/node.js",
+      "sha256": "6cf9249c4d262657e332c59b1fa78942ee6909562a896a3527d9e0bf091e4d61"
+    }
+  ],
+  "priorProbeSha256": "534028e3bc820a794bdba3942c230af80bf625dfbcf4d89b5c96efed3081d663",
+  "newRuntimeExecution": false,
+  "package": "@earendil-works/pi-durable",
+  "scope": "Source/archive identity only. Prior probe copied unchanged; no new behavioural execution."
+}

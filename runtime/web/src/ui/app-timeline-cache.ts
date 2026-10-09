@@ -1,12 +1,14 @@
 type TimelinePayload = {
   posts?: any[];
   has_more?: boolean;
+  contiguousThroughId?: number;
 };
 
 type TimelineSnapshot = {
   posts: any[];
   has_more: boolean;
   cachedAt: number;
+  contiguousThroughId: number;
 };
 
 const TIMELINE_CACHE_LIMIT = 24;
@@ -51,6 +53,7 @@ export function cacheTimelineSnapshot(
     posts: Array.isArray(payload?.posts) ? payload.posts : [],
     has_more: Boolean(payload?.has_more),
     cachedAt: nowMs(),
+    contiguousThroughId: payload.contiguousThroughId ?? Math.max(0, ...(payload.posts || []).map(post => Number(post.id) || 0)),
   };
   return touchCacheEntry(normalizedChatJid, snapshot);
 }

@@ -75,7 +75,7 @@
     transform: translateY(-1px);
 }
 
-.system-meters-card:focus-visible {
+.system-meters-meter-button:focus-visible {
     outline: 2px solid var(--accent-color);
     outline-offset: 2px;
 }
@@ -162,6 +162,184 @@
     stroke: color-mix(in srgb, var(--accent-color) 62%, #8b5cf6 38%);
 }
 
+
+.system-meters-row.intel-gpu,
+.system-meters-row.intel-gmem {
+    grid-template-columns: 46px 56px auto;
+}
+
+.system-meters-row.intel-gmem .system-meters-label {
+    font-size: 10px;
+    letter-spacing: -0.02em;
+}
+
+.system-meters-row.intel-gpu .system-meters-spark path {
+    stroke: color-mix(in srgb, var(--accent-color) 68%, #38bdf8 32%);
+}
+
+.system-meters-row.intel-gmem .system-meters-spark path {
+    stroke: color-mix(in srgb, var(--accent-color) 56%, #a855f7 44%);
+}
+
+.system-meters-row.intel-gpu.is-stale,
+.system-meters-row.intel-gpu.is-unavailable,
+.system-meters-row.intel-gmem.is-stale,
+.system-meters-row.intel-gmem.is-unavailable {
+    opacity: 0.72;
+}
+
+.system-meters-meter-button {
+    appearance: none;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.system-meters-meter-button.system-meters-row {
+    width: 100%;
+    font-size: 11px;
+    line-height: 1;
+}
+
+.system-meters-compact-gpu {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+}
+
+.system-meters-gpu-popover-close {
+    appearance: none;
+    border: 1px solid color-mix(in srgb, var(--border-color) 86%, transparent);
+    background: color-mix(in srgb, var(--bg-primary) 76%, transparent);
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+.system-meters-gpu-popover-close:hover {
+    background: color-mix(in srgb, var(--bg-hover) 74%, transparent);
+}
+
+.system-meters-gpu-popover-close:focus-visible {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+}
+
+.system-meters-gpu-popover {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    box-sizing: border-box;
+    max-height: min(65vh, 520px);
+    overflow-y: auto;
+    width: min(340px, calc(100vw - 24px));
+    padding: 10px 11px;
+    border-radius: 14px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 88%, transparent);
+    background: color-mix(in srgb, var(--bg-primary) 84%, transparent);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 10px 28px color-mix(in srgb, var(--shadow-color, #000) 16%, transparent);
+    pointer-events: auto;
+}
+
+.system-meters-gpu-popover-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.system-meters-gpu-popover-heading {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+}
+
+.system-meters-gpu-popover-title {
+    font-size: 12px;
+    line-height: 1.2;
+    font-weight: 700;
+}
+
+.system-meters-gpu-popover-subtitle {
+    font-size: 11px;
+    line-height: 1.25;
+    color: var(--text-secondary);
+}
+
+.system-meters-gpu-popover-close {
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.system-meters-gpu-detail-grid {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 4px 8px;
+    font-size: 11px;
+    line-height: 1.35;
+}
+
+.system-meters-gpu-detail-key {
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.system-meters-gpu-detail-value {
+    min-width: 0;
+}
+
+.system-meters-gpu-detail-section {
+    display: grid;
+    gap: 5px;
+    margin-top: 9px;
+}
+
+.system-meters-gpu-section-title {
+    font-size: 10.5px;
+    line-height: 1.2;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.system-meters-gpu-engine-list,
+.system-meters-gpu-notes-list {
+    margin: 0;
+    padding-left: 16px;
+    font-size: 11px;
+    line-height: 1.35;
+}
+
+.system-meters-gpu-engine-list {
+    list-style: none;
+    padding-left: 0;
+}
+
+.system-meters-gpu-engine-list li {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.system-meters-gpu-note {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.35;
+    color: var(--text-secondary);
+}
+
 @media (max-width: 900px) {
     .chat-window-header {
         flex-wrap: wrap;
@@ -198,11 +376,10 @@
     }
 
     .system-meters-compact-summary {
-        display: inline-flex;
+        display: flex;
         align-items: center;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        flex-wrap: wrap;
+        gap: 4px 8px;
         font-size: 11px;
         line-height: 1;
         font-weight: 600;

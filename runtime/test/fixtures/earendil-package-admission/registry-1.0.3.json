@@ -1,0 +1,250 @@
+[
+  {
+    "name": "@earendil-works/chord",
+    "version": "1.0.3",
+    "gitHead": "d78dc83d633229d12f8b79631384c4c2717c399f",
+    "engines": {
+      "node": ">=22.19.0"
+    },
+    "dist": {
+      "shasum": "8e9e2a9b52729db7383d421084f9e6d92526a3ad",
+      "tarball": "https://registry.npmjs.org/@earendil-works/chord/-/chord-1.0.3.tgz",
+      "fileCount": 119,
+      "integrity": "sha512-H5pKMs3S1z2q4V7NkDGKDFzOMW+OkzdsnGxxj5wNJUANG03VKj29UVmc1xnnnf0FAc03COHYNxwgNApO0nt0fg==",
+      "signatures": [
+        {
+          "sig": "MEYCIQDFYNPNH1SEWEFgA1FjQDNhq4P7prtDMH/McJS0Wcuc2QIhAOsKRn99H2XZZQ50h0sCkpXriX4+CtERKgX1Nurxxmeb",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "sig": "MEUCIQDw2ahj37rR7qhfpul18aNs19gWuEYgqfmD6jkRZASINQIge78IkrB0cD9atjM5sr9tYCO8/YQ8O9Zv/tUBBM7Coro=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/@earendil-works%2fchord@1.0.3",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 1025077
+    }
+  },
+  {
+    "name": "@earendil-works/pi-agent-core",
+    "version": "1.0.3",
+    "gitHead": "d78dc83d633229d12f8b79631384c4c2717c399f",
+    "engines": {
+      "node": ">=22.19.0"
+    },
+    "dist": {
+      "shasum": "300388ec6ae56d402b1a85c61fefafff5ee8f3e7",
+      "tarball": "https://registry.npmjs.org/@earendil-works/pi-agent-core/-/pi-agent-core-1.0.3.tgz",
+      "fileCount": 26,
+      "integrity": "sha512-lnvi2PJYaq8mDLzwWBttNqfxrLS63SSMONUJnTCypdvt/flmNJchXwWXsXUOJ5Yhe/mN+iHkrXu696lWZZ8o+w==",
+      "signatures": [
+        {
+          "sig": "MEUCIF9s2G0Z6VSAMa3sTHDeYkcpwNQRnXBto34gOBRuGWzxAiEA/AHf8AqphAj8JymQz1yC9bba/3oysykEOoXdqUoKRXg=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "sig": "MEUCIG+NUuQuiBQLJu3Ug5RQwFp2RsvZHmIAGw8GHZH8v1MNAiEA8k57eZRGMyl0YKZRAYulxawHIqGRK67VLJnQXzG+X48=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/@earendil-works%2fpi-agent-core@1.0.3",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 268001
+    }
+  },
+  {
+    "name": "@earendil-works/pi-ai",
+    "version": "1.0.3",
+    "gitHead": "d78dc83d633229d12f8b79631384c4c2717c399f",
+    "engines": {
+      "node": ">=22.19.0"
+    },
+    "dist": {
+      "shasum": "31463068aa4f979db0f066aa8c1b79b57d310e35",
+      "tarball": "https://registry.npmjs.org/@earendil-works/pi-ai/-/pi-ai-1.0.3.tgz",
+      "fileCount": 817,
+      "integrity": "sha512-p+/EUrbmfT0xWOtL/NJRtWOsyzcKKFSyiivHLDBMG0DUVpHdaIykd5jFibq0YZDFGBN/nv61zdOelMb+ylPfSg==",
+      "signatures": [
+        {
+          "sig": "MEQCIAv3MV5H4b7SfdLLv2Az2f+NF0U69W5flVdES/NteyE7AiBOBIvEKi4Zh3DsghX9AfxW64JC1pE1uzrkmL8Di21WAg==",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "sig": "MEUCIFcG+j0coPGHwRSTftWISGYbKHki1Sqd0yzUBcqYnT6LAiEAslO7XH6DPnKnhQgVxXu5Cfc8HZ5m+h8GiWarNAUAG6Y=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/@earendil-works%2fpi-ai@1.0.3",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 4005525
+    }
+  },
+  {
+    "name": "@earendil-works/pi-codemode",
+    "version": "1.0.3",
+    "gitHead": "d78dc83d633229d12f8b79631384c4c2717c399f",
+    "engines": {
+      "node": ">=22.19.0"
+    },
+    "dist": {
+      "shasum": "0daeb93e109558d7d0dd5d99a73f214926690015",
+      "tarball": "https://registry.npmjs.org/@earendil-works/pi-codemode/-/pi-codemode-1.0.3.tgz",
+      "fileCount": 42,
+      "integrity": "sha512-/rgWAXA9PhuFm0+j6N5FVvvWrAwt1LnhmbjA3Hy5+Q033XUHgh0YCMGAmU76S90ocr0Vfxm50ddYT/O76T5OGQ==",
+      "signatures": [
+        {
+          "sig": "MEQCIFgEFSRLizyg6PwjpzWiMDtQNJR5JmCa39ZW8zwJOD1PAiBKylB8tOelTb3R2LMmyvg2ixvfb079eU6LBKa+drFDNQ==",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "sig": "MEYCIQCaO+coLWuQkZrPaoCygOw0JsY/1Ao4d7EcR6WskNa6cgIhANQ/tpnsKUvo58iWDmfFrHwrpvzMJONH3r6PCC7yFm9Y",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/@earendil-works%2fpi-codemode@1.0.3",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 193817
+    }
+  },
+  {
+    "name": "@earendil-works/pi-coding-agent",
+    "version": "1.0.3",
+    "gitHead": "d78dc83d633229d12f8b79631384c4c2717c399f",
+    "engines": {
+      "node": ">=22.19.0"
+    },
+    "dist": {
+      "shasum": "de643ce8049ed7182517bbc5620dacf2b68314c6",
+      "tarball": "https://registry.npmjs.org/@earendil-works/pi-coding-agent/-/pi-coding-agent-1.0.3.tgz",
+      "fileCount": 1248,
+      "integrity": "sha512-t2lb0dw4y/jr5a2PRo6eTHGTZOPB3/YAMVyhhYFC1W3Hl5xE+462I/gMWjF4gCLuhGipNEfuNqONFmdqLFz4SQ==",
+      "signatures": [
+        {
+          "sig": "MEYCIQCFCZUh4LEDH1MHOZutf1MquC2lh94WAZr0E5d1dx4DBAIhAI/Z1RfTcXlGu20s48KTZ/znYvJxwraytAT2qHwIyEqF",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "sig": "MEUCIQDSMRdjtIvQxz9nG7O7fuenSwNXzk+1YdwyWzfJ8y9CBgIgbRelM3brBzSaRor4ZOZpkAc8NzAiTLnJz/wGD/FJGAo=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/@earendil-works%2fpi-coding-agent@1.0.3",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 22742391
+    }
+  },
+  {
+    "name": "@earendil-works/pi-mcp",
+    "version": "1.0.3",
+    "gitHead": "d78dc83d633229d12f8b79631384c4c2717c399f",
+    "engines": {
+      "node": ">=22.19.0"
+    },
+    "dist": {
+      "shasum": "0138f6a96c06c21edca86172c0270007ed1d183f",
+      "tarball": "https://registry.npmjs.org/@earendil-works/pi-mcp/-/pi-mcp-1.0.3.tgz",
+      "fileCount": 76,
+      "integrity": "sha512-ZAhL/g0rpjyKtcKzD0jSDk7sFIrMCQocmKtpAE1F9eRnI5fGGVWUyiZwALG/Tn1sagzxFbSqtc29zGx5OvDDGA==",
+      "signatures": [
+        {
+          "sig": "MEYCIQDXe798fA/LJ1RpoRUBycGTFbNldKSWMyc9XbG/vAA8PwIhAJcnmavQemJz0I5SmPVVSTyRPj6omIweCXMdaTNf25vd",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "sig": "MEYCIQCZj03Vs1cvexq1vt5zDIgYbyv4ChwQAkATzoDBhPFW0wIhAIsExX77JHfFVy8MRjJjFG2kJb4mzaabk2RVMCAGrBky",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/@earendil-works%2fpi-mcp@1.0.3",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 382854
+    }
+  },
+  {
+    "name": "@earendil-works/pi-telemetry",
+    "version": "1.0.3",
+    "gitHead": "d78dc83d633229d12f8b79631384c4c2717c399f",
+    "engines": {
+      "node": ">=22.19.0"
+    },
+    "dist": {
+      "shasum": "cc53177d242769f3792650eedf0d71ee2d84a903",
+      "tarball": "https://registry.npmjs.org/@earendil-works/pi-telemetry/-/pi-telemetry-1.0.3.tgz",
+      "fileCount": 26,
+      "integrity": "sha512-Li4YamN09x9zzCquPbtEL2AQmwqv3Vn3sNOYqG0DRg24fjiMfntCsb7QKbejCXZssTAyaN+hutLl6O0UnJDrfg==",
+      "signatures": [
+        {
+          "sig": "MEQCIGZpXC8f6c5aYigHWBmw4Dr+O/jzA3x75d+Z7GBDvDvaAiB7/o1fPi13jG9iY1kVVdRbOYokoohzLKJsmA/SP8Ur3w==",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "sig": "MEQCIHTLOlQwSW3cYRL082lW0BE5b0y+igNn8GNV+tA2sWCSAiAVtRMC7JEYnWQKf5gVjXJKw6qpb6lAeUdSHb714qflkQ==",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/@earendil-works%2fpi-telemetry@1.0.3",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 122963
+    }
+  },
+  {
+    "name": "@earendil-works/pi-tui",
+    "version": "1.0.3",
+    "gitHead": "d78dc83d633229d12f8b79631384c4c2717c399f",
+    "engines": {
+      "node": ">=22.19.0"
+    },
+    "dist": {
+      "shasum": "512c622ff113c809964217212ab6267c79081177",
+      "tarball": "https://registry.npmjs.org/@earendil-works/pi-tui/-/pi-tui-1.0.3.tgz",
+      "fileCount": 200,
+      "integrity": "sha512-C7b8Y+7iz+/oPEZUJubv6NPm3M/4ziq0hjQ2jhqMNpBwcXeqDMYKL2FYP90t2b5S1IoGc2io47dj5ZlIC1IZWg==",
+      "signatures": [
+        {
+          "sig": "MEYCIQCgHk9thPpNlee6Vqjraz2nki8OKSupUT9RA4Zkj62fRwIhAPTxExhwz9qZ5n0gmyP+I7vIGo1ReMWz46C6REBQl0TB",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "sig": "MEQCIBIcRcX9D6u4K1uyTAdaKBMC7XUxXRJ62fU1WiHnFtU2AiAQgtB1IVFzLINrJL/K7FNSBFemJwypXv1A3iBJTb5fHw==",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/@earendil-works%2fpi-tui@1.0.3",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 2364695
+    }
+  }
+]

@@ -1,0 +1,275 @@
+{
+  "recordedAt": "2026-10-05T08:50:12.462Z",
+  "baseMain": "62a71d139",
+  "adapter": "dddfcf630508f42c169889c11dee94e69b746e7c",
+  "focused": {
+    "pass": 187,
+    "fail": 0,
+    "assertions": 800,
+    "files": 14
+  },
+  "browser": {
+    "pass": 14,
+    "fail": 0,
+    "assertions": 590
+  },
+  "webBuild": {
+    "pass": 9,
+    "assertions": 26
+  },
+  "profile": {
+    "kind": "mcp-server-settings-read-preview",
+    "requests": 100,
+    "servers": 25,
+    "diskDatabase": true,
+    "wallMs": 174.69121899999982,
+    "cpuUs": {
+      "user": 176660,
+      "system": 27380
+    },
+    "eventLoop": {
+      "maxMs": 22.030786,
+      "p99Ms": 13.230079,
+      "samples": 52
+    },
+    "methods": {
+      "query": {
+        "calls": 250,
+        "ms": 0.49662699999771576
+      },
+      "parse": {
+        "calls": 1051,
+        "ms": 5.719944999994368
+      },
+      "stringify": {
+        "calls": 650,
+        "ms": 1.2013820000029227
+      }
+    },
+    "memory": {
+      "rss": 142172160,
+      "heapTotal": 41044992,
+      "heapUsed": 17807756,
+      "external": 5954795,
+      "arrayBuffers": 132554
+    },
+    "scope": "isolated synthetic direct owner handler with disk SELECT1 authority probe; filesystem effective projection, no network/keychain/Apply/server/provider execution; not whole HTTP auth/CSRF or production benchmark"
+  },
+  "sourceHashes": {
+    "runtime/src/secure/mcp-keychain.ts": "8a6b5c40c0f86a3c636c1bed697ea3ba3ce3517f11ee513e4501d0663f559da5",
+    "runtime/src/secure/mcp-server-edits.ts": "b5df4f7b9ef351d7c8fedb0dc796411e506c5ffd107a5da1cb55c41b70bee158",
+    "runtime/src/agent-pool/mcp-codemode-runtime.ts": "9ad7249b1593f1bb5f0307dcb4193b74d370174e719d9e55512d59a6758975c9"
+  },
+  "logs": [
+    {
+      "log": "mcp-server-review-focus.log",
+      "sha256": "b5fa994d260db658a067162485b069a54dcb397708c1eb881b90792fd0b39070"
+    },
+    {
+      "log": "mcp-server-browser-matrix-v3.log",
+      "sha256": "5f7e7e4e908150d521f528337d6b8c5e9112fe5ee4c8abc2b1136c3ae9aa927a"
+    },
+    {
+      "log": "mcp-server-rebuilt-web.log",
+      "sha256": "f9219b989ba06f2c007fb69bedcdc927a38db85f7bdc746e76abede3ac43ffae"
+    },
+    {
+      "log": "mcp-server-settings-profile.log",
+      "sha256": "5c8a5b2d8c0171d01a74b41b76d4d057e1c43cb65ab339cb44a0ecf119f88e21"
+    },
+    {
+      "log": "mcp-server-types-final-v2.log",
+      "sha256": "dfd0c6d3af373830a215c2274b74fba3950b6edffc950c5db83eccf51ae8e409"
+    },
+    {
+      "log": "mcp-server-browser-first.log",
+      "sha256": "869573eb85580fc00b83d3f8e10dbcf18ebd1a80666c2c2c93f79322deb49203"
+    },
+    {
+      "log": "mcp-server-browser-matrix-v2.log",
+      "sha256": "2a129ff353f9fedefecedc1bba0744b2ed62cc33957102605483c8df201ee64f"
+    },
+    {
+      "log": "mcp-server-runtime-cause.log",
+      "sha256": "3cccd690623b933d807536165d5085b13e863dd6225777c712c2269f5ff5aaee"
+    },
+    {
+      "log": "mcp-server-stable-focus.log",
+      "sha256": "7bae43aee6d3e5538056616a3f09e2b6bb284e6ee54f6c773138af110168d9f0"
+    },
+    {
+      "log": "mcp-server-stable-browser.log",
+      "sha256": "7976e0393f746015378235f00f99dd8c08efb49f2fa795d199cecf69e3b3a19d"
+    },
+    {
+      "log": "mcp-server-stable-types.log",
+      "sha256": "dfd0c6d3af373830a215c2274b74fba3950b6edffc950c5db83eccf51ae8e409"
+    }
+  ],
+  "qualification": "released1.0.2 fresh frozen full qualified; reviewed corrections and runner boundary retained",
+  "scope": "source-only/no installation/restart/live accounts/provider/native waiver",
+  "failedFull": {
+    "head": "b4cc07012950d0ed691133a61c26a22c95e8c3bf",
+    "pass": 6383,
+    "skip": 8,
+    "fail": 1,
+    "assertions": 41017,
+    "seconds": 1008.28,
+    "logSha256": "d09a9c871cd64ac1857155163a1bc82ab594fedd5092085591ed86ac5adf188b",
+    "qualifying": false
+  },
+  "reviewCorrections": [
+    "Stdio program identity includes executable,args,cwd and preserved env/argument credential values",
+    "Private rename receipt fences committed/lower source bytes+identities and exactapprovedeffectivehash throughhydration/start",
+    "Cross-field/key/formatted reference identity and opaque privatepayload rebinding failclosed",
+    "Actual publicPi unpreviewed postrename process-start denial",
+    "URL/command/cwd/socket/all nested reference leaves scanned; argument/env/URL→URL relocation denied"
+  ],
+  "stoppedFullV2": {
+    "head": "0092fab81e4e46b9c2155b2ddbc6f5365d6f4be8",
+    "exit": 143,
+    "logSha256": "6bae91e61bc0f71190a4161e6f880a5093c44ce1ede3d6040dfbe8bace7c834e",
+    "qualifying": false
+  },
+  "integrationTarget": "released Pi1.0.2; qualified main d1858aa84f028038c4affb8d49d79943feb0fea7 adopted by merge",
+  "failedFullV3": {
+    "head": "18516e7565185a024e12db536ef497a13b43cee7",
+    "pass": 6418,
+    "skip": 8,
+    "fail": 2,
+    "assertions": 41082,
+    "seconds": 1721.73,
+    "logSha256": "621f9f1d07cc9c7f14078f5321b2e7dcd9447a1ec9ecd8fa0ff4734eeae09904",
+    "qualifying": false
+  },
+  "runnerFixtureCorrection": {
+    "productionChanged": false,
+    "setupHookMilliseconds": 15000,
+    "setupChildCleanupMilliseconds": 14000,
+    "originalTestMilliseconds": 15000,
+    "originalWatchdogMilliseconds": 10000,
+    "modeCount": 9,
+    "pass": 9,
+    "fail": 0,
+    "assertions": 36,
+    "profile": {
+      "importsMilliseconds": 61,
+      "databaseReadyMilliseconds": 6564.48,
+      "runnerCompleteMilliseconds": 6585.11
+    },
+    "logs": [
+      {
+        "log": "mcp-bun-settlement-phase-profile.log",
+        "sha256": "eb75d882adae989ae38b052704319902852d5640413d382acb3cc81442371578"
+      },
+      {
+        "log": "mcp-bun-settlement-prepared.log",
+        "sha256": "d5b9d5fc233c766a95ba36fa736194a8ecf67c1e670c51268b9a8f8d7718e59b"
+      },
+      {
+        "log": "mcp-bun-settlement-prepared-final.log",
+        "sha256": "3b0d8fa16e7f13502e8dd3562eef8789144fba8160767dc575f1e4fda25d54dd"
+      },
+      {
+        "log": "mcp-bun-settlement-prepared-types.log",
+        "sha256": "dfd0c6d3af373830a215c2274b74fba3950b6edffc950c5db83eccf51ae8e409"
+      }
+    ]
+  },
+  "released102": {
+    "baseMain": "d1858aa84f028038c4affb8d49d79943feb0fea7",
+    "adoptionHead": "e8706fd8cc4651caa4ced9f9d55ab021a9cb2109",
+    "focused": {
+      "pass": 203,
+      "fail": 0,
+      "assertions": 852,
+      "files": 16
+    },
+    "browser": {
+      "pass": 14,
+      "fail": 0,
+      "assertions": 590
+    },
+    "profile": {
+      "kind": "mcp-server-settings-read-preview",
+      "requests": 100,
+      "servers": 25,
+      "diskDatabase": true,
+      "wallMs": 148.214027,
+      "cpuUs": {
+        "user": 139439,
+        "system": 15640
+      },
+      "eventLoop": {
+        "maxMs": 16.33789,
+        "p99Ms": 9.904127,
+        "samples": 52
+      },
+      "methods": {
+        "query": {
+          "calls": 250,
+          "ms": 0.3469670000009728
+        },
+        "parse": {
+          "calls": 1051,
+          "ms": 4.652892000001771
+        },
+        "stringify": {
+          "calls": 650,
+          "ms": 1.0926569999995763
+        }
+      },
+      "memory": {
+        "rss": 124575744,
+        "heapTotal": 29645824,
+        "heapUsed": 18201045,
+        "external": 6186529,
+        "arrayBuffers": 138335
+      },
+      "scope": "isolated synthetic direct owner handler with disk SELECT1 authority probe; filesystem effective projection, no network/keychain/Apply/server/provider execution; not whole HTTP auth/CSRF or production benchmark"
+    },
+    "logs": [
+      {
+        "log": "mcp-settings-102-integrated-focused.log",
+        "sha256": "bb9b0c0b922ae24baa53c579de7ff1e9942afecbc3345e3b555ee78526f387a4"
+      },
+      {
+        "log": "mcp-settings-102-browser.log",
+        "sha256": "8199d161eb81857e0b38691a39b7edf41117119985fe56d78832115625d68db5"
+      },
+      {
+        "log": "mcp-settings-102-types.log",
+        "sha256": "dfd0c6d3af373830a215c2274b74fba3950b6edffc950c5db83eccf51ae8e409"
+      },
+      {
+        "log": "mcp-settings-102-profile.log",
+        "sha256": "9ac3af60ecacf9b3ebebfb70ab27aba95c07550353be72d956c1a942e9c1552c"
+      }
+    ],
+    "qualifyingFull": true,
+    "full": {
+      "head": "04d6c9917f3e66e9255784874de83b6a3c548388",
+      "tree": "edbb79d707e76fb1500583ac77c34b0c5be3d9f2",
+      "startedAt": "2026-10-05T08:38:20Z",
+      "finishedAt": "2026-10-05T08:49:03Z",
+      "exit": 0,
+      "pass": 6456,
+      "skip": 8,
+      "fail": 0,
+      "assertions": 42138,
+      "total": 6464,
+      "files": 917,
+      "seconds": 632.5,
+      "features": {
+        "pass": 25,
+        "assertions": 246
+      },
+      "web": {
+        "pass": 9,
+        "assertions": 26
+      },
+      "logSha256": "7a7661ce3b3e63f51db5c3375609b1092f47a0bd65145064667bfa4c8431b601",
+      "unchangedClean": true
+    }
+  }
+}

@@ -14,7 +14,7 @@ import {
   type ShellExecOptions,
   type ShellExecResult,
   type ShellOutputMetadata,
-} from "@earendil-works/pi-agent-core";
+} from "../../contracts/execution-env.js";
 
 export type FakeShellStep =
   | { readonly _tag: "result"; readonly stdout: string; readonly stderr: string; readonly exitCode: number }

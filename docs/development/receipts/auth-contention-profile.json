@@ -1,0 +1,3809 @@
+{
+  "recordedAt": "2026-10-03T16:13:01.982Z",
+  "baseRevision": "05f46639ad7a53d8925034d8b76f994dbfced966",
+  "host": "Smith Debian LXC",
+  "runtime": "Bun 1.4.2",
+  "baseCases": 49,
+  "comparisonCases": 32,
+  "settings": {
+    "journal": "wal",
+    "synchronous": 2,
+    "busyTimeoutMs": 5000
+  },
+  "scope": [
+    "Actual WebAuthGateway.isAuthenticated or pruneExpiredAuthState; no HTTP socket",
+    "Writer is separate Bun process, holds BEGIN IMMEDIATE around unrelated user no-op update",
+    "Timer sentinel measures blocked reader event loop; writer process CPU/actualhold captured separately",
+    "No-writer and250ms baseline cases have2plain/1instrument;6000ms oneplain perbranch",
+    "Comparison oneplain baseline/candidate per expiryshape andhold;3uncontendedCPUprofiles perrevision and1contendedinstrument caseperrevision",
+    "Instrumentation groups SQL steps by verb; internal BEGIN IMMEDIATE not observable via Database.run wrapper",
+    "No raw SQL bind values, tokens, secrets or real accounts; no provider calls",
+    "Already-invalid rows deny read-only; validlegacycanexpirewhilemigrationwaits anddenyafterwrite",
+    "Maintenance/validlegacy contention unchanged; delete side effects deferred to successful maintenance, not guaranteedwithin60s"
+  ],
+  "base": [
+    {
+      "run": 1,
+      "mode": "modern",
+      "holdMs": 0,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 0.821491000000151,
+      "timerMs": 1.2719820000002073,
+      "cpu": {
+        "user": 613,
+        "system": 236
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 7,
+        "maxMs": 0.990635
+      },
+      "allowed": true,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 2,
+      "mode": "modern",
+      "holdMs": 0,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 0.5563529999999446,
+      "timerMs": 1.2408120000000054,
+      "cpu": {
+        "user": 430,
+        "system": 154
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 0.665586
+      },
+      "allowed": true,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 3,
+      "mode": "modern",
+      "holdMs": 0,
+      "instrument": true,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 0.7282319999999345,
+      "timerMs": 1.232024999999794,
+      "cpu": {
+        "user": 759,
+        "system": 0
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 0.647256
+      },
+      "allowed": true,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": {
+        "SELECT.get": {
+          "calls": 2,
+          "ms": 0.0733050000003459
+        }
+      },
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 1,
+      "mode": "modern",
+      "holdMs": 250,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 1.0446790000000874,
+      "timerMs": 1.2697720000001027,
+      "cpu": {
+        "user": 1059,
+        "system": 5
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 7,
+        "maxMs": 0.891187
+      },
+      "allowed": true,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": {
+        "writer": true,
+        "holdMs": 250,
+        "actualHoldMs": 251.52140500000002,
+        "cpu": {
+          "user": 285,
+          "system": 104
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 2,
+      "mode": "modern",
+      "holdMs": 250,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 0.8830949999996847,
+      "timerMs": 1.1617849999997816,
+      "cpu": {
+        "user": 901,
+        "system": 0
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 0.550406
+      },
+      "allowed": true,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": {
+        "writer": true,
+        "holdMs": 250,
+        "actualHoldMs": 250.564471,
+        "cpu": {
+          "user": 287,
+          "system": 107
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 3,
+      "mode": "modern",
+      "holdMs": 250,
+      "instrument": true,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 1.2596649999995861,
+      "timerMs": 1.310005999999703,
+      "cpu": {
+        "user": 1277,
+        "system": 0
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 0.800281
+      },
+      "allowed": true,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": {
+        "writer": true,
+        "holdMs": 250,
+        "actualHoldMs": 251.630273,
+        "cpu": {
+          "user": 264,
+          "system": 206
+        }
+      },
+      "metrics": {
+        "SELECT.get": {
+          "calls": 2,
+          "ms": 0.11941900000010719
+        }
+      },
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 1,
+      "mode": "modern",
+      "holdMs": 6000,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 0.9433250000001863,
+      "timerMs": 1.1723360000000866,
+      "cpu": {
+        "user": 958,
+        "system": 0
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 0.804409
+      },
+      "allowed": true,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": {
+        "writer": true,
+        "holdMs": 6000,
+        "actualHoldMs": 6005.409216,
+        "cpu": {
+          "user": 2239,
+          "system": 1202
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 1,
+      "mode": "missing",
+      "holdMs": 0,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 0.48801400000002104,
+      "timerMs": 1.2298570000002655,
+      "cpu": {
+        "user": 374,
+        "system": 155
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 0.197066
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 2,
+      "mode": "missing",
+      "holdMs": 0,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 0.8271089999998367,
+      "timerMs": 1.2711589999998978,
+      "cpu": {
+        "user": 591,
+        "system": 274
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 7,
+        "maxMs": 1.033997
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 3,
+      "mode": "missing",
+      "holdMs": 0,
+      "instrument": true,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 1.077060000000074,
+      "timerMs": 1.2673549999999523,
+      "cpu": {
+        "user": 1054,
+        "system": 38
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 7,
+        "maxMs": 0.549853
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": {
+        "SELECT.get": {
+          "calls": 2,
+          "ms": 0.09637599999996382
+        }
+      },
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 1,
+      "mode": "missing",
+      "holdMs": 250,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 0.8403579999999238,
+      "timerMs": 1.2233920000003309,
+      "cpu": {
+        "user": 855,
+        "system": 0
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 0.599187
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": {
+        "writer": true,
+        "holdMs": 250,
+        "actualHoldMs": 251.63012499999996,
+        "cpu": {
+          "user": 332,
+          "system": 166
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 2,
+      "mode": "missing",
+      "holdMs": 250,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 0.7480170000003454,
+      "timerMs": 1.2035350000001017,
+      "cpu": {
+        "user": 768,
+        "system": 0
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 7,
+        "maxMs": 0.779114
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": {
+        "writer": true,
+        "holdMs": 250,
+        "actualHoldMs": 251.692723,
+        "cpu": {
+          "user": 368,
+          "system": 205
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 3,
+      "mode": "missing",
+      "holdMs": 250,
+      "instrument": true,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 0.7020869999996648,
+      "timerMs": 1.1337719999996807,
+      "cpu": {
+        "user": 547,
+        "system": 183
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 0.875573
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": {
+        "writer": true,
+        "holdMs": 250,
+        "actualHoldMs": 251.66322800000003,
+        "cpu": {
+          "user": 0,
+          "system": 409
+        }
+      },
+      "metrics": {
+        "SELECT.get": {
+          "calls": 2,
+          "ms": 0.061195000000225264
+        }
+      },
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 1,
+      "mode": "missing",
+      "holdMs": 6000,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 0.773073000000295,
+      "timerMs": 1.227741000000151,
+      "cpu": {
+        "user": 803,
+        "system": 0
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 0.556151
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": {
+        "writer": true,
+        "holdMs": 6000,
+        "actualHoldMs": 6001.956432,
+        "cpu": {
+          "user": 1883,
+          "system": 942
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 1,
+      "mode": "expired",
+      "holdMs": 0,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 12.432812999999896,
+      "timerMs": 12.533008999999765,
+      "cpu": {
+        "user": 815,
+        "system": 0
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 11.567831
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 2,
+      "mode": "expired",
+      "holdMs": 0,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 13.378617999999733,
+      "timerMs": 13.473027000000002,
+      "cpu": {
+        "user": 449,
+        "system": 167
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 7,
+        "maxMs": 12.489671
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 3,
+      "mode": "expired",
+      "holdMs": 0,
+      "instrument": true,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 13.743621000000076,
+      "timerMs": 13.862678999999844,
+      "cpu": {
+        "user": 1355,
+        "system": 108
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 12.872384
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": {
+        "SELECT.get": {
+          "calls": 1,
+          "ms": 0.08809800000017276
+        },
+        "DELETE.run": {
+          "calls": 2,
+          "ms": 12.538580999999795
+        }
+      },
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 1,
+      "mode": "expired",
+      "holdMs": 250,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 352.78139699999974,
+      "timerMs": 353.3752849999996,
+      "cpu": {
+        "user": 1861,
+        "system": 0
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 352.341972
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": true,
+      "writer": {
+        "writer": true,
+        "holdMs": 250,
+        "actualHoldMs": 251.41080299999996,
+        "cpu": {
+          "user": 239,
+          "system": 239
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 2,
+      "mode": "expired",
+      "holdMs": 250,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 487.15524900000037,
+      "timerMs": 487.636203,
+      "cpu": {
+        "user": 1608,
+        "system": 213
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 486.626161
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": true,
+      "writer": {
+        "writer": true,
+        "holdMs": 250,
+        "actualHoldMs": 251.55609700000002,
+        "cpu": {
+          "user": 300,
+          "system": 90
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 3,
+      "mode": "expired",
+      "holdMs": 250,
+      "instrument": true,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 340.8128139999999,
+      "timerMs": 341.2492179999999,
+      "cpu": {
+        "user": 306,
+        "system": 1183
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 340.217645
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": true,
+      "writer": {
+        "writer": true,
+        "holdMs": 250,
+        "actualHoldMs": 251.64940200000004,
+        "cpu": {
+          "user": 0,
+          "system": 453
+        }
+      },
+      "metrics": {
+        "SELECT.get": {
+          "calls": 1,
+          "ms": 0.07197099999984857
+        },
+        "DELETE.run": {
+          "calls": 2,
+          "ms": 340.0157300000001
+        }
+      },
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 1,
+      "mode": "expired",
+      "holdMs": 6000,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 5015.290675,
+      "timerMs": 5015.710756,
+      "cpu": {
+        "user": 3521,
+        "system": 1167
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 7,
+        "maxMs": 5014.680188
+      },
+      "allowed": null,
+      "errorCode": "SQLITE_BUSY",
+      "writerReleasedAtReturn": false,
+      "writer": {
+        "writer": true,
+        "holdMs": 6000,
+        "actualHoldMs": 6005.148628999999,
+        "cpu": {
+          "user": 2337,
+          "system": 1002
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 1,
+      "mode": "malformed",
+      "holdMs": 0,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 13.969169999999849,
+      "timerMs": 14.032226999999693,
+      "cpu": {
+        "user": 722,
+        "system": 0
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 13.048431
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 2,
+      "mode": "malformed",
+      "holdMs": 0,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 11.576267000000371,
+      "timerMs": 11.721032000000378,
+      "cpu": {
+        "user": 1010,
+        "system": 0
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 10.731094
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 3,
+      "mode": "malformed",
+      "holdMs": 0,
+      "instrument": true,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 11.314199000000372,
+      "timerMs": 11.419982000000346,
+      "cpu": {
+        "user": 1213,
+        "system": 45
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 7,
+        "maxMs": 10.443527
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": {
+        "SELECT.get": {
+          "calls": 1,
+          "ms": 0.08272400000032576
+        },
+        "DELETE.run": {
+          "calls": 2,
+          "ms": 10.269774000000325
+        }
+      },
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 1,
+      "mode": "malformed",
+      "holdMs": 250,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 345.69878500000004,
+      "timerMs": 346.11514199999965,
+      "cpu": {
+        "user": 221,
+        "system": 1202
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 345.089114
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": true,
+      "writer": {
+        "writer": true,
+        "holdMs": 250,
+        "actualHoldMs": 251.66106600000003,
+        "cpu": {
+          "user": 359,
+          "system": 90
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 2,
+      "mode": "malformed",
+      "holdMs": 250,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 342.6599510000001,
+      "timerMs": 343.20243500000015,
+      "cpu": {
+        "user": 754,
+        "system": 894
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 342.166093
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": true,
+      "writer": {
+        "writer": true,
+        "holdMs": 250,
+        "actualHoldMs": 251.66310299999998,
+        "cpu": {
+          "user": 410,
+          "system": 92
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 3,
+      "mode": "malformed",
+      "holdMs": 250,
+      "instrument": true,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 355.6015849999999,
+      "timerMs": 356.15030799999977,
+      "cpu": {
+        "user": 1758,
+        "system": 206
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 355.938597
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": true,
+      "writer": {
+        "writer": true,
+        "holdMs": 250,
+        "actualHoldMs": 251.653273,
+        "cpu": {
+          "user": 548,
+          "system": 0
+        }
+      },
+      "metrics": {
+        "SELECT.get": {
+          "calls": 1,
+          "ms": 0.07436599999982718
+        },
+        "DELETE.run": {
+          "calls": 2,
+          "ms": 354.43863199999987
+        }
+      },
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 1,
+      "mode": "malformed",
+      "holdMs": 6000,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 5012.121601,
+      "timerMs": 5012.569537,
+      "cpu": {
+        "user": 4017,
+        "system": 371
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 7,
+        "maxMs": 5012.203379
+      },
+      "allowed": null,
+      "errorCode": "SQLITE_BUSY",
+      "writerReleasedAtReturn": false,
+      "writer": {
+        "writer": true,
+        "holdMs": 6000,
+        "actualHoldMs": 6004.288502,
+        "cpu": {
+          "user": 2465,
+          "system": 1192
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 1,
+      "mode": "legacy-token",
+      "holdMs": 0,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 16.73211900000024,
+      "timerMs": 16.799479000000247,
+      "cpu": {
+        "user": 866,
+        "system": 0
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 15.828591
+      },
+      "allowed": true,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 2,
+      "mode": "legacy-token",
+      "holdMs": 0,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 12.228746999999657,
+      "timerMs": 12.288465999999971,
+      "cpu": {
+        "user": 562,
+        "system": 192
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 11.429083
+      },
+      "allowed": true,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 3,
+      "mode": "legacy-token",
+      "holdMs": 0,
+      "instrument": true,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 151.9421709999997,
+      "timerMs": 152.2833559999999,
+      "cpu": {
+        "user": 103,
+        "system": 1071
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 7,
+        "maxMs": 151.311554
+      },
+      "allowed": true,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": {
+        "SELECT.get": {
+          "calls": 3,
+          "ms": 0.1019399999995585
+        },
+        "UPDATE.run": {
+          "calls": 1,
+          "ms": 150.9859919999999
+        }
+      },
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 1,
+      "mode": "legacy-token",
+      "holdMs": 250,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 345.01921900000025,
+      "timerMs": 345.54779800000006,
+      "cpu": {
+        "user": 1599,
+        "system": 240
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 344.974398
+      },
+      "allowed": true,
+      "errorCode": null,
+      "writerReleasedAtReturn": true,
+      "writer": {
+        "writer": true,
+        "holdMs": 250,
+        "actualHoldMs": 251.589995,
+        "cpu": {
+          "user": 409,
+          "system": 102
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 2,
+      "mode": "legacy-token",
+      "holdMs": 250,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 346.7886520000002,
+      "timerMs": 347.22931100000005,
+      "cpu": {
+        "user": 537,
+        "system": 1194
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 346.215422
+      },
+      "allowed": true,
+      "errorCode": null,
+      "writerReleasedAtReturn": true,
+      "writer": {
+        "writer": true,
+        "holdMs": 250,
+        "actualHoldMs": 251.556829,
+        "cpu": {
+          "user": 0,
+          "system": 448
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 3,
+      "mode": "legacy-token",
+      "holdMs": 250,
+      "instrument": true,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 345.1603320000004,
+      "timerMs": 345.5276990000002,
+      "cpu": {
+        "user": 869,
+        "system": 930
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 344.5266
+      },
+      "allowed": true,
+      "errorCode": null,
+      "writerReleasedAtReturn": true,
+      "writer": {
+        "writer": true,
+        "holdMs": 250,
+        "actualHoldMs": 251.59107200000003,
+        "cpu": {
+          "user": 375,
+          "system": 87
+        }
+      },
+      "metrics": {
+        "SELECT.get": {
+          "calls": 3,
+          "ms": 0.09352299999954994
+        },
+        "UPDATE.run": {
+          "calls": 1,
+          "ms": 344.15937399999984
+        }
+      },
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 1,
+      "mode": "legacy-token",
+      "holdMs": 6000,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 5013.120525,
+      "timerMs": 5013.53434,
+      "cpu": {
+        "user": 3350,
+        "system": 1147
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 7,
+        "maxMs": 5013.323872
+      },
+      "allowed": null,
+      "errorCode": "SQLITE_BUSY",
+      "writerReleasedAtReturn": false,
+      "writer": {
+        "writer": true,
+        "holdMs": 6000,
+        "actualHoldMs": 6002.7769,
+        "cpu": {
+          "user": 3067,
+          "system": 406
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 1,
+      "mode": "legacy-id",
+      "holdMs": 0,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 12.692113999999947,
+      "timerMs": 12.79171099999985,
+      "cpu": {
+        "user": 1090,
+        "system": 19
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 7,
+        "maxMs": 12.753606
+      },
+      "allowed": true,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 2,
+      "mode": "legacy-id",
+      "holdMs": 0,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 13.58178799999996,
+      "timerMs": 13.672883000000184,
+      "cpu": {
+        "user": 1168,
+        "system": 62
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 6,
+        "maxMs": 12.708532
+      },
+      "allowed": true,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 3,
+      "mode": "legacy-id",
+      "holdMs": 0,
+      "instrument": true,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 12.738135000000057,
+      "timerMs": 12.798185999999987,
+      "cpu": {
+        "user": 955,
+        "system": 0
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 7,
+        "maxMs": 11.826753
+      },
+      "allowed": true,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": {
+        "SELECT.get": {
+          "calls": 3,
+          "ms": 0.08614699999998265
+        },
+        "UPDATE.run": {
+          "calls": 1,
+          "ms": 11.922890999999709
+        }
+      },
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 1,
+      "mode": "legacy-id",
+      "holdMs": 250,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 342.0649450000001,
+      "timerMs": 342.5813440000002,
+      "cpu": {
+        "user": 640,
+        "system": 868
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 342.295245
+      },
+      "allowed": true,
+      "errorCode": null,
+      "writerReleasedAtReturn": true,
+      "writer": {
+        "writer": true,
+        "holdMs": 250,
+        "actualHoldMs": 251.65318299999998,
+        "cpu": {
+          "user": 174,
+          "system": 217
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 2,
+      "mode": "legacy-id",
+      "holdMs": 250,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 364.16333799999984,
+      "timerMs": 364.68690000000015,
+      "cpu": {
+        "user": 1683,
+        "system": 214
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 364.285959
+      },
+      "allowed": true,
+      "errorCode": null,
+      "writerReleasedAtReturn": true,
+      "writer": {
+        "writer": true,
+        "holdMs": 250,
+        "actualHoldMs": 251.657448,
+        "cpu": {
+          "user": 543,
+          "system": 0
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 3,
+      "mode": "legacy-id",
+      "holdMs": 250,
+      "instrument": true,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 359.27804300000025,
+      "timerMs": 359.7585860000004,
+      "cpu": {
+        "user": 1879,
+        "system": 318
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 359.604272
+      },
+      "allowed": true,
+      "errorCode": null,
+      "writerReleasedAtReturn": true,
+      "writer": {
+        "writer": true,
+        "holdMs": 250,
+        "actualHoldMs": 251.54378,
+        "cpu": {
+          "user": 0,
+          "system": 413
+        }
+      },
+      "metrics": {
+        "SELECT.get": {
+          "calls": 3,
+          "ms": 0.13651600000002873
+        },
+        "UPDATE.run": {
+          "calls": 1,
+          "ms": 357.93722400000024
+        }
+      },
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 1,
+      "mode": "legacy-id",
+      "holdMs": 6000,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 5013.063133,
+      "timerMs": 5013.4759109999995,
+      "cpu": {
+        "user": 3398,
+        "system": 692
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 7,
+        "maxMs": 5013.261109
+      },
+      "allowed": null,
+      "errorCode": "SQLITE_BUSY",
+      "writerReleasedAtReturn": false,
+      "writer": {
+        "writer": true,
+        "holdMs": 6000,
+        "actualHoldMs": 6005.666181,
+        "cpu": {
+          "user": 2580,
+          "system": 1290
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 1,
+      "mode": "maintenance",
+      "holdMs": 0,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 0.4750779999999395,
+      "timerMs": 1.261489999999867,
+      "cpu": {
+        "user": 430,
+        "system": 124
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 7,
+        "maxMs": 0.692107
+      },
+      "allowed": null,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 2,
+      "mode": "maintenance",
+      "holdMs": 0,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 0.41194899999982226,
+      "timerMs": 1.2724100000000362,
+      "cpu": {
+        "user": 494,
+        "system": 0
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 7,
+        "maxMs": 0.916408
+      },
+      "allowed": null,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 3,
+      "mode": "maintenance",
+      "holdMs": 0,
+      "instrument": true,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 0.6534970000002431,
+      "timerMs": 1.2393529999999373,
+      "cpu": {
+        "user": 0,
+        "system": 691
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 7,
+        "maxMs": 0.741361
+      },
+      "allowed": null,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": {
+        "DELETE.run": {
+          "calls": 7,
+          "ms": 0.07818100000031336
+        }
+      },
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 1,
+      "mode": "maintenance",
+      "holdMs": 250,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 330.9133590000001,
+      "timerMs": 331.32084699999996,
+      "cpu": {
+        "user": 1214,
+        "system": 66
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 330.296121
+      },
+      "allowed": null,
+      "errorCode": null,
+      "writerReleasedAtReturn": true,
+      "writer": {
+        "writer": true,
+        "holdMs": 250,
+        "actualHoldMs": 250.833215,
+        "cpu": {
+          "user": 368,
+          "system": 123
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 2,
+      "mode": "maintenance",
+      "holdMs": 250,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 331.2863150000003,
+      "timerMs": 331.87231999999995,
+      "cpu": {
+        "user": 232,
+        "system": 1116
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 331.396132
+      },
+      "allowed": null,
+      "errorCode": null,
+      "writerReleasedAtReturn": true,
+      "writer": {
+        "writer": true,
+        "holdMs": 250,
+        "actualHoldMs": 251.62150300000002,
+        "cpu": {
+          "user": 0,
+          "system": 540
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 3,
+      "mode": "maintenance",
+      "holdMs": 250,
+      "instrument": true,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 331.419073,
+      "timerMs": 331.930335,
+      "cpu": {
+        "user": 1655,
+        "system": 267
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 331.6221
+      },
+      "allowed": null,
+      "errorCode": null,
+      "writerReleasedAtReturn": true,
+      "writer": {
+        "writer": true,
+        "holdMs": 250,
+        "actualHoldMs": 251.59088300000002,
+        "cpu": {
+          "user": 200,
+          "system": 172
+        }
+      },
+      "metrics": {
+        "DELETE.run": {
+          "calls": 7,
+          "ms": 0.14944000000059532
+        }
+      },
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "run": 1,
+      "mode": "maintenance",
+      "holdMs": 6000,
+      "instrument": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 5014.547768,
+      "timerMs": 5015.007651,
+      "cpu": {
+        "user": 2333,
+        "system": 1865
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 5013.98597
+      },
+      "allowed": null,
+      "errorCode": "SQLITE_BUSY",
+      "writerReleasedAtReturn": false,
+      "writer": {
+        "writer": true,
+        "holdMs": 6000,
+        "actualHoldMs": 6005.4160870000005,
+        "cpu": {
+          "user": 1690,
+          "system": 1489
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    }
+  ],
+  "comparison": [
+    {
+      "tag": "baseline",
+      "profile": "plain",
+      "run": 0,
+      "sourceSha256": "cfd44123304f8ee31e31203ddfa4f229753e19d6f6af24adfd48c9bd8f3aeae2",
+      "mode": "expired",
+      "holdMs": 0,
+      "instrument": false,
+      "expectBaseline": true,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 12.132689999999911,
+      "timerMs": 12.252046999999948,
+      "cpu": {
+        "user": 49,
+        "system": 1014
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 11.269167
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "tag": "candidate",
+      "profile": "plain",
+      "run": 0,
+      "sourceSha256": "585a4cb5a18b4b541b865db749107dea8a27b80d141ca176f54adbc42d9f63a8",
+      "mode": "expired",
+      "holdMs": 0,
+      "instrument": false,
+      "expectBaseline": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 0.6848580000000766,
+      "timerMs": 1.2472130000001016,
+      "cpu": {
+        "user": 702,
+        "system": 0
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 7,
+        "maxMs": 0.628019
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "tag": "baseline",
+      "profile": "plain",
+      "run": 0,
+      "sourceSha256": "cfd44123304f8ee31e31203ddfa4f229753e19d6f6af24adfd48c9bd8f3aeae2",
+      "mode": "expired",
+      "holdMs": 250,
+      "instrument": false,
+      "expectBaseline": true,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 348.53158299999996,
+      "timerMs": 349.1181279999996,
+      "cpu": {
+        "user": 1666,
+        "system": 0
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 348.835209
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": true,
+      "writer": {
+        "writer": true,
+        "holdMs": 250,
+        "actualHoldMs": 251.024178,
+        "cpu": {
+          "user": 390,
+          "system": 0
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "tag": "candidate",
+      "profile": "plain",
+      "run": 0,
+      "sourceSha256": "585a4cb5a18b4b541b865db749107dea8a27b80d141ca176f54adbc42d9f63a8",
+      "mode": "expired",
+      "holdMs": 250,
+      "instrument": false,
+      "expectBaseline": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 0.8072940000001836,
+      "timerMs": 1.2194819999999709,
+      "cpu": {
+        "user": 594,
+        "system": 269
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 0.863656
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": {
+        "writer": true,
+        "holdMs": 250,
+        "actualHoldMs": 251.480797,
+        "cpu": {
+          "user": 273,
+          "system": 123
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "tag": "baseline",
+      "profile": "plain",
+      "run": 0,
+      "sourceSha256": "cfd44123304f8ee31e31203ddfa4f229753e19d6f6af24adfd48c9bd8f3aeae2",
+      "mode": "expired",
+      "holdMs": 6000,
+      "instrument": false,
+      "expectBaseline": true,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 5014.024791,
+      "timerMs": 5014.493071,
+      "cpu": {
+        "user": 2457,
+        "system": 2184
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 7,
+        "maxMs": 5013.457807
+      },
+      "allowed": null,
+      "errorCode": "SQLITE_BUSY",
+      "writerReleasedAtReturn": false,
+      "writer": {
+        "writer": true,
+        "holdMs": 6000,
+        "actualHoldMs": 6001.230812,
+        "cpu": {
+          "user": 705,
+          "system": 2825
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "tag": "candidate",
+      "profile": "plain",
+      "run": 0,
+      "sourceSha256": "585a4cb5a18b4b541b865db749107dea8a27b80d141ca176f54adbc42d9f63a8",
+      "mode": "expired",
+      "holdMs": 6000,
+      "instrument": false,
+      "expectBaseline": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 0.789647000000059,
+      "timerMs": 1.205167000000074,
+      "cpu": {
+        "user": 810,
+        "system": 0
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 0.67271
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": {
+        "writer": true,
+        "holdMs": 6000,
+        "actualHoldMs": 6002.457335,
+        "cpu": {
+          "user": 2090,
+          "system": 1593
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "tag": "baseline",
+      "profile": "plain",
+      "run": 0,
+      "sourceSha256": "cfd44123304f8ee31e31203ddfa4f229753e19d6f6af24adfd48c9bd8f3aeae2",
+      "mode": "malformed",
+      "holdMs": 0,
+      "instrument": false,
+      "expectBaseline": true,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 13.521547000000282,
+      "timerMs": 13.62344400000029,
+      "cpu": {
+        "user": 668,
+        "system": 0
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 12.64761
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "tag": "candidate",
+      "profile": "plain",
+      "run": 0,
+      "sourceSha256": "585a4cb5a18b4b541b865db749107dea8a27b80d141ca176f54adbc42d9f63a8",
+      "mode": "malformed",
+      "holdMs": 0,
+      "instrument": false,
+      "expectBaseline": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 0.72720500000014,
+      "timerMs": 1.304417000000285,
+      "cpu": {
+        "user": 524,
+        "system": 220
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 7,
+        "maxMs": 0.915813
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "tag": "baseline",
+      "profile": "plain",
+      "run": 0,
+      "sourceSha256": "cfd44123304f8ee31e31203ddfa4f229753e19d6f6af24adfd48c9bd8f3aeae2",
+      "mode": "malformed",
+      "holdMs": 250,
+      "instrument": false,
+      "expectBaseline": true,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 351.3901000000001,
+      "timerMs": 351.818307,
+      "cpu": {
+        "user": 1253,
+        "system": 65
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 7,
+        "maxMs": 350.791155
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": true,
+      "writer": {
+        "writer": true,
+        "holdMs": 250,
+        "actualHoldMs": 251.65949300000003,
+        "cpu": {
+          "user": 284,
+          "system": 220
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "tag": "candidate",
+      "profile": "plain",
+      "run": 0,
+      "sourceSha256": "585a4cb5a18b4b541b865db749107dea8a27b80d141ca176f54adbc42d9f63a8",
+      "mode": "malformed",
+      "holdMs": 250,
+      "instrument": false,
+      "expectBaseline": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 0.8333020000000033,
+      "timerMs": 1.1964120000002367,
+      "cpu": {
+        "user": 868,
+        "system": 0
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 7,
+        "maxMs": 0.712853
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": {
+        "writer": true,
+        "holdMs": 250,
+        "actualHoldMs": 251.452441,
+        "cpu": {
+          "user": 198,
+          "system": 138
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "tag": "baseline",
+      "profile": "plain",
+      "run": 0,
+      "sourceSha256": "cfd44123304f8ee31e31203ddfa4f229753e19d6f6af24adfd48c9bd8f3aeae2",
+      "mode": "malformed",
+      "holdMs": 6000,
+      "instrument": false,
+      "expectBaseline": true,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 5013.564485999999,
+      "timerMs": 5013.9776010000005,
+      "cpu": {
+        "user": 4793,
+        "system": 0
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 7,
+        "maxMs": 5012.962635
+      },
+      "allowed": null,
+      "errorCode": "SQLITE_BUSY",
+      "writerReleasedAtReturn": false,
+      "writer": {
+        "writer": true,
+        "holdMs": 6000,
+        "actualHoldMs": 6002.29394,
+        "cpu": {
+          "user": 2084,
+          "system": 947
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "tag": "candidate",
+      "profile": "plain",
+      "run": 0,
+      "sourceSha256": "585a4cb5a18b4b541b865db749107dea8a27b80d141ca176f54adbc42d9f63a8",
+      "mode": "malformed",
+      "holdMs": 6000,
+      "instrument": false,
+      "expectBaseline": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 0.7971510000002127,
+      "timerMs": 1.1830970000000889,
+      "cpu": {
+        "user": 596,
+        "system": 218
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 0.815909
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": {
+        "writer": true,
+        "holdMs": 6000,
+        "actualHoldMs": 6005.24141,
+        "cpu": {
+          "user": 3045,
+          "system": 297
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "tag": "baseline",
+      "profile": "plain",
+      "run": 0,
+      "sourceSha256": "cfd44123304f8ee31e31203ddfa4f229753e19d6f6af24adfd48c9bd8f3aeae2",
+      "mode": "expired-legacy",
+      "holdMs": 0,
+      "instrument": false,
+      "expectBaseline": true,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 57.99328999999989,
+      "timerMs": 58.255791000000045,
+      "cpu": {
+        "user": 816,
+        "system": 621
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 57.26495
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "tag": "candidate",
+      "profile": "plain",
+      "run": 0,
+      "sourceSha256": "585a4cb5a18b4b541b865db749107dea8a27b80d141ca176f54adbc42d9f63a8",
+      "mode": "expired-legacy",
+      "holdMs": 0,
+      "instrument": false,
+      "expectBaseline": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 0.546828000000005,
+      "timerMs": 1.2488169999996899,
+      "cpu": {
+        "user": 561,
+        "system": 0
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 7,
+        "maxMs": 0.903036
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "tag": "baseline",
+      "profile": "plain",
+      "run": 0,
+      "sourceSha256": "cfd44123304f8ee31e31203ddfa4f229753e19d6f6af24adfd48c9bd8f3aeae2",
+      "mode": "expired-legacy",
+      "holdMs": 250,
+      "instrument": false,
+      "expectBaseline": true,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 353.67168300000003,
+      "timerMs": 354.2051879999999,
+      "cpu": {
+        "user": 520,
+        "system": 1203
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 353.932603
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": true,
+      "writer": {
+        "writer": true,
+        "holdMs": 250,
+        "actualHoldMs": 251.58544,
+        "cpu": {
+          "user": 323,
+          "system": 88
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "tag": "candidate",
+      "profile": "plain",
+      "run": 0,
+      "sourceSha256": "585a4cb5a18b4b541b865db749107dea8a27b80d141ca176f54adbc42d9f63a8",
+      "mode": "expired-legacy",
+      "holdMs": 250,
+      "instrument": false,
+      "expectBaseline": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 0.7984189999997398,
+      "timerMs": 1.2450529999996434,
+      "cpu": {
+        "user": 815,
+        "system": 0
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 0.536211
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": {
+        "writer": true,
+        "holdMs": 250,
+        "actualHoldMs": 251.49570300000002,
+        "cpu": {
+          "user": 0,
+          "system": 524
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "tag": "baseline",
+      "profile": "plain",
+      "run": 0,
+      "sourceSha256": "cfd44123304f8ee31e31203ddfa4f229753e19d6f6af24adfd48c9bd8f3aeae2",
+      "mode": "expired-legacy",
+      "holdMs": 6000,
+      "instrument": false,
+      "expectBaseline": true,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 5012.450131,
+      "timerMs": 5012.877306,
+      "cpu": {
+        "user": 2014,
+        "system": 2405
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 5012.613708
+      },
+      "allowed": null,
+      "errorCode": "SQLITE_BUSY",
+      "writerReleasedAtReturn": false,
+      "writer": {
+        "writer": true,
+        "holdMs": 6000,
+        "actualHoldMs": 6005.514445000001,
+        "cpu": {
+          "user": 1340,
+          "system": 2031
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "tag": "candidate",
+      "profile": "plain",
+      "run": 0,
+      "sourceSha256": "585a4cb5a18b4b541b865db749107dea8a27b80d141ca176f54adbc42d9f63a8",
+      "mode": "expired-legacy",
+      "holdMs": 6000,
+      "instrument": false,
+      "expectBaseline": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 0.7992180000001099,
+      "timerMs": 1.1932600000000093,
+      "cpu": {
+        "user": 625,
+        "system": 193
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 0.665615
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": {
+        "writer": true,
+        "holdMs": 6000,
+        "actualHoldMs": 6004.981402,
+        "cpu": {
+          "user": 2141,
+          "system": 1213
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "tag": "baseline",
+      "profile": "plain",
+      "run": 0,
+      "sourceSha256": "cfd44123304f8ee31e31203ddfa4f229753e19d6f6af24adfd48c9bd8f3aeae2",
+      "mode": "malformed-legacy",
+      "holdMs": 0,
+      "instrument": false,
+      "expectBaseline": true,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 22.500342000000273,
+      "timerMs": 22.63173800000004,
+      "cpu": {
+        "user": 1201,
+        "system": 79
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 21.657
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "tag": "candidate",
+      "profile": "plain",
+      "run": 0,
+      "sourceSha256": "585a4cb5a18b4b541b865db749107dea8a27b80d141ca176f54adbc42d9f63a8",
+      "mode": "malformed-legacy",
+      "holdMs": 0,
+      "instrument": false,
+      "expectBaseline": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 0.73136599999998,
+      "timerMs": 1.2784249999999702,
+      "cpu": {
+        "user": 556,
+        "system": 192
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 7,
+        "maxMs": 0.997318
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "tag": "baseline",
+      "profile": "plain",
+      "run": 0,
+      "sourceSha256": "cfd44123304f8ee31e31203ddfa4f229753e19d6f6af24adfd48c9bd8f3aeae2",
+      "mode": "malformed-legacy",
+      "holdMs": 250,
+      "instrument": false,
+      "expectBaseline": true,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 362.8878069999996,
+      "timerMs": 363.4264519999997,
+      "cpu": {
+        "user": 731,
+        "system": 919
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 362.385234
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": true,
+      "writer": {
+        "writer": true,
+        "holdMs": 250,
+        "actualHoldMs": 251.532721,
+        "cpu": {
+          "user": 297,
+          "system": 149
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "tag": "candidate",
+      "profile": "plain",
+      "run": 0,
+      "sourceSha256": "585a4cb5a18b4b541b865db749107dea8a27b80d141ca176f54adbc42d9f63a8",
+      "mode": "malformed-legacy",
+      "holdMs": 250,
+      "instrument": false,
+      "expectBaseline": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 0.8330040000000736,
+      "timerMs": 1.2299309999998513,
+      "cpu": {
+        "user": 611,
+        "system": 258
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 0.878399
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": {
+        "writer": true,
+        "holdMs": 250,
+        "actualHoldMs": 250.562294,
+        "cpu": {
+          "user": 309,
+          "system": 112
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "tag": "baseline",
+      "profile": "plain",
+      "run": 0,
+      "sourceSha256": "cfd44123304f8ee31e31203ddfa4f229753e19d6f6af24adfd48c9bd8f3aeae2",
+      "mode": "malformed-legacy",
+      "holdMs": 6000,
+      "instrument": false,
+      "expectBaseline": true,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 5011.194264,
+      "timerMs": 5011.594406,
+      "cpu": {
+        "user": 2862,
+        "system": 1275
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 7,
+        "maxMs": 5011.404296
+      },
+      "allowed": null,
+      "errorCode": "SQLITE_BUSY",
+      "writerReleasedAtReturn": false,
+      "writer": {
+        "writer": true,
+        "holdMs": 6000,
+        "actualHoldMs": 6005.318655,
+        "cpu": {
+          "user": 2106,
+          "system": 1170
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "tag": "candidate",
+      "profile": "plain",
+      "run": 0,
+      "sourceSha256": "585a4cb5a18b4b541b865db749107dea8a27b80d141ca176f54adbc42d9f63a8",
+      "mode": "malformed-legacy",
+      "holdMs": 6000,
+      "instrument": false,
+      "expectBaseline": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 0.9801649999999427,
+      "timerMs": 1.2566959999999199,
+      "cpu": {
+        "user": 994,
+        "system": 7
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 0.653728
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": {
+        "writer": true,
+        "holdMs": 6000,
+        "actualHoldMs": 6005.5588960000005,
+        "cpu": {
+          "user": 2548,
+          "system": 1225
+        }
+      },
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "tag": "baseline",
+      "profile": "cpu",
+      "run": 1,
+      "sourceSha256": "cfd44123304f8ee31e31203ddfa4f229753e19d6f6af24adfd48c9bd8f3aeae2",
+      "mode": "expired",
+      "holdMs": 0,
+      "instrument": false,
+      "expectBaseline": true,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 11.02158099999997,
+      "timerMs": 11.138147000000117,
+      "cpu": {
+        "user": 1075,
+        "system": 30
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 6,
+        "maxMs": 10.139818
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "tag": "candidate",
+      "profile": "cpu",
+      "run": 1,
+      "sourceSha256": "585a4cb5a18b4b541b865db749107dea8a27b80d141ca176f54adbc42d9f63a8",
+      "mode": "expired",
+      "holdMs": 0,
+      "instrument": false,
+      "expectBaseline": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 0.7590430000000197,
+      "timerMs": 1.3000550000001567,
+      "cpu": {
+        "user": 788,
+        "system": 0
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 5,
+        "maxMs": 0.784807
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "tag": "baseline",
+      "profile": "cpu",
+      "run": 2,
+      "sourceSha256": "cfd44123304f8ee31e31203ddfa4f229753e19d6f6af24adfd48c9bd8f3aeae2",
+      "mode": "expired",
+      "holdMs": 0,
+      "instrument": false,
+      "expectBaseline": true,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 11.362728999999945,
+      "timerMs": 11.445439000000079,
+      "cpu": {
+        "user": 900,
+        "system": 0
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 5,
+        "maxMs": 11.29055
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "tag": "candidate",
+      "profile": "cpu",
+      "run": 2,
+      "sourceSha256": "585a4cb5a18b4b541b865db749107dea8a27b80d141ca176f54adbc42d9f63a8",
+      "mode": "expired",
+      "holdMs": 0,
+      "instrument": false,
+      "expectBaseline": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 0.5185880000003635,
+      "timerMs": 1.2240719999999783,
+      "cpu": {
+        "user": 365,
+        "system": 180
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 6,
+        "maxMs": 0.393091
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "tag": "baseline",
+      "profile": "cpu",
+      "run": 3,
+      "sourceSha256": "cfd44123304f8ee31e31203ddfa4f229753e19d6f6af24adfd48c9bd8f3aeae2",
+      "mode": "expired",
+      "holdMs": 0,
+      "instrument": false,
+      "expectBaseline": true,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 11.94783899999993,
+      "timerMs": 12.01645499999995,
+      "cpu": {
+        "user": 733,
+        "system": 0
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 5,
+        "maxMs": 12.030825
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "tag": "candidate",
+      "profile": "cpu",
+      "run": 3,
+      "sourceSha256": "585a4cb5a18b4b541b865db749107dea8a27b80d141ca176f54adbc42d9f63a8",
+      "mode": "expired",
+      "holdMs": 0,
+      "instrument": false,
+      "expectBaseline": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 0.507427000000007,
+      "timerMs": 1.1766929999998865,
+      "cpu": {
+        "user": 392,
+        "system": 154
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 6,
+        "maxMs": 0.221465
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": null,
+      "metrics": null,
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "tag": "baseline",
+      "profile": "instrument",
+      "run": 0,
+      "sourceSha256": "cfd44123304f8ee31e31203ddfa4f229753e19d6f6af24adfd48c9bd8f3aeae2",
+      "mode": "expired",
+      "holdMs": 250,
+      "instrument": true,
+      "expectBaseline": true,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 344.44482000000016,
+      "timerMs": 344.88476200000014,
+      "cpu": {
+        "user": 1420,
+        "system": 114
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 344.492701
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": true,
+      "writer": {
+        "writer": true,
+        "holdMs": 250,
+        "actualHoldMs": 251.632863,
+        "cpu": {
+          "user": 294,
+          "system": 147
+        }
+      },
+      "metrics": {
+        "SELECT.get": {
+          "calls": 1,
+          "ms": 0.06019400000013775
+        },
+        "DELETE.run": {
+          "calls": 2,
+          "ms": 343.6535819999999
+        }
+      },
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    },
+    {
+      "tag": "candidate",
+      "profile": "instrument",
+      "run": 0,
+      "sourceSha256": "585a4cb5a18b4b541b865db749107dea8a27b80d141ca176f54adbc42d9f63a8",
+      "mode": "expired",
+      "holdMs": 250,
+      "instrument": true,
+      "expectBaseline": false,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "busyTimeout": {
+          "timeout": 5000
+        }
+      },
+      "workMs": 0.9282549999998082,
+      "timerMs": 1.1702949999998964,
+      "cpu": {
+        "user": 945,
+        "system": 0
+      },
+      "eventLoop": {
+        "resolutionMs": 1,
+        "samples": 8,
+        "maxMs": 0.800456
+      },
+      "allowed": false,
+      "errorCode": null,
+      "writerReleasedAtReturn": false,
+      "writer": {
+        "writer": true,
+        "holdMs": 250,
+        "actualHoldMs": 251.404396,
+        "cpu": {
+          "user": 162,
+          "system": 226
+        }
+      },
+      "metrics": {
+        "SELECT.get": {
+          "calls": 1,
+          "ms": 0.0654779999999846
+        }
+      },
+      "network": 0,
+      "afterReleaseCorrect": true,
+      "scope": "Actual gateway.isAuthenticated or maintenance function, synthetic state; no HTTP socket; writer locks unrelated user update. Timer delay spans synchronous work; CPU profiles include startup."
+    }
+  ],
+  "profiles": [
+    {
+      "tag": "baseline",
+      "runs": [
+        {
+          "name": "final-baseline-0-cpu-1.cpuprofile",
+          "samples": 254,
+          "sha256": "1481ea996f785edea27ed71978a3901a0052e672fe74fc48a93c86db572e74d7"
+        },
+        {
+          "name": "final-baseline-0-cpu-2.cpuprofile",
+          "samples": 250,
+          "sha256": "35e3816fb89e7155e9043e4cac41f2fd49296168b4d3a21fa41a032a8832df28"
+        },
+        {
+          "name": "final-baseline-0-cpu-3.cpuprofile",
+          "samples": 257,
+          "sha256": "807c74777f71824ad33d82088f8042fd08d23ca3a2a5d7f5f83dcf872b5af46f"
+        }
+      ],
+      "total": 761,
+      "aggregation": "Sum self samples grouped by name and normalised URL; uncontended execution includes startup",
+      "top": [
+        {
+          "name": "run",
+          "file": "",
+          "samples": 668,
+          "percent": 87.77923784494087
+        },
+        {
+          "name": "anonymous",
+          "file": "",
+          "samples": 46,
+          "percent": 6.044678055190539
+        },
+        {
+          "name": "get",
+          "file": "",
+          "samples": 9,
+          "percent": 1.1826544021024967
+        },
+        {
+          "name": "prepare",
+          "file": "",
+          "samples": 6,
+          "percent": 0.7884362680683311
+        },
+        {
+          "name": "internal:streams/destroy",
+          "file": "internal:streams/destroy",
+          "samples": 2,
+          "percent": 0.2628120893561104
+        },
+        {
+          "name": "node:crypto",
+          "file": "node:crypto",
+          "samples": 2,
+          "percent": 0.2628120893561104
+        },
+        {
+          "name": "initDatabase",
+          "file": "runtime/src/db/connection.ts",
+          "samples": 2,
+          "percent": 0.2628120893561104
+        },
+        {
+          "name": "transaction",
+          "file": "bun:sqlite",
+          "samples": 2,
+          "percent": 0.2628120893561104
+        },
+        {
+          "name": "(anonymous)",
+          "file": "",
+          "samples": 2,
+          "percent": 0.2628120893561104
+        },
+        {
+          "name": "importModule",
+          "file": "",
+          "samples": 1,
+          "percent": 0.1314060446780552
+        },
+        {
+          "name": "simpleParse",
+          "file": "node_modules/luxon/build/node/luxon.js",
+          "samples": 1,
+          "percent": 0.1314060446780552
+        },
+        {
+          "name": "parsePositiveDurationMs",
+          "file": "runtime/src/core/config-tools.ts",
+          "samples": 1,
+          "percent": 0.1314060446780552
+        },
+        {
+          "name": "installScheduledRunSchema",
+          "file": "runtime/src/service-effects/current-piclaw/scheduled-run-schema.ts",
+          "samples": 1,
+          "percent": 0.1314060446780552
+        },
+        {
+          "name": "#run",
+          "file": "bun:sqlite",
+          "samples": 1,
+          "percent": 0.1314060446780552
+        },
+        {
+          "name": "run",
+          "file": "bun:sqlite",
+          "samples": 1,
+          "percent": 0.1314060446780552
+        }
+      ]
+    },
+    {
+      "tag": "candidate",
+      "runs": [
+        {
+          "name": "final-candidate-0-cpu-1.cpuprofile",
+          "samples": 256,
+          "sha256": "bb7e58984ae3a5800dc00f5221dceecdcfabd305c0f7f470ce81a714044e738a"
+        },
+        {
+          "name": "final-candidate-0-cpu-2.cpuprofile",
+          "samples": 257,
+          "sha256": "5076185c0df7d6ea230812493837e31c174679362d9ac737c3f363c5819b030f"
+        },
+        {
+          "name": "final-candidate-0-cpu-3.cpuprofile",
+          "samples": 259,
+          "sha256": "8b1517e4d470bdb59914d6a6eb02ad7957f5ddb0eae5d6317921db30a96747f5"
+        }
+      ],
+      "total": 772,
+      "aggregation": "Sum self samples grouped by name and normalised URL; uncontended execution includes startup",
+      "top": [
+        {
+          "name": "run",
+          "file": "",
+          "samples": 677,
+          "percent": 87.69430051813471
+        },
+        {
+          "name": "anonymous",
+          "file": "",
+          "samples": 42,
+          "percent": 5.4404145077720205
+        },
+        {
+          "name": "get",
+          "file": "",
+          "samples": 10,
+          "percent": 1.2953367875647668
+        },
+        {
+          "name": "prepare",
+          "file": "",
+          "samples": 8,
+          "percent": 1.0362694300518134
+        },
+        {
+          "name": "@lazy",
+          "file": "",
+          "samples": 3,
+          "percent": 0.38860103626943004
+        },
+        {
+          "name": "importModule",
+          "file": "",
+          "samples": 2,
+          "percent": 0.25906735751295334
+        },
+        {
+          "name": "closeDatabase",
+          "file": "runtime/src/db/connection.ts",
+          "samples": 2,
+          "percent": 0.25906735751295334
+        },
+        {
+          "name": "(anonymous)",
+          "file": "node_modules/luxon/build/node/luxon.js",
+          "samples": 2,
+          "percent": 0.25906735751295334
+        },
+        {
+          "name": "node:perf_hooks",
+          "file": "node:perf_hooks",
+          "samples": 1,
+          "percent": 0.12953367875647667
+        },
+        {
+          "name": "defineProperty",
+          "file": "",
+          "samples": 1,
+          "percent": 0.12953367875647667
+        },
+        {
+          "name": "internal:streams/destroy",
+          "file": "internal:streams/destroy",
+          "samples": 1,
+          "percent": 0.12953367875647667
+        },
+        {
+          "name": "makeSetter",
+          "file": "internal:streams/lazy_transform",
+          "samples": 1,
+          "percent": 0.12953367875647667
+        },
+        {
+          "name": "freeze",
+          "file": "",
+          "samples": 1,
+          "percent": 0.12953367875647667
+        },
+        {
+          "name": "readDomainBlock",
+          "file": "runtime/src/core/domain-config.ts",
+          "samples": 1,
+          "percent": 0.12953367875647667
+        },
+        {
+          "name": "internal:fs/streams",
+          "file": "internal:fs/streams",
+          "samples": 1,
+          "percent": 0.12953367875647667
+        }
+      ]
+    }
+  ],
+  "sourceHashes": {
+    "base": "cfd44123304f8ee31e31203ddfa4f229753e19d6f6af24adfd48c9bd8f3aeae2",
+    "candidate": "585a4cb5a18b4b541b865db749107dea8a27b80d141ca176f54adbc42d9f63a8",
+    "fixture": "821886f3f2c18503e7279018aff6dd659fd9784abe9e4891718e66f738b09dc7"
+  },
+  "failures": [
+    {
+      "kind": "profiled-contention",
+      "attempts": 2,
+      "observation": "baselineCPUprofile250mswriter returnedSQLITE_BUSYearly;second76.3ms beforewriter251.5msrelease",
+      "accepted": false,
+      "causality": "unresolved; not comparable latency",
+      "rawLogs": [
+        "compare-expired-250-baseline-cpu-1.log",
+        "profile-retry-baseline.log"
+      ]
+    },
+    {
+      "kind": "cleanup-test",
+      "observation": "expected1changedrow but Bun includeslogouttriggerdeletion=>2",
+      "resolution": "expect2 plus explicitemptyTOTP/session/passkeyassertions"
+    }
+  ]
+}

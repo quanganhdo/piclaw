@@ -1,0 +1,14 @@
+.mcp-settings { min-width: 0; overflow-wrap: anywhere; }
+.mcp-settings select { display: block; box-sizing: border-box; width: 100%; max-width: 100%; min-height: 36px; margin: 6px 0 14px; }
+.mcp-settings button { min-height: 36px; max-width: 100%; white-space: normal; }
+.mcp-settings label { display: block; margin-top: 12px; }
+.mcp-settings ul { padding-inline-start: 20px; }
+.mcp-settings li { margin-block: 6px; }
+.mcp-settings [role="alert"] { color: var(--error-color, #c44949); }
+.mcp-settings [role="status"] { margin-block: 12px; }
+.mcp-server-editor input:not([type="checkbox"]) { box-sizing: border-box; width: 100%; max-width: 100%; min-width: 0; min-height: 36px; }
+.mcp-server-editor details { margin: 12px 0; }
+.mcp-server-editor summary { cursor: pointer; }
+.mcp-server-editor li { overflow-wrap: anywhere; }
+.mcp-server-editor pre { white-space: pre-wrap; overflow-wrap: anywhere; max-width: 100%; }
+@media (max-width: 600px) { .mcp-settings button, .mcp-settings select { min-height: 44px; } }

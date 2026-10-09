@@ -1,0 +1,18 @@
+{
+  "version": "1.0.4",
+  "gitHead": "7c10bd4337495ee613f2224843ecdf349b80d1df",
+  "delegateVersion": "0.2.18",
+  "shippingSourceSha256": "3faf26f53affb476ca6472758e7890abc49431ac8cf40f891ebb445d16444558",
+  "run": {
+    "pass": 1,
+    "fail": 0,
+    "assertions": 5
+  },
+  "thinking": "medium",
+  "execution": "plain shipping runDelegateProcess with actual packagedCLI and syntheticexplicitextension",
+  "sessionFiles": 0,
+  "liveAccounts": false,
+  "providerSpend": false,
+  "rawLogSha256": "de17f2ceb47046c52eea58e829bd625432db37ebd0977310611f0c3e6def8692",
+  "limits": "runner/CLI smoke only; no full real-provider execution or filesystem sandbox claim"
+}

@@ -1144,10 +1144,13 @@ export const TERMINAL_SETTLEMENT_CONTRACT_CASE_NAMES = Object.freeze(
 export async function defineTerminalSettlementStoreContract(
   factory: ContractSubjectFactory<TerminalSettlementContractSubject>,
   createContext: () => ContractTestContext,
+  caseName?: string,
 ) {
+  const selected = caseName === undefined ? cases : cases.filter(contractCase => contractCase.name === caseName);
+  if (!selected.length) throw new Error('Unknown terminal settlement contract case.');
   return runParameterisedContractSuite(
     factory,
-    cases,
+    selected,
     createContext,
     (subject) => subject.dispose?.(),
   );

@@ -10,7 +10,7 @@ import {
   readStoredMetersEnabled,
   toggleMetersCollapsed,
 } from '../../web/src/ui/meters.ts';
-import { SYSTEM_METERS_COMPACT_BREAKPOINT_PX, buildCompactMetersSummary, buildSparklinePath, formatBytesCompact, resolveCurrentRssBytes, shouldShowRss, shouldShowVram } from '../../web/src/components/system-meters-hud.ts';
+import { SYSTEM_METERS_COMPACT_BREAKPOINT_PX, buildCompactMetersSummary, buildSparklinePath, formatBytesCompact, resolveCurrentRssBytes, resolveGpuMeterSnapshots, shouldShowRss, shouldShowVram } from '../../web/src/components/system-meters-hud.ts';
 
 const originalWindow = globalThis.window;
 
@@ -155,6 +155,16 @@ test('shouldShowVram requires valid optional GPU memory telemetry', () => {
     vram_used_bytes: 4 * 1024 * 1024 * 1024,
     vram_series: [],
   })).toBe(false);
+});
+test('aggregate non-Intel telemetry supplies a generic GPU memory popup only when enabled and available',()=>{
+ const value={gpu_provider:'nvml',gpus:[],vram_percent:50,vram_total_bytes:4096,vram_used_bytes:2048,vram_series:[25,50]};expect(resolveGpuMeterSnapshots(value)).toMatchObject([{name:'GPU',provider:'nvml',memory:{used_bytes:2048,total_bytes:4096}}]);expect(resolveGpuMeterSnapshots({...value,vram_percent:null})).toEqual([]);expect(resolveGpuMeterSnapshots({...value,gpus:[{id:'nvidia0',provider:'nvml'}]})).toHaveLength(1);
+});
+test('invalid or missing aggregate memory counters do not fabricate enabled GPU rows',()=>{
+ const value={gpu_provider:'nvml',gpus:[],vram_percent:50,vram_total_bytes:4096,vram_used_bytes:2048,vram_series:[50]};
+ for(const patch of [{vram_used_bytes:null},{vram_used_bytes:undefined},{vram_percent:101},{vram_total_bytes:Infinity},{vram_used_bytes:8192}])expect(resolveGpuMeterSnapshots({...value,...patch})).toEqual([]);
+});
+test('compact system summary omits disabled optional lines without turning null into idle zero',()=>{
+ expect(buildCompactMetersSummary({cpu_percent:null,ram_percent:0,swap_percent:null,swap_total_bytes:4096,vram_percent:null,vram_total_bytes:4096,vram_used_bytes:0,vram_series:[0]})).toBe('RAM 0%');
 });
 
 test('toggleMetersCollapsed flips the stored collapsed state', () => {

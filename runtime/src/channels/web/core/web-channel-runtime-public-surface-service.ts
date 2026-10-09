@@ -1,4 +1,7 @@
-import { bindAddonLocalDispatchRequest } from "../../../addons/local-dispatch.js";
+import { bindAddonLocalDispatchRequest, captureAddonLocalDispatchAdmission } from "../../../addons/local-dispatch.js";
+import { bindInputRequestAuthority, releaseInputRequestAuthority, captureInputTarget } from '../messaging/input-request-authority.js';
+import { readAccessConfig } from '../../../core/config-access.js';
+import { getExecutionIdentity } from '../../../core/execution-context.js';
 import type { InteractionRow } from "../../../db.js";
 import type { WebAgentBufferEntry } from "../agent/agent-buffers.js";
 import type { QueuedFollowupItem, QueuedFollowupSourceMetadata } from "../runtime/followup-placeholders.js";
@@ -13,6 +16,7 @@ type WebChannelRuntimePublicSurfaceFollowupFacade = Pick<
   | "postDashboardWidget"
   | "queueFollowupPlaceholder"
   | "enqueueQueuedFollowupItem"
+  | "admitQueuedFollowupItem"
   | "peekQueuedFollowupItem"
   | "consumeQueuedFollowupItem"
   | "prependQueuedFollowupItem"
@@ -46,7 +50,7 @@ type WebChannelRuntimePublicSurfaceFollowupFacade = Pick<
 
 type WebChannelRuntimePublicSurfaceStorage = Pick<
   WebMessageProcessingStorageService,
-  "processChat" | "storeMessage"
+  "processChat" | "storeMessage" | "admitUserMessage"
 >;
 
 type WebChannelRuntimePublicSurfaceBroadcast = Pick<
@@ -82,6 +86,8 @@ export interface RuntimeAgentMessageRequest {
   screenHint?: string | null;
   source?: string;
   queuedBy?: QueuedFollowupSourceMetadata;
+  /** Host-only cancellation, never populated from HTTP payload fields. */
+  signal?: AbortSignal;
 }
 
 export interface RuntimeAgentMessageResult {
@@ -348,12 +354,26 @@ export class WebChannelRuntimePublicSurfaceService {
         ...(request?.threadId !== undefined ? { thread_id: normalizeRuntimeMessageThreadId(request?.threadId) ?? null } : {}),
         ...(screenHint !== undefined ? { screen_hint: screenHint } : {}),
       };
+      const encodedBody = JSON.stringify(body);
+      const scopedAdmission = captureAddonLocalDispatchAdmission(chatJid, content);
+      const origin = getExecutionIdentity();
+      if (readAccessConfig().mode !== 'single-user' || (origin && origin.mode !== 'single-user')) throw Error('Host input authority is unavailable.');
+      const validateTarget = captureInputTarget(chatJid);
       const req = new Request(
         `http://internal/agent/default/message?chat_jid=${encodeURIComponent(chatJid)}`,
-        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: encodedBody,
+          ...((scopedAdmission?.signal || request.signal) ? { signal: AbortSignal.any([...(scopedAdmission?.signal ? [scopedAdmission.signal] : []), ...(request.signal ? [request.signal] : [])]) } : {}) },
       );
       bindAddonLocalDispatchRequest(req, chatJid, content);
-      const response = await this.channel.handleAgentMessage(req, "/agent/default/message");
+      bindInputRequestAuthority(req, chatJid, encodedBody, phase => {
+        if (readAccessConfig().mode !== 'single-user' || (origin && origin.mode !== 'single-user') || getExecutionIdentity() !== origin
+          ) throw Error('Host input authority changed.');
+        scopedAdmission?.validate();
+        validateTarget(phase);
+      });
+      let response: Response;
+      try { response = await this.channel.handleAgentMessage(req, "/agent/default/message"); }
+      finally { releaseInputRequestAuthority(req); }
       const responsePayload = await response.clone().json().catch(() => null);
       if (!response.ok) {
         const detail = await readRuntimeHandlerError(response);
@@ -454,6 +474,10 @@ export class WebChannelRuntimePublicSurfaceService {
 
   peekQueuedFollowupItem(chatJid: string): QueuedFollowupItem | null {
     return this.channel.runtimeFollowupFacade.peekQueuedFollowupItem(chatJid);
+  }
+
+  admitQueuedFollowupItem(args: Parameters<import('../runtime/queued-followup-lifecycle-service.js').QueuedFollowupLifecycleService['enqueueQueuedFollowupItem']>, authorise: () => void, signal: AbortSignal): Promise<number> {
+    return this.channel.runtimeFollowupFacade.admitQueuedFollowupItem(args, authorise, signal);
   }
 
   consumeQueuedFollowupItem(chatJid: string): QueuedFollowupItem | null {
@@ -603,6 +627,10 @@ export class WebChannelRuntimePublicSurfaceService {
 
   async processChat(chatJid: string, agentId: string, threadRootId?: number | null): Promise<void> {
     return this.channel.messageProcessingStorageService.processChat(chatJid, agentId, threadRootId);
+  }
+
+  admitUserMessage(...args: Parameters<WebMessageProcessingStorageService['admitUserMessage']>): Promise<InteractionRow | null> {
+    return this.channel.messageProcessingStorageService.admitUserMessage(...args);
   }
 
   storeMessage(

@@ -47,6 +47,8 @@ export function writeJsonConfig(filePath: string, config: Record<string, unknown
   mkdirSync(parentDir, { recursive: true });
   const next = JSON.stringify(config, null, 2);
   const tempPath = join(parentDir, `.${process.pid}.${Date.now()}.tmp`);
-  writeFileSync(tempPath, `${next}\n`, "utf-8");
+  // Configuration can contain widget/auth material and is also read by the
+  // strict MCP owner. Atomic replacement must never widen it to the umask mode.
+  writeFileSync(tempPath, `${next}\n`, { encoding: "utf-8", mode: 0o600, flag: "wx" });
   renameSync(tempPath, filePath);
 }

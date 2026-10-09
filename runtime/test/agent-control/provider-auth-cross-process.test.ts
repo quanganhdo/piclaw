@@ -21,7 +21,7 @@ for (const scenario of ["rotate-once", "logout-after-refresh", "reject-then-succ
     function worker(name: string, operation: "auth" | "logout" | "auth-after-rejection"): Worker {
       const profile = join(ws.base, name);
       mkdirSync(profile, { mode: 0o700 });
-      const child = Bun.spawn([process.execPath, "--no-env-file", join(import.meta.dir, "fixtures/provider-auth-cross-process-0991.ts"), operation, authPath, profile, join(ws.base, "rejection-fence")], {
+      const child = Bun.spawn([process.execPath, "--no-env-file", join(import.meta.dir, "fixtures/provider-auth-cross-process-104.ts"), operation, authPath, profile, join(ws.base, "rejection-fence")], {
         env: { PATH: `${dirname(process.execPath)}:/usr/bin:/bin`, HOME: profile, PI_CODING_AGENT_DIR: profile, PICLAW_PI_AGENT_DIR: profile,
           PICLAW_WORKSPACE: profile, PICLAW_STORE: join(profile, "store"), PICLAW_DATA: join(profile, "data"), PI_OFFLINE: "1", PI_TELEMETRY: "0", OTEL_SDK_DISABLED: "true" },
         stdin: "pipe", stdout: "pipe", stderr: "pipe",

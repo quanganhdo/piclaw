@@ -75,6 +75,25 @@ export function initializeBudgetLimitsSchema(database: Database): void {
     CREATE INDEX IF NOT EXISTS idx_budget_work_parent ON budget_work(parent_work_id);
     CREATE INDEX IF NOT EXISTS idx_budget_work_scheduled_task ON budget_work(scheduled_task_id, created_at);
 
+    CREATE TABLE IF NOT EXISTS budget_request_reservations (
+      id TEXT PRIMARY KEY,
+      work_id TEXT NOT NULL REFERENCES budget_work(id),
+      chat_jid TEXT NOT NULL,
+      provider_id TEXT NOT NULL,
+      model_id TEXT NOT NULL,
+      account_ref TEXT NOT NULL,
+      binding_sha256 TEXT NOT NULL,
+      amount_microusd INTEGER CHECK(amount_microusd IS NULL OR amount_microusd >= 0),
+      state TEXT NOT NULL CHECK(state IN ('reserved','dispatched','unresolved','settled','released')),
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      settlement_sha256 TEXT,
+      usage_event_id TEXT UNIQUE,
+      CHECK((state='settled') = (settlement_sha256 IS NOT NULL AND usage_event_id IS NOT NULL))
+    ) STRICT;
+    CREATE INDEX IF NOT EXISTS idx_budget_requests_work_state ON budget_request_reservations(work_id,state);
+    CREATE INDEX IF NOT EXISTS idx_budget_requests_state ON budget_request_reservations(state);
+
     CREATE TABLE IF NOT EXISTS budget_usage_events (
       usage_event_id TEXT PRIMARY KEY,
       token_usage_id INTEGER NOT NULL UNIQUE REFERENCES token_usage(id),

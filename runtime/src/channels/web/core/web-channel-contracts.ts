@@ -57,6 +57,9 @@ export interface WebChannelLike
 
   /** Runtime dependencies and state services used across web layers. */
   queue: TaskQueueLike;
+  admitUserMessage?(chatJid: string, content: string, mediaIds: number[], options: {
+    contentBlocks?: unknown[]; linkPreviews?: unknown[]; threadId?: number | null; screenHint?: string | null;
+  }, authorise: () => void, signal: AbortSignal, deferBeforeInsert?: () => boolean): Promise<InteractionRow | null>;
   agentPool: AgentPool & {
     queueOwnedStreamingMessage?(chatJid: string, text: string, behavior: "steer"): Promise<{ queued: boolean; error?: string }>;
     abortOwnedRun?(chatJid: string): Promise<unknown>;
@@ -112,6 +115,7 @@ export interface WebChannelLike
     extras?: { mediaIds?: number[]; contentBlocks?: unknown[]; linkPreviews?: unknown[]; screenHint?: string; source?: string; queuedBy?: QueuedFollowupItem["queuedBy"] }
   ): number;
   getQueuedFollowupCount(chatJid: string): number;
+  admitQueuedFollowupItem?(args: Parameters<WebChannelLike['enqueueQueuedFollowupItem']>, authorise: () => void, signal: AbortSignal): Promise<number>;
   getQueuedFollowupItems(chatJid: string): QueuedFollowupItem[];
   removeQueuedFollowupItem(chatJid: string, rowId: number): QueuedFollowupItem | null;
   peekQueuedFollowupItem(chatJid: string): QueuedFollowupItem | null;

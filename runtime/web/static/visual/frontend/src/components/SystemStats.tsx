@@ -66,18 +66,17 @@ function buildMetrics(stats: StatsData | null, withLabels = false) {
     ];
   }
 
-  const rss = formatBytesCompact(stats.process_memory?.rss_bytes ?? 0);
-  const swapValue = stats.swap_percent != null ? `${stats.swap_percent}%` : "--";
+  const rssBytes = stats.process_memory?.rss_bytes;
   const metrics = [
     <Metric key="cpu" icon="codicon-pulse" title="CPU usage" value={`${stats.cpu_percent}%`} severity={percentSeverity(stats.cpu_percent)} label={withLabels ? "CPU" : undefined} />,
     <Metric key="ram" icon="codicon-circuit-board" title="RAM usage" value={`${stats.ram_percent}%`} severity={percentSeverity(stats.ram_percent)} label={withLabels ? "RAM" : undefined} />,
-    <Metric key="rss" icon="codicon-package" title="Process RSS" value={rss} label={withLabels ? "RSS" : undefined} />,
-    <Metric key="swp" icon="codicon-arrow-swap" title="Swap usage" value={swapValue} severity={swapSeverity(stats.swap_percent)} label={withLabels ? "SWP" : undefined} />,
-    <Metric key="buf" icon="codicon-database" title="Buffer/cache" value={formatBytesCompact(stats.buffer_cache_bytes)} label={withLabels ? "BUF" : undefined} />,
   ];
-  if (stats.gpu_provider) {
+  if (rssBytes != null && Number.isFinite(rssBytes) && rssBytes > 0) metrics.push(<Metric key="rss" icon="codicon-package" title="Process RSS" value={formatBytesCompact(rssBytes)} label={withLabels ? 'RSS' : undefined} />);
+  if (stats.swap_percent != null && Number.isFinite(stats.swap_percent) && stats.swap_percent >= 0) metrics.push(<Metric key="swp" icon="codicon-arrow-swap" title="Swap usage" value={`${stats.swap_percent}%`} severity={swapSeverity(stats.swap_percent)} label={withLabels ? 'SWP' : undefined} />);
+  if (Number.isFinite(stats.buffer_cache_bytes) && stats.buffer_cache_bytes > 0) metrics.push(<Metric key="buf" icon="codicon-database" title="Buffer/cache" value={formatBytesCompact(stats.buffer_cache_bytes)} label={withLabels ? 'BUF' : undefined} />);
+  if (stats.gpu_provider && stats.vram_percent != null && Number.isFinite(stats.vram_percent) && stats.vram_percent >= 0 && stats.vram_percent <= 100) {
     metrics.push(
-      <Metric key="gpu" icon="codicon-server-process" title={`GPU VRAM (${stats.gpu_provider})`} value={stats.vram_percent != null ? `${stats.vram_percent}%` : "--"} severity={percentSeverity(stats.vram_percent)} label={withLabels ? "GPU" : undefined} />
+      <Metric key="gpu" icon="codicon-server-process" title="GPU memory usage" value={`${stats.vram_percent}%`} severity={percentSeverity(stats.vram_percent)} label={withLabels ? "GPU" : undefined} />
     );
   }
   return metrics;

@@ -79,13 +79,20 @@ export function readPickerPins(
   owner: string,
   canReadSession: (jid: string) => boolean = () => true,
 ): PickerPins {
-  db.query("INSERT OR IGNORE INTO picker_pin_scopes VALUES (?,?,0)").run(
-    owner,
-    randomUUID(),
-  );
-  const state = db
+  // Refreshing an established scope must remain a read under WAL contention.
+  // First use still creates one durable, opaque migration scope.
+  let state = db
     .query("SELECT public_id,revision FROM picker_pin_scopes WHERE owner=?")
-    .get(owner) as { public_id: string; revision: number };
+    .get(owner) as { public_id: string; revision: number } | null;
+  if (!state) {
+    db.query("INSERT OR IGNORE INTO picker_pin_scopes VALUES (?,?,0)").run(
+      owner,
+      randomUUID(),
+    );
+    state = db
+      .query("SELECT public_id,revision FROM picker_pin_scopes WHERE owner=?")
+      .get(owner) as { public_id: string; revision: number };
+  }
   const rows = db
     .query(
       "SELECT kind,key FROM picker_pins WHERE owner=? AND pinned=1 ORDER BY rowid",

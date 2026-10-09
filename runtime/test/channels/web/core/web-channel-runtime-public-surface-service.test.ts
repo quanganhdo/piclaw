@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { withTempWorkspaceEnv } from '../../../helpers.js';
+import { initDatabase, closeDatabase } from '../../../../src/db/connection.js';
 
 import type { InteractionRow } from "../../../../src/db.js";
 import {
@@ -41,6 +43,9 @@ describe("web channel runtime public surface service", () => {
   });
 
   test("delegates targeted runtime agent messages to the web handler path when available", async () => {
+    await withTempWorkspaceEnv('runtime-handler-authority-',{},async()=>{
+    initDatabase();
+    try {
     const calls: string[] = [];
     let body: Record<string, unknown> | null = null;
     const service = createWebChannelRuntimePublicSurfaceService({
@@ -81,6 +86,8 @@ describe("web channel runtime public surface service", () => {
       content_blocks: [{ type: "text", text: "inline" }],
       link_previews: [{ url: "https://example.invalid" }],
       thread_id: 5,
+    });
+    } finally { closeDatabase(); }
     });
   });
 

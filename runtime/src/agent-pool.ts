@@ -285,6 +285,15 @@ export function createKnownModelCostResolver(agentDir: string): (provider: strin
  * process-spawn overhead, conversation context already loaded.
  */
 export class AgentPool {
+  inspectMcpSettings(policy?: unknown) { return this.mcpSettings.inspect(policy); }
+  inspectMcpServers(edit?: unknown) { return this.mcpSettings.inspectServers(edit); }
+  applyMcpServers(input: { revision: string; acknowledgeInterruptions: boolean }, authorise: () => void, signal: AbortSignal) {
+    return this.mcpSettings.applyServers(input, authorise, signal);
+  }
+  applyMcpSettings(input: { policy: unknown; revision: string; acknowledgeInterruptions: boolean }, authorise: () => void) {
+    return this.mcpSettings.apply(input, authorise);
+  }
+  private mcpSettings: AgentPoolServices["mcpSettings"];
   private pool = new Map<string, PoolEntry>();
   private sidePool = new Map<string, PoolEntry>();
   private activeForkBaseLeafByChat = new Map<string, string | null>();
@@ -335,6 +344,7 @@ export class AgentPool {
       toolFactory: this.toolFactory,
       turnCoordinator: this.turnCoordinator,
       sessionManager: this.sessionManager,
+      mcpSettings: this.mcpSettings,
       runtimeFacade: this.runtimeFacade,
       branchManager: this.branchManager,
     } = createAgentPoolServices({

@@ -1,0 +1,713 @@
+{
+  "recordedAt": "2026-10-04T08:59:06.667Z",
+  "runtime": "Bun 1.4.2",
+  "sourceHead": "a86f7d7338d781329a52c25fdf789c3e0922cefe",
+  "fixtureChange": "lazy serial browser ownership, one engine resident",
+  "mode": "existing compiled CSS; build replay pending",
+  "tests": 10,
+  "assertions": 414,
+  "failures": 0,
+  "durationSeconds": 16.05,
+  "cases": [
+    {
+      "skin": "classic",
+      "engine": "chromium",
+      "width": 1280,
+      "readyMs": 75.08643500000017,
+      "cpu": {
+        "samples": 58,
+        "topFrames": [
+          {
+            "function": "(program)",
+            "samples": 40
+          },
+          {
+            "function": "(idle)",
+            "samples": 9
+          },
+          {
+            "function": "e_",
+            "samples": 1
+          },
+          {
+            "function": "j_",
+            "samples": 1
+          },
+          {
+            "function": "t_",
+            "samples": 1
+          },
+          {
+            "function": "refresh",
+            "samples": 1
+          },
+          {
+            "function": "(anonymous)",
+            "samples": 1
+          },
+          {
+            "function": "InjectedScript",
+            "samples": 1
+          }
+        ],
+        "metrics": [
+          {
+            "name": "Nodes",
+            "value": 125
+          },
+          {
+            "name": "LayoutDuration",
+            "value": 0.015229
+          },
+          {
+            "name": "RecalcStyleDuration",
+            "value": 0.004147
+          },
+          {
+            "name": "ScriptDuration",
+            "value": 0.004019
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.053645
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 2223216
+          }
+        ]
+      },
+      "requests": 9,
+      "previews": 4,
+      "scope": "real pane/controller/backend persistence with synthetic runtime; real Pi execution separately tested"
+    },
+    {
+      "skin": "classic",
+      "engine": "chromium",
+      "width": 390,
+      "readyMs": 80.73574699999881,
+      "cpu": {
+        "samples": 67,
+        "topFrames": [
+          {
+            "function": "(program)",
+            "samples": 37
+          },
+          {
+            "function": "(idle)",
+            "samples": 18
+          },
+          {
+            "function": "(anonymous)",
+            "samples": 2
+          },
+          {
+            "function": "G_",
+            "samples": 1
+          },
+          {
+            "function": "McpSection",
+            "samples": 1
+          },
+          {
+            "function": "createTextNode",
+            "samples": 1
+          },
+          {
+            "function": "(anonymous)",
+            "samples": 1
+          },
+          {
+            "function": "_setupHitTargetInterceptors",
+            "samples": 1
+          }
+        ],
+        "metrics": [
+          {
+            "name": "Nodes",
+            "value": 125
+          },
+          {
+            "name": "LayoutDuration",
+            "value": 0.01109
+          },
+          {
+            "name": "RecalcStyleDuration",
+            "value": 0.004102
+          },
+          {
+            "name": "ScriptDuration",
+            "value": 0.004439
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.053344
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 2260400
+          }
+        ]
+      },
+      "requests": 9,
+      "previews": 4,
+      "scope": "real pane/controller/backend persistence with synthetic runtime; real Pi execution separately tested"
+    },
+    {
+      "skin": "visual",
+      "engine": "chromium",
+      "width": 1280,
+      "readyMs": 81.11341700000048,
+      "cpu": {
+        "samples": 68,
+        "topFrames": [
+          {
+            "function": "(program)",
+            "samples": 33
+          },
+          {
+            "function": "computeElementStyleVisibilityVisible",
+            "samples": 19
+          },
+          {
+            "function": "(idle)",
+            "samples": 10
+          },
+          {
+            "function": "Q",
+            "samples": 1
+          },
+          {
+            "function": "(anonymous)",
+            "samples": 1
+          },
+          {
+            "function": "G",
+            "samples": 1
+          },
+          {
+            "function": "query",
+            "samples": 1
+          },
+          {
+            "function": "end",
+            "samples": 1
+          }
+        ],
+        "metrics": [
+          {
+            "name": "Nodes",
+            "value": 124
+          },
+          {
+            "name": "LayoutDuration",
+            "value": 0.021934
+          },
+          {
+            "name": "RecalcStyleDuration",
+            "value": 0.003554
+          },
+          {
+            "name": "ScriptDuration",
+            "value": 0.002566
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.062013
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 2154576
+          }
+        ]
+      },
+      "requests": 9,
+      "previews": 4,
+      "scope": "real pane/controller/backend persistence with synthetic runtime; real Pi execution separately tested"
+    },
+    {
+      "skin": "visual",
+      "engine": "chromium",
+      "width": 390,
+      "readyMs": 62.24873999999909,
+      "cpu": {
+        "samples": 53,
+        "topFrames": [
+          {
+            "function": "(program)",
+            "samples": 30
+          },
+          {
+            "function": "(idle)",
+            "samples": 12
+          },
+          {
+            "function": "computeElementStyleVisibilityVisible",
+            "samples": 2
+          },
+          {
+            "function": "(anonymous)",
+            "samples": 1
+          },
+          {
+            "function": "Q",
+            "samples": 1
+          },
+          {
+            "function": "q",
+            "samples": 1
+          },
+          {
+            "function": "fetch",
+            "samples": 1
+          },
+          {
+            "function": "InjectedScript",
+            "samples": 1
+          }
+        ],
+        "metrics": [
+          {
+            "name": "Nodes",
+            "value": 124
+          },
+          {
+            "name": "LayoutDuration",
+            "value": 0.003191
+          },
+          {
+            "name": "RecalcStyleDuration",
+            "value": 0.003263
+          },
+          {
+            "name": "ScriptDuration",
+            "value": 0.003575
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.045264
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 2154576
+          }
+        ]
+      },
+      "requests": 9,
+      "previews": 4,
+      "scope": "real pane/controller/backend persistence with synthetic runtime; real Pi execution separately tested"
+    },
+    {
+      "skin": "classic",
+      "engine": "webkit",
+      "width": 1280,
+      "readyMs": 109.98363900000004,
+      "cpu": null,
+      "requests": 9,
+      "previews": 4,
+      "scope": "real pane/controller/backend persistence with synthetic runtime; real Pi execution separately tested"
+    },
+    {
+      "skin": "classic",
+      "engine": "webkit",
+      "width": 390,
+      "readyMs": 106.93935699999929,
+      "cpu": null,
+      "requests": 9,
+      "previews": 4,
+      "scope": "real pane/controller/backend persistence with synthetic runtime; real Pi execution separately tested"
+    },
+    {
+      "skin": "visual",
+      "engine": "webkit",
+      "width": 1280,
+      "readyMs": 123.67088899999908,
+      "cpu": null,
+      "requests": 9,
+      "previews": 4,
+      "scope": "real pane/controller/backend persistence with synthetic runtime; real Pi execution separately tested"
+    },
+    {
+      "skin": "visual",
+      "engine": "webkit",
+      "width": 390,
+      "readyMs": 157.81830199999968,
+      "cpu": null,
+      "requests": 9,
+      "previews": 4,
+      "scope": "real pane/controller/backend persistence with synthetic runtime; real Pi execution separately tested"
+    }
+  ],
+  "sourceSha256": {
+    "runtime/src/agent-pool/mcp-codemode-runtime.ts": "f09574ca459ec6e963b1f9b4840f4d05e105af91ee1ad4f29cb51468d28ac575",
+    "runtime/src/channels/web/handlers/mcp-settings.ts": "e453405c8498aba3a4c0aa148792c28a7e305abe8126462596771f46a2d380c7",
+    "runtime/web/src/ui/mcp-settings-model.ts": "fe633aa8ae51fafa0c915445ce14df4664112fd446bba69532cb4d01ec17d887",
+    "runtime/web/src/components/settings/mcp.ts": "3a804cabb7b671720f13417742bfa5eb564c2ee6429f8d8ded375353e97605d1",
+    "runtime/web/static/visual/frontend/src/panels/settings/McpSection.tsx": "58c46e0f5d5135ce496453776fe2c051abbe00d78c68c473c34926a7a56f31f6",
+    "runtime/test/web/mcp-settings.playwright.optional.test.ts": "33b24c3eb54463dcdec1b472c10cf7fc9ef70601351e7144250998bc572b3c64"
+  },
+  "logSha256": "7a770b420e302f4eb92f4dccb3c991d99650273260e1955f228fe5a33aa209b7",
+  "retainedFailures": [
+    "missing installed cache under isolated HOME, corrected explicit existing PLAYWRIGHT_BROWSERS_PATH",
+    "first real matrix 8pass2 Classic/WebKit20s timeout; unchanged isolated1/51 and full10/414 retries pass"
+  ],
+  "limitations": [
+    "real pane/controller/handler/persistence with synthetic runtime",
+    "actual Pi pipeline separately tested",
+    "full production authentication and live transports outside fixture",
+    "no WebKit CPU sampling",
+    "timings single-run synthetic ready measurements, no comparative performance claim"
+  ],
+  "rebuiltReplay": {
+    "recordedAt": "2026-10-04T09:10:30.421Z",
+    "sourceHead": "a715611d62bd597636722b22d0827f60bbc19de6",
+    "tests": 10,
+    "assertions": 414,
+    "failures": 0,
+    "durationSeconds": 10.08,
+    "cases": [
+      {
+        "skin": "classic",
+        "engine": "chromium",
+        "width": 1280,
+        "readyMs": 94.35820600000011,
+        "cpu": {
+          "samples": 72,
+          "topFrames": [
+            {
+              "function": "(program)",
+              "samples": 41
+            },
+            {
+              "function": "(idle)",
+              "samples": 23
+            },
+            {
+              "function": "(anonymous)",
+              "samples": 1
+            },
+            {
+              "function": "l_",
+              "samples": 1
+            },
+            {
+              "function": "(anonymous)",
+              "samples": 1
+            },
+            {
+              "function": "r_",
+              "samples": 1
+            },
+            {
+              "function": "(anonymous)",
+              "samples": 1
+            },
+            {
+              "function": "normalizeWhiteSpace",
+              "samples": 1
+            }
+          ],
+          "metrics": [
+            {
+              "name": "Nodes",
+              "value": 125
+            },
+            {
+              "name": "LayoutDuration",
+              "value": 0.017599
+            },
+            {
+              "name": "RecalcStyleDuration",
+              "value": 0.003073
+            },
+            {
+              "name": "ScriptDuration",
+              "value": 0.002831
+            },
+            {
+              "name": "TaskDuration",
+              "value": 0.0547
+            },
+            {
+              "name": "JSHeapUsedSize",
+              "value": 2240068
+            }
+          ]
+        },
+        "requests": 9,
+        "previews": 4,
+        "scope": "real pane/controller/backend persistence with synthetic runtime; real Pi execution separately tested"
+      },
+      {
+        "skin": "classic",
+        "engine": "chromium",
+        "width": 390,
+        "readyMs": 99.65586099999973,
+        "cpu": {
+          "samples": 79,
+          "topFrames": [
+            {
+              "function": "(program)",
+              "samples": 43
+            },
+            {
+              "function": "(idle)",
+              "samples": 26
+            },
+            {
+              "function": "l_",
+              "samples": 2
+            },
+            {
+              "function": "getElementLabels",
+              "samples": 2
+            },
+            {
+              "function": "(anonymous)",
+              "samples": 1
+            },
+            {
+              "function": "F_",
+              "samples": 1
+            },
+            {
+              "function": "O_",
+              "samples": 1
+            },
+            {
+              "function": "InjectedScript",
+              "samples": 1
+            }
+          ],
+          "metrics": [
+            {
+              "name": "Nodes",
+              "value": 125
+            },
+            {
+              "name": "LayoutDuration",
+              "value": 0.014201
+            },
+            {
+              "name": "RecalcStyleDuration",
+              "value": 0.004168
+            },
+            {
+              "name": "ScriptDuration",
+              "value": 0.004349
+            },
+            {
+              "name": "TaskDuration",
+              "value": 0.064883
+            },
+            {
+              "name": "JSHeapUsedSize",
+              "value": 2260400
+            }
+          ]
+        },
+        "requests": 9,
+        "previews": 4,
+        "scope": "real pane/controller/backend persistence with synthetic runtime; real Pi execution separately tested"
+      },
+      {
+        "skin": "visual",
+        "engine": "chromium",
+        "width": 1280,
+        "readyMs": 108.41466599999967,
+        "cpu": {
+          "samples": 76,
+          "topFrames": [
+            {
+              "function": "(program)",
+              "samples": 45
+            },
+            {
+              "function": "(idle)",
+              "samples": 25
+            },
+            {
+              "function": "(anonymous)",
+              "samples": 1
+            },
+            {
+              "function": "G",
+              "samples": 1
+            },
+            {
+              "function": "InjectedScript",
+              "samples": 1
+            },
+            {
+              "function": "L",
+              "samples": 1
+            },
+            {
+              "function": "queryAll",
+              "samples": 1
+            },
+            {
+              "function": "computeBox",
+              "samples": 1
+            }
+          ],
+          "metrics": [
+            {
+              "name": "Nodes",
+              "value": 124
+            },
+            {
+              "name": "LayoutDuration",
+              "value": 0.018576
+            },
+            {
+              "name": "RecalcStyleDuration",
+              "value": 0.003674
+            },
+            {
+              "name": "ScriptDuration",
+              "value": 0.003619
+            },
+            {
+              "name": "TaskDuration",
+              "value": 0.074008
+            },
+            {
+              "name": "JSHeapUsedSize",
+              "value": 2154372
+            }
+          ]
+        },
+        "requests": 9,
+        "previews": 4,
+        "scope": "real pane/controller/backend persistence with synthetic runtime; real Pi execution separately tested"
+      },
+      {
+        "skin": "visual",
+        "engine": "chromium",
+        "width": 390,
+        "readyMs": 57.435347999999976,
+        "cpu": {
+          "samples": 48,
+          "topFrames": [
+            {
+              "function": "(program)",
+              "samples": 27
+            },
+            {
+              "function": "(idle)",
+              "samples": 11
+            },
+            {
+              "function": "computeElementStyleVisibilityVisible",
+              "samples": 2
+            },
+            {
+              "function": "q",
+              "samples": 1
+            },
+            {
+              "function": "clearTimeout",
+              "samples": 1
+            },
+            {
+              "function": "C.setState",
+              "samples": 1
+            },
+            {
+              "function": "InjectedScript",
+              "samples": 1
+            },
+            {
+              "function": "N",
+              "samples": 1
+            }
+          ],
+          "metrics": [
+            {
+              "name": "Nodes",
+              "value": 124
+            },
+            {
+              "name": "LayoutDuration",
+              "value": 0.003206
+            },
+            {
+              "name": "RecalcStyleDuration",
+              "value": 0.003324
+            },
+            {
+              "name": "ScriptDuration",
+              "value": 0.002928
+            },
+            {
+              "name": "TaskDuration",
+              "value": 0.04012
+            },
+            {
+              "name": "JSHeapUsedSize",
+              "value": 2154624
+            }
+          ]
+        },
+        "requests": 9,
+        "previews": 4,
+        "scope": "real pane/controller/backend persistence with synthetic runtime; real Pi execution separately tested"
+      },
+      {
+        "skin": "classic",
+        "engine": "webkit",
+        "width": 1280,
+        "readyMs": 132.31992099999934,
+        "cpu": null,
+        "requests": 9,
+        "previews": 4,
+        "scope": "real pane/controller/backend persistence with synthetic runtime; real Pi execution separately tested"
+      },
+      {
+        "skin": "classic",
+        "engine": "webkit",
+        "width": 390,
+        "readyMs": 105.5528889999996,
+        "cpu": null,
+        "requests": 9,
+        "previews": 4,
+        "scope": "real pane/controller/backend persistence with synthetic runtime; real Pi execution separately tested"
+      },
+      {
+        "skin": "visual",
+        "engine": "webkit",
+        "width": 1280,
+        "readyMs": 117.21290099999987,
+        "cpu": null,
+        "requests": 9,
+        "previews": 4,
+        "scope": "real pane/controller/backend persistence with synthetic runtime; real Pi execution separately tested"
+      },
+      {
+        "skin": "visual",
+        "engine": "webkit",
+        "width": 390,
+        "readyMs": 133.12201599999935,
+        "cpu": null,
+        "requests": 9,
+        "previews": 4,
+        "scope": "real pane/controller/backend persistence with synthetic runtime; real Pi execution separately tested"
+      }
+    ],
+    "logSha256": "e46ce4e5bc4f6cc1d78e1152b6cd162cb212a3dbe02396028efe3e84a1849436",
+    "assetSha256": {
+      "runtime/web/static/classic/dist/app.bundle.js": "be67ade984bcf3572549d111a0e64cab86a389c256db1179015ae2e7a157e91d",
+      "runtime/web/static/classic/dist/app.bundle.css": "f1b5f4c9df7ef189b1549eef9fa761a1eb34ad37ad9354699f9e12fe76e5ef37",
+      "runtime/web/static/visual/dist/app.bundle.js": "e4b41b5b64de1ebe736cc7ae42c0768e0d2b9be67181ba80b249d63a7c08e567",
+      "runtime/web/static/visual/dist/app.bundle.css": "dd2c88e9a5e5ee93031e11ae7f09cf6fd3df17efac9ad0b7eb9a894186b5e1c2"
+    },
+    "build": {
+      "tests": 9,
+      "assertions": 26,
+      "failures": 0,
+      "logSha256": "9675548853bdd97cd56325b8899899f440aebe1656e7a5504d736ceef57c25d6"
+    },
+    "staleDist": "pass"
+  }
+}

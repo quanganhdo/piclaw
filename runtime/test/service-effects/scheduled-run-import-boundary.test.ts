@@ -41,7 +41,8 @@ describe("EF-S07 production import boundary", () => {
     const connection = readFileSync(join(root, "src/db/connection.ts"), "utf8");
     const tasks = readFileSync(join(root, "src/db/tasks.ts"), "utf8");
 
-    expect(connection).toContain("installScheduledRunCompositionSchema(db)");
+    expect(connection).toContain("installScheduledRunCompositionSchema(database)");
+    expect(connection).toContain("database.transaction(() => initializeSchema(database)).immediate()");
     expect(tasks).toContain("createScheduledTaskAuthorityRecord");
     expect(scheduler).toContain("createCurrentPiclawScheduledRunStore");
     expect(scheduler).toContain("store.claimDue");

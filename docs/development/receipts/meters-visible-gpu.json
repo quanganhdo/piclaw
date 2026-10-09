@@ -1,0 +1,142 @@
+{
+  "recordedAt": "2026-10-05T21:48:12.094Z",
+  "baseMain": "a446de1e0",
+  "focused": {
+    "pass": 44,
+    "fail": 0,
+    "assertions": 337,
+    "files": 4
+  },
+  "browser": {
+    "pass": 5,
+    "fail": 0,
+    "assertions": 114,
+    "files": 2
+  },
+  "webBuild": {
+    "pass": 9,
+    "assertions": 26
+  },
+  "sourceHashes": {
+    "runtime/web/src/components/intel-gpu-meters.ts": "c612c05caa8c117c3c66f823e3d577ba302a12c3492761dc3807a806c213ccfa",
+    "runtime/web/src/components/system-meters-hud.ts": "7a5e79061d960163f5cb1e47a394ca679e525260c5396dab0985fc0d30644833",
+    "runtime/web/static/visual/frontend/src/components/SystemStats.tsx": "61e85ae0a9a36732a849a4c7199db6bf367def0a3ae5535f5a50365d08bdd55c"
+  },
+  "logs": [
+    {
+      "log": "meters-visible-review-focus.log",
+      "sha256": "cb2cbd95374d8fb773e55b3a70aa9d9ae57d1e1f3ab0033474fdaea98f8849e2"
+    },
+    {
+      "log": "meters-visible-final-browser.log",
+      "sha256": "ecedbb3f2399a30fa73c4acb0070928f4e83de853521b84c70262365e8a8eb39"
+    },
+    {
+      "log": "meters-visible-review-types.log",
+      "sha256": "dfd0c6d3af373830a215c2274b74fba3950b6edffc950c5db83eccf51ae8e409"
+    },
+    {
+      "log": "meters-visible-final-build.log",
+      "sha256": "adfcb6ab2d27941daab0a2d07bc1aa3d66cf4579b8c366c717e23b3322eff945"
+    },
+    {
+      "log": "meters-visible-first-browser.log",
+      "sha256": "4f66b2099820ed84246cd07c60c38ff45ca2db1f35ddf1d3df39d13dde6135df"
+    },
+    {
+      "log": "meters-visible-expected-red.log",
+      "sha256": "cb28de8067c95515b172097c8fe81e9125ce042e439acf615a23c3c23c70285b"
+    },
+    {
+      "log": "meters-visible-freeze-focus.log",
+      "sha256": "ca68f695b688d4707883feffefa1d86f0fe328e2a75b03bc0256bbbc9e12fc7d"
+    },
+    {
+      "log": "meters-visible-freeze-browser.log",
+      "sha256": "79dd0b6d58e8625f653b103f3d06be98f8b97dce89b0c30c35cb6c6d40e17969"
+    },
+    {
+      "log": "meters-visible-freeze-types.log",
+      "sha256": "dfd0c6d3af373830a215c2274b74fba3950b6edffc950c5db83eccf51ae8e409"
+    },
+    {
+      "log": "meters-visible-sqlite-fixture-isolated.log",
+      "sha256": "f35cbf08555e4e2f0bfff24ba1a78045c0f0f2bfb71876ba2826090f3889494c"
+    },
+    {
+      "log": "meters-visible-sqlite-segmented.log",
+      "sha256": "a0a9965edb9f1a6d298ad43d7486fc196ffa52861eae7ffc969c6dcd16d43c7b"
+    },
+    {
+      "log": "meters-visible-sqlite-segmented-v2.log",
+      "sha256": "79e5d3a710e399122510592ce967e75b0342047c5c602853070a5ba3d296cc3e"
+    },
+    {
+      "log": "meters-visible-sqlite-segmented-final.log",
+      "sha256": "641f63173ec145005b8f1191fbbee1c325735969d94bfc00061a3ee81eb64379"
+    },
+    {
+      "log": "meters-visible-correction-types.log",
+      "sha256": "dfd0c6d3af373830a215c2274b74fba3950b6edffc950c5db83eccf51ae8e409"
+    }
+  ],
+  "scope": "frontendsource only; no collector/hardware/productionconfig/install/restart/liveGPU/provider changes",
+  "qualification": "Local complete gate passed; frontend and fixture reviews scoped CLEAR; no merge or deployment permission",
+  "updatedAt": "2026-10-05T22:27:21.432Z",
+  "frontendReview": {
+    "verdict": "scoped CLEAR",
+    "messageRow": 62878,
+    "head": "b5c265339fe6af9341baccc628295a95a9e46e01"
+  },
+  "fullAttempts": [
+    {
+      "head": "b5c265339fe6af9341baccc628295a95a9e46e01",
+      "exit": 2,
+      "pass": 6543,
+      "skip": 8,
+      "fail": 1,
+      "assertions": 42805,
+      "files": 931,
+      "elapsedSeconds": 697.53,
+      "log": "/workspace/tmp/meters-visible-full/ci-fast.log",
+      "sha256": "30e11d40ef1607753ac4d5521c1889ae5ffe4b82746f8e433df22256c25fd1f7",
+      "failure": "Existing EF-S07 ten-vector corruption test exceeded default5000ms at5840.24ms"
+    },
+    {
+      "head": "69c2ae457341b563d290da7d88d574a1cb3d4702",
+      "tree": "09267e58a15ef2fe0b0d32c3f55a498e2a0214cc",
+      "runtimeTree": "12d7ae9f2fd7e0ea080ac6fe96bd0bd3656cdee8",
+      "exit": 0,
+      "pass": 6553,
+      "skip": 8,
+      "fail": 0,
+      "assertions": 42805,
+      "files": 931,
+      "elapsedSeconds": 679.03,
+      "settingsContracts": {
+        "pass": 25,
+        "assertions": 246
+      },
+      "webBuild": {
+        "pass": 9,
+        "assertions": 26
+      },
+      "startedAt": "2026-10-05T22:14:56Z",
+      "finishedAt": "2026-10-05T22:26:24Z",
+      "log": "/workspace/tmp/meters-visible-full-v2/ci-fast.log",
+      "sha256": "23c65d230e1a2b14c7d7f887db86c935701f72f4374909ac07c58df6848b6b47",
+      "sourceUnchanged": true,
+      "finalWorkingTreeClean": true
+    }
+  ],
+  "fixtureCorrection": {
+    "path": "runtime/test/service-effects/scheduled-run-store-contracts.test.ts",
+    "sha256": "52dfde936757d22610899fb8f5ca8a93914c44e88b9fb2a33f1350adc7e8858c",
+    "pass": 31,
+    "fail": 0,
+    "assertions": 280,
+    "review": "read-only delegated judge scoped CLEAR: ten cases retain all mutations/assertions/fresh databases/disposal/default5000ms; continue becomes callback return",
+    "productionStorageChanged": false
+  },
+  "publicationDelta": "Documentation and receipts only; runtime tree equals qualified snapshot"
+}

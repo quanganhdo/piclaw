@@ -39,7 +39,7 @@ import { GeneralSection } from './settings/general.js';
 perf('imports-done');
 
 type SettingsSectionComponent = unknown;
-type BuiltinSectionId = 'authentication' | 'general' | 'sessions' | 'recordings' | 'compaction' | 'budget' | 'keyboard' | 'workspace' | 'environment' | 'providers' | 'models' | 'theme' | 'scheduled-tasks' | 'quick-actions' | 'keychain' | 'tools' | 'addons';
+type BuiltinSectionId = 'authentication' | 'general' | 'sessions' | 'recordings' | 'compaction' | 'budget' | 'mcp' | 'keyboard' | 'workspace' | 'environment' | 'providers' | 'models' | 'theme' | 'scheduled-tasks' | 'quick-actions' | 'keychain' | 'tools' | 'addons';
 
 const builtinSectionComponentCache = new Map<BuiltinSectionId, SettingsSectionComponent>();
 const builtinSectionLoadPromiseCache = new Map<BuiltinSectionId, Promise<SettingsSectionComponent>>();
@@ -54,6 +54,7 @@ const BUILTIN_SECTION_LOADERS: Record<BuiltinSectionId, () => Promise<SettingsSe
     recordings: () => import('./settings/recordings.js').then(mod => mod.RecordingsSection),
     compaction: () => import('./settings/compaction.js').then(mod => mod.CompactionSection),
     budget: () => import('./settings/budget.js').then(mod => mod.BudgetSection),
+    mcp: () => import('./settings/mcp.js').then(mod => mod.McpSection),
     keyboard: () => import('./settings/keyboard.js').then(mod => mod.KeyboardSection),
     workspace: () => import('./settings/workspace.js').then(mod => mod.WorkspaceSection),
     environment: () => import('./settings/environment.js').then(mod => mod.EnvironmentSection),
@@ -139,6 +140,7 @@ const BUILTIN_SECTIONS = [
     { id: 'environment', label: 'Environment', icon: iconEnvironment, searchable: true, placeholder: 'Filter environment…', order: 16 },
     { id: 'providers', label: 'Providers', icon: iconProviders, searchable: false, order: 20 },
     { id: 'models', label: 'Models', icon: iconModels, searchable: true, placeholder: 'Filter models…', order: 30 },
+    { id: 'mcp', label: 'MCP', icon: iconProviders, searchable: false, order: 30.5 },
     { id: 'theme', label: 'Appearance', icon: iconAppearance, searchable: false, order: 11 },
     { id: 'scheduled-tasks', label: 'Scheduled Tasks', icon: iconScheduledTasks, searchable: true, placeholder: 'Filter scheduled tasks…', order: 65 },
     { id: 'quick-actions', label: 'Quick Actions', icon: iconQuickActions, searchable: true, placeholder: 'Filter quick actions…', order: 14.5 },
@@ -318,6 +320,7 @@ export function SettingsDialogContent({ onClose }) {
             case 'recordings': return html`<${Comp} filter=${filter} setStatus=${setStatus} />`;
             case 'compaction': return html`<${Comp} settingsData=${settingsData} setStatus=${setStatus} mergeSettingsData=${mergeSettingsData} />`;
             case 'budget': return html`<${Comp} setStatus=${setStatus} />`;
+            case 'mcp': return html`<${Comp} />`;
             case 'keyboard': return html`<${Comp} filter=${filter} setStatus=${setStatus} />`;
             case 'workspace': return html`<${Comp} settingsData=${settingsData} setStatus=${setStatus} mergeSettingsData=${mergeSettingsData} />`;
             case 'environment': return html`<${Comp} settingsData=${settingsData} filter=${filter} setStatus=${setStatus} mergeSettingsData=${mergeSettingsData} />`;

@@ -1,4 +1,4 @@
-import { Result, type Result as ResultValue } from "@earendil-works/pi-agent-core";
+import { Result, type Result as ResultValue } from "../../contracts/result.js";
 
 import { hashCanonicalRequest, type CanonicalJsonValue } from "../../contracts/common.js";
 import type { EffectPayloadResolver } from "../../contracts/payload-resolver.js";

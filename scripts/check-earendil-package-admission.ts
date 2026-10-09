@@ -49,6 +49,17 @@ export const MODERN_PRIVATE_IMPORTS = [
   `${MCP_PACKAGE}/dist/client.js`,
   `${AI_PACKAGE}/dist/auth/oauth/openai-chatgpt.js`,
 ] as const;
+export const REMOVED_100_IMPORTS = [
+  "@earendil-works/pi-agent-core/node",
+  "@earendil-works/pi-agent-core/harness/context",
+  "@earendil-works/pi-agent-core/harness/env/nodejs",
+  "@earendil-works/pi-agent-core/harness/session",
+  "@earendil-works/pi-agent-core/harness/session/testing",
+  "@earendil-works/pi-agent-core/session/testing",
+  "@earendil-works/pi-agent-core/experimental/pico3",
+  "@earendil-works/pi-agent-core/experimental/pico3/testing",
+] as const;
+const REMOVED_100_EXPORTS = ["AgentHarness", "ExecutionEnv", "Result", "MemorySessionRepo", "JsonlSessionRepo", "NodeExecutionEnv"] as const;
 export const MODERN_CODING_AGENT_EXPORTS = [
   "createAgentSession", "createAgentSessionRuntime", "ModelRuntime",
   "createMcpExtension", "createToolSearchExtension", "createCodemodeExtension",
@@ -67,6 +78,91 @@ const MODERN_CONTRACT_VERSION = "0.99.0";
 const EXACT_0991_VERSION = "0.99.1";
 const EXACT_0991_GIT_HEAD = "d86654abb8862e201933517d6f1fce9f88dd117f";
 const EXACT_0991_PROVIDER_RECEIPT_SHA256 = "09a7c902f5b7c8bd69f92b5416d496bfe1ba7d09447c6dd3fa6f236851faaea7";
+const EXACT_100_VERSION = "1.0.0";
+const EXACT_100_GIT_HEAD = "a13d35a742c6ef8462812a28fbe1d8c8b7431c32";
+const EXACT_100_PROVIDER_RECEIPT_SHA256 = "4c66f1e7d9276bc39207fb508bca0e0a17b09d71969753d5611ca42982a85e4d";
+const EXACT_101_VERSION = "1.0.1";
+const EXACT_101_GIT_HEAD = "a7229ddc21810d6245105978033b7df645ecc2f7";
+const EXACT_101_PROVIDER_RECEIPT_SHA256 = "b56b0bdd98ebbdca8c178e922b85a00601c4c6e966df430a22fa34f99adb5f16";
+const EXACT_102_VERSION = "1.0.2";
+const EXACT_102_GIT_HEAD = "cd32f7725fdbddbaecdff5b1e68491563394e0ca";
+const EXACT_102_PROVIDER_RECEIPT_SHA256 = "3b09ca73dbb70a64646f57809bb2129e4b01b235da06d895966580d91a39553c";
+const EXACT_103_VERSION = "1.0.3";
+const EXACT_103_GIT_HEAD = "d78dc83d633229d12f8b79631384c4c2717c399f";
+const EXACT_103_PROVIDER_RECEIPT_SHA256 = "1f5ef502f89d8aa0db2784149e18168ed6ec62ed37a231ba78812124b0b1176d";
+const EXACT_103_REGISTRY = {
+  "@earendil-works/chord": [
+    "8e9e2a9b52729db7383d421084f9e6d92526a3ad",
+    "sha512-H5pKMs3S1z2q4V7NkDGKDFzOMW+OkzdsnGxxj5wNJUANG03VKj29UVmc1xnnnf0FAc03COHYNxwgNApO0nt0fg=="
+  ],
+  "@earendil-works/pi-agent-core": [
+    "300388ec6ae56d402b1a85c61fefafff5ee8f3e7",
+    "sha512-lnvi2PJYaq8mDLzwWBttNqfxrLS63SSMONUJnTCypdvt/flmNJchXwWXsXUOJ5Yhe/mN+iHkrXu696lWZZ8o+w=="
+  ],
+  "@earendil-works/pi-ai": [
+    "31463068aa4f979db0f066aa8c1b79b57d310e35",
+    "sha512-p+/EUrbmfT0xWOtL/NJRtWOsyzcKKFSyiivHLDBMG0DUVpHdaIykd5jFibq0YZDFGBN/nv61zdOelMb+ylPfSg=="
+  ],
+  "@earendil-works/pi-codemode": [
+    "0daeb93e109558d7d0dd5d99a73f214926690015",
+    "sha512-/rgWAXA9PhuFm0+j6N5FVvvWrAwt1LnhmbjA3Hy5+Q033XUHgh0YCMGAmU76S90ocr0Vfxm50ddYT/O76T5OGQ=="
+  ],
+  "@earendil-works/pi-coding-agent": [
+    "de643ce8049ed7182517bbc5620dacf2b68314c6",
+    "sha512-t2lb0dw4y/jr5a2PRo6eTHGTZOPB3/YAMVyhhYFC1W3Hl5xE+462I/gMWjF4gCLuhGipNEfuNqONFmdqLFz4SQ=="
+  ],
+  "@earendil-works/pi-mcp": [
+    "0138f6a96c06c21edca86172c0270007ed1d183f",
+    "sha512-ZAhL/g0rpjyKtcKzD0jSDk7sFIrMCQocmKtpAE1F9eRnI5fGGVWUyiZwALG/Tn1sagzxFbSqtc29zGx5OvDDGA=="
+  ],
+  "@earendil-works/pi-telemetry": [
+    "cc53177d242769f3792650eedf0d71ee2d84a903",
+    "sha512-Li4YamN09x9zzCquPbtEL2AQmwqv3Vn3sNOYqG0DRg24fjiMfntCsb7QKbejCXZssTAyaN+hutLl6O0UnJDrfg=="
+  ],
+  "@earendil-works/pi-tui": [
+    "512c622ff113c809964217212ab6267c79081177",
+    "sha512-C7b8Y+7iz+/oPEZUJubv6NPm3M/4ziq0hjQ2jhqMNpBwcXeqDMYKL2FYP90t2b5S1IoGc2io47dj5ZlIC1IZWg=="
+  ]
+} as const satisfies Record<(typeof FAMILY_PACKAGES)[number], readonly [string, string]>;
+
+const EXACT_104_VERSION = "1.0.4";
+const EXACT_104_GIT_HEAD = "7c10bd4337495ee613f2224843ecdf349b80d1df";
+const EXACT_104_PROVIDER_RECEIPT_SHA256 = "014e39f6bb0551f9488d5ff832a91a71531ad513a01b1da766605934713541dd";
+const EXACT_104_REGISTRY = {
+  "@earendil-works/chord": [
+    "6b5b0ee6c5fa5933813b27c263cce37bfa4d2985",
+    "sha512-d2JZw2utoa/reoSmL07O71wsXiMDhIlnnxTb4LCNV+Oq8Evj2rGLvjVuYrlXZGbXUr0IDNfvd1RT/utCY1UhkQ=="
+  ],
+  "@earendil-works/pi-agent-core": [
+    "3a52d338895a16e5a7e4eecd0f55919c7fa474af",
+    "sha512-/xGICE+N/+G9N7KfYFSxlE8G8fQcBlLHKiY+j1Ehz9vvb1zhvGneWosFK56d2qmA5oteafeG7yKr2nqU4ed9ig=="
+  ],
+  "@earendil-works/pi-ai": [
+    "f398aa4469437bfa0c6326bcb61f7bc4f25840e6",
+    "sha512-/Eu5R0gfor6wcmRcVyOmulUiZmsHJ0bKu5wXXnpCoSHF3y4FnW4fgnjRlLjNza8NJWXdvW5Uew90Zukx7Sh2rw=="
+  ],
+  "@earendil-works/pi-codemode": [
+    "128ed3dcc7c60adba83cf3c9233d72cd19b17556",
+    "sha512-e198pjBsdEQJ/RCjJ9ZeYIjRaQYWUgtoZbPCmJ57auuOsiRsBXeSZ1aiWtTah0/7gx97WIOD1XqHvgRU0gOXtg=="
+  ],
+  "@earendil-works/pi-coding-agent": [
+    "878235d4ecc2ad3ac6fad0adfeffcf233b8159d7",
+    "sha512-+956nfMFHr5lDUVY/2Q4k+YzojzBuCaBXFgj0eSlXVGr7QVliVddKdc1Pz6yVg1dOlJQmb67doOVrlMsIcIdaw=="
+  ],
+  "@earendil-works/pi-mcp": [
+    "73aa5fa6c988211b71775d443ad1124e64f81935",
+    "sha512-I6SqOqrKED+XrjkkFIXY7Ze38QtXtjojPJlQsJ2v5soCPV4QI1bNxXDwQaqzZ2a+6pNN8meWrRw1qkSMbPy9QQ=="
+  ],
+  "@earendil-works/pi-telemetry": [
+    "de93bb1dca0a41d11fb8763b2c5c783b53c44236",
+    "sha512-DL2eXXtnL5/VQkuQd97fL57GXTG1/zKHtMmDsrv8tGeJ5EgYYTWvzy44dqbYL0lD0Z22v/NOwqU3PHO75HVrqA=="
+  ],
+  "@earendil-works/pi-tui": [
+    "7d3c2baf15f6132573b69b43e4b703b57334f3c6",
+    "sha512-TgvDJohtxvG3XWQID5w6bwEyBocywdG0F9yHZtP+Ywvtiq9RgeSMbeB8quUobk7/4ko6IvFOQo45AqIqNVr8Rg=="
+  ]
+} as const satisfies Record<(typeof FAMILY_PACKAGES)[number], readonly [string, string]>;
+
 const NODE_ENGINE = ">=22.19.0";
 const EXACT_0991_REGISTRY = {
   "@earendil-works/chord": ["7f6ba945b705a5ab48d25dbed39b253afcec68df", "sha512-4xyn0IBzJ+Xu/iOGi2hjXJGAR61QEhEWZsIqTDqr+GmItdquYwBO5jYFnqGiBaTqlY12/EpM7QHoEKSHbyvOug=="],
@@ -77,6 +173,63 @@ const EXACT_0991_REGISTRY = {
   "@earendil-works/pi-mcp": ["c2002b819a5d75d9cfa8091171580f794c205042", "sha512-YCFGPkmDzLwQuIzwfbP6Vuk/g/ukKpZhwTpbcfzomuI1Fkiu6hHRkOGwAqsO3G8cTkZWkM8vmOkFJjStQNC4qA=="],
   "@earendil-works/pi-telemetry": ["37b1fb0ce8c0ca2fe04363035a4b7aea29a9e8cb", "sha512-9PBPjGk+TXRtuMianpqBbHBpYpyKusESF6rwdmgD0WTZSTUQXhcKEO0hAINRLuSwy4V7yPvXV+EVV0ONY7mbpQ=="],
   "@earendil-works/pi-tui": ["f6f82a4792fabb4aabf310e082743d87accc90cc", "sha512-gZp0Guat96Fr1AuC/xqVz5B2lulZakp/PxD1lXx3lSgBdjiqmwYhJbcQ0HRrGAfy0WtMGn9b05RJr5qJf7oIuw=="],
+} as const satisfies Record<(typeof FAMILY_PACKAGES)[number], readonly [string, string]>;
+
+const EXACT_100_REGISTRY = {
+  "@earendil-works/chord": ["8807eee9a24f6ba4d40165c01ee0d71fe18aeb28", "sha512-BIfWfrByM0pKq6tfKYXuwx0ed2CvaqIM3EDA7Dps+fP+d3CiPWdlHi1cDsJC05llqKJoRz5//G0hz0yQwwjISQ=="],
+  "@earendil-works/pi-agent-core": ["85f539d807600de676919cc93d70df84e850a218", "sha512-bHFONjtEBDqiV+g1DmmtkSlfAaqHELr+XO+6I5Nah4gswwZrLJO4yZB/JjsnlI4AKWTayBLfgS6DCbeBBz9e2Q=="],
+  "@earendil-works/pi-ai": ["48afaafcffeafdb951bee89b25c69daf4985c725", "sha512-3/W1vdDaVtpeMd23ElvJC12HLA5yS/BGqqcXF+0SK082dN7cbgNcCwguTBRBC258Ke8SzSvUW1B75iAf8w8IxA=="],
+  "@earendil-works/pi-codemode": ["ce4cb7c805a0336c0453b80107e564620397e65a", "sha512-LPpFI4+T9NzDnhBDs15izWAolaoM8xnwqdziRd6Zx8BQeoEPvzefD2vMMzSyF0rOtq34TfQqkZ0ki16f6cGdMg=="],
+  "@earendil-works/pi-coding-agent": ["ae6346e0d5e2a7e2d1fdd177965cda781aa3c514", "sha512-/FtbxoSQU/mEv1QnichJjRjqteqaIaMWxmhB4G367+MwZfX7/DI5B9YAg5lqbN7nztFskBEtUSZ+FlmMBECtMw=="],
+  "@earendil-works/pi-mcp": ["6f08a86735e7a4801d725ccdfd9e6983d8c64aca", "sha512-rYra0aF5iPmJd+fsB+VBuqxWNABGJ3Iiyhg0CqIc/91ta2n7IvQmCp0Cac/YkUTNnvRsVZnjgAiBkRi6+ouWuw=="],
+  "@earendil-works/pi-telemetry": ["313db5570991402c73b2229ed9a50770d3cf1435", "sha512-WjNBj5TYIiPZFQEz2WlULcDwPLaKwIlmsKjVeYM+LJSbnSp38kWsHUJysIDGnu23IcLbKoPtywsvYfUJCeZePA=="],
+  "@earendil-works/pi-tui": ["5da2e1eb99844c864d3d0a49e7da2515e03b73df", "sha512-JsT7kXnpZA2YOtQu6RyriyxEO0eJIzPyfiH09bH+OLN5+s18HYkwaUD/tBkjhnSfMu6/50CQPRYJagzSP6HdPw=="],
+} as const satisfies Record<(typeof FAMILY_PACKAGES)[number], readonly [string, string]>;
+
+const EXACT_101_REGISTRY = {
+  "@earendil-works/chord": ["13487f8c9ec01e9716527276c3123f15b9b1c122", "sha512-woq15kjUZ38fUIMqFrFzTeT0fYYM0CfGS2ELCUE5Ufni32tdxfs0Av2+zz8PXFNxyiC3SB1EnyGPp63CLtp8Fg=="],
+  "@earendil-works/pi-agent-core": ["6e6542ad7996f5185bc9dff813132ce02034a9b3", "sha512-os85rJM2hgCOOLdtcQ5WxRRhAbQiTNq9+48/pj6dOUU7czJhU8NTdHmDs41hBfAXR/ZQgstIgrjowEICEXimbQ=="],
+  "@earendil-works/pi-ai": ["6f3df9843292c0dc9a1f56257906c717fe7c577b", "sha512-eSA53pdfDLuQTTJn3yz1VC8BBmcX33OKkk8WihOXdVBvbgqqC4zuR6Sf+TeeWuAmh8LuqARoK14R1s2HZqVcsw=="],
+  "@earendil-works/pi-codemode": ["e2e77bc9a3810f393c634a4fcd1f28b43c6f8988", "sha512-RpZKpdKceYmIODfqKLJtZWUvfkbDGmEHxEEEYN+i21OFm8uY0sTcBMP4oaLf6SkBVBMPae1Z9GtW27+dIRAYPw=="],
+  "@earendil-works/pi-coding-agent": ["c43730168f5482f1c55b462ae43193cc6f7c1e13", "sha512-B7FGYpHpBPvS+Ux16CbCuVnE9S4v6c2h6ykocPNarC4msD/4JM/eFrCrO2wbRkedJZ25myFozSWHvCOx4QnN+w=="],
+  "@earendil-works/pi-mcp": ["5d45ee65f5b41cd9fffc4d78d4b630ad9771f61f", "sha512-XuhcCpNT9FgsMQTzjmwy2hbakg9CODcDHtC+KeHfr37HjKdj4QsfOrOThxLXYRN4kmC5HDvFyLzthAnHe/T4jw=="],
+  "@earendil-works/pi-telemetry": ["2aa53cd944f9e60920d2d648be279af786d1b5a8", "sha512-SuJ/4KyqZ6j6Whlau710DmusWDKMWCxKXpWqZclY/Cl3tGUuX8IFmbTbW2VRoVuoJpZYVMg6DJmt1mwHMUt9uw=="],
+  "@earendil-works/pi-tui": ["ea6cbc09db36f0ea6486e7d8e239f11713bcd025", "sha512-Rk/pWLoDKWI7WvywhLxf+DTYppS7XWTN5IacpqlD+QF+CbrT/y5CCnAHqPEoF41y+XtQJKbNjjzUuJE4yq0Dfg=="],
+} as const satisfies Record<(typeof FAMILY_PACKAGES)[number], readonly [string, string]>;
+
+const EXACT_102_REGISTRY = {
+  "@earendil-works/chord": [
+    "481516ce8b3c32c3d3f2175a4e61c46bc91f7f23",
+    "sha512-eUXGZjigyEQsFiT/oBJUOaCrzYZRmqf8AgLrlbyuS4u02hjSVhLYRi3xqk1o4UERCgRfjRegqwj/oucawIR7YQ=="
+  ],
+  "@earendil-works/pi-agent-core": [
+    "3c4925221694722007e26762310ee5c5e682dd7a",
+    "sha512-VRfewY1R5mbedJzlm01PxdCmqU8QrSXjXXhV50bp6rvVuT8YYQv1inTXRY4YzssmGAYpkC2rXipJKP5BpBFXew=="
+  ],
+  "@earendil-works/pi-ai": [
+    "491b32ed7dd8e333a58a55dfc18ff61e31bc43c9",
+    "sha512-JP59xGlSAQ/HhQ6EHN5qmneBlWfDyu6FPPryAvAaSo8A38ubAsEpS9YisCM5Jbbns0srrDffLZonE0OXorHI5A=="
+  ],
+  "@earendil-works/pi-codemode": [
+    "2bb448ee639e7db6317d878798631b91c248bbcd",
+    "sha512-tvfDSVz984ra/4y/hIFmYGpP5ojC+C6/ey+DNbjTzfJvbXviW4JYTXwVcm33KAceI0xcOuE+P1yRGLtQgis0/w=="
+  ],
+  "@earendil-works/pi-coding-agent": [
+    "aba0009c736a1de4e045665acceb017cdb791371",
+    "sha512-3ZdIghMSELMGV3sKi5iASOb1Jwb696fLjmNu0aezaqDxTLLWWoRpqBYkGxJ1CgAMCbtfqXWEF0lcRrlVXmiEGQ=="
+  ],
+  "@earendil-works/pi-mcp": [
+    "a48b3b1e83281076a1de7e15fd1c8b4a91171782",
+    "sha512-ED3+q41xLQkxzdadZIQy68SLYcqCJbve8iGbGkZoWjPJ9OZCPHTKcof24fjMO1LfnbIl1uMfhRBueS6IfdiCbQ=="
+  ],
+  "@earendil-works/pi-telemetry": [
+    "4abc269759cbc6fa434b252d5789003947b828a4",
+    "sha512-Ev5h9TE8nEXHCfRKhWj0qpUFhQgVqNteS95vsM2KNGRGm533vOO2ruDPaEwImBKPMBKXy4omz3D6V2cm41gLOQ=="
+  ],
+  "@earendil-works/pi-tui": [
+    "0169e89755e3bc7d9b5df2760032f84991f183e7",
+    "sha512-ElfzjnckohEjzHK5Q5iOpqLpQ1YbM/c/XmjBdPVR5k4uoorQPnny5BtT+rvC0cAjVVCUOHWAWppust7FAaEsOQ=="
+  ]
 } as const satisfies Record<(typeof FAMILY_PACKAGES)[number], readonly [string, string]>;
 
 const DEPENDENCY_FIELDS = ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"] as const;
@@ -94,7 +247,6 @@ export type AdmissionOptions = {
   readonly registryReceiptPath?: string;
   readonly providerReceiptPath?: string;
   readonly tarballDir?: string;
-  readonly nodePaths: readonly string[];
   readonly bunPath: string;
 };
 
@@ -180,6 +332,8 @@ export type RuntimeProbeReceipt = {
     readonly status: "rejected";
     readonly error: { readonly name: string; readonly code?: string; readonly message: string };
   }>;
+  readonly removedImports?: RuntimeProbeReceipt["privateDeepPaths"];
+  readonly removedCoreExports?: Record<string, string>;
   readonly privateDeepPaths?: ReadonlyArray<{
     readonly specifier: string;
     readonly admitted: false;
@@ -205,10 +359,10 @@ function usage(): string {
     "Usage:",
     "  bun scripts/check-earendil-package-admission.ts \\",
     "    --consumer-root <installed-consumer> --version <exact-version> \\",
-    "    --git-head <exact-40-char-sha> --node <node-path> [--node <node-path> ...] \\",
+    "    --git-head <exact-40-char-sha> \\",
     "    --bun <bun-path> [--registry-receipt <json>] [--provider-receipt <json>] [--tarball-dir <dir>]",
     "",
-    "The check is read-only and offline. --git-head is a caller-supplied metadata receipt;",
+    "The check is Bun-only, read-only and offline. --git-head is a caller-supplied metadata receipt;",
     "packed package.json files are checked when they contain gitHead, but npm commonly omits it.",
     "--registry-receipt and --provider-receipt are required for versions >=0.99.0 and optional for older history.",
   ].join("\n");
@@ -235,13 +389,12 @@ export function parseAdmissionArgs(args: readonly string[]): AdmissionOptions | 
   let providerReceiptPath: string | undefined;
   let tarballDir: string | undefined;
   let bunPath: string | undefined;
-  const nodePaths: string[] = [];
 
   for (let index = 0; index < args.length; index++) {
     const argument = args[index]!;
     if (argument === "--help" || argument === "-h") return { help: true };
     const name = argument.includes("=") ? argument.slice(0, argument.indexOf("=")) : argument;
-    if (!["--consumer-root", "--version", "--git-head", "--registry-receipt", "--provider-receipt", "--tarball-dir", "--node", "--bun"].includes(name)) {
+    if (!["--consumer-root", "--version", "--git-head", "--registry-receipt", "--provider-receipt", "--tarball-dir", "--bun"].includes(name)) {
       throw new Error(`unknown argument: ${argument}`);
     }
     const option = takeOptionValue(args, index, name);
@@ -264,8 +417,6 @@ export function parseAdmissionArgs(args: readonly string[]): AdmissionOptions | 
     } else if (name === "--tarball-dir") {
       if (tarballDir !== undefined) throw new Error("--tarball-dir may only be supplied once");
       tarballDir = resolve(option.value);
-    } else if (name === "--node") {
-      nodePaths.push(option.value);
     } else {
       if (bunPath !== undefined) throw new Error("--bun may only be supplied once");
       bunPath = option.value;
@@ -277,7 +428,6 @@ export function parseAdmissionArgs(args: readonly string[]): AdmissionOptions | 
   if (!EXACT_VERSION_RE.test(version)) throw new Error(`--version must be an exact semantic version, received: ${version}`);
   if (!gitHead) throw new Error("--git-head is required");
   if (!EXACT_GIT_HEAD_RE.test(gitHead)) throw new Error("--git-head must be an exact lowercase 40-character commit SHA");
-  if (nodePaths.length === 0) throw new Error("at least one --node path is required");
   if (!bunPath) throw new Error("--bun is required");
   if (modernContractRequired(version) && !registryReceiptPath) {
     throw new Error(`--registry-receipt is required for versions >=${MODERN_CONTRACT_VERSION}`);
@@ -294,7 +444,7 @@ export function parseAdmissionArgs(args: readonly string[]): AdmissionOptions | 
     ...(registryReceiptPath === undefined ? {} : { registryReceiptPath }),
     ...(providerReceiptPath === undefined ? {} : { providerReceiptPath }),
     ...(tarballDir === undefined ? {} : { tarballDir }),
-    nodePaths, bunPath,
+    bunPath,
   };
 }
 
@@ -323,6 +473,10 @@ function modernContractRequired(version: string): boolean {
   return versionAtLeast(version, MODERN_CONTRACT_VERSION);
 }
 
+function isCurrentLoopVersion(version: string): boolean {
+  return version === EXACT_100_VERSION || version === EXACT_101_VERSION || version === EXACT_102_VERSION || version === EXACT_103_VERSION || version === EXACT_104_VERSION;
+}
+
 function packagesForVersion(version: string): readonly string[] {
   return modernContractRequired(version) ? FAMILY_PACKAGES : LEGACY_FAMILY_PACKAGES;
 }
@@ -335,6 +489,11 @@ export function validateProviderAuthReceipt(pathInput: string, version: string, 
   const path = realpathSync(resolve(pathInput));
   const bytes=readFileSync(path);
   if(version===EXACT_0991_VERSION&&createHash("sha256").update(bytes).digest("hex")!==EXACT_0991_PROVIDER_RECEIPT_SHA256) throw new Error("provider auth receipt hash differs from exact 0.99.1 receipt");
+  if(version===EXACT_100_VERSION&&createHash("sha256").update(bytes).digest("hex")!==EXACT_100_PROVIDER_RECEIPT_SHA256) throw new Error("provider auth receipt hash differs from exact 1.0.0 receipt");
+  if(version===EXACT_101_VERSION&&createHash("sha256").update(bytes).digest("hex")!==EXACT_101_PROVIDER_RECEIPT_SHA256) throw new Error("provider auth receipt hash differs from exact 1.0.1 receipt");
+  if(version===EXACT_102_VERSION&&createHash("sha256").update(bytes).digest("hex")!==EXACT_102_PROVIDER_RECEIPT_SHA256) throw new Error("provider auth receipt hash differs from exact 1.0.2 receipt");
+  if(version===EXACT_103_VERSION&&createHash("sha256").update(bytes).digest("hex")!==EXACT_103_PROVIDER_RECEIPT_SHA256) throw new Error("provider auth receipt hash differs from exact 1.0.3 receipt");
+  if(version===EXACT_104_VERSION&&createHash("sha256").update(bytes).digest("hex")!==EXACT_104_PROVIDER_RECEIPT_SHA256) throw new Error("provider auth receipt hash differs from exact 1.0.4 receipt");
   const parsed = readJsonObject(path, "provider auth receipt");
   if (parsed.version !== version || parsed.gitHead !== gitHead || !Array.isArray(parsed.providers)) throw new Error("provider auth receipt version/gitHead/providers mismatch");
   const providers = parsed.providers.map((raw, index) => {
@@ -347,7 +506,7 @@ export function validateProviderAuthReceipt(pathInput: string, version: string, 
   });
   const ids=providers.map(provider=>provider.id);
   if (providers.length !== 42 || new Set(ids).size !== providers.length || JSON.stringify(ids) !== JSON.stringify([...ids].sort())) throw new Error("provider auth receipt must contain 42 unique providers sorted by id");
-  for (const required of ["openai","openai-codex","github-copilot","anthropic","kimi-coding","openrouter","radius","amazon-bedrock","google","google-vertex","azure-openai-responses"]) {
+  for (const required of ["openai","openai-codex","github-copilot","anthropic","kimi-coding","openrouter","radius","amazon-bedrock","google","google-vertex",version === EXACT_103_VERSION || version === EXACT_104_VERSION ? "azure" : "azure-openai-responses"]) {
     if (!ids.includes(required)) throw new Error(`provider auth receipt missing ${required}`);
   }
   return { path, version, gitHead, providers };
@@ -362,8 +521,17 @@ export function validateRegistryReceipt(pathInput: string, version: string, gitH
     throw new Error(`cannot read registry receipt at ${path}: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
   }
   if (!Array.isArray(parsed)) throw new Error(`registry receipt must contain an array: ${path}`);
-  if (version !== EXACT_0991_VERSION) throw new Error(`modern package admission supports exact ${EXACT_0991_VERSION}, received ${version}`);
-  if (gitHead !== EXACT_0991_GIT_HEAD) throw new Error(`${EXACT_0991_VERSION} registry receipt requires gitHead ${EXACT_0991_GIT_HEAD}`);
+  const target = version === EXACT_0991_VERSION
+    ? { gitHead: EXACT_0991_GIT_HEAD, packages: EXACT_0991_REGISTRY }
+    : version === EXACT_100_VERSION
+      ? { gitHead: EXACT_100_GIT_HEAD, packages: EXACT_100_REGISTRY }
+      : version === EXACT_101_VERSION
+        ? { gitHead: EXACT_101_GIT_HEAD, packages: EXACT_101_REGISTRY }
+        : version === EXACT_102_VERSION ? { gitHead: EXACT_102_GIT_HEAD, packages: EXACT_102_REGISTRY }
+          : version === EXACT_103_VERSION ? { gitHead: EXACT_103_GIT_HEAD, packages: EXACT_103_REGISTRY }
+          : version === EXACT_104_VERSION ? { gitHead: EXACT_104_GIT_HEAD, packages: EXACT_104_REGISTRY } : null;
+  if (!target) throw new Error(`modern package admission supports exact ${EXACT_0991_VERSION}, ${EXACT_100_VERSION}, ${EXACT_101_VERSION}, ${EXACT_102_VERSION}, ${EXACT_103_VERSION}, or ${EXACT_104_VERSION}, received ${version}`);
+  if (gitHead !== target.gitHead) throw new Error(`${version} registry receipt requires gitHead ${target.gitHead}`);
 
   const seen = new Set<string>();
   const packages = parsed.map((value, index) => {
@@ -380,7 +548,7 @@ export function validateRegistryReceipt(pathInput: string, version: string, gitH
     const dist = entry.dist;
     if (!dist || typeof dist !== "object" || Array.isArray(dist)) throw new Error(`registry receipt ${name} dist must be an object`);
     const distribution = dist as JsonObject;
-    const expected = EXACT_0991_REGISTRY[name as keyof typeof EXACT_0991_REGISTRY];
+    const expected = target.packages[name as keyof typeof target.packages];
     if (distribution.shasum !== expected[0]) throw new Error(`registry receipt ${name} shasum mismatch`);
     if (distribution.integrity !== expected[1]) throw new Error(`registry receipt ${name} integrity mismatch`);
     const tarball = expectedTarball(name, version);
@@ -401,9 +569,12 @@ export function validateRegistryReceipt(pathInput: string, version: string, gitH
 }
 
 function fileDigest(path: string): string { return createHash("sha256").update(readFileSync(path)).digest("hex"); }
-function treeDigest(rootInput: string): string {
+export function packagePayloadDigest(rootInput: string): string {
   const root=realpathSync(rootInput), records:string[]=[];
   const walk=(directory:string)=>{for(const entry of readdirSync(directory,{withFileTypes:true}).sort((a,b)=>a.name.localeCompare(b.name))){
+    // Dependency placement is installer-owned; inspectInstalledTree validates
+    // its identities/versions separately. Deeper package-owned directories count.
+    if(directory===root&&entry.name==="node_modules")continue;
     const absolute=join(directory,entry.name),relative=absolute.slice(root.length+1).split(sep).join("/");
     if(entry.isDirectory())walk(absolute);
     else if(entry.isFile())records.push(`f\t${relative}\t${fileDigest(absolute)}`);
@@ -422,7 +593,7 @@ function verifyPublishedTarballs(consumerRoot:string,tarballDirInput:string,regi
     const result=Bun.spawnSync(["tar","-xzf",tarball,"-C",unpack],{stdout:"pipe",stderr:"pipe",timeout:30_000});
     if(result.exitCode!==0)throw new Error(`cannot extract ${entry.name}: ${result.stderr.toString()}`);
     const published=join(unpack,"package"),installed=packageDirectory(consumerRoot,entry.name);
-    const publishedDigest=treeDigest(published),installedTreeSha256=treeDigest(installed);
+    const publishedDigest=packagePayloadDigest(published),installedTreeSha256=packagePayloadDigest(installed);
     if(publishedDigest!==installedTreeSha256)throw new Error(`installed package tree differs from published tarball: ${entry.name}`);
     return {name:entry.name,tarball,shasum,integrity,installedTreeSha256};
   });}finally{rmSync(scratch,{recursive:true,force:true});}
@@ -493,6 +664,9 @@ function inspectInstalledTree(consumerRoot: string, version: string, gitHead: st
         if (existsSync(path)) {
           const metadata = readJsonObject(path, "installed dependency");
           if (metadata.name === SERVER_PACKAGE) throw new Error(`${SERVER_PACKAGE} must not be installed: ${packageDir}`);
+          if (isCurrentLoopVersion(version) && metadata.name === "@earendil-works/pi-durable") {
+            throw new Error("pi-durable is outside current-loop admission and must not be installed");
+          }
           if (typeof metadata.name === "string" && FAMILY_PACKAGES.some((name) => name === metadata.name)) {
             if (metadata.version !== version) throw new Error(`nested family version drift: ${metadata.name} at ${packageDir}`);
             if (metadata.gitHead !== undefined && metadata.gitHead !== gitHead) throw new Error(`nested family gitHead drift: ${metadata.name}`);
@@ -643,10 +817,9 @@ function resolveExecutable(path: string, label: string): string {
   return absolutePath;
 }
 
-function writeProbePreload(kind:"node"|"bun",scratch:string):string{
-  const path=join(scratch,kind==="node"?"permission-preload.mjs":"guard-preload.ts");
-  const program=kind==="node"?`globalThis.__ADMISSION_ENFORCEMENT__={mode:"node-permission",networkDenied:!process.permission.has("net"),childProcessDenied:!process.permission.has("child"),networkAttempts:null,childProcessAttempts:null};\n`
-    :`import {mock} from "bun:test";const state={mode:"bun-preload",networkDenied:true,childProcessDenied:true,networkAttempts:0,childProcessAttempts:0};globalThis.__ADMISSION_ENFORCEMENT__=state;const net=()=>{state.networkAttempts++;throw Error("network disabled by admission preload")};const child=()=>{state.childProcessAttempts++;throw Error("child process disabled by admission preload")};globalThis.fetch=net;for(const name of ["node:http","node:https","node:net","node:tls","node:dgram"]){const m=await import(name);mock.module(name,()=>({...m,default:{...m.default,request:net,get:net,connect:net,createConnection:net,createSocket:net},request:net,get:net,connect:net,createConnection:net,createSocket:net}));}const cp=await import("node:child_process");mock.module("node:child_process",()=>({...cp,default:{...cp.default,spawn:child,spawnSync:child,exec:child,execSync:child,execFile:child,execFileSync:child,fork:child},spawn:child,spawnSync:child,exec:child,execSync:child,execFile:child,execFileSync:child,fork:child}));\n`;
+function writeProbePreload(scratch:string):string{
+  const path=join(scratch,"guard-preload.ts");
+  const program=`import {mock} from "bun:test";const state={mode:"bun-preload",networkDenied:true,childProcessDenied:true,networkAttempts:0,childProcessAttempts:0};globalThis.__ADMISSION_ENFORCEMENT__=state;const net=()=>{state.networkAttempts++;throw Error("network disabled by admission preload")};const child=()=>{state.childProcessAttempts++;throw Error("child process disabled by admission preload")};globalThis.fetch=net;for(const name of ["node:http","node:https","node:net","node:tls","node:dgram"]){const m=await import(name);mock.module(name,()=>({...m,default:{...m.default,request:net,get:net,connect:net,createConnection:net,createSocket:net},request:net,get:net,connect:net,createConnection:net,createSocket:net}));}const cp=await import("node:child_process");mock.module("node:child_process",()=>({...cp,default:{...cp.default,spawn:child,spawnSync:child,exec:child,execSync:child,execFile:child,execFileSync:child,fork:child},spawn:child,spawnSync:child,exec:child,execSync:child,execFile:child,execFileSync:child,fork:child}));Bun.spawn=child;Bun.spawnSync=child;Bun.connect=net;Bun.listen=net;Bun.serve=net;Bun.udpSocket=net;globalThis.WebSocket=class{constructor(){net();}};\n`;
   writeFileSync(path,program);return path;
 }
 
@@ -748,6 +921,20 @@ if (${JSON.stringify(modern)}) {
     }
   }
 }
+if (${JSON.stringify(isCurrentLoopVersion(version))}) {
+  const core = await import("@earendil-works/pi-agent-core");
+  if (typeof core.Agent !== "function") throw new Error("current-loop Agent export missing");
+  receipt.removedCoreExports = Object.fromEntries(${JSON.stringify(REMOVED_100_EXPORTS)}.map(name => [name, typeof core[name]]));
+  receipt.removedImports = [];
+  for (const specifier of ${JSON.stringify(REMOVED_100_IMPORTS)}) {
+    try {
+      import.meta.resolve(specifier);
+      receipt.removedImports.push({ specifier, status: "resolved" });
+    } catch (error) {
+      receipt.removedImports.push({ specifier, status: "rejected", phase: "resolution", error: serializeError(error) });
+    }
+  }
+}
 console.log(${JSON.stringify(PROBE_MARKER)} + JSON.stringify(receipt));
 `;
 }
@@ -773,6 +960,8 @@ export type RawProbeReceipt = {
   providerAuth?: Array<{ id?: string; name?: string; apiKey?: boolean; oauth?: boolean }>;
   sourceOnlyDeepPaths?: RawRejectedPath[];
   privateDeepPaths?: RawRejectedPath[];
+  removedImports?: RawRejectedPath[];
+  removedCoreExports?: Record<string, string>;
 };
 
 export function assertProbeRuntime(kind: "node" | "bun", runtime: RuntimeProbeReceipt["actualRuntime"]): void {
@@ -831,9 +1020,9 @@ function assertFunctionExports(kind: "node" | "bun", label: string, values: Reco
 }
 
 function executeRuntimeProbe(kind:"node"|"bun",executableInput:string,consumerRoot:string,scratch:string,version:string):RawProbeReceipt {
-  const executable=resolveExecutable(executableInput,kind);mkdirSync(scratch,{recursive:true});const preload=writeProbePreload(kind,scratch);
-  const args=kind==="node"?[executable,"--permission",`--allow-fs-read=${consumerRoot}`,`--allow-fs-read=${scratch}`,`--allow-fs-write=${scratch}`,"--import",preload,"--input-type=module","--eval",probeProgram(version)]
-    :[executable,"--preload",preload,"--eval",probeProgram(version)];
+  if (kind !== "bun") throw new Error("Package admission execution is Bun-only; Node receipts are historical");
+  const executable=resolveExecutable(executableInput,kind);mkdirSync(scratch,{recursive:true});const preload=writeProbePreload(scratch);
+  const args=[executable,"--preload",preload,"--eval",probeProgram(version)];
   const result=Bun.spawnSync(args,{cwd:consumerRoot,env:createProbeEnvironment(scratch,executable),stdout:"pipe",stderr:"pipe",timeout:30_000});
   const stdout=result.stdout.toString(),stderr=result.stderr.toString();
   if(result.exitCode!==0)throw new Error(`${kind} import probe failed with exit ${result.exitCode}: ${stderr||stdout}`);
@@ -844,20 +1033,17 @@ function executeRuntimeProbe(kind:"node"|"bun",executableInput:string,consumerRo
 export function runRawRuntimeProbeForTests(kind:"node"|"bun",executable:string,consumerRoot:string,version:string):RawProbeReceipt {
   const scratch=mkdtempSync(join(tmpdir(),"earendil-raw-probe-"));try{return executeRuntimeProbe(kind,executable,realpathSync(consumerRoot),scratch,version);}finally{rmSync(scratch,{recursive:true,force:true});}
 }
-function runRuntimeProbe(kind: "node" | "bun", executableInput: string, consumerRoot: string, scratch: string, version: string, providerReceipt?: ProviderAuthReceipt): RuntimeProbeReceipt {
+function runRuntimeProbe(kind: "bun", executableInput: string, consumerRoot: string, scratch: string, version: string, providerReceipt?: ProviderAuthReceipt): RuntimeProbeReceipt {
   const executable = resolveExecutable(executableInput, kind);
   const raw = executeRuntimeProbe(kind,executable,consumerRoot,scratch,version);
   if (raw.rootImportError) throw new Error(`${kind} could not import ${CODING_AGENT_PACKAGE}: ${raw.rootImportError.message ?? raw.rootImportError.name ?? "unknown error"}`);
   if (!raw.actualRuntime || !raw.rootExports) throw new Error(`${kind} import probe returned an incomplete receipt`);
   const enforcement=raw.sideEffectEnforcement;
-  if(enforcement?.mode!==(kind==="node"?"node-permission":"bun-preload")||enforcement.networkDenied!==true||enforcement.childProcessDenied!==true
-    ||(kind==="node"?(enforcement.networkAttempts!==null||enforcement.childProcessAttempts!==null):(!Number.isSafeInteger(enforcement.networkAttempts)||!Number.isSafeInteger(enforcement.childProcessAttempts)))) throw new Error(`${kind} admission side-effect enforcement is incomplete`);
+  if(enforcement?.mode!=="bun-preload"||enforcement.networkDenied!==true||enforcement.childProcessDenied!==true
+    ||enforcement.networkAttempts!==0||enforcement.childProcessAttempts!==0) throw new Error(`${kind} admission requires complete enforcement and zero network/child-process attempts`);
   assertProbeRuntime(kind, raw.actualRuntime);
 
   const modern = modernContractRequired(version);
-  if (modern && kind === "node" && !versionAtLeast(raw.actualRuntime.node!, "22.19.0")) {
-    throw new Error(`Node ${raw.actualRuntime.node} does not satisfy ${NODE_ENGINE}`);
-  }
   const codingExports = modern ? MODERN_CODING_AGENT_EXPORTS : MODERN_CODING_AGENT_EXPORTS.slice(0, 3);
   assertFunctionExports(kind, CODING_AGENT_PACKAGE, raw.rootExports, codingExports);
   const sourceOnlyDeepPaths = checkedRejectedPaths(
@@ -879,6 +1065,11 @@ function runRuntimeProbe(kind: "node" | "bun", executableInput: string, consumer
     throw new Error(`${kind} ${AI_PACKAGE}/bun-oauth registerBunOAuthFlows must import and complete without provider calls`);
   }
   const privateDeepPaths = checkedRejectedPaths(kind, raw.privateDeepPaths, MODERN_PRIVATE_IMPORTS, "private");
+  const removedImports = isCurrentLoopVersion(version)
+    ? checkedRejectedPaths(kind, raw.removedImports, REMOVED_100_IMPORTS, "private") : undefined;
+  if (isCurrentLoopVersion(version) && REMOVED_100_EXPORTS.some(name => raw.removedCoreExports?.[name] !== "undefined")) {
+    throw new Error(`${version} removed core exports differ from exact contract`);
+  }
   if (!providerReceipt || JSON.stringify(raw.providerAuth) !== JSON.stringify(providerReceipt.providers)) throw new Error(`${kind} provider auth inventory differs from exact receipt`);
   return {
     requestedRuntime: kind,
@@ -892,6 +1083,7 @@ function runRuntimeProbe(kind: "node" | "bun", executableInput: string, consumer
     providerAuth: providerReceipt.providers,
     sourceOnlyDeepPaths,
     privateDeepPaths,
+    ...(removedImports ? { removedImports, removedCoreExports: raw.removedCoreExports } : {}),
   };
 }
 
@@ -899,12 +1091,10 @@ export function runEarendilPackageAdmission(options: AdmissionOptions): Earendil
   if (modernContractRequired(options.version) && !options.tarballDir) throw new Error(`tarball directory is required for versions >=${MODERN_CONTRACT_VERSION}`);
   if (!EXACT_VERSION_RE.test(options.version)) throw new Error(`version must be exact: ${options.version}`);
   if (!EXACT_GIT_HEAD_RE.test(options.gitHead)) throw new Error("gitHead must be an exact lowercase 40-character commit SHA");
-  if (options.nodePaths.length === 0) throw new Error("at least one Node runtime is required");
   const installed = inspectInstalledConsumer(options);
   const scratch = mkdtempSync(join(tmpdir(), "earendil-package-admission-"));
   try {
     const runtimes = [
-      ...options.nodePaths.map((nodePath, index) => runRuntimeProbe("node", nodePath, installed.consumerRoot, join(scratch, `node-${index}`), options.version, installed.providerAuthReceipt)),
       runRuntimeProbe("bun", options.bunPath, installed.consumerRoot, join(scratch, "bun"), options.version, installed.providerAuthReceipt),
     ];
     return {

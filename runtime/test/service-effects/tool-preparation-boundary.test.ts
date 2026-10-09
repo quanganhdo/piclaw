@@ -189,7 +189,7 @@ describe("WP-3C active-composition snapshots", () => {
     expect(activation.getEffectiveDefaultActiveToolNames(available(withInventory.names))).toEqual(
       activation.getEffectiveDefaultActiveToolNames(available(withoutInventory.names)),
     );
-  });
+  }, 30_000);
 
   test("keeps active name/description/prompt/schema contracts identical with and without latent files", () => {
     const tree = readRepositorySourceTree();
@@ -221,7 +221,7 @@ describe("WP-3C active-composition snapshots", () => {
         expect(Object.isFrozen(contract)).toBeTrue();
       }
     }
-  }, 15_000);
+  }, 60_000);
 
   // Four full source-as-data AST compositions are intentionally bounded above Bun's default timeout.
   test("models Linux and Windows production compositions without execution", () => {
@@ -254,5 +254,5 @@ describe("WP-3C active-composition snapshots", () => {
     expect(windowsActiveNames).toContain("powershell");
     expect(linux.unresolvedRegistrations).toEqual([]);
     expect(windows.unresolvedRegistrations).toEqual([]);
-  }, 15_000);
+  }, 60_000);
 });

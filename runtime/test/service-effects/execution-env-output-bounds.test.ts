@@ -1,11 +1,8 @@
 import "../helpers.js";
 import { expect, test } from "bun:test";
-import { Result, truncateTail, type ShellOutputMetadata, type ShellOutputUpdate } from "@earendil-works/pi-agent-core";
-import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/harness/env/nodejs";
-import { createTempWorkspace } from "../helpers.js";
-import { BACKGROUND_CONTEXT } from "@earendil-works/pi-agent-core/harness/context";
+import { Result, truncateTail, type ShellOutputMetadata, type ShellOutputUpdate } from "../../src/service-effects/contracts/execution-env.js";
+import { BACKGROUND_CONTEXT } from "../../src/service-effects/contracts/execution-env.js";
 import { PiclawExecutionEnv } from "../../src/service-effects/current-piclaw/execution-env-adapter.js";
-import { withLocalTextLineReader } from "../../src/service-effects/current-piclaw/text-line-reader-compat.js";
 import { FakeExecutionEnv } from "../../src/service-effects/testing/fakes/fake-execution-env.js";
 
 const ctx = BACKGROUND_CONTEXT;
@@ -120,19 +117,4 @@ test("cleanup publishes its shared promise before a delegate can re-enter", asyn
   expect(env.cleanup(ctx)).toBe(first);
 });
 
-test("real upstream head capture accepts both byte overflow and line-priority metadata", async () => {
-  const workspace = createTempWorkspace("earendil-head-capture-");
-  const raw = new NodeExecutionEnv({ cwd: workspace.base });
-  const env = new PiclawExecutionEnv(withLocalTextLineReader(raw), () => ({ PATH: "/usr/bin:/bin" }));
-  const output: ShellOutputUpdate[] = [];
-  try {
-    const result = await env.exec("printf '12345678901234567890\\nsecond\\nthird\\n'", {
-      capture: { limits: { maxBytes: 8, maxLines: 1, retain: "head" } },
-      onUpdate: (update) => { output.push(update); },
-    }, ctx);
-    expect(result.ok).toBe(true);
-    if (!result.ok) throw result.error;
-    expect(result.value.truncation).toMatchObject({ truncated: true, truncatedBy: "lines", firstLineExceedsLimit: true, outputBytes: 0, outputLines: 0 });
-    expect(output.length).toBeGreaterThan(0);
-  } finally { await env.cleanup(ctx); workspace.cleanup(); }
-});
+// The exact 0.99.1 upstream head-capture/spill regression runs in the historical consumer.

@@ -3,7 +3,7 @@ import {
   Result,
   type ExecutionEnv,
   type Result as ResultValue,
-} from "@earendil-works/pi-agent-core";
+} from "../contracts/execution-env.js";
 
 import type {
   ExecutionContextError,

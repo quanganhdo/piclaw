@@ -150,7 +150,7 @@ export class WebChannelEndpointFacadeService {
   handleAgentStatus(req: Request): Response | Promise<Response> {
     if (new URL(req.url).searchParams.get("ui") === "1") {
       return handleAgentUiSnapshotRequest(req, this.options.endpointContexts.agentStatus(), {
-        getSystemMetrics: async () => this.handleSystemMetrics().json(),
+        getSystemMetrics: async () => this.handleSystemMetrics(false).json(),
         getAgentName: () => this.options.getIdentitySnapshot().assistantName,
         getProjectRepository: this.options.getProjectRepository,
       });
@@ -182,11 +182,11 @@ export class WebChannelEndpointFacadeService {
     });
   }
 
-  handleSystemMetrics(): Response {
+  handleSystemMetrics(collectGpu = true): Response {
     return handleSystemMetricsRequest({
       json: (payload, status = 200) => this.options.json(payload, status),
       getRuntimeMemorySnapshot: () => this.options.agentPool.getMemoryInstrumentationSnapshot(),
-    });
+    }, undefined, collectGpu ? undefined : null);
   }
 
   handleAgentActiveChats(): Response {

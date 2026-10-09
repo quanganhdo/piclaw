@@ -100,7 +100,9 @@ export interface TurnOutput {
   cause?: AgentTurnCause;
   /** The completed assistant message committed immediately before tool dispatch. */
   followedByToolUse?: boolean;
-  /** Positive evidence of a successful terminal assistant response, not merely a persisted checkpoint. */
+  /** Provider text phase, separate from whether this response ended the run. */
+  textPhase?: "commentary" | "final_answer" | null;
+  /** Completed successful assistant response; the enclosing run can still continue. */
   terminal?: boolean;
 }
 

@@ -78,16 +78,16 @@
       "semanticReaderOccurrences": 0
     },
     "tooling": {
-      "referencedNames": 87,
-      "directReaderNames": 42,
-      "directReaderOccurrences": 69,
+      "referencedNames": 88,
+      "directReaderNames": 43,
+      "directReaderOccurrences": 71,
       "helperReaderNames": 0,
       "helperReaderOccurrences": 0,
-      "semanticReaderNames": 42,
-      "semanticReaderOccurrences": 69
+      "semanticReaderNames": 43,
+      "semanticReaderOccurrences": 71
     },
     "docsDeploy": {
-      "referencedNames": 145,
+      "referencedNames": 146,
       "directReaderNames": 16,
       "directReaderOccurrences": 32,
       "helperReaderNames": 0,
@@ -1268,7 +1268,17 @@
             "docs/configuration.md",
             "docs/design/local-note-retrieval-lifecycle-tests.md",
             "docs/development.md",
+            "docs/development/auth-contention.md",
+            "docs/development/auth-legacy-repair.md",
+            "docs/development/db-startup-performance.md",
+            "docs/development/mcp-owner-lifecycle.md",
+            "docs/development/mcp-settings-api.md",
+            "docs/development/receipts/pi-103-core-addon-peers.json",
+            "docs/development/receipts/pi-103-deeper-qualification.json",
+            "docs/development/receipts/pi-103-soak-agent-qualification.json",
             "docs/development/testing-and-linting-flow-presentation-2026-04-18.html",
+            "docs/development/tool-output-retention-performance.md",
+            "docs/development/web-session-query-performance.md",
             "package.json"
           ],
           "readerFiles": []
@@ -1794,25 +1804,30 @@
             "docs/design/earendil-agent-harness-integration-adr/evidence/earendil-0991-provider-browser-matrix.md",
             "docs/design/earendil-agent-harness-integration-adr/evidence/earendil-0991-radius-auth.md",
             "docs/design/earendil-agent-harness-integration-adr/evidence/earendil-0991-xai-meta-device.md",
+            "docs/design/earendil-agent-harness-integration-adr/evidence/earendil-100-anthropic-private-ui.md",
+            "docs/design/earendil-agent-harness-integration-adr/evidence/earendil-100-packaged-cli-auth.md",
+            "docs/design/earendil-agent-harness-integration-adr/evidence/earendil-100-provider-browser.md",
             "docs/development.md"
           ],
           "readerFiles": []
         },
         "tooling": {
           "referenced": true,
-          "directReaders": 2,
+          "directReaders": 3,
           "helperReaders": 0,
-          "semanticReaders": 2,
+          "semanticReaders": 3,
           "files": [
             "runtime/scripts/playwright/vnc-harness-report.ts",
             "runtime/scripts/test-filesystem-isolation.ts",
             "runtime/scripts/test-target.ts",
             "runtime/scripts/test-vnc-disposable.sh",
-            "runtime/scripts/vnc-harness-standalone.ts"
+            "runtime/scripts/vnc-harness-standalone.ts",
+            "scripts/check-anthropic-private-ui-100.ts"
           ],
           "readerFiles": [
             "runtime/scripts/playwright/vnc-harness-report.ts",
-            "runtime/scripts/vnc-harness-standalone.ts"
+            "runtime/scripts/vnc-harness-standalone.ts",
+            "scripts/check-anthropic-private-ui-100.ts"
           ]
         }
       }
@@ -3960,6 +3975,33 @@
       }
     },
     {
+      "name": "PICLAW_RUN_ANTHROPIC_PRIVATE_UI_TESTS",
+      "scopes": {
+        "docsDeploy": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "docs/design/earendil-agent-harness-integration-adr/evidence/earendil-100-anthropic-private-ui.md"
+          ],
+          "readerFiles": []
+        },
+        "tooling": {
+          "referenced": true,
+          "directReaders": 1,
+          "helperReaders": 0,
+          "semanticReaders": 1,
+          "files": [
+            "scripts/check-anthropic-private-ui-100.ts"
+          ],
+          "readerFiles": [
+            "scripts/check-anthropic-private-ui-100.ts"
+          ]
+        }
+      }
+    },
+    {
       "name": "PICLAW_RUN_AUTH_ARTIFACT_TESTS",
       "scopes": {
         "docsDeploy": {
@@ -3983,7 +4025,8 @@
           "helperReaders": 0,
           "semanticReaders": 0,
           "files": [
-            "docs/design/earendil-agent-harness-integration-adr/evidence/earendil-0991-provider-browser-matrix.md"
+            "docs/design/earendil-agent-harness-integration-adr/evidence/earendil-0991-provider-browser-matrix.md",
+            "docs/design/earendil-agent-harness-integration-adr/evidence/earendil-100-provider-browser.md"
           ],
           "readerFiles": []
         }
@@ -3998,7 +4041,8 @@
           "helperReaders": 0,
           "semanticReaders": 0,
           "files": [
-            "docs/design/earendil-agent-harness-integration-adr/evidence/earendil-0991-packaged-cli-auth.md"
+            "docs/design/earendil-agent-harness-integration-adr/evidence/earendil-0991-packaged-cli-auth.md",
+            "docs/design/earendil-agent-harness-integration-adr/evidence/earendil-100-packaged-cli-auth.md"
           ],
           "readerFiles": []
         }

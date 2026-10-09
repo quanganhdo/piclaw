@@ -1,12 +1,8 @@
 import '../helpers.js';
 import { expect, test } from 'bun:test';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
-import { BACKGROUND_CONTEXT, Result } from '@earendil-works/pi-agent-core';
-import { withAbortSignal } from '@earendil-works/pi-agent-core/harness/context';
+import { BACKGROUND_CONTEXT, Result } from '../../src/service-effects/contracts/execution-env.js';
+import { withAbortSignal } from '../../src/service-effects/contracts/execution-env.js';
 import { PiclawExecutionEnv } from '../../src/service-effects/current-piclaw/execution-env-adapter.js';
-import { CurrentPiclawLocalExecutionEnvFactory } from '../../src/service-effects/current-piclaw/local-execution-env.js';
 import { CurrentPiclawSshExecutionEnvFactory } from '../../src/service-effects/current-piclaw/ssh-execution-env.js';
 import { FakeExecutionEnv } from '../../src/service-effects/testing/fakes/fake-execution-env.js';
 import { CurrentPiclawExecutionContextResolver } from '../../src/service-effects/current-piclaw/execution-context-resolver.js';
@@ -37,15 +33,7 @@ test('backend reader faults and malformed records normalize to FileError',async(
  fake.rejectAllFiles=true;const fault=await open.value.readLine(BACKGROUND_CONTEXT);expect(!fault.ok&&fault.error.code).toBe('unknown');fake.rejectAllFilesWithThrow=true;const thrown=await open.value.readLine(BACKGROUND_CONTEXT);expect(!thrown.ok&&thrown.error.code).toBe('unknown');await open.value.close(BACKGROUND_CONTEXT);await env.cleanup(BACKGROUND_CONTEXT);
  const missing=await env.openTextLineReader('missing',BACKGROUND_CONTEXT);expect(!missing.ok&&missing.error.code).toBe('aborted');
 });
-test('local Node 0.85 compatibility reads real file, while injected missing method fails closed',async()=>{
- const cwd=await mkdtemp(join(tmpdir(),'piclaw-line-reader-'));
- try{
-  await writeFile(join(cwd,'records.jsonl'),'a\nb\r\nlast');
-  const local=new CurrentPiclawLocalExecutionEnvFactory({cwd,prepareShellEnvironment:()=>({})}).createLocalEnv();expect(local.ok).toBe(true);if(local.ok){const open=await (local.value as any).openTextLineReader('records.jsonl',BACKGROUND_CONTEXT);expect(open.ok).toBe(true);if(open.ok){expect(await readAll(open.value)).toEqual([{text:'a',terminated:true},{text:'b\r',terminated:true},{text:'last',terminated:false}]);await open.value.close(BACKGROUND_CONTEXT);}await local.value.cleanup(BACKGROUND_CONTEXT);}
-  const injected=new CurrentPiclawLocalExecutionEnvFactory({cwd,prepareShellEnvironment:()=>({}),createNodeEnv:()=>{const fake=new FakeExecutionEnv(cwd);(fake as any).openTextLineReader=undefined;return fake;}});
-  const missing=await injected.createLocalEnv();expect(missing.ok).toBe(false);
- }finally{await rm(cwd,{recursive:true,force:true});}
-});
+// SDK local-reader factory coverage runs unchanged in the historical consumer.
 test('current and fake resolver inventories reject a missing or unstable reader before returning context',async()=>{
   const request={chatJid:'web:default',operationId:'op',expectedOperationVersion:1,requestedRoute:'local' as const};
   for(const Resolver of [CurrentPiclawExecutionContextResolver,FakeExecutionContextResolver]) {

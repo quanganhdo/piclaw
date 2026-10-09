@@ -1,4 +1,4 @@
-import type { Result } from "@earendil-works/pi-agent-core";
+import type { Result } from "./result.js";
 
 import type { EffectIdentity, PiclawEffectError } from "./common.js";
 import type { EnqueueOutboxRequest } from "./service-outbox-store.js";

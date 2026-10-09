@@ -1,6 +1,6 @@
 import type { AuthenticatedPrincipal } from "../../../core/access-types.js";
 import type { WebChannelLike } from "../core/web-channel-contracts.js";
-import { admitFamilyMessage, readFamilyMessageAdmission } from "../messaging/family-message-authority.js";
+import { admitFamilyHttpMessage, readFamilyMessageAdmission } from "../messaging/family-message-authority.js";
 import { ChatAccessDenied } from "../../../db/session-ownership.js";
 import { checkCsrfOrigin, rateLimitResponse } from "./security.js";
 import { isRateLimited } from "./rate-limit.js";
@@ -32,7 +32,7 @@ export async function handleFamilyMessageIngress(channel: WebChannelLike, req: R
     if (targets.length > 1 || (targets.length === 1 && !targets[0]?.trim())) throw new ChatAccessDenied();
     const mode = (body.mode ?? "send") as FamilyTurnAdmissionMode;
     const target = targets[0]?.trim();
-    const result = admitFamilyMessage(actor, { content: body.content, requestId: body.request_id, threadId: body.thread_id, chatJid: target, mode, mediaIds: body.media_ids });
+    const result = await admitFamilyHttpMessage(actor, { content: body.content, requestId: body.request_id, threadId: body.thread_id, chatJid: target, mode, mediaIds: body.media_ids }, req.signal);
     const chatJid = result.interaction.chat_jid!;
     if (result.created) {
       if (result.queue.state === "ready") channel.broadcastEvent("new_post", result.interaction);

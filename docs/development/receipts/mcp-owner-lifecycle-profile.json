@@ -1,0 +1,430 @@
+{
+  "recordedAt": "2026-10-03T14:32:13.681Z",
+  "scope": "Synthetic disabled-adapter reload and credential lease lifecycle; candidate measurements, not a before/after speedup claim",
+  "base": "05f46639ad7a53d8925034d8b76f994dbfced966",
+  "runtime": "Bun 1.4.2",
+  "host": "Smith Debian LXC",
+  "versions": {
+    "piCodingAgent": "1.0.0",
+    "piAi": "1.0.0",
+    "adapter": "2.31.0"
+  },
+  "workload": {
+    "repetitionsPerMode": 3,
+    "reloadsPerRun": 200,
+    "serverCount": 1,
+    "historyMessages": 1,
+    "credentialSource": "synthetic resolver",
+    "modelCalls": 0,
+    "fetchAttempts": 0,
+    "totalReloads": 1800,
+    "totalLeasesReleased": 1809
+  },
+  "measurementScope": {
+    "cpuProfile": "actual fixture child; includes module load and startup",
+    "counters": "workload only: rewrite config, prepare bridge and reload; no secret values recorded",
+    "timings": "reload call only; 1ms sleeps between iterations excluded",
+    "eventLoop": "1ms resolution, counts per run",
+    "database": "not exercised",
+    "network": "fetch/preconnect denied; no OS network namespace",
+    "realStdioChildCpu": "not measured",
+    "gc": "no dedicated heap/GC profile",
+    "baseline": "not run: this change corrects ownership, no speedup claimed"
+  },
+  "runs": [
+    {
+      "mode": "plain",
+      "run": 1,
+      "reloads": 200,
+      "leasesReleased": 201,
+      "reloadMs": {
+        "total": 97.66874600000051,
+        "median": 0.3833680000000186,
+        "min": 0.25427400000000944,
+        "max": 5.852337000000034
+      },
+      "cpuMs": 354.478,
+      "eventLoop": {
+        "resolutionMs": 1,
+        "count": 266,
+        "meanMs": 0.4093591203007519,
+        "maxMs": 5.494088
+      },
+      "finalRssBytes": 171900928,
+      "counters": null
+    },
+    {
+      "mode": "plain",
+      "run": 2,
+      "reloads": 200,
+      "leasesReleased": 201,
+      "reloadMs": {
+        "total": 125.68162300000085,
+        "median": 0.5855020000000195,
+        "min": 0.2561600000000226,
+        "max": 2.518105999999989
+      },
+      "cpuMs": 414.996,
+      "eventLoop": {
+        "resolutionMs": 1,
+        "count": 301,
+        "meanMs": 0.42713285714285715,
+        "maxMs": 6.710255
+      },
+      "finalRssBytes": 170172416,
+      "counters": null
+    },
+    {
+      "mode": "plain",
+      "run": 3,
+      "reloads": 200,
+      "leasesReleased": 201,
+      "reloadMs": {
+        "total": 105.31729900000096,
+        "median": 0.4449410000000853,
+        "min": 0.2522159999999758,
+        "max": 7.42091999999991
+      },
+      "cpuMs": 374.771,
+      "eventLoop": {
+        "resolutionMs": 1,
+        "count": 279,
+        "meanMs": 0.39405321146953404,
+        "maxMs": 7.245212
+      },
+      "finalRssBytes": 168644608,
+      "counters": null
+    },
+    {
+      "mode": "instrument",
+      "run": 1,
+      "reloads": 200,
+      "leasesReleased": 201,
+      "reloadMs": {
+        "total": 90.26173200000085,
+        "median": 0.3786000000000058,
+        "min": 0.25774300000000494,
+        "max": 2.5966269999998985
+      },
+      "cpuMs": 353.815,
+      "eventLoop": {
+        "resolutionMs": 1,
+        "count": 264,
+        "meanMs": 0.40636348484848483,
+        "maxMs": 5.150826
+      },
+      "finalRssBytes": 172142592,
+      "counters": {
+        "parse": {
+          "calls": 1400,
+          "bytes": 161270,
+          "ms": 1.8026400000019294
+        },
+        "stringify": {
+          "calls": 400,
+          "bytes": 199988,
+          "ms": 1.2981590000002825
+        },
+        "clone": {
+          "calls": 2000,
+          "ms": 8.864026999998373
+        }
+      }
+    },
+    {
+      "mode": "instrument",
+      "run": 2,
+      "reloads": 200,
+      "leasesReleased": 201,
+      "reloadMs": {
+        "total": 103.98422800000037,
+        "median": 0.3736659999999574,
+        "min": 0.2568979999999783,
+        "max": 5.355751000000055
+      },
+      "cpuMs": 369.883,
+      "eventLoop": {
+        "resolutionMs": 1,
+        "count": 272,
+        "meanMs": 0.4182505367647059,
+        "maxMs": 4.903947
+      },
+      "finalRssBytes": 168046592,
+      "counters": {
+        "parse": {
+          "calls": 1400,
+          "bytes": 161270,
+          "ms": 1.9833530000016708
+        },
+        "stringify": {
+          "calls": 400,
+          "bytes": 199988,
+          "ms": 1.2714530000010882
+        },
+        "clone": {
+          "calls": 2000,
+          "ms": 9.467625999998631
+        }
+      }
+    },
+    {
+      "mode": "instrument",
+      "run": 3,
+      "reloads": 200,
+      "leasesReleased": 201,
+      "reloadMs": {
+        "total": 123.57227799999885,
+        "median": 0.5395350000000008,
+        "min": 0.32201899999995476,
+        "max": 3.984629000000041
+      },
+      "cpuMs": 400.185,
+      "eventLoop": {
+        "resolutionMs": 1,
+        "count": 299,
+        "meanMs": 0.42356424080267563,
+        "maxMs": 5.110879
+      },
+      "finalRssBytes": 171683840,
+      "counters": {
+        "parse": {
+          "calls": 1400,
+          "bytes": 161270,
+          "ms": 2.60417999999936
+        },
+        "stringify": {
+          "calls": 400,
+          "bytes": 199988,
+          "ms": 1.4384510000005548
+        },
+        "clone": {
+          "calls": 2000,
+          "ms": 11.52512599999966
+        }
+      }
+    },
+    {
+      "mode": "cpu",
+      "run": 1,
+      "reloads": 200,
+      "leasesReleased": 201,
+      "reloadMs": {
+        "total": 111.7351000000001,
+        "median": 0.5030269999999746,
+        "min": 0.24772699999994074,
+        "max": 7.669575999999893
+      },
+      "cpuMs": 382.732,
+      "eventLoop": {
+        "resolutionMs": 1,
+        "count": 286,
+        "meanMs": 0.41470632167832167,
+        "maxMs": 6.998876
+      },
+      "finalRssBytes": 169127936,
+      "counters": null
+    },
+    {
+      "mode": "cpu",
+      "run": 2,
+      "reloads": 200,
+      "leasesReleased": 201,
+      "reloadMs": {
+        "total": 134.98036099999888,
+        "median": 0.5612810000000081,
+        "min": 0.25240999999982705,
+        "max": 3.84426899999994
+      },
+      "cpuMs": 420.271,
+      "eventLoop": {
+        "resolutionMs": 1,
+        "count": 292,
+        "meanMs": 0.5318605,
+        "maxMs": 6.479632
+      },
+      "finalRssBytes": 154673152,
+      "counters": null
+    },
+    {
+      "mode": "cpu",
+      "run": 3,
+      "reloads": 200,
+      "leasesReleased": 201,
+      "reloadMs": {
+        "total": 109.0757210000005,
+        "median": 0.3917020000000093,
+        "min": 0.24293999999997595,
+        "max": 14.501024999999913
+      },
+      "cpuMs": 366.781,
+      "eventLoop": {
+        "resolutionMs": 1,
+        "count": 273,
+        "meanMs": 0.4146145457875458,
+        "maxMs": 14.25598
+      },
+      "finalRssBytes": 171425792,
+      "counters": null
+    }
+  ],
+  "aggregateCpu": {
+    "samples": 1409,
+    "ranked": [
+      {
+        "name": "(anonymous)",
+        "file": "",
+        "selfSamples": 435,
+        "percent": 30.87
+      },
+      {
+        "name": "anonymous",
+        "file": "",
+        "selfSamples": 239,
+        "percent": 16.96
+      },
+      {
+        "name": "existsSync",
+        "file": "",
+        "selfSamples": 35,
+        "percent": 2.48
+      },
+      {
+        "name": "structuredClone",
+        "file": "",
+        "selfSamples": 24,
+        "percent": 1.7
+      },
+      {
+        "name": "writeFileSync",
+        "file": "",
+        "selfSamples": 22,
+        "percent": 1.56
+      },
+      {
+        "name": "readFileSync",
+        "file": "",
+        "selfSamples": 18,
+        "percent": 1.28
+      },
+      {
+        "name": "(anonymous)",
+        "file": "node_modules/zod/v4/classic/schemas.js",
+        "selfSamples": 15,
+        "percent": 1.06
+      },
+      {
+        "name": "(anonymous)",
+        "file": "node_modules/@modelcontextprotocol/client/dist/ajvProvider-97rDpkRx.mjs",
+        "selfSamples": 14,
+        "percent": 0.99
+      },
+      {
+        "name": "filter",
+        "file": "",
+        "selfSamples": 13,
+        "percent": 0.92
+      },
+      {
+        "name": "stripJsonComments",
+        "file": "node_modules/strip-json-comments/index.js",
+        "selfSamples": 13,
+        "percent": 0.92
+      },
+      {
+        "name": "map",
+        "file": "",
+        "selfSamples": 13,
+        "percent": 0.92
+      },
+      {
+        "name": "hydrateMcpKeychainCredentials",
+        "file": "runtime/src/secure/mcp-keychain.ts",
+        "selfSamples": 11,
+        "percent": 0.78
+      },
+      {
+        "name": "registerBuiltInApiProviders",
+        "file": "node_modules/@earendil-works/pi-ai/dist/compat.js",
+        "selfSamples": 8,
+        "percent": 0.57
+      },
+      {
+        "name": "(anonymous)",
+        "file": "node_modules/zod/v4/core/schemas.js",
+        "selfSamples": 7,
+        "percent": 0.5
+      },
+      {
+        "name": "prepare",
+        "file": "runtime/test/agent-pool/fixtures/mcp-bridge-reload.ts",
+        "selfSamples": 7,
+        "percent": 0.5
+      },
+      {
+        "name": "(anonymous)",
+        "file": "node_modules/@earendil-works/pi-coding-agent/dist/core/agent-session.js",
+        "selfSamples": 7,
+        "percent": 0.5
+      },
+      {
+        "name": "resolve",
+        "file": "",
+        "selfSamples": 7,
+        "percent": 0.5
+      },
+      {
+        "name": "indexOf",
+        "file": "",
+        "selfSamples": 7,
+        "percent": 0.5
+      },
+      {
+        "name": "performIteration",
+        "file": "",
+        "selfSamples": 7,
+        "percent": 0.5
+      },
+      {
+        "name": "RegExp",
+        "file": "",
+        "selfSamples": 6,
+        "percent": 0.43
+      },
+      {
+        "name": "set",
+        "file": "",
+        "selfSamples": 6,
+        "percent": 0.43
+      },
+      {
+        "name": "initializeMcp",
+        "file": "node_modules/pi-mcp-adapter/init.ts",
+        "selfSamples": 6,
+        "percent": 0.43
+      },
+      {
+        "name": "copyDataProperties",
+        "file": "",
+        "selfSamples": 6,
+        "percent": 0.43
+      },
+      {
+        "name": "(anonymous)",
+        "file": "runtime/test/agent-pool/fixtures/mcp-bridge-reload.ts",
+        "selfSamples": 6,
+        "percent": 0.43
+      },
+      {
+        "name": "Update",
+        "file": "node_modules/typebox/build/system/memory/update.mjs",
+        "selfSamples": 5,
+        "percent": 0.35
+      }
+    ]
+  },
+  "fingerprints": {
+    "runtime/src/agent-pool/mcp-bridge-owner.ts": "ff831775ed964931361559e60615f28eba3c71115ff0698826e539d561869c05",
+    "runtime/src/agent-pool/session.ts": "e2dbde2eaebee96c8c31ec3cf15486dcfbede339d9fec75b74ed015ec1f05868",
+    "runtime/test/agent-pool/fixtures/mcp-bridge-reload.ts": "763ea3108a66eb68f32fe51b3917b35355b1766d26399f7bdbac7e2c46fe8317"
+  }
+}

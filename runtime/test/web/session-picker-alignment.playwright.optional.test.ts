@@ -86,6 +86,14 @@ optionalBrowserTest("desktop session picker has stable geometry, one-line header
     expect(await page.locator('.compose-model-popup-actions button[title="Rename the current session"]').count()).toBe(1);
     const search = page.locator(".compose-session-search");
     expect(await search.evaluate(node => document.activeElement === node)).toBe(true);
+    await search.fill("session-08");
+    const pinnedGeometry = await page.getByRole("button", { name: "Unpin @session-08" }).locator("..").evaluate(row => {
+      const bounds = row.getBoundingClientRect();
+      const heading = [...document.querySelectorAll<HTMLElement>(".compose-session-section-heading")].find(node => node.textContent === "Pinned")!;
+      return { rowTop: bounds.top, headingBottom: heading.getBoundingClientRect().bottom, position: getComputedStyle(heading).position };
+    });
+    expect(pinnedGeometry.position).not.toBe("sticky");
+    expect(pinnedGeometry.rowTop).toBeGreaterThanOrEqual(pinnedGeometry.headingBottom - 1);
     await search.fill("session-09");
     await page.keyboard.press("Alt+Enter");
     expect(await page.locator("#session-picker-action").textContent()).toBe("none");

@@ -11,11 +11,14 @@ import { processChat as processAgentChat } from "../handlers/agent.js";
 import type { LinkPreviewChannel } from "../media/link-previews.js";
 import {
   storeWebMessage as persistWebMessage,
+  admitWebUserMessage,
   type StoreWebMessageOptions,
   type StoreWebMessageParams,
 } from "./message-store.js";
 import type { WebChannelLike } from "../core/web-channel-contracts.js";
 import { recordTimelineInteraction } from "../../../session-recordings/session-recordings.js";
+import { createLogger, debugSuppressedError } from '../../../utils/logger.js';
+const log = createLogger('web.message-processing-storage');
 
 export interface WebChannelStoreMessageOptions {
   contentBlocks?: unknown[];
@@ -101,6 +104,18 @@ export class WebMessageProcessingStorageService {
       },
     );
     recordTimelineInteraction(interaction);
+    return interaction;
+  }
+
+  async admitUserMessage(chatJid: string, content: string, mediaIds: number[], options: WebChannelStoreMessageOptions,
+    authorise: () => void, signal: AbortSignal, deferBeforeInsert?: () => boolean): Promise<InteractionRow | null> {
+    const interaction = await admitWebUserMessage(this.channel, {
+      chatJid, content, isBot: false, mediaIds,
+      agentId: this.options.defaultAgentId, agentName: this.options.getAssistantName(), userName: this.options.getUserName?.() ?? null,
+    }, options, authorise, signal, deferBeforeInsert);
+    if (!interaction) return null;
+    try { recordTimelineInteraction(interaction); }
+    catch (error) { debugSuppressedError(log, 'Optional recording failed after incoming message commit.', error, { operation: 'web_message_storage.record_after_commit', rowId: interaction.id }); }
     return interaction;
   }
 }

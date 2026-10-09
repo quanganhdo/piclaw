@@ -38,6 +38,9 @@ export interface InteractionData {
   content: string;
   /** Optional truncation metadata (present when content was clipped). */
   content_meta?: InteractionContentMeta;
+  /** Server-derived role. Untagged assistant rows are unknown, never disposable. */
+  agent_message_role?: "final" | "intermediate" | "unknown";
+  is_terminal_agent_reply?: boolean;
   /** ID of the pi-agent that produced this interaction (agent responses). */
   agent_id?: string;
   /** Web-channel thread id this interaction belongs to. */

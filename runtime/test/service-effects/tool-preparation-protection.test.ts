@@ -180,9 +180,9 @@ describe("WP-3C protected trace/projection oracle", () => {
     for (const toolName of ["read", "write", "edit", "bash"] as const) {
       const variants = nativeInventory.variantsByTool[toolName];
       expect(variants.map((variant) => variant.source)).toEqual([
-        `@earendil-works/pi-agent-core:${toolName}.js`, `@earendil-works/pi-coding-agent:${toolName}.js`,
+        `@earendil-works/pi-coding-agent:${toolName}.js`,
       ]);
-      expect(variants[0]!.fields).toEqual(variants[1]!.fields);
+      expect(variants[0]!.fields).toEqual(nativeInventory.fieldsByTool[toolName]);
       expect(variants.every((variant) => /^[a-f0-9]{64}$/.test(variant.fingerprint))).toBeTrue();
     }
 

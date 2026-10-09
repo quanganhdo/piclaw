@@ -1300,9 +1300,7 @@ body {
 }
 
 .model-picker__section-heading {
-  position: sticky;
-  top: 0;
-  z-index: 1;
+  position: relative;
   padding: 7px 10px 5px;
   background: color-mix(in srgb, var(--bg-secondary, #2a2a3c) 94%, transparent);
   backdrop-filter: blur(8px);
@@ -2459,6 +2457,12 @@ body {
   background: var(--tint-red-25);
 }
 
+.compose-latest-divider { position: relative; display: block; width: 100%; height: 24px; border: 0; padding: 0; background: transparent; color: var(--text-secondary); cursor: pointer; touch-action: manipulation; }
+.compose-latest-divider::before { content: ''; position: absolute; width: 36px; height: 4px; border-radius: 2px; background: var(--border-color); left: calc(50% - 18px); top: 10px; }
+.compose-latest-divider .compose-latest-chevron { display: none; position: absolute; left: calc(50% - 10px); width: 20px; top: 0; font-size: 20px; line-height: 20px; }
+.compose-latest-divider.away-from-latest .compose-latest-chevron { display: block; }
+.compose-latest-divider.has-new-messages { color: var(--accent-color); }
+.compose-latest-divider.has-new-messages::before { background: var(--accent-color); }
 .message-list__empty {
   color: var(--text-secondary, #71767b);
   font-size: 13px;

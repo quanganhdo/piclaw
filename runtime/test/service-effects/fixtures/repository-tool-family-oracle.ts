@@ -326,12 +326,8 @@ export function extractNativeToolParameterFields(): NativeToolSchemaInventory {
   const variantsByTool: Record<string, readonly Readonly<{ source: string; fields: readonly string[]; fingerprint: string }>[]> = Object.create(null);
   const unresolvedSchemas: Array<Readonly<{ file: string; registration: string }>> = [];
   for (const toolName of ["read", "write", "edit", "bash", "grep", "find", "ls"] as const) {
-    const variants = toolName === "grep" || toolName === "find" || toolName === "ls"
-      ? [["@earendil-works/pi-coding-agent", resolve(runtimeRoot, `../node_modules/@earendil-works/pi-coding-agent/dist/core/tools/${toolName}.js`)]] as const
-      : [
-          ["@earendil-works/pi-agent-core", resolve(runtimeRoot, `../node_modules/@earendil-works/pi-agent-core/dist/harness/tools/${toolName}.js`)],
-          ["@earendil-works/pi-coding-agent", resolve(runtimeRoot, `../node_modules/@earendil-works/pi-coding-agent/dist/core/tools/${toolName}.js`)],
-        ] as const;
+    // The removed Harness family is checked by the pinned historical consumer.
+    const variants = [["@earendil-works/pi-coding-agent", resolve(runtimeRoot, `../node_modules/@earendil-works/pi-coding-agent/dist/core/tools/${toolName}.js`)]] as const;
     const snapshots: Array<Readonly<{ source: string; fields: readonly string[]; fingerprint: string }>> = [];
     for (const [packageName, path] of variants) {
       const source = readFileSync(path, "utf8");

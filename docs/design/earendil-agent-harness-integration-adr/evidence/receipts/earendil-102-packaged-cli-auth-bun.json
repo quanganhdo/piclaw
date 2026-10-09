@@ -1,0 +1,259 @@
+{
+  "version": "1.0.2",
+  "runtime": "Bun 1.4.2",
+  "artifact": {
+    "version": "1.0.2",
+    "gitHead": "cd32f7725fdbddbaecdff5b1e68491563394e0ca",
+    "bin": "dist/bundle/cli.js",
+    "packages": [
+      {
+        "name": "@earendil-works/pi-coding-agent",
+        "version": "1.0.2",
+        "gitHead": "cd32f7725fdbddbaecdff5b1e68491563394e0ca",
+        "shasum": "aba0009c736a1de4e045665acceb017cdb791371",
+        "integrity": "sha512-3ZdIghMSELMGV3sKi5iASOb1Jwb696fLjmNu0aezaqDxTLLWWoRpqBYkGxJ1CgAMCbtfqXWEF0lcRrlVXmiEGQ==",
+        "treeSha256": "c040427226fbd1a16cd9fa980384f838852c798743484c2feec4f84130df893d",
+        "files": 1243
+      },
+      {
+        "name": "@earendil-works/pi-ai",
+        "version": "1.0.2",
+        "gitHead": "cd32f7725fdbddbaecdff5b1e68491563394e0ca",
+        "shasum": "491b32ed7dd8e333a58a55dfc18ff61e31bc43c9",
+        "integrity": "sha512-JP59xGlSAQ/HhQ6EHN5qmneBlWfDyu6FPPryAvAaSo8A38ubAsEpS9YisCM5Jbbns0srrDffLZonE0OXorHI5A==",
+        "treeSha256": "e2e68c2afc97dde5fd72479cc2cb922e98d408ee05cd58c0e6823074ae8df46f",
+        "files": 813
+      }
+    ],
+    "bundleFileCount": 74,
+    "bundleSha256": "9ae6d68888b2d52f722270193fee5a3172ae72f4bf2b880533658c73e5f95908",
+    "sdkFileSha256": {
+      "openai-chatgpt.js": "43ed8ff9d5ec6c18af868fd727b8778520153fb88e7a1e90fcbfc244fd2a2150",
+      "openai-codex.js": "0740315fb80f9c90ccee677b3cfdce4bce289610090b64b74af8f002e230868f"
+    }
+  },
+  "results": [
+    {
+      "version": "1.0.2",
+      "runtime": "Bun 1.4.2",
+      "provider": "openai",
+      "mode": "success",
+      "status": "pass",
+      "cliLogin": "completed",
+      "credentialPersistence": "disposable_profile",
+      "tokenRequests": 1,
+      "unexpectedFetchRequests": 0,
+      "externalEgress": "os_namespace_denied",
+      "browserLauncher": "test_owned_noop",
+      "networkGuard": "distinct_loopback_only_os_namespace_and_stable_preload",
+      "cliExit": "restored_editor_quit_0",
+      "inference": "not_invoked",
+      "codexBrowserChoiceVerified": false,
+      "hostIdVerified": true,
+      "bundleFileCount": 74,
+      "bundleSha256": "9ae6d68888b2d52f722270193fee5a3172ae72f4bf2b880533658c73e5f95908",
+      "sdkFileSha256": {
+        "openai-chatgpt.js": "43ed8ff9d5ec6c18af868fd727b8778520153fb88e7a1e90fcbfc244fd2a2150",
+        "openai-codex.js": "0740315fb80f9c90ccee677b3cfdce4bce289610090b64b74af8f002e230868f"
+      }
+    },
+    {
+      "version": "1.0.2",
+      "runtime": "Bun 1.4.2",
+      "provider": "openai",
+      "mode": "denied",
+      "status": "pass",
+      "cliLogin": "rejected_or_cancelled",
+      "credentialPersistence": "none",
+      "tokenRequests": 1,
+      "unexpectedFetchRequests": 0,
+      "externalEgress": "os_namespace_denied",
+      "browserLauncher": "test_owned_noop",
+      "networkGuard": "distinct_loopback_only_os_namespace_and_stable_preload",
+      "cliExit": "restored_editor_quit_0",
+      "inference": "not_invoked",
+      "codexBrowserChoiceVerified": false,
+      "hostIdVerified": true,
+      "bundleFileCount": 74,
+      "bundleSha256": "9ae6d68888b2d52f722270193fee5a3172ae72f4bf2b880533658c73e5f95908",
+      "sdkFileSha256": {
+        "openai-chatgpt.js": "43ed8ff9d5ec6c18af868fd727b8778520153fb88e7a1e90fcbfc244fd2a2150",
+        "openai-codex.js": "0740315fb80f9c90ccee677b3cfdce4bce289610090b64b74af8f002e230868f"
+      }
+    },
+    {
+      "version": "1.0.2",
+      "runtime": "Bun 1.4.2",
+      "provider": "openai",
+      "mode": "bad-state",
+      "status": "pass",
+      "cliLogin": "rejected_or_cancelled",
+      "credentialPersistence": "none",
+      "tokenRequests": 0,
+      "unexpectedFetchRequests": 0,
+      "externalEgress": "os_namespace_denied",
+      "browserLauncher": "test_owned_noop",
+      "networkGuard": "distinct_loopback_only_os_namespace_and_stable_preload",
+      "cliExit": "restored_editor_quit_0",
+      "inference": "not_invoked",
+      "codexBrowserChoiceVerified": false,
+      "hostIdVerified": true,
+      "bundleFileCount": 74,
+      "bundleSha256": "9ae6d68888b2d52f722270193fee5a3172ae72f4bf2b880533658c73e5f95908",
+      "sdkFileSha256": {
+        "openai-chatgpt.js": "43ed8ff9d5ec6c18af868fd727b8778520153fb88e7a1e90fcbfc244fd2a2150",
+        "openai-codex.js": "0740315fb80f9c90ccee677b3cfdce4bce289610090b64b74af8f002e230868f"
+      }
+    },
+    {
+      "version": "1.0.2",
+      "runtime": "Bun 1.4.2",
+      "provider": "openai",
+      "mode": "cancel",
+      "status": "pass",
+      "cliLogin": "rejected_or_cancelled",
+      "credentialPersistence": "none",
+      "tokenRequests": 0,
+      "unexpectedFetchRequests": 0,
+      "externalEgress": "os_namespace_denied",
+      "browserLauncher": "test_owned_noop",
+      "networkGuard": "distinct_loopback_only_os_namespace_and_stable_preload",
+      "cliExit": "restored_editor_quit_0",
+      "inference": "not_invoked",
+      "codexBrowserChoiceVerified": false,
+      "hostIdVerified": true,
+      "bundleFileCount": 74,
+      "bundleSha256": "9ae6d68888b2d52f722270193fee5a3172ae72f4bf2b880533658c73e5f95908",
+      "sdkFileSha256": {
+        "openai-chatgpt.js": "43ed8ff9d5ec6c18af868fd727b8778520153fb88e7a1e90fcbfc244fd2a2150",
+        "openai-codex.js": "0740315fb80f9c90ccee677b3cfdce4bce289610090b64b74af8f002e230868f"
+      }
+    },
+    {
+      "version": "1.0.2",
+      "runtime": "Bun 1.4.2",
+      "provider": "openai",
+      "mode": "provider-only",
+      "status": "pass",
+      "exitCode": 1,
+      "diagnostic": "provider_requires_model",
+      "credentialPersistence": "none",
+      "tokenRequests": 0,
+      "unexpectedFetchRequests": 0,
+      "browserLauncher": "not_invoked",
+      "inference": "not_invoked",
+      "bundleSha256": "9ae6d68888b2d52f722270193fee5a3172ae72f4bf2b880533658c73e5f95908"
+    },
+    {
+      "version": "1.0.2",
+      "runtime": "Bun 1.4.2",
+      "provider": "openai-codex",
+      "mode": "success",
+      "status": "pass",
+      "cliLogin": "completed",
+      "credentialPersistence": "disposable_profile",
+      "tokenRequests": 1,
+      "unexpectedFetchRequests": 0,
+      "externalEgress": "os_namespace_denied",
+      "browserLauncher": "test_owned_noop",
+      "networkGuard": "distinct_loopback_only_os_namespace_and_stable_preload",
+      "cliExit": "restored_editor_quit_0",
+      "inference": "not_invoked",
+      "codexBrowserChoiceVerified": true,
+      "hostIdVerified": false,
+      "bundleFileCount": 74,
+      "bundleSha256": "9ae6d68888b2d52f722270193fee5a3172ae72f4bf2b880533658c73e5f95908",
+      "sdkFileSha256": {
+        "openai-chatgpt.js": "43ed8ff9d5ec6c18af868fd727b8778520153fb88e7a1e90fcbfc244fd2a2150",
+        "openai-codex.js": "0740315fb80f9c90ccee677b3cfdce4bce289610090b64b74af8f002e230868f"
+      }
+    },
+    {
+      "version": "1.0.2",
+      "runtime": "Bun 1.4.2",
+      "provider": "openai-codex",
+      "mode": "denied",
+      "status": "pass",
+      "cliLogin": "rejected_or_cancelled",
+      "credentialPersistence": "none",
+      "tokenRequests": 1,
+      "unexpectedFetchRequests": 0,
+      "externalEgress": "os_namespace_denied",
+      "browserLauncher": "test_owned_noop",
+      "networkGuard": "distinct_loopback_only_os_namespace_and_stable_preload",
+      "cliExit": "restored_editor_quit_0",
+      "inference": "not_invoked",
+      "codexBrowserChoiceVerified": true,
+      "hostIdVerified": false,
+      "bundleFileCount": 74,
+      "bundleSha256": "9ae6d68888b2d52f722270193fee5a3172ae72f4bf2b880533658c73e5f95908",
+      "sdkFileSha256": {
+        "openai-chatgpt.js": "43ed8ff9d5ec6c18af868fd727b8778520153fb88e7a1e90fcbfc244fd2a2150",
+        "openai-codex.js": "0740315fb80f9c90ccee677b3cfdce4bce289610090b64b74af8f002e230868f"
+      }
+    },
+    {
+      "version": "1.0.2",
+      "runtime": "Bun 1.4.2",
+      "provider": "openai-codex",
+      "mode": "bad-state",
+      "status": "pass",
+      "cliLogin": "rejected_or_cancelled",
+      "credentialPersistence": "none",
+      "tokenRequests": 0,
+      "unexpectedFetchRequests": 0,
+      "externalEgress": "os_namespace_denied",
+      "browserLauncher": "test_owned_noop",
+      "networkGuard": "distinct_loopback_only_os_namespace_and_stable_preload",
+      "cliExit": "restored_editor_quit_0",
+      "inference": "not_invoked",
+      "codexBrowserChoiceVerified": true,
+      "hostIdVerified": false,
+      "bundleFileCount": 74,
+      "bundleSha256": "9ae6d68888b2d52f722270193fee5a3172ae72f4bf2b880533658c73e5f95908",
+      "sdkFileSha256": {
+        "openai-chatgpt.js": "43ed8ff9d5ec6c18af868fd727b8778520153fb88e7a1e90fcbfc244fd2a2150",
+        "openai-codex.js": "0740315fb80f9c90ccee677b3cfdce4bce289610090b64b74af8f002e230868f"
+      }
+    },
+    {
+      "version": "1.0.2",
+      "runtime": "Bun 1.4.2",
+      "provider": "openai-codex",
+      "mode": "cancel",
+      "status": "pass",
+      "cliLogin": "rejected_or_cancelled",
+      "credentialPersistence": "none",
+      "tokenRequests": 0,
+      "unexpectedFetchRequests": 0,
+      "externalEgress": "os_namespace_denied",
+      "browserLauncher": "test_owned_noop",
+      "networkGuard": "distinct_loopback_only_os_namespace_and_stable_preload",
+      "cliExit": "restored_editor_quit_0",
+      "inference": "not_invoked",
+      "codexBrowserChoiceVerified": true,
+      "hostIdVerified": false,
+      "bundleFileCount": 74,
+      "bundleSha256": "9ae6d68888b2d52f722270193fee5a3172ae72f4bf2b880533658c73e5f95908",
+      "sdkFileSha256": {
+        "openai-chatgpt.js": "43ed8ff9d5ec6c18af868fd727b8778520153fb88e7a1e90fcbfc244fd2a2150",
+        "openai-codex.js": "0740315fb80f9c90ccee677b3cfdce4bce289610090b64b74af8f002e230868f"
+      }
+    },
+    {
+      "version": "1.0.2",
+      "runtime": "Bun 1.4.2",
+      "provider": "openai-codex",
+      "mode": "provider-only",
+      "status": "pass",
+      "exitCode": 1,
+      "diagnostic": "provider_requires_model",
+      "credentialPersistence": "none",
+      "tokenRequests": 0,
+      "unexpectedFetchRequests": 0,
+      "browserLauncher": "not_invoked",
+      "inference": "not_invoked",
+      "bundleSha256": "9ae6d68888b2d52f722270193fee5a3172ae72f4bf2b880533658c73e5f95908"
+    }
+  ]
+}

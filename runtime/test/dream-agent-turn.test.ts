@@ -5,8 +5,11 @@ import { join } from "path";
 import { importFresh } from "./helpers.js";
 import { assertPathWithinTestFilesystemIsolation } from "../scripts/test-filesystem-isolation.js";
 
+// Capture once, before any fixture freezes the global clock. A timed-out test
+// can finish late while the next fixture is already running.
+const realDateNow = Date.now;
 afterEach(() => {
-  // no-op: test uses whichever workspace path the current config module has cached
+  Date.now = realDateNow;
 });
 
 const acceptModelChange = async () => ({ status: "success", message: "ok" } as const);
@@ -40,7 +43,6 @@ test("runDreamAgentTurn applies an explicit Dream model override to the temporar
   const applied: Array<{ chatJid: string; raw: string | undefined }> = [];
   const runChats: string[] = [];
 
-  const realNow = Date.now;
   Date.now = () => fixedNow;
   try {
     const dream = await importFresh<typeof import("../src/dream.js")>("../src/dream.js");
@@ -66,7 +68,7 @@ test("runDreamAgentTurn applies an explicit Dream model override to the temporar
     expect(applied).toEqual([{ chatJid: expectedDreamChatJid, raw: "/model openai-compatible/glm-5.1" }]);
     expect(runChats).toEqual([expectedDreamChatJid]);
   } finally {
-    Date.now = realNow;
+    Date.now = realDateNow;
   }
 });
 
@@ -84,7 +86,6 @@ test("runDreamAgentTurn reaps a stale dream lock and materializes memory files a
   const dreamChatJid = `dream:auto:web_default:${fixedNow}`;
   const dreamSessionDir = join(config.DATA_DIR, "sessions", `dream_auto_web_default_${fixedNow}`);
 
-  const realNow = Date.now;
   Date.now = () => fixedNow;
   try {
     const db = await importFresh<typeof import("../src/db.js")>("../src/db.js");
@@ -149,7 +150,7 @@ test("runDreamAgentTurn reaps a stale dream lock and materializes memory files a
     expect(archived).toContain("manifest.json");
     expect(archived).not.toContain("notes/memory/.dream.lock");
   } finally {
-    Date.now = realNow;
+    Date.now = realDateNow;
   }
 });
 

@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { isOperationSession } from "./operation-session-profile.js";
 /**
  * agent-pool/session-manager.ts – Main/side session lifecycle management for AgentPool.
@@ -93,8 +94,100 @@ export class AgentSessionManager {
   private readonly evictionProtectionCounts = new Map<string, number>();
   private prewarmLoopActive = false;
   private isShuttingDown = false;
+  private mcpAdmissionsBlocked = false;
+  private mcpAdmissionEpoch = 0;
+  private readonly mcpLifecycleWork = new Set<Promise<unknown>>();
+  private mcpSnapshotInFlight = false;
+  private readonly lifecycleContext = new AsyncLocalStorage<boolean>();
+  private shutdownInFlight?: Promise<void>;
+  private readonly failedMcpDisposals = new Set<AgentSessionRuntime>();
+
+  /** Register before callbacks run; include complete delivery/disposal tails. */
+  private trackMcpLifecycle<T>(operation: () => Promise<T>): Promise<T> {
+    const task = Promise.resolve().then(() => this.lifecycleContext.run(true, operation));
+    this.mcpLifecycleWork.add(task);
+    return task.finally(() => { this.mcpLifecycleWork.delete(task); });
+  }
+
+  private assertNonReentrantLifecycleTransition(): void {
+    if (this.lifecycleContext.getStore()) throw new Error("Session lifecycle callbacks cannot await manager admission or transition operations.");
+  }
 
   constructor(private readonly options: AgentSessionManagerOptions) {}
+
+  /** Close admission synchronously; keep it closed after transition failure. */
+  blockMcpAdmissions(): void {
+    if (!this.mcpAdmissionsBlocked) this.mcpAdmissionEpoch++;
+    this.mcpAdmissionsBlocked = true;
+    this.queuedPrewarms.clear();
+    this.prewarmQueue.length = 0;
+  }
+
+  assertMcpAdmission(epoch = this.mcpAdmissionEpoch): void {
+    if (this.mcpAdmissionsBlocked || epoch !== this.mcpAdmissionEpoch) throw new Error("Session admission is blocked by an MCP engine transition.");
+  }
+
+  /** Host invokes only after all participants have reloaded successfully. */
+  resumeMcpAdmissions(): void {
+    this.assertNonReentrantLifecycleTransition();
+    if (this.isShuttingDown) throw new Error("Session manager is shutting down.");
+    if (this.failedMcpDisposals.size) throw new Error("MCP runtime disposal remains unresolved.");
+    if (this.mcpSnapshotInFlight || this.pendingMcpLifecycleWork().length > 0) throw new Error("MCP lifecycle work has not drained.");
+    this.mcpAdmissionsBlocked = false;
+  }
+
+  private pendingMcpLifecycleWork(): Promise<unknown>[] {
+    return [...new Set([
+      ...this.createInFlight.values(), ...this.createSideInFlight.values(), ...this.branchSeedRealizationInFlight.values(),
+      ...this.idleMainDisposalsInFlight.values(), ...this.idleSideDisposalsInFlight.values(), ...this.mcpLifecycleWork,
+    ])];
+  }
+
+  /** Drain pre-fence creation/lifecycle work before enumerating both pools. */
+  async fenceMcpAndSnapshot(signal: AbortSignal): Promise<readonly AgentSessionRuntime[]> {
+    this.assertNonReentrantLifecycleTransition();
+    this.blockMcpAdmissions();
+    if (this.mcpSnapshotInFlight) throw new Error("MCP session snapshot already in progress.");
+    if (signal.aborted) throw new Error("MCP session snapshot cancelled.");
+    this.mcpSnapshotInFlight = true;
+    let onAbort!: () => void;
+    const aborted = new Promise<never>((_resolve, reject) => {
+      onAbort = () => reject(new Error("MCP session snapshot cancelled."));
+      signal.addEventListener("abort", onAbort, { once: true });
+    });
+    try {
+      // Shutdown may enter after fencing. Drain again until no captured work
+      // can still mutate the pools; admission stays closed throughout.
+      while (true) {
+        if (signal.aborted) throw new Error("MCP session snapshot cancelled.");
+        const pending = this.pendingMcpLifecycleWork();
+        if (!pending.length) break;
+        await Promise.race([Promise.allSettled(pending), aborted]);
+      }
+      if (this.failedMcpDisposals.size) throw new Error("MCP runtime disposal remains unresolved.");
+      return [...new Set([...this.options.pool.values(), ...this.options.sidePool.values()].map(entry => entry.runtime))];
+    } finally {
+      this.mcpSnapshotInFlight = false;
+      signal.removeEventListener("abort", onAbort);
+    }
+  }
+
+  /**
+   * Remove only this captured runtime, then use normal public disposal.
+   * Concurrent disposal is coalesced. Sequential quarantine deliberately
+   * repeats teardown: a delayed public reload may have rebuilt extensions
+   * since the first dispose, and those late resources must also be closed.
+   */
+  async quarantineMcpRuntime(runtime: AgentSessionRuntime): Promise<void> {
+    this.assertNonReentrantLifecycleTransition();
+    for (const map of [this.options.pool, this.options.sidePool]) {
+      for (const [chatJid, entry] of map) if (entry.runtime === runtime) map.delete(chatJid);
+    }
+    return this.trackMcpLifecycle(async () => {
+      const error = await this.disposeRuntimeOnce(runtime, "Failed to dispose MCP transition session", { operation: "mcp_engine_switch.quarantine" });
+      if (error) throw new Error("MCP session quarantine failed.");
+    });
+  }
 
   /**
    * Protect a chat from every idle/pool-limit eviction path while work is
@@ -145,17 +238,40 @@ export class AgentSessionManager {
 
   async refreshRuntime(chatJid: string, runtime: AgentSessionRuntime): Promise<void> {
     requireOwnedSessionExecution(chatJid);
+    this.assertNonReentrantLifecycleTransition();
+    this.assertMcpAdmission();
+    const epoch = this.mcpAdmissionEpoch;
+    return this.trackMcpLifecycle(() => this.refreshRuntimeAdmitted(chatJid, runtime, epoch));
+  }
+
+  private async refreshRuntimeAdmitted(chatJid: string, runtime: AgentSessionRuntime, epoch: number): Promise<void> {
+    this.assertMcpAdmission(epoch);
     const entry = this.options.pool.get(chatJid);
-    if (entry) {
-      entry.lastUsed = Date.now();
-    }
+    if (entry) entry.lastUsed = Date.now();
     await this.options.bindSession(runtime, chatJid);
     requireOwnedSessionExecution(chatJid);
+    this.assertMcpAdmission(epoch);
     this.options.ensureBranchRegistration(chatJid, runtime.session);
   }
 
   async getOrCreate(chatJid: string): Promise<AgentSessionRuntime> {
+    requireOwnedSessionExecution(chatJid);
+    this.assertNonReentrantLifecycleTransition();
+    this.assertMcpAdmission();
+    const epoch = this.mcpAdmissionEpoch;
+    return this.trackMcpLifecycle(async () => {
+      this.assertMcpAdmission(epoch);
+      const runtime = await this.getOrCreateAdmitted(chatJid);
+      requireOwnedSessionExecution(chatJid);
+      this.assertMcpAdmission(epoch);
+      return runtime;
+    });
+  }
+
+  private async getOrCreateAdmitted(chatJid: string): Promise<AgentSessionRuntime> {
     const owner = requireOwnedSessionExecution(chatJid);
+    this.assertMcpAdmission();
+    const epoch = this.mcpAdmissionEpoch;
     if (owner) readOwnedForkSeed(getDb(), owner, chatJid);
     if (this.isShuttingDown) {
       throw new Error("Session manager is shutting down.");
@@ -166,6 +282,7 @@ export class AgentSessionManager {
     }
 
     requireOwnedSessionExecution(chatJid);
+    this.assertMcpAdmission(epoch);
     const knownInvalidSeedError = this.getBlockingInvalidSeedError(chatJid);
     if (knownInvalidSeedError) {
       throw knownInvalidSeedError;
@@ -175,6 +292,7 @@ export class AgentSessionManager {
     if (pendingCreate) {
       const runtime = await pendingCreate;
       requireOwnedSessionExecution(chatJid);
+      this.assertMcpAdmission(epoch);
       return runtime;
     }
 
@@ -184,6 +302,7 @@ export class AgentSessionManager {
       try {
         await this.realizeDeferredBranchSeed(chatJid, existing.runtime);
         requireOwnedSessionExecution(chatJid);
+        this.assertMcpAdmission(epoch);
         return existing.runtime;
       } catch (error) {
         await this.disposeMainRuntimeAfterError(chatJid, existing.runtime, "get_or_create.realize_existing_after_error");
@@ -201,6 +320,7 @@ export class AgentSessionManager {
 
       const extensionFactories = isOperationSession(chatJid) ? [] : await this.options.getSessionExtensionFactories?.(chatJid) ?? [];
       requireOwnedSessionExecution(chatJid);
+      this.assertMcpAdmission(epoch);
       const runtime = this.options.createSession
         ? await this.options.createSession(chatJid, chatSessionDir)
         : await createDefaultSession(chatJid, {
@@ -211,12 +331,12 @@ export class AgentSessionManager {
             extensionFactories,
           });
 
-      if (this.isShuttingDown) {
-        await this.disposeRuntimeOnce(runtime, "Failed to dispose newly created session during shutdown", {
+      if (this.isShuttingDown || this.mcpAdmissionsBlocked || epoch !== this.mcpAdmissionEpoch) {
+        await this.disposeRuntimeOnce(runtime, "Failed to dispose newly created session during shutdown or MCP switch", {
           operation: "get_or_create.dispose_during_shutdown",
           chatJid,
         });
-        throw new Error("Session manager is shutting down.");
+        throw new Error("Session creation invalidated by shutdown or MCP transition.");
       }
 
       this.options.pool.set(chatJid, { runtime, lastUsed: Date.now() });
@@ -226,7 +346,8 @@ export class AgentSessionManager {
         if (!realizedDeferredSeed) {
           await this.applyDefaultModel(runtime.session);
         }
-        await this.refreshRuntime(chatJid, runtime);
+        await this.refreshRuntimeAdmitted(chatJid, runtime, epoch);
+        this.assertMcpAdmission(epoch);
         this.options.onInfo?.("Session ready", {
           operation: this.options.createSession ? "get_or_create.create_main_session" : "get_or_create.create_default_session",
           chatJid,
@@ -246,7 +367,23 @@ export class AgentSessionManager {
   }
 
   async getOrCreateSide(chatJid: string): Promise<AgentSessionRuntime> {
+    requireOwnedSessionExecution(chatJid);
+    this.assertNonReentrantLifecycleTransition();
+    this.assertMcpAdmission();
+    const epoch = this.mcpAdmissionEpoch;
+    return this.trackMcpLifecycle(async () => {
+      this.assertMcpAdmission(epoch);
+      const runtime = await this.getOrCreateSideAdmitted(chatJid);
+      requireOwnedSessionExecution(chatJid);
+      this.assertMcpAdmission(epoch);
+      return runtime;
+    });
+  }
+
+  private async getOrCreateSideAdmitted(chatJid: string): Promise<AgentSessionRuntime> {
     const owner = requireOwnedSessionExecution(chatJid);
+    this.assertMcpAdmission();
+    const epoch = this.mcpAdmissionEpoch;
     if (owner) readOwnedForkSeed(getDb(), owner, chatJid);
     if (this.isShuttingDown) {
       throw new Error("Session manager is shutting down.");
@@ -257,10 +394,12 @@ export class AgentSessionManager {
     }
 
     requireOwnedSessionExecution(chatJid);
+    this.assertMcpAdmission(epoch);
     const pendingCreate = this.createSideInFlight.get(chatJid);
     if (pendingCreate) {
       const runtime = await pendingCreate;
       requireOwnedSessionExecution(chatJid);
+      this.assertMcpAdmission(epoch);
       return runtime;
     }
 
@@ -279,6 +418,7 @@ export class AgentSessionManager {
 
       const extensionFactories = await this.options.getSessionExtensionFactories?.(chatJid) ?? [];
       requireOwnedSessionExecution(chatJid);
+      this.assertMcpAdmission(epoch);
       const runtime = this.options.createSideSession
         ? await this.options.createSideSession(chatJid, sideSessionDir)
         : await createSessionInDir(sideSessionDir, {
@@ -289,12 +429,12 @@ export class AgentSessionManager {
             extensionFactories,
           });
 
-      if (this.isShuttingDown) {
-        await this.disposeRuntimeOnce(runtime, "Failed to dispose newly created side session during shutdown", {
+      if (this.isShuttingDown || this.mcpAdmissionsBlocked || epoch !== this.mcpAdmissionEpoch) {
+        await this.disposeRuntimeOnce(runtime, "Failed to dispose newly created side session during shutdown or MCP switch", {
           operation: "get_or_create_side.dispose_during_shutdown",
           chatJid,
         });
-        throw new Error("Session manager is shutting down.");
+        throw new Error("Side session creation invalidated by shutdown or MCP transition.");
       }
 
       try {
@@ -314,10 +454,22 @@ export class AgentSessionManager {
   }
 
   async syncSideSessionFromMain(mainSession: AgentSession, sideRuntime: AgentSessionRuntime): Promise<void> {
+    this.assertNonReentrantLifecycleTransition();
+    this.assertMcpAdmission();
+    const epoch = this.mcpAdmissionEpoch;
+    return this.trackMcpLifecycle(async () => {
+      this.assertMcpAdmission(epoch);
+      await this.syncSideSessionFromMainAdmitted(mainSession, sideRuntime, epoch);
+    });
+  }
+
+  private async syncSideSessionFromMainAdmitted(mainSession: AgentSession, sideRuntime: AgentSessionRuntime, epoch: number): Promise<void> {
     try {
       const mainContext = await getSessionPersistencePort(mainSession).buildContext();
+      this.assertMcpAdmission(epoch);
       const result = await sideRuntime.newSession({
         setup: async (sessionManager) => {
+          this.assertMcpAdmission(epoch);
           await seedRotatedSession(sessionManager, mainContext, {
             sessionName: "BTW",
             model: mainContext.model,
@@ -326,6 +478,7 @@ export class AgentSessionManager {
           });
         },
       });
+      this.assertMcpAdmission(epoch);
       if (result.cancelled) {
         throw new Error("Side-session reseed was cancelled.");
       }
@@ -338,6 +491,7 @@ export class AgentSessionManager {
       throw err;
     }
 
+    this.assertMcpAdmission(epoch);
     const sideSession = sideRuntime.session;
     const mainModel = mainSession.model;
     const sideModel = sideSession.model;
@@ -353,6 +507,7 @@ export class AgentSessionManager {
       }
     }
 
+    this.assertMcpAdmission(epoch);
     try {
       restoreSessionThinkingPolicy(sideSession, mainSession.thinkingLevel, getSessionThinkingPolicy(mainSession)?.preferred_level);
     } catch (err) {
@@ -362,6 +517,7 @@ export class AgentSessionManager {
       });
     }
 
+    this.assertMcpAdmission(epoch);
     try {
       const mainToolNames = mainSession.getActiveToolNames();
       // Empty is a transient protected-recovery/finalisation state, not a
@@ -377,8 +533,16 @@ export class AgentSessionManager {
   }
 
   async recreate(chatJid: string): Promise<void> {
-    await this.disposeEntry(this.options.pool, chatJid, "recreate.dispose_main_session");
-    await this.disposeEntry(this.options.sidePool, chatJid, "recreate.dispose_side_session", true);
+    this.assertNonReentrantLifecycleTransition();
+    this.assertMcpAdmission();
+    const epoch = this.mcpAdmissionEpoch;
+    return this.trackMcpLifecycle(async () => {
+      this.assertMcpAdmission(epoch);
+      await Promise.all([
+        this.disposeEntry(this.options.pool, chatJid, "recreate.dispose_main_session"),
+        this.disposeEntry(this.options.sidePool, chatJid, "recreate.dispose_side_session", true),
+      ]);
+    });
   }
 
   /**
@@ -397,7 +561,7 @@ export class AgentSessionManager {
   prewarm(chatJid: string, options: { priority?: boolean; mode?: "full" | "lightweight" } = {}): boolean {
     // Queue provenance must be durable before background multi-user hydration is enabled.
     if (readAccessConfig().mode !== "single-user") return false;
-    if (this.isShuttingDown) return false;
+    if (this.isShuttingDown || this.mcpAdmissionsBlocked) return false;
     const normalizedChatJid = String(chatJid || "").trim();
     if (!normalizedChatJid) return false;
     if (this.getBlockingInvalidSeedError(normalizedChatJid)) return false;
@@ -434,7 +598,20 @@ export class AgentSessionManager {
   }
 
   async shutdown(): Promise<void> {
+    this.assertNonReentrantLifecycleTransition();
+    if (this.shutdownInFlight) return this.shutdownInFlight;
     this.isShuttingDown = true;
+    this.blockMcpAdmissions();
+    // Capture before registering our own promise to avoid waiting on self.
+    const preceding = this.pendingMcpLifecycleWork();
+    this.shutdownInFlight = this.trackMcpLifecycle(async () => {
+      await Promise.allSettled(preceding);
+      await this.shutdownAdmitted();
+    });
+    return this.shutdownInFlight;
+  }
+
+  private async shutdownAdmitted(): Promise<void> {
     this.queuedPrewarms.clear();
     this.prewarmQueue.length = 0;
     this.prewarmCooldownByChat.clear();
@@ -458,22 +635,13 @@ export class AgentSessionManager {
   ): Promise<void> {
     const entry = map.get(chatJid);
     if (!entry) return;
-    try {
-      const disposeError = await this.disposeRuntimeOnce(entry.runtime, side ? "Failed to dispose side session" : "Failed to dispose session", {
-        operation,
-        chatJid,
-      });
-      if (disposeError) {
-        this.options.onError?.(side ? "Failed to dispose side session" : "Failed to dispose session", { operation, chatJid, err: disposeError });
-      } else {
-        this.options.onInfo?.(side ? "Disposed side session" : "Disposed session", { operation, chatJid });
-      }
-    } finally {
-      map.delete(chatJid);
-    }
+    const pending = side ? this.idleSideDisposalsInFlight : this.idleMainDisposalsInFlight;
+    this.startIdleDispose(map, pending, chatJid, entry, operation, side);
+    await pending.get(chatJid);
   }
 
   evictIdle(options: { mainIdleTtlMs: number; sideIdleTtlMs: number; mainSessionMaxSizeOverride?: number | null; protectedChatJids?: string[] }): void {
+    if (this.mcpAdmissionsBlocked) return;
     const now = Date.now();
     const { mainIdleTtlMs, sideIdleTtlMs, mainSessionMaxSizeOverride } = options;
     const explicitProtectedChatJids = new Set(this.getEvictionProtectedChatJids(
@@ -588,12 +756,17 @@ export class AgentSessionManager {
     const task = this.disposeRuntimeOnce(entry.runtime, warnMessage, {
       operation,
       chatJid,
-    }).then(() => undefined).finally(() => {
+    }).then(error => {
+      if (error) throw new Error("Session runtime disposal failed; admissions remain blocked.");
+    }).finally(() => {
       if (pendingDisposals.get(chatJid) === task) {
         pendingDisposals.delete(chatJid);
       }
     });
 
+    // Eviction callers are synchronous; retain rejection for awaiting callers
+    // while observing it immediately to avoid an unhandled background failure.
+    void task.catch(() => undefined);
     pendingDisposals.set(chatJid, task);
   }
 
@@ -605,17 +778,17 @@ export class AgentSessionManager {
     const pendingDispose = this.runtimeDisposeInFlight.get(runtime);
     if (pendingDispose) return await pendingDispose;
 
-    const task = (async (): Promise<unknown | null> => {
+    const task = Promise.resolve().then(async (): Promise<unknown | null> => {
       const sessionId = runtime.session.sessionId;
       let firstError: unknown | null = null;
       try {
-        await runtime.dispose();
+        await this.lifecycleContext.run(true, () => runtime.dispose());
       } catch (err) {
         firstError = err;
         this.options.onWarn?.(warnMessage, { ...details, err });
       } finally {
         try {
-          await this.options.disposePersistence?.(runtime);
+          await this.lifecycleContext.run(true, async () => { await this.options.disposePersistence?.(runtime); });
         } catch (err) {
           firstError ??= err;
           this.options.onWarn?.("Failed to dispose session persistence resource", { ...details, err });
@@ -623,11 +796,18 @@ export class AgentSessionManager {
         closeOpenAICodexWebSocketSessions(sessionId);
       }
       return firstError;
-    })();
+    });
     this.runtimeDisposeInFlight.set(runtime, task);
-    const result = await task;
-    if (this.runtimeDisposeInFlight.get(runtime) === task) this.runtimeDisposeInFlight.delete(runtime);
-    return result;
+    try {
+      const error = await task;
+      if (error) { this.failedMcpDisposals.add(runtime); this.blockMcpAdmissions(); }
+      else this.failedMcpDisposals.delete(runtime);
+      return error;
+    } catch {
+      this.failedMcpDisposals.add(runtime);
+      this.blockMcpAdmissions();
+      throw new Error("Session runtime disposal failed; admissions remain blocked.");
+    } finally { if (this.runtimeDisposeInFlight.get(runtime) === task) this.runtimeDisposeInFlight.delete(runtime); }
   }
 
   private async applyDefaultModel(session: AgentSession): Promise<void> {
@@ -773,22 +953,26 @@ export class AgentSessionManager {
 
     void (async () => {
       try {
-        while (!this.isShuttingDown && this.prewarmQueue.length > 0) {
+        while (!this.isShuttingDown && !this.mcpAdmissionsBlocked && this.prewarmQueue.length > 0) {
           const next = this.prewarmQueue.shift();
           if (!next) continue;
           const { chatJid, mode } = next;
           this.queuedPrewarms.delete(chatJid);
           if (readAccessConfig().mode !== "single-user") continue;
-          if (this.isShuttingDown) continue;
+          if (this.isShuttingDown || this.mcpAdmissionsBlocked) continue;
           if (this.prewarmInFlight.has(chatJid)) continue;
           if (this.options.pool.has(chatJid) && !hasDeferredBranchSeed(chatJid)) continue;
 
           this.prewarmInFlight.add(chatJid);
           try {
             if (mode === "lightweight" && !hasDeferredBranchSeed(chatJid)) {
-              await (this.options.lightweightPrewarmSession ?? ((jid: string) => lightweightPrewarmSession(jid, {
-                getSessionExtensionFactories: this.options.getSessionExtensionFactories,
-              })))(chatJid);
+              const epoch = this.mcpAdmissionEpoch;
+              await this.trackMcpLifecycle(async () => {
+                this.assertMcpAdmission(epoch);
+                return (this.options.lightweightPrewarmSession ?? ((jid: string) => lightweightPrewarmSession(jid, {
+                  getSessionExtensionFactories: this.options.getSessionExtensionFactories,
+                })))(chatJid);
+              });
               this.options.onInfo?.("Lightweight-prewarmed chat session", {
                 operation: "prewarm_session.lightweight",
                 chatJid,
@@ -828,32 +1012,20 @@ export class AgentSessionManager {
 
   private async disposeSideRuntimeAfterError(runtime: AgentSessionRuntime, operation: string): Promise<void> {
     const chatJid = this.findChatJidByRuntime(this.options.sidePool, runtime);
-    if (chatJid && this.options.sidePool.get(chatJid)?.runtime === runtime) {
-      this.options.sidePool.delete(chatJid);
-    }
-    try {
-      await this.disposeRuntimeOnce(runtime);
-    } catch (disposeErr) {
-      this.options.onWarn?.("Failed to dispose side session after initialization error", {
-        operation,
-        ...(chatJid ? { chatJid } : {}),
-        err: disposeErr,
-      });
+    if (chatJid) {
+      this.startIdleDispose(this.options.sidePool, this.idleSideDisposalsInFlight, chatJid, { runtime, lastUsed: Date.now() }, operation, true);
+      await this.idleSideDisposalsInFlight.get(chatJid);
+    } else {
+      await this.disposeRuntimeOnce(runtime, "Failed to dispose side session after initialization error", { operation });
     }
   }
 
   private async disposeMainRuntimeAfterError(chatJid: string, runtime: AgentSessionRuntime, operation: string): Promise<void> {
     if (this.options.pool.get(chatJid)?.runtime === runtime) {
-      this.options.pool.delete(chatJid);
-    }
-    try {
-      await this.disposeRuntimeOnce(runtime);
-    } catch (disposeErr) {
-      this.options.onWarn?.("Failed to dispose session after initialization error", {
-        operation,
-        chatJid,
-        err: disposeErr,
-      });
+      this.startIdleDispose(this.options.pool, this.idleMainDisposalsInFlight, chatJid, { runtime, lastUsed: Date.now() }, operation, false);
+      await this.idleMainDisposalsInFlight.get(chatJid);
+    } else {
+      await this.disposeRuntimeOnce(runtime, "Failed to dispose session after initialization error", { operation, chatJid });
     }
   }
 }

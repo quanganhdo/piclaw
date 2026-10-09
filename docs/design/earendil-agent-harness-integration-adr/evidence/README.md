@@ -1,5 +1,56 @@
 # Evidence register
 
+## Selected Pi 1.0.3 integration
+
+Released target: `d78dc83d633229d12f8b79631384c4c2717c399f`. Source retarget authorised after unified timeline/audit PR1557. Retain the shipped MCP wrapper; deployment/live accounts remain separately gated.
+
+- [Integration and Azure migration](../../../development/pi-103-integration.md)
+- [Current Pi 1.0.3 acceptance checkpoint](earendil-103-remaining-acceptance.md) — merged source and synthetic VM/rollback evidence; preserved failures and explicit public Delegate/live operational gates
+- [Fresh-workspace add-on host peers](../../../development/pi-103-core-addon-peers.md) — offline seed import correction and preserved existing-workspace semantics; guarded seven-entry import and frozen-source evidence, no deployment or Delegate activation
+- [Synthetic VM canary and private-config correction](../../../development/pi-103-vm-canary.md) — corrected 30-minute Classic window / 59 cycles, bounded both-skin/MCP/scheduler/family checks, preserved failure and quarantine-only rollback; live/production Delegate gates remain open
+- [Deeper workload audit](../../../development/pi-103-deeper-performance.md) — scoped scheduler, family contention and natural reclamation observations; captured-authority async admission correction, exploratory comparison provenance and retained failures; whole-plan acceptance and deployment remain gated
+- [Bounded retention and actual scheduler-agent](../../../development/pi-103-soak-agent.md) — corrected 60-second history shapes, real AgentPool/SDK prompting and live leaf restoration; deterministic provider and delivery sink, broader/live/Delegate gates remain separate
+- Fresh [registry](receipts/earendil-103-registry.json), [package admission](receipts/earendil-103-package-admission.json), [provider inventory](receipts/earendil-103-provider-auth.json), [public MCP types](receipts/earendil-103-mcp-public.json), [CLI](receipts/earendil-103-packaged-cli-auth-bun.json), [browser](receipts/earendil-103-provider-browser-bun.json), [devices](receipts/earendil-103-provider-devices-bun.json), [Codex device](receipts/earendil-103-codex-device-bun.json) and [private UI](receipts/earendil-103-anthropic-private-ui.json)
+
+## Historical Pi 1.0.2 integration
+
+Exact released target: `cd32f7725fdbddbaecdff5b1e68491563394e0ca`. Rui authorised source retargeting with the standard shipped MCP wrapper retained. Native parity/removal and pi-durable are future scope; installation, restart and real-account tests need separate approval.
+
+- [Integration and qualification](../../../development/pi-102-integration.md)
+- [Current acceptance checkpoint](earendil-102-remaining-acceptance.md) — merged Settings, exact hosted/full/postmerge evidence, retained-wrapper/core checks, callback fixture correction and disposable rollback; production Delegate/live/rollout gates remain open
+- Fresh [registry](receipts/earendil-102-registry.json), [package admission](receipts/earendil-102-package-admission.json), [provider inventory](receipts/earendil-102-provider-auth.json) and [public MCP types](receipts/earendil-102-mcp-public.json)
+- Fresh synthetic [packaged CLI](receipts/earendil-102-packaged-cli-auth-bun.json), [browser/copy-code](receipts/earendil-102-provider-browser-bun.json), [provider devices](receipts/earendil-102-provider-devices-bun.json), [Codex device](receipts/earendil-102-codex-device-bun.json) and [private UI](receipts/earendil-102-anthropic-private-ui.json) receipts
+
+## Historical Pi 1.0.1 integration
+
+Exact upstream target: `a7229ddc21810d6245105978033b7df645ecc2f7`. [Source migration #1537](https://github.com/rcarmo/piclaw/pull/1537) is merged; Smith's initial installation was verified separately. Native/Apply, production Delegate integration, combined qualification and live-canary criteria are incomplete. Adapter/Auto stays the default.
+
+| Evidence | Scope / state |
+|---|---|
+| [Remaining acceptance](earendil-101-remaining-acceptance.md) | Current MCP-01–15 and AUTH-01–08 evidence/gaps, merged inactive request foundations and separate rollout permissions. |
+| [Source migration](../../../development/pi-101-migration.md) | Exact core package pins and current-loop qualification; later source merges do not extend the initial installation receipt. |
+| [Registry provenance](receipts/earendil-101-registry.json) and [package admission](receipts/earendil-101-package-admission.json) | Fresh exact-version archives, package closure and offline admission. |
+| [Provider auth](receipts/earendil-101-provider-auth.json), [browser](receipts/earendil-101-provider-browser-bun.json) and [devices](receipts/earendil-101-provider-devices-bun.json) | Isolated synthetic public auth flows; real-account parity/canary is separate. |
+| [Packaged CLI auth](receipts/earendil-101-packaged-cli-auth-bun.json) and [Codex device flow](receipts/earendil-101-codex-device-bun.json) | Exact published CLI and device-flow fixtures under Bun; no live accounts or provider inference. |
+| [Public MCP contract](receipts/earendil-101-mcp-public.json) | Positive synthetic public factories and ten missing public contracts; Native parity/activation unqualified. Failed-teardown evidence is a separate gate. |
+| [Private-auth UI](receipts/earendil-101-anthropic-private-ui.json) | Synthetic privacy/activation UI cases; no private production-defect disclosure or live account acceptance. |
+| [Upgrade coherence](../../../development/pi-101-upgrade-coherence.md) and [public shutdown consumer](../../../development/mcp-public-shutdown-consumer.md) | Qualified source follow-ups; authoritative adapter acknowledgement does not certify Native teardown. |
+| [Delegate synthetic qualification](https://github.com/rcarmo/piclaw-addons/blob/cc8a67c/scripts/qualification/DELEGATE-AUTH-101.md) | Fresh public provider/private-pipe fixture from add-on #172; production auth/environment, cancellation, engine and budget gates are separate. |
+
+## Historical Pi 1.0.0 migration and approved durable design
+
+| Evidence | Scope / state |
+|---|---|
+| [Durable architecture and HC/PC crosswalk](earendil-100-durable-crosswalk.md) | 25 HC and 20 PC intents; exact spec/archive references, prior paused Memory probe, explicit source-only gaps and retained host authority. Design approved 3 October 2026; durable work out of scope, no production activation or new semantic acceptance. |
+| [Current-loop migration](earendil-100-current-loop-progress.md) | Independent #1497 migration and frozen 0.99.1 consumer; subsequent merge recorded in the ADR index. |
+
+## Completed 0.99.1 assessments
+
+| Evidence | Scope / state |
+|---|---|
+| [Inactive Harness](earendil-0991-harness-assessment.md) | Completed #1452; retained exact-version evidence, not pi-durable qualification. |
+| [Pico3](earendil-0991-pico3-assessment.md) | Completed #1453; experimental evidence and unverified host boundaries retained. |
+
 ## Published 0.87.0 candidate
 
 | Evidence | Scope / state |

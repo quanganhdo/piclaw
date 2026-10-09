@@ -1,10 +1,9 @@
 import "../helpers.js";
 
 import { describe, expect, test } from "bun:test";
-import { BACKGROUND_CONTEXT, Result, type Context } from "@earendil-works/pi-agent-core";
+import { BACKGROUND_CONTEXT, Result, type Context } from "../../src/service-effects/contracts/execution-env.js";
 
 import { CurrentPiclawExecutionContextResolver } from "../../src/service-effects/current-piclaw/execution-context-resolver.js";
-import { CurrentPiclawLocalExecutionEnvFactory } from "../../src/service-effects/current-piclaw/local-execution-env.js";
 import { CurrentPiclawSshExecutionEnvFactory } from "../../src/service-effects/current-piclaw/ssh-execution-env.js";
 import { FakeExecutionEnv } from "../../src/service-effects/testing/fakes/fake-execution-env.js";
 import { FakeExecutionContextResolver } from "../../src/service-effects/testing/fakes/fake-execution-context-resolver.js";
@@ -45,17 +44,7 @@ describe("execution environment factory rejection cleanup", () => {
 
   });
 
-  test("local factory cleans a captured delegate when adapter construction throws", async () => {
-    const candidate = changingMethodCandidate("/local", true);
-    const factory = new CurrentPiclawLocalExecutionEnvFactory({
-      cwd: "/local",
-      prepareShellEnvironment: () => ({}),
-      createNodeEnv: () => candidate,
-    });
-    const result = await Promise.resolve(factory.createLocalEnv());
-    expect(result.ok).toBeFalse();
-    expectCleanup(candidate);
-  });
+  // Historical local factory rejection cleanup remains in the pinned 0.99.1 consumer.
 
   test("SSH factory cleans candidates rejected by unstable envelopes and adapter validation", async () => {
     const unstableOk = trackedCandidate("/remote", true);

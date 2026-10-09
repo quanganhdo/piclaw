@@ -1,0 +1,471 @@
+{
+  "candidate": {
+    "source": "34e4bda1a6c35aebd22b9dd2a127854b2438d9cc",
+    "tree": "66192a17691b6ddd36f47d4db175360b8187f43f",
+    "merge": "16b020da0575d080b0d006460ca313130fb8c2c5",
+    "pr": 1563,
+    "packageSha256": "023d2541265cafa259bebe91ed41afbc3660816a7b98f5de0b719197a3516ddc",
+    "bun": "1.4.2",
+    "frozenLockInstall": true,
+    "provenance": {
+      "source": "34e4bda1a6c35aebd22b9dd2a127854b2438d9cc",
+      "tree": "66192a17691b6ddd36f47d4db175360b8187f43f",
+      "packageSha256": "023d2541265cafa259bebe91ed41afbc3660816a7b98f5de0b719197a3516ddc",
+      "packagedSourceManifestSha256": "3fa7b84911647bca1a048b287a090cdd83f8ec972f4b1904884a7781724fa8b4",
+      "packageVsCommitFiles": 785,
+      "mismatches": [],
+      "verified": true
+    }
+  },
+  "approval": {
+    "initialMinutes": 30,
+    "target": "VM900 piclaw-test/radxax4",
+    "bunReplacementClarified": true,
+    "directCorrectedRetryExplicitlyAuthorised": true,
+    "smithRestart": false,
+    "liveAccounts": false,
+    "paidProvider": false,
+    "productionDelegate": false,
+    "provenance": {
+      "chat": "web:chat:94b5b0fe-d4d6-4e37-b6fe-a73f0d8362ec",
+      "initial": {
+        "messageRow": 62730,
+        "source": "user card submission",
+        "scope": "pi103-synthetic-vm900-canary",
+        "candidate": "c1b7f140cad8ce67ce4cd123e488f43410d7c7b9",
+        "packageSha256": "8fc25726a816e3d4673cd66f41dc993dc86fd83b9714d2aae7e8ff73ca9ffde2",
+        "soakMinutes": 30,
+        "liveAccounts": false,
+        "smithRestart": false
+      },
+      "correctedRetry": {
+        "messageRow": 62759,
+        "text": "no need. retry directly",
+        "inResponseTo": "Assistant request for approval of corrected exact artifact and fresh30mincanary retry after config mode failure",
+        "newArtifactAllowed": true,
+        "originalSafetyLimitsRetained": true
+      },
+      "operationalChanges": {
+        "clearVmWorkloads": "Rui explicitly authorised clearing everything else in VM900 at2026-10-05T16:03:47.180Z",
+        "replaceVmBunOnly": "Rui clarified the bun at2026-10-05T16:29:01.177Z; VM was not replaced"
+      },
+      "verification": "Initial and retry messages retrieved from the scoped message store during final receipt construction; no new live/production permission inferred."
+    }
+  },
+  "sourceQualification": {
+    "fullPass": 6533,
+    "skip": 8,
+    "fail": 0,
+    "assertions": 42756,
+    "featurePass": 25,
+    "webPass": 9,
+    "postmergePass": 25,
+    "postmergeAssertions": 195,
+    "hostedExactSuccess": 37346512175
+  },
+  "measuredWindow": {
+    "startedAt": "2026-10-05T17:13:30.017Z",
+    "finishedAt": "2026-10-05T17:43:30.036Z",
+    "durationMs": 1800019,
+    "cycles": 59,
+    "passed": true,
+    "pidUnchanged": true,
+    "independentFinalAudit": true
+  },
+  "scopedChecks": {
+    "privateConfigStartupAndRestart": "pass both skins0600",
+    "classicQualifiedBrowser": "pass correlated terminal and visible settings",
+    "visualQualifiedBrowser": "pass correlated terminal and visible settings",
+    "browserErrorAndExternalAttemptAssertions": "zero",
+    "httpCancelSseReconnect": "pass exact abort kind/cause/operation and one terminal, intermediatefragmentallowed",
+    "actualRunningServiceScheduler": "pass one once-task, source consumed/operation terminal",
+    "packagedSchedulerLeafFixture": "pass isolatedsynthetic",
+    "familyWriterReleaseRevocation": "pass isolatedsynthetic",
+    "runtimeMcpProxy": "pass persisted toolresult Synthetic MCP runtime OK /servercalls1",
+    "continuousSoakAudit": "pass final ordered-cycle/duplicate/terminal/duration/PID audit"
+  },
+  "limits": [
+    "Classic running service owns the continuous30minwindow. Visual restarts during syntheticMCP harness qualification and is not a separate30minsoak.",
+    "Timing/RSS samples are coarse and processwide; no leakabsence/crossplatform/latencyguarantee.",
+    "Browser and auxiliary probe test corrections are retained; preliminary weakassertion results excluded from qualified proof.",
+    "Canary backend loopback-only cgroupnetworkpolicy plus application fetch/socket guard; no claim of universal OS audit of every deniedpacket or raw provider/auth/accountgeneration contract.",
+    "Bunpackage install uses qualifiedlock as explicit overlay because npm package omitslock; exactsource/declarationpins verified separately.",
+    "No live Memento/server/account/providercalls, protectedAzurecredentialmigration or Smithdeploy accepted."
+  ],
+  "recordedAt": "2026-10-05T17:46:59.284Z",
+  "disposition": "Passed bounded synthetic30minClassicservice canary, stopped and writes quarantined; overall production acceptance incomplete",
+  "finalAudit": {
+    "verifiedAt": "2026-10-05T17:43:59.228Z",
+    "durationMs": 1800019,
+    "cycles": 59,
+    "pidUnchanged": true,
+    "pid": 94021,
+    "privateModesBoth": true,
+    "configSha256": {
+      "classic": "7efaac7fe233eb17582d6dd622335d6ce9ef8d60035fba2ba5581ba0ac168185",
+      "visual": "e519149ae66bd71840d1481a0024286508c75bb1bfc10880f139e25e4aeaa61c"
+    },
+    "networkGuardMarkers": 0,
+    "duplicateFreeOneTerminalEach": true,
+    "orderedInputs": true,
+    "databaseIntegrity": true,
+    "actualScheduledRunCount": 1,
+    "mcpRuntimeSuccessfulToolResults": 1,
+    "mcpServerCalls": 1,
+    "watchdog": {
+      "samples": 32,
+      "startedAt": "2026-10-05T17:28:27.579Z",
+      "endedAt": "2026-10-05T17:43:58.690Z",
+      "fullWindow": false
+    },
+    "metrics": {
+      "promptMs": {
+        "min": 761.9381170000415,
+        "median": 766.1422800000291,
+        "max": 863.5494320000289
+      },
+      "readMs": {
+        "min": 1.836703000124544,
+        "median": 2.5982780000194907,
+        "max": 75.20468000002438
+      },
+      "rssKb": {
+        "min": 174036,
+        "median": 182272,
+        "max": 186668
+      },
+      "cpuTicksStart": 316,
+      "cpuTicksEnd": 1459
+    },
+    "hashes": {
+      "soak": "ea411bb8adc09cd918a3699dc513f8c7c77d0616f12ea1766e18af853b21b5a5",
+      "watchdog": "5c179bc4a432599101265e067d0afb09784d4bfa5275875ba52c4815ba7719db",
+      "qualifiedLock": "5bf82bf6f35ed1bd7cc49bc5f521c7e39a22004b0b2570e774ea2cbf5628ee49",
+      "package": "023d2541265cafa259bebe91ed41afbc3660816a7b98f5de0b719197a3516ddc"
+    },
+    "limits": [
+      "Prompt timing includes reply polling and the unrelated read; not isolated admission ACK latency.",
+      "Visual service restarted during synthetic MCP harness qualification; no second continuous30min claim.",
+      "Watchdog begins mid-window; startup/final mode checks and entire-window journal marker inspection complement partial periodic observations.",
+      "MCP harness failures remain retained; successful final proxy call is distinct from whole-server/account parity."
+    ]
+  },
+  "stopAndRollback": {
+    "verifiedAt": "2026-10-05T17:44:32.473Z",
+    "canaryMainPidsZero": true,
+    "canaryAppProcessesZero": true,
+    "stoppedUnits": 5,
+    "profileDirectoriesQuarantined": true,
+    "candidateWritesReplayed": false,
+    "originalDatabaseFileHashesVerified": 65,
+    "quarantineManifestSha256": "9c95b3ed2b0cb4c112c51557b7faf2da3c03a35a3347d7698835e6f34fe53e07",
+    "bun": "1.4.2",
+    "runtimeReplacementWasApproved": true,
+    "smithTouched": false,
+    "postQuarantineProof": {
+      "verifiedAt": "2026-10-05T17:46:08.329Z",
+      "quarantinedProfileCount": 2,
+      "profileConfigModes": [
+        "600",
+        "600"
+      ],
+      "originalDatabaseFileHashesVerified": 65,
+      "originalDatabaseManifestSha256": "78065f566912d60a6d218b4657024c12cab710548c664cc69016a380901465e4",
+      "afterStop": true,
+      "sourceManifestVerifiedAgain": true
+    },
+    "quarantineBytesVerified": {
+      "quarantineFileHashesVerified": 48755,
+      "allCandidateProfileBytesPreserved": true,
+      "noReplay": true,
+      "manifestSha256": "9c95b3ed2b0cb4c112c51557b7faf2da3c03a35a3347d7698835e6f34fe53e07"
+    }
+  },
+  "actualBrowser": {
+    "classic": {
+      "skin": "classic",
+      "promptRow": 39,
+      "terminalRow": 40,
+      "correlatedTerminal": true,
+      "visibleReply": true,
+      "visibleSettings": true,
+      "browserErrors": 0,
+      "blockedOutsideAttempts": 0,
+      "scope": "Pinned VM900 SSH tunnel only; HTTP/HTTPS origin routes and WebSocket denial, synthetic prompt and actual visible UI"
+    },
+    "visual": {
+      "skin": "visual",
+      "promptRow": 21,
+      "terminalRow": 22,
+      "correlatedTerminal": true,
+      "visibleReply": true,
+      "visibleSettings": true,
+      "browserErrors": 0,
+      "blockedOutsideAttempts": 0,
+      "scope": "Pinned VM900 SSH tunnel only; HTTP/HTTPS origin routes and WebSocket denial, synthetic prompt and actual visible UI"
+    },
+    "cancel": {
+      "cancellation": true,
+      "oneTerminalReply": true,
+      "reconnect": true,
+      "scope": "Visual synthetic canary delayed provider, actual HTTP abort and SSE reconnect; no externalprovider"
+    }
+  },
+  "probes": {
+    "scheduler": {
+      "runtime": "1.4.2",
+      "providerCalls": 2,
+      "deliveries": 1,
+      "realAgentPool": true,
+      "realSessionConstruction": true,
+      "realLeafRestored": true,
+      "scheduledBranchPersisted": true,
+      "scheduledBranchExcludedFromActiveContext": true,
+      "durableSourceSettled": true,
+      "recurrenceVerified": true,
+      "entriesBefore": 5,
+      "entriesAfter": 7,
+      "sessionBytes": 60269,
+      "queue": {
+        "enqueued": 1,
+        "deduplicated": 0,
+        "started": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "retriesScheduled": 0
+      },
+      "scheduler": {
+        "polls": 1,
+        "tasksEnqueued": 1,
+        "taskRunsStarted": 1,
+        "taskRunsSucceeded": 1,
+        "taskRunsFailed": 0,
+        "lastPollAt": "2026-10-05T17:14:45.614Z"
+      },
+      "networkAttempts": 0,
+      "childProcessAttempts": 0,
+      "wallMs": 1923.927315,
+      "cpu": {
+        "user": 1042291,
+        "system": 175001
+      },
+      "eventLoop": {
+        "samples": 816,
+        "maxMs": 170.558534,
+        "meanMs": 1.195503143382353
+      },
+      "scope": "Actual scheduler claim/AgentQueue/AgentPool.runAgent/Piclaw session construction/public Pi SDK prompting and leaf navigation over owned disk state. Native synthetic provider emits deterministic zero-cost responses; outbound sink observes delivery only, no live provider/account/transport. No raw auth/provider/account-generation contract qualification."
+    },
+    "familyRelease": {
+      "runtime": "1.4.2",
+      "ownerAdmissions": 16,
+      "exactReplays": 4,
+      "denials": {
+        "foreign": 1,
+        "csrf": 1,
+        "conflictingPayload": 2,
+        "revoked": 1
+      },
+      "concurrency": 4,
+      "immutableAuthorityVerified": true,
+      "contention": {
+        "mode": "release",
+        "writerLockedBeforeRequest": true,
+        "heldMs": 500,
+        "responseStatus": 201,
+        "elapsedMs": 583.5012459999998,
+        "unrelatedReadMs": 21.41927399999986,
+        "timerMs": 20.423947999999655,
+        "eventLoopMaxMs": 56.483717,
+        "eventLoopSamples": 372,
+        "rowsAfter": 17,
+        "noRevokedAdmission": null
+      },
+      "queue": {
+        "ready": 2,
+        "held": 14
+      },
+      "wakeSinkCalls": 4,
+      "broadcastSinkCalls": 17,
+      "wallMs": 1047.7597729999998,
+      "cpu": {
+        "user": 622087,
+        "system": 141902
+      },
+      "phases": [
+        {
+          "name": "concurrent-owner-admission",
+          "wallMs": 312.9480660000004
+        },
+        {
+          "name": "parallel-exact-replay",
+          "wallMs": 38.90762799999993
+        },
+        {
+          "name": "foreign-csrf-conflicting-denials",
+          "wallMs": 22.409052999999858
+        }
+      ],
+      "eventLoop": {
+        "samples": 381,
+        "maxMs": 56.483717,
+        "meanMs": 0.6720930078740157
+      },
+      "memory": {
+        "rss": 130957312,
+        "heapTotal": 18953216,
+        "heapUsed": 19707224,
+        "external": 6078586,
+        "arrayBuffers": 6175
+      },
+      "memoryReadRetries": 0,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        }
+      },
+      "external": 0,
+      "scope": "Direct DB/service account/session setup, then actual owned loopback RequestRouter family mutation/CSRF/browserpins/admission/idempotency/immutable owner SQL/queue writes. Sameprocessrequests atconcurrency4; SQLite serializes transactions. Wake/broadcast are sinks, no Agent/dequeue/delivery/provider; optional crossprocess IMMEDIATE writer holds500ms then commits release or targetlogin revocation. Initial queue/authority counts refer to pre-contention phase; no live accounts. Wall/CPU includes intentional sleeps; replaced global fetch counts only calls through that wrapper, not universal network isolation."
+    },
+    "familyRevoke": {
+      "runtime": "1.4.2",
+      "ownerAdmissions": 16,
+      "exactReplays": 4,
+      "denials": {
+        "foreign": 1,
+        "csrf": 1,
+        "conflictingPayload": 2,
+        "revoked": 1
+      },
+      "concurrency": 4,
+      "immutableAuthorityVerified": true,
+      "contention": {
+        "mode": "revoke",
+        "writerLockedBeforeRequest": true,
+        "heldMs": 500,
+        "responseStatus": 403,
+        "elapsedMs": 522.604499,
+        "unrelatedReadMs": 16.268917999999758,
+        "timerMs": 16.066219000000274,
+        "eventLoopMaxMs": 15.069351,
+        "eventLoopSamples": 436,
+        "rowsAfter": 16,
+        "noRevokedAdmission": true
+      },
+      "queue": {
+        "ready": 2,
+        "held": 14
+      },
+      "wakeSinkCalls": 4,
+      "broadcastSinkCalls": 16,
+      "wallMs": 897.4899530000002,
+      "cpu": {
+        "user": 411012,
+        "system": 98354
+      },
+      "phases": [
+        {
+          "name": "concurrent-owner-admission",
+          "wallMs": 295.5308640000003
+        },
+        {
+          "name": "parallel-exact-replay",
+          "wallMs": 23.399844000000485
+        },
+        {
+          "name": "foreign-csrf-conflicting-denials",
+          "wallMs": 11.211779999999635
+        }
+      ],
+      "eventLoop": {
+        "samples": 447,
+        "maxMs": 15.069351,
+        "meanMs": 0.20687702908277403
+      },
+      "memory": {
+        "rss": 127369216,
+        "heapTotal": 18875392,
+        "heapUsed": 19711042,
+        "external": 6077657,
+        "arrayBuffers": 6163
+      },
+      "memoryReadRetries": 0,
+      "settings": {
+        "journal": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        }
+      },
+      "external": 0,
+      "scope": "Direct DB/service account/session setup, then actual owned loopback RequestRouter family mutation/CSRF/browserpins/admission/idempotency/immutable owner SQL/queue writes. Sameprocessrequests atconcurrency4; SQLite serializes transactions. Wake/broadcast are sinks, no Agent/dequeue/delivery/provider; optional crossprocess IMMEDIATE writer holds500ms then commits release or targetlogin revocation. Initial queue/authority counts refer to pre-contention phase; no live accounts. Wall/CPU includes intentional sleeps; replaced global fetch counts only calls through that wrapper, not universal network isolation."
+    },
+    "actualRunningScheduler": {
+      "actualRunningServiceScheduler": true,
+      "oneRunLog": true,
+      "deterministicReply": true,
+      "sourceConsumed": true,
+      "operationTerminal": true,
+      "scope": "Fresh once task executed by runningClassicservice; no nudge/liveprovider, separateleafrestorationfixture proof"
+    }
+  },
+  "sourceBytesVerified": {
+    "packagedSourceVerified": true,
+    "entries": 785,
+    "mutatedPackageRuntime": false
+  },
+  "retainedFailures": {
+    "originalPackageCanary": {
+      "packageSha256": "8fc25726a816e3d4673cd66f41dc993dc86fd83b9714d2aae7e8ff73ca9ffde2",
+      "passed": false,
+      "cycles": 21,
+      "stopReason": "config atomic replacement0600→0644; strictMCP denial afterrestart; correctedPR1563"
+    },
+    "harness": [
+      "Incorrect config key",
+      "Provider initial descriptor unavailable",
+      "POST201 expected200",
+      "Visual onboarding ignored",
+      "WrongSSEroute",
+      "Intermediate fragment included in terminal count",
+      "SyntheticMCPserver reusedinitializedsession",
+      "OldProvidercontext.tools used instead oftranscript",
+      "Visualqualifiedrouteexpecteddefault instead ofchatId"
+    ],
+    "review": {
+      "preliminaryClientAssertionReviewRequiredCorrections": true,
+      "oneBroadReviewTimedOut": true,
+      "shutdownNarrowReviewRequiredCorrections": true
+    },
+    "nonQualifyingAttemptsRetainedLocally": true
+  },
+  "openIssues": [
+    "Publicrawauth/provider settlement/accountgeneration andproductionDelegate",
+    "#1455 combinedproductionqualification",
+    "#1456 live rollout/credentials/Azure migration",
+    "Installedworkspacegoaladdon typebox resolutionwarning retained; notfixed in thisscope",
+    "Longer/multiplatform leak/latency coverage"
+  ],
+  "hashScope": "Each artifact hash covers the entire raw log/file; extracted JSON results are parsed from the final structured result line. OriginalDB65 and candidateprofilebytes were recomputed by read-only post-stop VM audits; local receipt builder verifies those attestations rather than copying privateDB/configdata.",
+  "artifactHashes": {
+    "postQuarantine": "1e599f6dd62c307eee297cba5320d524ef323097d68a6e8238d35e09d637b242",
+    "quarantineBytes": "f4055bd69906857776ea777176eb1ff8b49cfcf8fa615002c78ee890b471c736",
+    "sourceProvenance": "babe3adb27d81fedee24943e9aea93925f152165c9456fb414fd79a707f67b02",
+    "approvalProvenance": "2e7786940f323b67a7b4a7e4218b9c2a1017028b3c36075303aa68d61cb68e38",
+    "finalAudit": "4920c20b55072a1c085bb653738ecae7e8c90fd15bfc28303fe90868addc6a9e",
+    "stop": "2fb652980b626d67f13032ccf352661fe1712c4cfd48edbee314ddeebda5250c",
+    "soak": "ea411bb8adc09cd918a3699dc513f8c7c77d0616f12ea1766e18af853b21b5a5",
+    "watchdog": "5c179bc4a432599101265e067d0afb09784d4bfa5275875ba52c4815ba7719db",
+    "classicBrowser": "f1aab85189fe8c8f2930ecb31ba9ed5663bfcb930bd035a180e5b9abba431325",
+    "visualBrowser": "fadffc94d06f3989b5463c134e3e6cfbba7af94f087c063ca6c471f4862934fa",
+    "cancellation": "05c8d06a7bfda14ccc8eaafb7629b6857e522831386a7acf5dd50b0d533b9207",
+    "scheduler": "3493a66a66c56239461cc4c7faa1721c8fdc83c2c719b192cdfc99914812004a",
+    "familyRelease": "da6b0bd8019f16ed30c8febe0d2b1857ff7bd881df1ed25eb025bc12648febd5",
+    "familyRevoke": "835fb945816fa1b79624306be6a306f097593f378eb06795cef72ec1f04cc62d",
+    "liveScheduler": "4a8582bca9c4cd092e59cfa8f58dec367763b628a4daac872da47b37caec2ce0"
+  }
+}

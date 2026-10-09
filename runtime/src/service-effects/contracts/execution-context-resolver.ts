@@ -1,7 +1,7 @@
 import type {
   ExecutionEnv,
   Result,
-} from "@earendil-works/pi-agent-core";
+} from "./execution-env.js";
 
 import type { PiclawEffectError } from "./common.js";
 

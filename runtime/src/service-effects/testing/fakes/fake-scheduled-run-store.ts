@@ -1,4 +1,4 @@
-import { Result } from "@earendil-works/pi-agent-core";
+import { Result } from "../../contracts/result.js";
 
 import {
   hashCanonicalRequest,

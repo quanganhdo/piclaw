@@ -1,0 +1,379 @@
+{
+  "disposition": "measured scoped evidence; overall performance acceptance incomplete",
+  "runtimeBase": "e3fbf6cf1d378b2bd9b71969ec9c69f89cdbed5c",
+  "productionRuntimeChanged": false,
+  "initial": {
+    "base": "44affa34d7303e308c01a14635959dd2ea475251",
+    "runs": 23,
+    "classes": {
+      "comparablePlainAndInstrumented": 18,
+      "wholeChildCpu": 3,
+      "finalHeapSnapshots": 2
+    },
+    "workloads": [
+      {
+        "scenario": "history",
+        "workMs": {
+          "median": 114.19211899999999,
+          "min": 113.07756899999998,
+          "max": 128.19860099999988
+        },
+        "instrumentedWorkMs": {
+          "median": 122.90399600000006,
+          "min": 120.01015899999999,
+          "max": 124.59850199999994
+        },
+        "eventLoop": [
+          {
+            "samples": 47,
+            "resolutionMs": 1,
+            "maxMs": 19.642544,
+            "meanMs": 2.4556064680851066,
+            "p99Ms": 19.644415
+          },
+          {
+            "samples": 46,
+            "resolutionMs": 1,
+            "maxMs": 23.342762,
+            "meanMs": 2.560544,
+            "p99Ms": 23.347199
+          },
+          {
+            "samples": 47,
+            "resolutionMs": 1,
+            "maxMs": 31.82637,
+            "meanMs": 2.7996337021276596,
+            "p99Ms": 31.834111
+          }
+        ],
+        "scope": "Synthetic real helpers/public SDK; seed/startup excluded wall rows but included whole-child CPU. No HTTP middleware, contention writer, family deployment, model, provider, real credentials or production DB. Explicit forced GC measures recovery cost, not automatic-GC causation."
+      },
+      {
+        "scenario": "mixed",
+        "workMs": {
+          "median": 3596.6026439999996,
+          "min": 3588.7774839999984,
+          "max": 3634.616413
+        },
+        "instrumentedWorkMs": {
+          "median": 3626.100575,
+          "min": 3567.4315960000013,
+          "max": 3728.340446000001
+        },
+        "eventLoop": [
+          {
+            "samples": 120,
+            "resolutionMs": 1,
+            "maxMs": 201.837133,
+            "meanMs": 29.984718733333334,
+            "p99Ms": 193.724415
+          },
+          {
+            "samples": 121,
+            "resolutionMs": 1,
+            "maxMs": 198.344656,
+            "meanMs": 30.105718347107437,
+            "p99Ms": 193.855487
+          },
+          {
+            "samples": 120,
+            "resolutionMs": 1,
+            "maxMs": 191.829065,
+            "meanMs": 30.058714600000002,
+            "p99Ms": 187.039743
+          }
+        ],
+        "scope": "Synthetic real helpers/public SDK; seed/startup excluded wall rows but included whole-child CPU. No HTTP middleware, contention writer, family deployment, model, provider, real credentials or production DB. Explicit forced GC measures recovery cost, not automatic-GC causation."
+      },
+      {
+        "scenario": "background",
+        "workMs": {
+          "median": 95.1747519999999,
+          "min": 90.28435400000035,
+          "max": 112.62993000000006
+        },
+        "instrumentedWorkMs": {
+          "median": 130.81925299999966,
+          "min": 115.00076200000058,
+          "max": 138.22938500000055
+        },
+        "eventLoop": [
+          {
+            "samples": 18,
+            "resolutionMs": 1,
+            "maxMs": 88.491432,
+            "meanMs": 6.272573333333333,
+            "p99Ms": 88.539135
+          },
+          {
+            "samples": 18,
+            "resolutionMs": 1,
+            "maxMs": 59.849715,
+            "meanMs": 5.026114666666667,
+            "p99Ms": 59.867135
+          },
+          {
+            "samples": 18,
+            "resolutionMs": 1,
+            "maxMs": 69.997149,
+            "meanMs": 5.300145777777778,
+            "p99Ms": 70.057983
+          }
+        ],
+        "scope": "Synthetic real helpers/public SDK; seed/startup excluded wall rows but included whole-child CPU. No HTTP middleware, contention writer, family deployment, model, provider, real credentials or production DB. Explicit forced GC measures recovery cost, not automatic-GC causation."
+      }
+    ]
+  },
+  "rejectedFts": {
+    "targetFirst": "rejected; rare100searches6ms→160ms",
+    "adaptive64": "rejected; early/common and sparse64matches become corpus scans, global-probe availability and owner timing concerns",
+    "runtimeQueryChanged": false,
+    "schemaChanged": false,
+    "revertedUnmergedPrototypeCommits": [
+      "c2f4f78e6",
+      "572405faf"
+    ],
+    "revertCommits": [
+      "85d9aad76",
+      "3c9838525"
+    ]
+  },
+  "notes": {
+    "runs": 7,
+    "plainWriterMs": {
+      "min": 2331.185106,
+      "median": 2941.7034439999998,
+      "max": 3175.400696
+    },
+    "sourceOpens": 200,
+    "publication": {
+      "state": "ready",
+      "staging": null,
+      "writer_pid": null
+    },
+    "finalSmokeMs": 4343.486888,
+    "separateFinalSmoke": true,
+    "caveats": "Inclusive writer transaction timings overlap statement bodies and includecommit; wholechildCPUstartup included. Parent fixture probes are not HTTPmiddleware and no schedulerwork/modelrun. No batching/durabilitychange. Delegated review timedout suppliesnoapproval."
+  },
+  "http": {
+    "runs": 14,
+    "plain": [
+      {
+        "mode": "single-user",
+        "wallMs": {
+          "min": 627.4076300000002,
+          "median": 658.7525819999998,
+          "max": 663.4865609999997
+        },
+        "batchTotalMs": {
+          "min": 459.4653950000004,
+          "median": 484.80014299999993,
+          "max": 495.4145889999995
+        }
+      },
+      {
+        "mode": "family-shared",
+        "wallMs": {
+          "min": 576.5028180000002,
+          "median": 598.859142,
+          "max": 622.1758049999999
+        },
+        "batchTotalMs": {
+          "min": 408.99729900000057,
+          "median": 420.73694100000034,
+          "max": 444.85146299999997
+        }
+      }
+    ],
+    "caveats": [
+      "100 batchesrequests plus serialrevocation; wall/CPU includes intentional sleeps andrevocation, excludes seed. WholeprocessCPUprofile includesseed.",
+      "Family75success25denial vs single100success; no speedcomparison",
+      "Original responseBytesTotal usedJSstringlength; corrected finalchecks useBuffer.byteLength",
+      "Onlyrequest-id/familyprivate-cacheheader checks; notallsecurityheaders",
+      "Wrappedglobalfetch aftersetup deniesnonserverorigin, notuniversalnetworksandbox",
+      "Firstad-hocrevocation redirected tologin; missingfixtureservestatic failed. Redirectmanual corrected, priorfailure retained."
+    ]
+  },
+  "scheduler": {
+    "runs": 7,
+    "plainWallMs": {
+      "min": 304.331091,
+      "median": 310.8127770000001,
+      "max": 319.48279100000013
+    },
+    "plainEventMaxMs": {
+      "min": 53.533387,
+      "median": 54.083718,
+      "max": 59.20421
+    },
+    "attributedLogInsertMs": {
+      "calls": 20,
+      "ms": 222.9346749999993
+    },
+    "timerLatenessMs": [
+      2.3427979999999025,
+      46.91288899999995,
+      0.6794729999999163,
+      45.01005599999985,
+      0.7787679999999,
+      47.77233000000001,
+      0.6902430000000095,
+      44.91154800000004,
+      0.7576930000000175,
+      44.952281000000085,
+      0.061919999999872744
+    ],
+    "initialOutlier": {
+      "wallMs": 827.649553,
+      "eventMaxMs": 446.828946
+    },
+    "caveats": [
+      "20actual legacyrunScheduledTask callsconcurrency4, injected5msagent/sinks; no paidprovider/realSDKturn/shell/durableclaimloop/livescheduler",
+      "20restorecallback/sink invocations do notprove SDKleafrestoration/externaldelivery",
+      "Initialmetrics.unlabeled SQLrun cannotattributecommit; finalmetricrun.task-log separatelylabels20inserts",
+      "Timercadence delayed45–48msfinal; authqueryduration alone isnotparentresponsiveness",
+      "Initialsmoke827ms/446eventoutlier retained;3plainruns304–320ms/53–59eventmax arevariable",
+      "CPUdelta excludesstartup/seed;externalwholechildCPUincludes. Durability remainsWALFULL unchanged."
+    ]
+  },
+  "writerReads": {
+    "runs": [
+      {
+        "runtime": "1.4.2",
+        "writerHoldMs": 500,
+        "reads": 20,
+        "batches": [
+          5.8787660000000415,
+          3.6554780000000164,
+          3.19375100000002,
+          1.984136000000035,
+          3.23738400000002,
+          2.852877000000035,
+          2.9444799999999987,
+          2.128967999999986,
+          1.8239119999998366,
+          3.6006049999998595,
+          2.9053109999999833,
+          2.892084999999952,
+          2.785478000000012,
+          2.7232329999999365,
+          2.745042000000012,
+          2.9937230000000454,
+          3.1677149999998164,
+          3.1363589999998567,
+          2.8396079999999984,
+          2.7120769999999084
+        ],
+        "readFinishedMs": 163.2448320000001,
+        "timerMs": 10.23051600000008,
+        "eventLoop": {
+          "samples": 419,
+          "maxMs": 47.820962
+        },
+        "revokedDenied": true,
+        "busyTimeout": {
+          "timeout": 5000
+        },
+        "scope": "Actual read-only HTTP auth/router/timeline while owned external IMMEDIATE writer holdsWAL; no messagewrites/providers/familytransactions/nativeGC/liveDB. Readsfinishbeforewriterrelease notabsoluteperformanceassertion; boundedchildcleanup."
+      },
+      {
+        "runtime": "1.4.2",
+        "writerHoldMs": 500,
+        "reads": 20,
+        "batches": [
+          9.404843999999912,
+          3.572524000000044,
+          3.891461999999933,
+          3.038909999999987,
+          2.850824999999986,
+          2.898738000000094,
+          2.966672000000017,
+          12.206908999999996,
+          2.9465400000000272,
+          2.69725399999993,
+          4.107224999999971,
+          3.3343790000001263,
+          3.092087999999876,
+          2.074788000000126,
+          3.339751999999862,
+          3.325753999999961,
+          3.7258529999999155,
+          3.338237000000163,
+          3.2984839999999167,
+          3.1766939999999977
+        ],
+        "readFinishedMs": 189.59845500000006,
+        "timerMs": 15.464665000000082,
+        "eventLoop": {
+          "samples": 400,
+          "maxMs": 34.823216
+        },
+        "revokedDenied": true,
+        "busyTimeout": {
+          "timeout": 5000
+        },
+        "scope": "Actual read-only HTTP auth/router/timeline while owned external IMMEDIATE writer holdsWAL; no messagewrites/providers/familytransactions/nativeGC/liveDB. Readsfinishbeforewriterrelease notabsoluteperformanceassertion; boundedchildcleanup."
+      },
+      {
+        "runtime": "1.4.2",
+        "writerHoldMs": 500,
+        "reads": 20,
+        "batches": [
+          9.029074000000037,
+          3.3522759999999607,
+          3.0536069999999427,
+          2.970136000000025,
+          3.201321000000007,
+          1.860610999999949,
+          2.473946000000069,
+          3.166396999999961,
+          1.9326819999999998,
+          2.8288890000000038,
+          2.66264799999999,
+          2.6281870000000254,
+          2.9956220000000258,
+          9.483988999999951,
+          2.78607599999998,
+          2.917900000000145,
+          3.3788640000000214,
+          2.7366830000000846,
+          2.701514999999972,
+          2.69715999999994
+        ],
+        "readFinishedMs": 171.61906599999998,
+        "timerMs": 10.129252999999949,
+        "eventLoop": {
+          "samples": 409,
+          "maxMs": 39.390097
+        },
+        "revokedDenied": true,
+        "busyTimeout": {
+          "timeout": 5000
+        },
+        "scope": "Actual read-only HTTP auth/router/timeline while owned external IMMEDIATE writer holdsWAL; no messagewrites/providers/familytransactions/nativeGC/liveDB. Readsfinishbeforewriterrelease notabsoluteperformanceassertion; boundedchildcleanup."
+      }
+    ],
+    "scope": "OwnWAL500msIMMEDIATEexternalwriter,actualcookie/router/timeline20readrequests, postrelease revocationdenied; no writemutation/familywriter/provider",
+    "readFinishedBeforeConfiguredWriterInterval": true,
+    "absoluteLatencyBound": false
+  },
+  "limits": {
+    "productionDatabase": false,
+    "providerSpend": false,
+    "realCredentials": false,
+    "restart": false,
+    "deployment": false,
+    "noAutomaticGcAcceptance": true
+  },
+  "remaining": [
+    "Real HTTP pre-dispatch middleware and mixed family ownership workload",
+    "Separate contending-writer interleavings beyond existing earlier fixtures",
+    "Note indexing and scheduler/background concurrent workloads",
+    "Automatic GC pause/heap retention causation; final heap and explicitGC only",
+    "Operational cardinality/account/provider data prohibited without separate permission",
+    "Production Delegate raw provider/auth settlement and account-generation contracts",
+    "Matching immutable Delegate/core/policy/credential/owner/orphan qualification",
+    "Explicit deployment/restart/live account/server approval and canary/soak/operational rollback"
+  ],
+  "fullSafeReportSha256": "7d668a7b68a1894a64bdcc5b82427efe36cea7996c3015e367157ccbb43e96e9"
+}

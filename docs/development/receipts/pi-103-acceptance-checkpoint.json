@@ -1,0 +1,311 @@
+{
+  "recordedAt": "2026-10-05T18:44:21.374Z",
+  "target": {
+    "pi": "1.0.3",
+    "gitHead": "d78dc83d633229d12f8b79631384c4c2717c399f",
+    "wrapper": "dddfcf630508f42c169889c11dee94e69b746e7c",
+    "sourceCheckpointBase": "ad2b298f10c10d81cb6d277620aa464da4c53dd4",
+    "latestRuntimeFrozenHead": "09a7597b1bb8073f78dcbfc7321486dbbf28286f"
+  },
+  "disposition": "Source/synthetic qualification complete for linked scopes; overall production acceptance incomplete",
+  "receipts": [
+    {
+      "path": "docs/development/receipts/pi-103-integration.json",
+      "sha256": "c0e441ca99202d0d579a27f923e8faaa872d72ddaeabca2b978d552d26f90524"
+    },
+    {
+      "path": "docs/development/receipts/pi-103-deeper-performance.json",
+      "sha256": "f41be09377ea926b18c6255a4354c546ba3271086bb0005e5eb0b78f564ed353"
+    },
+    {
+      "path": "docs/development/receipts/pi-103-deeper-qualification.json",
+      "sha256": "d272d3da68711408286b972963d462e4cab96ea17d57a32472eececbfc781958"
+    },
+    {
+      "path": "docs/development/receipts/pi-103-soak-agent.json",
+      "sha256": "bb9468c6c27edc75b1398a797b4b4fa25ef3c499a6b93d6671cb769f9d22fa8b"
+    },
+    {
+      "path": "docs/development/receipts/pi-103-soak-agent-qualification.json",
+      "sha256": "754ca2a662f7e5b9c4ff8fe7c4b5a085af0579489fdea904fc7ec9d306257eb9"
+    },
+    {
+      "path": "docs/development/receipts/pi-103-vm-canary.json",
+      "sha256": "71a35cf470aea36a186885ad704d2537177ecf163aa8be1ea05960a3dc06e106"
+    },
+    {
+      "path": "docs/development/receipts/pi-103-core-addon-peers.json",
+      "sha256": "230ff9434968412414a546099ef7b5a5e7281c672d2b542a95ca3e8734a634fc"
+    }
+  ],
+  "historical": {
+    "pi102Acceptance": {
+      "path": "docs/development/receipts/pi-102-acceptance-checkpoint.json",
+      "sha256": "20e59552c1b5b51ba92bd069aa15018fa06b96b74d0b43bda34c136e159ef4ac",
+      "newExecution": false
+    },
+    "retargetHosted": {
+      "id": 37316648682,
+      "conclusion": "success",
+      "headSha": "c0741335c07ae31ce873f45750f5403fea567ab5",
+      "jobs": [
+        {
+          "completedAt": "2026-10-05T13:59:31Z",
+          "conclusion": "success",
+          "databaseId": 111784951392,
+          "name": "Build web UI + frontend regression checks",
+          "startedAt": "2026-10-05T13:25:17Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-05T13:25:19Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-05T13:25:18Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-05T13:25:25Z",
+              "conclusion": "success",
+              "name": "Checkout",
+              "number": 2,
+              "startedAt": "2026-10-05T13:25:19Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-05T13:25:25Z",
+              "conclusion": "success",
+              "name": "Resolve Bun version",
+              "number": 3,
+              "startedAt": "2026-10-05T13:25:25Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-05T13:25:26Z",
+              "conclusion": "success",
+              "name": "Setup Bun",
+              "number": 4,
+              "startedAt": "2026-10-05T13:25:25Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-05T13:25:30Z",
+              "conclusion": "success",
+              "name": "Install dependencies",
+              "number": 5,
+              "startedAt": "2026-10-05T13:25:26Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-05T13:35:29Z",
+              "conclusion": "success",
+              "name": "Run canonical fast CI contract",
+              "number": 6,
+              "startedAt": "2026-10-05T13:25:30Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-05T13:58:51Z",
+              "conclusion": "success",
+              "name": "Install SVG acceptance browsers",
+              "number": 7,
+              "startedAt": "2026-10-05T13:35:29Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-05T13:59:17Z",
+              "conclusion": "success",
+              "name": "Verify shared SVG images in Chromium and WebKit",
+              "number": 8,
+              "startedAt": "2026-10-05T13:58:51Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-05T13:59:28Z",
+              "conclusion": "success",
+              "name": "Smoke-test isolated Git global install",
+              "number": 9,
+              "startedAt": "2026-10-05T13:59:17Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-05T13:59:28Z",
+              "conclusion": "success",
+              "name": "Post Setup Bun",
+              "number": 17,
+              "startedAt": "2026-10-05T13:59:28Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-05T13:59:28Z",
+              "conclusion": "success",
+              "name": "Post Checkout",
+              "number": 18,
+              "startedAt": "2026-10-05T13:59:28Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-05T13:59:28Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 19,
+              "startedAt": "2026-10-05T13:59:28Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/rcarmo/piclaw/actions/runs/37316648682/job/111784951392"
+        }
+      ],
+      "status": "completed",
+      "url": "https://github.com/rcarmo/piclaw/actions/runs/37316648682"
+    },
+    "delegatePi103Consumer": {
+      "pass": 22,
+      "assertions": 160,
+      "sourceHead": "2c984e4819ba05024f918ce34001566b68da3c1e",
+      "contract": "c8ebf5520c122d5d7ba263b852436c6b2c0a10f0fe13e3973977abcf64e236ea",
+      "typesStrictSkipLibCheck": true,
+      "receiptSha256": "e21b44366edc017c6c5cad14f8945fc200191d01d86934912308742ca69a6ffa",
+      "scope": "Inactive #160 consumer; local synthetic/type qualification only",
+      "productionQualified": false
+    }
+  },
+  "completed": {
+    "sourceRetargetPr": 1558,
+    "deeperPr": [
+      1560,
+      1561
+    ],
+    "boundedAgentSoakPr": 1562,
+    "privateConfigFixPr": 1563,
+    "canaryReceiptPr": 1564,
+    "hostPeerFixPr": 1565,
+    "syntheticVmCanary": {
+      "durationMs": 1800019,
+      "cycles": 59,
+      "packageSha256": "023d2541265cafa259bebe91ed41afbc3660816a7b98f5de0b719197a3516ddc",
+      "writesQuarantined": true,
+      "originalDatabaseHashCount": 65,
+      "hostedPrivateFixSuccess": 37346512175
+    },
+    "latestFull": [
+      {
+        "pass": 6537,
+        "skip": 8,
+        "fail": 0,
+        "assertions": 42781
+      },
+      {
+        "pass": 25,
+        "skip": 0,
+        "fail": 0,
+        "assertions": 246
+      },
+      {
+        "pass": 9,
+        "skip": 0,
+        "fail": 0,
+        "assertions": 26
+      }
+    ],
+    "latestPostmerge": {
+      "pass": 7,
+      "assertions": 32
+    },
+    "peerHostedObservation": [
+      {
+        "conclusion": "",
+        "databaseId": 37357905234,
+        "headSha": "f746e31fd0708363e861df81ec183adb864d4813",
+        "status": "in_progress",
+        "url": "https://github.com/rcarmo/piclaw/actions/runs/37357905234"
+      }
+    ]
+  },
+  "upstream": {
+    "number": 10461,
+    "state": "CLOSED",
+    "updatedAt": "2026-10-05T14:14:07Z",
+    "latestComments": [
+      {
+        "createdAt": "2026-10-04T22:30:13Z",
+        "url": "https://github.com/earendil-works/pi/issues/10461#issuecomment-5985159066",
+        "body": "This issue was auto-closed. All issues from new contributors are auto-closed by default.\n\nMaintainers review auto-closed issues daily and reopen worthwhile ones. Issues that do not meet the quality bar in [CONTRIBUTING.md](https://github.com/earendil-works/pi/blob/main/CONTRIBUTING.md) will not be reopened or receive a reply.\n\nIf a maintainer replies `lgtmi` on one of your issues, your future issues will stay open. If a maintainer replies `lgtm`, your future issues and PRs will stay open. The command must be at the start of the reply (optionally after one or more `@username` mentions) or at the end.\n\nSee [CONTRIBUTING.md](https://github.com/earendil-works/pi/blob/main/CONTRIBUTING.md)."
+      }
+    ],
+    "contractDelivered": false,
+    "noStatusInferenceFromClosure": true
+  },
+  "openGates": [
+    {
+      "id": "delegate-public-contract",
+      "requires": [
+        "rawproviderexecutingtask/cleanupsettlement",
+        "rawauthrefresh/storesettlement",
+        "opaqueaccountgeneration/requestlease",
+        "dispatchadmissiongenerationauthority"
+      ],
+      "owner": "upstream public contract and core/addons160 finalqualification",
+      "state": "blocked"
+    },
+    {
+      "id": "delegate-immutable-final",
+      "requires": [
+        "matching immutablecore/addon closure",
+        "exposure/family policy",
+        "credential scan/sourceagreement",
+        "sole MCPowner",
+        "orphanprocess cleanup"
+      ],
+      "state": "blocked",
+      "productionRegistration": false
+    },
+    {
+      "id": "live-account-server",
+      "requires": [
+        "named supportedaccount/provider methods",
+        "named Mementoserver/resources/prompts/allowedcalls",
+        "protectedAzurecredential/config migration conflict rules",
+        "no billable inference without separatepermission"
+      ],
+      "state": "approval-required"
+    },
+    {
+      "id": "production-rollout",
+      "requires": [
+        "exactimmutableartifact",
+        "snapshotSQLiteWAL/JSONL/config/core/addons",
+        "restartother-sessions safety",
+        "soakstopconditions",
+        "tokenaware rollback/candidatewritequarantine"
+      ],
+      "state": "approval-required"
+    }
+  ],
+  "limitedEvidence": [
+    "MCPSettings103browserterminal14/590 lackedlauncherexit; do not upgrade tofullpass.",
+    "Earlier wrapper316/auth144/100405 onPi102retainedhistorical only; currentcheckpoint no rerun.",
+    "Native replacement/parity andpi-durable excluded.",
+    "Hostpeerfix notinstalled ornewcanary; importsnottools/UI/runtimeacceptance.",
+    "SyntheticVMloopback/32samplepartialwatchdog/Classiconly30min no liveaccount/generalperformance/leakabsence.",
+    "Opt-incrashskip notnewqualification; rejectedFTSprototypes preserved.",
+    "Peerfix exacthostedresult separate from frozenlocalgate; pending observation notsuccess."
+  ],
+  "scope": {
+    "productionDelegateActivated": false,
+    "sharedPaidRequestInstallerActivated": false,
+    "smithInstalled": false,
+    "smithRestarted": false,
+    "liveAccounts": false,
+    "providerSpend": false,
+    "realMementoCalls": false,
+    "azureLiveMigration": false,
+    "wholePlanAccepted": false
+  },
+  "decisionsRequired": {
+    "delegateScope": "Keep mandatory contract/finalqualificationgate, or explicitlyexcludeproductionactivationfromsourceintegrationacceptance",
+    "operations": "Approve named livevalidation/Smithrolloutscope orkeepdeploymentpaused"
+  },
+  "qualificationMethod": "Hashes and linked source-bound receipts plus documentation integrity validation; completed suites are not rerun or summed across sourceheads"
+}

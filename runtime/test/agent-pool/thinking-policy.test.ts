@@ -1,7 +1,9 @@
 import { afterAll, afterEach, expect, test } from 'bun:test';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { createAgentSession, DefaultResourceLoader, ModelRegistry, ModelRuntime, SessionManager, SettingsManager, type AgentSession, type ExtensionAPI } from '@earendil-works/pi-coding-agent';
 import { InMemoryCredentialStore, type Model } from '@earendil-works/pi-ai';
-import { createTempWorkspace } from '../helpers.js';
+import { createTempWorkspace, setEnv } from '../helpers.js';
 import { getSessionThinkingPolicy, getThinkingDefaults, installSessionThinkingPolicy, readThinkingPreference } from '../../src/agent-pool/thinking-policy.js';
 import { handleModel, handleCycleModel, handleThinking } from '../../src/agent-control/handlers/model.js';
 
@@ -24,6 +26,14 @@ async function fixture(options: { install?: boolean; settings?: SettingsManager;
   sessions.push(session);
   if (options.install !== false) installSessionThinkingPolicy(session, preference);
   return { session, settings, runtime };
+}
+
+function productionWorkspace() {
+  const workspace = createTempWorkspace('thinking-production-');
+  mkdirSync(join(workspace.workspace, '.piclaw'), { recursive: true });
+  writeFileSync(join(workspace.workspace, '.piclaw/config.json'), JSON.stringify({ domains: { access: { mode: 'single-user' } } }), { mode: 0o600 });
+  const restore = setEnv({ PICLAW_WORKSPACE: workspace.workspace, PICLAW_STORE: workspace.store, PICLAW_DATA: workspace.data });
+  return { workspace: workspace.workspace, cleanup() { restore(); workspace.cleanup(); } };
 }
 
 test('upstream default-first selection reproduces high to low; installed policy preserves high', async () => {
@@ -154,8 +164,10 @@ test('extension model-select thinking override is explicit, not mistaken for int
 test('production session factory installs policy and status exposes sanitized default provenance', async () => {
   const { createSessionInDir } = await import('../../src/agent-pool/session.js');
   const { session: _unused, settings, runtime } = await fixture();
-  const produced = await createSessionInDir(ws.workspace + '/production-session', { tools: [], modelRuntime: runtime, settingsManager: settings });
+  const isolated = productionWorkspace();
+  let produced: Awaited<ReturnType<typeof createSessionInDir>> | null = null;
   try {
+    produced = await createSessionInDir(isolated.workspace + '/production-session', { tools: [], modelRuntime: runtime, settingsManager: settings });
     produced.session.setThinkingLevel('high');
     await produced.session.setModel(models[1]); expect(produced.session.thinkingLevel).toBe('high');
     expect(getSessionThinkingPolicy(produced.session)?.defaults).toEqual({ level: 'low', source: 'global' });
@@ -166,7 +178,7 @@ test('production session factory installs policy and status exposes sanitized de
     expect(status.thinking_policy?.preferred_level).toBe('high');
     expect(status.thinking_policy?.defaults).toEqual({ level: 'low', source: 'global' });
     expect(JSON.stringify(status.thinking_policy)).not.toContain(ws.workspace);
-  } finally { await produced.dispose(); }
+  } finally { await produced?.dispose(); isolated.cleanup(); }
 }, 20_000);
 
 
@@ -221,16 +233,19 @@ test('production cold restoration preserves recorded high even before the first 
   const { forcePersistSessionFile } = await import('../../src/session-rotation.js');
   const { runtime } = await fixture();
   const settings = SettingsManager.inMemory({ defaultProvider: models[0].provider, defaultModel: models[0].id, defaultThinkingLevel: 'low' });
-  const dir = ws.workspace + '/cold-message-free';
-  const first = await createSessionInDir(dir, { tools: [], modelRuntime: runtime, settingsManager: settings });
-  first.session.setThinkingLevel('high'); forcePersistSessionFile(first.session); await first.dispose();
-  const resumed = await createSessionInDir(dir, { tools: [], modelRuntime: runtime, settingsManager: settings });
+  const isolated = productionWorkspace();
+  const dir = isolated.workspace + '/cold-message-free';
+  let first: Awaited<ReturnType<typeof createSessionInDir>> | null = null;
+  let resumed: Awaited<ReturnType<typeof createSessionInDir>> | null = null;
   try {
+    first = await createSessionInDir(dir, { tools: [], modelRuntime: runtime, settingsManager: settings });
+    first.session.setThinkingLevel('high'); forcePersistSessionFile(first.session); await first.dispose(); first = null;
+    resumed = await createSessionInDir(dir, { tools: [], modelRuntime: runtime, settingsManager: settings });
     expect(resumed.session.thinkingLevel).toBe('high');
     expect(getSessionThinkingPolicy(resumed.session)?.preferred_level).toBe('high');
     await resumed.session.setModel(models[1]); expect(resumed.session.thinkingLevel).toBe('high');
     expect(settings.getDefaultThinkingLevel()).toBe('low');
-  } finally { await resumed.dispose(); }
+  } finally { await first?.dispose(); await resumed?.dispose(); isolated.cleanup(); }
 }, 20_000);
 
 test('restoration metadata belongs only to the selected branch, not future preference changes', async () => {
@@ -269,7 +284,11 @@ test('side-session synchronization retains target effective override separately 
     side = (await fixture({ settings, manager: sm })).session;
     return { cancelled: false };
   } };
-  await AgentSessionManager.prototype.syncSideSessionFromMain.call({ options: {}, disposeSideRuntimeAfterError: async () => {} } as any, main.session, sideRuntime as any);
+  const manager = new AgentSessionManager({
+    pool: new Map(), sidePool: new Map(), modelRuntime: main.runtime, settingsManager: settings,
+    createDefaultTools: () => [], bindSession: async () => {}, ensureBranchRegistration: () => {},
+  });
+  await manager.syncSideSessionFromMain(main.session, sideRuntime as any);
   expect(side.thinkingLevel).toBe('medium');
   expect(getSessionThinkingPolicy(side)?.preferred_level).toBe('high');
   await side.setModel(models[2]); expect(side.thinkingLevel).toBe('high');

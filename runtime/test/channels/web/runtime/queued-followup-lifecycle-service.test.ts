@@ -27,6 +27,26 @@ async function createServiceFixture() {
 }
 
 describe("queued follow-up lifecycle service", () => {
+  test('asynchronous admission commits one atomic queue update and rolls back revoked authority', async () => {
+    const { service } = await createServiceFixture();
+    const signal = new AbortController().signal;
+    await Promise.all([
+      service.admitQueuedFollowupItem(['web:admit',0,'first'],()=>{},signal),
+      service.admitQueuedFollowupItem(['web:admit',0,'second'],()=>{},signal),
+    ]);
+    expect(service.getQueuedFollowupItems('web:admit').map(item=>item.queuedContent)).toEqual(['first','second']);
+    let checks=0;
+    await expect(service.admitQueuedFollowupItem(['web:admit',0,'revoked'],()=>{if(++checks===2)throw Error('revoked');},signal)).rejects.toThrow('revoked');
+    expect(service.getQueuedFollowupItems('web:admit').map(item=>item.queuedContent)).toEqual(['first','second']);
+  });
+  test('asynchronous admission rejects redirected workspace before committing captured database work', async () => {
+    const {service}=await createServiceFixture();
+    let restore:(()=>void)|undefined;
+    try {
+      await expect(service.admitQueuedFollowupItem(['web:binding',0,'must not commit'],()=>{restore??=setEnv({PICLAW_WORKSPACE:process.env.PICLAW_WORKSPACE+'/changed'});},new AbortController().signal)).rejects.toThrow('binding changed');
+    } finally { restore?.(); }
+    expect(service.getQueuedFollowupItems('web:binding')).toEqual([]);
+  });
   test("combines deferred and placeholder items into queue-state payloads without duplicate row ids", async () => {
     const { db, service } = await createServiceFixture();
 

@@ -19,6 +19,7 @@ import "./settings/WorkspaceSection";
 import "./settings/EnvironmentSection";
 import "./settings/ProvidersSection";
 import "./settings/ModelsSection";
+import "./settings/McpSection";
 import "./settings/AppearanceSection";
 import "./settings/KeychainSection";
 import "./settings/AuthenticationSection";

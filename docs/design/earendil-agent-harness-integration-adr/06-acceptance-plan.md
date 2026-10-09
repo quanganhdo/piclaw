@@ -1,5 +1,7 @@
 # Acceptance plan and open questions
 
+> Version scope: this chapter retains the original Harness-v3 design and historical acceptance sequence. For selected Pi 1.0.0, use the [durable architecture and HC/PC crosswalk](evidence/earendil-100-durable-crosswalk.md). Lane/Drive/Gate and old current-version statements below describe that historical design; they are not current APIs or deployment status. Host service invariants remain requirements; no architecture approval is inferred.
+
 Full capability/regression/assumption coverage is recorded in [`evidence/traceability-matrix.md`](evidence/traceability-matrix.md): 59 capabilities, 26 regressions and 10 Earendil assumptions all map to owners, mechanisms and planned tests.
 
 ## Current PR boundaries

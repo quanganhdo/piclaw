@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { Result, type Result as ResultValue } from "@earendil-works/pi-agent-core";
+import { Result, type Result as ResultValue } from "../../contracts/result.js";
 
 import type { NormalisedEffectTrace } from "../../contracts/common.js";
 import type { DeliveryAttempt, DeliveryDriver, DeliveryDriverError, DeliveryKind, DeliveryOutcome, DeliveryPayloadValidator, WebPushDeliveryCounts } from "../../contracts/delivery-driver.js";

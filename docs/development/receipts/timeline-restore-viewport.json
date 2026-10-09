@@ -1,0 +1,177 @@
+{
+  "recordedAt": "2026-10-05T11:50:16.418Z",
+  "baseMain": "44affa34d",
+  "focused": {
+    "pass": 41,
+    "fail": 0,
+    "assertions": 85,
+    "files": 8
+  },
+  "browser": {
+    "pass": 25,
+    "fail": 0,
+    "assertions": 152,
+    "files": 3
+  },
+  "webBuild": {
+    "pass": 9,
+    "fail": 0,
+    "assertions": 26
+  },
+  "profile": {
+    "kind": "timeline-catch-up-viewport-helper",
+    "repeats": 100,
+    "pages": 1000,
+    "rows": 50000,
+    "catchUpMs": {
+      "min": 0.08526800000001344,
+      "max": 1.811982999999998,
+      "total": 20.193626999999992
+    },
+    "viewport": {
+      "calculations": 10000,
+      "prefixRows": 10000,
+      "ms": 4.340081999999995
+    },
+    "wallMs": 81.61286000000001,
+    "cpuUs": {
+      "user": 50562,
+      "system": 7651
+    },
+    "eventLoop": {
+      "samples": 53,
+      "maxMs": 5.40604,
+      "p99Ms": 2.908159
+    },
+    "memory": {
+      "rss": 93335552,
+      "heapTotal": 17263616,
+      "heapUsed": 9049814,
+      "external": 3794918,
+      "arrayBuffers": 0
+    },
+    "scope": "isolated synthetic helper CPU/bounded worst-case paging; no HTTP/backend/DB/provider/real-message data, no production latency or before-after speed claim"
+  },
+  "sourceHashes": {
+    "runtime/web/src/components/timeline.ts": "97cd828bae705598ec0bf11c8e77a6be53bcbfa65040ea982e2d872adac542e1",
+    "runtime/web/src/ui/use-timeline.ts": "9f7e729f1b93027756fdcf66fc126d6320a355ee03a11fa9f8603421b9251acc",
+    "runtime/web/src/ui/timeline-catch-up.ts": "77b0305b604f009cfda39fb23d79d617e9b463bc95aa40d89743e622b628e692",
+    "runtime/web/src/ui/timeline-latest.ts": "5957b80f52bc7451368df409ee2a63285a8b9a320f19b2c7aa91430da0513e3c",
+    "runtime/web/static/visual/frontend/src/components/message-list/useTimelineFetch.ts": "78afadd4ed35cccad893fc9b897aec1fe72a87562e5054f43d7cc901a18c2b95"
+  },
+  "logs": [
+    {
+      "log": "timeline-viewport-red.log",
+      "sha256": "a678cd776af28f63261c49f534b2564ee972c1f47b69f824a864abfcbb3d29c7"
+    },
+    {
+      "log": "timeline-final-browser-matrix.log",
+      "sha256": "1d1eb9c5584a4f2fe1a6627ee63bf3efb0858947f4b645d81fb1a1988d953701"
+    },
+    {
+      "log": "timeline-final-unit.log",
+      "sha256": "e9b61a022d6329d3749a3d79edc8c0557059f2b7eb97b14fd4096ea6c52afe53"
+    },
+    {
+      "log": "timeline-final-types.log",
+      "sha256": "dfd0c6d3af373830a215c2274b74fba3950b6edffc950c5db83eccf51ae8e409"
+    },
+    {
+      "log": "timeline-restore-profile.log",
+      "sha256": "4fd1a4456c947e8c94fd90a203aa564229f7ff9fe1d7e1cb860632ab25e8e930"
+    },
+    {
+      "log": "timeline-visual-webkit-diagnostic.log",
+      "sha256": "abb85cf48f8245f84914ef7e42bf6cb8e4f37b5bc15a776f7e842b7c4d072768"
+    },
+    {
+      "log": "timeline-return-rebuilt-browser.log",
+      "sha256": "d0729c636abc48860d30c133e1eb6114cd53f6e73f320be3bc251e8fe46c9092"
+    },
+    {
+      "log": "timeline-corrected-rebuilt-browser.log",
+      "sha256": "5a614649dc21cc68006d96fdd44883452bb4565e4fe5587bc150bdd7530df490"
+    },
+    {
+      "log": "timeline-corrected-final-unit.log",
+      "sha256": "9e55f00efd1d26c512fbab5323dab76248409a9d0313c918cb108a9658c3b777"
+    },
+    {
+      "log": "timeline-corrected-final-types.log",
+      "sha256": "dfd0c6d3af373830a215c2274b74fba3950b6edffc950c5db83eccf51ae8e409"
+    },
+    {
+      "log": "timeline-visual-sse-malformed.log",
+      "sha256": "d5492bc243993eea7f52c72da303de96f6d40cd962dd4f3745c008d5d1b6698a"
+    },
+    {
+      "log": "timeline-history-final-browser.log",
+      "sha256": "416a7389752b920e88003201a90abd9f0c31d39a555d1e9c55b1a1797eab1d13"
+    },
+    {
+      "log": "timeline-history-final-unit.log",
+      "sha256": "cde8666f9defb2b306c06ea4c682b0ced0c218b51b2ef21211eb2b636c45fca2"
+    },
+    {
+      "log": "timeline-history-replacement-red-v2.log",
+      "sha256": "c9dbd3f2786c32c38bb7166a5a2437a440589f65dd426f086df1865536a33ded"
+    },
+    {
+      "log": "timeline-history-replacement-green.log",
+      "sha256": "f0f8afb3484372e553cd8aec7d79dbde624ecb56b7012fe1a04ac490966efd76"
+    }
+  ],
+  "qualification": "freshfrozenfullpassed; independent scoped historyboundary/fixture correction reviewsCLEAR; sourceonly",
+  "scope": "syntheticisolatedbrowser/helper; no production install/restart/livedata/provider; no full tablet-device qualification claim",
+  "reviewCorrections": [
+    "pageverified contiguous ID independentofSSE arrivals",
+    "unified60pxfollow/away",
+    "Visualrawpostsvalidationbefore normalization",
+    "Synchronousmutationfence/boundedretry; explicitolder-page retryUI",
+    "continuitymetadatarebound/invalidateonhistoricalreplacement; actualVisualsearchpath middle-page regression"
+  ],
+  "failedFull": {
+    "head": "77d362c7b4fc00178feee86485f59339fc22323d",
+    "pass": 6466,
+    "skip": 8,
+    "fail": 1,
+    "assertions": 42157,
+    "seconds": 636.42,
+    "logSha256": "415bf1f119eb150425c4afa8ba9d45d32a8357323bb32c7985c3e7c13fe839cc",
+    "qualifying": false
+  },
+  "fixtureCorrection": {
+    "productionChanged": false,
+    "originalTimeoutMilliseconds": 5000,
+    "assertions": 10,
+    "pass": 2,
+    "realPublicModelRuntime": true,
+    "refreshOnCreate": false,
+    "ownedWorkspace": true,
+    "profileLogSha256": "9a32c7329fa30c18d178a9a1979bb6af681b977f321cf969c9c5ceefeab19bcd"
+  },
+  "full": {
+    "head": "686695bb879a4697b76e1bb5288e30e5a0dba2c9",
+    "tree": "91116a6f6b8634d50dcc01ef6cec07785b699ff9",
+    "startedAt": "2026-10-05T11:37:45Z",
+    "finishedAt": "2026-10-05T11:48:38Z",
+    "exit": 0,
+    "pass": 6467,
+    "skip": 8,
+    "fail": 0,
+    "assertions": 42157,
+    "total": 6475,
+    "files": 918,
+    "seconds": 643.72,
+    "features": {
+      "pass": 25,
+      "assertions": 246
+    },
+    "webBuild": {
+      "pass": 9,
+      "assertions": 26
+    },
+    "logSha256": "85953c1fc619bf9f8cf48d11c7f6aa17afb1f61f89de7f156576b0f70dd18af5",
+    "unchangedClean": true
+  }
+}

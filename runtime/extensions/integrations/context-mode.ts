@@ -266,16 +266,21 @@ function normalizeToolName(value: unknown): string {
   return typeof value === "string" ? value.trim().toLowerCase() : "";
 }
 
-function isToolCompactionEnabledForTool(toolName: unknown): boolean {
+type ContextCompactionPolicy = {
+  tools: ReadonlyArray<string>;
+  thresholds: ReturnType<typeof getToolResultCompactionThresholdsByTool>;
+};
+
+function isToolCompactionEnabledForTool(toolName: unknown, policy?: ContextCompactionPolicy): boolean {
   const normalized = normalizeToolName(toolName);
   if (!normalized) return false;
-  const configured = getToolResultCompactionTools();
+  const configured = policy?.tools ?? getToolResultCompactionTools();
   return configured.some((name) => name === normalized);
 }
 
-function resolveStoreThresholds(toolName: unknown): { bytes: number; lines: number } {
+function resolveStoreThresholds(toolName: unknown, policy?: ContextCompactionPolicy): { bytes: number; lines: number } {
   const normalized = normalizeToolName(toolName);
-  const overrides = getToolResultCompactionThresholdsByTool();
+  const overrides = policy?.thresholds ?? getToolResultCompactionThresholdsByTool();
   const override = normalized ? overrides[normalized] : undefined;
   return {
     bytes: Number.isFinite(Number(override?.bytes)) ? Math.max(1, Math.round(Number(override?.bytes))) : DEFAULT_STORE_THRESHOLD_BYTES,
@@ -283,10 +288,10 @@ function resolveStoreThresholds(toolName: unknown): { bytes: number; lines: numb
   };
 }
 
-function shouldStoreOutput(text: string, lineCount: number, toolName: unknown): boolean {
-  if (!isToolCompactionEnabledForTool(toolName)) return false;
+function shouldStoreOutput(text: string, lineCount: number, toolName: unknown, policy?: ContextCompactionPolicy): boolean {
+  if (!isToolCompactionEnabledForTool(toolName, policy)) return false;
   const bytes = Buffer.byteLength(text || "", "utf8");
-  const thresholds = resolveStoreThresholds(toolName);
+  const thresholds = resolveStoreThresholds(toolName, policy);
   return bytes > thresholds.bytes || lineCount > thresholds.lines;
 }
 
@@ -409,22 +414,22 @@ function resolveToolNameFromUnknown(record: unknown): string {
   return "unknown";
 }
 
-async function compactLegacyToolResultContent(
+function compactLegacyToolResultContent(
   content: unknown,
   toolName: unknown,
-  _extensionContext?: RuntimeExtensionContext,
-): Promise<{
+  policy: ContextCompactionPolicy,
+): {
   content: unknown;
   modified: boolean;
-}> {
+} {
   if (!Array.isArray(content)) return { content, modified: false };
-  if (!isToolCompactionEnabledForTool(toolName)) return { content, modified: false };
+  if (!isToolCompactionEnabledForTool(toolName, policy)) return { content, modified: false };
   if (hasImageOrBinaryBlocks(content)) return { content, modified: false };
 
   const text = extractText(content);
   if (!text.trim()) return { content, modified: false };
   const lineCount = text.replace(/\r\n/g, "\n").split("\n").length;
-  if (!shouldStoreOutput(text, lineCount, toolName)) return { content, modified: false };
+  if (!shouldStoreOutput(text, lineCount, toolName, policy)) return { content, modified: false };
 
   // This hook runs before every provider request. It must be a pure,
   // deterministic projection: model-generated summaries and random stored-output
@@ -443,14 +448,13 @@ async function compactLegacyToolResultContent(
   };
 }
 
-async function compactNestedToolResultBlocks(
+function compactNestedToolResultBlocks(
   content: unknown,
-  extensionContext: RuntimeExtensionContext | undefined,
-  mayContinue: () => boolean,
-): Promise<{
+  policy: ContextCompactionPolicy,
+): {
   content: unknown;
   modified: boolean;
-}> {
+} {
   if (!Array.isArray(content)) return { content, modified: false };
 
   let modified = false;
@@ -463,12 +467,11 @@ async function compactNestedToolResultBlocks(
 
     const type = typeof item.type === "string" ? item.type.trim().toLowerCase() : "";
     if ((type === "tool_result" || type === "toolresult") && Array.isArray(item.content)) {
-      const compacted = await compactLegacyToolResultContent(
+      const compacted = compactLegacyToolResultContent(
         item.content,
         resolveToolNameFromUnknown(item),
-        extensionContext,
+        policy,
       );
-      if (!mayContinue()) return { content, modified: false };
       if (compacted.modified) {
         modified = true;
         next.push({ ...item, content: compacted.content });
@@ -479,8 +482,7 @@ async function compactNestedToolResultBlocks(
     }
 
     if (Array.isArray(item.content)) {
-      const nested = await compactNestedToolResultBlocks(item.content, extensionContext, mayContinue);
-      if (!mayContinue()) return { content, modified: false };
+      const nested = compactNestedToolResultBlocks(item.content, policy);
       if (nested.modified) {
         modified = true;
         next.push({ ...item, content: nested.content });
@@ -549,15 +551,26 @@ export default function (pi: any) {
   // Optional provider-request-time compaction layer:
   // compact legacy oversized inline tool results in outbound context only.
   pi.on("context", async (event: any, ctx: RuntimeExtensionContext) => {
-    if (!canUseToolOutput()) return {};
-    let allowed = true;
-    const mayContinue = () => allowed && (allowed = canUseToolOutput());
+    if (!canUseToolOutput() || ctx?.signal?.aborted) return {};
     if (!getToolResultCompactionEnabled()) return {};
     if (!Array.isArray(event?.messages)) return {};
 
+    // Read policy once per request, not several times per historical message.
+    // Projection is synchronous within each batch; revalidate access after every
+    // actual async boundary and before publishing. Do not cache access across requests.
+    const policy: ContextCompactionPolicy = {
+      tools: getToolResultCompactionTools(),
+      thresholds: getToolResultCompactionThresholdsByTool(),
+    };
     let modified = false;
+    let processed = 0;
     const messages: any[] = [];
     for (const message of event.messages) {
+      if (processed > 0 && processed % 64 === 0) {
+        await new Promise<void>((resolve) => setImmediate(resolve));
+        if (!canUseToolOutput() || ctx?.signal?.aborted) return {};
+      }
+      processed += 1;
       if (!isRecord(message)) {
         messages.push(message);
         continue;
@@ -567,12 +580,11 @@ export default function (pi: any) {
 
       const role = normalizeToolResultRole(message.role);
       if (role === "tool_result" && Array.isArray(nextMessage.content)) {
-        const compacted = await compactLegacyToolResultContent(
+        const compacted = compactLegacyToolResultContent(
           nextMessage.content,
           resolveToolNameFromUnknown(nextMessage),
-          ctx,
+          policy,
         );
-        if (!mayContinue()) return {};
         if (compacted.modified) {
           modified = true;
           nextMessage = { ...nextMessage, content: compacted.content };
@@ -580,8 +592,7 @@ export default function (pi: any) {
       }
 
       if (Array.isArray(nextMessage.content)) {
-        const nested = await compactNestedToolResultBlocks(nextMessage.content, ctx, mayContinue);
-        if (!mayContinue()) return {};
+        const nested = compactNestedToolResultBlocks(nextMessage.content, policy);
         if (nested.modified) {
           modified = true;
           nextMessage = { ...nextMessage, content: nested.content };
@@ -591,7 +602,10 @@ export default function (pi: any) {
       messages.push(nextMessage);
     }
 
-    if (!modified) return {};
+    // Even a short final batch needs an async publication boundary: callers
+    // may revoke access or abort immediately after starting the context hook.
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    if (!canUseToolOutput() || ctx?.signal?.aborted || !modified) return {};
     return { messages };
   });
 }

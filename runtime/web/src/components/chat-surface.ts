@@ -1,4 +1,5 @@
-import { html } from '../vendor/preact-htm.js';
+import { html, useEffect, useRef, useState } from '../vendor/preact-htm.js';
+import { bindTimelineLatest, jumpTimelineToLatest } from '../ui/timeline-latest.js';
 import { AttachmentPreviewModal } from './attachment-preview-modal.js';
 import { BtwPanel } from './btw-panel.js';
 import { ComposeBox } from './compose-box.js';
@@ -15,6 +16,18 @@ export interface ChatSurfaceProps {
  * family modes. Authorization remains in the injected data/action adapters.
  */
 export function ChatSurface(props: ChatSurfaceProps) {
+  const [latestState, setLatestState] = useState({ away: false, hasNew: false });
+  const latestController = useRef<ReturnType<typeof bindTimelineLatest> | null>(null);
+  useEffect(() => {
+    setLatestState({ away: false, hasNew: false });
+    const root = props.timelineRef?.current;
+    if (root && props.reverse !== false) {
+      const binding = bindTimelineLatest(root, setLatestState); latestController.current = binding;
+      binding.noteLatest(Math.max(0, ...(props.posts || []).map(post => Number(post.id) || 0)));
+      return () => { binding.dispose(); if (latestController.current === binding) latestController.current = null; };
+    }
+  }, [props.currentChatJid, props.posts === null, props.reverse]);
+  useEffect(() => { latestController.current?.noteLatest(Math.max(0, ...(props.posts || []).map(post => Number(post.id) || 0))); }, [props.posts]);
   const {
     posts,
     currentChatJid,
@@ -138,7 +151,7 @@ export function ChatSurface(props: ChatSurfaceProps) {
       loadWorkspaceBranch=${loadStatusWorkspaceBranch}
     />
     <div id=${composeId} class="chat-surface-compose">
-      <${ComposeBox} key=${composeKey} ...${composeProps} />
+      <${ComposeBox} key=${composeKey} ...${composeProps} onJumpToLatest=${reverse ? () => jumpTimelineToLatest(timelineRef?.current) : undefined} timelineAway=${latestState.away} timelineHasNew=${latestState.hasNew} />
     </div>
     <${AgentRequestModal}
       request=${pendingRequest}

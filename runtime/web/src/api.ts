@@ -167,9 +167,9 @@ export async function getThread(threadId, chatJid = null) {
 }
 
 export async function getSystemMetrics() {
-    const snapshot = await getAgentUiSnapshot();
-    if (!snapshot.metrics) throw new Error('System metrics unavailable');
-    return snapshot.metrics;
+    // Only visible/enabled meters renew GPU sampling. General UI status polling
+    // must not keep the collector alive while the HUD is disabled.
+    return deduplicatedGet('/agent/system-metrics');
 }
 
 export async function getBudgetSettings(chatJid = null) {

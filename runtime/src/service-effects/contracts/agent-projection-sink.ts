@@ -1,4 +1,4 @@
-import type { Result } from "@earendil-works/pi-agent-core";
+import type { Result } from "./result.js";
 
 import type { PiclawEffectError } from "./common.js";
 

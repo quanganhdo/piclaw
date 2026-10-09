@@ -1,0 +1,347 @@
+{
+  "date": "2026-10-03",
+  "runtime": "Bun1.4.2",
+  "base": "549ed523be78a53ee40863dba7e79ad4e64a938b",
+  "rows": [
+    {
+      "skin": "classic",
+      "engine": "chromium",
+      "width": 1280,
+      "readyMs": 71.35959400000002,
+      "cpu": {
+        "samples": 52,
+        "topFrames": [
+          {
+            "function": "(program)",
+            "samples": 32
+          },
+          {
+            "function": "computeElementStyleVisibilityVisible",
+            "samples": 6
+          },
+          {
+            "function": "(idle)",
+            "samples": 5
+          },
+          {
+            "function": "(anonymous)",
+            "samples": 1
+          },
+          {
+            "function": "t_",
+            "samples": 1
+          },
+          {
+            "function": "e_",
+            "samples": 1
+          },
+          {
+            "function": "fetch",
+            "samples": 1
+          },
+          {
+            "function": "__export",
+            "samples": 1
+          }
+        ],
+        "metrics": [
+          {
+            "name": "Nodes",
+            "value": 116
+          },
+          {
+            "name": "LayoutDuration",
+            "value": 0.015312
+          },
+          {
+            "name": "RecalcStyleDuration",
+            "value": 0.003472
+          },
+          {
+            "name": "ScriptDuration",
+            "value": 0.003866
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.052852
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 2189888
+          }
+        ]
+      },
+      "requests": 5,
+      "previews": 2,
+      "scope": "synthetic pane and real read-preview handler; not full authenticated host"
+    },
+    {
+      "skin": "classic",
+      "engine": "chromium",
+      "width": 390,
+      "readyMs": 65.43778700000007,
+      "cpu": {
+        "samples": 54,
+        "topFrames": [
+          {
+            "function": "(program)",
+            "samples": 30
+          },
+          {
+            "function": "(idle)",
+            "samples": 20
+          },
+          {
+            "function": "g_",
+            "samples": 1
+          },
+          {
+            "function": "setTimeout",
+            "samples": 1
+          },
+          {
+            "function": "L",
+            "samples": 1
+          },
+          {
+            "function": "evaluate",
+            "samples": 1
+          },
+          {
+            "function": "(root)",
+            "samples": 0
+          },
+          {
+            "function": "(anonymous)",
+            "samples": 0
+          }
+        ],
+        "metrics": [
+          {
+            "name": "Nodes",
+            "value": 116
+          },
+          {
+            "name": "LayoutDuration",
+            "value": 0.012519
+          },
+          {
+            "name": "RecalcStyleDuration",
+            "value": 0.002596
+          },
+          {
+            "name": "ScriptDuration",
+            "value": 0.002467
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.041476
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 2228488
+          }
+        ]
+      },
+      "requests": 5,
+      "previews": 2,
+      "scope": "synthetic pane and real read-preview handler; not full authenticated host"
+    },
+    {
+      "skin": "visual",
+      "engine": "chromium",
+      "width": 1280,
+      "readyMs": 78.7858739999997,
+      "cpu": {
+        "samples": 65,
+        "topFrames": [
+          {
+            "function": "(program)",
+            "samples": 44
+          },
+          {
+            "function": "(idle)",
+            "samples": 14
+          },
+          {
+            "function": "(anonymous)",
+            "samples": 1
+          },
+          {
+            "function": "L",
+            "samples": 1
+          },
+          {
+            "function": "InjectedScript",
+            "samples": 1
+          },
+          {
+            "function": "T",
+            "samples": 1
+          },
+          {
+            "function": "q",
+            "samples": 1
+          },
+          {
+            "function": "createTextMatcher",
+            "samples": 1
+          }
+        ],
+        "metrics": [
+          {
+            "name": "Nodes",
+            "value": 115
+          },
+          {
+            "name": "LayoutDuration",
+            "value": 0.017246
+          },
+          {
+            "name": "RecalcStyleDuration",
+            "value": 0.003669
+          },
+          {
+            "name": "ScriptDuration",
+            "value": 0.002541
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.059411
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 2141620
+          }
+        ]
+      },
+      "requests": 5,
+      "previews": 2,
+      "scope": "synthetic pane and real read-preview handler; not full authenticated host"
+    },
+    {
+      "skin": "visual",
+      "engine": "chromium",
+      "width": 390,
+      "readyMs": 72.68759099999988,
+      "cpu": {
+        "samples": 61,
+        "topFrames": [
+          {
+            "function": "(program)",
+            "samples": 31
+          },
+          {
+            "function": "(idle)",
+            "samples": 24
+          },
+          {
+            "function": "C",
+            "samples": 1
+          },
+          {
+            "function": "InjectedScript",
+            "samples": 1
+          },
+          {
+            "function": "N",
+            "samples": 1
+          },
+          {
+            "function": "query",
+            "samples": 1
+          },
+          {
+            "function": "elementText",
+            "samples": 1
+          },
+          {
+            "function": "run",
+            "samples": 1
+          }
+        ],
+        "metrics": [
+          {
+            "name": "Nodes",
+            "value": 115
+          },
+          {
+            "name": "LayoutDuration",
+            "value": 0.00354
+          },
+          {
+            "name": "RecalcStyleDuration",
+            "value": 0.003142
+          },
+          {
+            "name": "ScriptDuration",
+            "value": 0.002373
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.043176
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 2141620
+          }
+        ]
+      },
+      "requests": 5,
+      "previews": 2,
+      "scope": "synthetic pane and real read-preview handler; not full authenticated host"
+    },
+    {
+      "skin": "classic",
+      "engine": "webkit",
+      "width": 1280,
+      "readyMs": 120.82600000000002,
+      "cpu": null,
+      "requests": 5,
+      "previews": 2,
+      "scope": "synthetic pane and real read-preview handler; not full authenticated host"
+    },
+    {
+      "skin": "classic",
+      "engine": "webkit",
+      "width": 390,
+      "readyMs": 96.85693200000014,
+      "cpu": null,
+      "requests": 5,
+      "previews": 2,
+      "scope": "synthetic pane and real read-preview handler; not full authenticated host"
+    },
+    {
+      "skin": "visual",
+      "engine": "webkit",
+      "width": 1280,
+      "readyMs": 144.11025399999926,
+      "cpu": null,
+      "requests": 5,
+      "previews": 2,
+      "scope": "synthetic pane and real read-preview handler; not full authenticated host"
+    },
+    {
+      "skin": "visual",
+      "engine": "webkit",
+      "width": 390,
+      "readyMs": 107.21866500000033,
+      "cpu": null,
+      "requests": 5,
+      "previews": 2,
+      "scope": "synthetic pane and real read-preview handler; not full authenticated host"
+    }
+  ],
+  "limits": [
+    "single load sample per matrix cell, not comparative performance benchmark",
+    "Chromium sampling includes navigation and module setup; WebKit CPU not measured",
+    "synthetic component shell plus real read/preview handler and compiledskinCSS",
+    "full authentication middleware not exercised",
+    "no save/apply, real MCP server or provider"
+  ],
+  "shellNavigation": {
+    "classic": true,
+    "visual": true,
+    "scope": "actual settings shells with synthetic endpoint responses"
+  }
+}

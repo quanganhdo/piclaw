@@ -836,3 +836,35 @@ describe("web agent streaming", () => {
     }
   });
 });
+
+
+test('completed boundary terminal evidence survives web persistence when trailing output is empty',async()=>{
+  const pool={setSessionBinder:()=>{},runAgent:async(_p:any,_c:any,options:any)=>{options.onTurnComplete?.({text:'Finished before followup.',attachments:[],turnKind:'intermediate',cause:'completed_boundary',terminal:true,textPhase:'final_answer'});return{status:'success',result:null};},getContextUsageForChat:async()=>null};
+  const fixture=await createWebChannelTestFixture({tempPrefix:'terminal-boundary-role-',queue:new AgentQueue(),agentPool:pool as any});
+  try {
+    const {channel,db}=fixture;const chat='web:terminal-boundary-tag';
+    channel.storeMessage(chat,'do task',false,[]);
+    await (channel as any).processChat(chat);
+    const rows=db.getDb().query('SELECT content,is_terminal_agent_reply,content_blocks FROM messages WHERE chat_jid=? AND is_bot_message=1').all(chat) as any[];
+    expect(rows).toHaveLength(1);expect(rows[0].is_terminal_agent_reply).toBe(1);
+    expect(JSON.parse(rows[0].content_blocks)).toContainEqual({type:'agent_message_role',version:1,role:'final',terminal:true});
+    const promoted = fixture.events.find(event=>event.type==='interaction_updated');
+    expect((promoted?.data as any)?.data).toMatchObject({agent_message_role:'final',is_terminal_agent_reply:true});
+  } finally { fixture.cleanup(); }
+});
+
+
+for(const trailing of ['final','error'])test('completed response stays nonterminal when followed by '+trailing,async()=>{
+  const pool={setSessionBinder:()=>{},runAgent:async(_p:any,_c:any,options:any)=>{
+    options.onTurnComplete?.({text:'Earlier answer.',attachments:[],turnKind:'intermediate',cause:'completed_boundary',terminal:true,textPhase:'final_answer'});
+    return trailing==='final'?{status:'success',result:'Closing answer.'}:{status:'error',result:null,error:'Provider failed.'};
+  },getContextUsageForChat:async()=>null};
+  const fixture=await createWebChannelTestFixture({tempPrefix:'role-later-response-',queue:new AgentQueue(),agentPool:pool as any});
+  try {
+    const {channel,db}=fixture;const chat='web:role-later-'+trailing;channel.storeMessage(chat,'do task',false,[]);await(channel as any).processChat(chat);
+    const rows=db.getDb().query('SELECT content,is_terminal_agent_reply,content_blocks FROM messages WHERE chat_jid=? AND is_bot_message=1 ORDER BY rowid').all(chat)as any[];
+    expect(rows).toHaveLength(2);expect(rows[0].is_terminal_agent_reply).toBe(0);expect(rows[1].is_terminal_agent_reply).toBe(1);
+    expect(JSON.parse(rows[0].content_blocks)).toContainEqual({type:'agent_message_role',version:1,role:'final',terminal:false});
+    expect(JSON.parse(rows[1].content_blocks)).toContainEqual({type:'agent_message_role',version:1,role:'final',terminal:true});
+  }finally{fixture.cleanup();}
+});

@@ -23,7 +23,7 @@ import {adoptedJsonl} from './adopted-session-fixture.js';
 let ws:ReturnType<typeof createTempWorkspace>,restore:()=>void,login:string;
 const child='web:default:child';const managers:AgentSessionManager[]=[];
 beforeEach(()=>{
-  ws=createTempWorkspace('piclaw-adopted-runtime-');restore=setEnv({PICLAW_WORKSPACE:ws.workspace,PICLAW_STORE:ws.store,PICLAW_DATA:ws.data});mkdirSync(join(ws.workspace,'.piclaw'));writeFileSync(join(ws.workspace,'.piclaw/config.json'),JSON.stringify({domains:{access:{mode:'family-shared'}}}));
+  ws=createTempWorkspace('piclaw-adopted-runtime-');restore=setEnv({PICLAW_WORKSPACE:ws.workspace,PICLAW_STORE:ws.store,PICLAW_DATA:ws.data});mkdirSync(join(ws.workspace,'.piclaw'));writeFileSync(join(ws.workspace,'.piclaw/config.json'),JSON.stringify({domains:{access:{mode:'family-shared'}}}),{mode:0o600});
   closeDatabase();initDatabase();const db=getDb();
   for(const [jid,parent,name] of [['web:default',null,'main'],[child,'root','child']] as const){db.query("INSERT INTO chats(jid,name,last_message_time) VALUES (?,?,'now')").run(jid,name);db.query("INSERT INTO chat_branches(branch_id,chat_jid,root_chat_jid,parent_branch_id,agent_name,created_at,updated_at) VALUES (?,?,'web:default',?,?,'now','now')").run(parent?'child':'root',jid,parent,name);}
   provisionUserHome(db,'default','web:default');migrateOwnedSessionHandles(db);login=createWebSession('login','default',3600,'passkey').session_id!;

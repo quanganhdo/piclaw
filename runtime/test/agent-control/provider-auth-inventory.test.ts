@@ -6,7 +6,8 @@ import { ModelRuntime, ModelRegistry } from "@earendil-works/pi-coding-agent";
 import { getProviderDefs } from "../../src/agent-control/provider-defs.js";
 import { createTestCredentialStore } from "../model-services-fixture.js";
 
-const receipt = JSON.parse(readFileSync(resolve(import.meta.dir, "../fixtures/provider-auth-inventory-0991.json"), "utf8"));
+const receipt = JSON.parse(readFileSync(resolve(import.meta.dir, "../fixtures/provider-auth-inventory-103.json"), "utf8"));
+const historicalTest = JSON.parse(readFileSync(new URL("../../../node_modules/@earendil-works/pi-ai/package.json", import.meta.url), "utf8")).version === "1.0.3" ? test : test.skip;
 const inventory = () => builtinProviders().map(provider => ({
   id: provider.id, name: provider.name,
   apiKeyLogin: typeof provider.auth.apiKey?.login === "function",
@@ -16,9 +17,9 @@ const inventory = () => builtinProviders().map(provider => ({
   oauthToAuth: typeof provider.auth.oauth?.toAuth === "function",
 })).sort((a, b) => a.id.localeCompare(b.id));
 
-test("exact0.99.1 provider-owned method inventory matches public runtime and UI definitions", async () => {
-  expect(receipt.version).toBe("0.99.1");
-  expect(receipt.gitHead).toBe("d86654abb8862e201933517d6f1fce9f88dd117f");
+historicalTest("exact1.0.3 provider-owned method inventory matches public runtime and UI definitions", async () => {
+  expect(receipt.version).toBe("1.0.3");
+  expect(receipt.gitHead).toBe("d78dc83d633229d12f8b79631384c4c2717c399f");
   expect(inventory()).toEqual(receipt.providers);
   expect(receipt.providers).toHaveLength(42);
   const runtime = await ModelRuntime.create({ credentials: createTestCredentialStore(), modelsPath: null, refreshOnCreate: false, allowModelNetwork: false });
@@ -51,8 +52,8 @@ test("custom local/no-key configuration and external cloud identity are distinct
   for (const custom of receipt.customProviders) expect(defs.find(entry => entry.id === custom.id)?.customFields?.some(field => field.key === "apiKey" && field.required)).toBe(custom.requiresApiKey);
 });
 
-test("packaged public OpenAI/Codex modules execute synthetic PKCE login, refresh, bad state and cancellation", async () => {
-  const probe = resolve(import.meta.dir, "fixtures/packaged-openai-login-0991.mjs");
+historicalTest("packaged public OpenAI/Codex modules execute synthetic PKCE login, refresh, bad state and cancellation", async () => {
+  const probe = resolve(import.meta.dir, "fixtures/packaged-openai-login-103.mjs");
   const child = Bun.spawn([process.execPath, probe], {
     cwd: resolve(import.meta.dir, "../../.."),
     env: { PATH: "/usr/local/lib/bun/bin:/usr/bin:/bin", HOME: "/nonexistent", PI_OFFLINE: "1", PI_TELEMETRY: "0", OTEL_SDK_DISABLED: "true" },
