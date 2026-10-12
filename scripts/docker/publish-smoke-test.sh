@@ -116,6 +116,8 @@ start_runtime() {
     docker run -d
     --name "$CONTAINER_NAME"
     --platform "$PLATFORM"
+    # Private bind fixtures belong to the runner, whose UID need not be 1000.
+    -e "PUID=$(id -u)" -e "PGID=$(id -g)"
     -p "127.0.0.1::${PICLAW_CONTAINER_PORT}"
     -v "$CONFIG_TMP_DIR:/config"
   )

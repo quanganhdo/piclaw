@@ -1,0 +1,47 @@
+{
+  "asOf": "2026-10-11",
+  "sources": [
+    {
+      "file": "openai.md",
+      "url": "https://developers.openai.com/api/docs/pricing.md",
+      "status": 200,
+      "retrievedAt": "2026-10-11T10:03:08.603Z",
+      "sha256": "e0767b5009dcc929a2f9eeb9ce6096a57ff12e5d8c011de9d69ff145aef2fc28"
+    },
+    {
+      "file": "anthropic.md",
+      "url": "https://platform.claude.com/docs/en/about-claude/pricing.md",
+      "status": 200,
+      "retrievedAt": "2026-10-11T10:03:08.887Z",
+      "sha256": "67904e280b595d31f373c857844ed380072ae79d280d8f385640b5992d337ca9"
+    },
+    {
+      "file": "copilot.md",
+      "url": "https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing.md",
+      "status": 200,
+      "retrievedAt": "2026-10-11T10:03:08.638Z",
+      "sha256": "ef76ed1d819f45007c5d573a8ecbc6b15e2c9381de929277f4d64f527ea1df17"
+    },
+    {
+      "file": "gpt55-model.md",
+      "url": "https://developers.openai.com/api/docs/models/gpt-5.5.md",
+      "status": 200,
+      "retrievedAt": "2026-10-11T10:03:08.700Z",
+      "sha256": "ef66bb7639b9d768fabcf9a030404d3890c035fb020d6140d9a87c978b86ea42"
+    },
+    {
+      "file": "openrouter.json",
+      "url": "https://openrouter.ai/api/v1/models",
+      "status": 200,
+      "retrievedAt": "2026-10-11T10:07:42.949Z",
+      "sha256": "6c75085550972e65d3ef99d242faad2564965a25a16552ed8565fd8725c17b48"
+    },
+    {
+      "file": "sonnet-model.md",
+      "url": "https://platform.claude.com/docs/en/about-claude/models/overview.md",
+      "status": 200,
+      "retrievedAt": "2026-10-11T10:07:43.463Z",
+      "sha256": "02faed97309963e7c90d18a80ff0f6ba7cf6099d46a7cc1b2ac600ceaebac578"
+    }
+  ]
+}

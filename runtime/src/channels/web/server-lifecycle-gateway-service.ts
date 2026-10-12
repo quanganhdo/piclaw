@@ -15,7 +15,10 @@ const LINK_PREVIEW_CACHE_PURGE_INTERVAL_MS = 12 * 60 * 60 * 1000;
 const MAX_BIND_ATTEMPTS = 5;
 const BIND_RETRY_MS = 1500;
 
-export type WebSocketSessionData = TerminalSocketData | VncSocketData | { kind: "cdp-view"; connection?: CdpViewConnection };
+import type { AuthenticatedPrincipal } from '../../core/access-types.js';
+import { hasAuthenticatedAddonSocket, shutdownAuthenticatedAddonSockets } from '../../addons/authenticated-socket-registry.js';
+import { prepareAuthenticatedAddonSocket, type AuthenticatedAddonSocketData } from '../../addons/authenticated-socket-upgrade.js';
+export type WebSocketSessionData = AuthenticatedAddonSocketData | TerminalSocketData | VncSocketData | { kind: "cdp-view"; connection?: CdpViewConnection };
 
 interface JsonResponder {
   json(payload: unknown, status?: number): Response;
@@ -24,6 +27,7 @@ interface JsonResponder {
 interface AuthGatewayLike {
   isAuthEnabled(): boolean;
   isAuthenticated(req: Request): boolean;
+  getPrincipal?(req: Request, refresh?: boolean): Readonly<AuthenticatedPrincipal> | null;
 }
 
 interface TerminalServiceLike {
@@ -158,7 +162,18 @@ export class WebServerLifecycleGatewayService {
           maxRequestBodySize: 512 * 1024 * 1024,
           fetch: (req, server) => this.handleFetch(req, server),
           websocket: {
+            maxPayloadLength: 1024 * 1024,
             open: (ws) => {
+              if (ws.data?.kind === 'authenticated-addon') {
+                const data = ws.data;
+                void data.session.open(data.principal, data.scope, {
+                  send: async message => {
+                    if (ws.readyState !== 1 || ws.getBufferedAmount() + (typeof message === 'string' ? Buffer.byteLength(message) : message.byteLength) > data.session.registration.maxQueuedBytes) throw Error('Socket output is closed or overloaded.');
+                    if (ws.send(message) <= 0) throw Error('Socket output backpressure.');
+                  }, close: (code, reason) => ws.close(code, reason),
+                }).catch(() => { ws.close(1011, 'Add-on socket failed.'); });
+                return;
+              }
               if (ws.data?.kind === "cdp-view") {
                 const connection = ws.data.connection = new CdpViewConnection(ws);
                 void connection.list().catch(() => ws.close());
@@ -170,6 +185,10 @@ export class WebServerLifecycleGatewayService {
               this.deps.terminalService.attachClient(ws as ServerWebSocket<TerminalSocketData>);
             },
             message: (ws, message) => {
+              if (ws.data?.kind === 'authenticated-addon') {
+                void ws.data.session.message(message as string | Uint8Array).catch(() => { ws.close(1008, 'Add-on socket rejected message.'); });
+                return;
+              }
               if (ws.data?.kind === "cdp-view") { ws.data.connection?.message(message); return; }
               if (ws.data?.kind === "vnc") {
                 this.deps.vncService.handleMessage(ws as ServerWebSocket<VncSocketData>, message as any);
@@ -178,6 +197,10 @@ export class WebServerLifecycleGatewayService {
               this.deps.terminalService.handleMessage(ws as ServerWebSocket<TerminalSocketData>, message as any);
             },
             close: (ws) => {
+              if (ws.data?.kind === 'authenticated-addon') {
+                void ws.data.session.close().catch(() => { this.deps.log?.warn('Add-on socket cleanup failed.', { operation: 'addon_socket.cleanup_failed' }); });
+                return;
+              }
               if (ws.data?.kind === "cdp-view") { ws.data.connection?.close(); return; }
               if (ws.data?.kind === "vnc") {
                 this.deps.vncService.detachClient(ws as ServerWebSocket<VncSocketData>);
@@ -232,6 +255,7 @@ export class WebServerLifecycleGatewayService {
   }
 
   async stop(): Promise<void> {
+    const sockets=shutdownAuthenticatedAddonSockets().then(()=>true,()=>false);
     await closeCdpViewConnections();
     this.deps.sse.closeAll();
     this.deps.uiBridge.stop();
@@ -249,6 +273,7 @@ export class WebServerLifecycleGatewayService {
       this.workspaceWatcher = null;
       this.workspaceWatcherShowHidden = null;
     }
+    if(!(await sockets))throw Error('Authenticated socket shutdown failed.');
   }
 
   private denyMultiUserUpgrade(): Response {
@@ -259,6 +284,15 @@ export class WebServerLifecycleGatewayService {
 
   async handleFetch(req: Request, server?: Bun.Server<WebSocketSessionData>): Promise<Response | undefined> {
     const pathname = new URL(req.url).pathname;
+    if (hasAuthenticatedAddonSocket(pathname)) {
+      try {
+        if (!server || !this.deps.authGateway.getPrincipal) return this.deps.json({ error: 'Authenticated add-on sockets are unavailable.' }, 403);
+        const data = await prepareAuthenticatedAddonSocket(req, pathname, { isAuthEnabled: () => this.deps.authGateway.isAuthEnabled(), getPrincipal: (request, refresh) => this.deps.authGateway.getPrincipal!(request, refresh) });
+        if (server.upgrade(req, { data })) return undefined;
+        void data.session.close().catch(() => { this.deps.log?.warn('Add-on socket upgrade cleanup failed.', { operation: 'addon_socket.upgrade_cleanup_failed' }); });
+        return this.deps.json({ error: 'WebSocket upgrade failed.' }, 400);
+      } catch { return this.deps.json({ error: 'Authenticated add-on socket access denied.' }, 403); }
+    }
     if (pathname === "/cdp-view/ws") {
       if (readAccessConfig().mode !== "single-user") return this.denyMultiUserUpgrade();
       if (!this.deps.authGateway.isAuthEnabled() || !this.deps.authGateway.isAuthenticated(req)) return Response.json({ error: "Authentication required." }, { status: 401 });

@@ -192,3 +192,19 @@ test("handleSystemMetricsRequest includes runtime memory instrumentation when pr
     recovery_exhausted_runs: 14,
   });
 });
+
+test('optional GPU activity has nullable history and survives memory-only telemetry',()=>{
+ let value:any={totalBytes:100,usedBytes:25,percent:25,provider:'nvml',busyPercent:0,sampleTimeMs:1};
+ const sampler=new SystemMetricsSampler(3,2000,()=>value);
+ expect(sampler.readSnapshot()).toMatchObject({gpu_busy_percent:0,gpu_busy_series:[0],vram_percent:25});
+ value.sampleTimeMs=2;value.busyPercent=60;expect(sampler.readSnapshot().gpu_busy_series).toEqual([0,60]);
+ value.sampleTimeMs=3;value.busyPercent=null;expect(sampler.readSnapshot()).toMatchObject({gpu_busy_percent:null,gpu_busy_series:[0,60,null],vram_percent:25});
+ expect(sampler.readSnapshot(null,[],false)).toMatchObject({gpu_busy_percent:null,gpu_busy_series:[],vram_percent:null});
+ value.sampleTimeMs=4;value.busyPercent=100;expect(sampler.readSnapshot().gpu_busy_series).toEqual([60,null,100]);
+});
+
+test('GPU activity samples once per shared observation and carries gap identities',()=>{
+ let value:any={totalBytes:100,usedBytes:25,percent:25,provider:'nvml',busyPercent:20,sampleTimeMs:10000};const sampler=new SystemMetricsSampler(30,2000,()=>value);
+ for(let i=0;i<40;i++)sampler.readSnapshot();expect(sampler.readSnapshot().gpu_busy_series).toEqual([20]);
+ value={...value,busyPercent:null,sampleTimeMs:12000};sampler.readSnapshot();value={...value,busyPercent:50,sampleTimeMs:14000};const next=sampler.readSnapshot();expect(next.gpu_busy_series).toEqual([20,null,50]);expect(next.gpu_sample_times).toEqual([10000,12000,14000]);
+});

@@ -1,0 +1,272 @@
+name: Emergency release artifacts
+'on':
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to retag
+        required: true
+        type: string
+      sha:
+        description: Full source commit SHA
+        required: true
+        type: string
+permissions:
+  contents: write
+  packages: write
+concurrency:
+  group: release-artifacts
+  cancel-in-progress: false
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  BUN_PREFER_BASELINE: always
+  HOTFIX_TAG: ${{ inputs.tag }}
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.ref.outputs.sha }}
+      bun_version: ${{ steps.versions.outputs.bun_version }}
+      restic_version: ${{ steps.versions.outputs.restic_version }}
+    steps:
+      - name: Resolve exact hotfix source
+        id: ref
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        with:
+          script: |-
+            const tag = context.payload.inputs.tag;
+            const sha = context.payload.inputs.sha;
+            if (!/^v\d+\.\d+\.\d+$/.test(tag) || !/^[a-f0-9]{40}$/.test(sha)) throw new Error('Require release tag and full commit SHA');
+            await github.rest.repos.getCommit({...context.repo, ref:sha});
+            const commit = await github.rest.repos.getContent({...context.repo,path:'package.json',ref:sha});
+            const version = JSON.parse(Buffer.from(commit.data.content,'base64').toString()).version;
+            if ('v'+version !== tag) throw new Error('Tag/package version mismatch');
+            await github.rest.git.getRef({...context.repo,ref:'tags/'+tag});
+            await github.rest.repos.getReleaseByTag({...context.repo,tag});
+            core.setOutput('sha',sha);
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ steps.ref.outputs.sha }}
+      - name: Read Bun version from repo file
+        id: versions
+        run: |
+          version=$(tr -d '[:space:]' < BUN_VERSION)
+          if [ -z "$version" ]; then
+            echo "BUN_VERSION file is empty"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+  build-portable-artifacts:
+    name: Build portable artifact (${{ matrix.platform }}-${{ matrix.arch }})
+    needs:
+      - resolve
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux
+            arch: x64
+            runner: ubuntu-24.04
+            build_args: ''
+          - platform: linux
+            arch: x64-baseline
+            runner: ubuntu-24.04
+            build_args: --bun-target linux-x64-baseline
+          - platform: linux
+            arch: arm64
+            runner: ubuntu-24.04-arm
+            build_args: ''
+          - platform: macos
+            arch: arm64
+            runner: macos-14
+            build_args: ''
+          - platform: windows
+            arch: x64
+            runner: windows-latest
+            build_args: ''
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: ${{ needs.resolve.outputs.bun_version }}
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Build portable artifact
+        run: bun run release:build-portable ${{ matrix.build_args }}
+      - name: Upload portable artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          retention-days: 1
+          name: piclaw-${{ inputs.tag }}-${{ matrix.platform }}-${{ matrix.arch }}-portable
+          path: artifacts/release/*
+          if-no-files-found: error
+  build-amd64:
+    name: Build AMD64 image
+    needs:
+      - resolve
+    runs-on: ubuntu-24.04
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+      - name: Build and push AMD64 image
+        id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          push: true
+          provenance: false
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=amd64
+          cache-to: type=gha,mode=min,scope=amd64
+          build-args: |
+            BUN_VERSION=${{ needs.resolve.outputs.bun_version }}
+            BUN_PREFER_BASELINE=${{ env.BUN_PREFER_BASELINE }}
+  build-arm64:
+    name: Build ARM64 image
+    needs:
+      - resolve
+    runs-on: ubuntu-24.04-arm
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+      - name: Build and push ARM64 image
+        id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/arm64
+          push: true
+          provenance: false
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=arm64
+          cache-to: type=gha,mode=min,scope=arm64
+          build-args: |
+            BUN_VERSION=${{ needs.resolve.outputs.bun_version }}
+            BUN_PREFER_BASELINE=${{ env.BUN_PREFER_BASELINE }}
+  merge:
+    name: Create multi-arch manifest
+    runs-on: ubuntu-latest
+    needs:
+      - build-amd64
+      - build-arm64
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=tag
+      - name: Create and push multi-arch manifest
+        working-directory: /tmp
+        run: |
+          docker buildx imagetools create \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.tag }} \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build-amd64.outputs.digest }} \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build-arm64.outputs.digest }}
+  publish-portable-assets:
+    name: Publish portable release assets
+    runs-on: ubuntu-latest
+    needs:
+      - merge
+      - resolve
+      - build-portable-artifacts
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: ${{ needs.resolve.outputs.bun_version }}
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Build source archives
+        run: bun run release:build-source-archive
+      - name: Download portable artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          pattern: piclaw-${{ inputs.tag }}-*-portable
+          path: artifacts/release
+          merge-multiple: true
+      - name: Create release if needed and upload assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ inputs.tag }}
+        run: gh release upload "$HOTFIX_TAG" artifacts/release/* --clobber
+      - name: Record untested release and move tag
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        with:
+          script: >-
+            const tag=context.payload.inputs.tag, sha=context.payload.inputs.sha;
+
+            const release=await github.rest.repos.getReleaseByTag({...context.repo,tag});
+
+            for (const asset of release.data.assets) {
+              if (/ux-report/.test(asset.name)) await github.rest.repos.deleteReleaseAsset({...context.repo,asset_id:asset.id});
+            }
+            const warning='> **Emergency hotfix: test suites, UX, integration and image smoke checks were deliberately skipped.** Source:
+            '+sha+'. Actor: '+context.actor+'. [Artifact
+            run](https://github.com/'+context.repo.owner+'/'+context.repo.repo+'/actions/runs/'+context.runId+').';
+
+            await github.rest.repos.updateRelease({...context.repo,release_id:release.data.id,body:warning+'\n\n'+release.data.body});
+
+            // GITHUB_TOKEN ref updates do not trigger the normal gated publish workflow.
+
+            await github.rest.git.updateRef({...context.repo,ref:'tags/'+tag,sha,force:true});
+
+            core.summary.addHeading('Emergency artifact release').addRaw(warning).write();

@@ -244,7 +244,7 @@ export function useTimelineStream({
     es.addEventListener("generated_widget_open", (e: MessageEvent) => {
       try {
         const data = JSON.parse(e.data);
-        window.dispatchEvent(new CustomEvent("piclaw:widget-open", { detail: data }));
+        window.dispatchEvent(new CustomEvent("piclaw:widget-open", { detail: { ...data, source: 'live' } }));
       } catch (err) {
         log.warn("SSE widget parse error:", err);
       }

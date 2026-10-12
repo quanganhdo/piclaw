@@ -17,6 +17,8 @@ export interface NvmlReadSnapshot {
   totalBytes: number;
   usedBytes: number;
   percent: number;
+  /** Busiest device's kernel-active percentage; absent/unsupported stays unknown. */
+  busyPercent?: number | null;
   /**
    * nvml     => nvmlMemory_v2.used (allocated device memory; reserved excluded)
    * nvml-v1  => nvmlMemory_t.used from v1 fallback, which may include reserved memory
@@ -46,6 +48,7 @@ export interface NvmlBinding {
   getDeviceHandle(index: number): unknown | null;
   getMemoryInfoV1(device: unknown): NvmlMemoryInfoV1;
   getMemoryInfoV2(device: unknown): NvmlMemoryInfoV2;
+  getUtilization?(device: unknown): number | null;
   close(): void;
 }
 
@@ -125,6 +128,7 @@ export function createNativeNvmlBinding(
 
   let requiredLibrary: { close(): void; symbols: Record<string, (...args: any[]) => unknown> } | null = null;
   let optionalLibrary: { close(): void; symbols: Record<string, (...args: any[]) => unknown> } | null = null;
+  let utilizationLibrary: { close(): void; symbols: Record<string, (...args: any[]) => unknown> } | null = null;
   let initialized = false;
 
   const cleanup = (): void => {
@@ -136,6 +140,8 @@ export function createNativeNvmlBinding(
       } catch (error) { debugSuppressedError(log, "NVML shutdown failed after driver loss.", error, {}); }
     }
 
+    try { utilizationLibrary?.close(); } catch (error) { debugSuppressedError(log, "Utilization NVML library close failed.", error, {}); }
+    utilizationLibrary = null;
     try {
       optionalLibrary?.close();
     } catch (error) { debugSuppressedError(log, "Optional NVML library close failed.", error, {}); }
@@ -164,6 +170,13 @@ export function createNativeNvmlBinding(
       optionalLibrary = null;
     }
 
+    // Load independently: an absent activity symbol must not disable memory v2.
+    try {
+      utilizationLibrary = load(NVML_LIBRARY, {
+        nvmlDeviceGetUtilizationRates: { args: ["ptr", "ptr"], returns: "i32" },
+      });
+    } catch { utilizationLibrary = null; }
+
     const requiredSymbols = requiredLibrary.symbols;
     const optionalSymbols = optionalLibrary?.symbols ?? {};
 
@@ -179,6 +192,8 @@ export function createNativeNvmlBinding(
     const memoryV2Buffer = new BigUint64Array(5);
     const memoryV2View = new DataView(memoryV2Buffer.buffer);
     const memoryV2Pointer = ptr(memoryV2Buffer);
+    const utilizationBuffer = new Uint32Array(2); // nvmlUtilization_t: gpu, memory.
+    const utilizationPointer = ptr(utilizationBuffer);
 
     let closed = false;
 
@@ -227,6 +242,17 @@ export function createNativeNvmlBinding(
           usedBytes: Number(memoryV2Buffer[4]),
         };
       },
+      getUtilization(device: unknown): number | null {
+        ensureOpen();
+        const readUtilization = utilizationLibrary?.symbols.nvmlDeviceGetUtilizationRates;
+        if (typeof readUtilization !== "function") return null;
+        utilizationBuffer.fill(0);
+        // Activity is optional. Any driver error is unknown, never idle, and
+        // must not invalidate a successful memory read or reset its poller.
+        if (Number(readUtilization(device as Pointer, utilizationPointer)) !== NVML_SUCCESS) return null;
+        const value = utilizationBuffer[0];
+        return Number.isInteger(value) && value <= 100 ? value : null;
+      },
       close(): void {
         if (closed) return;
         closed = true;
@@ -255,6 +281,7 @@ export function createNvmlController(binding: NvmlBinding): NvmlReader {
 
       let totalBytes = 0;
       let usedBytes = 0;
+      let busyPercent: number | null = binding.getUtilization ? 0 : null;
       let provider: NvmlReadSnapshot["provider"] = useV1Only ? "nvml-v1" : "nvml";
 
       for (let index = 0; index < deviceCount; index += 1) {
@@ -277,6 +304,7 @@ export function createNvmlController(binding: NvmlBinding): NvmlReader {
             // Restart aggregation so earlier devices do not retain v2 (reserved-excluded) semantics.
             totalBytes = 0;
             usedBytes = 0;
+            busyPercent = binding.getUtilization ? 0 : null;
             index = -1;
             continue;
           }
@@ -287,6 +315,13 @@ export function createNvmlController(binding: NvmlBinding): NvmlReader {
           infoUsedBytes = info.usedBytes;
         }
 
+        if (binding.getUtilization) {
+          let activity: number | null = null;
+          try { activity = binding.getUtilization(device); } catch (error) { debugSuppressedError(log, "Optional GPU activity read failed.", error, {}); }
+          // All devices must be observable before asserting a busiest-device value.
+          busyPercent = busyPercent !== null && typeof activity === "number" && Number.isFinite(activity) && activity >= 0 && activity <= 100
+            ? Math.max(busyPercent, activity) : null;
+        }
         const nextTotalBytes = totalBytes + infoTotalBytes;
         const nextUsedBytes = usedBytes + infoUsedBytes;
         if (!Number.isSafeInteger(nextTotalBytes) || !Number.isSafeInteger(nextUsedBytes)) return null;
@@ -299,6 +334,7 @@ export function createNvmlController(binding: NvmlBinding): NvmlReader {
         totalBytes,
         usedBytes,
         percent: roundPercent((usedBytes / totalBytes) * 100),
+        ...(binding.getUtilization ? { busyPercent } : {}),
         provider,
       };
     },

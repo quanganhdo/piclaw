@@ -102,6 +102,7 @@ export function createAgentPoolServices(options: AgentPoolServiceFactoryOptions)
   let branchManager: AgentBranchManager;
   const runtimeFacade = new AgentRuntimeFacade({
     pool: options.pool,
+    acquireCommandProtection: chatJid => sessionManager.acquireEvictionProtection(chatJid),
     getOrCreateRuntime: (chatJid) => sessionManager.getOrCreate(chatJid),
     modelRegistry: options.modelRegistry,
     modelRuntime: options.modelRuntime,

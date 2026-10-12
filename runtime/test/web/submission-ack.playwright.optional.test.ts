@@ -35,6 +35,13 @@ for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
     let sseFirst = false;
     let rejectNext = false;
     let queueNext = false;
+    let invalidAck: 'json' | 'empty' | null = null;
+    const shortcutPosts: any[] = [];
+    const invalidRequests: string[] = [];
+    let heldShortcut = false;
+    let shortcutPending = false;
+    let releaseShortcut!: () => void;
+    const shortcutGate = new Promise<void>(resolve => { releaseShortcut = resolve; });
     let releaseAck!: () => void;
     let holdAck = new Promise<void>(resolve => { releaseAck = resolve; });
     let lastPost: any;
@@ -77,14 +84,26 @@ for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
       requests.push(`${req.method()} ${url.pathname}`);
       let body: unknown;
       if (url.pathname.startsWith('/agent/') && url.pathname.endsWith('/message') && req.method() === 'POST') {
+        if (req.postDataJSON().content === '/theme default') return route.fulfill({json:{ui_only:true,command:{status:'success',message:'Theme set'},response_delivery:'failed'}});
+        if (invalidAck) invalidRequests.push(req.postDataJSON().content);
+        if (invalidAck === 'json') return route.fulfill({status:201,contentType:'application/json',body:'not json'});
+        if (invalidAck === 'empty') return route.fulfill({status:201,json:{}});
         if(rejectNext) return route.fulfill({status:500,json:{error:'Fixture submission rejected'}});
+        if (req.postDataJSON().content.startsWith('Ctrl steer')) {
+          shortcutPosts.push(req.postDataJSON());
+          if (heldShortcut) { shortcutPending = true; await shortcutGate; }
+          const post = {id:778000+shortcutPosts.length,chat_jid:url.searchParams.get('chat_jid') || chatJid,type:'user',timestamp:new Date().toISOString(),data:{type:'user_message',content:req.postDataJSON().content,sender_name:'Fixture User',is_bot_message:false,thread_id:777001}};
+          durablePosts.push(post);
+          await page.evaluate(post=>(window as any).emitShellEvent('new_post',post),post);
+          return route.fulfill({status:201,json:{queued:'steer',thread_id:777001,user_message:post}});
+        }
         if(queueNext) { queueNext = false; return route.fulfill({ status:201,json:{thread_id:null,queued:'followup'} }); }
         accepted++;
         const id=777000+accepted;
-        lastPost={id,chat_jid:url.searchParams.get("chat_jid") || chatJid,type:'user',data:{type:'user_message',content:req.postDataJSON().content,timestamp:new Date().toISOString(),sender_name:'Fixture User',is_bot_message:false,thread_id:id}};
+        lastPost={id,chat_jid:url.searchParams.get("chat_jid") || chatJid,type:'user',timestamp:new Date().toISOString(),data:{type:'user_message',content:req.postDataJSON().content,sender_name:'Fixture User',is_bot_message:false,thread_id:id}};
         durablePosts.push(lastPost);
         if(sseFirst){
-          await page.evaluate(post=>{(window as any).emitShellEvent('new_post',post);(window as any).emitShellEvent('agent_status',{chat_jid:post.chat_jid,thread_id:post.data.timestamp,type:'thinking',phase:'thinking',turn_id:'second-turn'});},lastPost);
+          await page.evaluate(post=>{(window as any).emitShellEvent('new_post',post);(window as any).emitShellEvent('agent_status',{chat_jid:post.chat_jid,thread_id:post.timestamp,type:'thinking',phase:'thinking',turn_id:'second-turn'});},lastPost);
           await Bun.sleep(100);
         }
         await holdAck;
@@ -124,25 +143,31 @@ for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
       await page.locator('textarea,[contenteditable="true"]').first().waitFor();
       await page.waitForTimeout(500);
       const input=page.locator('textarea').filter({visible:true}).first();
+      const waitForSubmitReady = () => page.waitForFunction(() => {
+        const button = document.querySelector<HTMLButtonElement>('.compose-box .send-btn, .chat__send-btn');
+        return button != null && !button.disabled;
+      });
       await input.fill('Latency probe submission');
       await input.press('Enter');
       await page.locator('[data-submission-state="sending"]').waitFor({ timeout: 1500 });
-      expect(await page.locator('[data-submission-state="sending"]').textContent()).toContain('Sending message');
+      expect(await page.locator('[data-submission-state="sending"]').textContent()).toContain('Sending');
+      expect(await page.locator('[data-submission-state="sending"]').getAttribute('class')).toContain(skin==='classic'?'agent-status':'agent-status-panel__status');
+      expect(await page.locator('[data-submission-state="sending"] .agent-status-spinner, [data-submission-state="sending"] .agent-status-panel__spinner').count()).toBe(1);
       expect(await page.locator('#post-777001,[data-message-id="777001"]').count()).toBe(0);
       releaseAck();
       await page.waitForFunction(()=>document.querySelector('#post-777001,[data-message-id="777001"]'),{},{timeout:1500});
       expect(accepted).toBe(1);
-      await page.locator('[data-submission-state="waiting"]').waitFor({ timeout: 1500 });
-      expect(await page.locator('[data-submission-state="waiting"]').textContent()).toContain('Message accepted');
+      await page.locator('[data-submission-state]').waitFor({state:'hidden',timeout:1500});
+      expect(await page.getByText('Message accepted. Waiting for agent…',{exact:true}).count()).toBe(0);
       await page.evaluate(payload=>(window as any).emitShellEvent('agent_status',payload),{chat_jid:lastPost.chat_jid,thread_id:777000,type:'tool_status',title:'Previous turn',turn_id:'previous'});
-      expect(await page.locator('[data-submission-state="waiting"]').count()).toBe(1);
-      await page.evaluate(payload=>(window as any).emitShellEvent('agent_status',payload),{chat_jid:lastPost.chat_jid,thread_id:lastPost.data.timestamp,type:'thinking',phase:'thinking',title:'Thinking...',turn_id:'accepted-turn'});
+      expect(await page.locator('[data-submission-state]').count()).toBe(0);
+      await page.evaluate(payload=>(window as any).emitShellEvent('agent_status',payload),{chat_jid:lastPost.chat_jid,thread_id:lastPost.timestamp,type:'thinking',phase:'thinking',title:'Thinking...',turn_id:'accepted-turn'});
       await page.locator('[data-submission-state]').waitFor({ state: 'hidden', timeout: 1500 });
       expect(Date.now()-ackAt).toBeLessThan(1500);
       await page.evaluate(post=>(window as any).emitShellEvent('new_post',post),lastPost);
       await page.waitForTimeout(100);
       expect(await page.locator('#post-777001,[data-message-id="777001"]').count()).toBe(1);
-      await page.evaluate(payload=>(window as any).emitShellEvent('agent_status',payload),{chat_jid:lastPost.chat_jid,thread_id:lastPost.data.timestamp,type:'done',turn_id:'accepted-turn'});
+      await page.evaluate(payload=>(window as any).emitShellEvent('agent_status',payload),{chat_jid:lastPost.chat_jid,thread_id:lastPost.timestamp,type:'done',turn_id:'accepted-turn'});
       await page.waitForTimeout(150);
       // Event first, response later must likewise leave exactly one durable row.
       sseFirst=true;
@@ -157,17 +182,72 @@ for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
       await page.waitForTimeout(300);
       expect(await page.locator('[data-submission-state]').count()).toBe(0);
       expect(accepted).toBe(2);
+      await input.fill('Ctrl steer blocked shortcut');
+      await input.evaluate(el => el.dispatchEvent(new KeyboardEvent('keydown', {key:'Enter',ctrlKey:true,repeat:true,bubbles:true,cancelable:true})));
+      await input.evaluate(el => { const event = new KeyboardEvent('keydown', {key:'Enter',ctrlKey:true,bubbles:true,cancelable:true});event.preventDefault();el.dispatchEvent(event); });
+      await page.waitForTimeout(100);
+      expect(shortcutPosts).toHaveLength(0);
+      expect(await input.inputValue()).toBe('Ctrl steer blocked shortcut');
+      // Explicit Ctrl+Enter must request steering, independent of stale UI busy state.
+      await page.evaluate(payload=>(window as any).emitShellEvent('agent_status',payload),{chat_jid:lastPost.chat_jid,type:'thinking',phase:'thinking',thread_id:'busy-thread',turn_id:'busy-turn'});
+      heldShortcut=true;
+      await input.fill('Ctrl steer while busy'); await input.press('Control+Enter');
+      await page.waitForTimeout(100);
+      expect(shortcutPending).toBe(true);
+      await input.fill('Next draft while queue acknowledgement is pending');
+      releaseShortcut(); heldShortcut=false;
+      await page.locator('[data-submission-state]').waitFor({state:'hidden'});
+      await waitForSubmitReady();
+      expect(await input.inputValue()).toContain('Next draft while queue acknowledgement is pending');
+      expect(shortcutPosts).toHaveLength(1);
+      expect(shortcutPosts[0]).toMatchObject({content:'Ctrl steer while busy',mode:'steer',persist_steer:true});
+      await page.locator('#post-778001,[data-message-id="778001"]').waitFor();
+      expect(await page.locator('#post-778001,[data-message-id="778001"]').count()).toBe(1);
+      expect(await page.getByText('Steering queued for the current turn.',{exact:true}).count()).toBe(0);
+      expect(await page.getByText('Follow-up queued.',{exact:true}).count()).toBe(0);
+      await input.fill('Shift Enter newline'); await input.press('Shift+Enter');
+      expect(await input.inputValue()).toContain('\n');
+      expect(shortcutPosts).toHaveLength(1);
+      await page.evaluate(payload=>(window as any).emitShellEvent('agent_status',payload),{chat_jid:lastPost.chat_jid,type:'done',thread_id:'busy-thread',turn_id:'busy-turn'});
+      await input.fill('Ctrl steer while idle'); await input.press('Control+Enter');
+      await page.waitForFunction(()=>document.querySelector('textarea')?.value === '');
+      await input.fill('Ctrl steer with Cmd');
+      await waitForSubmitReady();
+      await input.press('Meta+Enter');
+      await page.waitForFunction(()=>document.querySelector('textarea')?.value === '');
+      expect(shortcutPosts).toHaveLength(3);
+      expect(shortcutPosts.every(post => post.mode === 'steer' && post.persist_steer === true)).toBe(true);
+      expect(await page.locator('#post-778002,[data-message-id="778002"]').count()).toBe(1);
+      expect(await page.locator('#post-778003,[data-message-id="778003"]').count()).toBe(1);
+      for (const invalid of ['json', 'empty'] as const) {
+        invalidAck=invalid;
+        const draft=`Unconfirmed ${invalid} draft`;
+        await input.fill(draft);
+        await waitForSubmitReady();
+        await input.press('Control+Enter');
+        await page.locator('[role="alert"]').waitFor({state:'visible'});
+        await page.locator('[data-submission-state]').waitFor({state:'hidden'});
+        await waitForSubmitReady();
+        expect(await input.inputValue()).toBe(draft);
+        expect(invalidRequests).toContain(draft);
+        expect(await page.locator('[role="alert"]').count()).toBeGreaterThan(0);
+      }
+      invalidAck=null;
       // Rejected submissions are never made to look accepted in the timeline.
       rejectNext=true;
-      await input.fill('Rejected latency probe');await input.press('Enter');
+      await input.fill('Rejected latency probe');await waitForSubmitReady();await input.press('Control+Enter');
       await page.waitForTimeout(500);
       expect(accepted).toBe(2);
+      expect(await input.inputValue()).toBe('Rejected latency probe');
       expect(await page.locator('[data-submission-state]').count()).toBe(0);
       expect(await page.locator('#post-777003,[data-message-id="777003"]').count()).toBe(0);
+      rejectNext=false;await input.fill('/theme default');await waitForSubmitReady();await input.press('Enter');
+      await page.getByText('Command handled, but its timeline reply could not be delivered. Do not resend the command.',{exact:false}).waitFor({timeout:5000});
+      expect(await input.inputValue()).toBe('');expect(accepted).toBe(2);
       expect(errors).toEqual([]);
       expect([...unhandled]).toEqual([]);
     } catch (error) {
-      console.log("SHELL_FAILURE", JSON.stringify({ engineName, skin, errors, unhandled: [...unhandled], requests, feedbackEvents: await page.evaluate(() => (window as any).feedbackEvents), body: (await page.locator("body").innerText()).slice(-2500), badges: await page.locator(".model-badge-wrapper,.compose-model-meta").evaluateAll(nodes => nodes.map(n => n.outerHTML)), scripts: await page.locator("script[src]").evaluateAll(nodes => nodes.map(n => n.getAttribute("src"))) }));
+      console.log("SHELL_FAILURE", JSON.stringify({ engineName, skin, errors, unhandled: [...unhandled], requests, invalidRequests, shortcutPosts, feedbackEvents: await page.evaluate(() => (window as any).feedbackEvents), body: (await page.locator("body").innerText()).slice(-2500), badges: await page.locator(".model-badge-wrapper,.compose-model-meta").evaluateAll(nodes => nodes.map(n => n.outerHTML)), scripts: await page.locator("script[src]").evaluateAll(nodes => nodes.map(n => n.getAttribute("src"))) }));
       throw error;
     } finally { await context.close(); await browser.close(); }
   }, 60000);

@@ -9,4 +9,6 @@ export interface Tab {
   widgetHtml?: string;
   /** Widget kind identifier (for behavior-specific handling). */
   widgetKind?: string;
+  widgetSource?: string;
+  widgetCapabilities?: string[];
 }

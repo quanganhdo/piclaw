@@ -23,7 +23,7 @@
  */
 
 import { getDb } from "../db/connection.js";
-import { readKeychainBootstrapKeyMaterial } from "../core/config.js";
+import { readKeychainBootstrapKeyMaterial, getKeychainBootstrapConfig } from "../core/config.js";
 // External provider fallback — see docs/keychain.md#external-keychain-providers
 import { getFromExternalProviders, listFromExternalProviders } from "./keychain-providers.js";
 
@@ -97,6 +97,12 @@ function readKeyMaterialFromEnv(): Uint8Array {
 let keyMaterialProvider: KeyMaterialProvider = {
   getKeyMaterial: readKeyMaterialFromEnv,
 };
+
+/** Secret-free availability for authenticated settings surfaces. */
+export function getKeychainStatus(): { enabled: boolean; reason: 'ready' | 'not_configured' | 'unavailable' } {
+  try { return loadKeyMaterial().length > 0 ? { enabled: true, reason: 'ready' } : { enabled: false, reason: 'not_configured' }; }
+  catch { const config = getKeychainBootstrapConfig(); return { enabled: false, reason: config.key || config.keyFile ? 'unavailable' : 'not_configured' }; }
+}
 
 function loadKeyMaterial(): Uint8Array {
   return keyMaterialProvider.getKeyMaterial();

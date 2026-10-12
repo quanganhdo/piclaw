@@ -216,6 +216,10 @@ export class AgentSessionManager {
   }
 
   /** Lifecycle callers must not archive while a run, hydration or disposal is in flight. */
+  hasProtectedRun(chatJid: string): boolean {
+    return this.evictionProtectionCounts.has(chatJid);
+  }
+
   hasPendingSessionWork(chatJid: string): boolean {
     return this.createInFlight.has(chatJid) || this.createSideInFlight.has(chatJid)
       || this.branchSeedRealizationInFlight.has(chatJid) || this.evictionProtectionCounts.has(chatJid)
@@ -307,6 +311,7 @@ export class AgentSessionManager {
     const existing = this.options.pool.get(chatJid);
     if (existing) {
       existing.lastUsed = Date.now();
+      const releaseHydrationProtection = this.acquireEvictionProtection(chatJid);
       try {
         await this.realizeDeferredBranchSeed(chatJid, existing.runtime);
         requireOwnedSessionExecution(chatJid);
@@ -315,9 +320,10 @@ export class AgentSessionManager {
       } catch (error) {
         await this.disposeMainRuntimeAfterError(chatJid, existing.runtime, "get_or_create.realize_existing_after_error");
         throw error;
-      }
+      } finally { releaseHydrationProtection(); }
     }
 
+    const releaseCreationProtection = this.acquireEvictionProtection(chatJid);
     const task = (async () => {
       this.options.onInfo?.("Creating new session", {
         operation: "get_or_create.create_main_session",
@@ -368,6 +374,7 @@ export class AgentSessionManager {
       }
     })().finally(() => {
       this.createInFlight.delete(chatJid);
+      releaseCreationProtection();
     });
 
     this.createInFlight.set(chatJid, task);

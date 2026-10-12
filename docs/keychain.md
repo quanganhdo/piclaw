@@ -286,3 +286,11 @@ All existing keychain consumers work without changes:
 - Providers are registered at extension load time and persist for the process lifetime.
 - `unregisterKeychainProvider(id)` removes a provider (useful during extension shutdown).
 - Provider state is in-memory only — the registry is rebuilt on each process start.
+
+Settings exposes secret-free storage availability (`ready`, `not_configured`, or
+`unavailable`) and disables adding entries when local encrypted storage cannot
+load key material. Configure `PICLAW_KEYCHAIN_KEY` or a persistent key file via
+`PICLAW_KEYCHAIN_KEY_FILE`; restart through the normal operator workflow after
+changing bootstrap configuration. External-provider listing remains independent.
+Failed web writes log an outcome/reason only, never the entry name, posted secret,
+notes, key material or configured path.

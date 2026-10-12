@@ -9,6 +9,10 @@ import { pathToFileURL } from "node:url";
 import { getDataDir, getWorkspaceDir as getConfiguredWorkspaceDir } from "../core/config.js";
 import { readAccessConfig } from "../core/config-access.js";
 import { createLogger } from "../utils/logger.js";
+import { registerAuthenticatedWebSocket, shutdownAuthenticatedAddonSockets } from './authenticated-socket-registry.js';
+import { bindAddonRegistration } from './registration-owner.js';
+import type { AuthenticatedAddonSocketRegistration } from './authenticated-socket.js';
+export type { AuthenticatedAddonSocketRegistration, AuthenticatedPrincipal } from './authenticated-socket.js';
 import { getExecutionIdentity } from "../core/execution-context.js";
 import { registerPreShutdownHook } from "../runtime/shutdown-registry.js";
 import { createMedia, getMediaById } from "../db/media.js";
@@ -119,6 +123,7 @@ export interface PiclawRuntimeOperationsApiV1 {
 }
 
 export interface PiclawRuntimeAddonApi {
+  authenticatedSockets: { version: 1; register(registration: AuthenticatedAddonSocketRegistration): () => void };
   lifecycle: {
     version: 1;
     /** Register process-scoped cleanup for sockets/timers opened by startup runtime entries. */
@@ -177,6 +182,9 @@ function registerAddonRuntimeShutdownHandler(handler: () => void | Promise<void>
 }
 
 async function shutdownAddonRuntimeContributions(): Promise<void> {
+  const sockets=shutdownAuthenticatedAddonSockets();
+  // Attach rejection handling immediately while independent lifecycle cleanup runs.
+  const socketResult=sockets.then(()=>({ok:true as const}),()=>({ok:false as const}));
   const handlers = [...addonRuntimeShutdownHandlers];
   addonRuntimeShutdownHandlers.clear();
   const timeout = Symbol("timeout");
@@ -189,12 +197,13 @@ async function shutdownAddonRuntimeContributions(): Promise<void> {
       ]);
       if (result === timeout) log.warn("Add-on runtime shutdown handler timed out", { operation: "runtime_addon_shutdown", handlerIndex: index, timeoutMs: ADDON_RUNTIME_SHUTDOWN_TIMEOUT_MS });
     } catch (error) {
-      log.warn("Add-on runtime shutdown handler failed", { operation: "runtime_addon_shutdown", handlerIndex: index, err: error });
+      log.warn("Add-on runtime shutdown handler failed", { operation: "runtime_addon_shutdown", handlerIndex: index });
     } finally {
       clearTimeout(timer);
     }
   }));
   void results;
+  if(!(await socketResult).ok)throw Error('Authenticated socket shutdown failed.');
 }
 
 function getWorkspaceDir(): string {
@@ -356,6 +365,7 @@ export function installAddonRuntimeApi(): PiclawRuntimeAddonApi {
   }
 
   const api: PiclawRuntimeAddonApi = {
+    authenticatedSockets: { version: 1, register: registerAuthenticatedWebSocket },
     lifecycle: { version: 1, onShutdown: registerAddonRuntimeShutdownHandler },
     registerStatusPanelProvider: registerAddonStatusPanelProvider,
     registerAdaptiveCardIntentHandler: registerAddonAdaptiveCardIntentHandler,
@@ -400,7 +410,13 @@ async function importAddonRuntimeEntries(entries: InstalledAddonRuntimeEntry[]):
     if (entry.load === "startup") {
       await withExternalAddonRegistrationContext(
         { packageName: entry.packageName, entryPath: entry.path },
-        async () => await import(pathToFileURL(entry.path).href),
+        async () => {
+          const runtimeGlobal=globalThis as RuntimeGlobal;
+          const previous=runtimeGlobal.__piclaw_runtime!;
+          runtimeGlobal.__piclaw_runtime={...previous,externalRoutes:{...previous.externalRoutes,register:bindAddonRegistration(registerExternalAddonRoute)},authenticatedSockets:{...previous.authenticatedSockets,register:bindAddonRegistration(registerAuthenticatedWebSocket)},operations:{...previous.operations,register:bindAddonRegistration(registerOperations)}};
+          try { await import(pathToFileURL(entry.path).href); }
+          finally { runtimeGlobal.__piclaw_runtime=previous; }
+        },
       );
     } else {
       await import(pathToFileURL(entry.path).href);
@@ -414,7 +430,7 @@ export async function ensureAddonRuntimeEntriesLoaded(): Promise<void> {
   if (lazyRuntimeEntriesLoadPromise) return lazyRuntimeEntriesLoadPromise;
 
   const entries = getInstalledAddonRuntimeEntries().filter((entry) => entry.load === "lazy");
-  lazyRuntimeEntriesLoadPromise = importAddonRuntimeEntries(entries).catch((error) => {
+  lazyRuntimeEntriesLoadPromise = ensureStartupAddonRuntimeEntriesLoaded().then(()=>importAddonRuntimeEntries(entries)).catch((error) => {
     lazyRuntimeEntriesLoadPromise = null;
     throw error;
   });

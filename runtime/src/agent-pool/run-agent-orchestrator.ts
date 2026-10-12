@@ -1,4 +1,5 @@
 import { withAddonLocalPrompt, revokeAddonLocalAgent } from '../addons/local-context.js';
+import { waitForRuntimeStartup } from './startup-wait.js';
 import { createOperationModelBoundary } from "./run-operation-boundary.js";
 /**
  * agent-pool/run-agent-orchestrator.ts – Main runAgent prompt lifecycle orchestration.
@@ -826,6 +827,14 @@ async function runPromptAttempt(
 
   const unsub = options.turnCoordinator.subscribe(session, chatJid, tracker, wrappedOnEvent);
   const { timeoutId, timedOutRef, completedRef } = options.turnCoordinator.startPromptTimeout(session, chatJid, timeoutMs);
+  const agent = session.agent;
+  const originalStream = agent?.streamFunction;
+  const guardedStream: typeof originalStream | undefined = originalStream ? (...args) => {
+    if (timedOutRef.value) throw Error('Prompt deadline expired before provider dispatch.');
+    runOptions.abortSignal?.throwIfAborted();
+    return originalStream(...args);
+  } : undefined;
+  if (agent && guardedStream) agent.streamFunction = guardedStream;
   const finishPromptTimeout = () => {
     if (!completedRef.value) completedRef.value = true;
     if (timeoutId) clearTimeout(timeoutId);
@@ -890,6 +899,7 @@ async function runPromptAttempt(
     if (finalizationReserveTimer) clearTimeout(finalizationReserveTimer);
     toolBudget.restoreToolBudgetGuard();
     toolBudget.restoreToolBudgetSoftStop();
+    if (agent && agent.streamFunction === guardedStream && originalStream) agent.streamFunction = originalStream;
     restoreUpstreamAutoCompaction();
     finishPromptTimeout();
     unregisterProgressAborter();
@@ -1030,8 +1040,13 @@ async function runAgentPromptWithIdentity(
     }
 
     if (runOptions.abortSignal?.aborted) return { status: "error", result: null, error: "Operation cancelled before prompt.", failureCategory: "aborted" };
-    const runtime = await options.getOrCreateRuntime(chatJid);
+    const startupTimeoutMs = hasScheduledDispatch() ? 0 : runOptions.startupTimeoutMs ?? (typeof runOptions.timeoutMs === 'number' ? runOptions.timeoutMs : getAgentRuntimeConfig().timeoutMs);
+    const runtime = await waitForRuntimeStartup(options.getOrCreateRuntime(chatJid), startupTimeoutMs, runOptions.abortSignal);
+    abortOwner = runtime.session;
+    runOptions.abortSignal?.addEventListener('abort', onCallerAbort, { once: true });
+    runOptions.abortSignal?.throwIfAborted();
     const preflightBudgetBlock = await runOptions.budgetBeforeModelCall?.("preprompt_compaction", prompt, runtime.session.model?.provider);
+    runOptions.abortSignal?.throwIfAborted();
     if (preflightBudgetBlock) {
       return { status: "error", result: null, failureCategory: "provider_budget", error: preflightBudgetBlock };
     }
@@ -1040,6 +1055,8 @@ async function runAgentPromptWithIdentity(
     if (session.getSteeringMessages?.().length || session.getFollowUpMessages?.().length) revokeAddonLocalAgent(chatJid);
     if(hasScheduledDispatch()&&(session.isStreaming||session.isCompacting||session.isRetrying))throw new Error("Scheduled target is busy.");
     if(!hasScheduledDispatch())session = await maybeAutoRotateSession(session, runtime, chatJid, options);
+    abortOwner = session;
+    runOptions.abortSignal?.throwIfAborted();
     // Protected recovery/finalization attempts deliberately clear tools. An
     // ordinary subsequent turn must never inherit that empty set: it is not a
     // user-selectable steady state and otherwise makes the agent appear broken
@@ -1094,6 +1111,7 @@ async function runAgentPromptWithIdentity(
     });
     if (!runOptions.skipPrePromptCompaction) {
       let prePromptCompactionFailure: string | null = null;
+      runOptions.abortSignal?.throwIfAborted();
       const projectedPendingInputTokens = estimatePendingInputTokens(prompt);
       await maybeAutoCompactSessionBeforePrompt(session, chatJid, options, (event) => {
         const eventAny = event as { type?: string; errorMessage?: unknown };
@@ -1113,6 +1131,7 @@ async function runAgentPromptWithIdentity(
         }
         runOptions.onEvent?.(event);
       }, projectedPendingInputTokens);
+      runOptions.abortSignal?.throwIfAborted();
       if (prePromptCompactionFailure && !isCompactionCancellationError(prePromptCompactionFailure)) {
         const rotation = await rotateSession(session, runtime, {
           reason: "automatic",
@@ -1193,7 +1212,6 @@ async function runAgentPromptWithIdentity(
     operationModelBoundary.apply(session);
     if (runOptions.abortSignal?.aborted) return { status: "error", result: null, error: "Operation cancelled before prompt.", failureCategory: "aborted" };
     abortOwner = session;
-    runOptions.abortSignal?.addEventListener("abort", onCallerAbort, { once: true });
 
     const channel = detectChannel(chatJid);
     const retrySettings = ((runtime.services?.settingsManager as RetrySettingsProvider | undefined)?.getRetrySettings?.()) || undefined;

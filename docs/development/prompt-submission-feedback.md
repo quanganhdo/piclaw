@@ -1,30 +1,23 @@
-# Feedback while submitting a prompt
+# Compose feedback follows native status and timeline conventions
 
-Both skins show a local status row as soon as a prompt is submitted. It displays “Sending message…” until the HTTP response confirms acceptance, then “Message accepted. Waiting for agent…” until matching run feedback arrives.
+While the message POST is pending, both skins show “Sending…” using their existing agent-status row and spinner classes. The local status ends when acceptance is acknowledged or an error occurs. It does not continue into a post-acceptance waiting phase.
 
-The row does not claim that an unacknowledged prompt is stored or that model inference has begun. Queued, command, UI-only and successfully relayed submissions clear it at acknowledgement; their existing responses and queue displays own subsequent feedback. Failed sends clear the row and retain existing draft/error behaviour. Attachment progress remains separate.
+After acceptance, the timeline, existing follow-up queue and authoritative agent status own feedback. There are no separate “Message accepted. Waiting for agent…”, “Steering queued for the current turn.” or “Follow-up queued.” notices. Attachment upload and submission errors retain their existing presentations.
 
-## Event ordering
+## Timeline steering
 
-`SubmissionFeedback` owns presentation state only. Each send has a generation, captured chat and acknowledgement identities. A changed chat or unmount invalidates earlier callbacks. Older acknowledgements, errors and finally blocks cannot overwrite a later send. Status from another chat or an earlier thread cannot dismiss the current cue.
+Keyboard/button steering in the browser requests the existing persisted-steering path with `persist_steer: true`. Successfully injected steering is stored as a user message and marked as steering, so it appears directly in the timeline without ordinary replay. Both the HTTP acknowledgement and SSE can carry the same row; normal timeline deduplication handles either order.
 
-The ordinary HTTP response carries a row-based thread ID, while process-chat lifecycle status uses the selected source message timestamp. Both identities from the accepted response are recorded. Up to sixteen status identities can be held before acknowledgement, allowing an early matching event to prevent the waiting row from reappearing.
+If the turn is starting but cannot accept a stream yet, input uses the existing durable follow-up queue and its queue card. Fresh activity is checked again during admission. If a persisted request reaches an ended stream, its accepted row remains the single ordinary delivery path in the serialized chat lane. It does not also create a deferred copy. Successful run finalization resumes remaining persisted input before draining deferred items.
 
-Classic publishes matched run/terminal status from live SSE, status polling and reconnect recovery. Visual consumes its live status event and the shared polling event, and resets on current-chat navigation. Retained terminal `done`/`error` payloads clear matching feedback even when SSE was missed. An idle-only snapshot without a matching terminal identity does not fabricate completion.
+## Draft safety
 
-## Findings and limits
+The composers retain the positive-acknowledgement guard: a successful HTTP status with malformed, empty or rejected data does not silently consume the draft. New text entered during a pending submission remains available. A committed relay-source receipt prevents encouraging a duplicate-source retry. No uncertain submission is retried automatically.
 
-The backend already publishes initial “Thinking…” before the optional model metadata lookup and session hydration in `createProcessChatStreamingRuntime`. The existing blocked-metadata test verifies this ordering. Earlier message admission, pending-message selection and prompt preparation can still delay that stage.
+The local feedback controller needs only a request generation to reject stale acknowledgement/finally/error callbacks after navigation or a newer send. It no longer tracks thread identities or listens to run-status events.
 
-Previously, admission was represented mainly by a disabled Send button and changed tooltip/ARIA label. Acceptance could leave the UI without a visible activity cue until startup status arrived. Held-response and withheld-startup browser fixtures reproduce this visibility gap and verify the new status row.
+## Why the old indication persisted
 
-No live probe prompts or provider calls were made. This change makes the wait visible; it does not establish hydration as the cause of every reported delay or claim to reduce backend startup time. Synchronous server stalls can still delay receipt of the response/status, while the local sending cue is already visible.
+The previous implementation created a separate post-acceptance waiting strip and tried to correlate it with agent status. Its acknowledgement call read a message timestamp from `user_message.data.timestamp`, but the backend interaction stores `timestamp` at the top level. Lifecycle status used the timestamp while the fallback ACK identity used the numeric row ID; this could leave the new strip visible beside actual work. Maintaining another activity display also departed from the existing UX conventions. The correlation machinery and post-acceptance strip have been removed instead of adding another heuristic.
 
-## Checks
-
-- Shared state tests: acknowledgement truth, status-before-ack, stale chat/thread, timestamp identity, queued/command paths, failure/interception, and obsolete generations.
-- Real status-controller tests: active/terminal polling and reconnect recovery, including terminal-before-ack and uncertain idle snapshots.
-- Shipped Classic/Visual entrypoints on Chromium/WebKit: held POST feedback before any durable row, accepted waiting state, old-status rejection, matched startup handoff, status-before-ack, event/ACK deduplication, queue ACK and rejected submission.
-- Full qualification and source review are recorded in `docs/reviews/prompt-submission-feedback.md`.
-
-No backend admission authority, database commit, queue execution, model selection or provider credential policy changes. Installation and restart require separate approval.
+The backend already emits initial Thinking before optional metadata/session hydration. This correction does not claim to diagnose every startup delay. No live prompts, provider accounts, production configuration, installation or restart are changed.

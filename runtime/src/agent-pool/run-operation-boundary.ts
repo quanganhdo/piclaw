@@ -8,8 +8,9 @@ export function createOperationModelBoundary(options: RunAgentOptions) {
     apply(session: AgentSession): void {
       release();
       release = () => {};
-      if (!options.requireToolCeiling) return;
+      if (!options.requireToolCeiling && !options.abortSignal) return;
       const agent = session.agent;
+      if ((!agent || typeof agent.streamFunction !== "function") && !options.requireToolCeiling) return;
       if (!agent || typeof agent.streamFunction !== "function")
         throw new Error(
           "Restricted execution requires a model admission hook.",
@@ -22,9 +23,10 @@ export function createOperationModelBoundary(options: RunAgentOptions) {
       ) => {
         // The SDK persisted/built this prompt before reaching the model stream.
         // Record that boundary even when policy/budget now pauses the request.
-        options.onOperationInputCommitted?.();
+        if (options.requireToolCeiling) options.onOperationInputCommitted?.();
         options.abortSignal?.throwIfAborted();
         streamOptions?.signal?.throwIfAborted();
+        if (!options.requireToolCeiling) return original(model, context, streamOptions);
         if (
           options.executionAdmissionCheck &&
           !(await options.executionAdmissionCheck())

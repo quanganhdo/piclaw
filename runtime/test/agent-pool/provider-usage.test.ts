@@ -639,3 +639,16 @@ describe("provider usage", () => {
     expect(usage).toBeNull();
   });
 });
+
+test('Codex labels follow reported duration independently of window position', async () => {
+ const storage=createAuthStorage({'openai-codex':{type:'oauth',access:'synthetic',accountId:'fixture'}});
+ const original=globalThis.fetch;
+ try{
+  for(const [seconds,label,hint] of [[604800,'week','wk'],[18000,'5h','5h'],[86400,'1d','1d'],[5400,'90m','90m'],[undefined,'window','window'],[0,'window','window'],[-1,'window','window'],['604800','window','window']] as const){
+   clearProviderUsageCache();globalThis.fetch=async()=>Response.json({rate_limit:{primary_window:{used_percent:33,limit_window_seconds:seconds,reset_at:2000000000}},credits:{balance:12}});
+   const usage=await getProviderUsage(storage,'openai-codex');
+   expect(usage?.primary?.label).toBe(label);expect(usage?.hint_short).toBe(`${hint} 67% • credits 12`);expect(usage?.secondary).toBeNull();expect(usage?.primary?.resets_at).toBeTruthy();
+   if(label==='window')expect(usage?.primary?.window_minutes).toBeNull();
+  }
+ }finally{globalThis.fetch=original;clearProviderUsageCache();}
+});

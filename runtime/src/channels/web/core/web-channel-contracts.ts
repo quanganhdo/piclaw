@@ -39,6 +39,7 @@ interface InteractionBroadcasterLike {
 }
 
 interface TaskQueueLike {
+  isLaneBusy?(laneKey: string): boolean;
   enqueue(task: () => unknown, key: string, laneKey?: string): unknown;
 }
 

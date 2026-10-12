@@ -1,3 +1,6 @@
+import { createLogger } from '../../../utils/logger.js';
+import { getKeychainStatus } from '../../../secure/keychain.js';
+const keychainLog=createLogger('web.keychain');
 /**
  * web/http/dispatch-agent.ts – Agent route dispatch helpers.
  */
@@ -615,7 +618,7 @@ const EXACT_AGENT_ROUTES: ExactAgentRoute[] = [
           ...e,
           envVar: envMap[e.name] || null,
         }));
-        return channel.json({ ok: true, entries: result });
+        return channel.json({ ok: true, entries: result, status: getKeychainStatus() });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         return channel.json({ error: message }, 500);
@@ -642,6 +645,7 @@ const EXACT_AGENT_ROUTES: ExactAgentRoute[] = [
         await setKeychainEntry({ name, type, secret, username, userNote, agentNote });
         return channel.json({ ok: true, name, type });
       } catch (error) {
+        keychainLog.warn('Keychain write failed', { operation: 'keychain.write_failed', reason: getKeychainStatus().reason });
         const message = error instanceof Error ? error.message : String(error);
         return channel.json({ error: message }, 400);
       }

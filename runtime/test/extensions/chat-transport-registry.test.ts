@@ -80,3 +80,10 @@ describe("chat transport registry", () => {
     expect(getChatTransport("local")).toBeNull();
   });
 });
+
+test('explicit directory joins held advisory discovery without losing its late result',async()=>{
+ let release!:(value:any)=>void;const held=new Promise<any>(resolve=>{release=resolve;});let calls=0;
+ registerChatTransport({id:'slow-directory',kind:'bang',directory:async()=>{calls++;return held;},send:async()=>({status:'ok'})});
+ const advisory=getChatTransportDirectories({advisory:true});const explicit=getChatTransportDirectories();expect(await advisory).toEqual([]);expect(calls).toBe(1);
+ const result={transport:'slow-directory',generated_at:'synthetic',entries:[]};release(result);expect(await explicit).toEqual([result]);
+});

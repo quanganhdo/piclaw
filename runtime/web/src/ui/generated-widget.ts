@@ -1,3 +1,5 @@
+import { getGeneratedWidgetCsp, getGeneratedWidgetSandbox, isGeneratedWidgetInteractive } from "./generated-widget-policy.js";
+
 export type GeneratedWidgetKind = "html" | "svg";
 export type GeneratedWidgetSource = "timeline" | "live";
 export type GeneratedWidgetStatus = "loading" | "streaming" | "final" | "error";
@@ -161,23 +163,8 @@ export function getGeneratedWidgetSessionKey(widget: any): string | null {
   return null;
 }
 
-export function isInteractiveGeneratedWidget(widget: any): boolean {
-  const artifact = widget?.artifact || {};
-  const kind = artifact.kind || widget?.kind || null;
-  const capabilities = Array.isArray(widget?.capabilities) ? widget.capabilities : [];
-  const interactiveCapability = capabilities.some((value) => typeof value === 'string' && value.trim().toLowerCase() === 'interactive');
-  return kind === 'html' && (widget?.source === 'live' || interactiveCapability);
-}
-
-export function getGeneratedWidgetIframeSandbox(widget: any): string {
-  // `allow-same-origin` is critical for dynamic widgets: they need a real
-  // same-origin document to load vendored/workspace assets and make local
-  // authenticated fetches (for example /workspace/raw) from the widget frame.
-  // `allow-forms` lets interactive widgets submit native forms inside the frame.
-  return isInteractiveGeneratedWidget(widget)
-    ? 'allow-downloads allow-scripts allow-same-origin allow-forms'
-    : 'allow-downloads';
-}
+export const isInteractiveGeneratedWidget = isGeneratedWidgetInteractive;
+export const getGeneratedWidgetIframeSandbox = getGeneratedWidgetSandbox;
 
 export function getGeneratedWidgetInitPayload(widget: any): Record<string, unknown> {
   return {
@@ -442,20 +429,7 @@ export function buildWidgetSrcDoc(widget: any): string {
   if (!content) return '';
 
   const interactive = isInteractiveGeneratedWidget(widget);
-  const csp = [
-    "default-src 'none'",
-    "img-src data: blob: https: http:",
-    "style-src 'unsafe-inline'",
-    "font-src 'self' data: https: http:",
-    "media-src data: blob: https: http:",
-    "connect-src 'none'",
-    "frame-src 'none'",
-    interactive ? "script-src 'unsafe-inline' 'self'" : "script-src 'none'",
-    "object-src 'none'",
-    "base-uri 'none'",
-    "form-action 'none'",
-  ].join('; ');
-
+  const csp = getGeneratedWidgetCsp(widget);
   const body = kind === 'svg'
     ? `<div class="widget-svg-shell">${content}</div>`
     : content;

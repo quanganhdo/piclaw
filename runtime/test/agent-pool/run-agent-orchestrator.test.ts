@@ -5676,3 +5676,10 @@ test("pre-aborted operation never hydrates a session", async () => {
   const output = await runAgentPrompt('external task','operation:pre-aborted',{abortSignal:abort.signal},{getOrCreateRuntime:async()=>{hydrated=true;throw new Error('must not hydrate');},turnCoordinator:new AgentTurnCoordinator({touchSession:()=>{},takeAttachments:()=>[]}),clearAttachments:()=>{},takeAttachments:()=>[],setActiveForkBaseLeaf:()=>{},clearActiveForkBaseLeaf:()=>{},logsDir:createTestLogsDir()});
   expect(output.failureCategory).toBe('aborted');expect(hydrated).toBe(false);
 });
+
+test('startup timeout returns without resuming a late-created prompt',async()=>{
+ let release!:()=>void;const held=new Promise<void>(resolve=>{release=resolve;});let entered!:()=>void;const started=new Promise<void>(resolve=>{entered=resolve;});let completed=false,promptCalls=0;
+ const runtime=createRuntime({isStreaming:false,prompt:async()=>{promptCalls++;},subscribe:()=>()=>{},abort:async()=>{}} as any);
+ const pending=runAgentPrompt('synthetic prompt','web:held-start',{timeoutMs:10,skipPrePromptCompaction:true},{pool:new Map(),setActiveForkBaseLeaf:()=>{},clearActiveForkBaseLeaf:()=>{},clearAttachments:()=>{},takeAttachments:()=>[],sidePool:new Map(),getOrCreateRuntime:async()=>{entered();await held;return runtime;},applyForkLeafIfNeeded:async()=>{},defaultModel:{provider:'local',modelId:'synthetic'},setSessionModel:async()=>{},getSessionModelState:()=>({provider:'local',modelId:'synthetic'}),rotateSession:async()=>{},turnCoordinator:new AgentTurnCoordinator({totalTokens:()=>0,effortToThinking:()=>undefined,onWarn:()=>{},onError:()=>{}} as any),totalTokens:()=>0,effortToThinking:()=>undefined,log:{info:()=>{},warn:()=>{},error:()=>{}} as any,timeoutMs:10,automaticRetry:{enabled:false,maxAttempts:0}}).then(result=>{completed=true;return result;});
+ await started;await new Promise(resolve=>setTimeout(resolve,50));expect(completed).toBe(true);release();const result=await pending;expect(result.error).toContain('Runtime startup timed out');await new Promise(resolve=>setTimeout(resolve,0));expect(promptCalls).toBe(0);
+});

@@ -1,0 +1,34 @@
+{
+  "asOf": "2026-10-06",
+  "units": "USD per million tokens",
+  "rates": [
+    {
+      "provider": "mistral",
+      "id": "mistral-large-4",
+      "aliases": [
+        "mistral-large-4-0"
+      ],
+      "name": "Mistral Large 4",
+      "input": 1.36,
+      "output": 4.18,
+      "cr": 0.14,
+      "cw": null,
+      "cacheWriteEstimator": 1.36,
+      "contextWindowLabel": "1M",
+      "contextPricing": "One published price schedule; no separate long-context uplift found.",
+      "source": "https://docs.mistral.ai/models/mistral-large-4-0",
+      "announcement": "https://mistral.ai/news/mistral-large-4/",
+      "retrievedDate": "2026-10-06",
+      "evidence": "public-first-party",
+      "lifecycle": "public-preview",
+      "pricingBasis": "Undiscounted originalPrice fields. Two-week 50% launch discount is excluded.",
+      "cache": {
+        "writeTariff": "not separately published",
+        "ttl": "not published in captured documentation",
+        "blockTokens": 64,
+        "inputAccounting": "prompt_tokens includes cached_tokens; uncached input = prompt_tokens - cached_tokens"
+      },
+      "notes": "No separate cache-write tariff; local separated write tokens use ordinary input estimator fallback, not an additional surcharge. The launch discount is excluded. No separate long-context uplift found; public preview can receive silent updates. No other provider route, subscription entitlement or invoice is inferred."
+    }
+  ]
+}

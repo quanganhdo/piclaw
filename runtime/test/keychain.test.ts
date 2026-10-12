@@ -381,3 +381,9 @@ test("rejects invalid entry shapes, invalid references, missing usernames, and u
     await expect(keychain.getKeychainEntry("legacy-kdf")).rejects.toThrow("Unsupported keychain KDF");
   });
 });
+
+test("keychain availability never returns key material or configured paths",async()=>{
+ await withKeychainContext(async({keychain})=>{expect(keychain.getKeychainStatus()).toEqual({enabled:true,reason:"ready"});});
+ await withKeychainContext(async({keychain})=>{expect(keychain.getKeychainStatus()).toEqual({enabled:false,reason:"not_configured"});},{PICLAW_KEYCHAIN_KEY:"",PICLAW_KEYCHAIN_KEY_FILE:""});
+ await withKeychainContext(async({keychain})=>{expect(keychain.getKeychainStatus()).toEqual({enabled:false,reason:"unavailable"});},{PICLAW_KEYCHAIN_KEY:"",PICLAW_KEYCHAIN_KEY_FILE:"/synthetic/missing-key"});
+});

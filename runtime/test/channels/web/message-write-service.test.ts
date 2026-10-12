@@ -144,3 +144,11 @@ describe("web message write service", () => {
     expect((writes[0].blocks?.[0] as Record<string, unknown>).widget_id).toBe("widget-test-service");
   });
 });
+
+test('WebMessageWriteService rejects an uncommitted reply instead of reporting success',async()=>{
+ let broadcasts=0;const service=new WebMessageWriteService(createDeps({broadcastAgentResponse:()=>{broadcasts++;}}));await expect(service.sendMessage('web:default','test',{forceRoot:true,requirePersistence:true})).rejects.toThrow('could not be persisted');expect(broadcasts).toBe(0);
+});
+
+test('non-strict reply failure preserves legacy control-command completion semantics',async()=>{
+ const service=new WebMessageWriteService(createDeps());await expect(service.sendMessage('web:default','already executed control reply')).resolves.toBeUndefined();
+});

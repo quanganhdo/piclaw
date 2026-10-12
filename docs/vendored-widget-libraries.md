@@ -1,8 +1,8 @@
 # Vendored widget libraries
 
-Interactive widgets posted via `send_dashboard_widget` run in a sandboxed iframe
-with `allow-scripts allow-same-origin`. The CSP allows inline scripts and
-same-origin script loading (`script-src 'unsafe-inline' 'self'`).
+Interactive HTML widgets in Classic and Visual allow inline and same-origin scripts, WASM compilation (`'wasm-unsafe-eval'`), same-origin fetches and same-origin child frames by default. JavaScript `eval` and cross-origin scripts, fetches and frames are blocked. Existing image, font and media source permissions are unchanged. Static HTML/SVG previews in both skins keep scripts, connections and frames disabled. Same-origin stylesheets and inline styles remain available. Live HTML widgets are interactive; timeline HTML requires the `interactive` capability or the legacy `interactive: true` opt-in. Explicit capability arrays take precedence over that legacy flag.
+
+These are trusted agent-authored widgets. The existing `allow-scripts allow-same-origin` sandbox permits authenticated same-origin access and parent DOM access; it is not a security boundary for untrusted HTML. Child frames inherit sandbox restrictions but have their own document CSP. The Visual wrapper now applies the shared CSP, so external script/connection/frame sources previously accepted there must be served from the PiClaw origin.
 
 The following libraries are vendored as static assets. Dashboard widgets and generated HTML artifacts from the `visual-artifact-generator` skill can load them explicitly from the paths below; the iframe does not inherit scripts or styles from the host page.
 

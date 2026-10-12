@@ -18,16 +18,16 @@ test("many HUD clients share one worker and at most one request per interval", (
   const h = setup();
   for (let i = 0; i < 100; i++) expect(h.cache.read()).toBeNull();
   expect(h.creations()).toBe(1); expect(h.worker.messages).toHaveLength(1);
-  h.worker.reply(sample); expect(h.cache.read()).toEqual(sample);
+  h.worker.reply(sample); expect(h.cache.read()).toMatchObject(sample);
   const copy = h.cache.read()!; copy.usedBytes = 999;
-  expect(h.cache.read()).toEqual(sample);
+  expect(h.cache.read()).toMatchObject(sample);
   h.tick(2000); h.cache.read(); expect(h.worker.messages).toHaveLength(2);
 });
 test("device absence, permission/library errors and invalid messages back off and recover", () => {
   for (const value of [null, {}, { ...sample, usedBytes: NaN }, { ...sample, percent: 99 }, { ...sample, provider: 'bad' }]) {
     const h = setup(); h.cache.read(); h.worker.reply(value);
     expect(h.cache.read()).toBeNull(); h.tick(59999); h.cache.read(); expect(h.worker.messages).toHaveLength(1);
-    h.tick(1); h.cache.read(); h.worker.reply(sample); expect(h.cache.read()).toEqual(sample);
+    h.tick(1); h.cache.read(); h.worker.reply(sample); expect(h.cache.read()).toMatchObject(sample);
   }
 });
 test("stale and late native results never show a false zero or create replacement workers", () => {
@@ -35,7 +35,7 @@ test("stale and late native results never show a false zero or create replacemen
   h.tick(5000); expect(h.cache.read()).toBeNull();
   h.tick(600000); h.cache.read(); expect(h.creations()).toBe(1); expect(h.worker.messages).toHaveLength(2);
   h.worker.reply(sample); expect(h.cache.read()).toBeNull();
-  h.tick(60000); h.cache.read(); h.worker.reply(sample); expect(h.cache.read()).toEqual(sample);
+  h.tick(60000); h.cache.read(); h.worker.reply(sample); expect(h.cache.read()).toMatchObject(sample);
 });
 test("worker errors open circuit; disposal prevents callbacks restarting state", () => {
   const h = setup(); h.cache.read(); const oldCallback = h.worker.onmessage;
@@ -50,5 +50,14 @@ test("worker construction failure retries with backoff; wrong request IDs are ig
   expect(cache.read()).toBeNull(); expect(cache.read()).toBeNull(); expect(count).toBe(1);
   now = 60000; cache.read(); expect(count).toBe(2);
   const h = setup(); h.cache.read(); h.worker.reply(sample, 999); expect(h.cache.read()).toBeNull();
-  h.worker.reply(sample, 1); expect(h.cache.read()).toEqual(sample);
+  h.worker.reply(sample, 1); expect(h.cache.read()).toMatchObject(sample);
+});
+
+test('invalid optional activity never rejects a valid memory snapshot; zero is valid',()=>{
+ const s=setup();const cache=s.cache;
+ for(const busyPercent of [0,70,null,NaN,-1,101,'70',false]){
+  cache.read();s.worker.reply({...sample,busyPercent});
+  expect(cache.read()).toMatchObject({usedBytes:100,percent:10,busyPercent:typeof busyPercent==='number'&&Number.isFinite(busyPercent)&&busyPercent>=0&&busyPercent<=100?busyPercent:null});s.tick(2000);
+ }
+ cache.dispose();
 });

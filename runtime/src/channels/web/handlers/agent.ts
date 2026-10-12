@@ -730,8 +730,10 @@ export async function handleAgentMessage(
   const isStreaming = typeof channel.agentPool.isStreaming === "function"
     ? channel.agentPool.isStreaming(chatJid)
     : false;
-  const isActive = isStreaming || (typeof (channel.agentPool as { isActive?: (chatJid: string) => boolean }).isActive === "function"
-    && (channel.agentPool as { isActive: (chatJid: string) => boolean }).isActive(chatJid));
+  const isChatActive = () => channel.agentPool.isStreaming?.(chatJid) === true
+    || channel.agentPool.isActive?.(chatJid) === true
+    || channel.queue?.isLaneBusy?.(`chat:${chatJid}`) === true;
+  const isActive = isChatActive();
   const hasQueuedBacklog = channel.getQueuedFollowupCount(chatJid) > 0;
   // NOTE: we intentionally use the in-memory active-run flags—not the DB
   // inflight marker—to decide whether to queue/defer. The DB marker survives
@@ -862,9 +864,7 @@ export async function handleAgentMessage(
       ...(extras.source ? { source: extras.source } : {}),
       ...(queuedBy && Object.keys(queuedBy).length > 0 ? { queued_by: queuedBy } : {}),
     });
-    const stillActive = (typeof (channel.agentPool as { isActive?: (jid: string) => boolean }).isActive === 'function'
-      && (channel.agentPool as { isActive: (jid: string) => boolean }).isActive(chatJid))
-      || channel.agentPool.isStreaming?.(chatJid) === true;
+    const stillActive = isChatActive();
     // Manual /queue remains deferred even while idle. Compose admission opts
     // in so a turn ending during an asynchronous lock wait cannot strand input.
     if (extras.wakeIfIdle && !stillActive) {
@@ -896,13 +896,18 @@ export async function handleAgentMessage(
     isActive,
     hasQueuedBacklog,
     shouldDefer: false,
-    hasCommand: Boolean(command),
+    hasCommand: Boolean(command || themeCommand),
     contentPreview: content.slice(0, 60),
   });
 
   if (!persistSteer && !command && !themeCommand && !metersCommand && !isSettingsCommand && isStreaming && requestMode === "steer") {
     const steerResponse = await queueDeferredSteer(content, "compose");
     if (steerResponse) return steerResponse;
+    return queueDeferredFollowup(content, {
+      source: 'web.steer_startup_fallback', browserContext: browserObservability, wakeIfIdle: true,
+      mediaIds: normalized.mediaIds, contentBlocks: normalized.contentBlocks,
+      linkPreviews: normalized.linkPreviews, screenHint: normalized.screenHint,
+    });
   }
 
   if ((command?.type === "queue" || command?.type === "queue_all") && isStreaming) {
@@ -926,13 +931,15 @@ export async function handleAgentMessage(
       channel.broadcastEvent("ui_theme", { ...uiTheme });
     }
 
+    let themeResponseDelivered = true;
     const formattedThemeMessage = formatOutbound(themeCommand.message, "web");
     if (formattedThemeMessage) {
       try {
         // Keep /theme purely UI-scope but still surface the command output to the
         // timeline so users can see the theme list/output immediately.
-        await channel.sendMessage(chatJid, formattedThemeMessage, { forceRoot: true });
+        await channel.sendMessage(chatJid, formattedThemeMessage, { forceRoot: true, requirePersistence: true });
       } catch (error) {
+        themeResponseDelivered = false;
         log.error("Failed to send /theme response", {
           operation: "handle_agent_message.theme_response",
           chatJid,
@@ -942,7 +949,7 @@ export async function handleAgentMessage(
     }
 
     return channel.json(
-      { thread_id: null, command: themeCommand, ui_only: true },
+      { thread_id: null, command: themeCommand, ui_only: true, response_delivery: themeResponseDelivered ? 'persisted' : 'failed' },
       200
     );
   }
@@ -1058,7 +1065,7 @@ export async function handleAgentMessage(
     !metersCommand &&
     !isSlashCommandInvocation(trimmed) &&
     (isActive || hasQueuedBacklog) &&
-    (requestMode === "queue" || requestMode === "auto");
+    (requestMode === "queue" || requestMode === "auto" || (requestMode === "steer" && !isStreaming));
 
   if (shouldDeferQueuedFollowup) {
     log.info("Deferring agent message as queued follow-up", {
@@ -1069,7 +1076,7 @@ export async function handleAgentMessage(
       isActive,
       hasQueuedBacklog,
       shouldDefer: true,
-      hasCommand: Boolean(command),
+      hasCommand: Boolean(command || themeCommand),
       contentPreview: content.slice(0, 60),
     });
 
@@ -1078,7 +1085,7 @@ export async function handleAgentMessage(
       contentBlocks: normalized.contentBlocks,
       linkPreviews: normalized.linkPreviews,
       screenHint: normalized.screenHint,
-      source: "web.compose",
+      source: requestMode === 'steer' ? 'web.steer_startup_fallback' : 'web.compose',
       browserContext: browserObservability,
       wakeIfIdle: true,
     });
@@ -1093,13 +1100,13 @@ export async function handleAgentMessage(
   // Ordinary input admitted while idle can become a follow-up while waiting
   // for storage. Decide against fresh in-memory state inside the same commit.
   if (channel.admitUserMessage && !command && !themeCommand && !metersCommand && !isSettingsCommand
-    && !content.trimStart().startsWith('/') && requestMode !== 'steer') {
+    && !content.trimStart().startsWith('/') && (!persistSteer || requestMode !== 'steer' || !isStreaming)) {
     try {
       interaction = await channel.admitUserMessage(chatJid, content, normalized.mediaIds, {
         contentBlocks: normalized.contentBlocks, linkPreviews: normalized.linkPreviews,
         threadId: normalized.threadId, screenHint: normalized.screenHint,
       }, revalidateQueuedAdmission, req.signal, () => {
-        const busy = channel.agentPool.isStreaming?.(chatJid) === true || channel.agentPool.isActive?.(chatJid) === true;
+        const busy = isChatActive();
         queuedDuringAdmission = busy || channel.getQueuedFollowupCount(chatJid) > 0;
         if (!queuedDuringAdmission) return false;
         deferredAt = new Date().toISOString();
@@ -1128,7 +1135,7 @@ export async function handleAgentMessage(
   if (queuedDuringAdmission) {
     channel.broadcastEvent('agent_followup_queued', { chat_jid: chatJid, row_id: deferredRowId, content,
       thread_id: null, timestamp: deferredAt, source: 'web.compose' });
-    if (!channel.agentPool.isStreaming?.(chatJid) && !channel.agentPool.isActive?.(chatJid)) channel.resumeChat(chatJid);
+    if (!isChatActive()) channel.resumeChat(chatJid);
     return channel.json({ thread_id: null, queued: 'followup' }, 201);
   }
   if (!interaction) return channel.json({ error: "Failed to store message" }, 500);
@@ -1754,12 +1761,16 @@ async function processAuthorisedChat(
   let intermediatePersistFailed = false;
   const resolvedThreadRootId = resolveThreadRootId(channel, chatJid, currentMessage.id ?? "", effectiveThreadRootId);
 
-  const preflight = await runProcessChatPreflight({
+  let startupFailure: string | undefined;
+  let preflight: "continue" | "deferred" = "continue";
+  try { preflight = await runProcessChatPreflight({
     channel, chatJid, agentId, message: { id: lastMessage.id, timestamp: lastMessage.timestamp }, prevCursor, effectiveThreadRootId: effectiveThreadRootId ?? null, turnId, runStartedAt, browserObservability,
     streamingHandler: trackedStreamingHandler, compactionState: streamState,
     skipPrePromptCompaction: Boolean(identity) || protectedRecoveryHandoffContext?.reason === "unresolved_tool_execution",
     enqueueResume: (root) => enqueueProcessChatAfterCompaction(channel, chatJid, agentId, lastMessage.id, root, browserObservability),
-  });
+  }); } catch (error) {
+    startupFailure = error instanceof Error ? error.message : "Runtime startup failed.";
+  }
   if (preflight === "deferred") return;
 
   let shouldRemoveStaleProtectedContinuation = false;
@@ -1915,7 +1926,7 @@ async function processAuthorisedChat(
     recovery: streamState.lastRecoveryMeta,
   });
 
-  const output = await withVerifiedAddonMessage(chatJid, currentMessage, () => channel.agentPool.runAgent(prompt, chatJid, {
+  const output = startupFailure ? {status: "error" as const, result: null, error: startupFailure, failureCategory: classifyOpaqueAgentFailure(startupFailure)} : await withVerifiedAddonMessage(chatJid, currentMessage, () => channel.agentPool.runAgent(prompt, chatJid, {
     ...(identity ? {
       executionProvenance: identity.provenance,
       // Narrow initial family conversation tools; global mutators lack owner-scoped entry points.

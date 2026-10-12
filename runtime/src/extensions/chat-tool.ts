@@ -229,7 +229,7 @@ function describeTarget(result: ChatTransportResult): string {
 export const chatTool: ExtensionFactory = (pi: ExtensionAPI) => {
   pi.on("before_agent_start", async (event) => {
     let hint: string;
-    try { hint = buildChatTransportDirectoryHint(await getChatTransportDirectories()); }
+    try { hint = buildChatTransportDirectoryHint(await getChatTransportDirectories({ advisory: true })); }
     catch { hint = readAccessConfig().mode === "single-user"
       ? `${HINT}\nRemote directory refresh failed; call chat action=directory before remote delivery.`
       : "## Owner-local session directory\nNo authorised directory is available. Cross-session sends and remote transports are disabled."; }

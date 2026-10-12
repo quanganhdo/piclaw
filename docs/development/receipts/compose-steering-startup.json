@@ -1,0 +1,82 @@
+{
+  "recordedAt": "2026-10-09T23:09:22.760Z",
+  "qualifiedHead": "8497095ff42f4de8b30005ecad164083b0f7f7e5",
+  "qualifiedTree": "13647467c45cb8e0d570d7f5153c8568b7a63c9e",
+  "runtimeTree": "daeafb0857dc49f49bc46ffb45eb84fafa8951e0",
+  "full": {
+    "exit": 0,
+    "pass": 6725,
+    "skip": 74,
+    "fail": 0,
+    "assertions": 43656,
+    "files": 969,
+    "seconds": 659.22,
+    "log": "/workspace/exports/compose-steering-full/ci-fast.log",
+    "sha256": "af7457c39f7f8ca9860278b57c10171353e229e1d44163282c502977fbfdbfba",
+    "cleanUnchanged": true
+  },
+  "focused": {
+    "pass": 122,
+    "assertions": 590,
+    "files": 10
+  },
+  "browser": {
+    "pass": 4,
+    "assertions": 128,
+    "files": 1,
+    "engines": [
+      "Chromium",
+      "WebKit"
+    ],
+    "skins": [
+      "Classic",
+      "Visual"
+    ],
+    "log": "/workspace/exports/compose-steering-final-browser.log",
+    "sha256": "84eee6fd40854798f6441fabac9007aa9fa0bbc5c41015ebb96b6caa5aff4e4b"
+  },
+  "settings": {
+    "pass": 25,
+    "assertions": 253
+  },
+  "build": {
+    "pass": 9,
+    "assertions": 26
+  },
+  "types": {
+    "pass": true,
+    "unchangedDiagnostics": 94
+  },
+  "privateReceipt": {
+    "id": "95553ca2-2be2-4a77-93a0-fd6fdf3217aa",
+    "status": "passed",
+    "capability": "canonicalci-fast",
+    "aggregate": {
+      "pass": 6759,
+      "skip": 74,
+      "fail": 0,
+      "summaries": 3
+    },
+    "logHash": "6f3f7deb4e620955a71a2dfd733215b2d7216ba28a40e406aad2eee6ab3ffbd7",
+    "otherCapabilities": "not-run"
+  },
+  "review": "Explicit6.1 followup scopedCLEAR aftermetadatafallback/realfixtureAPI corrections; no reviewer tests",
+  "retainedLogs": [
+    {
+      "path": "/workspace/exports/compose-steering-focus-review.log",
+      "sha256": "20a1eec7389fbc92e931c2b21fec01e7889537d1204eb288a136a5315ad74126"
+    },
+    {
+      "path": "/workspace/exports/compose-steering-startup-first.log",
+      "sha256": "359a07f1d54e74d14552effbc6edbd89fd164ddca3a91555cbb53c08dc5c4910"
+    },
+    {
+      "path": "/workspace/exports/compose-steering-payload-v2.log",
+      "sha256": "9a8f7df498b49aa06b7f1c4d898a920232b4d2a8f3a75711e691ed88ba9ab585"
+    }
+  ],
+  "supersedes": "Queue-only qualification at7ccbf88fe; new userclarificationCtrlEnter shouldsteer andStartingturnwasactive",
+  "scope": "ConsistentCtrl/Cmdsteer,Shiftnewline,positiveACKdraftguard,startupdurablefallbackwithpayload",
+  "operations": "No liveprompt/provider/config/install/restart",
+  "publicationDelta": "Docs/receipts only withruntimeparity"
+}

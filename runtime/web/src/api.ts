@@ -304,6 +304,7 @@ export async function sendAgentMessage(agentId, content, threadId = null, mediaI
     };
     if (mode === 'auto' || mode === 'queue' || mode === 'steer') {
         payload.mode = mode;
+        if (mode === 'steer') payload.persist_steer = true;
     }
     return request(`/agent/${agentId}/message${query}`, {
         method: 'POST',
@@ -1101,7 +1102,7 @@ export class SSEClient {
             if (!this.isAuthoritativeConnection(source, generation)) return;
             this.markActivity();
             console.log('SSE connected');
-            let payload = {};
+            let payload;
             try {
                 payload = e?.data ? JSON.parse(e.data) : {};
             } catch {

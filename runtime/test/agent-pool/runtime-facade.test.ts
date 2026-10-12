@@ -4,6 +4,8 @@ import { join } from "node:path";
 
 import type { AgentSessionRuntime } from "@earendil-works/pi-coding-agent";
 import { clearProviderUsageCache, peekProviderUsage } from "../../src/agent-pool/provider-usage.js";
+import { AgentSessionManager } from "../../src/agent-pool/session-manager.js";
+import { waitFor } from "../helpers.js";
 import { AgentRuntimeFacade } from "../../src/agent-pool/runtime-facade.js";
 import { buildSessionTreeSnapshot } from "../../src/agent-control/session-tree-snapshot.js";
 import { SESSIONS_DIR } from "../../src/core/config.js";
@@ -987,3 +989,181 @@ test("AgentRuntimeFacade refreshes runtime when a control command requests it wi
   });
   expect(refreshCalls).toBe(1);
 });
+
+
+function createManagedFacade(bindSession: () => Promise<void> = async () => {}) {
+  const pool = new Map<string, { runtime: AgentSessionRuntime; lastUsed: number }>();
+  const manager = new AgentSessionManager({
+    pool,
+    sidePool: new Map(),
+    mainSessionMaxSize: 1,
+    modelRuntime: {} as any,
+    settingsManager: { getDefaultProvider: () => null, getDefaultModel: () => null } as any,
+    createDefaultTools: () => [],
+    bindSession,
+    ensureBranchRegistration: () => {},
+  });
+  const fixture = createFacade({
+    pool,
+    getOrCreateRuntime: (chatJid) => manager.getOrCreate(chatJid),
+    acquireCommandProtection: (chatJid) => manager.acquireEvictionProtection(chatJid),
+    refreshRuntime: (chatJid, runtime) => manager.refreshRuntime(chatJid, runtime),
+  });
+  return { ...fixture, pool, manager };
+}
+
+function commandGate() {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => { release = resolve; });
+  let entered!: () => void;
+  const started = new Promise<void>((resolve) => { entered = resolve; });
+  return { held, release, entered, started };
+}
+
+for (const kind of ["extension", "control"] as const) {
+  for (const policy of ["ttl", "pool-limit"] as const) {
+    for (const fails of [false, true]) {
+      test(`facade retains idle-looking ${kind} handler under ${policy} until ${fails ? "failure" : "completion"}`, async () => {
+        const gate = commandGate();
+        const fixture = createManagedFacade();
+        let disposed = 0;
+        let otherDisposed = 0;
+        let handlerCalls = 0;
+        const handler = async () => {
+          handlerCalls += 1;
+          gate.entered();
+          await gate.held;
+          if (fails) throw new Error("held command failed");
+        };
+        const session = {
+          sessionId: "command-session",
+          isStreaming: false,
+          isBashRunning: false,
+          isCompacting: false,
+          isRetrying: false,
+          resourceLoader: { getSkills: () => ({ skills: [] }) },
+          promptTemplates: [],
+          subscribe: () => () => {},
+          extensionRunner: {
+            getCommand: (name: string) => name === "held" ? { handler } : null,
+            createCommandContext: () => ({}),
+            emitError: () => {},
+          },
+        };
+        const runtime = createRuntime(session);
+        runtime.dispose = async () => { disposed += 1; };
+        runtime.newSession = async () => { await handler(); return { cancelled: false }; };
+        const other = createRuntime({ isStreaming: false, isBashRunning: false, isCompacting: false });
+        other.dispose = async () => { otherDisposed += 1; };
+        fixture.pool.set("web:held", { runtime, lastUsed: Date.now() });
+        const pending = kind === "extension"
+          ? fixture.facade.applySlashCommand("web:held", "/held")
+          : fixture.facade.applyControlCommand("web:held", { type: "new_session", raw: "/new-session" });
+        // Observe rejection immediately: control handlers propagate exceptions,
+        // whereas extension dispatch converts them into an error result.
+        const settled = pending.then(result => ({ result, error: null }), error => ({ result: null, error }));
+        try {
+          await gate.started;
+          expect(handlerCalls).toBe(1);
+          expect([session.isStreaming, session.isBashRunning, session.isCompacting]).toEqual([false, false, false]);
+          expect(fixture.manager.hasProtectedRun("web:held")).toBe(true);
+          // Do not let getOrCreate's touch or the recent-use grace mask eviction.
+          fixture.pool.get("web:held")!.lastUsed = Date.now() - 20_000;
+          fixture.pool.set("web:other", { runtime: other, lastUsed: Date.now() - 10_000 });
+          const eviction = { mainIdleTtlMs: policy === "ttl" ? 1 : 60_000, sideIdleTtlMs: 60_000, mainSessionMaxSizeOverride: 1 };
+          fixture.manager.evictIdle(eviction);
+          expect(fixture.pool.get("web:held")?.runtime).toBe(runtime);
+          expect(fixture.pool.has("web:other")).toBe(false);
+          await waitFor(() => otherDisposed === 1);
+          expect(disposed).toBe(0);
+          gate.release();
+          const outcome = await settled;
+          if (fails && kind === "control") {
+            expect(outcome.error?.message).toBe("held command failed");
+          } else {
+            expect(outcome.error).toBeNull();
+            expect(outcome.result?.status).toBe(fails ? "error" : "success");
+            if (fails) expect(outcome.result?.message).toBe("held command failed");
+          }
+          expect(fixture.manager.hasProtectedRun("web:held")).toBe(false);
+          expect(fixture.manager.getInstrumentationSnapshot().evictionProtectedChats).toBe(0);
+          fixture.pool.get("web:held")!.lastUsed = Date.now() - 20_000;
+          if (policy === "pool-limit") {
+            fixture.pool.set("web:newer", { runtime: createRuntime({ isStreaming: false }), lastUsed: Date.now() });
+          }
+          fixture.manager.evictIdle(eviction);
+          expect(fixture.pool.has("web:held")).toBe(false);
+          await waitFor(() => disposed === 1);
+          expect(disposed).toBe(1);
+        } finally {
+          gate.release();
+          await settled;
+          await fixture.manager.shutdown();
+        }
+      });
+    }
+  }
+}
+
+for (const kind of ["slash", "control"] as const) {
+  for (const fails of [false, true]) {
+    test(`facade retains ${kind} protection through runtime refresh ${fails ? "failure" : "completion"}`, async () => {
+      const gate = commandGate();
+      const fixture = createManagedFacade(async () => {
+        gate.entered();
+        await gate.held;
+        if (fails) throw new Error("refresh failed");
+      });
+      let disposed = 0;
+      const runtime = createRuntime({ sessionId: "refresh-session", isStreaming: false, isBashRunning: false, isCompacting: false });
+      runtime.dispose = async () => { disposed += 1; };
+      fixture.pool.set("web:refresh", { runtime, lastUsed: Date.now() });
+      // The callbacks finish immediately; only the manager's bind/refresh is held.
+      const facade = createFacade({
+        pool: fixture.pool,
+        getOrCreateRuntime: (jid) => fixture.manager.getOrCreate(jid),
+        acquireCommandProtection: (jid) => fixture.manager.acquireEvictionProtection(jid),
+        refreshRuntime: (jid, incoming) => fixture.manager.refreshRuntime(jid, incoming),
+        executeSlashCommandFn: async () => ({ status: "success", message: "done", refresh_runtime: true }),
+        applyControlCommandFn: async () => ({ status: "success", message: "done", refresh_runtime: true }),
+      }).facade;
+      const pending = kind === "slash" ? facade.applySlashCommand("web:refresh", "/held")
+        : facade.applyControlCommand("web:refresh", { type: "new_session", raw: "/new-session" });
+      const settled = pending.then(result => ({ result, error: null }), error => ({ result: null, error }));
+      try {
+        await gate.started;
+        expect(fixture.manager.hasProtectedRun("web:refresh")).toBe(true);
+        fixture.pool.get("web:refresh")!.lastUsed = Date.now() - 10_000;
+        fixture.manager.evictIdle({ mainIdleTtlMs: 1, sideIdleTtlMs: 1, mainSessionMaxSizeOverride: 1 });
+        expect(fixture.pool.get("web:refresh")?.runtime).toBe(runtime);
+        expect(disposed).toBe(0);
+        gate.release();
+        const outcome = await settled;
+        if (fails) expect(outcome.error?.message).toBe("refresh failed");
+        else expect(outcome.result?.status).toBe("success");
+        expect(fixture.manager.hasProtectedRun("web:refresh")).toBe(false);
+        fixture.manager.evictIdle({ mainIdleTtlMs: 1, sideIdleTtlMs: 1 });
+        expect(fixture.pool.has("web:refresh")).toBe(false);
+        await waitFor(() => disposed === 1);
+      } finally {
+        gate.release();
+        await settled;
+        await fixture.manager.shutdown();
+      }
+    });
+  }
+
+  test(`facade releases ${kind} protection when manager admission fails`, async () => {
+    const fixture = createManagedFacade();
+    fixture.manager.blockMcpAdmissions();
+    try {
+      const pending = kind === "slash" ? fixture.facade.applySlashCommand("web:denied", "/held")
+        : fixture.facade.applyControlCommand("web:denied", { type: "new_session", raw: "/new-session" });
+      await expect(pending).rejects.toThrow("Session admission is blocked");
+      expect(fixture.manager.hasProtectedRun("web:denied")).toBe(false);
+      expect(fixture.manager.getInstrumentationSnapshot().evictionProtectedChats).toBe(0);
+    } finally {
+      await fixture.manager.shutdown();
+    }
+  });
+}

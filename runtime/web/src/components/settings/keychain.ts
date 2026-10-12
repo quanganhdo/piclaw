@@ -35,6 +35,7 @@ export function KeychainSection({ filter = '' }) {
 
     const [entries, setEntries] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [keychainStatus, setKeychainStatus] = useState(null);
     const [error, setError] = useState(null);
     const [showAdd, setShowAdd] = useState(false);
     const [addName, setAddName] = useState('');
@@ -61,6 +62,7 @@ export function KeychainSection({ filter = '' }) {
             const data = await resp.json();
             if (data?.ok) {
                 setEntries(data.entries || []);
+            setKeychainStatus(data.status || null);
             } else {
                 setError(data?.error || tr('settings.keychain.loadFailed'));
             }
@@ -265,6 +267,7 @@ export function KeychainSection({ filter = '' }) {
                     <button class="settings-keychain-dismiss" aria-label="Dismiss keychain error" onClick=${() => setError(null)}>✕</button>
                 </div>
             `}
+            ${keychainStatus?.enabled === false && html`<div class="settings-keychain-error" role="status">Keychain storage is disabled. Configure PICLAW_KEYCHAIN_KEY or PICLAW_KEYCHAIN_KEY_FILE on the server before adding secrets.</div>`}
             <div class="settings-keychain-toolbar" style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
                 <span class="settings-hint" style="margin:0; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                     <span>${filtered.length === 1 ? tr('settings.keychain.entryCountSingular', { count: filtered.length }) : tr('settings.keychain.entryCountPlural', { count: filtered.length })}${lf ? tr('settings.keychain.matchingFilter', { filter }) : ''}${tr('settings.keychain.encryptedSuffix')}</span>
@@ -276,7 +279,7 @@ export function KeychainSection({ filter = '' }) {
                         <span>${tr('settings.keychain.revealSuffix')}</span>
                     </span>
                 </span>
-                <button ref=${addButtonRef} class="settings-keychain-add-btn" aria-expanded=${showAdd} aria-controls=${fieldId('add-form')} onClick=${() => { if (showAdd) restoreFocus('add'); setShowAdd(!showAdd); }}>
+                <button ref=${addButtonRef} class="settings-keychain-add-btn" disabled=${keychainStatus?.enabled === false} aria-expanded=${showAdd} aria-controls=${fieldId('add-form')} onClick=${() => { if (showAdd) restoreFocus('add'); setShowAdd(!showAdd); }}>
                     ${showAdd ? tr('settings.keychain.cancel') : tr('settings.keychain.addEntry')}
                 </button>
             </div>

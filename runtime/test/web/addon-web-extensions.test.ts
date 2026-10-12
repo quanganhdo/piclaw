@@ -83,3 +83,14 @@ test('addon web registries support workspace panes, settings panes, standalone U
   expect(buildAddonAttachmentPreviewFrameUrl('example-preview', 7, 'sample.example')).toContain('/example-addon/view?media=7');
   expect(getAddonAttachmentPreviewNote('example-preview')).toContain('Example add-on preview note.');
 });
+
+test('owner-bound dictation registration is unavailable globally and rollback removes selected provider', () => {
+  const provider = {id:'test-dictation', label:'Test', availability:()=>({available:true}), start:async()=>({finish:async()=>({status:'finished' as const}),cancel:async()=>{}})};
+  expect(() => createAddonWebApi(null).registerComposerDictationProvider(provider)).toThrow('loaded add-on');
+  const rollback:Array<()=>void>=[];
+  const api=createAddonWebApi(null,'test-owner',rollback);
+  api.registerComposerDictationProvider(provider);api.selectComposerDictationProvider(provider.id);
+  expect(rollback).toHaveLength(1);
+  for(const dispose of rollback.reverse())dispose();
+  expect(() => api.selectComposerDictationProvider(provider.id)).toThrow('another add-on');
+});

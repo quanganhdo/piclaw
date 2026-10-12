@@ -123,6 +123,12 @@ export class AgentQueue {
     this.runItem(lane, item);
   }
 
+  /** Includes the next-tick startup window before the queued function executes. */
+  isLaneBusy(laneKey: string): boolean {
+    const lane = this.lanes.get(laneKey);
+    return Boolean(lane?.running || lane?.pending.length);
+  }
+
   /** Convenience wrapper that prefixes the id with "task:" for scheduled tasks. */
   enqueueTask(taskId: string, fn: () => Promise<void>, laneKey?: string): void {
     this.enqueue(fn, `task:${taskId}`, laneKey);

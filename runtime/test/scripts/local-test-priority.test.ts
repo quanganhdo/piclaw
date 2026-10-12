@@ -44,6 +44,42 @@ describe("local test priority plan", () => {
 });
 
 describe("local test priority process behavior", () => {
+  test("process-group kill operands always follow an option terminator", () => {
+    const source = readFileSync(LAUNCHER, "utf8");
+    expect(source).toContain('spawnSync("kill", [`-${signum}`, "--", `-${child.pid}`]');
+    expect(source).toContain('spawnSync("kill", ["-KILL", "--", `-${child.pid}`]');
+  });
+
+  test("forwarding and cleanup pass an explicit group operand to kill", async () => {
+    if (process.platform !== "linux") return;
+    const directory = mkdtempSync(join(tmpdir(), "piclaw-kill-argv-"));
+    const callsFile = join(directory, "calls.jsonl");
+    const readyFile = join(directory, "ready");
+    const stub = join(directory, "kill");
+    // Record argv without invoking the real kill utility in this regression.
+    writeFileSync(stub, `#!${process.execPath}\nimport{appendFileSync}from'node:fs';appendFileSync(${JSON.stringify(callsFile)},JSON.stringify(process.argv.slice(2))+'\\n');\n`);
+    chmodSync(stub, 0o755);
+    try {
+      const run = Bun.spawn([process.execPath, LAUNCHER, "--", process.execPath, "-e",
+        `require('node:fs').writeFileSync(${JSON.stringify(readyFile)},'ready');setTimeout(()=>process.exit(7),1500)`], {
+        cwd: ROOT,
+        env: { ...process.env, CI: undefined, GITHUB_ACTIONS: undefined, PICLAW_LOCAL_TEST_PRIORITY_ACTIVE: undefined, PATH: `${directory}:${process.env.PATH}` },
+        stdout: "pipe", stderr: "pipe",
+      });
+      for (let tries = 0; tries < 100 && !existsSync(readyFile); tries += 1) await Bun.sleep(20);
+      expect(existsSync(readyFile)).toBe(true);
+      run.kill("SIGTERM"); // Positive exact PID; no process-group operand.
+      const [exitCode, stderr] = await Promise.all([run.exited, new Response(run.stderr).text()]);
+      expect(stderr).toBe("");
+      expect(exitCode).toBe(7);
+      const calls = readFileSync(callsFile, "utf8").trim().split("\n").map(line => JSON.parse(line));
+      expect(calls).toHaveLength(2);
+      expect(calls[0].slice(0, 2)).toEqual(["-15", "--"]);
+      expect(calls[1].slice(0, 2)).toEqual(["-KILL", "--"]);
+      expect(calls[0][2]).toMatch(/^-[1-9][0-9]+$/);
+      expect(calls[1][2]).toBe(calls[0][2]);
+    } finally { rmSync(directory, { recursive: true, force: true }); }
+  }, 10000);
   test("Linux child and descendant inherit default niceness relative to their parent", () => {
     if (process.platform !== "linux") return;
     const directory = mkdtempSync(join(tmpdir(), "piclaw-nice-probe-"));

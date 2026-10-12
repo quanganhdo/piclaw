@@ -764,3 +764,26 @@ test("restoreClaimedDeferredBranchSeed preserves a newer primary seed written af
 
   expect(readDeferredBranchSeed(chatJid)?.sessionName).toBe("Newer");
 });
+
+test('held provider startup does not prevent another chat from creating or binding',async()=>{
+ for(const stage of ['create','bind']){
+  let release!:()=>void;const held=new Promise<void>(resolve=>{release=resolve;});let entered!:()=>void;const started=new Promise<void>(resolve=>{entered=resolve;});
+  const fixture=createManager({createSession:async(chatJid:string)=>{if(stage==='create'&&chatJid==='web:slow'){entered();await held;}return createRuntime({isStreaming:false} as AgentSession) as any;},bindSession:async(_runtime:any,chatJid:string)=>{if(stage==='bind'&&chatJid==='web:slow'){entered();await held;}}});
+  const slow=fixture.manager.getOrCreate('web:slow');await started;
+  const fast=await Promise.race([fixture.manager.getOrCreate('web:fast'),new Promise<never>((_,reject)=>setTimeout(()=>reject(Error('unrelated chat blocked')),250))]);
+  expect(fast).toBeDefined();expect(fixture.pool.has('web:fast')).toBe(true);release();await slow;
+ }
+});
+
+test('streaming slow provider remains cached without blocking a new chat',async()=>{
+ const slow=createRuntime({isStreaming:true} as AgentSession);const fixture=createManager({createSession:async()=>createRuntime({isStreaming:false} as AgentSession) as any});
+ fixture.pool.set('web:slow',{runtime:slow,lastUsed:0});fixture.manager.acquireEvictionProtection('web:slow');
+ const fast=await fixture.manager.getOrCreate('web:fast');expect(fast).toBeDefined();expect(fixture.pool.get('web:slow')?.runtime).toBe(slow);
+});
+
+test('manager protects an incompletely bound runtime until actual startup settles',async()=>{
+ let release!:()=>void;const held=new Promise<void>(resolve=>{release=resolve;});let entered!:()=>void;const started=new Promise<void>(resolve=>{entered=resolve;});let disposed=0;
+ const runtime=createRuntime({isStreaming:false} as AgentSession);runtime.dispose=async()=>{disposed++;};
+ const fixture=createManager({createSession:async()=>runtime as any,bindSession:async()=>{entered();await held;}});
+ const pending=fixture.manager.getOrCreate('web:binding');await started;expect(fixture.manager.hasProtectedRun('web:binding')).toBe(true);fixture.pool.get('web:binding')!.lastUsed=Date.now()-10000;await fixture.manager.evictIdle({mainIdleTtlMs:1,sideIdleTtlMs:1,mainSessionMaxSizeOverride:0});expect(disposed).toBe(0);release();await pending;expect(fixture.manager.hasProtectedRun('web:binding')).toBe(false);
+});

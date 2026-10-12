@@ -56,6 +56,7 @@ test("build:web produces bundle assets", async () => {
   expect(appBundle).toContain('#editor-vendor/codemirror');
   expect(editorBundle).toContain('#editor-vendor/codemirror');
 
-  expect(statSync(appBundlePath).size).toBeLessThan(1_500_000);
+  // Allow the deploy branch's local integrations alongside the upstream bundle.
+    expect(statSync(appBundlePath).size).toBeLessThan(1_550_000);
   expect(statSync(editorBundlePath).size).toBeLessThan(500_000);
 }, WEB_BUILD_TEST_TIMEOUT_MS);

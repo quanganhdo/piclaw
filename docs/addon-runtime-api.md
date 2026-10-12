@@ -277,3 +277,116 @@ or mismatched references, then enforce assignment, ownership, versions and limit
 No add-on activity subscription is introduced. Use explicit Refresh and refetch
 on pane focus; do not introduce hidden recurring polling. Add-on review state
 continues to belong in its own database under the scoped data directory.
+
+## Authenticated sockets API v1
+
+Startup entries can register browser WebSockets through
+`globalThis.__piclaw_runtime.authenticatedSockets`. Feature-detect `version === 1`.
+Core derives the owner from the installed package; `register()` accepts a relative
+path, never a caller-supplied owner. A path such as `dictation/stream` becomes
+`/agent/addons/<package-addon-id>/dictation/stream`.
+
+```ts
+const sockets = globalThis.__piclaw_runtime?.authenticatedSockets;
+if (sockets?.version !== 1) throw new Error('Authenticated sockets v1 required');
+const unregister = sockets.register({
+  path: 'dictation/stream',
+  maxMessageBytes: 64 * 1024,
+  maxQueuedBytes: 256 * 1024,
+  maxSessionMs: 60_000,
+  maxConnections: 1,
+  async authorize({ principal, request, signal }) {
+    return { chatJid: new URL(request.url).searchParams.get('chat_jid') };
+  },
+  async open({ principal, scope, signal, send, close }) {
+    return {
+      async message(frame) { /* Validate and consume one text/binary frame. */ },
+      async dispose() { /* Await capture, workers and other owned resources. */ },
+    };
+  },
+});
+```
+
+The upgrade requires an authenticated user session and an exact HTTP(S) Origin,
+including scheme, host and port. Proxy headers are used only under the existing
+trusted-proxy setting. Missing, opaque, foreign and malformed Origins fail.
+Internal-secret, anonymous, family and isolated-container requests fail. Core
+resolves the authorised chat against its live local branch registry and derives
+the workspace identity. Add-ons must validate their own protocol and query fields;
+a query parameter does not grant scope. Use same-origin browser cookies; do not
+put credentials in URLs, messages or subprotocols.
+
+Registration limits are positive integers. The ceilings are 1 MiB per frame,
+4 MiB queued bytes, 300 seconds and 16 connections. Empty frames consume one queue
+unit. Core copies binary frames, preserves text/binary frame boundaries and calls
+handlers in FIFO order. Outbound sends also retain order and queue capacity.
+Transport rejection fails the send; v1 has no automatic retry or reconnect.
+
+Core rechecks session identity, access mode, workspace and chat incarnation before
+frame delivery and outbound sends, and polls idle connections once per second.
+Unregister, expiry, logout, socket close and server shutdown abort the session.
+Cleanup awaits authorisation, opening, queued handlers, sends and `dispose()`;
+connection capacity remains reserved until actual disposal completes. A rejected
+or non-cooperative cleanup retains its reservation. Providers must honour the
+abort signal and settle owned work. Shutdown can wait for a non-cooperative add-on.
+Failed startup registration rolls back socket routes. Registrations and retained
+registration callbacks expire with their startup import scope.
+
+This API supplies transport hooks only. It supplies no recogniser, inference
+worker, audio codec, TTS engine or separate listener.
+
+## Composer dictation API v1
+
+An installed `pi.web.entries` module can export `async register(api)`. Core passes
+an owner-bound browser API. Feature-detect `api.composerDictationVersion === 1`,
+register a provider, then select it only after an explicit user choice:
+
+```ts
+export async function register(api) {
+  if (api.composerDictationVersion !== 1) throw new Error('Dictation v1 required');
+  const remove = api.registerComposerDictationProvider({
+    id: 'example-dictation', label: 'Example dictation',
+    availability: () => ({ available: true }),
+    async start({ signal, chatJid, updateSegment, setState }) {
+      return {
+        async finish() {
+          // Flush recogniser output and apply every final segment before resolving.
+          updateSegment({ segmentId: 'one', text: 'Final text', final: true });
+          return { status: 'finished' };
+        },
+        async cancel() { /* Await microphone and recogniser cleanup. */ },
+      };
+    },
+  });
+  // Call from the add-on's opt-in settings action, never silently at registration.
+  // api.selectComposerDictationProvider('example-dictation');
+  // api.selectComposerDictationProvider(null); // Restore native mic behaviour.
+}
+```
+
+The global compatibility API cannot register or select dictation providers.
+Duplicate IDs, foreign selection and a second selected provider fail. Removal is
+idempotent and cancels its active session. A failed `register(api)` rolls back its
+dictation registrations. Both composer skins retain their existing mic and Send
+controls. Without a selected provider they retain native speech behaviour; a
+selected provider's error never falls back to native recognition.
+
+Core owns draft writes and Send. Providers report bounded segments through
+`updateSegment({segmentId, text, final})`, which returns `{applied:boolean}`.
+IDs are limited to 128 characters, segments to 65,536 characters, the session to
+256 segments and the combined insertion to 131,072 characters. Repeated final
+segments are idempotent. Edits outside the owned span move its anchor; overlapping
+edits, chat changes and stale callbacks cancel or reject insertion. Start and
+finish waits have a 15-second deadline. Cancellation aborts callbacks immediately
+and retains ownership until actual cleanup, including late startup completion.
+
+Button, Enter and steering submission paths share the finish barrier. A provider
+must resolve `finish()` only after applying its final segments. Failure preserves
+the draft and rejects that pending Send; an explicit later Send can retry. Provider
+finish never submits, clears the draft or controls the host's Send button. Existing
+failed-send draft restoration remains owned by each composer.
+
+The shipped self-contained hook declarations are at
+`piclaw/runtime/public/addon-hooks` (TypeScript bundler resolution). See the
+[connected dictation example](development/dictation-hooks-example.md) for explicit
+opt-in, audio draining, final application and disposal without composer DOM access.

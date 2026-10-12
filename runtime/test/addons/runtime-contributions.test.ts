@@ -381,3 +381,28 @@ test("runtime stream sessions support cancellation and timeout cleanup", async (
   unsubscribe();
   resetAddonRuntimeContributionsForTests();
 });
+
+test('held or rejected socket disposal does not prevent independent runtime shutdown handlers',async()=>{
+ const {withAddonRegistrationOwner}=await import('../../src/addons/registration-owner');
+ const {registerAuthenticatedWebSocket,reserveAuthenticatedAddonSocket,resetAuthenticatedAddonSocketsForTests}=await import('../../src/addons/authenticated-socket-registry');
+ resetAddonRuntimeContributionsForTests();let release!:()=>void;const held=new Promise<void>(resolve=>{release=resolve;});let cleaned=false;
+ await withAddonRegistrationOwner({addonId:'shutdown-test',packageName:'shutdown-test',entryPath:'test'},async()=>{registerAuthenticatedWebSocket({path:'stream',maxMessageBytes:8,maxQueuedBytes:8,maxSessionMs:1000,maxConnections:1,authorize:async()=>({chatJid:'web:a'}),open:async()=>({message:async()=>{},dispose:async()=>{await held;throw Error('sensitive transcript');}})});});
+ const session=reserveAuthenticatedAddonSocket('/agent/addons/shutdown-test/stream')!.session;await session.open({} as any,{chatJid:'web:a'},{send:async()=>{},close:()=>{}});
+ installAddonRuntimeApi().lifecycle.onShutdown(()=>{cleaned=true;});
+ const stopping=shutdownAddonRuntimeContributionsForTests();await new Promise(resolve=>setTimeout(resolve,0));expect(cleaned).toBe(true);release();await expect(stopping).rejects.toThrow('Authenticated socket shutdown failed.');resetAuthenticatedAddonSocketsForTests();
+});
+
+test('actual startup socket registrar expires and lazy loading cannot borrow its held owner',async()=>{
+ resetAddonRuntimeContributionsForTests();await withTempWorkspaceEnv('socket-import-scope-',{},async(workspace)=>{
+  const globals=globalThis as any;let release!:()=>void;globals.__socketHeld=new Promise<void>(resolve=>{release=resolve;});globals.__socketEntered=false;globals.__socketLazy=false;
+  for(const[name,load,source]of[
+   ['piclaw-addon-held','startup',`const api=globalThis.__piclaw_runtime;globalThis.__socketCaptured=api.authenticatedSockets.register;globalThis.__socketEntered=true;await globalThis.__socketHeld;api.authenticatedSockets.register({path:'stream',maxMessageBytes:8,maxQueuedBytes:8,maxSessionMs:1000,maxConnections:1,authorize:async()=>({chatJid:'web:a'}),open:async()=>({message:async()=>{},dispose:async()=>{}})});`],
+   ['piclaw-addon-borrow','lazy',`globalThis.__socketLazy=true;try{globalThis.__piclaw_runtime.authenticatedSockets.register({path:'borrowed',maxMessageBytes:8,maxQueuedBytes:8,maxSessionMs:1000,maxConnections:1,authorize:async()=>({chatJid:'web:a'}),open:async()=>({message:async()=>{},dispose:async()=>{}})});}catch{globalThis.__socketDenied=true;}`],
+  ]){const dir=join(workspace.workspace,'.pi/extensions/node_modules',name);mkdirSync(dir,{recursive:true});writeFileSync(join(dir,'package.json'),JSON.stringify({name,version:'0.0.1',type:'module',pi:{runtime:{entries:['runtime.ts'],load}}}));writeFileSync(join(dir,'runtime.ts'),source);}
+  const starting=initializeStartupAddonRuntime({agentMessageEnqueuer:async request=>({status:'ok',chat_jid:request.chatJid,thread_id:null,created:false}),messagingHandlers:{listAdvertisableAgents:()=>[],resolveLocalTarget:()=>({status:'not_found'}),deliverPeerMessage:async()=>({status:'ok',chat_jid:'web:a',thread_id:null,created:false})}});while(!globals.__socketEntered)await new Promise(resolve=>setTimeout(resolve,0));
+  const lazy=getAddonStatusPanelPayload('missing','web:a');await new Promise(resolve=>setTimeout(resolve,0));expect(globals.__socketLazy).toBe(false);release();await starting;await lazy;expect(globals.__socketDenied).toBe(true);
+  expect(()=>globals.__socketCaptured({})).toThrow('expired');const {hasAuthenticatedAddonSocket}=await import('../../src/addons/authenticated-socket-registry');expect(hasAuthenticatedAddonSocket('/agent/addons/held/stream')).toBe(true);expect(hasAuthenticatedAddonSocket('/agent/addons/held/borrowed')).toBe(false);
+  await shutdownAddonRuntimeContributionsForTests();const {resetAuthenticatedAddonSocketsForTests}=await import('../../src/addons/authenticated-socket-registry');resetAuthenticatedAddonSocketsForTests();
+  for(const key of ['__socketHeld','__socketEntered','__socketLazy','__socketCaptured','__socketDenied'])delete globals[key];
+ });resetAddonRuntimeContributionsForTests();
+});

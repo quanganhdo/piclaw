@@ -1,0 +1,126 @@
+[
+  {
+    "file": "openai-pricing.md",
+    "url": "https://developers.openai.com/api/docs/pricing.md",
+    "status": 200,
+    "retrievedAt": "2026-10-11T10:23:33.155Z",
+    "sha256": "e0767b5009dcc929a2f9eeb9ce6096a57ff12e5d8c011de9d69ff145aef2fc28"
+  },
+  {
+    "file": "openai-changelog.md",
+    "url": "https://developers.openai.com/api/docs/changelog.md",
+    "status": 200,
+    "retrievedAt": "2026-10-11T10:23:33.164Z",
+    "sha256": "8227aaf06b87ca643723b21d02024597a1a208e9cd8395a44f76f342ae77d487"
+  },
+  {
+    "file": "deepseek-pricing.html",
+    "url": "https://api-docs.deepseek.com/quick_start/pricing",
+    "status": 200,
+    "retrievedAt": "2026-10-11T10:23:34.255Z",
+    "sha256": "210f102275ccf1a6542f08a3bc9e4b4c7c83278cb74b35217bffa112df6363b2"
+  },
+  {
+    "file": "mistral-pricing.html",
+    "url": "https://docs.mistral.ai/inference/pricing",
+    "status": 200,
+    "retrievedAt": "2026-10-11T10:23:33.406Z",
+    "sha256": "a98ec6994505932ea544f4889a51948d76db9a20666fee30288580303a13df93"
+  },
+  {
+    "file": "mistral-large4.html",
+    "url": "https://docs.mistral.ai/models/mistral-large-4-0",
+    "status": 200,
+    "retrievedAt": "2026-10-11T10:23:33.257Z",
+    "sha256": "b1412c47124ac9de0163d437b3503ed0c76b8e9c1f680889e8d44a3c45dddb92"
+  },
+  {
+    "file": "mistral-caching.md",
+    "url": "https://docs.mistral.ai/studio/conversations/advanced/prompt-caching.md",
+    "status": 200,
+    "retrievedAt": "2026-10-11T10:23:33.301Z",
+    "sha256": "fc3dcbbbd09ecb172476c9f826ee51686f0a9bccdf111149e486a2938bdb3070"
+  },
+  {
+    "file": "openrouter.json",
+    "url": "https://openrouter.ai/api/v1/models",
+    "status": 200,
+    "retrievedAt": "2026-10-11T10:23:33.108Z",
+    "sha256": "6c75085550972e65d3ef99d242faad2564965a25a16552ed8565fd8725c17b48"
+  },
+  {
+    "file": "baseline-2026-09-22.json",
+    "url": "https://github.com/rcarmo/piclaw/tree/main/docs/finops/2026-09-22",
+    "provenance": "Relevant historical rate rows only; full original snapshot remains unchanged in its dated folder",
+    "sha256": "03e288069b3cd508dfa07dbe73da8d7199cb066fd25bfbdbb42587a85c6cc133",
+    "originalSha256": "ea5e95ee3a82ef572a61bf95f61259bb5c308d99d28f36ee6a3559190c5f274c"
+  },
+  {
+    "file": "mistral-baseline-2026-10-06.json",
+    "url": "https://github.com/rcarmo/piclaw/tree/main/docs/finops/2026-10-06",
+    "provenance": "Preserved historical repository snapshot; not a fresh price quote",
+    "sha256": "5f539045e2b9753d85155be8b1b9b891ef2a815709c82a157b6caa197737def9"
+  },
+  {
+    "file": "nvidia-api-trial-terms.pdf",
+    "url": "https://assets.ngc.nvidia.com/products/api-catalog/legal/NVIDIA%20API%20Trial%20Terms%20of%20Service.pdf",
+    "status": 200,
+    "retrievedAt": "2026-10-11T10:20:28.174Z",
+    "sha256": "afd5df0322615ff95736f2f8b59fa952f5f4582dfe05f97213c0ae860f628b30"
+  },
+  {
+    "file": "nvidia-hf-lightning-bf16-license.txt",
+    "url": "https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16/raw/main/LICENSE",
+    "status": 200,
+    "retrievedAt": "2026-10-11T10:21:11.965Z",
+    "sha256": "d7c8a9e5d1896d0a9588319cc7b1433e64645ad6d9e55632c30b78d8c038c23b"
+  },
+  {
+    "file": "nvidia-license-guide-current.txt",
+    "url": "https://docs.nvidia.com/ai-enterprise/planning-resource/licensing-guide/latest/index.html",
+    "status": 200,
+    "retrievedAt": "2026-10-11T10:20:04.495Z",
+    "sha256": "8e9fea99237b61fc9704c8dc7432e6663e5916e7869b83ce10f7b748217527c5"
+  },
+  {
+    "file": "nvidia-ai-enterprise-main.txt",
+    "url": "https://www.nvidia.com/en-us/data-center/products/ai-enterprise/",
+    "status": 200,
+    "retrievedAt": "2026-10-11T10:19:05.765Z",
+    "sha256": "8bf0183f2443044ec156f161f983f0bf83f296e41756ddaa2b5c026ed2338eff"
+  },
+  {
+    "file": "mistral-large3.html",
+    "url": "https://docs.mistral.ai/models/mistral-large-3-25-12",
+    "status": 200,
+    "retrievedAt": "2026-10-11T10:26:17.654Z",
+    "sha256": "815e26086bd4b458afd2b4e2a630c71d135b65b2f6c7bfb5a8b2df6ce5ad0d12"
+  },
+  {
+    "file": "mistral-medium35.html",
+    "url": "https://docs.mistral.ai/models/mistral-medium-3-5-26-04",
+    "status": 200,
+    "retrievedAt": "2026-10-11T10:26:17.716Z",
+    "sha256": "f5628e9529d29587e2bdeb0ca8a6a51df451cfd2eeb80bc8b70243ad66946a0d"
+  },
+  {
+    "file": "mistral-small4.html",
+    "url": "https://docs.mistral.ai/models/mistral-small-4-0-26-03",
+    "status": 200,
+    "retrievedAt": "2026-10-11T10:27:03.055Z",
+    "sha256": "c9926fbede3581cab9ade85b9c4563fa1398a327b32fa8e3179f9c07f0ba38d1"
+  },
+  {
+    "file": "openai-ultrafast.md",
+    "url": "https://developers.openai.com/api/docs/guides/ultrafast-mode.md",
+    "status": 200,
+    "retrievedAt": "2026-10-11T10:26:17.862Z",
+    "sha256": "e328d78279bcc86c26a731c3aca933b87be133d26b235c75a8dfbe1da1e881c4"
+  },
+  {
+    "file": "nvidia-api-trial-terms-extracted.txt",
+    "url": "https://assets.ngc.nvidia.com/products/api-catalog/legal/NVIDIA%20API%20Trial%20Terms%20of%20Service.pdf",
+    "provenance": "Text extracted from the captured NVIDIA trial-terms PDF",
+    "sha256": "eb956bf73d3857d3a5a6700f1a81b7a3fd9e1d335cec54f2246ae78debf5efca"
+  }
+]

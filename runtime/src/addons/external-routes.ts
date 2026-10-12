@@ -2,6 +2,7 @@
 
 import { createLogger, debugSuppressedError } from "../utils/logger.js";
 import { isRateLimited } from "../channels/web/http/rate-limit.js";
+import { withAddonRegistrationOwner, getAddonRegistrationOwner } from "./registration-owner.js";
 
 const log = createLogger("addons.external-routes");
 
@@ -45,7 +46,6 @@ type RegisteredExternalAddonRoute = ExternalAddonRouteRegistration & {
   registeredAt: string;
 };
 
-let currentOwner: ExternalAddonRegistrationOwner | null = null;
 let frozen = false;
 const routes: RegisteredExternalAddonRoute[] = [];
 
@@ -189,20 +189,15 @@ export async function withExternalAddonRegistrationContext<T>(
   input: { packageName: string; entryPath: string },
   run: () => Promise<T>,
 ): Promise<T> {
-  if (currentOwner) throw new Error("Nested external add-on registration contexts are not supported.");
   const packageName = String(input.packageName || "").trim();
   const entryPath = String(input.entryPath || "").trim();
   const owner = { addonId: deriveExternalAddonId(packageName), packageName, entryPath };
-  currentOwner = owner;
-  try {
-    return await run();
-  } finally {
-    currentOwner = null;
-  }
+  return withAddonRegistrationOwner(owner, run);
 }
 
 /** Register one guarded route during the owning add-on's startup import. */
 export function registerExternalAddonRoute(registration: ExternalAddonRouteRegistration): () => void {
+  const currentOwner = getAddonRegistrationOwner();
   if (frozen) throw new Error("External add-on route registration is frozen after startup.");
   if (!currentOwner) throw new Error("External add-on routes can be registered only during a startup runtime entry import.");
   if (!registration || typeof registration !== "object" || typeof registration.handler !== "function") {
@@ -261,7 +256,8 @@ export function freezeExternalAddonRoutes(): void {
 
 /** Startup registration owner only; runtime request fields cannot select an add-on identity. */
 export function getCurrentAddonRegistrationOwner(): ExternalAddonRegistrationOwner | null {
-  return currentOwner ? { ...currentOwner } : null;
+  const owner = getAddonRegistrationOwner();
+  return owner ? { ...owner } : null;
 }
 
 export function isExternalAddonRouteRegistryFrozen(): boolean {
@@ -325,6 +321,5 @@ export function getRegisteredExternalAddonRoutes(): Array<{
 
 export function resetExternalAddonRoutesForTests(): void {
   routes.length = 0;
-  currentOwner = null;
   frozen = false;
 }

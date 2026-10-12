@@ -1,0 +1,78 @@
+{
+  "recordedAt": "2026-10-09T22:25:20.637Z",
+  "base": "18bb05a4f",
+  "qualifiedHead": "7ccbf88fe9b0553d90a478a9977515cfddb268eb",
+  "qualifiedTree": "663ed7fcf8b831989f29a912b0d4f98660eeb8e7",
+  "runtimeTree": "c054a0c69da7b9e775f49a0baa45e0a4a65e512b",
+  "full": {
+    "exit": 0,
+    "pass": 6716,
+    "skip": 74,
+    "fail": 0,
+    "assertions": 43597,
+    "files": 968,
+    "seconds": 679.7,
+    "log": "/workspace/exports/compose-ctrl-enter-full/ci-fast.log",
+    "sha256": "ceec4f51a8ea6efef091bf07855db33039c8cf10011970f085dc191dadcfd7c5",
+    "cleanUnchanged": true
+  },
+  "focused": {
+    "pass": 55,
+    "assertions": 209,
+    "files": 5
+  },
+  "browser": {
+    "pass": 4,
+    "assertions": 120,
+    "files": 1,
+    "engines": [
+      "Chromium",
+      "WebKit"
+    ],
+    "skins": [
+      "Classic",
+      "Visual"
+    ],
+    "log": "/workspace/exports/compose-ctrl-enter-browser-final.log",
+    "sha256": "5d007e19f9043e376929cc0f6c5c300a4a87ddd4c6e455bcb5eb079b79d1c7c1"
+  },
+  "settings": {
+    "pass": 25,
+    "assertions": 253
+  },
+  "build": {
+    "pass": 9,
+    "assertions": 26
+  },
+  "types": {
+    "pass": true,
+    "unchangedDiagnostics": 94
+  },
+  "privateReceipt": {
+    "id": "7d4ee787-e4a6-4b42-ba5a-c7c1e53fc1a4",
+    "status": "passed",
+    "capability": "canonicalci-fast",
+    "aggregate": {
+      "pass": 6750,
+      "skip": 74,
+      "fail": 0,
+      "summaries": 3
+    },
+    "logHash": "7268057f01bab2a18594df87004dc393ac2c043d49f6d7620c9cf0f8d7db9c87",
+    "otherCapabilities": "not-run"
+  },
+  "review": "Explicit6.1 scopedCLEAR afterevent-order blocker corrected; no reviewer tests",
+  "retainedLogs": [
+    {
+      "path": "/workspace/exports/compose-ctrl-enter-browser.log",
+      "sha256": "76e546612de5483a38656e25aeb048e7b1eac0f56db952ab376820ddc377e6b0"
+    },
+    {
+      "path": "/workspace/exports/compose-ctrl-enter-browser-v2.log",
+      "sha256": "c4cff9896170afbdb4cceffbd5bd2280546492f3909e26591325143fd2c6418b"
+    }
+  ],
+  "scope": "Ctrl/CmdEnter explicitqueue; positiveACKvalidation/draftpreservation. Backendqueue/admission unchanged",
+  "operations": "No liveprompt/provider/config/install/restart",
+  "publicationDelta": "Docs/receipts only withruntimeparity"
+}

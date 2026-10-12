@@ -38,7 +38,7 @@ Start with [getting started](getting-started.md) for installation, first chat, a
 
 ## Develop and extend
 
-- [Development](development.md), [repository workflow](../AGENTS.md), [CI flows](ci-flows.md) and [release process](release.md)
+- [Development](development.md), [repository workflow](../AGENTS.md), [UX guidelines](web-ui.md#ux-guidelines), [CI flows](ci-flows.md) and [release process](release.md)
 - [Architecture](architecture.md), [runtime flows](runtime-flows.md) and [runtime stream sessions](runtime-stream-sessions.md)
 - [Pipelined compaction](pipelined-compaction.md)
 - [Local note retrieval contract](design/local-note-retrieval-contract.md) — accepted access, freshness and citation rules; [lifecycle and implementation test map](design/local-note-retrieval-lifecycle-tests.md); [internal context assembly](design/local-note-context-assembly.md) and on-demand [exact-reference `memory_get`](design/local-note-memory-get.md) and [bounded `memory_query`](design/local-note-memory-query.md) are not deployed

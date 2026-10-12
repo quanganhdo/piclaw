@@ -44,6 +44,19 @@ describe("AgentQueue", () => {
     await queue.shutdown(100);
   });
 
+  test('lane busy covers deferred startup and clears after completion', async () => {
+    const queue = new AgentQueue();
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    queue.enqueue(async () => gate, 'starting', 'chat:a');
+    expect(queue.isLaneBusy('chat:a')).toBe(true);
+    expect(queue.isLaneBusy('chat:b')).toBe(false);
+    release();
+    await Bun.sleep(20);
+    expect(queue.isLaneBusy('chat:a')).toBe(false);
+    await queue.shutdown();
+  });
+
   test("deduplicates by id", async () => {
     const queue = new AgentQueue();
     let count = 0;

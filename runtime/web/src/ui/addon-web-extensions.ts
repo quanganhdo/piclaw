@@ -1,5 +1,8 @@
 import { registerWorkspaceAction, openAddonPane, resetAddonWorkspaceActionsForTests } from './addon-workspace-actions.js';
 import { paneRegistry } from '../panes/index.js';
+import type { ComposerDictationProvider } from './composer-dictation.js';
+import { registerOwnedDictationProvider, selectOwnedDictationProvider, resetDictationProvidersForTests } from './composer-dictation-registry.js';
+export type { ComposerDictationProvider, DictationSession, DictationState, DictationFinish } from './composer-dictation.js';
 import { registerSettingsPane, unregisterSettingsPane, notifySettingsPanesChanged } from '../components/settings/pane-registry.js';
 
 export interface AddonStandaloneTabUrlContext {
@@ -16,6 +19,9 @@ export interface AddonAttachmentPreviewDefinition {
 
 export interface AddonWebApiSurface {
   workspaceActionsVersion: 1;
+  composerDictationVersion: 1;
+  registerComposerDictationProvider(provider: ComposerDictationProvider): () => void;
+  selectComposerDictationProvider(id: string | null): void;
   registerWorkspaceAction: typeof registerWorkspaceAction;
   openPane: typeof openAddonPane;
   registerPane: (extension: any) => boolean;
@@ -156,9 +162,12 @@ export function buildAddonAttachmentPreviewFrameUrl(kind: string | null | undefi
   }
 }
 
-export function createAddonWebApi(runtimeWindow: (Window & typeof globalThis) | null = typeof window !== 'undefined' ? window : null): AddonWebApiSurface {
+export function createAddonWebApi(runtimeWindow: (Window & typeof globalThis) | null = typeof window !== 'undefined' ? window : null, owner?: string, dictationRollback?: Array<() => void>): AddonWebApiSurface {
   return {
     workspaceActionsVersion: 1,
+    composerDictationVersion: 1,
+    registerComposerDictationProvider(provider) { if (!owner) throw Error('Dictation registration requires a loaded add-on entry.'); const dispose = registerOwnedDictationProvider(owner, provider); dictationRollback?.push(dispose); return dispose; },
+    selectComposerDictationProvider(id) { if (!owner) throw Error('Dictation selection requires a loaded add-on entry.'); selectOwnedDictationProvider(owner, id); },
     registerWorkspaceAction,
     openPane: openAddonPane,
     registerPane: registerAddonPane,
@@ -203,9 +212,13 @@ export async function loadInstalledAddonWebEntries(runtimeWindow: (Window & type
       for (const entry of entries) {
         const href = normalizeUrl(entry?.url, origin);
         if (!href) continue;
+        const dictationRollback: Array<() => void> = [];
         try {
-          await import(/* @vite-ignore */ href);
+          const module = await import(/* @vite-ignore */ href);
+          // New providers use an explicit owner-bound entry callback; legacy side-effect entries still load unchanged.
+          if (typeof module.register === 'function' && typeof entry.packageName === 'string') await module.register(createAddonWebApi(runtimeWindow, entry.packageName, dictationRollback));
         } catch (error) {
+          for (const dispose of dictationRollback.reverse()) dispose();
           console.warn('[addon-web] Failed to load installed addon web entry:', href, error);
         }
       }
@@ -219,6 +232,7 @@ export async function loadInstalledAddonWebEntries(runtimeWindow: (Window & type
 
 export function resetAddonWebRegistriesForTests(): void {
   resetAddonWorkspaceActionsForTests();
+  resetDictationProvidersForTests();
   for (const paneId of addonPaneIds) {
     paneRegistry.unregister(paneId);
   }

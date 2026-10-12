@@ -11,6 +11,8 @@ export type SendMessageOptions =
   | {
       threadId?: number | null;
       forceRoot?: boolean;
+  /** Opt-in truthful failure for UI-only reply delivery; does not change control-command acceptance. */
+  requirePersistence?: boolean;
       source?: string;
       mediaIds?: number[];
       contentBlocks?: Array<Record<string, unknown>>;
@@ -104,7 +106,10 @@ export function sendWebMessage(
     }
   );
 
-  if (!interaction) return;
+  if (!interaction) {
+    if (typeof options === 'object' && options?.requirePersistence) throw new Error('Agent reply could not be persisted.');
+    return;
+  }
 
   if (forceRoot && !threadId) {
     // Ensure scheduled messages start new threads (not replies to inflight turns).

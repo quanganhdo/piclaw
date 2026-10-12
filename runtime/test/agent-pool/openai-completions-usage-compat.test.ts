@@ -182,3 +182,26 @@ test("compatibility installation is idempotent and ignores malformed usage event
   expect(message.usage.cacheWriteReported).toBeUndefined();
   expect(message.usage.providerCost).toBeUndefined();
 });
+
+test('usage after DONE cannot overwrite authoritative completed usage',async()=>{
+ const modelRuntime=await runtime();const body=[{choices:[],usage:{prompt_tokens:10,completion_tokens:2}},'[DONE]',{choices:[],usage:{prompt_tokens:999,completion_tokens:999}}].map(chunk=>'data: '+(typeof chunk==='string'?chunk:JSON.stringify(chunk))+'\n\n').join('');
+ const stream=modelRuntime.streamSimple(model(),{messages:[{role:'user',content:'test',timestamp:0}]},{fetch:async()=>new Response(body,{headers:{'Content-Type':'text/event-stream'}})} as any);
+ const result=await stream.result();expect(result.usage.input).toBe(10);expect(result.usage.output).toBe(2);
+});
+
+test('source error cannot be held by an abort-ignoring usage clone',async()=>{
+ const {createAssistantMessageEventStream}=await import('@earendil-works/pi-ai');let cancelCalls=0;
+ const fake:any={streamSimple:(_model:any,_context:any,options:any)=>{const source=createAssistantMessageEventStream();void(async()=>{await options.fetch('http://synthetic.invalid');source.push({type:'error',reason:'error',error:{role:'assistant',content:[],api:'openai-completions',provider:'openrouter',model:'test',usage:{input:0,output:0,cacheRead:0,cacheWrite:0,totalTokens:0,cost:{input:0,output:0,cacheRead:0,cacheWrite:0,total:0}},stopReason:'error',errorMessage:'synthetic failure',timestamp:0}});source.end();})();return source;},stream:()=>{throw Error('unused');}};
+ installOpenAICompletionsUsageCompatibility(fake);
+ const fetch=async()=>new Response(new ReadableStream({start(controller){controller.enqueue(new TextEncoder().encode('data: {"usage":{"prompt_tokens":10}}\n\n'));},cancel(){cancelCalls++;}}),{headers:{'Content-Type':'text/event-stream'}});
+ const started=Date.now();const result=await fake.streamSimple(model(),{messages:[]},{fetch}).result();expect(result.errorMessage).toBe('synthetic failure');expect(Date.now()-started).toBeLessThan(1000);
+ // Cancelling the tee branch is initiated but must not wait for the unread primary branch.
+ expect(cancelCalls).toBe(0);
+});
+
+test('synchronous stream start failure removes its caller abort listener',()=>{
+ const signal=new AbortController().signal;let added=0,removed=0;const add=signal.addEventListener.bind(signal),remove=signal.removeEventListener.bind(signal);
+ signal.addEventListener=((...args:any[])=>{added++;return (add as any)(...args);}) as any;signal.removeEventListener=((...args:any[])=>{removed++;return (remove as any)(...args);}) as any;
+ const fake:any={stream:()=>{throw Error('start failed');},streamSimple:()=>{throw Error('start failed');}};installOpenAICompletionsUsageCompatibility(fake);
+ expect(()=>fake.streamSimple(model(),{messages:[]},{signal})).toThrow('start failed');expect(added).toBe(1);expect(removed).toBe(1);
+});

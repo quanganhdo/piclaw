@@ -85,3 +85,9 @@ test("operation input is recorded as consumed before a blocked model boundary", 
   expect(called).toBe(0);
   guard.release();
 });
+
+test('ordinary caller abort fences dispatch after SDK pre-prompt hooks',async()=>{
+ const controller=new AbortController();let calls=0;const session:any={agent:{streamFunction:()=>{calls++;return{};}}};const original=session.agent.streamFunction;
+ const boundary=createOperationModelBoundary({abortSignal:controller.signal});boundary.apply(session);controller.abort(Error('cancelled preflight'));
+ await expect(session.agent.streamFunction({provider:'local'},{messages:[]},{})).rejects.toThrow('cancelled preflight');expect(calls).toBe(0);boundary.release();expect(session.agent.streamFunction).toBe(original);
+});

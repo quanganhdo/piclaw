@@ -73,22 +73,31 @@ function readChunkUsageProvenance(value: unknown): UsageProvenance | null {
   return null;
 }
 
-export async function scanOpenAICompletionsUsage(response: Response): Promise<UsageProvenance | null> {
+interface UsageCapture { done: Promise<UsageProvenance | null>; latest: UsageProvenance | null; cancel(): void }
+const TERMINAL_SCAN_WAIT_MS = 100;
+
+export async function scanOpenAICompletionsUsage(response: Response, signal?: AbortSignal, update?: (usage: UsageProvenance) => void): Promise<UsageProvenance | null> {
   const contentType = response.headers.get("content-type")?.toLowerCase();
   if (contentType && !contentType.includes("text/event-stream")) return null;
   const reader = response.body?.getReader();
   if (!reader) return null;
+  const cancel = () => { void reader.cancel().catch(() => { log.warn("Usage scan cancellation failed", { operation: "openai_completions_usage.scan_cancel" }); }); };
+  signal?.addEventListener('abort', cancel, { once: true });
+  if (signal?.aborted) cancel();
   const decoder = new TextDecoder();
   let buffer = "";
   let latest: UsageProvenance | null = null;
+  let finished = false;
 
   const inspect = (line: string) => {
     const trimmed = line.trim();
     if (!trimmed.startsWith("data:")) return;
     const data = trimmed.slice(5).trim();
-    if (!data || data === "[DONE]" || data.length > MAX_SSE_LINE_CHARS || !data.includes('"usage"')) return;
+    if (data === "[DONE]") { finished = true; return; }
+    if (!data || data.length > MAX_SSE_LINE_CHARS || !data.includes('"usage"')) return;
     try {
       latest = readChunkUsageProvenance(JSON.parse(data)) ?? latest;
+      if (latest) update?.(latest);
     } catch (error) {
       debugSuppressedError(log, "Ignored malformed OpenAI-compatible usage event", error, {
         operation: "openai_completions_usage.parse_event",
@@ -97,38 +106,49 @@ export async function scanOpenAICompletionsUsage(response: Response): Promise<Us
   };
 
   try {
-    while (true) {
+    while (!finished && !signal?.aborted) {
       const { done, value } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
       let newline = buffer.indexOf("\n");
-      while (newline >= 0) {
+      while (newline >= 0 && !finished) {
         inspect(buffer.slice(0, newline));
         buffer = buffer.slice(newline + 1);
         newline = buffer.indexOf("\n");
       }
       if (buffer.length > MAX_SSE_LINE_CHARS) buffer = "";
     }
-    buffer += decoder.decode();
-    if (buffer) inspect(buffer);
+    if (!finished && !signal?.aborted) {
+      buffer += decoder.decode();
+      if (buffer) inspect(buffer);
+    }
   } catch (error) {
     debugSuppressedError(log, "Stopped best-effort OpenAI-compatible usage scan", error, {
       operation: "openai_completions_usage.scan_response",
     });
     return latest;
+  } finally {
+    signal?.removeEventListener('abort', cancel);
+    if (finished || signal?.aborted) cancel();
+    reader.releaseLock();
   }
   return latest;
 }
 
 function createUsageCapturingFetch(
   fetchImpl: FetchFunction,
-  captures: Array<Promise<UsageProvenance | null>>,
+  captures: UsageCapture[],
+  signal?: AbortSignal,
 ): FetchFunction {
   return (async (input: RequestInfo | URL, init?: RequestInit) => {
     const response = await fetchImpl(input, init);
     try {
-      captures.push(scanOpenAICompletionsUsage(response.clone()));
-      if (captures.length > MAX_RESPONSE_SCANS) captures.shift();
+      const controller = new AbortController();
+      const capture: UsageCapture = { latest: null, done: Promise.resolve(null), cancel: () => controller.abort() };
+      capture.done = scanOpenAICompletionsUsage(response.clone(), controller.signal, usage => { capture.latest = usage; });
+      captures.push(capture);
+      if (signal?.aborted) capture.cancel();
+      if (captures.length > MAX_RESPONSE_SCANS) captures.shift()?.cancel();
     } catch (error) {
       debugSuppressedError(log, "Could not clone OpenAI-compatible response for usage scan", error, {
         operation: "openai_completions_usage.clone_response",
@@ -138,12 +158,12 @@ function createUsageCapturingFetch(
   }) as FetchFunction;
 }
 
-async function latestCapturedUsage(captures: Array<Promise<UsageProvenance | null>>): Promise<UsageProvenance | null> {
-  const settled = await Promise.allSettled(captures);
-  for (let index = settled.length - 1; index >= 0; index -= 1) {
-    const result = settled[index];
-    if (result?.status === "fulfilled" && result.value) return result.value;
-  }
+async function latestCapturedUsage(captures: UsageCapture[], aborted = false): Promise<UsageProvenance | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    if (!aborted) await Promise.race([Promise.allSettled(captures.map(capture => capture.done)), new Promise<void>(resolve => { timer = setTimeout(resolve, TERMINAL_SCAN_WAIT_MS); })]);
+  } finally { clearTimeout(timer); for (const capture of captures) capture.cancel(); }
+  for (let index = captures.length - 1; index >= 0; index--) if (captures[index].latest) return captures[index].latest;
   return null;
 }
 
@@ -185,25 +205,30 @@ function wrapOpenAICompletionsStream(
   options: Record<string, unknown> = {},
 ): AssistantMessageEventStream {
   if (model.api !== "openai-completions") return start(options);
-  const captures: Array<Promise<UsageProvenance | null>> = [];
+  const captures: UsageCapture[] = [];
+  const signal = options.signal as AbortSignal | undefined;
+  const cancelCaptures = () => { for (const capture of captures) capture.cancel(); };
+  signal?.addEventListener('abort', cancelCaptures, { once: true });
   const fetchImpl = typeof options.fetch === "function" ? options.fetch as FetchFunction : globalThis.fetch;
-  const source = start({ ...options, fetch: createUsageCapturingFetch(fetchImpl, captures) });
+  let source: AssistantMessageEventStream;
+  try { source = start({ ...options, fetch: createUsageCapturingFetch(fetchImpl, captures, signal) }); }
+  catch (error) { signal?.removeEventListener('abort', cancelCaptures); cancelCaptures(); throw error; }
   const target = createAssistantMessageEventStream();
 
   void (async () => {
     for await (const event of source) {
       if (event.type === "done") {
-        const message = withTerminalUsage(model, event.message, await latestCapturedUsage(captures));
+        const message = withTerminalUsage(model, event.message, await latestCapturedUsage(captures, signal?.aborted));
         target.push({ ...event, message });
       } else if (event.type === "error") {
-        const error = withTerminalUsage(model, event.error, await latestCapturedUsage(captures));
+        const error = withTerminalUsage(model, event.error, await latestCapturedUsage(captures, signal?.aborted));
         target.push({ ...event, error });
       } else {
         target.push(event as AssistantMessageEvent);
       }
     }
     target.end();
-  })().catch((error) => {
+  })().finally(() => { signal?.removeEventListener('abort', cancelCaptures); cancelCaptures(); }).catch((error) => {
     const message: AssistantMessage = {
       role: "assistant",
       content: [],

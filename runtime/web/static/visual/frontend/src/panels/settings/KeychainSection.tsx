@@ -17,6 +17,7 @@ interface KeychainEntry {
 
 interface KeychainResponse {
   entries?: KeychainEntry[];
+  status?: {enabled:boolean};
 }
 
 export function KeychainSection() {
@@ -35,6 +36,7 @@ export function KeychainSection() {
   const newType = useSignal("secret");
   const keychainError = useSignal<string | null>(null);
   const loading = useSignal(true);
+  const storageEnabled = useSignal<boolean | null>(null);
   const loadError = useSignal<string | null>(null);
   const keychainErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { showConfirm } = useDialog();
@@ -60,6 +62,7 @@ export function KeychainSection() {
       }
       const data = await res.json() as KeychainResponse;
       entries.value = data.entries ?? [];
+      storageEnabled.value = data.status?.enabled !== false;
       loadError.value = null;
     } catch (err: any) {
       loadError.value = err?.name === "AbortError" ? "Keychain request timed out" : "Failed to load keychain";
@@ -71,7 +74,7 @@ export function KeychainSection() {
   useEffect(() => { fetchEntries(); }, [fetchEntries]);
 
   const addEntry = async () => {
-    if (saving.value || !newName.value.trim() || !newSecret.value.trim()) return;
+    if (storageEnabled.value !== true || saving.value || !newName.value.trim() || !newSecret.value.trim()) return;
     saving.value = true;
     try {
       const res = await fetch("/agent/keychain", {
@@ -164,7 +167,7 @@ export function KeychainSection() {
           value={filter.value}
           onInput={(e) => (filter.value = (e.target as HTMLInputElement).value)}
         />
-        <button ref={addButtonRef} type="button" className="settings-panel__provider-btn" aria-expanded={showAdd.value} aria-controls={`${prefix}-add-form`} onClick={() => { if (showAdd.value) finishAdd(); else showAdd.value = true; }}>
+        <button ref={addButtonRef} disabled={storageEnabled.value !== true || loading.value} type="button" className="settings-panel__provider-btn" aria-expanded={showAdd.value} aria-controls={`${prefix}-add-form`} onClick={() => { if (showAdd.value) finishAdd(); else showAdd.value = true; }}>
           + Add entry
         </button>
       </div>
@@ -184,7 +187,8 @@ export function KeychainSection() {
         </p>
       )}
 
-      {showAdd.value && (
+      {storageEnabled.value === false && <div role="status" className="settings-panel__save-status settings-panel__save-status--error">Keychain storage is disabled. Configure PICLAW_KEYCHAIN_KEY or PICLAW_KEYCHAIN_KEY_FILE on the server before adding secrets.</div>}
+      {showAdd.value && storageEnabled.value === true && (
         <div id={`${prefix}-add-form`} className="settings-panel__card settings-panel__card--spaced" role="group" aria-label="Add keychain entry" aria-busy={saving.value}>
           <h3 className="settings-panel__subsection-title">New entry</h3>
           <div className="settings-panel__field">
@@ -211,7 +215,7 @@ export function KeychainSection() {
             />
           </div>
           <div className="settings-panel__actions-row">
-            <button type="button" className="settings-panel__provider-btn" disabled={saving.value || !newName.value.trim() || !newSecret.value.trim()} onClick={addEntry}>{saving.value ? "Saving…" : "Save"}</button>
+            <button type="button" className="settings-panel__provider-btn" disabled={storageEnabled.value !== true || saving.value || !newName.value.trim() || !newSecret.value.trim()} onClick={addEntry}>{saving.value ? "Saving…" : "Save"}</button>
             <button type="button" className="settings-panel__provider-btn" onClick={finishAdd}>Cancel</button>
           </div>
         </div>

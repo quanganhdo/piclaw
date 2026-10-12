@@ -1,0 +1,84 @@
+{
+  "recordedAt": "2026-10-10T10:36:09.391Z",
+  "base": "7542bf336",
+  "qualifiedHead": "52f769458d1328498023d1143f5ffad3947dd74c",
+  "qualifiedTree": "cb2fbc2c08378785cfd8317d6b386db210cd38fe",
+  "runtimeTree": "42e65663862c28ef3e77076319e8719ca0532778",
+  "full": {
+    "exit": 0,
+    "pass": 6716,
+    "skip": 74,
+    "fail": 0,
+    "assertions": 43660,
+    "files": 968,
+    "seconds": 673.66,
+    "log": "/workspace/exports/compose-conventions-full/ci-fast.log",
+    "sha256": "679e940162af9bce154f434ab43f33819a8a0cc7c0cd696aa5befacbeb2e9021",
+    "cleanUnchanged": true
+  },
+  "focused": {
+    "pass": 112,
+    "assertions": 560,
+    "files": 10
+  },
+  "browser": {
+    "pass": 4,
+    "assertions": 164,
+    "files": 1,
+    "engines": [
+      "Chromium",
+      "WebKit"
+    ],
+    "skins": [
+      "Classic",
+      "Visual"
+    ],
+    "log": "/workspace/exports/compose-conventions-browser-final.log",
+    "sha256": "b83090526fd73cb5269f743e0a687273a95c83e3c73490a0bbd7289fd7577f53"
+  },
+  "settings": {
+    "pass": 25,
+    "assertions": 253
+  },
+  "build": {
+    "pass": 9,
+    "assertions": 26
+  },
+  "types": {
+    "pass": true,
+    "unchangedDiagnostics": 94
+  },
+  "privateReceipt": {
+    "id": "ed1ba400-7704-4eb1-8f05-504c5d739418",
+    "status": "passed",
+    "capability": "canonicalci-fast",
+    "aggregate": {
+      "pass": 6750,
+      "skip": 74,
+      "fail": 0,
+      "summaries": 3
+    },
+    "logHash": "2bfcef12a3de12ada6969493e141a2f0d1726c41e04337c7c9b9c281034ad0cd",
+    "otherCapabilities": "not-run"
+  },
+  "review": "Explicit6.1 scopedCLEAR afterduplicatefallbackremoved, fullfinalization/cursor testcase added; no reviewer tests",
+  "changes": [
+    "PostACKwaiting andqueuedtextnoticesremoved",
+    "SendingusesnativepresentationandendsatACK",
+    "Keyboardsteeringpersisteduserrowtimelineonce",
+    "StartupfollowupusesexistingqueueUIandonesinglepath",
+    "PositiveACKdraftguardsretained"
+  ],
+  "retainedLogs": [
+    {
+      "path": "/workspace/exports/compose-conventions-types-first.log",
+      "sha256": "1f74348bfd721e1909c48e9f6aa4a24d799038436b2c3d1944c25143ee1b54ee"
+    },
+    {
+      "path": "/workspace/exports/compose-conventions-focused-v2.log",
+      "sha256": "8e576c45d4be25b4b66f2b865c6666e28b376253757401f6555947eb4f91f28a"
+    }
+  ],
+  "operations": "No liveprompts/providers/config/install/restart",
+  "publicationDelta": "Docs/receipts only withruntimeparity"
+}

@@ -736,6 +736,8 @@ test("agent pool protects a run before the session flips isStreaming", async () 
 
   const run = pool.runAgent("race", "web:protected", { timeoutMs: 0 });
   await promptStartedPromise;
+  expect(pool.isStreaming('web:protected')).toBe(false);
+  expect(pool.isActive('web:protected')).toBe(true);
   const entry = (pool as any).pool.get("web:protected");
   entry.lastUsed = Date.now() - 10_000;
 
@@ -748,6 +750,7 @@ test("agent pool protects a run before the session flips isStreaming", async () 
 
   finishPrompt();
   await run;
+  expect(pool.isActive('web:protected')).toBe(false);
   expect(pool.getMemoryInstrumentationSnapshot().sessionManager.evictionProtectedChats).toBe(0);
 
   entry.lastUsed = Date.now() - 10_000;

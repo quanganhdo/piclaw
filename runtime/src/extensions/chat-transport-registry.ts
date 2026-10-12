@@ -84,6 +84,22 @@ export interface ChatTransport {
 }
 
 const transports = new Map<ChatAddressKind, ChatTransport>();
+const directoryInFlight = new WeakMap<ChatTransport, Promise<ChatTransportDirectory>>();
+const DIRECTORY_TIMEOUT_MS = 1000;
+/** Discovery is advisory; retain unresolved work without holding prompt startup. */
+async function discoverTransport(transport: ChatTransport, advisory: boolean): Promise<ChatTransportDirectory | null> {
+  let pending = directoryInFlight.get(transport);
+  if (!pending) {
+    pending = Promise.resolve().then(() => transport.directory!());
+    directoryInFlight.set(transport, pending);
+    void pending.then(() => directoryInFlight.delete(transport), () => directoryInFlight.delete(transport));
+  }
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    if (!advisory) return await pending;
+    return await Promise.race([pending, new Promise<null>(resolve => { timer = setTimeout(() => resolve(null), DIRECTORY_TIMEOUT_MS); })]);
+  } finally { clearTimeout(timer); }
+}
 
 function validateTransport(transport: ChatTransport): void {
   if (!transport || typeof transport !== "object") throw new Error("Chat transport must be an object.");
@@ -130,7 +146,7 @@ export function getChatTransport(kind: ChatAddressKind): ChatTransport | null {
   return transports.get(kind) ?? null;
 }
 
-export async function getChatTransportDirectories(): Promise<ChatTransportDirectory[]> {
+export async function getChatTransportDirectories(options: { advisory?: boolean } = {}): Promise<ChatTransportDirectory[]> {
   requireFamilyToolAccess('chat');
   if (readAccessConfig().mode !== "single-user") {
     // Discovery is metadata-only until durable owner-aware delivery is integrated.
@@ -143,7 +159,8 @@ export async function getChatTransportDirectories(): Promise<ChatTransportDirect
   const directories: ChatTransportDirectory[] = [];
   for (const transport of transports.values()) {
     if (typeof transport.directory !== "function") continue;
-    directories.push(await transport.directory());
+    const result = await discoverTransport(transport, options.advisory === true);
+    if (result && transports.get(transport.kind) === transport) directories.push(result);
   }
   return directories;
 }

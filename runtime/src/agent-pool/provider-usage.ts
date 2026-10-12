@@ -153,12 +153,26 @@ function compactPercent(value: number | null): string | null {
   return value == null ? null : `${Math.round(value)}%`;
 }
 
+function codexWindowLabel(minutes: number | null, compact = false): string {
+  if (minutes === null) return 'window';
+  if (minutes === 10080) return compact ? 'wk' : 'week';
+  if (minutes % 1440 === 0) return `${minutes / 1440}d`;
+  if (minutes % 60 === 0) return `${minutes / 60}h`;
+  return `${minutes}m`;
+}
+
+function codexWindow(value: any): ProviderUsageWindow | null {
+  const seconds = value?.limit_window_seconds;
+  const minutes = typeof seconds === 'number' && Number.isFinite(seconds) && seconds > 0 ? seconds / 60 : null;
+  return makeWindow(codexWindowLabel(minutes), value?.used_percent, value?.reset_at, minutes);
+}
+
 function buildCodexHint(primary: ProviderUsageWindow | null, secondary: ProviderUsageWindow | null, credits: number | null, unlimited: boolean): string {
   const parts: string[] = [];
   const p1 = compactPercent(primary?.remaining_percent ?? null);
   const p2 = compactPercent(secondary?.remaining_percent ?? null);
-  if (p1) parts.push(`5h ${p1}`);
-  if (p2) parts.push(`wk ${p2}`);
+  if (p1) parts.push(`${codexWindowLabel(primary!.window_minutes, true)} ${p1}`);
+  if (p2) parts.push(`${codexWindowLabel(secondary!.window_minutes, true)} ${p2}`);
   if (unlimited) parts.push("credits ∞");
   else if (credits != null && Number.isFinite(credits)) parts.push(`credits ${credits.toFixed(credits >= 100 ? 0 : 1).replace(/\.0$/, "")}`);
   return parts.join(" • ");
@@ -223,8 +237,8 @@ async function fetchCodexUsage(modelRuntime: UsageModelRuntime, authPath: string
   });
   if (!res.ok) return null;
   const payload = (await res.json()) as any;
-  const primary = makeWindow("5h", payload?.rate_limit?.primary_window?.used_percent, payload?.rate_limit?.primary_window?.reset_at, Number.isFinite(payload?.rate_limit?.primary_window?.limit_window_seconds) ? Math.round(payload.rate_limit.primary_window.limit_window_seconds / 60) : 300);
-  const secondary = makeWindow("week", payload?.rate_limit?.secondary_window?.used_percent, payload?.rate_limit?.secondary_window?.reset_at, Number.isFinite(payload?.rate_limit?.secondary_window?.limit_window_seconds) ? Math.round(payload.rate_limit.secondary_window.limit_window_seconds / 60) : null);
+  const primary = codexWindow(payload?.rate_limit?.primary_window);
+  const secondary = codexWindow(payload?.rate_limit?.secondary_window);
   const credits = payload?.credits?.balance != null ? Number(payload.credits.balance) : null;
   const unlimited = Boolean(payload?.credits?.unlimited);
   return { ...baseUsageSnapshot(), provider: "openai-codex", source: "chatgpt-usage-api", plan: typeof payload?.plan_type === "string" ? payload.plan_type : null, fetched_at: new Date().toISOString(), primary, secondary, credits_remaining: Number.isFinite(credits) ? credits : null, credits_unlimited: unlimited, hint_short: buildCodexHint(primary, secondary, Number.isFinite(credits) ? credits : null, unlimited) };

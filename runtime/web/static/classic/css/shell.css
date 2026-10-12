@@ -106,7 +106,8 @@
 
 .system-meters-row {
     display: grid;
-    grid-template-columns: 34px 56px auto;
+    /* Share the chart column, including longer labels such as GMEM0. */
+    grid-template-columns: 46px 56px auto;
     align-items: center;
     gap: 8px;
     font-size: 11px;
@@ -163,28 +164,27 @@
 }
 
 
-.system-meters-row.intel-gpu,
-.system-meters-row.intel-gmem {
-    grid-template-columns: 46px 56px auto;
-}
-
 .system-meters-row.intel-gmem .system-meters-label {
     font-size: 10px;
     letter-spacing: -0.02em;
 }
 
-.system-meters-row.intel-gpu .system-meters-spark path {
+.system-meters-row.intel-gpu .system-meters-spark path,
+.system-meters-compact-gpu.intel-gpu .system-meters-spark path {
     stroke: color-mix(in srgb, var(--accent-color) 68%, #38bdf8 32%);
 }
 
-.system-meters-row.intel-gmem .system-meters-spark path {
+.system-meters-row.intel-gmem .system-meters-spark path,
+.system-meters-compact-gpu.intel-gmem .system-meters-spark path {
     stroke: color-mix(in srgb, var(--accent-color) 56%, #a855f7 44%);
 }
 
 .system-meters-row.intel-gpu.is-stale,
 .system-meters-row.intel-gpu.is-unavailable,
 .system-meters-row.intel-gmem.is-stale,
-.system-meters-row.intel-gmem.is-unavailable {
+.system-meters-row.intel-gmem.is-unavailable,
+.system-meters-compact-gpu.is-stale,
+.system-meters-compact-gpu.is-unavailable {
     opacity: 0.72;
 }
 
@@ -208,8 +208,14 @@
 
 .system-meters-compact-gpu {
     display: inline-flex;
-    align-items: baseline;
+    align-items: center;
     gap: 4px;
+}
+
+.system-meters-compact-gpu .system-meters-spark {
+    width: 40px;
+    height: 14px;
+    flex: 0 0 40px;
 }
 
 .system-meters-gpu-popover-close {

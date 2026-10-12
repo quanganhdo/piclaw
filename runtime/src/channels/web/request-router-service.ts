@@ -29,6 +29,7 @@ import { readAccessConfig, type AccessMode } from "../../core/config-access.js";
 import { handleFamilyRequest } from "./http/family-authorisation.js";
 import { createUuid } from "../../utils/ids.js";
 import type { WebChannelLike } from "./core/web-channel-contracts.js";
+import { isSecureWebRequest } from '../../utils/request-client.js';
 import { rememberWebOrigin } from "./auth/request-origin.js";
 import { handleAgentRoutes } from "./http/dispatch-agent.js";
 import { handleAuthRoutes } from "./http/dispatch-auth.js";
@@ -104,7 +105,7 @@ export class RequestRouterService {
     const requestId = createUuid("req");
     const { result: response, durationMs } = await measureAsync(() => this.route(req));
     // Determine TLS from the request URL scheme to conditionally add HSTS
-    const isTls = req.url.startsWith("https://");
+    const isTls = isSecureWebRequest(req);
     const secured = withSecurityHeaders(response, isTls);
     secured.headers.set("x-request-id", requestId);
     if (this.accessMode !== "single-user") {

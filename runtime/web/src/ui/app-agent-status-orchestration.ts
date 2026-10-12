@@ -6,7 +6,6 @@ import {
 import { inferAgentPreviewTotalLines } from './app-agent-previews.js';
 import { isMainTimelineView } from './app-realtime-timeline.js';
 import { parseStatusLastEventAt } from './status-duration.js';
-import { publishSubmissionRunStatus } from './submission-feedback.js';
 
 interface RefBox<T> {
   current: T;
@@ -106,7 +105,7 @@ export async function refreshAgentStatusForChat(options: RefreshAgentStatusForCh
 
     if (!response || response.status !== 'active' || !response.data) {
       const terminalType = response?.data?.type;
-      const hasTerminalPayload = terminalType === 'done' || terminalType === 'error'; if (hasTerminalPayload) publishSubmissionRunStatus(targetChatJid, terminalType, response.data.thread_id);
+      const hasTerminalPayload = terminalType === 'done' || terminalType === 'error';
       if ((wasAgentActiveRef.current || hasTerminalPayload) && isMainTimelineView(viewStateRef.current)) {
         void refreshTimeline();
       }
@@ -137,7 +136,7 @@ export async function refreshAgentStatusForChat(options: RefreshAgentStatusForCh
       atMs: parseStatusLastEventAt(payload) ?? Date.now(),
     });
     clearLastActivityFlag();
-    setAgentStatus(payload); publishSubmissionRunStatus(targetChatJid, payload.type, payload.thread_id);
+    setAgentStatus(payload);
     setExtensionWorkingState(resolveExtensionWorkingRestoreState(response.extension_working));
 
     const thoughtRestore = resolveAgentPreviewRestoreState(response.thought);

@@ -1,0 +1,15 @@
+import {installNativeDictationFixture} from './composer-dictation-native-fixture';
+import {html,render} from '../../../web/src/vendor/preact-htm.js';
+import {ComposeBox} from '../../../web/src/components/compose-box.js';
+import {registerOwnedDictationProvider,selectOwnedDictationProvider} from '../../../web/src/ui/composer-dictation-registry.js';
+let context:any;
+let release!:()=>void;
+const held=new Promise<void>(r=>release=r);
+const calls:string[]=[];
+registerOwnedDictationProvider('fixture',{id:'fixture',label:'Fixture',availability:()=>({available:true}),start:async c=>{context=c;calls.push('start');return{finish:async()=>{calls.push('finish');await held;context.updateSegment({segmentId:'one',text:'final words',final:true});return{status:'finished'};},cancel:async()=>{calls.push('cancel');}};}});
+if(!new URL(location.href).searchParams.has('native'))selectOwnedDictationProvider('fixture','fixture');
+installNativeDictationFixture(calls);
+Object.assign(window,{dictationFixture:{calls,release,partial:()=>context.updateSegment({segmentId:'one',text:'partial',final:false})}});
+const mount=(searchMode=false)=>render(html`<${ComposeBox} searchMode=${searchMode} currentChatJid="web:fixture" onSubmitIntercept=${async (request:any)=>{calls.push('send:'+request.content);return true;}} />`,document.getElementById('root'));
+(window as any).dictationFixture.enterSearch=()=>mount(true);
+mount();

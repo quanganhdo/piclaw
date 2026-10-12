@@ -13,6 +13,8 @@ export interface WidgetOpenDetail {
   auto_open?: boolean;
   autoOpen?: boolean;
   chat_jid?: string;
+  source?: string;
+  capabilities?: string[];
   chatJid?: string;
   originChatJid?: string;
   artifact?: Record<string, unknown>;
@@ -85,5 +87,7 @@ export function buildWidgetTabFromOpenDetail(detail: WidgetOpenDetail): Tab | nu
     type: "widget",
     widgetHtml,
     widgetKind: artifactKind || undefined,
+    widgetSource: detail.source === 'live' ? 'live' : 'message',
+    widgetCapabilities: Array.isArray(detail.capabilities) ? detail.capabilities.filter(value => typeof value === 'string') : detail.interactive === true ? ['interactive'] : [],
   };
 }

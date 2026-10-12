@@ -86,6 +86,15 @@ git tag -d v2.3.0-ux && git push origin :refs/tags/v2.3.0-ux
 - The `-ux` tag can be deleted after the final tag is pushed.
 - Use `workflow_dispatch` on the E2E workflow only when the documented release/operations procedure explicitly requires it and the user has authorized that run; do not use it for iterative or ad-hoc feature testing.
 
+## UX conventions
+
+- **Do not reinvent the UX paradigm.** Reuse established interaction patterns, components, visual styles and terminology before adding new UI.
+- Read the [UX guidelines](docs/web-ui.md#ux-guidelines) and inspect the existing implementation for the same interaction before changing it.
+- Keep accepted conversation input in the timeline, queued follow-ups in the existing queue UI, and ongoing activity in the native agent-status surface. Do not add parallel banners, acknowledgements or state displays for the same event.
+- Fix lifecycle and data-flow problems at their source; extra status text or a custom spinner must not conceal a broken handoff.
+- Keep equivalent behaviour consistent across Classic and Visual. Test keyboard, touch, accessibility and pending/error states using the existing conventions.
+- If a genuinely new interaction paradigm is needed, explain why existing patterns cannot meet the requirement and obtain explicit user approval before implementing it.
+
 ## Conventions
 
 - See `skel/AGENTS.md` for the agent operating context and working style

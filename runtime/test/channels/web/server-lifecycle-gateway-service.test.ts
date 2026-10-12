@@ -436,3 +436,24 @@ describe("web server lifecycle gateway service", () => {
     await fixture.service.stop();
   });
 });
+
+test('socket disposal failure does not prevent independent gateway services from stopping',async()=>{
+ const {withAddonRegistrationOwner}=await import('../../../src/addons/registration-owner');
+ const {registerAuthenticatedWebSocket,reserveAuthenticatedAddonSocket,resetAuthenticatedAddonSocketsForTests}=await import('../../../src/addons/authenticated-socket-registry');
+ const {service,calls}=createFixture();await service.start();
+ await withAddonRegistrationOwner({addonId:'gateway-stop',packageName:'gateway-stop',entryPath:'test'},async()=>{registerAuthenticatedWebSocket({path:'stream',maxMessageBytes:8,maxQueuedBytes:8,maxSessionMs:1000,maxConnections:1,authorize:async()=>({chatJid:'web:a'}),open:async()=>({message:async()=>{},dispose:async()=>{throw Error('private transcript');}})});});
+ const session=reserveAuthenticatedAddonSocket('/agent/addons/gateway-stop/stream')!.session;await session.open({} as any,{chatJid:'web:a'},{send:async()=>{},close:()=>{}});
+ await expect(service.stop()).rejects.toThrow('Authenticated socket shutdown failed.');expect(calls.sseCloseCalls).toBe(1);expect(calls.uiBridgeStopCalls).toBe(1);expect(calls.terminalShutdownCalls).toBe(1);expect(calls.vncShutdownCalls).toBe(1);expect(service.server).toBeNull();resetAuthenticatedAddonSocketsForTests();
+});
+
+test('production gateway add-on upgrade dispatch fences Origin/auth and rejects send backpressure',async()=>{
+ const {initDatabase,storeChatMetadata}=await import('../../../src/db');const {ensureChatBranch}=await import('../../../src/db/chat-branches');const {withAddonRegistrationOwner}=await import('../../../src/addons/registration-owner');const {registerAuthenticatedWebSocket}=await import('../../../src/addons/authenticated-socket-registry');initDatabase();storeChatMetadata('web:gateway','2026-01-01','gateway','web',false);ensureChatBranch({chat_jid:'web:gateway',agent_name:'gateway'});
+ const principal:any={kind:'user',userId:'default',username:'test',displayName:'Test',role:'admin',mode:'single-user',homeChatJid:'web:gateway',authentication:{method:'session',sessionId:'synthetic',expiresAt:null}};let authEnabled=true;let context:any,disposed=0;let remove!:()=>void;
+ await withAddonRegistrationOwner({addonId:'gateway-addon',packageName:'gateway-addon',entryPath:'test'},async()=>{remove=registerAuthenticatedWebSocket({path:'realtime',maxMessageBytes:8,maxQueuedBytes:16,maxSessionMs:1000,maxConnections:1,authorize:async()=>({chatJid:'web:gateway'}),open:async c=>{context=c;return{message:async()=>{},dispose:async()=>{disposed++;}};}});});
+ const fixture=createFixture({authGateway:{isAuthEnabled:()=>authEnabled,isAuthenticated:()=>true,getPrincipal:()=>principal} as any});await fixture.service.start();const path='/agent/addons/gateway-addon/realtime';
+ try{
+  expect((await fixture.service.handleFetch(createRequest(path,{headers:{origin:'http://foreign'}}),fixture.server))?.status).toBe(403);authEnabled=false;expect((await fixture.service.handleFetch(createRequest(path),fixture.server))?.status).toBe(403);authEnabled=true;
+  const upgradeRequest=new Request('http://localhost'+path,{headers:{origin:'http://localhost',upgrade:'websocket'}});expect(await fixture.service.handleFetch(upgradeRequest,fixture.server)).toBeUndefined();const data:any=fixture.state.upgradeCalls.at(-1)!.data;expect(data.kind).toBe('authenticated-addon');
+  const handlers=fixture.state.serveCalls.at(-1).websocket;const ws:any={data,readyState:1,getBufferedAmount:()=>0,send:()=>0,close:()=>{}};handlers.open(ws);await new Promise(resolve=>setTimeout(resolve,0));await expect(context.send('frame')).rejects.toThrow('backpressure');ws.getBufferedAmount=()=>17;await expect(context.send('frame')).rejects.toThrow('overloaded');handlers.close(ws);await data.session.close();expect(disposed).toBe(1);
+ }finally{remove();await fixture.service.stop();}
+});

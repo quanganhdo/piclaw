@@ -53,6 +53,11 @@ export function getClientKey(req: Request, trustProxy = getWebRuntimeConfig().tr
  * Resolve externally-visible origin fields for URL generation.
  * Uses forwarded host/proto only when `WEB_RUNTIME_CONFIG.trustProxy` is enabled.
  */
+/** HTTPS on the direct request or the externally visible trusted-proxy origin. */
+export function isSecureWebRequest(req: Request, trustProxy = getWebRuntimeConfig().trustProxy): boolean {
+  return new URL(req.url).protocol === 'https:' || getRequestOriginParts(req, trustProxy).proto.toLowerCase() === 'https';
+}
+
 export function getRequestOriginParts(req: Request, trustProxy = getWebRuntimeConfig().trustProxy): { proto: string; host: string } {
   const url = new URL(req.url);
 

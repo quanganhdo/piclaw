@@ -1,8 +1,11 @@
+import { createDictationComposerBinding } from '../ui/composer-dictation-binding.js';
+import { subscribeDictationProviders } from '../ui/composer-dictation-registry.js';
 import { html, useRef, useState, useEffect, useCallback, useMemo } from '../vendor/preact-htm.js';
 import { useTranslation } from '../utils/i18n.js';
 import { isPopupTypeaheadKey, resolvePopupTypeaheadMatch, updatePopupTypeaheadBuffer } from '../ui/popup-typeahead.js';
 import { getAgentModels, sendAgentMessage } from '../api.js';
-import { SubmissionFeedback, isSubmissionRunStatus, type SubmissionFeedbackState } from '../ui/submission-feedback.js';
+import { SubmissionFeedback, type SubmissionFeedbackState } from '../ui/submission-feedback.js';
+import { isComposeSteerShortcut, requireComposeAcknowledgement, getComposeDeliveryNotice } from '../ui/compose-submission.js';
 import { uploadFileBatch, uploadChatAttachment } from '../ui/upload-transfers.js';
 import { getLocalStorageItem, setLocalStorageItem } from '../utils/storage.js';
 import { buildMentionValue, filterMentionAgents, parseMentionAutocompleteQuery } from '../ui/agent-mentions.js';
@@ -1258,12 +1261,7 @@ export function ComposeBox({
     useEffect(() => {
         const feedback = feedbackRef.current!;
         feedback.reset();
-        const listener = (event: Event) => {
-            const detail = (event as CustomEvent).detail;
-            if (isSubmissionRunStatus(detail?.type)) feedback.activity(detail.chat_jid, detail.thread_id);
-        };
-        window.addEventListener('piclaw:submission-run-status', listener);
-        return () => { feedback.reset(); window.removeEventListener('piclaw:submission-run-status', listener); };
+        return () => feedback.reset();
     }, [currentChatJid]);
     const [isDragActive, setIsDragActive] = useState(false);
     const [slashMatches, setSlashMatches] = useState([]);
@@ -1361,6 +1359,14 @@ export function ComposeBox({
     const sessionTriggerRef = useRef(null);
     const footerRef = useRef(null);
     const popupTypeaheadRef = useRef({ value: '', updatedAt: 0 });
+    const [, refreshDictationProviders] = useState(0);
+    useEffect(() => subscribeDictationProviders(() => refreshDictationProviders(value => value + 1)), []);
+    const dictationHostRef = useRef<any>(null);
+    dictationHostRef.current = {read: () => ({text: textareaRef.current?.value ?? content, chatJid: currentChatJid, selectionStart: textareaRef.current?.selectionStart ?? content.length, selectionEnd: textareaRef.current?.selectionEnd ?? content.length}), write: (text: string) => { if (textareaRef.current) textareaRef.current.value = text; setContent(text); }, state: (state: string) => setSpeechUiState({kind: state === 'recording' || state === 'finishing' ? 'listening' : state === 'loading' ? 'requesting_permission' : state === 'error' ? 'error' : 'idle', title: state === 'error' ? 'Dictation failed; draft preserved' : state === 'finishing' ? 'Finishing dictation' : '', detail: ''})};
+    const dictationRef = useRef<ReturnType<typeof createDictationComposerBinding> | null>(null);
+    if (!dictationRef.current) dictationRef.current = createDictationComposerBinding({read: () => dictationHostRef.current.read(), write: text => dictationHostRef.current.write(text), state: (state, message) => dictationHostRef.current.state(state, message), providerSelected: () => { const native=speechRecognitionRef.current; if(native){speechRecognitionRef.current=null;native.abort?.();clearSpeechUiState();} }});
+    useEffect(() => { dictationRef.current?.draftChanged(); }, [content, currentChatJid]);
+    useEffect(() => () => { void dictationRef.current?.dispose(); }, []);
     const speechRecognitionRef = useRef(null);
     const speechBaseContentRef = useRef('');
     const speechFinalTranscriptRef = useRef('');
@@ -1486,14 +1492,15 @@ export function ComposeBox({
         setSpeechSupport(allowSpeech ? getSpeechInputSupport() : { showButton: false, canStart: false });
     }, [allowSpeech]);
 
-    const canSend = !disabled && (content.trim() || mediaFiles.length > 0 || fileRefs.length > 0 || folderRefs.length > 0 || messageRefs.length > 0);
+    const canSend = !disabled && (dictationRef.current?.active || content.trim() || mediaFiles.length > 0 || fileRefs.length > 0 || folderRefs.length > 0 || messageRefs.length > 0);
     const speechUiVisible = speechUiState.kind !== 'idle';
     const speechUiPulsing = speechUiState.kind === 'requesting_permission' || speechUiState.kind === 'listening';
-    const speechButtonVisible = allowSpeech && !searchMode && Boolean(speechSupport?.showButton);
+    const selectedDictationProvider = dictationRef.current?.selected;
+    const speechButtonVisible = allowSpeech && !searchMode && Boolean(selectedDictationProvider || speechSupport?.showButton);
     const speechButtonActive = speechUiState.kind === 'requesting_permission' || speechUiState.kind === 'listening';
     const speechButtonTitle = speechButtonActive
         ? 'Stop voice input'
-        : (speechSupport?.title || 'Voice input');
+        : (selectedDictationProvider ? 'Voice input' : (speechSupport?.title || 'Voice input'));
     const canShareLocation = allowLocation && typeof window !== 'undefined'
         && typeof navigator !== 'undefined'
         && Boolean(navigator.geolocation)
@@ -2185,6 +2192,7 @@ export function ComposeBox({
     }, [clearSpeechUiState]);
 
     const handleSpeechToggle = useCallback(() => {
+        if (dictationRef.current?.selected) { void dictationRef.current.toggle().catch(() => setSubmitError('Dictation could not finish. Draft preserved.')); return; }
         setSubmitError(null);
         setSubmitNotice(null);
 
@@ -2231,6 +2239,7 @@ export function ComposeBox({
             }
 
             recognition.onstart = () => {
+            if(speechRecognitionRef.current!==recognition||dictationRef.current?.selected)return;
                 setSpeechUiState({
                     kind: 'listening',
                     title: 'Listening…',
@@ -2239,6 +2248,7 @@ export function ComposeBox({
             };
 
             recognition.onresult = (event) => {
+            if(speechRecognitionRef.current!==recognition||dictationRef.current?.selected)return;
                 const { finalText, interimText } = extractSpeechRecognitionText(event?.results, event?.resultIndex || 0);
                 if (finalText) {
                     speechFinalTranscriptRef.current = `${speechFinalTranscriptRef.current} ${finalText}`.trim();
@@ -2255,6 +2265,7 @@ export function ComposeBox({
             };
 
             recognition.onerror = (event) => {
+            if(speechRecognitionRef.current!==recognition||dictationRef.current?.selected)return;
                 const errorCode = String(event?.error || '').trim();
                 speechLastErrorRef.current = errorCode;
                 speechRecognitionRef.current = null;
@@ -2271,6 +2282,7 @@ export function ComposeBox({
             };
 
             recognition.onend = () => {
+            if(speechRecognitionRef.current!==recognition||dictationRef.current?.selected)return;
                 const lastError = speechLastErrorRef.current;
                 const pendingStop = speechPendingStopRef.current;
                 const hadTranscript = Boolean(speechFinalTranscriptRef.current.trim() || speechInterimTranscriptRef.current.trim());
@@ -2361,11 +2373,11 @@ export function ComposeBox({
     const handleSpeechButtonPointerDown = (e) => {
         if (e.pointerType === 'mouse') return;
         const currentValue = textareaRef.current?.value ?? (searchMode ? searchText : content);
-        if (!shouldStartSpeechPushToTalk(e, currentValue, {
+        if (!shouldStartSpeechPushToTalk({key:' ',code:'Space',ctrlKey:e.ctrlKey,metaKey:e.metaKey,altKey:e.altKey}, currentValue, {
             searchMode,
             speechButtonVisible,
             speechButtonActive,
-            canStartSpeech: Boolean(speechSupport?.canStart && speechSupport?.recognitionCtor),
+            canStartSpeech: Boolean(selectedDictationProvider || (speechSupport?.canStart && speechSupport?.recognitionCtor)),
         })) return;
         e.preventDefault();
         speechPushToTalkActiveRef.current = true;
@@ -2377,7 +2389,8 @@ export function ComposeBox({
         if (!speechPushToTalkActiveRef.current) return;
         e?.preventDefault?.();
         speechPushToTalkActiveRef.current = false;
-        if (speechRecognitionRef.current) {
+        if(dictationRef.current?.selected)void dictationRef.current.toggle().catch(()=>setSubmitError('Dictation could not finish. Draft preserved.'));
+        else if (speechRecognitionRef.current) {
             stopSpeechRecognition();
         }
     };
@@ -2490,7 +2503,13 @@ export function ComposeBox({
         return isAgentActive ? 'queue' : undefined;
     };
 
-    const handleSubmit = async (overrideContent, submitMode, submitOptions = {}) => {
+    const handleSubmit = async (overrideContent, submitMode, submitOptions: any = {}) => {
+        if (!submitOptions.dictationFinished && dictationRef.current?.active && !/^\/abort\s*$/i.test(String(overrideContent || ''))) {
+            const useFinalDraft = overrideContent == null || overrideContent === (textareaRef.current?.value ?? content);
+            try { await dictationRef.current.submit(async () => { await handleSubmit(useFinalDraft ? (textareaRef.current?.value ?? content) : overrideContent, submitMode, { ...submitOptions, dictationFinished: true }); }); }
+            catch { setSubmitError('Dictation could not finish. Draft preserved; send again explicitly.'); }
+            return;
+        }
         // Client-side interception for UI-only shortcuts.
         const rawInput = typeof overrideContent === 'string' ? overrideContent : content;
         if (allowModelSettings && /^\/settings\s*$/i.test(rawInput.trim())) {
@@ -2656,10 +2675,13 @@ export function ComposeBox({
                 // submission is a separate compose action with its own button state.
                 setUploadProgress(null);
                 const response = await sendMessage('default', message, null, mediaIds, resolveSubmitMode(submitMode), submissionChatJid);
+                requireComposeAcknowledgement(response);
+                const deliveryNotice = getComposeDeliveryNotice(response);
+                if (deliveryNotice && currentChatJidRef.current === submissionChatJid) setSubmitError(deliveryNotice);
                 onMessageResponse?.(response);
                 if (feedbackGeneration !== null) {
                     if (response?.command?.status === 'error') feedbackRef.current!.failed(feedbackGeneration);
-                    else feedbackRef.current!.acknowledged(feedbackGeneration, Boolean(response?.queued) || Boolean(response?.command) || response?.ui_only === true || response?.relayed === true, response?.thread_id, response?.user_message?.data?.timestamp);
+                    else feedbackRef.current!.acknowledged(feedbackGeneration);
                 }
 
                 if (response?.command && response.command.status !== 'error') {
@@ -2796,7 +2818,13 @@ export function ComposeBox({
     ]);
 
     const handleKeyDown = (e) => {
-        if (e.isComposing) return;
+        if (e.isComposing || e.defaultPrevented) return;
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && !searchMode) {
+            const steerShortcut = isComposeSteerShortcut(e);
+            e.preventDefault();
+            if (steerShortcut) void handleSubmit(textareaRef.current?.value ?? content, 'steer');
+            return;
+        }
         if (searchMode && e.key === 'Escape') {
             e.preventDefault();
             setSearchText('');
@@ -2811,7 +2839,7 @@ export function ComposeBox({
             searchMode,
             speechButtonVisible,
             speechButtonActive,
-            canStartSpeech: Boolean(speechSupport?.canStart && speechSupport?.recognitionCtor),
+            canStartSpeech: Boolean(selectedDictationProvider || (speechSupport?.canStart && speechSupport?.recognitionCtor)),
         })) {
             e.preventDefault();
             speechPushToTalkActiveRef.current = true;
@@ -2949,13 +2977,11 @@ export function ComposeBox({
                 if (currentValue.trim()) {
                     onSearch?.(currentValue.trim(), searchScope, { images: searchFilterImages, attachments: searchFilterAttachments });
                 }
-            } else {
-                void handleSubmit(currentValue, "steer");
             }
             return;
         }
 
-        if (e.key === 'Enter' && !e.shiftKey) {
+        if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && !e.repeat) {
             e.preventDefault();
             if (searchMode) {
                 if (currentValue.trim()) {
@@ -2978,7 +3004,8 @@ export function ComposeBox({
         if (shouldStopSpeechPushToTalk(e, speechPushToTalkActiveRef.current)) {
             e.preventDefault();
             speechPushToTalkActiveRef.current = false;
-            if (speechRecognitionRef.current) {
+            if(dictationRef.current?.selected)void dictationRef.current.toggle().catch(()=>setSubmitError('Dictation could not finish. Draft preserved.'));
+            else if (speechRecognitionRef.current) {
                 stopSpeechRecognition();
             }
         }
@@ -3347,6 +3374,7 @@ export function ComposeBox({
 
     useEffect(() => {
         if (!searchMode) return undefined;
+        void dictationRef.current?.cancel();
         if (speechRecognitionRef.current) {
             stopSpeechRecognition();
         }
@@ -3409,7 +3437,7 @@ export function ComposeBox({
                 onMouseDown=${handleComposeResizeMouseDown}
                 onTouchStart=${handleComposeResizeTouchStart}
             >${onJumpToLatest && html`<button type="button" class="compose-latest-handle" aria-label=${timelineHasNew ? 'New messages — jump to latest' : 'Jump to latest message'} title="Jump to latest message" onClick=${(event) => { if (event.detail === 0) onJumpToLatest(); }}><span class="compose-latest-chevron compose-latest-chevron-left" aria-hidden="true"></span><span class="compose-latest-chevron compose-latest-chevron-right" aria-hidden="true"></span></button>`}</div>
-            ${submissionFeedback && html`<div class="compose-submission-feedback" role="status" aria-live="polite" data-submission-state=${submissionFeedback}><span class="submission-feedback-spinner" aria-hidden="true"></span>${submissionFeedback === 'sending' ? 'Sending message…' : 'Message accepted. Waiting for agent…'}</div>`}
+            ${submissionFeedback && html`<div class="agent-status" role="status" aria-live="polite" data-submission-state="sending"><div class="agent-status-spinner" aria-hidden="true"></div><span class="status-text">Sending…</span></div>`}
             ${speechUiVisible && html`
                 <div class=${`compose-inline-status compose-speech-status compose-speech-status-${speechUiState.kind}`} role="status" aria-live="polite">
                     <div class="compose-inline-status-row">

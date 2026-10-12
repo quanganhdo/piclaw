@@ -785,7 +785,7 @@ export class AgentPool {
   }
 
   isActive(chatJid: string): boolean {
-    return this.runtimeFacade.isActive(chatJid);
+    return this.sessionManager.hasProtectedRun(chatJid) || this.runtimeFacade.isActive(chatJid);
   }
 
   private ensureBranchRegistration(chatJid: string, session?: AgentSession | null): ChatBranchRecord {

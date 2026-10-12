@@ -158,6 +158,8 @@ export interface RunAgentOptions {
   sessionLeafId?: string;
   /** Override the default timeout (ms). Use 0 or a negative value to disable. */
   timeoutMs?: number;
+  /** Bound this caller's startup wait; defaults to the run timeout. Shared creation remains owned. */
+  startupTimeoutMs?: number;
   /** Abort after this many tool calls complete. Undefined means no cap. */
   maxToolCalls?: number;
   /**

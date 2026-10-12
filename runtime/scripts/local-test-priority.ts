@@ -116,7 +116,7 @@ export async function runLocalTestCommand(
     if (child.exitCode !== null) return;
     if (plan.applied) {
       const signum = signal === "SIGINT" ? 2 : signal === "SIGHUP" ? 1 : 15;
-      const result = spawnSync("kill", [`-${signum}`, `-${child.pid}`], { stdio: "ignore" });
+      const result = spawnSync("kill", [`-${signum}`, "--", `-${child.pid}`], { stdio: "ignore" });
       if (result.status === 0) return;
     }
     child.kill(signal);
@@ -125,7 +125,7 @@ export async function runLocalTestCommand(
   const exitCode = await child.exited;
   for (const signal of signals) process.off(signal, forward);
   if (plan.applied) {
-    spawnSync("kill", ["-KILL", `-${child.pid}`], { stdio: "ignore" });
+    spawnSync("kill", ["-KILL", "--", `-${child.pid}`], { stdio: "ignore" });
   }
   if (isolation.createdRoot) isolation.cleanup();
   process.exit(exitCode);

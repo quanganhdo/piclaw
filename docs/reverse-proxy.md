@@ -39,6 +39,8 @@ or in `.piclaw/config.json`:
 }
 ```
 
+With proxy trust enabled, resolved external HTTPS enables the session cookie's `Secure` attribute and Piclaw's HSTS header. Without trust, forwarded protocol headers cannot enable either. Direct HTTPS and explicitly configured listener TLS retain their existing cookie behaviour. Existing proxy-supplied HSTS headers are preserved.
+
 This maps to the runtime config consumed by:
 
 - `runtime/src/utils/request-client.ts`

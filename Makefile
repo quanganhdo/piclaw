@@ -254,7 +254,7 @@ ci-integration: ## Run the full integration gate (lint + all tests + static anal
 
 publish-smoke: ## Smoke-test a published piclaw image (requires IMAGE_REF, PLATFORM, EXPECTED_BUN_VERSION, EXPECTED_RESTIC_VERSION)
 	@: "$${IMAGE_REF:?set IMAGE_REF}" "$${PLATFORM:?set PLATFORM}" "$${EXPECTED_BUN_VERSION:?set EXPECTED_BUN_VERSION}" "$${EXPECTED_RESTIC_VERSION:?set EXPECTED_RESTIC_VERSION}"
-	bun run ci:publish-smoke
+	./scripts/docker/publish-smoke-test.sh "$(IMAGE_REF)" "$(PLATFORM)" "$(EXPECTED_BUN_VERSION)" "$(EXPECTED_RESTIC_VERSION)"
 
 # ── Versioning ───────────────────────────────────────────────────────
 

@@ -87,7 +87,7 @@
       "semanticReaderOccurrences": 71
     },
     "docsDeploy": {
-      "referencedNames": 148,
+      "referencedNames": 149,
       "directReaderNames": 16,
       "directReaderOccurrences": 32,
       "helperReaderNames": 0,
@@ -4923,6 +4923,16 @@
     {
       "name": "PICLAW_SKIP_PRE_PUSH_CI",
       "scopes": {
+        "docsDeploy": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            "docs/development/emergency-hotfix-releases.md"
+          ],
+          "readerFiles": []
+        },
         "tooling": {
           "referenced": true,
           "directReaders": 0,

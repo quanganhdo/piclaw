@@ -377,3 +377,13 @@ Add-on external routes and widget-state endpoints have their own authentication 
 1. Continue evolving the `extension_ui_*` browser-event bridge into a richer first-class extension UI surface if needed.
    - Track remaining work in [GitHub Issues](https://github.com/rcarmo/piclaw/issues), not the archived file-based board.
 2. Keep route inventory coverage in tests so newly added mutating endpoints do not skip classification.
+
+## Authenticated add-on sockets
+
+`GET /agent/addons/<owner>/<path>` upgrades only a registered owner-bound route.
+It requires enabled user-session authentication, exact HTTP(S) Origin and
+single-user access mode. Core resolves chat/workspace scope; internal-secret and
+anonymous access do not substitute for a user session. Finite frame, queue,
+connection and duration limits cover preparation/opening; capacity stays reserved
+through awaited cleanup. See `docs/addon-runtime-api.md` and the public declaration
+entry `piclaw/runtime/public/addon-hooks`.

@@ -215,7 +215,7 @@ test("native loader is optional, balances failed initialization, and omits optio
   let closes = 0, shutdowns = 0;
   const failure = (() => ({ symbols: { nvmlInit_v2: () => 9, nvmlShutdown: () => { shutdowns++; } }, close: () => { closes++; } })) as any;
   expect(() => createNativeNvmlBinding(failure, 'linux', 'x64')).toThrow('status 9');
-  expect(closes).toBe(2); expect(shutdowns).toBe(0);
+  expect(closes).toBe(3); expect(shutdowns).toBe(0);
   const handles = new Uint8Array(8);
   const load = ((_path: string, symbols: any) => {
     if (symbols.nvmlDeviceGetMemoryInfo_v2) throw Error('old driver');
@@ -228,8 +228,8 @@ test("native loader is optional, balances failed initialization, and omits optio
   }) as any;
   const binding = createNativeNvmlBinding(load, 'linux', 'x64')!;
   const controller = createNvmlController(binding);
-  expect(controller.read()).toEqual({ totalBytes: 100, usedBytes: 30, percent: 30, provider: 'nvml-v1' });
-  controller.close(); controller.close(); expect(shutdowns).toBe(1); expect(closes).toBe(3);
+  expect(controller.read()).toEqual({ totalBytes: 100, usedBytes: 30, percent: 30, provider: 'nvml-v1', busyPercent: null });
+  controller.close(); controller.close(); expect(shutdowns).toBe(1); expect(closes).toBe(5);
 });
 
 test("native v2 buffer has versioned 64-bit layout and keeps reserved separate", async () => {
@@ -250,7 +250,7 @@ test("native v2 buffer has versioned 64-bit layout and keeps reserved separate",
     nvmlDeviceGetMemoryInfo: () => { throw Error('unexpected v1 fallback'); },
   } })) as any;
   const c = createNvmlController(createNativeNvmlBinding(load, 'linux', 'x64')!);
-  try { expect(c.read()).toEqual({ totalBytes: 1000, usedBytes: 300, percent: 30, provider: 'nvml' }); } finally { c.close(); }
+  try { expect(c.read()).toEqual({ totalBytes: 1000, usedBytes: 300, percent: 30, provider: 'nvml', busyPercent: null }); } finally { c.close(); }
 });
 
 test("compatibility errors alone permit v1; permissions and unknown errors do not", () => {
@@ -264,4 +264,52 @@ test("compatibility errors alone permit v1; permissions and unknown errors do no
     if ([3,13,25].includes(status)) { expect(c.read()?.provider).toBe('nvml-v1'); expect(fallback).toBe(1); }
     else { expect(() => c.read()).toThrow(); expect(fallback).toBe(0); }
   }
+});
+
+test('optional utilization preserves memory on unsupported, invalid and failed activity reads', () => {
+  let activity: number | null = 0;
+  let fail = false;
+  const c = createNvmlController({ memoryInfoV2Available: false,
+    getDeviceCount: () => 1, getDeviceHandle: () => 1,
+    getMemoryInfoV1: () => ({totalBytes:100,usedBytes:25,freeBytes:75}),
+    getMemoryInfoV2: () => ({totalBytes:100,usedBytes:25,freeBytes:75,reservedBytes:0}),
+    getUtilization: () => {if(fail)throw new NvmlError(4,'utilization');return activity;},close() {},
+  });
+  expect(c.read()).toMatchObject({busyPercent:0,percent:25});
+  activity=73;expect(c.read()?.busyPercent).toBe(73);
+  for(const invalid of [null,-1,101,NaN]){activity=invalid;expect(c.read()).toMatchObject({busyPercent:null,usedBytes:25,provider:'nvml-v1'});}
+  fail=true;expect(c.read()).toMatchObject({busyPercent:null,percent:25});
+  fail=false;activity=40;expect(c.read()?.busyPercent).toBe(40);c.close();
+});
+
+test('aggregate activity is the busiest observed device, unknown if any device is unobservable', () => {
+  let second: number | null=80;
+  const c=createNvmlController({memoryInfoV2Available:false,getDeviceCount:()=>2,getDeviceHandle:i=>i+1,
+    getMemoryInfoV1:()=>({totalBytes:100,usedBytes:25,freeBytes:75}),
+    getMemoryInfoV2:()=>({totalBytes:100,usedBytes:25,freeBytes:75,reservedBytes:0}),
+    getUtilization:d=>d===1?20:second,close(){},
+  });
+  expect(c.read()).toMatchObject({totalBytes:200,usedBytes:50,busyPercent:80});
+  second=null;expect(c.read()).toMatchObject({usedBytes:50,busyPercent:null});c.close();
+});
+
+test('native utilization ABI reads gpu field, stays optional and closes its own library', async () => {
+  const {ptr,toArrayBuffer}=await import('bun:ffi');
+  const handle=new Uint8Array(8);let closes=0;let status=0;let value=64;let missing=false;
+  const load=((_path:string,requested:any)=>{
+    if(requested.nvmlDeviceGetMemoryInfo_v2)throw Error('old driver');
+    if(requested.nvmlDeviceGetUtilizationRates){if(missing)throw Error('missing activity symbol');return {close(){closes++},symbols:{nvmlDeviceGetUtilizationRates:(_d:any,p:any)=>{const a=new Uint32Array(toArrayBuffer(p,0,8));a.set([value,99]);return status;}}};}
+    return {close(){closes++},symbols:{nvmlInit_v2:()=>0,nvmlShutdown:()=>0,
+      nvmlDeviceGetCount_v2:(p:any)=>{new Uint32Array(toArrayBuffer(p,0,4))[0]=1;return 0;},
+      nvmlDeviceGetHandleByIndex_v2:(_i:number,p:any)=>{new BigUint64Array(toArrayBuffer(p,0,8))[0]=BigInt(ptr(handle));return 0;},
+      nvmlDeviceGetMemoryInfo:(_d:any,p:any)=>{new BigUint64Array(toArrayBuffer(p,0,24)).set([100n,70n,30n]);return 0;},
+    }};
+  }) as any;
+  const {createNativeNvmlBinding}=await import('../../../../src/channels/web/agent/nvml-reader.js');
+  let c=createNvmlController(createNativeNvmlBinding(load,'linux','x64')!);
+  expect(c.read()).toMatchObject({busyPercent:64,percent:30});
+  status=3;expect(c.read()).toMatchObject({busyPercent:null,percent:30});
+  status=0;value=101;expect(c.read()?.busyPercent).toBeNull();c.close();expect(closes).toBe(2);
+  missing=true;c=createNvmlController(createNativeNvmlBinding(load,'linux','x64')!);
+  expect(c.read()).toMatchObject({busyPercent:null,percent:30});c.close();expect(closes).toBe(3);
 });

@@ -1772,6 +1772,12 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+.chat__compose-shell {
+  flex-shrink: 0;
+  width: 100%;
+  min-width: 0;
+}
+
 .chat__compose {
   background: var(--bg);
   border-top: 1px solid var(--border);
@@ -8436,9 +8442,3 @@ mark[data-highlight] { border-radius: 2px; padding: 0 1px; }
 .session-pill__pin { flex:none; padding:6px 8px; border:0; background:transparent; color:var(--text-secondary); cursor:pointer; }
 .session-pill__pin[aria-pressed="true"] { color:var(--accent); }
 .session-pill__pin:hover { background:var(--bg-hover); }
-
-/* Local send/admission feedback is distinct from authoritative agent status. */
-.compose-submission-feedback { display: flex; align-items: center; gap: 8px; padding: 6px 10px; color: var(--text-primary); font-size: 12px; }
-.submission-feedback-spinner { width: 12px; height: 12px; flex: 0 0 12px; border: 2px solid var(--border-color); border-top-color: var(--accent-color); border-radius: 50%; animation: submission-feedback-spin 1s linear infinite; }
-@keyframes submission-feedback-spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .submission-feedback-spinner { animation: none; } }

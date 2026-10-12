@@ -297,6 +297,7 @@ export interface AgentRuntimeFacadeOptions {
   clearAttachments: (chatJid: string) => void;
   refreshRuntime: (chatJid: string, runtime: AgentSessionRuntime) => Promise<void>;
   listKnownChats?: () => Array<{ chat_jid: string; model: string | null }>;
+  acquireCommandProtection?: (chatJid: string) => () => void;
   onProviderUsageRefresh?: (event: ProviderUsageRefreshEvent) => void;
   onWarn?: (message: string, details: Record<string, unknown>) => void;
   onError?: (message: string, details: Record<string, unknown>) => void;
@@ -324,6 +325,8 @@ export class AgentRuntimeFacade {
   async applyControlCommand(chatJid: string, command: AgentControlCommand): Promise<AgentControlResult> {
     requireSingleUserDirectExecution("Direct control commands");
     revokeAddonLocalAgent(chatJid);
+    const release = this.options.acquireCommandProtection?.(chatJid);
+    try {
     const runtime = await this.options.getOrCreateRuntime(chatJid);
     const session = runtime.session;
     const previousSessionGeneration = typeof session.sessionId === "string" ? session.sessionId : null;
@@ -344,6 +347,7 @@ export class AgentRuntimeFacade {
         ...(sessionGeneration !== previousSessionGeneration ? { sessionGenerationChanged: true } : {}),
       }
       : result;
+    } finally { release?.(); }
   }
 
   /** Owner-authorized active-session model/thinking mutation; never writes shared defaults. */
@@ -733,6 +737,8 @@ export class AgentRuntimeFacade {
   async applySlashCommand(chatJid: string, rawText: string): Promise<AgentControlResult> {
     requireSingleUserDirectExecution("Direct slash commands");
     revokeAddonLocalAgent(chatJid);
+    const release = this.options.acquireCommandProtection?.(chatJid);
+    try {
     this.options.clearAttachments(chatJid);
     const runtime = await this.options.getOrCreateRuntime(chatJid);
     const session = runtime.session;
@@ -744,5 +750,6 @@ export class AgentRuntimeFacade {
     }
     this.options.clearAttachments(chatJid);
     return result;
+    } finally { release?.(); }
   }
 }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "preact/hooks";
 import { OverlayShell } from "./OverlayShell";
+import { getGeneratedWidgetCsp, getGeneratedWidgetSandbox } from "../../../../../src/ui/generated-widget-policy";
 
 interface WidgetState {
   html: string;
@@ -7,6 +8,9 @@ interface WidgetState {
   subtitle: string;
   status: "loading" | "streaming" | "final" | "error";
   error?: string;
+  source?: string;
+  kind?: string;
+  capabilities?: string[];
 }
 
 // Bridge script injected into the widget iframe
@@ -36,13 +40,14 @@ const BRIDGE_SCRIPT = `
 <\/script>
 `;
 
-function buildSrcDoc(html: string, title: string): string {
+export function buildSrcDoc(html: string, title: string, policy: {source?:string;kind?:string;capabilities?:string[]} = {}): string {
   if (!html) return "";
   return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>${title || "Widget"}</title>
+  <meta http-equiv="Content-Security-Policy" content="${getGeneratedWidgetCsp({ ...policy, kind: policy.kind || 'html' })}">
+  <title>${(title || "Widget").replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]!)}</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     body { margin: 0; padding: 8px; background: #1e1e2e; color: #cdd6f4; font-family: system-ui, sans-serif; font-size: 14px; }
@@ -55,9 +60,9 @@ function buildSrcDoc(html: string, title: string): string {
 </html>`;
 }
 
-export function WidgetPane({ tabMode = false, widgetHtml, widgetTitle }: { tabMode?: boolean; widgetHtml?: string; widgetTitle?: string }) {
+export function WidgetPane({ tabMode = false, widgetHtml, widgetTitle, widgetSource, widgetKind, widgetCapabilities }: { tabMode?: boolean; widgetHtml?: string; widgetTitle?: string; widgetSource?: string; widgetKind?: string; widgetCapabilities?: string[] }) {
   const [widget, setWidget] = useState<WidgetState | null>(
-    widgetHtml ? { html: widgetHtml, title: widgetTitle || "Widget", subtitle: "", status: "final" } : null
+    widgetHtml ? { html: widgetHtml, title: widgetTitle || "Widget", subtitle: "", status: "final", source:widgetSource,kind:widgetKind || 'html',capabilities:widgetCapabilities } : null
   );
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const htmlBufferRef = useRef(widgetHtml || "");
@@ -66,9 +71,9 @@ export function WidgetPane({ tabMode = false, widgetHtml, widgetTitle }: { tabMo
   useEffect(() => {
     if (widgetHtml) {
       htmlBufferRef.current = widgetHtml;
-      setWidget({ html: widgetHtml, title: widgetTitle || "Widget", subtitle: "", status: "final" });
+      setWidget({ html: widgetHtml, title: widgetTitle || "Widget", subtitle: "", status: "final", source:widgetSource,kind:widgetKind || 'html',capabilities:widgetCapabilities });
     }
-  }, [widgetHtml, widgetTitle]);
+  }, [widgetHtml, widgetTitle, widgetSource, widgetKind, widgetCapabilities]);
 
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
@@ -95,7 +100,7 @@ export function WidgetPane({ tabMode = false, widgetHtml, widgetTitle }: { tabMo
       const title = detail?.title || "Widget";
       const subtitle = detail?.subtitle || detail?.description || "";
       htmlBufferRef.current = html;
-      setWidget({ html, title, subtitle, status: html ? "final" : "loading" });
+      setWidget({ html, title, subtitle, status: html ? "final" : "loading", source:detail?.source,kind:detail?.artifact?.kind || detail?.kind || 'html',capabilities:Array.isArray(detail?.capabilities) ? detail.capabilities : detail?.interactive === true ? ['interactive'] : [] });
     };
 
     const handleDelta = (e: Event) => {
@@ -149,7 +154,7 @@ export function WidgetPane({ tabMode = false, widgetHtml, widgetTitle }: { tabMo
     return <div className="widget-pane__empty">Waiting for widget content...</div>;
   }
 
-  const srcDoc = buildSrcDoc(widget.html, widget.title);
+  const srcDoc = buildSrcDoc(widget.html, widget.title, widget);
 
   if (tabMode) {
     return (
@@ -161,7 +166,7 @@ export function WidgetPane({ tabMode = false, widgetHtml, widgetTitle }: { tabMo
             <iframe
               ref={iframeRef}
               className="widget-pane__frame"
-              sandbox="allow-scripts allow-same-origin"
+              sandbox={getGeneratedWidgetSandbox({...widget, kind:widget.kind || 'html'})}
               srcDoc={srcDoc}
               title={widget.title}
             />
@@ -202,7 +207,7 @@ export function WidgetPane({ tabMode = false, widgetHtml, widgetTitle }: { tabMo
             <iframe
               ref={iframeRef}
               className="widget-pane__frame"
-              sandbox="allow-scripts allow-same-origin"
+              sandbox={getGeneratedWidgetSandbox({...widget, kind:widget.kind || 'html'})}
               srcDoc={srcDoc}
               title={widget.title}
             />

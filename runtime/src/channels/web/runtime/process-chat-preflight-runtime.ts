@@ -4,6 +4,8 @@ export interface BrowserObservabilityContext {
   clientId?: string;
 }
 import type { WebChannelLike } from "../core/web-channel-contracts.js";
+import { waitForRuntimeStartup } from '../../../agent-pool/startup-wait.js';
+import { getAgentRuntimeConfig } from '../../../core/config-runtime.js';
 import { getPrePromptCompactionForegroundMs } from "../../../core/config.js";
 import { beginChatPreflight, beginChatRun, clearChatPreflight, promoteChatPreflightToInflight } from "../../../db.js";
 import { isCompactionCancellationError, maybeAutoCompactSessionBeforePrompt } from "../../../agent-pool/compaction.js";
@@ -30,6 +32,7 @@ export async function runProcessChatPreflight(options: {
   compactionState: { lastCompactionErrorMessage: string | null; lastCompactionSuppressed: boolean };
   enqueueResume(threadRootId: number | undefined): void;
   skipPrePromptCompaction?: boolean;
+  startupTimeoutMs?: number;
 }): Promise<"continue" | "deferred"> {
   const { channel, chatJid } = options;
   if (options.skipPrePromptCompaction
@@ -46,7 +49,7 @@ export async function runProcessChatPreflight(options: {
     return result.status === "success";
   };
 
-  const session = await channel.agentPool.getSessionForIntrospection(chatJid);
+  const session = await waitForRuntimeStartup(channel.agentPool.getSessionForIntrospection(chatJid), options.startupTimeoutMs ?? getAgentRuntimeConfig().timeoutMs);
   beginTrackedPhase(chatJid, "preprompt_compaction", { source: "web.process_chat.preflight", messageId: options.message.id });
   beginChatPreflight(chatJid, { prevTs: options.prevCursor, messageId: options.message.id, startedAt: options.runStartedAt });
   const compactionPromise = maybeAutoCompactSessionBeforePrompt(session, chatJid, {
@@ -55,7 +58,8 @@ export async function runProcessChatPreflight(options: {
   }, options.streamingHandler);
   let deferred = false;
   try {
-    const foregroundMs = getPrePromptCompactionForegroundMs();
+    try {
+  const foregroundMs = getPrePromptCompactionForegroundMs();
     const outcome = await Promise.race([compactionPromise.then(() => "done" as const), Bun.sleep(foregroundMs).then(() => "defer" as const)]);
     if (outcome === "defer") {
       deferred = true;
@@ -77,4 +81,5 @@ export async function runProcessChatPreflight(options: {
   heartbeatTrackedPhase(chatJid, "prompt", { eventType: "preflight_promoted" });
   promoteChatPreflightToInflight(chatJid, options.message.timestamp, { prevTs: options.prevCursor, messageId: options.message.id, startedAt: options.runStartedAt });
   return "continue";
+  } catch (error) { clearChatPreflight(chatJid); endTrackedPhase(chatJid); throw error; }
 }
