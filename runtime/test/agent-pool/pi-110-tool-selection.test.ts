@@ -3,7 +3,7 @@ import { createAgentSession, SettingsManager, ModelRuntime } from '@earendil-wor
 import { createTempWorkspace } from '../helpers.js';
 
 /** Actual released SDK registration/loadout, not a mocked name matcher. */
-for (const mode of ['builtins','mcp-pattern','exclude','empty'] as const) test(`Pi1.1.0 tool selection: ${mode}`, async () => {
+for (const mode of ['builtins','mcp-pattern','exclude','empty'] as const) test(`Pi 1.2.0 tool selection: ${mode}`, async () => {
  const ws=createTempWorkspace('pi110-tool-selection-');
  const runtime=await ModelRuntime.create({modelsPath:null,refreshOnCreate:false});
  const customTools=[{name:'mcp__fixture__read',label:'fixture',description:'synthetic MCP-name tool',parameters:{type:'object',properties:{}},execute:async()=>({content:[],details:{}})},{name:'mcp__other__read',label:'other',description:'synthetic other server',parameters:{type:'object',properties:{}},execute:async()=>({content:[],details:{}})}];

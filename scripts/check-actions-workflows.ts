@@ -81,7 +81,7 @@ checkPublishSmokeGate(publish);
 expectTrue(publish.jobs?.integration?.uses === "./.github/workflows/integration-gate.yml", "Publish must call the reusable exact-SHA integration gate.");
 expectEqual(publish.jobs?.integration?.with, { ref: "${{ github.sha }}" }, "Publish integration must validate the exact tag SHA.");
 expectTrue(!publish.jobs?.["wait-for-integration"], "Publish must not retain a polling waiter runner.");
-for (const jobName of ["build-portable-artifacts", "build-experimental-shell-artifacts", "build-amd64", "build-arm64"]) {
+for (const jobName of ["build-portable-artifacts", "build-amd64", "build-arm64"]) {
   expectTrue(values(publish.jobs?.[jobName]?.needs).includes("integration"), `${jobName} must depend on integration.`);
 }
 expectTrue(publish.concurrency === undefined, "Publish/tag work must never be cancellation-concurrent.");

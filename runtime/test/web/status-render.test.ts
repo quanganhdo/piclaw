@@ -94,6 +94,7 @@ class FakeElement extends FakeNode {
     this.attributes = this.attributes.filter((entry) => entry.name !== name);
   }
 
+  remove() { this.parentNode?.removeChild(this); }
   addEventListener() {}
 
   removeEventListener() {}
@@ -121,6 +122,7 @@ class FakeDocument {
     return new FakeTextNode(this, text);
   }
 
+  remove() { this.parentNode?.removeChild(this); }
   addEventListener() {}
 
   removeEventListener() {}

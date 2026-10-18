@@ -88,6 +88,8 @@ export interface RuntimeAgentMessageRequest {
   queuedBy?: QueuedFollowupSourceMetadata;
   /** Host-only cancellation, never populated from HTTP payload fields. */
   signal?: AbortSignal;
+  /** Host-only admission fence, composed with normal input authority at commit. */
+  admission?: { validate: () => void };
 }
 
 export interface RuntimeAgentMessageResult {
@@ -356,6 +358,7 @@ export class WebChannelRuntimePublicSurfaceService {
       };
       const encodedBody = JSON.stringify(body);
       const scopedAdmission = captureAddonLocalDispatchAdmission(chatJid, content);
+      request.admission?.validate();
       const origin = getExecutionIdentity();
       if (readAccessConfig().mode !== 'single-user' || (origin && origin.mode !== 'single-user')) throw Error('Host input authority is unavailable.');
       const validateTarget = captureInputTarget(chatJid);
@@ -369,6 +372,7 @@ export class WebChannelRuntimePublicSurfaceService {
         if (readAccessConfig().mode !== 'single-user' || (origin && origin.mode !== 'single-user') || getExecutionIdentity() !== origin
           ) throw Error('Host input authority changed.');
         scopedAdmission?.validate();
+        request.admission?.validate();
         validateTarget(phase);
       });
       let response: Response;
@@ -382,6 +386,8 @@ export class WebChannelRuntimePublicSurfaceService {
       return normalizeRuntimeHandlerMessageResult(chatJid, responsePayload);
     }
 
+    // Admission-bound callers require the transactional handler, never the legacy fallback.
+    if (request.admission || request.signal) throw new Error("Admission-bound runtime messages require the host input handler.");
     const agentPool = this.channel.agentPool;
     const isStreaming = typeof agentPool?.isStreaming === "function" ? agentPool.isStreaming(chatJid) : false;
     const isActive = typeof agentPool?.isActive === "function" ? agentPool.isActive(chatJid) : isStreaming;

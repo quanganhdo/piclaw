@@ -14,6 +14,7 @@ import { existsSync, readFileSync, statSync } from "fs";
 import { createLogger, debugSuppressedError } from "../../../utils/logger.js";
 import { APP_ASSET_VERSION_REL_PATHS, computeAssetContentVersion } from "../../../utils/asset-content-version.js";
 import { WEB_RUNTIME_CONFIG } from "../../../core/config.js";
+import { isPublicWidgetAssetPath } from "./route-flags.js";
 
 const RUNTIME_DIR = resolve(import.meta.dir, "..", "..", "..", "..");
 const STATIC_DIR = resolve(
@@ -197,6 +198,9 @@ export async function serveStatic(relPath: string, notFound: () => Response, req
   const file = Bun.file(filePath);
   if (!(await file.exists())) return notFound();
 
+  // Use the resolved path for the same narrow public-asset policy as auth routing.
+  const publicWidgetAsset = isPublicWidgetAssetPath(`/static/${filePath.slice(STATIC_DIR.length + 1)}`);
+  const corsHeaders: Record<string, string> = publicWidgetAsset ? { "Access-Control-Allow-Origin": "*" } : {};
   const ext = extname(filePath);
   const contentType = relPath.endsWith("manifest.json")
     ? "application/manifest+json; charset=utf-8"
@@ -252,7 +256,7 @@ export async function serveStatic(relPath: string, notFound: () => Response, req
     const sidecarPath = `${filePath}${sidecarExt}`;
     if (existsSync(sidecarPath)) {
       return new Response(Bun.file(sidecarPath), {
-        headers: buildCompressedHeaders(contentType, cacheControl, encoding),
+        headers: { ...buildCompressedHeaders(contentType, cacheControl, encoding), ...corsHeaders },
       });
     }
   }
@@ -261,13 +265,14 @@ export async function serveStatic(relPath: string, notFound: () => Response, req
     const stats = statSync(filePath);
     const compressed = gzipAsset(filePath, stats.mtimeMs || 0, new Uint8Array(readFileSync(filePath)));
     return new Response(Buffer.from(compressed), {
-      headers: buildCompressedHeaders(contentType, cacheControl, "gzip"),
+      headers: { ...buildCompressedHeaders(contentType, cacheControl, "gzip"), ...corsHeaders },
     });
   }
 
   const responseHeaders: Record<string, string> = {
     "Content-Type": contentType,
     "Cache-Control": cacheControl,
+    ...corsHeaders,
   };
   if (!SKIP_COMPRESSION_EXTS.has(ext.toLowerCase())) {
     responseHeaders["Vary"] = "Accept-Encoding";

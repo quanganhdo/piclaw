@@ -616,10 +616,18 @@ export class AgentRuntimeFacade {
     chatJid: string,
     text: string,
     behavior: "steer" | "followUp",
+    admission?: { validate: () => void; signal?: AbortSignal },
   ): Promise<{ queued: boolean; error?: string }> {
+    const check = () => { admission?.signal?.throwIfAborted(); admission?.validate(); };
+    check();
     requireSingleUserDirectExecution("Direct queue mutation");
     revokeAddonLocalAgent(chatJid);
     const session = (await this.options.getOrCreateRuntime(chatJid)).session;
+    check();
+    // The SDK awaits input handlers before mutating its steering queue and has
+    // no public admission hook there. Bound requests use the fenced durable
+    // follow-up path rather than injecting into a streaming SDK session.
+    if (admission) return { queued: false };
     if (!session.isStreaming) return { queued: false };
 
     const channel = detectChannel(chatJid);

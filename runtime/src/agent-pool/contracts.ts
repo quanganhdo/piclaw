@@ -16,6 +16,7 @@ import type { ProtectedRecoveryHandoffMetadata } from "./protected-recovery-hand
 export type AgentFailureCategory =
   | "rate_limit"
   | "auth_config"
+  | "credential_storage"
   | "network"
   | "aborted"
   | "timeout"

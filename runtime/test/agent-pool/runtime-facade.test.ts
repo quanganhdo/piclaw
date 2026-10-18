@@ -1167,3 +1167,14 @@ for (const kind of ["slash", "control"] as const) {
     }
   });
 }
+
+test('lifetime-bound streaming input refuses unfenced SDK injection', async () => {
+  let prompts = 0;
+  let validations = 0;
+  const runtime = createRuntime({ isStreaming: true, prompt: async () => { prompts++; } });
+  const fixture = createFacade();
+  fixture.pool.set('web:default', { runtime, lastUsed: Date.now() });
+  expect(await fixture.facade.queueStreamingMessage('web:default', 'peer input', 'steer', { validate: () => { validations++; } })).toEqual({ queued: false });
+  expect(prompts).toBe(0);
+  expect(validations).toBe(2);
+});

@@ -32,7 +32,7 @@ const BRIDGE_SCRIPT = `
 
   // Forward host messages to widget
   window.addEventListener('message', function(e) {
-    if (e.data && e.data.type === 'piclaw:host-message') {
+    if (e.source === window.parent && e.data && e.data.type === 'piclaw:host-message') {
       window.dispatchEvent(new CustomEvent('piclaw:widget-message', { detail: e.data }));
     }
   });

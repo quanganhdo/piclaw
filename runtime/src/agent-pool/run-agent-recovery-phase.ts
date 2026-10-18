@@ -28,7 +28,7 @@ import {
   runCompactionWithTimeout,
 } from "./compaction.js";
 import { buildPiclawCompactionEventFields, type PiclawCompactionTriggerMetadata } from "./compaction-trigger-context.js";
-import { RECOVERY_CONTINUATION_PROMPT } from "./context-pressure-retry.js";
+import { FINALIZATION_RECOVERY_PROMPT, RECOVERY_CONTINUATION_PROMPT, TOOLS_DISABLED_RECOVERY_PROMPT } from "./context-pressure-retry.js";
 import type { AgentFailureCategory, AgentOutput, AgentRecoveryDiagnosticEntry, AgentRecoveryMetadata, RunAgentOptions } from "./contracts.js";
 import { getRecoveryPolicyConfig } from "../core/config.js";
 import {
@@ -746,7 +746,12 @@ export async function runAgentRecoveryPhase(options: RunAgentRecoveryPhaseOption
     const successfulRecoveryCompactionBeforeAttempt = generationAdvanceAvailableAfterCompaction;
     let attempt: PromptAttemptResult;
     try {
-      attempt = await options.runPromptAttempt(attemptPrompt, attemptTimeoutMs, turnToolExecutionCount, finalizationReserveMs);
+      // A tools-disabled attempt must not tell the model to keep working: it would
+      // only call tools that were just removed. Replayed user text is unchanged.
+      const promptForAttempt = recoveryContinuationWithoutTools && attemptPrompt === RECOVERY_CONTINUATION_PROMPT
+        ? TOOLS_DISABLED_RECOVERY_PROMPT
+        : attemptPrompt;
+      attempt = await options.runPromptAttempt(promptForAttempt, attemptTimeoutMs, turnToolExecutionCount, finalizationReserveMs);
       turnToolExecutionCount = attempt.toolExecutionCount;
       protectedRecoveryToolsRequired ||= Boolean(
         attempt.snapshot.hadToolActivity || attempt.snapshot.hasUnresolvedToolExecution,
@@ -1128,7 +1133,9 @@ export async function runAgentRecoveryPhase(options: RunAgentRecoveryPhaseOption
     // instruction and can repeat side-effecting tools. Resume persisted
     // turns with a neutral continuation; only replay when no branch state
     // was appended (for example, a synchronous pre-prompt throw).
-    if (attempt.promptWasPersisted || attempt.snapshot.hadToolActivity) {
+    if (effectiveDecision.strategy === "finalize") {
+      attemptPrompt = FINALIZATION_RECOVERY_PROMPT;
+    } else if (attempt.promptWasPersisted || attempt.snapshot.hadToolActivity) {
       attemptPrompt = RECOVERY_CONTINUATION_PROMPT;
     }
     recoveryContinuationWithoutTools = effectiveDecision.strategy === "finalize"

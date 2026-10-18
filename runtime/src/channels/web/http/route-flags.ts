@@ -58,6 +58,13 @@ export type RouteFlags = {
   isAuthEndpoint: boolean;
 };
 
+/** Credential-free dependencies for opaque widget frames, never app bundles or user data. */
+export function isPublicWidgetAssetPath(pathname: string): boolean {
+  if (pathname.split('/').some(part => part === '.' || part === '..') || /[%\\\\]/.test(pathname)) return false;
+  return /^\/static\/common\/js\/vendor\/.+\.(?:js|mjs|wasm|css)$/.test(pathname)
+    || /^\/static\/common\/fonts\/.+\.(?:woff2?|ttf|otf)$/.test(pathname);
+}
+
 /**
  * Determine which `/static/` assets are safe to serve without authentication.
  * Public pages only require styling, icons, and the login bundle.
@@ -65,6 +72,7 @@ export type RouteFlags = {
  * @returns True when the static asset can be served on unauthenticated pages.
  */
 export function isPublicStaticPath(pathname: string): boolean {
+  if (isPublicWidgetAssetPath(pathname)) return true;
   if (pathname.startsWith("/static/fonts/")) return true;
   if (pathname.startsWith("/static/common/fonts/")) return true;
 

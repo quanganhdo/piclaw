@@ -29,7 +29,6 @@ The release snapshot in `release/core-addons/catalog.json` selects entries tagge
 
 Before tagging a new release, refresh the catalog snapshot from the published `piclaw-addons` catalog, select **every** entry currently tagged `core`, fetch its published tarball, update its checksum and dependency lock, then rerun focused seed tests and pack/Docker/portable checks. A later catalog edit cannot alter a tagged artifact. First startup seeds the bundle only where no workspace add-on directory or persisted `messages.db` exists. After that, add-ons remain ordinary user-managed packages: removing or upgrading one survives later Piclaw upgrades.
 
-When `PICLAW_BUILD_EXPERIMENTAL_DESKTOP` is enabled (disabled by default), the workflow also builds the experimental Electrobun desktop shell with a `piclaw-desktop` prefix:
 
 - `piclaw-desktop-<version>-linux-x64.tar.gz`
 - `piclaw-desktop-<version>-linux-arm64.tar.gz`
@@ -78,7 +77,6 @@ make portable-linux # Linux-only .run alias
 make portable-linux-baseline # Linux x64 .run with non-AVX Bun baseline runtime
 make portable-mac   # macOS-only .tar.gz alias
 make portable-windows # Windows-only .zip alias
-make portable-experimental-shell # current OS/arch Electrobun shell artifact with piclaw-desktop prefix
 ```
 
 Linux smoke-test example:

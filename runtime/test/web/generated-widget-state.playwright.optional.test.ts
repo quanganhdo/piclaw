@@ -171,7 +171,12 @@ for (const engine of ['chromium', 'webkit']) {
       expect((await counts(frame)).events.length).toBe(delivered);
       const beforeBurst = (await counts(frame)).events.length;
       await frame.evaluate(() => {
-        for (const count of [5, 6]) window.dispatchEvent(new MessageEvent('message', { data: { __piclawGeneratedWidgetHost: true, widgetId: 'fixture-widget', type: 'widget.update', payload: { runtimeState: { count } } } }));
+        window.dispatchEvent(new MessageEvent('message', { data: { __piclawGeneratedWidgetHost: true, widgetId: 'fixture-widget', type: 'widget.update', payload: { runtimeState: { count: 99 } } } }));
+      });
+      await tick(page);
+      expect((await state(frame)).runtimeState).toEqual({ count: 4 });
+      await frame.evaluate(() => {
+        for (const count of [5, 6]) window.dispatchEvent(new MessageEvent('message', { source: window.parent, data: { __piclawGeneratedWidgetHost: true, widgetId: 'fixture-widget', type: 'widget.update', payload: { runtimeState: { count } } } }));
       });
       await tick(page);
       expect((await state(frame)).runtimeState).toEqual({ count: 6 });

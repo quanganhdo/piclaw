@@ -6,7 +6,7 @@ import type { OAuthCredential, Provider } from '@earendil-works/pi-ai';
 import { FileCredentialStore } from '../../src/agent-pool/credential-store.js';
 import { createTempWorkspace } from '../helpers.js';
 
-test('released 1.1.0 cancellation rejects delivery but preserves late rotated refresh tokens', async () => {
+test('released 1.2.0 cancellation rejects delivery but preserves late rotated refresh tokens', async () => {
  const ws=createTempWorkspace('pi103-refresh-');
  const credentials=new FileCredentialStore(join(ws.base,'agent/auth.json'));
  const old:OAuthCredential={type:'oauth',access:'synthetic-old-access',refresh:'synthetic-old-refresh',expires:1};

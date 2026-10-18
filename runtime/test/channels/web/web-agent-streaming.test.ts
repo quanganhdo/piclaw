@@ -579,6 +579,35 @@ describe("web agent streaming", () => {
     }
   });
 
+  for (const error of ["Model credential storage unavailable.", "Model credential resolution unavailable."]) {
+    test(`persists a storage/configuration marker without sign-in guidance: ${error}`, async () => {
+      let runs = 0;
+      const agentPool = {
+        setSessionBinder: () => {},
+        runAgent: async () => { runs++; return { status: "error", result: null, error }; },
+        getContextUsageForChat: async () => null,
+      } as any;
+      const fixture = await createWebChannelTestFixture({
+        workspace: "temp", queue: new AgentQueue(), agentPool,
+        resetSql: "DELETE FROM message_media; DELETE FROM messages; DELETE FROM chats; DELETE FROM chat_cursors;",
+      });
+      try {
+        const { channel, db, events } = fixture;
+        expect(channel.storeMessage("web:default", "inspect it", false, [])).not.toBeNull();
+        await channel.processChat("web:default", "default");
+        const timeline = db.getTimeline("web:default", 20);
+        const blocks = timeline.flatMap(row => row.data?.content_blocks || []);
+        expect(blocks).toContainEqual(expect.objectContaining({
+          type: "turn_outcome_marker", kind: "error", failure_category: "credential_storage",
+          title: "Credentials could not be read/resolved; local storage/configuration needs attention",
+          detail: "Credentials could not be read/resolved; local storage/configuration needs attention",
+        }));
+        expect(JSON.stringify({ timeline, events })).not.toMatch(/sign in|\/login|blocked_auth/i);
+        expect(runs).toBe(1);
+      } finally { fixture.cleanup(); }
+    });
+  }
+
   test("keeps visible commentary in a provider-error reply despite a discard request", async () => {
     const commentary = "Searching saved output for a matching record.";
     const agentPool = {

@@ -8,7 +8,7 @@ import { createAssistantMessageEventStream, type AssistantMessage, type Model, t
 import { createTestCredentialStore } from '../model-services-fixture.js';
 import { assertPathWithinTestFilesystemIsolation } from '../../scripts/test-filesystem-isolation.js';
 
-test('public 1.1.0 codemode writes shown images and truncated output as private owned files',async()=>{
+test('public 1.2.0 codemode writes shown images and truncated output as private owned files',async()=>{
  const ws=createTempWorkspace('codemode103-files-'),paths=new Set<string>();
  const originalTmp=process.env.TMPDIR,outputDir=mkdtempSync(join(tmpdir(),'codemode103-private-'));
  assertPathWithinTestFilesystemIsolation(outputDir);process.env.TMPDIR=outputDir;

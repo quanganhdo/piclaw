@@ -87,7 +87,7 @@
       "semanticReaderOccurrences": 71
     },
     "docsDeploy": {
-      "referencedNames": 149,
+      "referencedNames": 148,
       "directReaderNames": 16,
       "directReaderOccurrences": 32,
       "helperReaderNames": 0,
@@ -796,22 +796,6 @@
       }
     },
     {
-      "name": "PICLAW_BUILD_EXPERIMENTAL_DESKTOP",
-      "scopes": {
-        "docsDeploy": {
-          "referenced": true,
-          "directReaders": 0,
-          "helperReaders": 0,
-          "semanticReaders": 0,
-          "files": [
-            ".github/workflows/publish.yml",
-            "docs/release.md"
-          ],
-          "readerFiles": []
-        }
-      }
-    },
-    {
       "name": "PICLAW_CHAT_JID",
       "scopes": {
         "docsDeploy": {
@@ -1216,6 +1200,7 @@
           "files": [
             "runtime/scripts/benchmark-cold-session.ts",
             "runtime/scripts/note-retrieval-baseline.ts",
+            "runtime/scripts/qualify-plan193.ts",
             "runtime/scripts/test-filesystem-isolation.ts",
             "scripts/audit-baseline-quality-deterministic.ts",
             "scripts/audit-piclaw-env-surface.ts",
@@ -1273,6 +1258,7 @@
             "docs/development/db-startup-performance.md",
             "docs/development/mcp-owner-lifecycle.md",
             "docs/development/mcp-settings-api.md",
+            "docs/development/pi-1.2.0-qualification.md",
             "docs/development/receipts/pi-103-core-addon-peers.json",
             "docs/development/receipts/pi-103-deeper-qualification.json",
             "docs/development/receipts/pi-103-soak-agent-qualification.json",
@@ -1293,6 +1279,7 @@
             "runtime/scripts/benchmark-cold-session.ts",
             "runtime/scripts/controlled-test-runner.ts",
             "runtime/scripts/note-retrieval-baseline.ts",
+            "runtime/scripts/qualify-plan193.ts",
             "runtime/scripts/test-filesystem-isolation.ts",
             "scripts/audit-baseline-quality-deterministic.ts",
             "scripts/audit-core-config-keychain-coverage.sh",
@@ -1367,21 +1354,6 @@
           "files": [
             "runtime/src/core/config-sources.ts",
             "runtime/src/core/config-web.ts"
-          ],
-          "readerFiles": []
-        }
-      }
-    },
-    {
-      "name": "PICLAW_DESKTOP_URL",
-      "scopes": {
-        "docsDeploy": {
-          "referenced": true,
-          "directReaders": 0,
-          "helperReaders": 0,
-          "semanticReaders": 0,
-          "files": [
-            "docs/desktop.md"
           ],
           "readerFiles": []
         }
@@ -2356,6 +2328,16 @@
     {
       "name": "PICLAW_INTEGRATION_TIMEOUT_SEC",
       "scopes": {
+        "docsDeploy": {
+          "referenced": true,
+          "directReaders": 0,
+          "helperReaders": 0,
+          "semanticReaders": 0,
+          "files": [
+            ".github/workflows/integration-gate.yml"
+          ],
+          "readerFiles": []
+        },
         "tooling": {
           "referenced": true,
           "directReaders": 1,
@@ -3152,6 +3134,7 @@
           "helperReaders": 0,
           "semanticReaders": 0,
           "files": [
+            "runtime/scripts/qualify-plan193.ts",
             "runtime/scripts/test-filesystem-isolation.ts",
             "scripts/audit-piclaw-env-surface.ts",
             "scripts/smoke-install-from-repo.sh"
@@ -5377,6 +5360,7 @@
           "files": [
             "runtime/scripts/benchmark-cold-session.ts",
             "runtime/scripts/note-retrieval-baseline.ts",
+            "runtime/scripts/qualify-plan193.ts",
             "runtime/scripts/test-filesystem-isolation.ts",
             "scripts/audit-baseline-quality-deterministic.ts",
             "scripts/audit-piclaw-env-surface.ts",
@@ -7907,7 +7891,6 @@
             ".github/workflows/e2e.yml",
             "docs/azure/README.md",
             "docs/configuration.md",
-            "docs/desktop.md",
             "skel/.pi/skills/bootstrap-container/SKILL.md",
             "skel/.pi/skills/bootstrap-container/bootstrap-container.sh",
             "skel/.pi/skills/situate-daily-notes/agent-memory-sidecar.ts",
@@ -7927,6 +7910,7 @@
           "files": [
             "runtime/scripts/benchmark-cold-session.ts",
             "runtime/scripts/note-retrieval-baseline.ts",
+            "runtime/scripts/qualify-plan193.ts",
             "runtime/scripts/test-filesystem-isolation.ts",
             "scripts/audit-baseline-quality-deterministic.ts",
             "scripts/audit-piclaw-env-surface.ts",

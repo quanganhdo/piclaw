@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 
 import "../helpers.js";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { createAgentSession, DefaultResourceLoader, ModelRuntime, SessionManager, SettingsManager } from "@earendil-works/pi-coding-agent";
+import { createAssistantMessageEventStream, InMemoryCredentialStore, type AssistantMessage, type Model, type Provider } from "@earendil-works/pi-ai";
+import { Type } from "@sinclair/typebox";
 
 import {
   buildRecoveryDiagnosticEntry,
@@ -12,7 +18,7 @@ import {
   type PromptAttemptResult,
   type SessionWithToolControl,
 } from "../../src/agent-pool/run-agent-recovery-phase.js";
-import { RECOVERY_CONTINUATION_PROMPT } from "../../src/agent-pool/context-pressure-retry.js";
+import { FINALIZATION_RECOVERY_PROMPT, RECOVERY_CONTINUATION_PROMPT, TOOLS_DISABLED_RECOVERY_PROMPT } from "../../src/agent-pool/context-pressure-retry.js";
 import type { AgentOutput } from "../../src/agent-pool/contracts.js";
 import { initDatabase } from "../../src/db.js";
 import { endTrackedPhase } from "../../src/runtime/progress-watchdog.js";
@@ -1652,3 +1658,197 @@ describe("runAgentRecoveryPhase", () => {
     });
   });
 });
+
+test("neutral tools-disabled prompt retains explicit user continuation without replacing finalization", () => {
+  expect(TOOLS_DISABLED_RECOVERY_PROMPT).toContain("do not call any");
+  expect(TOOLS_DISABLED_RECOVERY_PROMPT).toContain("what remains and the next step");
+  expect(TOOLS_DISABLED_RECOVERY_PROMPT).toContain("they can ask you to continue");
+  expect(TOOLS_DISABLED_RECOVERY_PROMPT).not.toBe(FINALIZATION_RECOVERY_PROMPT);
+  expect(RECOVERY_CONTINUATION_PROMPT).toBe("Continue the current task from persisted state without repeating completed work.");
+});
+
+for (const transientRecoveryToolsEnabled of [false, true]) {
+  test(`finalization checkpoint takes precedence over neutral continuation (retry tools ${transientRecoveryToolsEnabled})`, async () => {
+    const prompts: string[] = [];
+    let tools = ["bash", "list_tools"];
+    const sessionCtrl: SessionWithToolControl = {
+      getActiveToolNames: () => [...tools],
+      setActiveToolsByName: (names) => { tools = [...names]; },
+    };
+    const result = await runAgentRecoveryPhase({
+      chatJid: "web:test-recovery-phase",
+      session: {} as any,
+      sessionCtrl,
+      prompt: "implement the next step",
+      startTime: Date.now(),
+      modelLabel: "test/model",
+      timeoutMs: 1_000,
+      runOptions: {},
+      logsDir: "/tmp/nonexistent-piclaw-test-logs",
+      clearAttachments: () => {},
+      recoveryConfig: recoveryConfig({ maxAttempts: 1, transientRecoveryToolsEnabled }),
+      runPromptAttempt: async (prompt) => {
+        prompts.push(prompt);
+        if (prompts.length === 1) {
+          return attempt({
+            output: { ...output("error", "No terminal assistant output"), failureCategory: "no_terminal_output" },
+            promptWasPersisted: true,
+            snapshot: {
+              hadToolActivity: true, hadPartialOutput: false, sawCompactionIntent: false,
+              hadCompletedTurnOutput: false, hadTerminalTurnOutput: false,
+              hasUnresolvedToolExecution: false, needsToolFreeFinalization: true,
+              canDisableToolsForRecovery: true,
+            },
+          });
+        }
+        expect(tools).toEqual([]);
+        expect(prompt).toBe(FINALIZATION_RECOVERY_PROMPT);
+        expect(prompt).toContain("Do not call tools");
+        expect(prompt).toContain("text-only checkpoint");
+        expect(prompt).not.toContain("they can ask you to continue");
+        expect(prompt).not.toBe(RECOVERY_CONTINUATION_PROMPT);
+        // Extension hooks cannot re-enable tools in the closing attempt.
+        sessionCtrl.setActiveToolsByName!(["bash"]);
+        expect(tools).toEqual([]);
+        return attempt({ output: output("success", undefined, "Checkpoint"), promptWasPersisted: true });
+      },
+    });
+    expect(result).toMatchObject({ status: "success", result: "Checkpoint", recovery: { strategyHistory: ["finalize"] } });
+    expect(prompts).toEqual(["implement the next step", FINALIZATION_RECOVERY_PROMPT]);
+    expect(tools).toEqual(["bash", "list_tools"]);
+    // The restored setter is bound to its controller, and usable again.
+    sessionCtrl.setActiveToolsByName!(["bash"]);
+    expect(tools).toEqual(["bash"]);
+  });
+}
+
+for (const promptWasPersisted of [false, true]) {
+  test(`ordinary retry preserves ${promptWasPersisted ? "enabled continuation" : "unpersisted user replay"}`, async () => {
+    const prompts: string[] = [];
+    const sessionCtrl: SessionWithToolControl = {
+      getActiveToolNames: () => ["bash"],
+      setActiveToolsByName: () => { throw new Error("Enabled retries must not change tools"); },
+    };
+    const result = await runAgentRecoveryPhase({
+      prompt: "original user instruction", chatJid: "web:test-recovery-phase",
+      session: {} as any, sessionCtrl, timeoutMs: 0, startTime: Date.now(),
+      modelLabel: "test/model", recoveryConfig: recoveryConfig(), runOptions: {},
+      logsDir: "/tmp/nonexistent-piclaw-test-logs", clearAttachments: () => {},
+      runPromptAttempt: async (prompt) => {
+        prompts.push(prompt);
+        return prompts.length === 1
+          ? attempt({ output: { ...output("error", "Connection error"), failureCategory: "network" }, promptWasPersisted })
+          : attempt({ output: output("success", undefined, "done") });
+      },
+    });
+    expect(result.status).toBe("success");
+    expect(prompts).toEqual(["original user instruction", promptWasPersisted ? RECOVERY_CONTINUATION_PROMPT : "original user instruction"]);
+  });
+}
+
+test("actual SDK blocks tool calls and hook activation in finalization, then restores tools", async () => {
+  const cwd = mkdtempSync(join(tmpdir(), "recovery-sdk-"));
+  const model: Model<"openai-completions"> = {
+    id: "scripted", provider: "recovery-fixture", name: "Recovery fixture", api: "openai-completions",
+    baseUrl: "https://unused.invalid", reasoning: false, input: ["text"], contextWindow: 128_000,
+    maxTokens: 512, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+  };
+  let phase = 0;
+  let providerCalls = 0;
+  let executions = 0;
+  let activationAttempts = 0;
+  const declarations: string[][] = [];
+  const scriptedStream: Provider["stream"] = (_model, context) => {
+    providerCalls += 1;
+    // Pi 1.2 providers receive normalized transcript tool deltas, not Context.tools.
+    const declared = new Set<string>();
+    for (const message of context.messages) {
+      if (message.role !== "system") continue;
+      for (const tool of message.toolsRemoved ?? []) declared.delete(tool.name);
+      for (const tool of message.toolsAdded ?? []) declared.add(tool.name);
+    }
+    declarations.push([...declared]);
+    // Even a stale/hallucinated tool call must not execute during closing.
+    const blockedCall = phase === 3 && providerCalls === 3;
+    const message: AssistantMessage = {
+      role: "assistant", api: model.api, provider: model.provider, model: model.id, timestamp: Date.now(),
+      content: blockedCall ? [{ type: "toolCall", id: "blocked-probe", name: "probe", arguments: {} }]
+        : [{ type: "text", text: "Persisted checkpoint" }],
+      stopReason: blockedCall ? "toolUse" : "stop",
+      usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+    };
+    const stream = createAssistantMessageEventStream();
+    stream.push({ type: "done", reason: blockedCall ? "toolUse" : "stop", message });
+    return stream;
+  };
+  const runtime = await ModelRuntime.create({ credentials: new InMemoryCredentialStore(), modelsPath: null,
+    refreshOnCreate: false, allowModelNetwork: false });
+  runtime.registerNativeProvider({ id: model.provider, name: "Recovery fixture", getModels: () => [model],
+    auth: { apiKey: { name: "No credential", login: async () => { throw new Error("Login forbidden"); },
+      resolve: async () => ({ auth: {}, source: "synthetic" }) } },
+    stream: scriptedStream, streamSimple: scriptedStream });
+  await runtime.refresh({ allowNetwork: false });
+  const settingsManager = SettingsManager.inMemory({ retry: { enabled: false }, compaction: { enabled: false } });
+  const loader = new DefaultResourceLoader({ cwd, agentDir: join(cwd, "profile"), settingsManager,
+    noExtensions: true, noSkills: true, noPromptTemplates: true, noThemes: true, noContextFiles: true,
+    disabledBuiltinExtensions: ["codemode", "tool-search", "mcp"],
+    extensionFactories: [pi => {
+      pi.registerTool({ name: "probe", label: "Probe", description: "In-memory execution counter",
+        parameters: Type.Object({}), async execute() {
+          executions += 1;
+          return { content: [{ type: "text", text: "executed" }], details: {} };
+        } });
+      pi.on("before_agent_start", () => {
+        activationAttempts += 1;
+        pi.setActiveTools(["probe"]);
+      });
+    }],
+  });
+  let session: Awaited<ReturnType<typeof createAgentSession>>["session"] | undefined;
+  try {
+    await loader.reload();
+    ({ session } = await createAgentSession({ cwd, agentDir: join(cwd, "profile"), modelRuntime: runtime, model,
+      sessionManager: SessionManager.inMemory(cwd), settingsManager, resourceLoader: loader, noTools: "builtin" }));
+    const controlledSession = session;
+    await controlledSession.bindExtensions({ mode: "rpc", onError: error => { throw new Error(String(error)); } });
+    const prompts: string[] = [];
+    const result = await runAgentRecoveryPhase({
+      prompt: "original instruction", chatJid: "web:test-recovery-phase", session: controlledSession,
+      sessionCtrl: controlledSession, timeoutMs: 0, startTime: Date.now(), modelLabel: "recovery-fixture/scripted",
+      recoveryConfig: recoveryConfig({ totalBudgetMs: 5_000 }), runOptions: {},
+      logsDir: "/tmp/nonexistent-piclaw-test-logs", clearAttachments: () => {},
+      runPromptAttempt: async prompt => {
+        phase += 1;
+        prompts.push(prompt);
+        await controlledSession.prompt(prompt);
+        if (phase === 1) return attempt({
+          output: { ...output("error", "Connection error"), failureCategory: "network" }, promptWasPersisted: true,
+        });
+        if (phase === 2) return attempt({
+          output: { ...output("error", "No terminal output"), failureCategory: "no_terminal_output" },
+          promptWasPersisted: true, snapshot: {
+            hadToolActivity: true, hadPartialOutput: false, hadCompletedTurnOutput: false,
+            hadTerminalTurnOutput: false, sawCompactionIntent: false, hasUnresolvedToolExecution: false,
+            needsToolFreeFinalization: true, canDisableToolsForRecovery: true,
+          },
+        });
+        return attempt({ output: output("success", undefined, "Persisted checkpoint"), promptWasPersisted: true });
+      },
+    });
+    expect(result).toMatchObject({ status: "success", recovery: { strategyHistory: ["retry", "finalize"] } });
+    expect(prompts).toEqual(["original instruction", RECOVERY_CONTINUATION_PROMPT, FINALIZATION_RECOVERY_PROMPT]);
+    expect(activationAttempts).toBe(3);
+    expect(declarations).toEqual([["probe"], ["probe"], [], []]);
+    expect(executions).toBe(0);
+    expect(controlledSession.messages.find(message => message.role === "toolResult" && message.toolCallId === "blocked-probe"))
+      .toMatchObject({ isError: true });
+    expect(controlledSession.getActiveToolNames()).toEqual(["probe"]);
+    controlledSession.setActiveToolsByName(["probe"]);
+    await controlledSession.prompt("Verify restored tool baseline");
+    expect(declarations.at(-1)).toEqual(["probe"]);
+  } finally {
+    if (session) { await session.abort(); session.dispose(); }
+    rmSync(cwd, { recursive: true, force: true });
+  }
+}, 15_000);

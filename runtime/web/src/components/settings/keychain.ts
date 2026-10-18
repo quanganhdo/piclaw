@@ -353,6 +353,7 @@ export function KeychainSection({ filter = '' }) {
                                 <td class="settings-keychain-env">${e.envVar ? html`<code>$${e.envVar}</code>` : '—'}</td>
                                 <td class="settings-keychain-date">${formatDate(e.updatedAt)}</td>
                                 <td class="settings-keychain-actions">
+                                    <div class="settings-keychain-action-group">
                                     <button ref=${node => { if (node) revealButtonRefs.current.set(e.name, node); else revealButtonRefs.current.delete(e.name); }} aria-label=${`${isRevealed ? tr('settings.keychain.hideSecret') : tr('settings.keychain.revealSecret')}: ${e.name}`} aria-expanded=${Boolean(rs)} class=${`settings-keychain-reveal-btn${isRevealed ? ' active' : ''}`}
                                         onClick=${() => handleRevealClick(e.name)}
                                         title=${isRevealed ? tr('settings.keychain.hideSecret') : tr('settings.keychain.revealSecret')}>
@@ -370,6 +371,7 @@ export function KeychainSection({ filter = '' }) {
                                         `
                                         : html`<button ref=${node => { if (node) deleteButtonRefs.current.set(e.name, node); else deleteButtonRefs.current.delete(e.name); }} aria-label=${`Delete ${e.name}`} class="settings-keychain-delete-btn" onClick=${() => setConfirmDelete(e.name)} title=${tr('settings.keychain.deleteTitle')}>🗑</button>`
                                     }
+                                    </div>
                                 </td>
                             </tr>
                             <tr class="settings-keychain-notes-row" key=${e.name + '-notes'}>

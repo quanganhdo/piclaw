@@ -1229,6 +1229,20 @@ export class StandaloneEditorInstance implements PaneInstance {
             anchorParent: this.paneEl,
             anchorBefore: this.bodyEl,
             ownerDocument: this.ownerDocument,
+            onExternalChange: async () => {
+                if (this.dirty) return false;
+                const knownMtime = this.currentMtime;
+                const path = this.path;
+                const view = this.view;
+                const content = this.getContent();
+                const data = await getWorkspaceFile(path, EDITOR_MAX_BYTES, 'edit');
+                // A save, edit or host disposal while fetching must not replace the newer state.
+                if (this.disposed || this.path !== path || this.view !== view || this.currentMtime !== knownMtime) return true;
+                if (this.dirty || this.getContent() !== content) return false;
+                if (data?.error || typeof data?.text !== 'string' || !data?.mtime) return false;
+                this.setContent(data.text, data.mtime);
+                return true;
+            },
             onReload: async () => {
                 this.updateStatusText('Reloading…');
                 try {
@@ -1299,12 +1313,24 @@ export class StandaloneEditorInstance implements PaneInstance {
             return;
         }
         const viewState = this.captureViewState();
+        const selection = this.view.state.selection.main;
+        const hadFocus = this.view.hasFocus;
         this.initialContent = content;
         this.initialContentLength = content.length;
         this.largeDocumentMode = isLargeDocumentContent(content);
         this.currentMtime = mtime;
         this.renderEditorSurface(content, this.diffMode, viewState);
         this.setDirty(false);
+        this.conflictMonitor?.onSaved(mtime);
+        const view = this.view;
+        requestAnimationFrame(() => {
+            if (this.disposed || this.view !== view) return;
+            view.dispatch({ selection: {
+                anchor: Math.min(selection.anchor, view.state.doc.length),
+                head: Math.min(selection.head, view.state.doc.length),
+            } });
+            if (hadFocus && this.ownerDocument.activeElement === this.ownerDocument.body) view.focus();
+        });
     }
 
     focus(): void {
@@ -1459,6 +1485,7 @@ export class StandaloneEditorInstance implements PaneInstance {
     /** Update the file path (after rename). */
     setPath(newPath: string): void {
         this.path = newPath;
+        this.initConflictMonitor();
         if (!this.isLivePreviewAvailable()) {
             void this.applyLivePreview(false);
         } else if (this.livePreviewEnabled) {

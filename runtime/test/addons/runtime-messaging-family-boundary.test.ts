@@ -38,6 +38,7 @@ test('add-on messaging list resolve and delivery deny family mode before global 
     fixture.configure('family-shared'); const calls: string[] = []; const runtime = handlers(calls);
     for (const identity of [null, familyIdentity]) {
       expect(() => withExecutionIdentity(identity, () => runtime.listAdvertisableAgents())).toThrow('unavailable in multi-user mode');
+      expect(() => withExecutionIdentity(identity, () => runtime.listAdvertisableSessions())).toThrow('unavailable in multi-user mode');
       expect(() => withExecutionIdentity(identity, () => runtime.resolveLocalTarget({ target_agent_name: 'default' }))).toThrow('unavailable in multi-user mode');
       await expect(withExecutionIdentity(identity, () => runtime.deliverPeerMessage({ ...delivery, attachments: [{} as any] }))).rejects.toThrow('unavailable in multi-user mode');
     }
@@ -50,6 +51,7 @@ test('retained family context and malformed access config cannot reach add-on me
   try {
     fixture.configure('single-user'); const calls: string[] = []; const runtime = handlers(calls);
     expect(() => withExecutionIdentity(familyIdentity, () => runtime.listAdvertisableAgents())).toThrow('unavailable in multi-user mode');
+    expect(() => withExecutionIdentity(familyIdentity, () => runtime.listAdvertisableSessions())).toThrow('unavailable in multi-user mode');
     writeFileSync(fixture.path, '{');
     expect(() => runtime.resolveLocalTarget({ target_agent_name: 'default' })).toThrow('access configuration cannot default safely');
     expect(calls).toEqual([]);

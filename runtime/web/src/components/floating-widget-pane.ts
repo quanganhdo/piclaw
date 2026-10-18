@@ -22,6 +22,8 @@ export function buildFloatingWidgetPaneClassName(maximized = false) {
 export function FloatingWidgetPane({ widget, onClose, onWidgetEvent }) {
     const { t } = useTranslation();
     const frameRef = useRef(null);
+    const latestWidgetRef = useRef(widget);
+    latestWidgetRef.current = widget;
     const frameLoadedRef = useRef(false);
     const [maximized, setMaximized] = useState(false);
     const widgetSessionKey = getGeneratedWidgetSessionKey(widget);
@@ -63,10 +65,13 @@ export function FloatingWidgetPane({ widget, onClose, onWidgetEvent }) {
         if (!iframe) return undefined;
 
         const postToFrame = (type) => {
-            const hostName = getGeneratedWidgetHostWindowName(widget);
+            // Load retries must not overwrite newer state in opaque frames, where
+            // later iframe.name attribute changes need not reach window.name.
+            const currentWidget = latestWidgetRef.current;
+            const hostName = getGeneratedWidgetHostWindowName(currentWidget);
             const payload = type === 'widget.init'
-                ? getGeneratedWidgetInitPayload(widget)
-                : getGeneratedWidgetHostPayload(widget);
+                ? getGeneratedWidgetInitPayload(currentWidget)
+                : getGeneratedWidgetHostPayload(currentWidget);
 
             setIframeNameBestEffort(iframe, hostName);
             postIframeMessageBestEffort(iframe, {
@@ -148,7 +153,8 @@ export function FloatingWidgetPane({ widget, onClose, onWidgetEvent }) {
 
             if (incomingKey && currentKey && incomingKey !== currentKey) return;
 
-            if (!incomingKey && iframe?.contentWindow && event.source !== iframe.contentWindow) return;
+            // Widget IDs identify sessions; they do not authenticate the sender.
+            if (!iframe?.contentWindow || event.source !== iframe.contentWindow) return;
 
             onWidgetEvent?.(data, widget);
         };

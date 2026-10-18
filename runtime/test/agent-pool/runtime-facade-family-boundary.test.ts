@@ -106,6 +106,22 @@ test('owner model controls mutate only the active family session and require exa
   } finally { fixture.cleanup(); }
 });
 
+test('host steer admission revalidates after asynchronous runtime attachment before prompt', async () => {
+  const fixture = setup();
+  try {
+    fixture.configure('single-user');
+    const calls: string[] = []; const runtime = facade(calls);
+    let checks = 0;
+    await expect(runtime.queueStreamingMessage('web:alice', 'private', 'steer', {
+      validate: () => { if (++checks === 2) throw Error('stale attachment'); },
+    })).rejects.toThrow('stale attachment');
+    expect(checks).toBe(2); expect(calls).toEqual(['hydrate']);
+    const abort = new AbortController(); abort.abort(Error('cancelled'));
+    await expect(runtime.queueStreamingMessage('web:alice', 'private', 'steer', { validate() {}, signal: abort.signal })).rejects.toThrow('cancelled');
+    expect(calls).toEqual(['hydrate']);
+  } finally { fixture.cleanup(); }
+});
+
 test('single-user direct mutations retain existing behavior', async () => {
   const fixture = setup();
   try {

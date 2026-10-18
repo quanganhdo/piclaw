@@ -68,3 +68,5 @@ jobs:
           # Playwright/Docker stages auto-detect availability;
           # skip Docker-based tests in CI for now (no Docker-in-Docker).
           PICLAW_INTEGRATION_SKIP_DOCKER: "1"
+          # Full serial runtime suite now exceeds the old ten-minute stage budget.
+          PICLAW_INTEGRATION_TIMEOUT_SEC: "1200"

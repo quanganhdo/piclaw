@@ -31,7 +31,7 @@ jobs:
     steps:
       - name: Resolve exact hotfix source
         id: ref
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
         with:
           script: |-
             const tag = context.payload.inputs.tag;
@@ -100,7 +100,7 @@ jobs:
       - name: Build portable artifact
         run: bun run release:build-portable ${{ matrix.build_args }}
       - name: Upload portable artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           retention-days: 1
           name: piclaw-${{ inputs.tag }}-${{ matrix.platform }}-${{ matrix.arch }}-portable
@@ -238,7 +238,7 @@ jobs:
       - name: Build source archives
         run: bun run release:build-source-archive
       - name: Download portable artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           pattern: piclaw-${{ inputs.tag }}-*-portable
           path: artifacts/release
@@ -249,7 +249,7 @@ jobs:
           TAG_NAME: ${{ inputs.tag }}
         run: gh release upload "$HOTFIX_TAG" artifacts/release/* --clobber
       - name: Record untested release and move tag
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
         with:
           script: >-
             const tag=context.payload.inputs.tag, sha=context.payload.inputs.sha;

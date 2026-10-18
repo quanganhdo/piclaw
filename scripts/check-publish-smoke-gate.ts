@@ -28,7 +28,7 @@ export function checkPublishSmokeGate(workflow: Record<string, any>): void {
     "Manifest publication must require both image jobs to succeed.");
   const assets = workflow.jobs?.["publish-portable-assets"];
   require(assets?.needs?.includes("merge") && assets.needs.includes("build-portable-artifacts") &&
-    assets.if?.replace(/\s/g, "") === "${{always()&&needs.merge.result=='success'&&needs.resolve-runtime-versions.result=='success'&&needs.build-portable-artifacts.result=='success'&&(needs.build-experimental-shell-artifacts.result=='success'||needs.build-experimental-shell-artifacts.result=='skipped')}}" &&
+    assets.if?.replace(/\s/g, "") === "${{always()&&needs.merge.result=='success'&&needs.resolve-runtime-versions.result=='success'&&needs.build-portable-artifacts.result=='success'}}" &&
     assets["continue-on-error"] === undefined,
     "Complete-release assets must require successful images and portable builds.");
 }

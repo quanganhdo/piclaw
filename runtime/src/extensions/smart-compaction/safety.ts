@@ -7,7 +7,6 @@
 
 import {
   BUDGET_SAFETY_MARGIN,
-  MAX_COMPACTION_OUTPUT_TOKENS,
   MAX_KEEP_RECENT_FRACTION,
   MIN_COMPACTION_OUTPUT_TOKENS,
   PROGRESSIVE_FALLBACK_CONTEXT_WINDOW,
@@ -115,13 +114,20 @@ export function getCompactionRetryPromptTokenTarget(model: unknown, fraction = 0
   return Math.max(MIN_COMPACTION_OUTPUT_TOKENS, Math.floor(effectiveWindow * fraction));
 }
 
-/** Normalize the operator reserve into the output target used by every path. */
+/**
+ * Normalize the operator reserve into the output target used by every path.
+ * The reserve is the only summary-size policy here; model and context limits
+ * are applied per request by getSafeCompactionMaxTokens().
+ */
 export function getCompactionOutputTokenTarget(reserveTokens: number): number {
   const requested = Math.floor(Math.max(0, Number(reserveTokens) || 0) * 0.8);
-  return Math.max(
-    MIN_COMPACTION_OUTPUT_TOKENS,
-    Math.min(requested, MAX_COMPACTION_OUTPUT_TOKENS),
-  );
+  return Math.max(MIN_COMPACTION_OUTPUT_TOKENS, requested);
+}
+
+/** The model's declared output limit, when it provides a usable one. */
+function getModelOutputTokenLimit(model: unknown): number | undefined {
+  const maxTokens = Math.floor(Number((model as { maxTokens?: unknown } | null | undefined)?.maxTokens));
+  return Number.isFinite(maxTokens) && maxTokens > 0 ? maxTokens : undefined;
 }
 
 export function getSafeCompactionMaxTokens(model: unknown, promptText: string, requestedMaxTokens: number): {
@@ -140,11 +146,13 @@ export function getSafeCompactionMaxTokens(model: unknown, promptText: string, r
       `Compaction prompt exceeds safe model budget: prompt+overhead=${promptTokens}t, reasoningReserve=${reasoningReserveTokens}t, context=${contextWindow}t, availableOutput=${availableOutputTokens}t`,
     );
   }
+  const modelOutputLimit = getModelOutputTokenLimit(model) ?? Number.POSITIVE_INFINITY;
   return {
-    maxTokens: Math.max(
+    // Never ask a provider for more than the model declares, even for the minimum.
+    maxTokens: Math.min(modelOutputLimit, Math.max(
       MIN_COMPACTION_OUTPUT_TOKENS,
-      Math.min(Math.floor(requestedMaxTokens), availableOutputTokens, MAX_COMPACTION_OUTPUT_TOKENS),
-    ),
+      Math.min(Math.floor(requestedMaxTokens), availableOutputTokens),
+    )),
     promptTokens,
     availableOutputTokens,
     contextWindow,

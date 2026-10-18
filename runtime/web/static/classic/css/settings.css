@@ -2678,6 +2678,37 @@
     white-space: nowrap;
     overflow: visible;
 }
+.settings-keychain-action-group {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    white-space: normal;
+}
+.settings-keychain-action-group > button {
+    flex: 0 0 auto;
+    min-width: 36px;
+    min-height: 36px;
+}
+.settings-keychain-action-group .settings-keychain-confirm {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+    white-space: normal;
+}
+.settings-keychain-confirm button {
+    min-width: 36px;
+    min-height: 36px;
+}
+@media (max-width: 640px) {
+    .settings-keychain-action-group { justify-content: flex-start; }
+    .settings-keychain-action-group > button,
+    .settings-keychain-confirm button { min-width: 44px; min-height: 44px; }
+}
 .settings-keychain-delete-btn {
     border: none;
     background: none;

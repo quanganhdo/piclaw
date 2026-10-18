@@ -1,4 +1,4 @@
-// Shared runtime policy for trusted, interactive HTML widgets in both UIs.
+// Shared runtime policy for isolated, interactive HTML widgets in both UIs.
 export function isGeneratedWidgetInteractive(widget: any): boolean {
   const kind = (widget?.artifact || {}).kind || widget?.kind || null;
   return kind === 'html' && (widget?.source === 'live' || (
@@ -10,7 +10,7 @@ export function isGeneratedWidgetInteractive(widget: any): boolean {
 
 export function getGeneratedWidgetSandbox(widget: any): string {
   return isGeneratedWidgetInteractive(widget)
-    ? 'allow-downloads allow-scripts allow-same-origin allow-forms'
+    ? 'allow-downloads allow-scripts allow-forms'
     : 'allow-downloads';
 }
 

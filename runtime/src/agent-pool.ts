@@ -884,9 +884,10 @@ export class AgentPool {
   async queueStreamingMessage(
     chatJid: string,
     text: string,
-    behavior: "steer" | "followUp"
+    behavior: "steer" | "followUp",
+    admission?: { validate: () => void; signal?: AbortSignal },
   ): Promise<{ queued: boolean; error?: string }> {
-    return this.runtimeFacade.queueStreamingMessage(chatJid, text, behavior);
+    return this.runtimeFacade.queueStreamingMessage(chatJid, text, behavior, admission);
   }
 
   /** Remove one queued follow-up message (first content match) from an active session queue. */

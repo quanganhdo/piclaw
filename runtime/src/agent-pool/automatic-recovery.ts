@@ -31,6 +31,7 @@ export type RecoveryClassifier =
   | "disabled"
   | "budget_exhausted"
   | "auth_config"
+  | "credential_storage"
   | "recovery_suppressed"
   | "stale_progress_watchdog"
   | "session_corruption"
@@ -171,7 +172,7 @@ export function isLengthStopFailure(errorText: string | null | undefined): boole
 
 export function isProviderAuthConfigFailure(errorText: string | null | undefined): boolean {
   if (!errorText) return false;
-  return /no api key for provider|no api key found|token refresh failed\s*:\s*401|authentication failed|credentials may have expired|re-authenticate|unauthorized|\b401\b|\b403\b|invalid.*api.*key|api.*key.*invalid|token.*expired|oauth.*expired|refresh.*token|provider login required|auth.*expired|missing provider credential|missing provider config|provider\.getApiKey is not a function/i.test(errorText);
+  return /no api key for provider|no api key found|token refresh failed\s*:\s*401|authentication failed|credentials may have expired|re-authenticate|unauthorized|\b401\b|\b403\b|invalid.*api.*key|api.*key.*invalid|token.*expired|oauth.*expired|refresh.*token|provider login required|auth.*expired|missing provider credential|missing provider config|provider is not configured|provider\.getApiKey is not a function/i.test(errorText);
 }
 
 export function isNonRecoverableFailure(errorText: string | null | undefined): boolean {
@@ -188,6 +189,8 @@ export function isNonRecoverableFailure(errorText: string | null | undefined): b
 export function classifyOpaqueAgentFailure(errorText: string | null | undefined): AgentFailureCategory {
   const value = String(errorText || "").trim();
   if (!value) return "unknown";
+  // Match the credential facade's static boundary before provider/auth heuristics.
+  if (/Model credential (?:storage|resolution) unavailable\./.test(value)) return "credential_storage";
   if (value.startsWith("PICLAW-BUDGET-BLOCKED:")) return "provider_budget";
   if (/stale-progress watchdog/i.test(value)) return "stalled_work";
   if (isOrphanFunctionCallOutputError(value)) return "session_corruption";
@@ -246,6 +249,15 @@ export function decideAutomaticRecovery(input: RecoveryDecisionInput): RecoveryD
     || failureCategory === "provider_budget"
     || failureCategory === "session_corruption"
     || failureCategory === "non_recoverable";
+
+  if (failureCategory === "credential_storage") {
+    return {
+      recover: false,
+      classifier: "credential_storage",
+      strategy: null,
+      reason: "Credentials could not be read/resolved; local storage/configuration needs attention",
+    };
+  }
 
   if (failureCategory === "stalled_work") {
     return {

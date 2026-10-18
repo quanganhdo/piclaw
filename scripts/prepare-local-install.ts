@@ -87,6 +87,8 @@ export async function prepareLocalInstallArchive({
       "@earendil-works/pi-tui": piAgentVersion,
       piclaw: outputArchive,
     },
+    // Bun resolves overrides from the installation root, not the nested package.
+    ...(packageJson.overrides ? { overrides: packageJson.overrides } : {}),
     ...(Object.keys(patchedDependencies).length > 0 ? { patchedDependencies } : {}),
   };
   await mkdir(dirname(globalPackagePath), { recursive: true });

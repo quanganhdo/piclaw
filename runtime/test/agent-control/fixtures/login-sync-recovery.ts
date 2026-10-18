@@ -1,0 +1,136 @@
+import assert from "node:assert/strict";
+import { join } from "node:path";
+import { CredentialSynchronizationError, ModelRegistry, ModelRuntime } from "@earendil-works/pi-coding-agent";
+import type { Credential, Provider } from "@earendil-works/pi-ai";
+import { FileCredentialStore } from "../../../src/agent-pool/credential-store.js";
+import { cancelProviderAuthFlows, handleLogin, handleLogout } from "../../../src/agent-control/handlers/login.js";
+import { withChatContext } from "../../../src/core/chat-context.js";
+import { TestAgentControlSession } from "../session-fixture.js";
+
+const [scenario, root] = process.argv.slice(2);
+assert.ok(scenario && root);
+const id = "synthetic-login-sync";
+const secret = "SYNTHETIC-SAVED-OAUTH-SECRET";
+const causeSecret = "SYNTHETIC-CAUSE-SECRET";
+let network = 0, logins = 0, writes = 0, refreshes = 0, rotations = 0, caught = 0;
+const denyNetwork = () => { network++; throw new Error("Unexpected network"); };
+globalThis.fetch = Object.assign(async () => denyNetwork(), { preconnect: denyNetwork });
+let failReads = 0;
+class Store extends FileCredentialStore {
+  override async modify(provider: string, fn: (current: Credential | undefined) => Promise<Credential | undefined>) {
+    const result = await super.modify(provider, fn);
+    if (provider === id) { writes++; failReads = scenario === "persistent" ? Infinity : 1; }
+    return result;
+  }
+  override async read(provider: string) {
+    if (provider === id && failReads > 0) { failReads--; throw new Error(causeSecret); }
+    return super.read(provider);
+  }
+}
+const store = new Store(join(root, "auth.json"));
+const runtime = await ModelRuntime.create({ credentials: store, modelsPath: null, modelsStorePath: join(root, "models-store.json"), refreshOnCreate: false, allowModelNetwork: false });
+const provider: Provider = {
+  id, name: "Synthetic Login Sync", auth: { oauth: {
+    name: "Synthetic OAuth",
+    login: async interaction => {
+      logins++;
+      if (scenario.includes("-before") || scenario.includes("-during")) interaction.notify({ type: "progress", message: "Synthetic progress" });
+      else await interaction.prompt({ type: "text", message: "Synthetic input" });
+      if (scenario === "reject") throw new Error(causeSecret);
+      return { type: "oauth", access: secret, refresh: secret, expires: Date.now() + 3_600_000 };
+    },
+    refresh: async () => { rotations++; throw new Error("Provider refresh forbidden"); },
+    toAuth: async credential => ({ apiKey: credential.access }),
+  } },
+  getModels: () => [{ provider: id, id: "synthetic-model", name: "Synthetic model", api: "openai-completions", reasoning: false, input: ["text"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 4096, maxTokens: 512 }],
+  stream: () => { throw new Error("No stream allowed"); },
+  streamSimple: () => { throw new Error("No stream allowed"); },
+};
+runtime.registerNativeProvider(provider);
+await runtime.refresh({ allowNetwork: false });
+const registry = new ModelRegistry(runtime);
+const session = new TestAgentControlSession(root, registry);
+session.modelRuntime = runtime;
+const originalLogin = runtime.login.bind(runtime), originalRefresh = runtime.refresh.bind(runtime);
+let entered!: () => void, release!: () => void;
+const gateEntered = new Promise<void>(resolve => { entered = resolve; });
+const gateReleased = new Promise<void>(resolve => { release = resolve; });
+runtime.login = async (...args) => {
+  try { return await originalLogin(...args); }
+  catch (error) {
+    if (scenario !== "reject") {
+      assert.ok(error instanceof CredentialSynchronizationError);
+      assert.equal(error.operation, "login");
+      assert.equal(error.credential?.type, "oauth");
+      assert.equal((error.credential as any).access, secret);
+      assert.ok(error.cause instanceof Error && error.cause.message.includes(causeSecret));
+      caught++;
+      if (scenario === "cancel-before" || scenario === "owner-before") { entered(); await gateReleased; }
+    }
+    throw error;
+  }
+};
+runtime.refresh = async options => {
+  refreshes++;
+  assert.equal(options?.allowNetwork, false);
+  if (["cancel-during", "owner-during", "replace-during", "dispose-during", "logout-during"].includes(scenario)) { entered(); await gateReleased; }
+  if (scenario === "throw") throw new Error(causeSecret);
+  const result = await originalRefresh(options);
+  if (scenario === "errors") return { ...result, errors: new Map([[id, new Error(causeSecret)]]) };
+  if (scenario === "aborted") return { ...result, aborted: true };
+  return result;
+};
+const command = (step: string, data: Record<string, unknown>) => withChatContext("web:sync-fixture", "web", () => handleLogin(session as any, registry, { type: "login", provider: `__${step} ${JSON.stringify(data)}`, raw: "/login" }));
+const action = (result: any, method: string) => result.contentBlocks[0].payload.actions.find((a: any) => a.data.method === method).data;
+try {
+  const started = await command("step1method", { provider: id, action: "oauth" });
+  assert.equal(started.status, "success");
+  const blocked = scenario.includes("-before") || scenario.includes("-during");
+  const data = action(started, blocked ? "runtime_check" : "runtime_continue");
+  const continuing = blocked ? null : command("step2", { ...data, auth_value: "synthetic" });
+  let logout: Promise<unknown> | undefined;
+  if (scenario.includes("-before") || scenario.includes("-during")) {
+    await gateEntered;
+    if (scenario.startsWith("cancel")) {
+      const cancelled = await Promise.race([
+        command("step2", { ...data, method: "runtime_cancel" }),
+        Bun.sleep(500).then(() => { throw new Error("Cancellation joined blocked recovery"); }),
+      ]);
+      assert.equal(cancelled.status, "success");
+    } else if (scenario.startsWith("owner")) session.sessionId = "replacement-session";
+    else if (scenario === "dispose-during") session.dispose();
+    else if (scenario === "replace-during") cancelProviderAuthFlows(session as any);
+    else logout = withChatContext("web:sync-fixture", "web", () => handleLogout(session as any, registry, { type: "logout", provider: id, raw: "/logout" }));
+    release();
+  }
+  const result = continuing ? await continuing : await command("step2", { ...data, method: "runtime_check" });
+  if (scenario === "success") {
+    assert.equal(result.status, "success");
+    assert.ok(JSON.stringify(result.contentBlocks).includes("Authentication successful"));
+    assert.equal(runtime.getProviderAuthStatus(id).configured, true);
+    assert.equal(session.model.id, "gpt-test");
+  } else {
+    assert.equal(result.status, "error");
+    assert.equal(result.contentBlocks, undefined);
+    if (["persistent", "throw", "errors", "aborted"].includes(scenario)) {
+      assert.ok(result.message.startsWith("Credentials were saved, but local model state could not be updated."));
+      assert.ok(!result.message.includes("Start again with /login"));
+    }
+    if (scenario === "reject") assert.equal(result.message, "Authentication failed. Start again with /login.");
+  }
+  await logout;
+  await Bun.sleep(30); // Let every detached settlement run; unhandled failures fail the child.
+  assert.equal(logins, 1);
+  assert.equal(writes, scenario === "reject" ? 0 : 1);
+  assert.equal(caught, scenario === "reject" ? 0 : 1);
+  assert.equal(refreshes, scenario.endsWith("-before") || scenario === "reject" ? 0 : 1);
+  assert.equal(rotations, 0);
+  assert.equal(network, 0);
+  assert.ok(!JSON.stringify([started, result]).includes(secret));
+  assert.ok(!JSON.stringify([started, result]).includes(causeSecret));
+  failReads = 0;
+  const saved = await store.read(id);
+  if (scenario !== "reject" && scenario !== "logout-during") assert.equal((saved as any)?.access, secret);
+  else assert.equal(saved, undefined);
+  console.log(scenario);
+} finally { cancelProviderAuthFlows(session as any); }

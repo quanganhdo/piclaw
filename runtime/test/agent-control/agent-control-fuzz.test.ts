@@ -16,4 +16,6 @@ test("agent-control fuzz audit stays replayable and gap-free for the canonical s
   expect(summary.idempotence_failures).toBe(0);
   expect(summary.artifact_outputs_present).toBe(1);
   expect(summary.summaryPath).toContain(DEFAULT_FUZZ_TEST_ARTIFACT_DIR);
-});
+// 64 replayable cases include runtime startup and filesystem receipts; the
+// loaded current gate exceeded Bun's implicit 5s, not an individual case bound.
+}, 30_000);

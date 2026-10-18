@@ -6,6 +6,7 @@ import {
 import { inferAgentPreviewTotalLines } from './app-agent-previews.js';
 import { isMainTimelineView } from './app-realtime-timeline.js';
 import { parseStatusLastEventAt } from './status-duration.js';
+import type { AgentStatusConnectionState } from './app-connection-lifecycle.js';
 
 interface RefBox<T> {
   current: T;
@@ -38,6 +39,7 @@ function resolveExtensionWorkingRestoreState(value: unknown): ExtensionWorkingRe
 export interface RefreshAgentStatusForChatOptions {
   currentChatJid: string;
   currentTurnIdRef?: RefBox<string | null>;
+  connectionStateRef?: RefBox<AgentStatusConnectionState>;
   getAgentStatus: (chatJid: string) => Promise<any>;
   activeChatJidRef: RefBox<string>;
   wasAgentActiveRef: RefBox<boolean>;
@@ -86,6 +88,9 @@ export async function refreshAgentStatusForChat(options: RefreshAgentStatusForCh
     onStateAccessResult,
   } = options;
 
+  const connection = options.connectionStateRef?.current;
+  if (connection?.status !== undefined && connection.status !== 'connected') return null;
+  const requestedConnectionGeneration = connection?.generation;
   const targetChatJid = currentChatJid;
   const requestedTurn = options.currentTurnIdRef?.current;
   const requestedStatus = agentStatusRef.current;
@@ -96,6 +101,7 @@ export async function refreshAgentStatusForChat(options: RefreshAgentStatusForCh
     const response = await getAgentStatus(targetChatJid);
     onStateAccessResult?.(false);
     if (activeChatJidRef.current !== targetChatJid
+      || options.connectionStateRef?.current.generation !== requestedConnectionGeneration
       || options.currentTurnIdRef?.current !== requestedTurn
       || agentStatusRef.current !== requestedStatus
       || thoughtBufferRef.current !== requestedThought

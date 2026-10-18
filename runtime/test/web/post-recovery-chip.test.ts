@@ -95,7 +95,9 @@ class FakeElement extends FakeNode {
     this.attributes = this.attributes.filter((entry) => entry.name !== name);
   }
 
-  addEventListener() {}
+  remove() { this.parentNode?.removeChild(this); }
+  handlers: Record<string, Function> = {};
+  addEventListener(name:string,handler:Function) { this.handlers[name]=handler; }
 
   removeEventListener() {}
 }
@@ -122,6 +124,7 @@ class FakeDocument {
     return new FakeTextNode(this, text);
   }
 
+  remove() { this.parentNode?.removeChild(this); }
   addEventListener() {}
 
   removeEventListener() {}
@@ -362,9 +365,9 @@ test('Post renders safe timeout activity details before the tools-required hando
   expect(flattenText(host)).toContain('Tool-enabled continuation timed out after 1h 00m');
   const header = findByClass(host, 'post-outcome-pill-header');
   expect(header).toBeTruthy();
-  const click = header?.l?.Clickfalse;
+  const click = header?.handlers?.click;
   expect(typeof click).toBe('function');
-  (click as (event: { stopPropagation(): void }) => void)({ stopPropagation() {} });
+  (click as (this: FakeElement, event: { stopPropagation(): void }) => void).call(header!, { stopPropagation() {} });
   await Promise.resolve();
   expect(flattenText(host)).toContain('403 tool executions');
   expect(flattenText(host)).toContain('tools required');

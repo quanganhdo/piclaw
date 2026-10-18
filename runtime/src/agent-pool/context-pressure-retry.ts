@@ -17,7 +17,16 @@ export type DirectPromptOptions = { streamingBehavior?: "steer" | "followUp" };
 
 export const TASK_CONTINUATION_PROMPT = "Continue the current task from persisted state without repeating completed work.";
 export const RECOVERY_CONTINUATION_PROMPT = TASK_CONTINUATION_PROMPT;
+/** Closing recovery has no execution tools; do not ask it to resume implementation. */
+export const FINALIZATION_RECOVERY_PROMPT = "Execution tools are intentionally disabled for this closing recovery attempt. Do not call tools, try to activate tools, or continue implementation. Give a text-only checkpoint from the persisted results: completed work, failures or blockers, and the next unfinished action. Do not describe this temporary restriction as a tool outage or claim unverified work is complete.";
 export const TOOL_ENABLED_RECOVERY_CONTINUATION_PROMPT = TASK_CONTINUATION_PROMPT;
+/**
+ * Neutral continuation for a recovery attempt that runs with every tool removed.
+ * The generic continuation tells the model to keep working, so it keeps calling
+ * tools that no longer exist ("Tool bash not found") instead of closing the turn.
+ */
+export const TOOLS_DISABLED_RECOVERY_PROMPT = "Tools are unavailable for this automatic recovery reply, so do not call any. "
+  + "Briefly tell the user what was completed, what remains and the next step; they can ask you to continue.";
 
 export function getSessionLeafId(session: AgentSession): string | null {
   const value = (session.sessionManager as { getLeafId?: () => unknown } | undefined)?.getLeafId?.();

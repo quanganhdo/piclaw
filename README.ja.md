@@ -17,7 +17,7 @@ Web UI は英語、簡体字中国語、日本語に対応し、デスクトッ�
 | [Docker](#docker-でクイックスタート) | 推奨するデプロイ方法。Bun、PiClaw、コマンドラインツールを同梱 |
 | [ポータブル版](docs/getting-started.md#portable-releases) | Docker を使わず Linux、Apple Silicon Mac、実験的な Windows 環境で利用。Bun とランタイムの依存関係を同梱 |
 | [Bun でリポジトリからインストール](docs/install-from-repo.md) | インストール済みの Bun を使い、リリースタグを指定する実験的な方法 |
-| [ソースビルド](docs/development.md) / [デスクトップシェル](docs/desktop.md) | 開発とローカルテスト向け。デスクトップラッパーは実験段階 |
+| [ソースビルド](docs/development.md) | 開発とローカルテスト向け |
 
 配布ファイルは [GitHub Releases](https://github.com/rcarmo/piclaw/releases)、コンテナーイメージは [GHCR](https://github.com/rcarmo/piclaw/pkgs/container/piclaw) にあります。同じバージョンを再デプロイできるよう、リリースタグを固定してください。
 

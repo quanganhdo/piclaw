@@ -97,7 +97,8 @@ function available(): boolean {
   return readAccessConfig().mode === "single-user"
     && (!getExecutionIdentity() || getExecutionIdentity()!.mode === "single-user");
 }
-function targets(): AddonLocalTarget[] {
+/** Read-only persisted single-user targets; does not create an operator context. */
+export function listAddonLocalTargets(): AddonLocalTarget[] {
   const rows = getDb().query(`SELECT chat_jid, branch_id, agent_name FROM chat_branches
     WHERE archived_at IS NULL AND handle_owner_id = '' AND chat_jid LIKE 'web:%'
     ORDER BY agent_name, chat_jid`).all() as Array<{ chat_jid: string; branch_id: string; agent_name: string }>;
@@ -109,7 +110,7 @@ function resolveTarget(selector: AddonLocalTargetSelector): AddonLocalTarget | n
   const chatJid = typeof selector.chatJid === "string" ? selector.chatJid.trim() : "";
   const name = typeof selector.agentName === "string" ? selector.agentName.trim().replace(/^@/, "").toLowerCase() : "";
   if (Boolean(chatJid) === Boolean(name)) throw new AddonLocalContextError("invalid_target", "Provide exactly one chatJid or agentName.");
-  const target = targets().find(t => chatJid ? t.chatJid === chatJid : t.agentName === name) ?? null;
+  const target = listAddonLocalTargets().find(t => chatJid ? t.chatJid === chatJid : t.agentName === name) ?? null;
   if (selector.incarnation !== undefined && (!target || selector.incarnation !== target.incarnation)) return null;
   return target;
 }
@@ -132,7 +133,7 @@ function contextFor(scope: Scope): AddonLocalContext {
     kind: scope.kind, workspaceRoot, workspaceId,
     ...(scope.target ? { chatJid: scope.target.chatJid, chatIncarnation: scope.target.incarnation } : {}),
     ...(scope.reference ? { reference: scope.reference } : {}),
-    async listTargets() { check(); return targets(); },
+    async listTargets() { check(); return listAddonLocalTargets(); },
     async resolveTarget(selector: AddonLocalTargetSelector) { check(); return resolveTarget(selector); },
     async enqueue(request: {
       target: Pick<AddonLocalTarget, "chatJid" | "incarnation">;

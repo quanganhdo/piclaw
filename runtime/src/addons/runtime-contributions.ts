@@ -57,15 +57,24 @@ export type AddonAgentMessageEnqueuer = (request: RuntimeAgentMessageRequest) =>
 export type AddonMessagingTargetInput = {
   target_chat_jid?: string;
   target_agent_name?: string;
+  /** Optional persisted branch lifetime, checked at resolution and admission. */
+  target_incarnation?: string;
 };
 
 export type AddonMessagingTargetResolution =
-  | { status: "resolved"; target_agent_name: string; active: boolean }
+  | { status: "resolved"; target_agent_name: string; active: boolean; incarnation?: string }
   | { status: "not_found" }
   | { status: "ambiguous"; candidates: Array<{ target_agent_name: string }> };
 
 export interface AddonAdvertisableAgent {
   agent_name: string;
+  active: boolean;
+}
+
+export interface AddonAdvertisableSession {
+  chatJid: string;
+  agentName: string;
+  incarnation: string;
   active: boolean;
 }
 
@@ -91,6 +100,8 @@ export interface AddonPeerMessageAttachment {
 export interface AddonPeerMessageDeliveryRequest extends AddonMessagingTargetInput {
   content: string;
   attachments?: AddonPeerMessageAttachment[];
+  /** Cancellation is checked before the host admission commit. */
+  signal?: AbortSignal;
   mode?: "auto" | "queue" | "steer";
   thread_id?: number | null;
   source: AddonAuthenticatedPeerSource;
@@ -98,6 +109,7 @@ export interface AddonPeerMessageDeliveryRequest extends AddonMessagingTargetInp
 
 export interface AddonMessagingRuntimeHandlers {
   listAdvertisableAgents(): Promise<AddonAdvertisableAgent[]> | AddonAdvertisableAgent[];
+  listAdvertisableSessions(): Promise<AddonAdvertisableSession[]> | AddonAdvertisableSession[];
   resolveLocalTarget(input: AddonMessagingTargetInput): Promise<AddonMessagingTargetResolution> | AddonMessagingTargetResolution;
   deliverPeerMessage(input: AddonPeerMessageDeliveryRequest): Promise<RuntimeAgentMessageResult>;
 }
@@ -106,6 +118,7 @@ export interface PiclawRuntimeMessagingApiV1 {
   version: 1;
   registerChatTransport(transport: ChatTransport): () => void;
   listAdvertisableAgents(): Promise<AddonAdvertisableAgent[]>;
+  listAdvertisableSessions(): Promise<AddonAdvertisableSession[]>;
   resolveLocalTarget(input: AddonMessagingTargetInput): Promise<AddonMessagingTargetResolution>;
   deliverPeerMessage(input: AddonPeerMessageDeliveryRequest): Promise<RuntimeAgentMessageResult>;
   getAddonDataDir(addonId: string): string;
@@ -318,6 +331,11 @@ async function listAdvertisableAgents(): Promise<AddonAdvertisableAgent[]> {
   return await messagingRuntimeHandlers.listAdvertisableAgents();
 }
 
+async function listAdvertisableSessions(): Promise<AddonAdvertisableSession[]> {
+  if (!messagingRuntimeHandlers) throw new Error("Piclaw runtime messaging API is not available yet.");
+  return await messagingRuntimeHandlers.listAdvertisableSessions();
+}
+
 async function resolveLocalTarget(input: AddonMessagingTargetInput): Promise<AddonMessagingTargetResolution> {
   if (!messagingRuntimeHandlers) throw new Error("Piclaw runtime messaging API is not available yet.");
   return await messagingRuntimeHandlers.resolveLocalTarget(input);
@@ -375,6 +393,7 @@ export function installAddonRuntimeApi(): PiclawRuntimeAddonApi {
       version: 1,
       registerChatTransport: registerAddonChatTransport,
       listAdvertisableAgents,
+      listAdvertisableSessions,
       resolveLocalTarget,
       deliverPeerMessage,
       getAddonDataDir,

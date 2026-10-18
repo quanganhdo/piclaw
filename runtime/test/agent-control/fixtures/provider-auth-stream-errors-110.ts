@@ -10,7 +10,7 @@ import { classifyOpaqueAgentFailure } from "../../../src/agent-pool/automatic-re
 import { addLogSink, removeLogSink, type LogRecord } from "../../../src/utils/logger.js";
 
 const mode = process.argv[2];
-assert.ok(["refresh-permanent", "refresh-transient", "malformed-storage", "refresh-retry-success"].includes(mode));
+assert.ok(["refresh-permanent", "refresh-transient", "malformed-storage", "storage-eacces", "storage-elocked", "unknown-resolution", "missing-config", "refresh-retry-success"].includes(mode));
 const packageRoot = dirname(dirname(fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"))));
 assert.equal(JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8")).version, "1.1.0");
 assert.equal(JSON.parse(readFileSync(fileURLToPath(new URL("../package.json", import.meta.resolve("@earendil-works/pi-ai"))), "utf8")).version, "1.1.0");
@@ -43,6 +43,14 @@ try {
     const { writeFileSync } = await import("node:fs");
     writeFileSync(credentials.authPath, `{ broken-json-${sentinel}`);
   }
+  let reads = 0;
+  if (["storage-eacces", "storage-elocked", "unknown-resolution"].includes(mode)) {
+    credentials.read = async () => {
+      reads++;
+      throw Object.assign(new Error(`private-store-path=${sentinel}`), mode === "unknown-resolution" ? {} : { code: mode === "storage-eacces" ? "EACCES" : "ELOCKED" });
+    };
+  }
+  if (mode === "missing-config") await credentials.delete(id);
   if (mode === "refresh-retry-success") {
     // Exercise successful refresh retries through public runtime auth setup.
     // Do not submit a completion merely to verify usable rotated credentials.
@@ -56,6 +64,7 @@ try {
     results.push({ method: "getAuth", retryAttempts: refreshes, status: "pass" });
   } else for (const method of ["stream", "streamSimple"] as const) {
     const before = refreshes;
+    const readsBefore = reads;
     const stream = modelRuntime[method](model, { messages: [] });
     const events = [];
     for await (const event of stream) events.push(event);
@@ -64,14 +73,19 @@ try {
     const encoded = JSON.stringify({ events, message });
     assert.ok(!encoded.includes(sentinel));
     const transient = mode === "refresh-transient";
-    assert.ok(message.errorMessage?.includes(transient ? "Model credential service temporarily unavailable (503)." : "Provider login required. Model credentials could not be resolved."));
-    assert.equal(classifyOpaqueAgentFailure(message.errorMessage), transient ? "network" : "auth_config");
+    const storage = ["malformed-storage", "storage-eacces", "storage-elocked", "unknown-resolution"].includes(mode);
+    const category = storage ? "credential_storage" : transient ? "network" : "auth_config";
+    const expected = mode === "unknown-resolution" ? "Model credential resolution unavailable." : storage ? "Model credential storage unavailable." : transient ? "Model credential service temporarily unavailable (503)." : mode === "missing-config" ? `Provider is not configured: ${id}` : "Provider login required. Model credentials could not be resolved.";
+    assert.ok(message.errorMessage?.includes(expected), message.errorMessage);
+    assert.equal(classifyOpaqueAgentFailure(message.errorMessage), category);
+    if (storage) assert.ok(!/sign in|login|missing provider/i.test(encoded));
     assert.equal(refreshes - before, transient ? 2 : mode === "refresh-permanent" ? 1 : 0);
-    if (mode !== "malformed-storage") {
+    if (["storage-eacces", "storage-elocked", "unknown-resolution"].includes(mode)) assert.equal(reads - readsBefore, 1);
+    if (mode !== "malformed-storage" && mode !== "missing-config") {
       const stored = JSON.parse(readFileSync(credentials.authPath, "utf8"))[id];
       assert.equal(stored.access, "synthetic-expired"); assert.equal(stored.refresh, "synthetic-refresh");
     }
-    results.push({ method, status: "pass", failureCategory: transient ? "network" : "auth_config", refreshAttempts: refreshes - before });
+    results.push({ method, status: "pass", failureCategory: category, refreshAttempts: refreshes - before });
   }
   assert.ok(!JSON.stringify(logs).includes(sentinel)); assert.equal(requests, 0); assert.equal(inference, 0);
   console.log(JSON.stringify({ version: "1.1.0", mode, results, networkRequests: requests, inference, logsRedacted: true }));

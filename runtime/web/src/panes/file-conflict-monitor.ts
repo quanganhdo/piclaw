@@ -24,6 +24,8 @@ export interface FileConflictMonitorOptions {
   anchorBefore: HTMLElement;
   /** Called when user clicks Reload — should reload content from disk. */
   onReload: () => void | Promise<void>;
+  /** Return true when a clean editor handled the change without a conflict bar. */
+  onExternalChange?: () => boolean | Promise<boolean>;
   /** Called when user clicks Save Copy — receives auto-generated path. */
   onSaveCopy: (copyPath: string) => void | Promise<void>;
   /** Called when user clicks Overwrite — should save current content. */
@@ -59,6 +61,7 @@ export function createFileConflictMonitor(opts: FileConflictMonitorOptions): Fil
     anchorParent,
     anchorBefore,
     onReload,
+    onExternalChange,
     onSaveCopy,
     onOverwrite,
     pollMs = 3000,
@@ -70,15 +73,19 @@ export function createFileConflictMonitor(opts: FileConflictMonitorOptions): Fil
   let detected = false;
   let disposed = false;
   let saving = false;
+  let checking = false;
 
   async function checkMtime() {
-    if (disposed || saving || detected) return;
+    if (disposed || saving || detected || checking) return;
     const knownMtime = getCurrentMtime();
     if (!knownMtime) return;
+    checking = true;
     try {
       const stat = await getWorkspaceFileStat(path);
-      if (disposed || saving || !stat?.mtime) return;
+      if (disposed || saving || !stat?.mtime || getCurrentMtime() !== knownMtime) return;
       if (stat.mtime !== knownMtime) {
+        if (await onExternalChange?.()) return;
+        if (disposed || getCurrentMtime() !== knownMtime) return;
         detected = true;
         stopPolling();
         showBar();
@@ -87,6 +94,8 @@ export function createFileConflictMonitor(opts: FileConflictMonitorOptions): Fil
       // Network errors during mtime polling are expected (e.g. offline, reload).
       // Silently skip this cycle — the next interval will retry.
       if (typeof console !== 'undefined') console.debug('[file-conflict-monitor] mtime poll skipped:', err);
+    } finally {
+      checking = false;
     }
   }
 
@@ -138,6 +147,7 @@ export function createFileConflictMonitor(opts: FileConflictMonitorOptions): Fil
     onSaved(newMtime: string | null) {
       detected = false;
       saving = false;
+      if (barEl) { barEl.remove(); barEl = null; }
       startPolling();
     },
     dispose() {

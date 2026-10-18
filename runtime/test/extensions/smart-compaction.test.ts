@@ -2372,9 +2372,31 @@ describe("smart-compaction", () => {
       expect(largeBudget.mergeBudgetChars).toBeGreaterThan(smallBudget.mergeBudgetChars);
       expect(getCompactionOutputTokenTarget(0)).toBe(512);
       expect(getCompactionOutputTokenTarget(1_000)).toBe(800);
-      expect(getCompactionOutputTokenTarget(100_000)).toBe(8_192);
+      expect(getCompactionOutputTokenTarget(100_000)).toBe(80_000);
       expect(() => getSafeCompactionMaxTokens(smallModel, "x".repeat(120_000), 16_000)).toThrow(/exceeds safe model budget/);
       expect(getSafeCompactionMaxTokens(largeModel, "x".repeat(120_000), 16_000).maxTokens).toBeGreaterThan(0);
+    });
+
+    it("bounds compaction output by the model and context instead of a fixed cap", () => {
+      const prompt = "x".repeat(4_000);
+      // No model output limit: the operator target passes through when context allows.
+      expect(getSafeCompactionMaxTokens({ contextWindow: 262_144 }, prompt, 26_214).maxTokens).toBe(26_214);
+      // Declared model limit wins over a larger target.
+      expect(getSafeCompactionMaxTokens({ contextWindow: 262_144, maxTokens: 32_768 }, prompt, 80_000).maxTokens).toBe(32_768);
+      // A smaller target is kept below the model limit.
+      expect(getSafeCompactionMaxTokens({ contextWindow: 262_144, maxTokens: 32_768 }, prompt, 13_107).maxTokens).toBe(13_107);
+      // The minimum never exceeds what the model declares.
+      expect(getSafeCompactionMaxTokens({ contextWindow: 262_144, maxTokens: 256 }, prompt, 13_107).maxTokens).toBe(256);
+      // Invalid declared limits are ignored rather than collapsing the budget.
+      for (const maxTokens of [0, -1, 0.5, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+        expect(getSafeCompactionMaxTokens({ contextWindow: 262_144, maxTokens }, prompt, 13_107).maxTokens).toBe(13_107);
+      }
+      expect(getSafeCompactionMaxTokens({ contextWindow: 262_144, maxTokens: 1 }, prompt, 13_107).maxTokens).toBe(1);
+      expect(getSafeCompactionMaxTokens({ contextWindow: 262_144, maxTokens: 256.9 }, prompt, 13_107).maxTokens).toBe(256);
+      // Context remains a hard bound.
+      const tight = getSafeCompactionMaxTokens({ contextWindow: 8_000, maxTokens: 32_768 }, prompt, 80_000);
+      expect(tight.maxTokens).toBe(tight.availableOutputTokens);
+      expect(tight.promptTokens + tight.maxTokens).toBeLessThanOrEqual(8_000);
     });
 
     it("splits deterministic chunks in order without dropping key continuity facts", () => {

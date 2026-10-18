@@ -363,6 +363,7 @@ type RuntimeAuthFlow = {
   events: AuthEvent[];
   status: "running" | "completed" | "failed";
   error: string | null;
+  locallyRecovered: boolean;
   version: number;
   expiry: ReturnType<typeof setTimeout>;
   expiresAt: number;
@@ -478,6 +479,7 @@ function beginRuntimeAuthFlow(owner: RuntimeAuthOwner, modelRuntime: ModelRuntim
     events: [],
     status: "running",
     error: null,
+    locallyRecovered: false,
     version: 0,
     expiry: undefined as unknown as ReturnType<typeof setTimeout>,
     expiresAt: Date.now() + 300_000,
@@ -494,7 +496,8 @@ function beginRuntimeAuthFlow(owner: RuntimeAuthOwner, modelRuntime: ModelRuntim
 
   void serializeProviderAuth(modelRuntime, providerId, async () => {
     if (!isRuntimeAuthOwnerActive(owner) || flow.controller.signal.aborted || owner.flows.get(key) !== flow) throw new Error("Authentication session ended");
-    return modelRuntime.login(providerId, authType, {
+    try {
+      await modelRuntime.login(providerId, authType, {
     signal: flow.controller.signal,
     prompt: (prompt) => new Promise<string>((resolve, reject) => {
       if (!isRuntimeAuthOwnerActive(owner) || flow.controller.signal.aborted || owner.flows.get(key) !== flow) {
@@ -537,27 +540,37 @@ function beginRuntimeAuthFlow(owner: RuntimeAuthOwner, modelRuntime: ModelRuntim
       }
       updateAuthFlow(flow);
     },
-    });
+      });
+    } catch (error) {
+      if (!(error instanceof CredentialSynchronizationError) || error.operation !== "login") throw error;
+      // This exception contains the committed credential and possibly a secret
+      // cause. Inspect only its category; never log or present the exception.
+      flow.error = "Credentials were saved, but local model state could not be updated. Retry local model refresh; do not log in again or restore older credentials.";
+      if (!isRuntimeAuthOwnerActive(owner) || flow.controller.signal.aborted || owner.flows.get(key) !== flow || providerAuthState(modelRuntime, providerId).flow !== flow) return;
+      // Keep recovery inside the provider write queue. No login, credential
+      // mutation, rollback, network refresh or request replay is admitted here.
+      const result = await modelRuntime.refresh({ allowNetwork: false });
+      if (!isRuntimeAuthOwnerActive(owner) || flow.controller.signal.aborted || owner.flows.get(key) !== flow || providerAuthState(modelRuntime, providerId).flow !== flow) return;
+      if (result.aborted || result.errors.size > 0 || modelRuntime.getError() || !modelRuntime.getProviderAuthStatus(providerId).configured) throw new Error("Local credential synchronization failed");
+      flow.locallyRecovered = true;
+      flow.error = null;
+    }
   }).then(() => {
     if (!isRuntimeAuthOwnerActive(owner) || flow.controller.signal.aborted || owner.flows.get(key) !== flow) return;
     flow.status = "completed";
     updateAuthFlow(flow);
     log.info("Provider authentication completed", {
       operation: "agent_control_login.runtime_login_completed",
-      providerId,
-      authType,
     });
   }).catch(() => {
     flow.status = "failed";
     // Provider errors can contain tokens, codes or secret-bearing URLs. Never
     // forward their text to logs/cards; the provider-owned flow may be retried.
-    flow.error = flow.controller.signal.aborted ? "Authentication cancelled." : "Authentication failed. Start again with /login.";
+    flow.error = flow.controller.signal.aborted ? "Authentication cancelled." : flow.error ?? "Authentication failed. Start again with /login.";
     updateAuthFlow(flow);
     log.warn("Provider authentication failed", {
       operation: "agent_control_login.runtime_login_failed",
-      providerId,
-      authType,
-      outcome: flow.controller.signal.aborted ? "cancelled" : "failed",
+      outcome: flow.controller.signal.aborted ? "cancelled" : flow.error.startsWith("Credentials were saved") ? "saved_credentials_sync_failed" : "failed",
     });
   });
 
@@ -624,7 +637,7 @@ async function startRuntimeAuth(
   modelRuntime: ModelRuntime,
   def: ProviderDef,
   authType: AuthType,
-  onComplete?: () => Promise<AgentControlResult>,
+  onComplete?: (locallyRecovered: boolean) => Promise<AgentControlResult>,
 ): Promise<AgentControlResult> {
   const owner = getRuntimeAuthOwner(session);
   const flow = beginRuntimeAuthFlow(owner, modelRuntime, def.id, authType);
@@ -632,11 +645,11 @@ async function startRuntimeAuth(
   if (!isRuntimeAuthOwnerActive(owner) || flow.controller.signal.aborted || owner.flows.get(flowKey(def.id, authType)) !== flow) return { status: "error", message: "Authentication flow ended. Start again with /login." };
   if (flow.status === "completed") {
     deleteRuntimeAuthFlow(flow);
-    return onComplete ? await onComplete() : { status: "success", message: `✓ **${def.name}** authenticated.` };
+    return onComplete ? await onComplete(flow.locallyRecovered) : { status: "success", message: `✓ **${def.name}** authenticated.` };
   }
   if (flow.status === "failed") {
     deleteRuntimeAuthFlow(flow);
-    return { status: "error", message: `Could not start authentication for **${def.name}**: ${flow.error}` };
+    return { status: "error", message: flow.error! };
   }
   return { status: "success", message: `Authentication for ${def.name}`, contentBlocks: [buildRuntimeAuthCard(def, flow)] };
 }
@@ -662,9 +675,9 @@ async function handleStep1(
   // If only one auth method (+ optional logout), go straight to the form
   if (methods === 1 && !hasLogoutOption) {
     if (def.hasOAuth) {
-      return await startRuntimeAuth(session, modelRuntime, def, "oauth", () => showCard3OrComplete(session, modelRegistry, def, providerId, def.name, registry));
+      return await startRuntimeAuth(session, modelRuntime, def, "oauth", recovered => showCard3OrComplete(session, modelRegistry, def, providerId, def.name, registry, undefined, recovered));
     }
-    if (def.hasApiKey) return await startRuntimeAuth(session, modelRuntime, def, "api_key", () => showCard3OrComplete(session, modelRegistry, def, providerId, def.name, registry));
+    if (def.hasApiKey) return await startRuntimeAuth(session, modelRuntime, def, "api_key", recovered => showCard3OrComplete(session, modelRegistry, def, providerId, def.name, registry, undefined, recovered));
     if (def.isCustom) return { status: "success", message: `Configure ${def.name}`, contentBlocks: [buildCard2Config(def)] };
     if (def.hasExternalAuth) return { status: "success", message: `${def.name} uses external authentication`, contentBlocks: [buildCard2ExternalInfo(def)] };
   }
@@ -688,11 +701,11 @@ async function handleStep1Method(
 
   if (action === "oauth") {
     if (!def.hasOAuth) return { status: "error", message: `**${def.name}** doesn't support OAuth.` };
-    return await startRuntimeAuth(session, modelRuntime, def, "oauth", () => showCard3OrComplete(session, modelRegistry, def, providerId, def.name, registry));
+    return await startRuntimeAuth(session, modelRuntime, def, "oauth", recovered => showCard3OrComplete(session, modelRegistry, def, providerId, def.name, registry, undefined, recovered));
   }
   if (action === "api_key") {
     if (!def.hasApiKey) return { status: "error", message: `**${def.name}** doesn't support API key auth.` };
-    return await startRuntimeAuth(session, modelRuntime, def, "api_key", () => showCard3OrComplete(session, modelRegistry, def, providerId, def.name, registry));
+    return await startRuntimeAuth(session, modelRuntime, def, "api_key", recovered => showCard3OrComplete(session, modelRegistry, def, providerId, def.name, registry, undefined, recovered));
   }
   if (action === "configure") {
     if (!def.isCustom) return { status: "error", message: `**${def.name}** doesn't need configuration.` };
@@ -790,11 +803,11 @@ async function handleStep2(
 
     if (flow.status === "completed") {
       deleteRuntimeAuthFlow(flow);
-      return await showCard3OrComplete(session, modelRegistry, def, providerId, name, registry);
+      return await showCard3OrComplete(session, modelRegistry, def, providerId, name, registry, undefined, flow.locallyRecovered);
     }
     if (flow.status === "failed") {
       deleteRuntimeAuthFlow(flow);
-      return { status: "error", message: `Authentication for **${name}** failed: ${flow.error || "unknown error"}` };
+      return { status: "error", message: flow.error || "Authentication failed." };
     }
     const card = buildRuntimeAuthCard(def!, flow);
     const pending = flow.pending?.prompt;
@@ -954,10 +967,11 @@ async function showCard3OrComplete(
   name: string,
   registry: ModelRegistryLike,
   expectedRevision?: number,
+  locallyRecovered = false,
 ): Promise<AgentControlResult> {
   const owner = getRuntimeAuthOwner(session);
   const providerRevision = expectedRevision ?? providerAuthState(owner.runtime, providerId).revision;
-  await registry.refresh?.();
+  if (!locallyRecovered) await registry.refresh?.();
   if (!isRuntimeAuthOwnerActive(owner) || owner.chatJid !== getChatJid() || providerRevision !== providerAuthState(owner.runtime, providerId).revision) return { status: "error", message: "Authentication session changed. Use /login in the active session." };
   const models = registry.getAll().filter((m) => m.provider === providerId);
   if (models.length === 0) {

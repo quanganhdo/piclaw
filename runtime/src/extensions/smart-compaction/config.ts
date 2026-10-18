@@ -160,6 +160,3 @@ export const PROGRESSIVE_TIME_BUDGET_FRACTION = 0.80;
 
 /** Minimum useful output budget for a compaction LLM call. */
 export const MIN_COMPACTION_OUTPUT_TOKENS = 512;
-
-/** Hard cap on generated summary tokens per compaction LLM call. */
-export const MAX_COMPACTION_OUTPUT_TOKENS = 8_192;

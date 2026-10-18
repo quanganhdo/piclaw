@@ -397,7 +397,7 @@ function buildWidgetBootstrapScript(widget: any): string {
 
   window.addEventListener('message', function (event) {
     const data = event && event.data;
-    if (!data || data.__piclawGeneratedWidgetHost !== true) return;
+    if (event.source !== window.parent || !data || data.__piclawGeneratedWidgetHost !== true) return;
     if ((data.widgetId || null) !== (meta.widgetId || null)) return;
     scheduleHostEnvelope(data);
   });

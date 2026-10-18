@@ -1,4 +1,11 @@
 import { isAppChatActivationRecent } from './app-refresh-coordination.js';
+import { invalidateAgentUiSnapshot } from './agent-ui-snapshot.js';
+
+export interface AgentStatusConnectionState {
+  // Undefined preserves cold-open/legacy refreshes before the first SSE callback.
+  status: string | undefined;
+  generation: number;
+}
 
 type ViewStateLike = {
   currentHashtag?: unknown;
@@ -60,6 +67,7 @@ export function handleUiVersionDriftEvent(options: HandleUiVersionDriftOptions):
 export interface HandleConnectionStatusChangeOptions {
   currentChatJid: string;
   status: string;
+  connectionStateRef?: { current: AgentStatusConnectionState };
   setConnectionStatus: (status: string) => void;
   setAgentStatus: (status: Record<string, unknown> | null) => void;
   setAgentDraft: (draft: { text: string; totalLines: number }) => void;
@@ -105,6 +113,15 @@ export function handleConnectionStatusChangeEvent(options: HandleConnectionStatu
     refreshContextUsage,
   } = options;
 
+  // Fence requests synchronously, before clearing refs (which can be null both
+  // before and after a disconnect) or starting the reconnect refresh bundle.
+  if (options.connectionStateRef) {
+    options.connectionStateRef.current = {
+      status,
+      generation: options.connectionStateRef.current.generation + 1,
+    };
+  }
+  invalidateAgentUiSnapshot(currentChatJid);
   setConnectionStatus(status);
   if (status !== 'connected') {
     setAgentStatus(null);

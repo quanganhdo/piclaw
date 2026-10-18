@@ -162,6 +162,7 @@ export {};
       agentMessageEnqueuer: async (request) => ({ status: "ok", chat_jid: request.chatJid, thread_id: null, created: false }),
       messagingHandlers: {
         listAdvertisableAgents: () => [],
+        listAdvertisableSessions: () => [],
         resolveLocalTarget: () => ({ status: "not_found" }),
         deliverPeerMessage: async () => ({ status: "ok", chat_jid: "web:test", thread_id: null, created: false }),
       },
@@ -259,6 +260,7 @@ test("runtime add-on messaging API validates lifecycle, data dirs, and transport
     const runtimeApi = installAddonRuntimeApi();
     expect(runtimeApi.messaging.version).toBe(1);
     await expect(runtimeApi.messaging.listAdvertisableAgents()).rejects.toThrow("not available yet");
+    await expect(runtimeApi.messaging.listAdvertisableSessions()).rejects.toThrow("not available yet");
     await expect(runtimeApi.messaging.resolveLocalTarget({ target_agent_name: "research" })).rejects.toThrow("not available yet");
     await expect(runtimeApi.messaging.deliverPeerMessage({} as any)).rejects.toThrow("not available yet");
 
@@ -276,10 +278,12 @@ test("runtime add-on messaging API validates lifecycle, data dirs, and transport
 
     setAddonMessagingRuntimeHandlers({
       listAdvertisableAgents: () => [{ agent_name: "research", active: true }],
+      listAdvertisableSessions: () => [{ chatJid: "web:research", agentName: "research", incarnation: "branch-1", active: true }],
       resolveLocalTarget: () => ({ status: "resolved", target_agent_name: "research", active: true }),
       deliverPeerMessage: async () => ({ status: "ok", chat_jid: "web:research", row_id: 9, thread_id: 9, created: true }),
     });
     await expect(runtimeApi.messaging.listAdvertisableAgents()).resolves.toEqual([{ agent_name: "research", active: true }]);
+    await expect(runtimeApi.messaging.listAdvertisableSessions()).resolves.toEqual([{ chatJid: "web:research", agentName: "research", incarnation: "branch-1", active: true }]);
     await expect(runtimeApi.messaging.resolveLocalTarget({ target_agent_name: "research" })).resolves.toMatchObject({ status: "resolved" });
     await expect(runtimeApi.messaging.deliverPeerMessage({} as any)).resolves.toMatchObject({ chat_jid: "web:research" });
 
@@ -399,7 +403,7 @@ test('actual startup socket registrar expires and lazy loading cannot borrow its
    ['piclaw-addon-held','startup',`const api=globalThis.__piclaw_runtime;globalThis.__socketCaptured=api.authenticatedSockets.register;globalThis.__socketEntered=true;await globalThis.__socketHeld;api.authenticatedSockets.register({path:'stream',maxMessageBytes:8,maxQueuedBytes:8,maxSessionMs:1000,maxConnections:1,authorize:async()=>({chatJid:'web:a'}),open:async()=>({message:async()=>{},dispose:async()=>{}})});`],
    ['piclaw-addon-borrow','lazy',`globalThis.__socketLazy=true;try{globalThis.__piclaw_runtime.authenticatedSockets.register({path:'borrowed',maxMessageBytes:8,maxQueuedBytes:8,maxSessionMs:1000,maxConnections:1,authorize:async()=>({chatJid:'web:a'}),open:async()=>({message:async()=>{},dispose:async()=>{}})});}catch{globalThis.__socketDenied=true;}`],
   ]){const dir=join(workspace.workspace,'.pi/extensions/node_modules',name);mkdirSync(dir,{recursive:true});writeFileSync(join(dir,'package.json'),JSON.stringify({name,version:'0.0.1',type:'module',pi:{runtime:{entries:['runtime.ts'],load}}}));writeFileSync(join(dir,'runtime.ts'),source);}
-  const starting=initializeStartupAddonRuntime({agentMessageEnqueuer:async request=>({status:'ok',chat_jid:request.chatJid,thread_id:null,created:false}),messagingHandlers:{listAdvertisableAgents:()=>[],resolveLocalTarget:()=>({status:'not_found'}),deliverPeerMessage:async()=>({status:'ok',chat_jid:'web:a',thread_id:null,created:false})}});while(!globals.__socketEntered)await new Promise(resolve=>setTimeout(resolve,0));
+  const starting=initializeStartupAddonRuntime({agentMessageEnqueuer:async request=>({status:'ok',chat_jid:request.chatJid,thread_id:null,created:false}),messagingHandlers:{listAdvertisableAgents:()=>[],listAdvertisableSessions:()=>[],resolveLocalTarget:()=>({status:'not_found'}),deliverPeerMessage:async()=>({status:'ok',chat_jid:'web:a',thread_id:null,created:false})}});while(!globals.__socketEntered)await new Promise(resolve=>setTimeout(resolve,0));
   const lazy=getAddonStatusPanelPayload('missing','web:a');await new Promise(resolve=>setTimeout(resolve,0));expect(globals.__socketLazy).toBe(false);release();await starting;await lazy;expect(globals.__socketDenied).toBe(true);
   expect(()=>globals.__socketCaptured({})).toThrow('expired');const {hasAuthenticatedAddonSocket}=await import('../../src/addons/authenticated-socket-registry');expect(hasAuthenticatedAddonSocket('/agent/addons/held/stream')).toBe(true);expect(hasAuthenticatedAddonSocket('/agent/addons/held/borrowed')).toBe(false);
   await shutdownAddonRuntimeContributionsForTests();const {resetAuthenticatedAddonSocketsForTests}=await import('../../src/addons/authenticated-socket-registry');resetAuthenticatedAddonSocketsForTests();

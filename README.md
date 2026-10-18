@@ -17,7 +17,7 @@ The web UI supports English, Simplified Chinese and Japanese, with desktop and m
 | [Docker](#quick-start-with-docker) | Recommended deployment; includes Bun, PiClaw and bundled command-line tools |
 | [Portable release](docs/getting-started.md#portable-releases) | Docker-free Linux, Apple Silicon macOS or experimental Windows use; bundles Bun and runtime dependencies |
 | [Bun repository install](docs/install-from-repo.md) | Experimental tagged install using an existing Bun installation |
-| [Source build](docs/development.md) / [desktop shell](docs/desktop.md) | Development and local testing; the desktop wrapper is experimental |
+| [Source build](docs/development.md) | Development and local testing |
 
 Published downloads are on [GitHub Releases](https://github.com/rcarmo/piclaw/releases); container images are on [GHCR](https://github.com/rcarmo/piclaw/pkgs/container/piclaw). Pin a release tag for repeatable deployments.
 

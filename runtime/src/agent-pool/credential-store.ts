@@ -3,7 +3,7 @@ import { closeSync, constants, existsSync, fchmodSync, fstatSync, lstatSync, mkd
 import { dirname, join } from "node:path";
 import { CredentialFileCommitError, type CredentialFileIO, writeCredentialFileAtomic } from "./credential-file.js";
 
-import type { Credential, CredentialInfo, CredentialStore } from "@earendil-works/pi-ai";
+import { ModelsError, type AuthOperationOptions, type Credential, type CredentialInfo, type CredentialStore } from "@earendil-works/pi-ai";
 import lockfile from "proper-lockfile";
 
 import { getPiclawAgentDir } from "../core/agent-dir.js";
@@ -13,6 +13,10 @@ const log = createLogger("agent-pool.credential-store");
 
 const AUTH_FILE_MODE = 0o600;
 const AUTH_DIRECTORY_MODE = 0o700;
+// Pi 1.1 auth/resolve uses this inclusive default window but does not export
+// DEFAULT_OAUTH_MINIMUM_VALIDITY_MS. Keep this compatibility mirror covered by
+// tests through Models.getAuth(), rather than importing SDK-private internals.
+const OAUTH_REFRESH_WINDOW_MS = 5 * 60 * 1000;
 const DEFAULT_OAUTH_REFRESH_MAX_RETRIES = 2;
 const DEFAULT_OAUTH_REFRESH_RETRY_BASE_DELAY_MS = 250;
 const DEFAULT_OAUTH_REFRESH_RETRY_MAX_DELAY_MS = 2_000;
@@ -157,7 +161,7 @@ export class FileCredentialStore implements PiclawCredentialStore {
     private readonly credentialFileIO?: CredentialFileIO,
   ) {
     this.oauthRefreshRetry = {
-      maxRetries: oauthRefreshRetry.maxRetries ?? DEFAULT_OAUTH_REFRESH_MAX_RETRIES,
+      maxRetries: Math.max(0, Math.min(DEFAULT_OAUTH_REFRESH_MAX_RETRIES, oauthRefreshRetry.maxRetries ?? DEFAULT_OAUTH_REFRESH_MAX_RETRIES)),
       baseDelayMs: oauthRefreshRetry.baseDelayMs ?? DEFAULT_OAUTH_REFRESH_RETRY_BASE_DELAY_MS,
       maxDelayMs: oauthRefreshRetry.maxDelayMs ?? DEFAULT_OAUTH_REFRESH_RETRY_MAX_DELAY_MS,
       random: oauthRefreshRetry.random ?? Math.random,
@@ -250,18 +254,31 @@ export class FileCredentialStore implements PiclawCredentialStore {
     return Object.entries(current).map(([providerId, credential]) => ({ providerId, type: credential.type }));
   }
 
-  async modify(providerId: string, fn: (current: Credential | undefined) => Promise<Credential | undefined>): Promise<Credential | undefined> {
+  async modify(providerId: string, fn: (current: Credential | undefined) => Promise<Credential | undefined>, options?: AuthOperationOptions): Promise<Credential | undefined> {
+    options?.signal?.throwIfAborted();
     return this.withLock(async (current, assertLock) => {
       const storedCredential = current[providerId];
       let nextCredential: Credential | undefined;
       let retryAttempt = 0;
       while (true) {
+        assertLock();
+        options?.signal?.throwIfAborted();
         try {
           nextCredential = await fn(cloneCredential(storedCredential));
           break;
         } catch (error) {
-          const isExpiredOAuthRefresh = storedCredential?.type === "oauth" && Date.now() >= storedCredential.expires;
-          if (!isExpiredOAuthRefresh || retryAttempt >= this.oauthRefreshRetry.maxRetries || !isTransientOAuthRefreshError(error)) {
+          // Expired-token callbacks retain the existing retry behavior. For
+          // proactive refresh, require Pi's public OAuth failure wrapper: modify
+          // also runs unrelated login/config callbacks against future tokens.
+          const isOAuthRefresh = storedCredential?.type === "oauth"
+            && Date.now() + OAUTH_REFRESH_WINDOW_MS >= storedCredential.expires
+            && (Date.now() >= storedCredential.expires || (error instanceof ModelsError && error.code === "oauth"));
+          // Pi supplies a 15-second signal per provider attempt. Do not retry an
+          // aborted/deadline-exceeded attempt, even though timeout is otherwise
+          // transient. Pi detaches caller cancellation once refresh starts so a
+          // successful rotated token must still be persisted below.
+          const aborted = /\b(?:AbortError|TimeoutError)\b/.test(errorChainText(error));
+          if (!isOAuthRefresh || aborted || retryAttempt >= this.oauthRefreshRetry.maxRetries || !isTransientOAuthRefreshError(error)) {
             throw error;
           }
           retryAttempt += 1;

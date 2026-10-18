@@ -108,10 +108,12 @@ if (typeof window !== "undefined" && typeof window.addEventListener === "functio
     window.addEventListener(name, (event) => {
       const detail = (event as CustomEvent).detail;
       // Token/tool progress can arrive faster than a network round trip. It
-      // already travels over SSE; only terminal events invalidate polling.
+      // already travels over SSE; terminal events and compaction ownership
+      // handoffs invalidate polling so a pre-command idle reply cannot win.
       if (
         name === "piclaw:agent-status" &&
         !["done", "error"].includes(detail?.type) &&
+        !(detail?.type === "intent" && detail?.intent_key === "compaction") &&
         detail?.status !== "idle"
       )
         return;

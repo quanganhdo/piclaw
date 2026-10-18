@@ -4,8 +4,8 @@
   "files": [
     {
       "path": "runtime/extensions/viewers/editor/vendor/codemirror.js",
-      "bytes": 1413646,
-      "sha256": "d69e940c81c2bc2cadfc6696840c9e543df9c1bf13e55d8985b33cff65d37bbd",
+      "bytes": 1413945,
+      "sha256": "4f8db5d98c9ca84afb6d4a94cf45ae03eb9a1869a8b4533f3bd10e1021d14b94",
       "manifests": [
         "runtime/vendor-manifests/codemirror-editor.json"
       ],
@@ -300,8 +300,8 @@
     },
     {
       "path": "runtime/web/static/common/js/marked.min.js",
-      "bytes": 42623,
-      "sha256": "94ee39ac79f7ac39a7fdfb4dc5d166c6f7902b69b33adf13a7e8c41cf7e85ff6",
+      "bytes": 45950,
+      "sha256": "5c024edb6e86d06c2768c90f401054a828600fc8fe1e8367825f867a97d76501",
       "manifests": [
         "runtime/vendor-manifests/marked-global.json"
       ],
@@ -339,8 +339,8 @@
     },
     {
       "path": "runtime/web/static/common/js/vendor/beautiful-mermaid.js",
-      "bytes": 1575845,
-      "sha256": "524b3c7f5d6d802845f7424e1cfa89f1742e3825ea306b68b91b967696f5c139",
+      "bytes": 1575860,
+      "sha256": "26e15fecd47eb3a81d93eb1bed1854190c96c2455d65161dea3d7857b18f3baa",
       "manifests": [
         "runtime/vendor-manifests/beautiful-mermaid.json"
       ],
@@ -349,7 +349,7 @@
     {
       "path": "runtime/web/static/common/js/vendor/beautiful-mermaid.meta.json",
       "bytes": 1195,
-      "sha256": "0656502b14ca7c41add536af1d6b999e0d41b8c339cecfc1bf237272bc10a79e",
+      "sha256": "0643f7dd507e0afc6a439ea5646b7d19de1dfeb1bc0d737294e358d8bb4dea8b",
       "manifests": [],
       "provenance": "unrecorded"
     },
@@ -398,14 +398,14 @@
     {
       "path": "runtime/web/static/common/js/vendor/katex.meta.json",
       "bytes": 1101,
-      "sha256": "aa97899f178af7614f1f5f69fbf21c29905e87640bfff3f6681eafbf4a70701a",
+      "sha256": "ae8689cdd6b8422620982a31b7f1aa84595d3656b88ea9bfae71295f7a22bce4",
       "manifests": [],
       "provenance": "unrecorded"
     },
     {
       "path": "runtime/web/static/common/js/vendor/katex.min.js",
-      "bytes": 273965,
-      "sha256": "3e79ecd69988705d1f3528680d34e5b0bacc6ef051d7159b01e8ce3c78dc50c9",
+      "bytes": 274626,
+      "sha256": "acfa2a4555ec7b94c63346ae74816b9a70722b614a3fb0e18af01be511e3c179",
       "manifests": [
         "runtime/vendor-manifests/katex-global.json"
       ],
@@ -413,8 +413,8 @@
     },
     {
       "path": "runtime/web/static/common/js/vendor/preact-htm.js",
-      "bytes": 15844,
-      "sha256": "ae123ffccf0daaa6e41cc6bdfe67d4b9c6e52ab60a62a8f32471f2d14ea725fb",
+      "bytes": 16021,
+      "sha256": "263d372b74351afd74e1633debcde5dd4f93750e00f27a3405342fed68370d95",
       "manifests": [
         "runtime/vendor-manifests/preact-htm.json"
       ],
@@ -422,8 +422,8 @@
     },
     {
       "path": "runtime/web/static/common/js/vendor/preact-htm.meta.json",
-      "bytes": 1155,
-      "sha256": "a6a8bd96afc7456c9f3b2d7483ba31f942da7e1f605ddfb5561589372e5b4361",
+      "bytes": 1207,
+      "sha256": "0eb81645a479196c31e5b0bab95ea6974c406a4c25ac7fec5e53e585a3725c53",
       "manifests": [],
       "provenance": "unrecorded"
     },

@@ -184,27 +184,6 @@ export function shouldDelayPaneReattachAfterWindowClose(options: {
   return options?.allowLiveTransfer === false;
 }
 
-export function shouldRequireManualTerminalCloseRecovery(options: {
-  panePath: string;
-  terminalTabPath: string;
-  allowLiveTransfer?: boolean | null;
-  reason?: 'message' | 'closed-window' | null;
-  runtimeNavigator?: Navigator | null;
-}): boolean {
-  if (!shouldDelayPaneReattachAfterWindowClose(options)) return false;
-  return isLikelySafariBrowser(options?.runtimeNavigator);
-}
-
-export function shouldDisableTerminalReattach(options: {
-  panePath: string;
-  terminalTabPath: string;
-  runtimeNavigator?: Navigator | null;
-}): boolean {
-  const panePath = typeof options?.panePath === 'string' ? options.panePath.trim() : '';
-  if (!panePath || panePath !== options?.terminalTabPath) return false;
-  return isLikelySafariBrowser(options?.runtimeNavigator);
-}
-
 function shouldUseLivePaneTransfer(options: {
   panePath: string;
   terminalTabPath: string;
@@ -381,7 +360,6 @@ export function usePaneRuntimeOrchestration(options: UsePaneRuntimeOrchestration
   const dockPaneInstanceIdRef = useRef<string>(generatePaneDetachId('pane-instance'));
   const detachedWindowHandlesRef = useRef<Map<string, any>>(new Map());
   const deferredPaneCloseRecoveryRef = useRef<Map<string, number>>(new Map());
-  const manualPaneCloseRecoveryRef = useRef<Set<string>>(new Set());
   const [pendingDetachedTabs, setPendingDetachedTabs] = useState<Map<string, PendingPaneOwnershipState>>(() => new Map());
   const pendingDetachedTabsRef = useRef(pendingDetachedTabs);
   pendingDetachedTabsRef.current = pendingDetachedTabs;
@@ -436,7 +414,6 @@ export function usePaneRuntimeOrchestration(options: UsePaneRuntimeOrchestration
     if (!panePath) return;
     clearPaneLiveTransferForPath(panePath);
     deferredPaneCloseRecoveryRef.current.delete(panePath);
-    manualPaneCloseRecoveryRef.current.delete(panePath);
     setPendingDetachedDockPane((current) => (current?.panePath === panePath ? null : current));
     setPendingDetachedTabs((current) => {
       if (!current.has(panePath)) return current;
@@ -450,7 +427,6 @@ export function usePaneRuntimeOrchestration(options: UsePaneRuntimeOrchestration
     if (!panePath) return;
     detachedWindowHandlesRef.current.delete(panePath);
     deferredPaneCloseRecoveryRef.current.delete(panePath);
-    manualPaneCloseRecoveryRef.current.delete(panePath);
     clearPendingDetachedPane(panePath);
     setDetachedDockPane((current) => (current?.panePath === panePath ? null : current));
     setDetachedTabs((current) => {
@@ -464,7 +440,6 @@ export function usePaneRuntimeOrchestration(options: UsePaneRuntimeOrchestration
   const reattachPane = useCallback((panePath: string, options: ReattachPaneOptions = {}) => {
     const normalizedPath = typeof panePath === 'string' ? panePath.trim() : '';
     if (!normalizedPath) return false;
-    if (shouldDisableTerminalReattach({ panePath: normalizedPath, terminalTabPath })) return false;
 
     const handle = detachedWindowHandlesRef.current.get(normalizedPath);
     const wasDetachedTab = Boolean(detachedTabsRef.current.get(normalizedPath));
@@ -514,12 +489,6 @@ export function usePaneRuntimeOrchestration(options: UsePaneRuntimeOrchestration
       allowLiveTransfer: options.allowLiveTransfer,
       reason: options.reason,
     };
-    if (shouldRequireManualTerminalCloseRecovery(closeRecoveryOptions)) {
-      detachedWindowHandlesRef.current.delete(normalizedPath);
-      deferredPaneCloseRecoveryRef.current.delete(normalizedPath);
-      manualPaneCloseRecoveryRef.current.add(normalizedPath);
-      return true;
-    }
     if (!shouldDelayPaneReattachAfterWindowClose(closeRecoveryOptions)) {
       return reattachPane(normalizedPath, { closeDetachedWindow: false });
     }
@@ -715,18 +684,6 @@ export function usePaneRuntimeOrchestration(options: UsePaneRuntimeOrchestration
     if (!panePopoutMode || typeof window === 'undefined') return undefined;
 
     const flushReattachState = () => {
-      const detachState = paneDetachTransferRef.current;
-      const panePath = hasPaneDetachTransferState(detachState)
-        ? (detachState.panePath || panePopoutPath || '')
-        : '';
-      if (shouldRequireManualTerminalCloseRecovery({
-        panePath,
-        terminalTabPath,
-        allowLiveTransfer: false,
-        reason: 'closed-window',
-      })) {
-        return;
-      }
       sendPanePopoutReattachRequest(false, false);
     };
 
@@ -854,6 +811,11 @@ export function usePaneRuntimeOrchestration(options: UsePaneRuntimeOrchestration
         return;
       }
       if (payload.type !== 'piclaw-pane-reattach-request') return;
+      const expectedHandle = detachedWindowHandlesRef.current.get(payload.panePath);
+      if (!expectedHandle || event.source !== expectedHandle) return;
+      const ownedPane = detachedTabsRef.current.get(payload.panePath)
+        || (payload.panePath === terminalTabPath ? detachedDockPaneRef.current : null);
+      if (!ownedPane || payload.paneInstanceId !== ownedPane.paneInstanceId) return;
       const transfer = consumePanePopoutReattachRequestMessage({ payload });
       const panePath = transfer?.panePath || '';
       if (!panePath) return;
@@ -875,13 +837,6 @@ export function usePaneRuntimeOrchestration(options: UsePaneRuntimeOrchestration
       const detached = detachedTab || detachedDock;
       if (!detached) return;
       if (transfer?.paneInstanceId && transfer.paneInstanceId !== detached.paneInstanceId) return;
-      if (shouldDisableTerminalReattach({ panePath, terminalTabPath })) {
-        pendingReattachPaneSourceWindowsRef.current.delete(panePath);
-        pendingReattachPaneClaimsRef.current.delete(panePath);
-        pendingReattachPaneHostTransfersRef.current.delete(panePath);
-        pendingReattachEditorTransfersRef.current.delete(panePath);
-        return;
-      }
       if (transfer?.hostTransfer && transfer.allowLiveTransfer && useLiveTransfer) {
         pendingReattachPaneClaimsRef.current.set(panePath, {
           panePath,
@@ -890,18 +845,6 @@ export function usePaneRuntimeOrchestration(options: UsePaneRuntimeOrchestration
         });
       } else {
         pendingReattachPaneClaimsRef.current.delete(panePath);
-      }
-      if (shouldRequireManualTerminalCloseRecovery({
-        panePath,
-        terminalTabPath,
-        allowLiveTransfer: transfer?.allowLiveTransfer,
-        reason: 'message',
-      })) {
-        pendingReattachPaneSourceWindowsRef.current.delete(panePath);
-        detachedWindowHandlesRef.current.delete(panePath);
-        deferredPaneCloseRecoveryRef.current.delete(panePath);
-        manualPaneCloseRecoveryRef.current.add(panePath);
-        return;
       }
       schedulePaneCloseRecoveryReattach(panePath, {
         allowLiveTransfer: transfer?.allowLiveTransfer,
@@ -923,31 +866,11 @@ export function usePaneRuntimeOrchestration(options: UsePaneRuntimeOrchestration
       flushDeferredPaneCloseRecoveries();
       for (const [panePath, handle] of detachedWindowHandlesRef.current.entries()) {
         if (!handle || !handle.closed) continue;
-        const isPending = panePath === terminalTabPath
-          ? Boolean(pendingDetachedDockPaneRef.current)
-          : pendingDetachedTabsRef.current.has(panePath);
+        const isPending = pendingDetachedTabsRef.current.has(panePath)
+          || (panePath === terminalTabPath && Boolean(pendingDetachedDockPaneRef.current));
         if (isPending) {
           detachedWindowHandlesRef.current.delete(panePath);
           clearPendingDetachedPane(panePath);
-          continue;
-        }
-        if (shouldDisableTerminalReattach({ panePath, terminalTabPath })) {
-          clearDetachedPane(panePath);
-          continue;
-        }
-        if (shouldRequireManualTerminalCloseRecovery({
-          panePath,
-          terminalTabPath,
-          allowLiveTransfer: false,
-          reason: 'closed-window',
-        })) {
-          detachedWindowHandlesRef.current.delete(panePath);
-          deferredPaneCloseRecoveryRef.current.delete(panePath);
-          manualPaneCloseRecoveryRef.current.add(panePath);
-          continue;
-        }
-        if (manualPaneCloseRecoveryRef.current.has(panePath)) {
-          detachedWindowHandlesRef.current.delete(panePath);
           continue;
         }
         schedulePaneCloseRecoveryReattach(panePath, {
@@ -1376,7 +1299,6 @@ export function usePaneRuntimeOrchestration(options: UsePaneRuntimeOrchestration
     reattachPane,
     requestPanePopoutReattach,
     canReattachPanePopout: panePopoutMode
-      && hasPaneDetachTransferState(paneDetachTransferRef.current)
-      && !shouldDisableTerminalReattach({ panePath: panePopoutPath || '', terminalTabPath }),
+      && hasPaneDetachTransferState(paneDetachTransferRef.current),
   };
 }

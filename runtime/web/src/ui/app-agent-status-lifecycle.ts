@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from '../vendor/preact-htm.js';
+import { useCallback, useEffect, useRef } from '../vendor/preact-htm.js';
 import {
   refreshAutoresearchStatusForChat,
   refreshContextUsageForChat,
@@ -12,6 +12,7 @@ import {
 import {
   handleConnectionStatusChangeEvent,
   handleUiVersionDriftEvent,
+  type AgentStatusConnectionState,
 } from './app-connection-lifecycle.js';
 import { runCoalescedAppRefresh } from './app-refresh-coordination.js';
 
@@ -86,6 +87,7 @@ interface UseAgentStatusLifecycleOptions {
 }
 
 export function useAgentStatusLifecycle(options: UseAgentStatusLifecycleOptions) {
+  const connectionStateRef = useRef<AgentStatusConnectionState>({ status: undefined, generation: 0 });
   const {
     currentChatJid,
     activeChatJidRef,
@@ -187,12 +189,15 @@ export function useAgentStatusLifecycle(options: UseAgentStatusLifecycleOptions)
 
   const refreshAgentStatus = useCallback(async () => {
     return await runCoalescedAppRefresh({
-      kind: 'agent-status',
+      // A reconnect must not join an old generation's in-flight refresh or
+      // reuse its cooldown result: that response is deliberately fenced out.
+      kind: `agent-status:${connectionStateRef.current.generation}`,
       chatJid: currentChatJid,
       run: async () => {
         return await refreshAgentStatusForChat({
           currentChatJid,
           currentTurnIdRef,
+          connectionStateRef,
           getAgentStatus,
           activeChatJidRef,
           wasAgentActiveRef,
@@ -265,6 +270,7 @@ export function useAgentStatusLifecycle(options: UseAgentStatusLifecycleOptions)
     handleConnectionStatusChangeEvent({
       currentChatJid,
       status,
+      connectionStateRef,
       setConnectionStatus,
       setAgentStatus,
       setAgentDraft,

@@ -177,3 +177,9 @@ describe("add-on runtime messaging handlers", () => {
     expect((requests[0] as any).mode).toBe("queue");
   });
 });
+
+test('exact JID resolves every live sibling branch while advertising remains alias-deduplicated',async()=>{
+ const requests:any[]=[];const handlers=createAddonMessagingRuntimeHandlers({listKnownChats:()=>[{chat_jid:'web:agent:branch:a',agent_name:'agent',is_active:true},{chat_jid:'web:agent:branch:b',agent_name:'agent',is_active:false},{chat_jid:'web:agent:archived',agent_name:'agent',archived_at:'2026-01-01'}],findChatByAgentName:()=>({chat_jid:'web:agent:branch:a',agent_name:'agent'}),enqueueAgentMessage:async request=>{requests.push(request);return{status:'ok',chat_jid:request.chatJid,thread_id:null,created:false};}});
+ expect(await handlers.listAdvertisableAgents()).toEqual([{agent_name:'agent',active:true}]);expect(await handlers.resolveLocalTarget({target_chat_jid:'web:agent:branch:b'})).toMatchObject({status:'resolved',target_agent_name:'agent'});expect(await handlers.resolveLocalTarget({target_chat_jid:'web:agent:archived'})).toEqual({status:'not_found'});
+ await handlers.deliverPeerMessage({target_chat_jid:'web:agent:branch:b',content:'synthetic',source:{peer_instance_id:'synthetic-instance-0001',peer_fingerprint:'abcdef1234567890',peer_alias:'test',message_id:'synthetic-message-1'}});expect(requests[0].chatJid).toBe('web:agent:branch:b');
+});

@@ -5,7 +5,7 @@ import { createTempWorkspace } from '../helpers.js';
 
 /** Real packaged CLI, empty profile and an explicit observer extension. No
  * prompt/provider execution: session_start records tools and requests shutdown. */
-for (const flags of [['--no-mcp'],['--no-extensions']] as const) test(`Pi1.1.0 CLI ${flags[0]} prevents configured native MCP startup`,async()=>{
+for (const flags of [['--no-mcp'],['--no-extensions']] as const) test(`Pi 1.2.0 CLI ${flags[0]} prevents configured native MCP startup`,async()=>{
  const ws=createTempWorkspace('pi110-cli-loading-'),profile=join(ws.base,'profile'),marker=join(ws.base,'server-started'),record=join(ws.base,'tools.json');mkdirSync(profile,{mode:0o700});
  const server=join(ws.base,'server.mjs');writeFileSync(server,`import{writeFileSync}from'node:fs';writeFileSync(${JSON.stringify(marker)},'unexpected');process.exit(99);`);
  writeFileSync(join(profile,'mcp.json'),JSON.stringify({mcpServers:{fixture:{command:process.execPath,args:[server]}}}),{mode:0o600});

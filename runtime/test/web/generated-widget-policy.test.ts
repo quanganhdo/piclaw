@@ -9,6 +9,7 @@ for (const widget of [{ source: 'live', kind: 'html' }, { kind: 'html', capabili
     expect(csp).toContain("script-src 'unsafe-inline' 'self' 'wasm-unsafe-eval'");
     expect(csp).not.toContain("'unsafe-eval'");
     expect(getGeneratedWidgetSandbox(widget)).toContain('allow-scripts');
+    expect(getGeneratedWidgetSandbox(widget)).not.toContain('allow-same-origin');
   });
 }
 for (const widget of [{ kind: 'html' }, { source: 'live', kind: 'svg' }, { kind: 'html', capabilities: ['wasm', 'same-origin-fetch'] }]) {

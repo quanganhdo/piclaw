@@ -5,12 +5,10 @@
 #   build-web      – Build web bundles into static/classic/dist and static/common/dist (+ sourcemaps).
 #   build-ts       – Type-check TypeScript (tsc --noEmit). No generated/dist/ output.
 #   build-piclaw   – Full build: build-web (vendor + bundles) + build-ts.
-#   build-desktop  – Build the optional Electrobun desktop shell.
 #   pack           – Pack piclaw into a .tgz (depends on build-piclaw).
 #   portable-linux – Build a Linux self-extracting .run artifact (depends on build-piclaw).
 #   portable-linux-baseline – Build a Linux x64 .run artifact with non-AVX Bun.
 #   portable-mac/windows – Build platform-native portable artifacts on matching runners.
-#   portable-experimental-shell – Build the Electrobun shell artifact with an -experimental suffix.
 #   local-install  – Pack and install globally (no restart).
 #   lint/test      – Run Oxlint and bun test suite.
 #   ci-fast        – Run the canonical fast CI guardrails + web build.
@@ -49,7 +47,7 @@ GLOBAL_LOCK := $(GLOBAL_DIR)/bun.lock
 PI_AGENT_VERSION ?= $(shell jq -r '.dependencies["@earendil-works/pi-coding-agent"] // "0.74.0"' package.json)
 WEB_BUILD_TEST_TIMEOUT_MS ?= 20000
 
-.PHONY: help up down enter build build-piclaw build-web build-ts build-desktop vendor update-mermaid-vendor pack portable portable-linux portable-linux-baseline portable-mac portable-windows portable-experimental-shell \
+.PHONY: help up down enter build build-piclaw build-web build-ts vendor update-mermaid-vendor pack portable portable-linux portable-linux-baseline portable-mac portable-windows \
         local-install restart lint test test-coverage ci-fast ci-integration install-git-hooks pre-push-ci publish-smoke \
         dual-tag tag-ghcr sync-version bump-minor bump-patch push
 
@@ -133,8 +131,6 @@ build-ts: ## Type-check TypeScript / validate emit (generated/dist is cleaned up
 
 build-piclaw: build-web build-ts ## Full build: vendor + web + ts
 
-build-desktop: ## Build the optional Electrobun desktop shell for the current platform
-	bun run build:desktop
 
 # ── Pack & install ───────────────────────────────────────────────────
 
@@ -171,8 +167,6 @@ portable-windows: build-piclaw ## Build a Windows portable .zip artifact on a Wi
 	@node -e "process.exit(process.platform === 'win32' ? 0 : 1)" || { echo "portable-windows must run on Windows" >&2; exit 1; }
 	bun run release:build-portable
 
-portable-experimental-shell: ## Build the Electrobun shell artifact for the current runner with an -experimental suffix
-	bun run release:build-experimental-shell
 
 restart: ## No-op safety guard: use exit_process from the agent instead of restarting inline
 	@printf '%s\n' "[restart] No-op by design." \

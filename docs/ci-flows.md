@@ -41,7 +41,6 @@ flowchart TB
 
     PPORT["build-portable-artifacts (matrix linux-x64/linux-x64-baseline/linux-arm64/macos-arm64/windows-x64): Checkout → Setup Bun → Install deps → Build portable → Upload artifact"]
 
-    PDESK["build-experimental-shell-artifacts (same matrix): Checkout → Setup Bun → Install deps → Build desktop artifact → Upload piclaw-desktop artifact"]
 
     PAMD["build-amd64: Checkout → Buildx → GHCR login → Metadata → Build/push AMD64 → Smoke test"]
 
@@ -56,7 +55,6 @@ flowchart TB
     PPRUNEDOCK["prune-docker-images: Delete untagged images"]
 
     PWAIT --> PPORT
-    PWAIT --> PDESK
     PWAIT --> PAMD
     PWAIT --> PARM
     PRES --> PAMD
@@ -65,7 +63,6 @@ flowchart TB
     PARM --> PMERGE
     PMERGE --> PPUBAS
     PPORT --> PPUBAS
-    PDESK --> PPUBAS
     PPUBAS --> PPRUNE
     PPUBAS --> PCLEAN
     PMERGE --> PPRUNEDOCK

@@ -17,7 +17,7 @@ Web UI 支持英语、简体中文和日语，并提供桌面和移动端布局�
 | [Docker](#使用-docker-快速开始) | 推荐的部署方式；包含 Bun、PiClaw 和配套命令行工具 |
 | [便携发行包](docs/getting-started.md#portable-releases) | 无需 Docker，可用于 Linux、Apple Silicon Mac，以及实验性的 Windows 部署；包含 Bun 和运行时依赖 |
 | [通过 Bun 从仓库安装](docs/install-from-repo.md) | 使用已有的 Bun 安装指定发布标签，属于实验性方式 |
-| [源码构建](docs/development.md) / [桌面壳](docs/desktop.md) | 开发和本地测试；桌面包装器处于实验阶段 |
+| [源码构建](docs/development.md) | 开发和本地测试 |
 
 发行包可从 [GitHub Releases](https://github.com/rcarmo/piclaw/releases) 下载，容器镜像位于 [GHCR](https://github.com/rcarmo/piclaw/pkgs/container/piclaw)。固定发布标签可重复部署相同版本。
 

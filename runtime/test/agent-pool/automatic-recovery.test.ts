@@ -154,8 +154,28 @@ test("treats timeout-before-finalization during compaction intent as compact-the
   expect(decision.strategy).toBe("compact_then_retry");
 });
 
+test("credential storage/resolution failures suppress every automatic continuation path", () => {
+  for (const message of ["Model credential storage unavailable.", "Model credential resolution unavailable."]) {
+    for (const suffix of ["", " Token refresh failed: 401", " 503 temporarily unavailable", " missing provider configuration"]) {
+      expect(classifyOpaqueAgentFailure(message + suffix)).toBe("credential_storage");
+    }
+    for (const snapshot of [
+      { hadToolActivity: false, hadPartialOutput: false },
+      { hadToolActivity: false, hadPartialOutput: true, sawCompactionIntent: true },
+      { hadToolActivity: true, hadPartialOutput: true, sawAssistantToolCall: true },
+      { hadToolActivity: true, hadPartialOutput: true, needsToolFreeFinalization: true, canDisableToolsForRecovery: true },
+      { hadToolActivity: true, hadPartialOutput: true, compactionErrorMessage: "503 temporarily unavailable", sawCompactionIntent: true },
+    ]) {
+      const decision = decideAutomaticRecovery({ config: DEFAULT_AUTOMATIC_RECOVERY_CONFIG, errorText: message, recoveryAttemptsUsed: 0, elapsedMs: 1000, snapshot });
+      expect(decision).toMatchObject({ recover: false, classifier: "credential_storage", strategy: null });
+      expect(decision.reason).not.toMatch(/login|sign in/i);
+    }
+  }
+});
+
 test("classifies provider auth/config failures as terminal auth_config", () => {
   expect(isProviderAuthConfigFailure("No API key for provider: openai-codex")).toBe(true);
+  expect(classifyOpaqueAgentFailure("Provider is not configured: synthetic-stream-auth")).toBe("auth_config");
   expect(isProviderAuthConfigFailure("Token refresh failed: 401")).toBe(true);
   expect(isProviderAuthConfigFailure("provider.getApiKey is not a function")).toBe(true);
 

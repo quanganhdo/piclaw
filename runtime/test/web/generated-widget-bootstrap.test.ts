@@ -66,7 +66,7 @@ test('widget bootstrap page lifecycle disconnects observer, cancels queued work 
   f.changeName(getGeneratedWidgetHostWindowName({ ...widget, runtimeState: { count: 3 } }));
   expect(f.scheduled.size).toBe(1); f.emit('pagehide');
   expect(f.scheduled.size).toBe(0); expect(f.observers[0].connected).toBe(false);
-  f.emit('message', { data: { __piclawGeneratedWidgetHost: true, widgetId: 'fixture', type: 'widget.update', payload: { paused: true } } });
+  f.emit('message', { source: f.window.parent, data: { __piclawGeneratedWidgetHost: true, widgetId: 'fixture', type: 'widget.update', payload: { paused: true } } });
   expect(f.scheduled.size).toBe(0);
   f.changeName(getGeneratedWidgetHostWindowName({ ...widget, runtimeState: { count: 4 } }));
   expect(f.scheduled.size).toBe(0);
@@ -88,9 +88,11 @@ test('widget bootstrap opaque fallback keeps one poll and tears it down on pageh
 
 test('widget bootstrap cancels timeout fallback and preserves message filtering/coalescing', () => {
   const f = bootstrap(false, false); f.flush();
-  f.emit('message', { data: { __piclawGeneratedWidgetHost: true, widgetId: 'other' } });
+  f.emit('message', { source: f.window.parent, data: { __piclawGeneratedWidgetHost: true, widgetId: 'other' } });
+  f.emit('message', { source: {}, data: { __piclawGeneratedWidgetHost: true, widgetId: 'fixture', type: 'widget.update', payload: { forged: true } } });
+  f.emit('message', { data: { __piclawGeneratedWidgetHost: true, widgetId: 'fixture', type: 'widget.update', payload: { forged: true } } });
   expect(f.scheduled.size).toBe(0);
-  for (const count of [6, 7]) f.emit('message', { data: { __piclawGeneratedWidgetHost: true, widgetId: 'fixture', type: 'widget.update', payload: { runtimeState: { count } } } });
+  for (const count of [6, 7]) f.emit('message', { source: f.window.parent, data: { __piclawGeneratedWidgetHost: true, widgetId: 'fixture', type: 'widget.update', payload: { runtimeState: { count } } } });
   expect(f.scheduled.size).toBe(1); f.flush();
   expect(f.window.piclawWidget.hostState.runtimeState).toEqual({ count: 7 });
   f.changeName(getGeneratedWidgetHostWindowName({ ...widget, runtimeState: { count: 8 } }));

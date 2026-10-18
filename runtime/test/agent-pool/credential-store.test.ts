@@ -1,9 +1,10 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { chmodSync, linkSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import type { Credential } from "@earendil-works/pi-ai";
+import { createModels, type Credential, type OAuthAuth } from "@earendil-works/pi-ai";
+import lockfile from "proper-lockfile";
 import { FileCredentialStore, isTransientOAuthRefreshError } from "../../src/agent-pool/credential-store.js";
 import { addLogSink, removeLogSink, type LogRecord } from "../../src/utils/logger.js";
 
@@ -16,6 +17,21 @@ async function createStore(initial: Record<string, Credential> = {}) {
   const store = new FileCredentialStore(authPath);
   for (const [provider, credential] of Object.entries(initial)) await store.modify(provider, async () => credential);
   return { authPath, store };
+}
+
+// Exercise Pi's actual refresh callback/error wrapper without any provider I/O.
+function oauthModels(store: FileCredentialStore, refresh: OAuthAuth["refresh"]) {
+  const models = createModels({ credentials: store });
+  models.setProvider({
+    id: "oauth", name: "Synthetic OAuth", getModels: () => [],
+    auth: { oauth: {
+      name: "Synthetic OAuth", login: async () => { throw new Error("login must not run"); },
+      refresh, toAuth: async (credential) => ({ apiKey: credential.access }),
+    } },
+    stream: () => { throw new Error("stream must not run"); },
+    streamSimple: () => { throw new Error("stream must not run"); },
+  });
+  return models;
 }
 
 afterEach(() => {
@@ -221,6 +237,7 @@ describe("FileCredentialStore", () => {
       "400 Bad Request: invalid_grant",
       "401 Unauthorized",
       "refresh token revoked",
+      "403 Forbidden",
     ]) {
       let calls = 0;
       await expect(store.modify("oauth", async () => {
@@ -232,7 +249,7 @@ describe("FileCredentialStore", () => {
     expect(await store.read("oauth")).toMatchObject({ type: "oauth", access: "old", refresh: "refresh" });
   });
 
-  test("does not retry a valid OAuth credential mutation", async () => {
+  test("does not retry an unrelated mutation even inside the proactive OAuth window", async () => {
     const { authPath } = await createStore({ oauth: { type: "oauth", access: "valid", refresh: "refresh", expires: Date.now() + 60_000 } });
     const store = new FileCredentialStore(authPath, { maxRetries: 2, sleep: async () => undefined });
     let calls = 0;
@@ -241,6 +258,162 @@ describe("FileCredentialStore", () => {
       throw new Error("503 Service Unavailable");
     })).rejects.toThrow("503 Service Unavailable");
     expect(calls).toBe(1);
+  });
+
+  for (const [label, remainingMs, expectedCalls] of [
+    ["just inside five minutes", 299_999, 3],
+    ["exactly five minutes", 300_000, 3],
+    ["just outside five minutes", 300_001, 0],
+    ["expired", -1, 3],
+  ] as const) {
+    test(`Pi getAuth retries proactive refresh: ${label}`, async () => {
+      const now = Date.now();
+      const clock = spyOn(Date, "now").mockReturnValue(now);
+      try {
+        const initial = { ...expiredOAuth, expires: now + remainingMs };
+        const { authPath } = await createStore({ oauth: initial });
+        const delays: number[] = [];
+        const store = new FileCredentialStore(authPath, {
+          random: () => 0.5, sleep: async (delay) => { delays.push(delay); },
+        });
+        let calls = 0;
+        const models = oauthModels(store, async (current, signal) => {
+          expect(current).toEqual(initial);
+          expect(signal.aborted).toBe(false);
+          if (++calls < 3) throw new Error("503 Service Unavailable");
+          return { ...current, access: "new", refresh: "rotated", expires: now + 3_600_000 };
+        });
+        const result = await models.getAuth("oauth");
+        expect(calls).toBe(expectedCalls);
+        expect(delays).toEqual(expectedCalls ? [250, 500] : []);
+        expect(result?.auth.apiKey).toBe(expectedCalls ? "new" : "old");
+        expect(await store.read("oauth")).toMatchObject({ refresh: expectedCalls ? "rotated" : "refresh" });
+      } finally { clock.mockRestore(); }
+    });
+  }
+
+  test("concurrent Pi callers refresh the latest rotated credential only once", async () => {
+    const { authPath, store: stale } = await createStore({ oauth: expiredOAuth });
+    const latest = { ...expiredOAuth, access: "latest", refresh: "already-rotated", expires: Date.now() + 60_000 };
+    await new FileCredentialStore(authPath).modify("oauth", async () => latest);
+    const owner = new FileCredentialStore(authPath, { sleep: async () => { await Bun.sleep(5); } });
+    let calls = 0;
+    const refresh: OAuthAuth["refresh"] = async (current) => {
+      expect(current).toEqual(latest);
+      if (++calls === 1) throw new Error("503 Service Unavailable");
+      return { ...current, access: "new", refresh: "next-rotation", expires: Date.now() + 3_600_000 };
+    };
+    const results = await Promise.all([
+      oauthModels(owner, refresh).getAuth("oauth"),
+      oauthModels(stale, refresh).getAuth("oauth"),
+    ]);
+    expect(calls).toBe(2);
+    expect(results.map((result) => result?.auth.apiKey)).toEqual(["new", "new"]);
+    expect(await stale.read("oauth")).toMatchObject({ refresh: "next-rotation" });
+  });
+
+  test("Pi caller abort during an active refresh still persists the rotated token", async () => {
+    const { authPath, store } = await createStore({ oauth: { ...expiredOAuth, expires: Date.now() + 60_000 } });
+    const controller = new AbortController();
+    let entered!: () => void, finish!: () => void;
+    const started = new Promise<void>((resolve) => { entered = resolve; });
+    const gate = new Promise<void>((resolve) => { finish = resolve; });
+    try {
+      const models = oauthModels(store, async (current, signal) => {
+        entered();
+        await gate;
+        expect(signal.aborted).toBe(false);
+        return { ...current, access: "new", refresh: "rotated", expires: Date.now() + 3_600_000 };
+      });
+      const pending = models.getAuth("oauth", { signal: controller.signal });
+      await started;
+      controller.abort();
+      await expect(pending).rejects.toThrow();
+      finish();
+      // This read waits for refresh/persistence to release the same file lock.
+      expect(await new FileCredentialStore(authPath).read("oauth")).toMatchObject({ refresh: "rotated" });
+    } finally { finish(); }
+  });
+
+  test("Pi caller abort during backoff never starts another provider refresh", async () => {
+    const { authPath } = await createStore({ oauth: expiredOAuth });
+    const controller = new AbortController();
+    const store = new FileCredentialStore(authPath, { sleep: async () => { controller.abort(); } });
+    let calls = 0;
+    const models = oauthModels(store, async () => { calls++; throw new Error("503 Service Unavailable"); });
+    await expect(models.getAuth("oauth", { signal: controller.signal })).rejects.toThrow();
+    // read waits for the outstanding locked callback to settle after the caller's race.
+    expect(await store.read("oauth")).toEqual(expiredOAuth);
+    expect(calls).toBe(1);
+  });
+
+  test("Pi proactive refresh exhausts at two retries and preserves the stored token", async () => {
+    const { authPath } = await createStore({ oauth: { ...expiredOAuth, expires: Date.now() + 60_000 } });
+    const delays: number[] = [];
+    const store = new FileCredentialStore(authPath, { maxRetries: 10, sleep: async (delay) => { delays.push(delay); } });
+    let calls = 0;
+    const models = oauthModels(store, async () => { calls++; throw new Error("503 Service Unavailable"); });
+    await expect(models.getAuth("oauth")).rejects.toThrow("503 Service Unavailable");
+    expect(calls).toBe(3);
+    expect(delays).toHaveLength(2);
+    expect(await store.read("oauth")).toMatchObject({ access: "old", refresh: "refresh" });
+  });
+
+  test("Pi proactive refresh never retries permanent failures", async () => {
+    const { authPath } = await createStore({ oauth: { ...expiredOAuth, expires: Date.now() + 60_000 } });
+    const store = new FileCredentialStore(authPath, { sleep: async () => { throw new Error("must not sleep"); } });
+    for (const message of ["invalid_grant", "refresh token revoked", "401 Unauthorized", "403 Forbidden"]) {
+      let calls = 0;
+      const models = oauthModels(store, async () => { calls++; throw new Error(message); });
+      await expect(models.getAuth("oauth")).rejects.toThrow(message);
+      expect(calls).toBe(1);
+    }
+    expect(await store.read("oauth")).toMatchObject({ refresh: "refresh" });
+  });
+
+  for (const name of ["AbortError", "TimeoutError"]) {
+    test(`Pi refresh ${name} is not retried`, async () => {
+      const { authPath } = await createStore({ oauth: expiredOAuth });
+      const store = new FileCredentialStore(authPath, { sleep: async () => { throw new Error("must not sleep"); } });
+      let calls = 0;
+      const models = oauthModels(store, async () => {
+        calls++;
+        throw new DOMException("refresh timed out", name);
+      });
+      await expect(models.getAuth("oauth")).rejects.toThrow("refresh timed out");
+      expect(calls).toBe(1);
+      expect(await store.read("oauth")).toEqual(expiredOAuth);
+    });
+  }
+
+  test("checks cancellation before invoking a retry or starting a mutation", async () => {
+    const { authPath } = await createStore({ oauth: expiredOAuth });
+    const controller = new AbortController();
+    const store = new FileCredentialStore(authPath, { sleep: async () => { controller.abort(); } });
+    let calls = 0;
+    const modify = () => store.modify("oauth", async () => { calls++; throw new Error("503 Service Unavailable"); }, { signal: controller.signal });
+    await expect(modify()).rejects.toThrow();
+    expect(calls).toBe(1);
+    await expect(modify()).rejects.toThrow();
+    expect(calls).toBe(1);
+    expect(await store.read("oauth")).toEqual(expiredOAuth);
+  });
+
+  test("lock compromise during backoff prevents another callback and preserves credentials", async () => {
+    const { authPath } = await createStore({ oauth: expiredOAuth });
+    const originalLock = lockfile.lock;
+    let compromise!: (error: Error) => void;
+    const lockSpy = spyOn(lockfile, "lock").mockImplementation(async (path, options) => {
+      compromise = options!.onCompromised!;
+      return originalLock(path, options);
+    });
+    try {
+      const store = new FileCredentialStore(authPath, { sleep: async () => { compromise(new Error("lock compromised")); } });
+      let calls = 0;
+      await expect(store.modify("oauth", async () => { calls++; throw new Error("503 Service Unavailable"); })).rejects.toThrow("lock compromised");
+      expect(calls).toBe(1);
+      expect(JSON.parse(readFileSync(authPath, "utf8")).oauth).toEqual(expiredOAuth);
+    } finally { lockSpy.mockRestore(); }
   });
 
   test("does not retry non-OAuth credential mutations", async () => {

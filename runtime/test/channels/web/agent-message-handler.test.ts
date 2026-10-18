@@ -3,6 +3,113 @@ import "../../helpers.ts";
 import { beginChatRun, getChatCursor, getInflightMessageId, initDatabase } from "../../../src/db.js";
 import { getIdentityConfig, setAssistantAvatar } from '../../../src/core/config.js';
 import { handleAgentMessage } from "../../../src/channels/web/handlers/agent.ts";
+import { AgentStatusStore } from "../../../src/channels/web/agent/agent-status-store.ts";
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>(yes => { resolve = yes; });
+  return { promise, resolve };
+}
+
+function modelLookupFixture(getCurrentModelLabel: () => Promise<string | null>) {
+  const statuses = new AgentStatusStore({ load() {}, save() {}, setAgentStatus() {}, getAgentStatuses: () => ({}) }, { getInflightRuns: () => [] });
+  type Result = { status: string; message: string };
+  const compact = deferred<Result>();
+  const stats = deferred<Result>();
+  const compactStarted = deferred<void>();
+  const statsStarted = deferred<void>();
+  const events: Array<{ event: string; payload: any }> = [];
+  const responses: string[] = [];
+  let row = 0;
+  const channel = {
+    agentPool: {
+      isStreaming: () => false, isActive: () => false, getCurrentModelLabel,
+      applyControlCommand: (_jid: string, command: any) => {
+        if (command.type === "stats") { statsStarted.resolve(); return stats.promise; }
+        compactStarted.resolve(); return compact.promise;
+      },
+    },
+    getQueuedFollowupCount: () => 0,
+    getAgentStatus: (jid: string) => statuses.get(jid),
+    updateAgentStatus: (jid: string, payload: Record<string, unknown>) => statuses.update(jid, payload),
+    broadcastEvent: (event: string, payload: any) => { events.push({ event, payload }); },
+    storeMessage: () => ({ id: ++row, timestamp: `2026-10-15T00:00:0${row}Z`, data: { thread_id: null } }),
+    sendMessage: async (_jid: string, content: string) => { responses.push(content); },
+    json: (body: unknown, status = 200) => Response.json(body, { status }),
+  } as any;
+  const send = (content: string) => handleAgentMessage(channel, new Request("https://fixture/agent/default/message", {
+    method: "POST", body: JSON.stringify({ content }),
+  }), "/agent/default/message", "web:test", "default");
+  return { statuses, compact, stats, compactStarted, statsStarted, events, responses, send };
+}
+
+describe("manual command deferred model lookup ownership", () => {
+  for (const command of ["/compact", "/session-rotate"]) {
+    test(`${command} claims before lookup and cannot reclaim a newer command`, async () => {
+      const model = deferred<string | null>();
+      const modelStarted = deferred<void>();
+      const f = modelLookupFixture(() => { modelStarted.resolve(); return model.promise; });
+      const older = f.send(command);
+      await modelStarted.promise;
+      const initial = f.statuses.get("web:test")!;
+      expect(initial).toMatchObject({ type: "intent", model: null,
+        intent_key: command === "/compact" ? "compaction" : "session_rotation" });
+      expect(f.events.filter(e => e.event === "agent_status")).toHaveLength(1);
+      const newer = f.send("/stats");
+      await f.statsStarted.promise;
+      const owner = f.statuses.get("web:test")!;
+      expect(owner.turn_id).not.toBe(initial.turn_id);
+      const eventCount = f.events.length;
+      model.resolve("fixture/resolved-model");
+      await f.compactStarted.promise;
+      expect(f.statuses.get("web:test")).toEqual(owner);
+      expect(f.events.slice(eventCount).filter(e => e.event === "agent_status")).toEqual([]);
+      f.compact.resolve({ status: "success", message: "Finished older command" });
+      expect((await older).status).toBe(201);
+      expect(f.responses).toContain("Finished older command");
+      expect(f.statuses.get("web:test")).toEqual(owner);
+      expect(f.events.slice(eventCount).filter(e => e.event === "agent_status")).toEqual([]);
+      f.stats.resolve({ status: "success", message: "Finished stats" });
+      expect((await newer).status).toBe(201);
+      expect(f.statuses.get("web:test")).toMatchObject({ type: "done", turn_id: owner.turn_id });
+    });
+
+    test(`${command} model metadata preserves the original timer and turn`, async () => {
+      const model = deferred<string | null>();
+      const modelStarted = deferred<void>();
+      const f = modelLookupFixture(() => { modelStarted.resolve(); return model.promise; });
+      const pending = f.send(command);
+      await modelStarted.promise;
+      const initial = f.statuses.get("web:test")!;
+      await Bun.sleep(5);
+      model.resolve("fixture/resolved-model");
+      await f.compactStarted.promise;
+      expect(f.statuses.get("web:test")).toMatchObject({
+        type: "intent", model: "fixture/resolved-model", turn_id: initial.turn_id,
+        started_at: initial.started_at, run_started_at: initial.run_started_at, phase_key: initial.phase_key,
+      });
+      f.compact.resolve({ status: "success", message: "Finished" });
+      expect((await pending).status).toBe(201);
+      expect(f.statuses.get("web:test")).toMatchObject({ type: "done", turn_id: initial.turn_id });
+    });
+
+    for (const failure of ["reject", "throw"] as const) {
+      test(`${command} model lookup ${failure} stays nonfatal and reaches its own terminal`, async () => {
+        const f = modelLookupFixture(() => {
+          if (failure === "throw") throw new Error("model lookup failed");
+          return Promise.reject(new Error("model lookup failed"));
+        });
+        const pending = f.send(command);
+        await f.compactStarted.promise;
+        const owner = f.statuses.get("web:test")!;
+        expect(owner).toMatchObject({ type: "intent", model: null });
+        f.compact.resolve({ status: "error", message: "Compaction failed" });
+        expect((await pending).status).toBe(201);
+        expect(f.statuses.get("web:test")).toMatchObject({ type: "error", turn_id: owner.turn_id });
+      });
+    }
+  }
+});
 
 describe("web agent message handler", () => {
   test('idle input becoming busy during storage is queued atomically before acknowledgement',async()=>{
@@ -50,13 +157,14 @@ describe("web agent message handler", () => {
   test('avatar command broadcasts updated branding and completion cannot restore the captured old avatar', async () => {
     const previous = getIdentityConfig().assistantAvatar;
     const broadcasts: Array<{event: string; payload: any}> = [];
+    let status: Record<string, unknown> | null = null;
     try {
       setAssistantAvatar('/missing/old-avatar.png');
       const channel = {
         agentPool: { isStreaming: () => false, isActive: () => false, applyControlCommand: async () => { setAssistantAvatar(''); return {status:'success',message:'Cleared'}; } },
         json: (body: unknown, status = 200) => Response.json(body,{status}),
-        getQueuedFollowupCount: () => 0, getAgentStatus: () => null,
-        broadcastEvent: (event: string,payload: any) => broadcasts.push({event,payload}), updateAgentStatus: () => {},
+        getQueuedFollowupCount: () => 0, getAgentStatus: () => status,
+        broadcastEvent: (event: string,payload: any) => broadcasts.push({event,payload}), updateAgentStatus: (_jid: string, next: Record<string, unknown>) => { status = next; },
         storeMessage: () => ({id:456,timestamp:'2026-09-22T00:00:00Z',data:{thread_id:null},content:'/agent-avatar clear'}), sendMessage: async () => {},
       } as any;
       const response = await handleAgentMessage(channel,new Request('https://fixture/agent/default/message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:'/agent-avatar clear'})}),'/agent/default/message','web:default','default');
@@ -293,7 +401,7 @@ describe("web agent message handler", () => {
         return 456;
       },
       getQueuedFollowupCount: () => 0,
-      getAgentStatus: () => null,
+      getAgentStatus: () => statusUpdates.at(-1)?.status ?? null,
       broadcastEvent: (event: string, payload: any) => broadcasts.push({ event, payload }),
       updateAgentStatus: (chatJid: string, status: any) => statusUpdates.push({ chatJid, status }),
       setContextUsage: (chatJid: string, usage: any) => contextUsages.push({ chatJid, usage }),
@@ -327,7 +435,7 @@ describe("web agent message handler", () => {
     expect(storeMessageCalls).toBe(1);
     expect(sentMessages[0]?.content).toBe("Compaction requested immediately.");
     expect(contextUsages).toEqual([{ chatJid: "web:default", usage: { tokens: 321, contextWindow: 1000, percent: 32.1 } }]);
-    expect(statusUpdates.some((entry) => entry.chatJid === "web:default" && entry.status.type === "context_usage")).toBe(true);
+    expect(statusUpdates.map(entry => entry.status.type)).toEqual(["intent", "done"]);
     expect(broadcasts).toContainEqual(expect.objectContaining({
       event: "agent_status",
       payload: expect.objectContaining({
@@ -734,9 +842,19 @@ describe("web agent message handler", () => {
       type: "intent",
       intent_key: "session_rotation",
       title: "Rotating session",
+      model: null,
+    });
+    expect(statusUpdates[1]).toMatchObject({
+      type: "intent",
+      intent_key: "session_rotation",
+      title: "Rotating session",
+      started_at: statusUpdates[0].started_at,
+      turn_id: statusUpdates[0].turn_id,
+      run_started_at: statusUpdates[0].run_started_at,
       model: "github-copilot/gpt-5.4",
     });
-    expect(statusUpdates).toContainEqual(expect.objectContaining({
+    expect(statusUpdates.map(status => status.type)).toEqual(["intent", "intent", "done"]);
+    expect(broadcasts.map(entry => entry.payload)).toContainEqual(expect.objectContaining({
       type: "context_usage",
       context_reset: true,
       sessionGeneration: "session-after-rotate",

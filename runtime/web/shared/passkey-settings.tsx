@@ -495,7 +495,7 @@ export function PasskeySettings() {
               const removeBusy = removePendingId === passkey.id;
               const removeDisabled = !writesAllowed || !passkey.removable || busy;
               return (
-                <article key={passkey.id} className="passkey-settings__card" role="listitem">
+                <div key={passkey.id} className="passkey-settings__card" role="listitem">
                   <div className="passkey-settings__card-header">
                     <div>
                       <h4 className="passkey-settings__name">{passkey.name}</h4>
@@ -586,7 +586,7 @@ export function PasskeySettings() {
                       </div>
                     </div>
                   )}
-                </article>
+                </div>
               );
             })}
           </div>

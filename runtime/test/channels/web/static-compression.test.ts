@@ -2,6 +2,29 @@ import { expect, test } from "bun:test";
 import { gunzipSync } from "bun";
 
 import { serveStatic } from "../../../src/channels/web/http/static.js";
+import { getRouteFlags, isPublicWidgetAssetPath, shouldSkipAuthCheck } from "../../../src/channels/web/http/route-flags.js";
+
+for (const asset of ['common/js/vendor/three/three.module.min.js', 'common/js/vendor/three/three.core.min.js', 'common/js/vendor/remote-display-decoder.wasm', 'common/js/vendor/xterm/xterm.css', 'common/fonts/KaTeX_Main-Regular.woff2']) {
+  test(`opaque widget dependency is public and credential-free CORS: ${asset}`, async () => {
+    for (const encoding of ['', 'gzip', 'br, gzip']) {
+      const req = new Request(`https://example.test/static/${asset}`, {headers: {Origin:'null', 'Accept-Encoding':encoding}});
+      expect(shouldSkipAuthCheck(getRouteFlags(req, new URL(req.url).pathname), false)).toBe(true);
+      const response = await serveStatic(asset, notFound, req);
+      expect(response.status).toBe(200);
+      expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
+      expect(response.headers.get('Access-Control-Allow-Credentials')).toBeNull();
+    }
+  });
+}
+
+test('widget CORS never exposes authenticated bundles, API data, metadata or traversal', async () => {
+  for (const path of ['/static/classic/dist/app.bundle.js', '/static/common/dist/family.bundle.js', '/agent/keychain', '/workspace/secret.js', '/static/common/js/vendor/three/three.meta.json', '/static/common/js/vendor/../../../classic/dist/app.bundle.js', '/static/common/js/vendor/%2e%2e/secret.js']) {
+    expect(isPublicWidgetAssetPath(path)).toBe(false);
+    expect(shouldSkipAuthCheck(getRouteFlags(new Request('https://example.test'), path), false)).toBe(false);
+  }
+  const response = await serveStatic('classic/dist/app.bundle.css', notFound);
+  expect(response.headers.get('Access-Control-Allow-Origin')).toBeNull();
+});
 
 function notFound(): Response {
   return new Response("not found", { status: 404 });
