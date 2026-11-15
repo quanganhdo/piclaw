@@ -1,6 +1,8 @@
+import { goalInputDisplayText } from "../ui/goal-input-display.ts";
 import { createDictationComposerBinding } from '../ui/composer-dictation-binding.js';
 import { subscribeDictationProviders } from '../ui/composer-dictation-registry.js';
-import { html, useRef, useState, useEffect, useCallback, useMemo } from '../vendor/preact-htm.js';
+import { html, render, useRef, useState, useEffect, useLayoutEffect, useCallback, useMemo } from '../vendor/preact-htm.js';
+import { STATUSBAR_COMPOSE_SLOT_EVENT, findStatusbarComposeSlot } from './workbench-statusbar-slot.js';
 import { useTranslation } from '../utils/i18n.js';
 import { isPopupTypeaheadKey, resolvePopupTypeaheadMatch, updatePopupTypeaheadBuffer } from '../ui/popup-typeahead.js';
 import { getAgentModels, sendAgentMessage } from '../api.js';
@@ -26,7 +28,6 @@ import { requestOpenSettingsDialog } from './settings-dialog-events.js';
 import { ClassicModelPicker } from './model-picker.ts';
 import {
     buildModelSearchDocument,
-    calculateModelContextFit,
     normaliseModelCatalogue,
 } from '../ui/model-catalogue.ts';
 import {
@@ -55,7 +56,6 @@ export const SLASH_COMMANDS = [
   { name: "/effort", description: "Show or set thinking/effort level (alias for /thinking)" },
   { name: "/cycle-thinking", description: "Cycle thinking level" },
   { name: "/theme", description: "Set UI theme (no name to show available themes)" },
-  { name: "/meters", description: "Toggle the top-right CPU/RAM HUD (/meters on|off|toggle)" },
   { name: "/tint", description: "Tint default light/dark UI (usage: /tint #hex or /tint off)" },
   { name: "/btw", description: "Open a side conversation panel without interrupting the main chat" },
   { name: "/state", description: "Show current session state" },
@@ -353,17 +353,16 @@ export function resolveComposeExtensionWorkingDisplay(workingState, frameIndex =
 
 /**
  * Tiny SVG pie chart showing context window usage.
- * Green when <75%, amber 75–90%, red >90%. Tooltip shows exact numbers.
+ * Green through 75%, amber through 90%, red above 90%. Unknown usage is neutral.
  */
 function ContextPie({ usage, onCompact, compactionLabel = '', compactionTitle = '' }) {
-    const pct = Math.min(100, Math.max(0, usage.percent || 0));
-    const tokens = usage.tokens;
-    const window = usage.contextWindow;
+    const pct = Number.isFinite(usage.percent) ? Math.min(100, Math.max(0, usage.percent)) : null;
+    const tokens = Number.isFinite(usage.tokens) && usage.tokens >= 0 ? usage.tokens : null;
+    const window = Number.isFinite(usage.contextWindow) && usage.contextWindow > 0 ? usage.contextWindow : null;
     const canCompact = typeof onCompact === 'function';
     const compactLabel = canCompact ? 'Compact context' : 'Context usage';
-    const label = tokens != null
-        ? `Context: ${formatK(tokens)} / ${formatK(window)} tokens (${pct.toFixed(0)}%)`
-        : `Context: ${pct.toFixed(0)}%`;
+    const percentLabel = pct == null ? 'unavailable' : `${pct.toFixed(0)}%`;
+    const label = `Context: ${formatK(tokens)} / ${formatK(window)} tokens (${percentLabel})`;
     const activeCompactionLabel = typeof compactionLabel === 'string' ? compactionLabel.trim() : '';
     const activeCompactionTitle = typeof compactionTitle === 'string' ? compactionTitle.trim() : '';
     const title = activeCompactionLabel
@@ -374,9 +373,10 @@ function ContextPie({ usage, onCompact, compactionLabel = '', compactionTitle = 
     // Circle circumference = 2πr = 2π×9 ≈ 56.55
     const r = 9;
     const circ = 2 * Math.PI * r;
-    const filled = (pct / 100) * circ;
+    const filled = ((pct ?? 0) / 100) * circ;
 
-    const color = pct > 90 ? 'var(--context-red, #ef4444)'
+    const color = pct == null ? 'var(--text-secondary)'
+                : pct > 90 ? 'var(--context-red, #ef4444)'
                 : pct > 75 ? 'var(--context-amber, #f59e0b)'
                 : 'var(--context-green, #22c55e)';
 
@@ -448,10 +448,10 @@ function formatTokenUsagePart(label, value) {
     return numeric != null ? `${label} ${formatK(numeric)}` : null;
 }
 
-function formatUsageCost(value) {
+function formatUsageCost(value, currency = 'USD') {
     const numeric = finiteNumber(value);
     if (numeric == null || numeric < 0) return null;
-    return `$${numeric.toFixed(numeric >= 0.01 ? 2 : 4)}`;
+    const amount=numeric.toFixed(numeric >= 0.01 ? 2 : 4);return currency==='USD'?`$${amount}`:currency?`${currency} ${amount}`:`${amount} (currency unknown)`;
 }
 
 export function formatOpenRouterKeyUsageTitle(modelUsage) {
@@ -485,7 +485,7 @@ export function resolveComposeRunUsageMeta(contextUsage, activeModel = null) {
     const formattedRate = formatCacheHitRate(cacheHitRate);
     const cacheLabel = formattedRate ? `CH${formattedRate}` : 'CH—';
     const totalTokens = finiteNumber(latest.totalTokens);
-    const cost = formatUsageCost(latest.costTotal);
+    const cost = formatUsageCost(latest.costTotal,latest.costProvenance==='provider_reported'?latest.providerCostCurrency??null:'USD');
     const costProvenance = typeof latest.costProvenance === 'string' ? latest.costProvenance : null;
     const costLabel = costProvenance === 'provider_reported' ? cost
         : costProvenance === 'catalogue_estimate' && cost ? `~${cost}`
@@ -534,47 +534,6 @@ export function resolveComposeCacheHitMeta(contextUsage) {
     return meta?.cacheHitRate == null ? null : meta;
 }
 
-function normalizeContextUsageTokens(contextUsage) {
-    const tokens = Number(contextUsage?.tokens);
-    return Number.isFinite(tokens) && tokens > 0 ? tokens : null;
-}
-
-export function getModelPickerContextLimit(modelOption, contextUsage) {
-    const contextWindow = Number(modelOption?.contextWindow ?? modelOption?.context_window);
-    const normalizedContextWindow = Number.isFinite(contextWindow) && contextWindow > 0 ? contextWindow : null;
-    const tokens = normalizeContextUsageTokens(contextUsage);
-    if (normalizedContextWindow == null || tokens == null) {
-        return {
-            blocked: false,
-            note: '',
-            title: '',
-            tokens,
-            contextWindow: normalizedContextWindow,
-        };
-    }
-    const contextFit = calculateModelContextFit({ contextWindow: normalizedContextWindow }, { tokens });
-    if (contextFit.state !== 'blocked') {
-        return {
-            blocked: false,
-            note: '',
-            title: '',
-            tokens,
-            safetyAdjustedTokens: contextFit.safetyAdjustedTokens,
-            contextWindow: normalizedContextWindow,
-            effectiveContextWindow: contextFit.effectiveContextWindow,
-        };
-    }
-    return {
-        blocked: true,
-        note: 'Compact context first',
-        title: `Current context uses ${formatK(tokens)} tokens (~${formatK(contextFit.safetyAdjustedTokens)} with estimator safety) plus app/tool overhead, but this model effectively fits about ${formatK(contextFit.effectiveContextWindow)} (${formatK(normalizedContextWindow)} raw). Compact context first, then switch.`,
-        tokens,
-        safetyAdjustedTokens: contextFit.safetyAdjustedTokens,
-        contextWindow: normalizedContextWindow,
-        effectiveContextWindow: contextFit.effectiveContextWindow,
-    };
-}
-
 export function formatModelPickerContextWindow(contextWindow) {
     const value = Number(contextWindow);
     if (!Number.isFinite(value) || value <= 0) return '';
@@ -590,7 +549,7 @@ export function formatModelPickerDisplayLabel(label, contextWindow) {
 }
 
 export function formatModelPickerPricing(pricing) {
-    if (!pricing || typeof pricing !== 'object') return '';
+    if (!pricing || typeof pricing !== 'object') return 'Price unknown';
     const rates = [
         ['in', pricing.input_per_million ?? pricing.inputPerMillion],
         ['out', pricing.output_per_million ?? pricing.outputPerMillion],
@@ -601,13 +560,12 @@ export function formatModelPickerPricing(pricing) {
         if (numeric == null || numeric < 0) return null;
         return `${label} $${numeric.toFixed(numeric >= 1 ? 2 : 4).replace(/0+$/, '').replace(/\.$/, '')}`;
     }).filter(Boolean);
-    return rates.length > 0 ? `${rates.join(' / ')} per 1M` : '';
+    return rates.length > 0 ? `${rates.join(' / ')} per 1M` : 'Price unknown';
 }
 
-function normaliseComposeModelCatalogue(payload, contextUsage, preferenceRuntime) {
+function normaliseComposeModelCatalogue(payload, preferenceRuntime) {
     const preferences = readModelCataloguePreferences(preferenceRuntime);
     return normaliseModelCatalogue(payload, {
-        contextUsage,
         ...toModelCatalogueNormalisePreferences(preferences),
     });
 }
@@ -930,7 +888,7 @@ export function buildReturnedQueuedDraft(value) {
     };
 }
 
-export function returnQueuedFollowupToEditor(options) {
+export async function returnQueuedFollowupToEditor(options) {
     const {
         queuedItem,
         buildDraft = buildReturnedQueuedDraft,
@@ -944,13 +902,25 @@ export function returnQueuedFollowupToEditor(options) {
         setContent,
         textareaRef,
         resizeTextarea = () => {},
-        scheduleTimeout = (callback, delayMs = 0) => setTimeout(callback, delayMs),
         scheduleRaf = (callback) => requestAnimationFrame(callback),
+        isCurrent = () => true,
+        canRestoreDraft = () => true,
         logger = console,
     } = options || {};
 
-    if (!queuedItem) return false;
+    if (!queuedItem || !isCurrent() || typeof onRemoveQueuedFollowup !== 'function') return false;
     const restored = buildDraft(queuedItem?.content || '');
+    try {
+        if (await onRemoveQueuedFollowup(queuedItem) !== true) return false;
+    } catch (error) {
+        logger?.warn?.('[compose-box] Failed to remove returned queued follow-up.', error);
+        return false;
+    }
+    if (!isCurrent()) return false;
+    if (!canRestoreDraft()) {
+        setSubmitNotice?.('Queued message removed; existing draft preserved.');
+        return false;
+    }
     const text = restored.content;
     logger?.info?.('[compose-box] Returning queued item to editor', {
         text: text?.slice(0, 80),
@@ -969,7 +939,7 @@ export function returnQueuedFollowupToEditor(options) {
 
     scheduleRaf(() => {
         const textarea = textareaRef?.current;
-        if (!textarea) return;
+        if (!isCurrent() || !textarea) return;
         textarea.value = text;
         // Keep the controlled textarea state in sync even if a render happens
         // before setContent has flushed. Some tests provide a lightweight
@@ -983,14 +953,6 @@ export function returnQueuedFollowupToEditor(options) {
         textarea.selectionEnd = len;
         textarea.focus();
     });
-
-    scheduleTimeout(() => {
-        try {
-            onRemoveQueuedFollowup?.(queuedItem);
-        } catch (error) {
-            logger?.warn?.('[compose-box] Failed to remove returned queued follow-up.', error);
-        }
-    }, 0);
 
     return true;
 }
@@ -1008,15 +970,18 @@ export function QueuedFollowupStack({
     return html`
         <div class="compose-queue-stack">
             ${items.map((item, index) => {
-                const rowText = typeof item?.content === 'string' ? item.content : '';
+                const rowText = typeof item?.content === 'string' ? goalInputDisplayText(item.content) : '';
                 const parsed = parseQueuedContent(rowText);
                 if (!parsed.text.trim() && parsed.fileRefs.length === 0 && parsed.folderRefs.length === 0 && parsed.messageRefs.length === 0 && parsed.attachmentRefs.length === 0) return null;
-                const canMoveUp = index > 0;
-                const canMoveDown = index < items.length - 1;
+                // Steering is placed before any follow-up, so items move only within their group.
+                const steering = item?.mode === 'steer';
+                const canMoveUp = index > 0 && (items[index - 1]?.mode === 'steer') === steering;
+                const canMoveDown = index < items.length - 1 && (items[index + 1]?.mode === 'steer') === steering;
                 const canReturnToEditor = true;
                 return html`
-                    <div class="compose-queue-stack-item" data-testid="queue-item" role="listitem">
+                    <div class=${`compose-queue-stack-item${steering ? ' is-steering' : ''}`} data-testid="queue-item" data-queue-mode=${steering ? 'steer' : 'followUp'} role="listitem">
                         <div class="compose-queue-stack-content" title=${rowText}>
+                            ${steering && html`<div class="compose-queue-stack-mode">${t('compose.queueSteering')}</div>`}
                             ${parsed.text.trim() && html`<div class="compose-queue-stack-text">${parsed.text}</div>`}
                             ${(parsed.messageRefs.length > 0 || parsed.fileRefs.length > 0 || parsed.folderRefs.length > 0 || parsed.attachmentRefs.length > 0) && html`
                                 <div class="compose-queue-stack-refs">
@@ -1109,7 +1074,7 @@ export function QueuedFollowupStack({
                                     </svg>
                                 </button>
                             `}
-                            <button
+                            ${!steering && html`<button
                                 class="compose-queue-stack-steer-btn"
                                 type="button"
                                 title=${t('compose.injectSteer')}
@@ -1121,7 +1086,7 @@ export function QueuedFollowupStack({
                                     <polyline points="14 12 18 8 22 12" />
                                 </svg>
                                 <span>${t('compose.steer')}</span>
-                            </button>
+                            </button>`}
                             <button
                                 class="compose-queue-stack-close-btn queue-remove"
                                 data-action="remove"
@@ -1301,7 +1266,7 @@ export function ComposeBox({
             modelPreferenceRuntime?.removeEventListener?.(MODEL_CATALOGUE_PREFERENCES_EVENT, applyPreferences);
             if (typeof window !== 'undefined' && modelPreferenceRuntime === window) window.removeEventListener('storage', applyPreferences);
         };
-    }, [agentModelsPayload, contextUsage, modelPreferenceRuntime]);
+    }, [agentModelsPayload, modelPreferenceRuntime]);
     useEffect(() => {
         const applySessionPreferences = () => {
             setPinnedSessionChatJids(readSessionPickerPreferences(sessionPreferenceRuntime).pinnedChatJids);
@@ -1321,13 +1286,13 @@ export function ComposeBox({
             const payload = detail?.payload;
             if (!payload || typeof payload !== 'object') return;
             const modelLabel = payload.model ?? payload.current;
-            setModelOptions(normaliseComposeModelCatalogue(payload, contextUsage, modelPreferenceRuntime));
+            setModelOptions(normaliseComposeModelCatalogue(payload, modelPreferenceRuntime));
             onModelStateChange?.({ ...payload, model: modelLabel ?? null });
             if (modelLabel) onModelChange?.(modelLabel);
         };
         window.addEventListener('piclaw:model-state-changed', applyConfirmedModelState);
         return () => window.removeEventListener('piclaw:model-state-changed', applyConfirmedModelState);
-    }, [contextUsage, currentChatJid, onModelChange, onModelStateChange]);
+    }, [currentChatJid, modelPreferenceRuntime, onModelChange, onModelStateChange]);
     useEffect(() => {
         modelCommandGenerationRef.current += 1;
         modelListGenerationRef.current += 1;
@@ -1376,6 +1341,8 @@ export function ComposeBox({
     const speechPushToTalkActiveRef = useRef(false);
     const suppressNextSpeechClickRef = useRef(false);
     const submittingRef = useRef(false);
+    const mediaFilesRef = useRef(mediaFiles);
+    mediaFilesRef.current = mediaFiles;
     const fileRefsRef = useRef(fileRefs);
     const folderRefsRef = useRef(folderRefs);
     const messageRefsRef = useRef(messageRefs);
@@ -1595,8 +1562,8 @@ export function ComposeBox({
     const routedModelStatus = resolveComposeRoutedModelStatus(activeModel, agentModelsPayload);
     const runUsageMeta = resolveComposeRunUsageMeta(contextUsage, activeModel);
     const modelUsageLabel = typeof modelUsage?.hint_short === 'string' ? modelUsage.hint_short.trim() : '';
-    const activeModelOption = normalizeModelPickerOptions(agentModelsPayload)
-        .find((option) => areRequestedModelLabelsSame(option.label, activeModel));
+    const activeModelOption = normaliseModelCatalogue(agentModelsPayload)
+        .find((option) => areRequestedModelLabelsSame(option.key, activeModel));
     const activeModelPricingLabel = formatModelPickerPricing(activeModelOption?.pricing);
     const openRouterKeyTitle = formatOpenRouterKeyUsageTitle(modelUsage);
     const modelUsageSectionLabel = [
@@ -1625,7 +1592,17 @@ export function ComposeBox({
         : (modelUsageTitleParts.join(' • ') || (showModelPickerHint
             ? 'Select a model (tap to open model picker)'
             : `Current model: ${modelHintLabel}${modelHintSuffix} (tap to open model picker)`));
-    const showComposeMetaRow = !searchMode && (showModelPickerHint || runUsageMeta || (contextUsage && contextUsage.percent != null));
+    const showComposeMetaRow = !searchMode && (showModelPickerHint || runUsageMeta || contextUsage);
+    // The workbench status bar shows the model and context; without one (or
+    // in the fixture pages) they stay in the compose footer.
+    const [statusbarSlot, setStatusbarSlot] = useState(() => findStatusbarComposeSlot());
+    useEffect(() => {
+        if (typeof window === 'undefined') return undefined;
+        const sync = () => setStatusbarSlot(findStatusbarComposeSlot());
+        window.addEventListener(STATUSBAR_COMPOSE_SLOT_EVENT, sync);
+        sync();
+        return () => window.removeEventListener(STATUSBAR_COMPOSE_SLOT_EVENT, sync);
+    }, []);
 
     const emitModelState = (payload) => {
         if (!payload || typeof payload !== 'object') return;
@@ -2351,7 +2328,7 @@ export function ComposeBox({
                 confirmedModel = normaliseModelCatalogue(latest).find((entry) => entry.current)?.key
                     ?? normalizeModelCataloguePreferenceKey(latest?.current ?? latest?.model)
                     ?? null;
-                setModelOptions(normaliseComposeModelCatalogue(latest, contextUsage, modelPreferenceRuntime));
+                setModelOptions(normaliseComposeModelCatalogue(latest, modelPreferenceRuntime));
             });
             if (generation !== modelCommandGenerationRef.current || targetChatJid !== currentChatJidRef.current) return false;
             if (!refreshed || (expectedModel && confirmedModel !== expectedModel)) {
@@ -2417,13 +2394,6 @@ export function ComposeBox({
                 ? modelOption.key
                 : (typeof modelOption?.label === 'string' ? modelOption.label : ''));
         if (!modelLabel || switchingModel) return;
-        const blocked = modelOption?.contextFit?.state === 'blocked';
-        const contextLimit = blocked ? { blocked: true, note: 'Compact context before switching to this model.' } : getModelPickerContextLimit(modelOption, contextUsage);
-        if (contextLimit.blocked) {
-            setSubmitError(null);
-            setSubmitNotice(contextLimit.note || 'Compact context first');
-            return;
-        }
         const ok = await runModelCommand(`/model ${modelLabel}`, modelLabel);
         if (ok) {
             setShowModelPopup(false);
@@ -2477,7 +2447,7 @@ export function ComposeBox({
         setShowSessionPopup(false);
         setShowModelPopup((previous) => {
             if (!previous) {
-                setModelOptions(normaliseComposeModelCatalogue(agentModelsPayload, contextUsage, modelPreferenceRuntime));
+                setModelOptions(normaliseComposeModelCatalogue(agentModelsPayload, modelPreferenceRuntime));
             }
             return !previous;
         });
@@ -2729,9 +2699,16 @@ export function ComposeBox({
     };
 
     const handleReturnQueuedFollowup = useCallback((queuedItem) => {
-        returnQueuedFollowupToEditor({
+        const chat = currentChatJid, textarea = textareaRef.current;
+        const draft = textarea?.value ?? content;
+        const files = fileRefsRef.current, folders = folderRefsRef.current, messages = messageRefsRef.current, media = mediaFilesRef.current;
+        return returnQueuedFollowupToEditor({
             queuedItem,
             onRemoveQueuedFollowup,
+            isCurrent: () => currentChatJidRef.current === chat && textareaRef.current === textarea,
+            canRestoreDraft: () => (textareaRef.current?.value ?? content) === draft
+                && fileRefsRef.current === files && folderRefsRef.current === folders && messageRefsRef.current === messages
+                && mediaFilesRef.current === media,
             setSubmitError,
             setSubmitNotice,
             setMediaFiles,
@@ -2742,7 +2719,7 @@ export function ComposeBox({
             textareaRef,
             resizeTextarea,
         });
-    }, [onRemoveQueuedFollowup, onSetFileRefs, onSetFolderRefs, onSetMessageRefs, resizeTextarea]);
+    }, [currentChatJid, content, onRemoveQueuedFollowup, onSetFileRefs, onSetFolderRefs, onSetMessageRefs, resizeTextarea]);
 
     const handlePopupKeyboardEvent = useCallback((e) => {
         if (searchMode || (!showModelPopup && !showSessionPopup) || e?.isComposing) return false;
@@ -3137,7 +3114,7 @@ export function ComposeBox({
         Promise.resolve(loadModels(targetChatJid))
             .then((payload) => {
                 if (generation !== modelListGenerationRef.current || targetChatJid !== currentChatJidRef.current) return;
-                setModelOptions(normaliseComposeModelCatalogue(payload, contextUsage, modelPreferenceRuntime));
+                setModelOptions(normaliseComposeModelCatalogue(payload, modelPreferenceRuntime));
                 emitModelState(payload);
             })
             .catch((error) => {
@@ -3255,7 +3232,7 @@ export function ComposeBox({
             return Boolean(target.closest('input, textarea, select, [contenteditable="true"], .compose-box, .compose-model-popup, .compose-session-popup, .settings-dialog, .workspace-sidebar, .editor-pane-container, .dock-panel, .timeline-menu-dropdown, .rename-branch-overlay, .agent-request-modal, .attachment-preview-modal, .vnc-pane-shell, .kanban-plugin, .timeline-quick-actions'));
         };
         const onGlobalKeyDown = (event) => {
-            if (event.ctrlKey || event.metaKey || event.altKey) return;
+            if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
             const textarea = textareaRef.current;
             if (!textarea) return;
             const isFocused = document.activeElement === textarea;
@@ -3425,6 +3402,62 @@ export function ComposeBox({
         if (searchMode || !allowMentions) return;
         updateMentionAutocomplete(content);
     }, [allowMentions, mentionAgents, currentChatJid, content, searchMode]);
+
+    const composeMetaRow = showComposeMetaRow ? html`
+                    <div class="compose-meta-row">
+                        ${(showModelPickerHint || runUsageMeta) && html`
+                            <div class="compose-model-meta">
+                                ${showModelPickerHint && html`
+                                    <button
+                                        ref=${modelHintRef}
+                                        type="button"
+                                        class="compose-model-hint compose-model-hint-btn"
+                                        title=${modelHintTitle}
+                                        aria-label=${t('compose.openModelPicker')}
+                                        onClick=${toggleModelPopup}
+                                        disabled=${switchingModel}
+                                    >
+                                        ${switchingModel ? 'Switching…' : modelHintLabel}
+                                    </button>
+                                `}
+                                <div class="compose-model-meta-subline">
+                                    ${!switchingModel && modelUsageSectionLabel && html`
+                                        <span class="compose-model-usage-hint" title=${modelHintTitle}>
+                                            ${modelUsageSectionLabel}
+                                        </span>
+                                    `}
+                                </div>
+                            </div>
+                        `}
+                        ${!searchMode && contextUsage && html`
+                            <${ContextPie}
+                                usage=${contextUsage}
+                                onCompact=${allowModelCompaction ? handleContextCompact : undefined}
+                                compactionLabel=${statusNoticeIsCompaction ? statusNoticeElapsedLabel || '0:00' : ''}
+                                compactionTitle=${statusNoticeIsCompaction ? (statusNoticeTitle || 'Smart compaction') : ''}
+                            />
+                        `}
+                    </div>
+    ` : null;
+    useLayoutEffect(() => {
+        if (!statusbarSlot) return;
+        render(composeMetaRow, statusbarSlot);
+    });
+    // With the model hint in the status bar, the picker opens above the hint.
+    const [modelPopupAnchor, setModelPopupAnchor] = useState(null);
+    useLayoutEffect(() => {
+        if (!showModelPopup || !statusbarSlot) { setModelPopupAnchor(null); return undefined; }
+        const measure = () => {
+            const rect = modelHintRef.current?.getBoundingClientRect?.();
+            const bar = statusbarSlot.closest?.('.workbench-statusbar')?.getBoundingClientRect?.();
+            if (!rect || !bar) return;
+            setModelPopupAnchor({ left: Math.round(rect.left), bottom: Math.round(window.innerHeight - bar.top + 6) });
+        };
+        measure();
+        window.addEventListener('resize', measure);
+        return () => window.removeEventListener('resize', measure);
+    }, [showModelPopup, statusbarSlot]);
+    useEffect(() => () => { if (statusbarSlot) render(null, statusbarSlot); }, [statusbarSlot]);
 
     return html`
         <div class="compose-box" data-testid="compose-box" aria-disabled=${disabled ? 'true' : 'false'}>
@@ -3658,6 +3691,7 @@ export function ComposeBox({
                     `}
                     ${showModelPopup && !searchMode && html`
                         <${ClassicModelPicker}
+                            anchor=${modelPopupAnchor}
                             entries=${modelOptions}
                             loading=${loadingModels}
                             switching=${switchingModel}
@@ -3673,7 +3707,7 @@ export function ComposeBox({
                                 requestOpenSettingsDialog({ section: 'models' });
                             } : undefined}
                             thinkingLevel=${thinkingLevel}
-                            thinkingLevels=${modelOptions.find((entry) => entry.current)?.thinkingLevels ?? []}
+                            thinkingLevels=${activeModelOption?.thinkingLevels ?? []}
                             onSelectThinking=${(level) => { void handleSelectThinking(level); }}
                             rootRef=${modelPopupRef}
                         />
@@ -3946,42 +3980,7 @@ export function ComposeBox({
                             ${connectionStatusLabel}
                         </span>
                     `}
-                    ${showComposeMetaRow && html`
-                    <div class="compose-meta-row">
-                        ${(showModelPickerHint || runUsageMeta) && html`
-                            <div class="compose-model-meta">
-                                ${showModelPickerHint && html`
-                                    <button
-                                        ref=${modelHintRef}
-                                        type="button"
-                                        class="compose-model-hint compose-model-hint-btn"
-                                        title=${modelHintTitle}
-                                        aria-label=${t('compose.openModelPicker')}
-                                        onClick=${toggleModelPopup}
-                                        disabled=${switchingModel}
-                                    >
-                                        ${switchingModel ? 'Switching…' : modelHintLabel}
-                                    </button>
-                                `}
-                                <div class="compose-model-meta-subline">
-                                    ${!switchingModel && modelUsageSectionLabel && html`
-                                        <span class="compose-model-usage-hint" title=${modelHintTitle}>
-                                            ${modelUsageSectionLabel}
-                                        </span>
-                                    `}
-                                </div>
-                            </div>
-                        `}
-                        ${!searchMode && contextUsage && contextUsage.percent != null && html`
-                            <${ContextPie}
-                                usage=${contextUsage}
-                                onCompact=${allowModelCompaction ? handleContextCompact : undefined}
-                                compactionLabel=${statusNoticeIsCompaction ? statusNoticeElapsedLabel || '0:00' : ''}
-                                compactionTitle=${statusNoticeIsCompaction ? (statusNoticeTitle || 'Smart compaction') : ''}
-                            />
-                        `}
-                    </div>
-                    `}
+                    ${showComposeMetaRow && !statusbarSlot && composeMetaRow}
                     <div class="compose-actions ${searchMode ? 'search-mode' : ''}">
                     ${searchMode && html`
                         <label class="compose-search-scope-wrap" title=${t('compose.searchScope')}>

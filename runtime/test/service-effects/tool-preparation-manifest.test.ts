@@ -1,6 +1,6 @@
 import "../helpers.js";
 
-import { describe, expect, test } from "bun:test";
+import { beforeAll, describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 
 import {
@@ -37,6 +37,12 @@ const SPEC_FIELDS = [
   "serviceEffector", "abortExpectation", "protectedFields",
 ].sort();
 const TEMPLATE_NAMES = DYNAMIC_TOOL_PREPARATION_TEMPLATES.map((row) => row.toolName);
+
+// Scan the immutable repository once; policy assertions reuse the same inventory.
+let repositoryInventory: ReturnType<typeof inventoryRepositoryToolFamilies>;
+beforeAll(() => {
+  repositoryInventory = inventoryRepositoryToolFamilies();
+}, 30_000);
 
 interface TestMcpCacheEntry {
   readonly configHash?: unknown;
@@ -98,7 +104,7 @@ function compositionTree(optionalFiles: readonly string[] = ["one.ts"], builtinE
 
 describe("WP-3C production-root coverage oracle", () => {
   test("matches exact repository rows from authoritative production composition", () => {
-    const inventory = inventoryRepositoryToolFamilies();
+    const inventory = repositoryInventory;
     expect(inventory.unresolvedRegistrations).toEqual([]);
     expect(TOOL_PREPARATION_MANIFEST.map((row) => row.toolName).sort()).toEqual([...inventory.names]);
     expect(inventory.registrationSites.cdp_browser).toEqual(["extensions/browser/cdp-browser-tool/index.ts"]);
@@ -110,14 +116,16 @@ describe("WP-3C production-root coverage oracle", () => {
       service: inventory.compositionRoots.filter((root) => root === "src/agent-pool/service-factory.ts"),
     };
     expect(Object.fromEntries(Object.entries(compositionCategories).map(([category, roots]) => [category, roots.length]))).toEqual({
-      builtin: 35,
+      builtin: 31,
       optional: 8,
       service: 1,
     });
     expect(inventory.compositionRoots).toHaveLength(Object.values(compositionCategories).flat().length);
 
     const manifestByName = new Map(TOOL_PREPARATION_MANIFEST.map((row) => [row.toolName, row]));
-    expect(Object.keys(inventory.registrationSites)).toHaveLength(46);
+    expect(Object.keys(inventory.registrationSites)).toHaveLength(43);
+    expect(inventory.names).not.toContain('introspect_sql');
+    expect(inventory.registrationSites.introspect_sql).toBeUndefined();
     for (const [toolName, sites] of Object.entries(inventory.registrationSites)) {
       const currentSource = manifestByName.get(toolName)?.currentSource;
       expect(currentSource).toBeDefined();
@@ -129,7 +137,7 @@ describe("WP-3C production-root coverage oracle", () => {
     expect(manifestByName.get("powershell")?.currentSource).toContain("runtime/extensions/platform/windows/powershell");
     expect(Object.hasOwn(inventory.registrationSites, "mcp")).toBeFalse();
     expect(manifestByName.get("mcp")?.currentSource).toContain("pi-mcp-adapter");
-  });
+  }, 30_000); // Whole-repository TypeScript scan under the bounded CI CPU quota.
 
   test("ignores an unreferenced registration", () => {
     const inventory = inventoryRepositoryToolFamilies(compositionTree());
@@ -230,7 +238,7 @@ describe("WP-3C production-root coverage oracle", () => {
 
 describe("WP-3C closed manifest policy and hostile-safe normalization", () => {
   test("normalizes and freezes every exact row and conservative template", () => {
-    const inventory = inventoryRepositoryToolFamilies();
+    const inventory = repositoryInventory;
     const combined = [...TOOL_PREPARATION_MANIFEST, ...DYNAMIC_TOOL_PREPARATION_TEMPLATES];
     const result = normalizeToolPreparationManifest(combined, {
       knownToolNames: inventory.names,
@@ -238,7 +246,7 @@ describe("WP-3C closed manifest policy and hostile-safe normalization", () => {
       rejectUnexpectedExactTools: true,
     });
     expect(result.issues).toEqual([]);
-    expect(result.specs).toHaveLength(52);
+    expect(result.specs).toHaveLength(49);
     expect(Object.isFrozen(result.specs)).toBeTrue();
     for (const row of result.specs) {
       expect(Object.keys(row).sort()).toEqual(SPEC_FIELDS);
@@ -248,9 +256,9 @@ describe("WP-3C closed manifest policy and hostile-safe normalization", () => {
     }
   });
 
-  test("has closed rationale evidence for all 50 repository rows", () => {
+  test("has closed rationale evidence for all 47 retained repository rows", () => {
     const policies = listToolPreparationPolicies();
-    expect(policies).toHaveLength(50);
+    expect(policies).toHaveLength(47);
     expect(policies.map((policy) => policy.toolName).sort()).toEqual(TOOL_PREPARATION_MANIFEST.map((row) => row.toolName).sort());
     for (const row of TOOL_PREPARATION_MANIFEST) {
       const policy = getToolPreparationPolicy(row.toolName)!;
@@ -434,7 +442,7 @@ describe("WP-3C closed manifest policy and hostile-safe normalization", () => {
   test("a dynamic template cannot satisfy a missing repository-owned exact name", () => {
     const withoutRead = TOOL_PREPARATION_MANIFEST.filter((row) => row.toolName !== "read");
     const issues = validateToolPreparationManifest([...withoutRead, ...DYNAMIC_TOOL_PREPARATION_TEMPLATES], {
-      knownToolNames: inventoryRepositoryToolFamilies().names,
+      knownToolNames: repositoryInventory.names,
       dynamicTemplateNames: TEMPLATE_NAMES,
     });
     expect(issues).toContainEqual(expect.objectContaining({ code: "missing_known_tool", toolName: "read" }));
@@ -461,11 +469,13 @@ describe("WP-3C hermetic add-on package-tree oracle", () => {
   test("pins the shared package-entry containment policy adopted by installed add-on consumers", () => {
     const sessionSource = readFileSync(new URL("../../src/agent-pool/session.ts", import.meta.url), "utf8");
     const resolverSource = readFileSync(new URL("../../src/addons/package-entries.ts", import.meta.url), "utf8");
-    const discoveryBody = sessionSource.slice(
-      sessionSource.indexOf("export function getInstalledAddonExtensionPaths"),
-      sessionSource.indexOf("function getBundledExtensionPaths"),
-    );
-    expect(discoveryBody).toContain("resolveAddonPackageEntries(packageDir, addonPackage.manifest.pi?.extensions)");
+    expect(sessionSource).not.toContain("export function getInstalledAddonExtensionPaths");
+    expect(sessionSource).toMatch(/import\s*\{\s*getInstalledAddonExtensionPaths,?\s*\}\s*from\s*["']\.\.\/addons\/package-entries\.js["']/);
+    expect(sessionSource).toContain("getInstalledAddonExtensionPaths(getWorkspaceDir())");
+    // Activation filtering may remove retired packages, but must still use the
+    // same lexical/realpath containment owner before returning any entry.
+    expect(resolverSource).toMatch(/resolveActiveAddonEntries\(packageDir,\s*\w+\.manifest,\s*\w+\.manifest\.pi\?\.extensions\)/);
+    expect(resolverSource).toContain("return resolveAddonPackageEntries(packageDir, declared).filter(");
     expect(resolverSource).toContain("statSync(fullPath).isFile()");
     expect(resolverSource).toContain("realpathSync(fullPath)");
     expect(resolverSource).toContain("isInside(realPackageDir, realEntryPath)");

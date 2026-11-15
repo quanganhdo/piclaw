@@ -1,0 +1,2319 @@
+{
+  "version": 1,
+  "issue": 1689,
+  "syntheticOnly": true,
+  "decision": {
+    "retired": [
+      "idx_message_media_message_rowid"
+    ],
+    "retainedExceptions": [
+      "idx_extension_kv_ext_scope",
+      "idx_token_usage_chat_jid"
+    ],
+    "newReplacementIndexes": []
+  },
+  "allCandidates": {
+    "profile": "all-candidates",
+    "sourceCommit": "f31c76aac2a1a2696031bb3bc4e52de3eead300e",
+    "sourceFilesSha256": {
+      "runtime/src/db/connection.ts": "e816b4265804d957ca0cbaee3d0382c8b81b8dbaa8dc8cc73946eb9c29b467ff",
+      "runtime/src/db/media.ts": "cd8dad529b8a87babe18bc8d8a4d3efc023a820c6df7eb84d8b6653e5125f982",
+      "runtime/src/db/extension-kv.ts": "7876147ea038368de6a13ced6b3b5c5ef2cbb1b8e1ba7539ab1da087f5c56a27",
+      "runtime/src/db/token-usage.ts": "22adfe28b602ab48b5ec4c5e544c28ebb7a2179c3eb131badd8d196d731a67e1",
+      "runtime/src/db/chat-branches.ts": "fbc8a4ffcdaa1c0c776b03ad65b7286e15e99970b232757dc921073acd9512bf",
+      "runtime/skills/operator/token-chart/token-usage-by-provider-model-chart.ts": "9a3d2b328570c8f74bd5d7a0fa2a794ee1d1946827f9f5d78f6a81c8cb68a3df",
+      "runtime/scripts/local-test-priority.ts": "b74f881f25ec7a243ac94d5e580a41d35f5f376e79ace65b7b1c91f208c8682f",
+      "runtime/scripts/test-filesystem-isolation.ts": "d4582c3c3301b1b70b1aed31d7b461201dd744f4d653a91789a249ec1e22089d",
+      "runtime/src/db/attachment-index-retirement.ts": "1c9b527ae24ed98d356d6ed1730d7587daaa16fa46c2779ddf2f4ed7950a1d21"
+    },
+    "scriptSha256": "a65978af26f76d371b96710ed7d6796122e928621a3a554306af445c70ff0f5f",
+    "rawReportSha256": "a9caa309c7f79b2670518308a67e764c304b53a611a6eefe2bba710e515a4fcc",
+    "fixture": {
+      "synthetic": true,
+      "attachments": 50000,
+      "messages": 25000,
+      "media": 40000,
+      "extensions": 75,
+      "keysPerExtension": 900,
+      "kvRows": 67500,
+      "usage": 80000,
+      "chats": 500,
+      "hotChatRows": 8000,
+      "kvKeyBytes": 81,
+      "mediaBlobBytes": 256
+    },
+    "schemaMode": "Exact complete createSchema literal plus historical attachment-only index and partial usage-event unique index; not core init. No live DB accessed.",
+    "method": {
+      "readRounds": 24,
+      "readWarmupRounds": 3,
+      "alternatingOrder": true,
+      "units": "microseconds per SQL operation (batch amortized)",
+      "writeRounds": 20,
+      "writeWarmupRounds": 2,
+      "writeBatchOperations": 200,
+      "writeTransactions": "committed batches; cleanup excluded from timing; same deterministic inputs; KV count + existence + UPSERT every set",
+      "analyze": "once on identical seed before clone; no re-ANALYZE after dropping indexes",
+      "sql": [
+        {
+          "name": "attachment_single",
+          "sql": "SELECT media_id FROM message_media WHERE message_rowid = ? ORDER BY media_id",
+          "exampleArgs": [
+            1
+          ],
+          "operationsPerRound": 400,
+          "source": "source SQL; attachment batch substitutes 50 placeholders"
+        },
+        {
+          "name": "attachment_batch_50",
+          "sql": "SELECT DISTINCT media_id FROM message_media WHERE message_rowid IN (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+          "exampleArgs": [
+            1,
+            38,
+            75,
+            112,
+            149,
+            186,
+            223,
+            260,
+            297,
+            334,
+            371,
+            408,
+            445,
+            482,
+            519,
+            556,
+            593,
+            630,
+            667,
+            704,
+            741,
+            778,
+            815,
+            852,
+            889,
+            926,
+            963,
+            1000,
+            1037,
+            1074,
+            1111,
+            1148,
+            1185,
+            1222,
+            1259,
+            1296,
+            1333,
+            1370,
+            1407,
+            1444,
+            1481,
+            1518,
+            1555,
+            1592,
+            1629,
+            1666,
+            1703,
+            1740,
+            1777,
+            1814
+          ],
+          "operationsPerRound": 30,
+          "source": "source SQL; attachment batch substitutes 50 placeholders"
+        },
+        {
+          "name": "kv_count_900",
+          "sql": "SELECT COUNT(*) as cnt FROM extension_kv WHERE extension_id = ?",
+          "exampleArgs": [
+            "synthetic.extension.000"
+          ],
+          "operationsPerRound": 300,
+          "source": "source SQL; attachment batch substitutes 50 placeholders"
+        },
+        {
+          "name": "kv_scoped_list",
+          "sql": "SELECT key FROM extension_kv WHERE extension_id = ? AND scope = ? AND scope_key = ? ORDER BY key",
+          "exampleArgs": [
+            "synthetic.extension.000",
+            "chat",
+            "synthetic:chat:0001"
+          ],
+          "operationsPerRound": 100,
+          "source": "source SQL; attachment batch substitutes 50 placeholders"
+        },
+        {
+          "name": "kv_scoped_prefix",
+          "sql": "SELECT key FROM extension_kv WHERE extension_id = ? AND scope = ? AND scope_key = ? AND key LIKE ? ORDER BY key",
+          "exampleArgs": [
+            "synthetic.extension.000",
+            "chat",
+            "synthetic:chat:0001",
+            "settings.preference.01%"
+          ],
+          "operationsPerRound": 100,
+          "source": "source SQL; attachment batch substitutes 50 placeholders"
+        },
+        {
+          "name": "usage_chat_aggregate_hot",
+          "sql": "SELECT\n      COALESCE(SUM(input_tokens), 0) AS input_tokens,\n      COALESCE(SUM(output_tokens), 0) AS output_tokens,\n      COALESCE(SUM(reasoning_tokens), 0) AS reasoning_tokens,\n      COALESCE(SUM(cache_read_tokens), 0) AS cache_read_tokens,\n      COALESCE(SUM(cache_write_tokens), 0) AS cache_write_tokens,\n      COALESCE(SUM(total_tokens), 0) AS total_tokens,\n      COALESCE(SUM(cost_total), 0) AS cost_total,\n      COUNT(*) AS runs,\n      COALESCE(SUM(cost_provenance = 'provider_reported'), 0) AS provider_reported_cost_runs,\n      COALESCE(SUM(cost_provenance = 'catalogue_estimate'), 0) AS catalogue_estimate_cost_runs,\n      COALESCE(SUM(cost_provenance = 'unavailable'), 0) AS unavailable_cost_runs,\n      COALESCE(SUM(cost_provenance IS NULL), 0) AS legacy_cost_runs\n     FROM token_usage\n     WHERE chat_jid = ?",
+          "exampleArgs": [
+            "synthetic:chat:0000"
+          ],
+          "operationsPerRound": 5,
+          "source": "source SQL; attachment batch substitutes 50 placeholders"
+        },
+        {
+          "name": "usage_chat_aggregate_typical",
+          "sql": "SELECT\n      COALESCE(SUM(input_tokens), 0) AS input_tokens,\n      COALESCE(SUM(output_tokens), 0) AS output_tokens,\n      COALESCE(SUM(reasoning_tokens), 0) AS reasoning_tokens,\n      COALESCE(SUM(cache_read_tokens), 0) AS cache_read_tokens,\n      COALESCE(SUM(cache_write_tokens), 0) AS cache_write_tokens,\n      COALESCE(SUM(total_tokens), 0) AS total_tokens,\n      COALESCE(SUM(cost_total), 0) AS cost_total,\n      COUNT(*) AS runs,\n      COALESCE(SUM(cost_provenance = 'provider_reported'), 0) AS provider_reported_cost_runs,\n      COALESCE(SUM(cost_provenance = 'catalogue_estimate'), 0) AS catalogue_estimate_cost_runs,\n      COALESCE(SUM(cost_provenance = 'unavailable'), 0) AS unavailable_cost_runs,\n      COALESCE(SUM(cost_provenance IS NULL), 0) AS legacy_cost_runs\n     FROM token_usage\n     WHERE chat_jid = ?",
+          "exampleArgs": [
+            "synthetic:chat:0001"
+          ],
+          "operationsPerRound": 50,
+          "source": "source SQL; attachment batch substitutes 50 placeholders"
+        },
+        {
+          "name": "usage_chat_count_hot",
+          "sql": "SELECT COUNT(*) AS count FROM token_usage WHERE chat_jid = ?",
+          "exampleArgs": [
+            "synthetic:chat:0000"
+          ],
+          "operationsPerRound": 50,
+          "source": "source SQL; attachment batch substitutes 50 placeholders"
+        },
+        {
+          "name": "usage_chat_count_typical",
+          "sql": "SELECT COUNT(*) AS count FROM token_usage WHERE chat_jid = ?",
+          "exampleArgs": [
+            "synthetic:chat:0001"
+          ],
+          "operationsPerRound": 200,
+          "source": "source SQL; attachment batch substitutes 50 placeholders"
+        },
+        {
+          "name": "usage_date_filter_real_chart",
+          "sql": "SELECT substr(run_at,1,10) AS day,\n              COALESCE(provider,'(unknown)') AS provider,\n              COALESCE(model,'(unknown)') AS model,\n              SUM(COALESCE(total_tokens,0)) AS tokens\n       FROM token_usage\n       WHERE run_at >= ?\n       GROUP BY day, COALESCE(provider,'(unknown)'), COALESCE(model,'(unknown)')\n       ORDER BY day, tokens DESC",
+          "exampleArgs": [
+            "2025-03-25T00:00:00Z"
+          ],
+          "operationsPerRound": 2,
+          "source": "source SQL; attachment batch substitutes 50 placeholders"
+        },
+        {
+          "name": "usage_chat_date_count_probe",
+          "sql": "SELECT COUNT(*) AS count FROM token_usage WHERE chat_jid = ? AND run_at >= ? AND run_at <= ?",
+          "exampleArgs": [
+            "synthetic:chat:0000",
+            "2025-02-01T00:00:00.000Z",
+            "2025-03-01T00:00:00.000Z"
+          ],
+          "operationsPerRound": 50,
+          "source": "supplemental synthetic conjunction probe, NOT claimed source SQL"
+        }
+      ],
+      "writeSQL": {
+        "attachment": "INSERT OR IGNORE INTO message_media (message_rowid, media_id) VALUES (NULL, NULL)",
+        "kvCount": "SELECT COUNT(*) as cnt FROM extension_kv WHERE extension_id = ?",
+        "kvExists": "SELECT 1 FROM extension_kv WHERE extension_id = ? AND scope = ? AND scope_key = ? AND key = ?",
+        "kvUpsert": "\n    INSERT INTO extension_kv (extension_id, scope, scope_key, key, value, created_at, updated_at)\n    VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))\n    ON CONFLICT (extension_id, scope, scope_key, key)\n    DO UPDATE SET value = excluded.value, updated_at = datetime('now')\n  ",
+        "usage": "INSERT OR IGNORE INTO token_usage (\n      chat_jid,\n      run_at,\n      input_tokens,\n      output_tokens,\n      reasoning_tokens,\n      cache_read_tokens,\n      cache_write_tokens,\n      cache_read_reported,\n      cache_write_reported,\n      total_tokens,\n      cost_input,\n      cost_output,\n      cost_cache_read,\n      cost_cache_write,\n      cost_total,\n      provider_cost_total,\n      catalogue_cost_total,\n      cost_provenance,\n      model,\n      response_model,\n      provider,\n      api,\n      usage_source,\n      turns,\n      work_id,\n      invocation_id,\n      usage_event_id,\n      api_equivalent_cost_microusd,\n      api_equivalent_cost_known,\n      valuation_provenance,\n      api_equivalent_known_subtotal_microusd,\n      api_equivalent_unknown_categories,\n      pricing_currency,\n      pricing_source,\n      pricing_version,\n      pricing_context_tier,\n      pricing_cache_fallbacks\n    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+      }
+    },
+    "correctness": "PASS: all query digests match before/after dropping candidate indexes; table-content digests (excluding created_at/updated_at timestamps) match initially and after committed write cleanup; protected indexes asserted",
+    "sqlite": {
+      "version": "3.53.2"
+    },
+    "bun": "1.4.2",
+    "baseline": {
+      "pragmas": {
+        "journal_mode": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "page_size": {
+          "page_size": 4096
+        },
+        "page_count": {
+          "page_count": 24320
+        },
+        "freelist_count": {
+          "freelist_count": 11
+        },
+        "cache_size": {
+          "cache_size": -1000
+        },
+        "mmap_size": {
+          "mmap_size": 268435456
+        },
+        "secure_delete": {
+          "secure_delete": 1
+        }
+      },
+      "plans": {
+        "attachment_single": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 44,
+            "detail": "SEARCH message_media USING COVERING INDEX sqlite_autoindex_message_media_1 (message_rowid=?)"
+          }
+        ],
+        "attachment_batch_50": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 100,
+            "detail": "SEARCH message_media USING COVERING INDEX sqlite_autoindex_message_media_1 (message_rowid=?)"
+          },
+          {
+            "id": 172,
+            "parent": 0,
+            "notused": 0,
+            "detail": "USE TEMP B-TREE FOR DISTINCT"
+          }
+        ],
+        "kv_count_900": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 111,
+            "detail": "SEARCH extension_kv USING COVERING INDEX idx_extension_kv_ext_scope (extension_id=?)"
+          }
+        ],
+        "kv_scoped_list": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 72,
+            "detail": "SEARCH extension_kv USING COVERING INDEX sqlite_autoindex_extension_kv_1 (extension_id=? AND scope=? AND scope_key=?)"
+          }
+        ],
+        "kv_scoped_prefix": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 72,
+            "detail": "SEARCH extension_kv USING COVERING INDEX sqlite_autoindex_extension_kv_1 (extension_id=? AND scope=? AND scope_key=?)"
+          }
+        ],
+        "usage_chat_aggregate_hot": [
+          {
+            "id": 4,
+            "parent": 0,
+            "notused": 96,
+            "detail": "SEARCH token_usage USING INDEX idx_token_usage_chat_jid (chat_jid=?)"
+          }
+        ],
+        "usage_chat_aggregate_typical": [
+          {
+            "id": 4,
+            "parent": 0,
+            "notused": 96,
+            "detail": "SEARCH token_usage USING INDEX idx_token_usage_chat_jid (chat_jid=?)"
+          }
+        ],
+        "usage_chat_count_hot": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 82,
+            "detail": "SEARCH token_usage USING COVERING INDEX idx_token_usage_chat_jid (chat_jid=?)"
+          }
+        ],
+        "usage_chat_count_typical": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 82,
+            "detail": "SEARCH token_usage USING COVERING INDEX idx_token_usage_chat_jid (chat_jid=?)"
+          }
+        ],
+        "usage_date_filter_real_chart": [
+          {
+            "id": 8,
+            "parent": 0,
+            "notused": 165,
+            "detail": "SEARCH token_usage USING INDEX idx_token_usage_run_at (run_at>?)"
+          },
+          {
+            "id": 14,
+            "parent": 0,
+            "notused": 0,
+            "detail": "USE TEMP B-TREE FOR GROUP BY"
+          },
+          {
+            "id": 69,
+            "parent": 0,
+            "notused": 0,
+            "detail": "USE TEMP B-TREE FOR ORDER BY"
+          }
+        ],
+        "usage_chat_date_count_probe": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 44,
+            "detail": "SEARCH token_usage USING COVERING INDEX idx_token_usage_chat_jid_run_at (chat_jid=? AND run_at>? AND run_at<?)"
+          }
+        ]
+      },
+      "resultDigests": {
+        "attachment_single": "a4abd148b43de60355630bfd48ba42bf334fb2b26608fa70cd019ee69dcdd266",
+        "attachment_batch_50": "eba700be041d626de308a4cddc8752c8ffa5fda6b9817e857ce684d3158317ca",
+        "kv_count_900": "4f4c070fa64628015deb512af6b8a79faa9c78d8993870611e8704c3b25822a3",
+        "kv_scoped_list": "6bf66c0cee06779775db2b208784574065566f74f88788d0a441b344e06637aa",
+        "kv_scoped_prefix": "4562202187a6ee5b4e964a8c22d6589e80efb45db0afcbc39c44057da094e94a",
+        "usage_chat_aggregate_hot": "7c474483c70f62088bd4309716c7a520cbb6b9c78e6f5d5dc6618dff20dc2bcd",
+        "usage_chat_aggregate_typical": "a927efd173c78e49e548ce7051bb45b4865e6a99c3df18d7fa82e52c33a16d8f",
+        "usage_chat_count_hot": "033097033b074231be098c0ea3fd032c2888bddf6359074d8e4ef48d58548e94",
+        "usage_chat_count_typical": "8283a7788694fe490baec63840a605a7b79455b5eb3f9f2e60dc30bd49e1e620",
+        "usage_date_filter_real_chart": "145d2d90e13c0b527dba2a2770f9823df111049c1db79c5fab1e53f971e29e3b",
+        "usage_chat_date_count_probe": "0bf8fd98c38439ea9ff78d7b306723c0be6917fe2664ff9bb980a02534c0b740"
+      }
+    },
+    "candidate": {
+      "pragmas": {
+        "journal_mode": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "page_size": {
+          "page_size": 4096
+        },
+        "page_count": {
+          "page_count": 24295
+        },
+        "freelist_count": {
+          "freelist_count": 1745
+        },
+        "cache_size": {
+          "cache_size": -1000
+        },
+        "mmap_size": {
+          "mmap_size": 268435456
+        },
+        "secure_delete": {
+          "secure_delete": 1
+        }
+      },
+      "plans": {
+        "attachment_single": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 44,
+            "detail": "SEARCH message_media USING COVERING INDEX sqlite_autoindex_message_media_1 (message_rowid=?)"
+          }
+        ],
+        "attachment_batch_50": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 100,
+            "detail": "SEARCH message_media USING COVERING INDEX sqlite_autoindex_message_media_1 (message_rowid=?)"
+          },
+          {
+            "id": 172,
+            "parent": 0,
+            "notused": 0,
+            "detail": "USE TEMP B-TREE FOR DISTINCT"
+          }
+        ],
+        "kv_count_900": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 112,
+            "detail": "SEARCH extension_kv USING COVERING INDEX sqlite_autoindex_extension_kv_1 (extension_id=?)"
+          }
+        ],
+        "kv_scoped_list": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 72,
+            "detail": "SEARCH extension_kv USING COVERING INDEX sqlite_autoindex_extension_kv_1 (extension_id=? AND scope=? AND scope_key=?)"
+          }
+        ],
+        "kv_scoped_prefix": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 72,
+            "detail": "SEARCH extension_kv USING COVERING INDEX sqlite_autoindex_extension_kv_1 (extension_id=? AND scope=? AND scope_key=?)"
+          }
+        ],
+        "usage_chat_aggregate_hot": [
+          {
+            "id": 4,
+            "parent": 0,
+            "notused": 97,
+            "detail": "SEARCH token_usage USING INDEX idx_token_usage_chat_jid_run_at (chat_jid=?)"
+          }
+        ],
+        "usage_chat_aggregate_typical": [
+          {
+            "id": 4,
+            "parent": 0,
+            "notused": 97,
+            "detail": "SEARCH token_usage USING INDEX idx_token_usage_chat_jid_run_at (chat_jid=?)"
+          }
+        ],
+        "usage_chat_count_hot": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 84,
+            "detail": "SEARCH token_usage USING COVERING INDEX idx_token_usage_chat_jid_run_at (chat_jid=?)"
+          }
+        ],
+        "usage_chat_count_typical": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 84,
+            "detail": "SEARCH token_usage USING COVERING INDEX idx_token_usage_chat_jid_run_at (chat_jid=?)"
+          }
+        ],
+        "usage_date_filter_real_chart": [
+          {
+            "id": 8,
+            "parent": 0,
+            "notused": 165,
+            "detail": "SEARCH token_usage USING INDEX idx_token_usage_run_at (run_at>?)"
+          },
+          {
+            "id": 14,
+            "parent": 0,
+            "notused": 0,
+            "detail": "USE TEMP B-TREE FOR GROUP BY"
+          },
+          {
+            "id": 69,
+            "parent": 0,
+            "notused": 0,
+            "detail": "USE TEMP B-TREE FOR ORDER BY"
+          }
+        ],
+        "usage_chat_date_count_probe": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 44,
+            "detail": "SEARCH token_usage USING COVERING INDEX idx_token_usage_chat_jid_run_at (chat_jid=? AND run_at>? AND run_at<?)"
+          }
+        ]
+      },
+      "resultDigests": {
+        "attachment_single": "a4abd148b43de60355630bfd48ba42bf334fb2b26608fa70cd019ee69dcdd266",
+        "attachment_batch_50": "eba700be041d626de308a4cddc8752c8ffa5fda6b9817e857ce684d3158317ca",
+        "kv_count_900": "4f4c070fa64628015deb512af6b8a79faa9c78d8993870611e8704c3b25822a3",
+        "kv_scoped_list": "6bf66c0cee06779775db2b208784574065566f74f88788d0a441b344e06637aa",
+        "kv_scoped_prefix": "4562202187a6ee5b4e964a8c22d6589e80efb45db0afcbc39c44057da094e94a",
+        "usage_chat_aggregate_hot": "7c474483c70f62088bd4309716c7a520cbb6b9c78e6f5d5dc6618dff20dc2bcd",
+        "usage_chat_aggregate_typical": "a927efd173c78e49e548ce7051bb45b4865e6a99c3df18d7fa82e52c33a16d8f",
+        "usage_chat_count_hot": "033097033b074231be098c0ea3fd032c2888bddf6359074d8e4ef48d58548e94",
+        "usage_chat_count_typical": "8283a7788694fe490baec63840a605a7b79455b5eb3f9f2e60dc30bd49e1e620",
+        "usage_date_filter_real_chart": "145d2d90e13c0b527dba2a2770f9823df111049c1db79c5fab1e53f971e29e3b",
+        "usage_chat_date_count_probe": "0bf8fd98c38439ea9ff78d7b306723c0be6917fe2664ff9bb980a02534c0b740"
+      }
+    },
+    "removedInCandidate": [
+      "idx_message_media_message_rowid",
+      "idx_extension_kv_ext_scope",
+      "idx_token_usage_chat_jid"
+    ],
+    "preserved": [
+      "sqlite_autoindex_message_media_1",
+      "sqlite_autoindex_extension_kv_1",
+      "idx_token_usage_chat_jid_run_at",
+      "idx_messages_chat_jid"
+    ],
+    "comparisons": {
+      "reads": {
+        "attachment_single": {
+          "baselineMedianUs": 0.6479975000002014,
+          "candidateMedianUs": 0.6495100000029197,
+          "medianChangePercent": 0.23341139475350214,
+          "pairedRatio": {
+            "n": 24,
+            "min": 0.18966527184362897,
+            "p10": 0.9057261405019125,
+            "median": 1.0169151085361947,
+            "p90": 1.140557210808445,
+            "p95": 1.156389159450408,
+            "max": 1.2473168789849376,
+            "mean": 0.9876732569947594,
+            "raw": [
+              1.2473168789849376,
+              0.9797153625860892,
+              0.9057261405019125,
+              0.8990380774058312,
+              0.976284688953354,
+              0.9697016220091684,
+              1.0169151085361947,
+              0.9396702429079427,
+              1.0782854402745654,
+              0.9536015776504146,
+              1.0578148710132045,
+              1.029177879700031,
+              1.0346671598871973,
+              1.0528336953413087,
+              1.0370805530603122,
+              0.9625152874799766,
+              1.140557210808445,
+              0.9482734606495234,
+              1.0220867970985226,
+              1.0105246566911519,
+              1.0233691830446117,
+              0.18966527184362897,
+              1.156389159450408,
+              1.0729478419954954
+            ]
+          },
+          "candidateSlowerRounds": 14
+        },
+        "attachment_batch_50": {
+          "baselineMedianUs": 26.929900000019796,
+          "candidateMedianUs": 27.642733333353437,
+          "medianChangePercent": 2.646995842290978,
+          "pairedRatio": {
+            "n": 24,
+            "min": 0.6530095828572519,
+            "p10": 0.9881145622070799,
+            "median": 1.0062343473961368,
+            "p90": 1.0501206218277985,
+            "p95": 1.0517400409572075,
+            "max": 1.056384608878647,
+            "mean": 1.001974808608318,
+            "raw": [
+              1.0423858881446215,
+              1.0517400409572075,
+              1.0188542034413652,
+              1.0078026628620407,
+              1.0029347800530168,
+              0.9793456928015671,
+              1.0176874250680745,
+              1.0047297374049213,
+              1.0124320331080277,
+              1.0384765871656436,
+              1.0032282266028387,
+              0.9967151664118507,
+              0.9881145622070799,
+              0.9963520512447654,
+              0.6530095828572519,
+              1.049020005149581,
+              1.056384608878647,
+              1.0501206218277985,
+              1.0478764498186612,
+              0.9917018814214351,
+              1.0062343473961368,
+              1.0269588809252157,
+              1.000475359685681,
+              1.004814611166205
+            ]
+          },
+          "candidateSlowerRounds": 18
+        },
+        "kv_count_900": {
+          "baselineMedianUs": 20.43963666666362,
+          "candidateMedianUs": 24.12028666666932,
+          "medianChangePercent": 18.007414026144207,
+          "pairedRatio": {
+            "n": 24,
+            "min": 1.080690682365481,
+            "p10": 1.1078398211594367,
+            "median": 1.1677421862782227,
+            "p90": 1.3343483827882388,
+            "p95": 1.3572700265638706,
+            "max": 1.3785474852731665,
+            "mean": 1.2219497834425723,
+            "raw": [
+              1.3572700265638706,
+              1.1478084222539386,
+              1.3785474852731665,
+              1.080690682365481,
+              1.3225526271473995,
+              1.1677421862782227,
+              1.307370259353391,
+              1.1633472722397695,
+              1.2193439211378514,
+              1.130620997924202,
+              1.2902437286085475,
+              1.1555866350935715,
+              1.3112970033349491,
+              1.129059998624082,
+              1.2954849813924814,
+              1.1486168030673138,
+              1.3343483827882388,
+              1.1240372833609122,
+              1.3219692536261416,
+              1.101996634450679,
+              1.2932758724490887,
+              1.1078398211594367,
+              1.3226751271024584,
+              1.1150693970265477
+            ]
+          },
+          "candidateSlowerRounds": 24
+        },
+        "kv_scoped_list": {
+          "baselineMedianUs": 10.320649999994203,
+          "candidateMedianUs": 8.496239999985846,
+          "medianChangePercent": -17.677278078506497,
+          "pairedRatio": {
+            "n": 24,
+            "min": 0.6266739364691267,
+            "p10": 0.7356710591693502,
+            "median": 0.8343632754438093,
+            "p90": 0.9022334667673405,
+            "p95": 0.9077061695298603,
+            "max": 0.9136406008720357,
+            "mean": 0.823342210523556,
+            "raw": [
+              0.8406334162477436,
+              0.7485760768280825,
+              0.8572200231935508,
+              0.8228942155071886,
+              0.9077061695298603,
+              0.7356710591693502,
+              0.9136406008720357,
+              0.7155309697424774,
+              0.8486937372104545,
+              0.7883932616178084,
+              0.844354016221644,
+              0.8343632754438093,
+              0.869090569331447,
+              0.8352313959644566,
+              0.8413616203733867,
+              0.823227219214935,
+              0.9022334667673405,
+              0.8301198698085148,
+              0.8759011293665658,
+              0.8423981192654524,
+              0.6266739364691267,
+              0.8014032899048681,
+              0.8327933532626385,
+              0.8221022612526059
+            ]
+          },
+          "candidateSlowerRounds": 0
+        },
+        "kv_scoped_prefix": {
+          "baselineMedianUs": 13.399979999994684,
+          "candidateMedianUs": 12.702669999998761,
+          "medianChangePercent": -5.203813737007068,
+          "pairedRatio": {
+            "n": 24,
+            "min": 0.9198532590968668,
+            "p10": 0.9262331493148708,
+            "median": 0.9488013684885827,
+            "p90": 0.9649725065169206,
+            "p95": 0.975604441200647,
+            "max": 0.9856591610708734,
+            "mean": 0.9500390010136933,
+            "raw": [
+              0.9628424488122885,
+              0.9311871470244171,
+              0.9520248913539476,
+              0.9629396210800779,
+              0.9856591610708734,
+              0.9562770452808513,
+              0.9649725065169206,
+              0.9355520205504979,
+              0.975604441200647,
+              0.9488013684885827,
+              0.9466057308835675,
+              0.9198532590968668,
+              0.9571224464653436,
+              0.9575466328964544,
+              0.9557859131066484,
+              0.9456113795782536,
+              0.9493371469705422,
+              0.9482364249264145,
+              0.9262331493148708,
+              0.9478626061020431,
+              0.9475147422239201,
+              0.9250750314213206,
+              0.9459114114055558,
+              0.9523794985577255
+            ]
+          },
+          "candidateSlowerRounds": 0
+        },
+        "usage_chat_aggregate_hot": {
+          "baselineMedianUs": 3674.213400000008,
+          "candidateMedianUs": 4319.39080000011,
+          "medianChangePercent": 17.559606091472556,
+          "pairedRatio": {
+            "n": 24,
+            "min": 1.0586024936025962,
+            "p10": 1.1074442605040733,
+            "median": 1.1724003731705863,
+            "p90": 1.2325361310804304,
+            "p95": 1.3713618071469207,
+            "max": 1.5470878241812824,
+            "mean": 1.1925487605208829,
+            "raw": [
+              1.3713618071469207,
+              1.5470878241812824,
+              1.2055634406095677,
+              1.160558532160293,
+              1.2291749765845768,
+              1.1724003731705863,
+              1.1966771655373074,
+              1.1280069204955347,
+              1.213818398784168,
+              1.1714561040452438,
+              1.1794590766883748,
+              1.1074442605040733,
+              1.214752933691345,
+              1.0983417651052718,
+              1.1970008682251798,
+              1.0586024936025962,
+              1.2325361310804304,
+              1.1221399858986714,
+              1.1459955424585437,
+              1.1261359927309984,
+              1.2288280261566054,
+              1.1668541051074972,
+              1.2301091000676219,
+              1.1168644284685052
+            ]
+          },
+          "candidateSlowerRounds": 24
+        },
+        "usage_chat_aggregate_typical": {
+          "baselineMedianUs": 86.58776000000216,
+          "candidateMedianUs": 91.00099999999657,
+          "medianChangePercent": 5.096840477215592,
+          "pairedRatio": {
+            "n": 24,
+            "min": 0.8473232839181112,
+            "p10": 0.8765625832638514,
+            "median": 1.1286665519183159,
+            "p90": 1.2499298434107833,
+            "p95": 1.261991185162197,
+            "max": 1.3978318618191106,
+            "mean": 1.0776930769560698,
+            "raw": [
+              1.248277439991731,
+              0.9628505791995376,
+              1.261991185162197,
+              1.3978318618191106,
+              1.2499298434107833,
+              0.9233039144207086,
+              1.2078981685546206,
+              0.8939951616873849,
+              1.1286665519183159,
+              0.8765625832638514,
+              1.1721114854721493,
+              0.851752069799522,
+              1.2169487084222699,
+              0.9504781599107408,
+              1.1598053095260414,
+              0.9583746792963989,
+              1.1901636079600053,
+              0.9648227416900028,
+              1.2144997807840086,
+              0.9200830670869611,
+              1.1542456647407577,
+              0.8473232839181112,
+              1.1882400242022342,
+              0.9244779747082283
+            ]
+          },
+          "candidateSlowerRounds": 13
+        },
+        "usage_chat_count_hot": {
+          "baselineMedianUs": 171.6139800000019,
+          "candidateMedianUs": 174.85240000001795,
+          "medianChangePercent": 1.8870374080340202,
+          "pairedRatio": {
+            "n": 24,
+            "min": 0.9122713503157674,
+            "p10": 0.971558457407922,
+            "median": 1.0139712121775712,
+            "p90": 1.1187033140482285,
+            "p95": 1.1513842815283148,
+            "max": 1.5238629694131671,
+            "mean": 1.0413719960285601,
+            "raw": [
+              1.0162529293364544,
+              1.0257348498064847,
+              1.1513842815283148,
+              1.5238629694131671,
+              0.9893073411306048,
+              1.1187033140482285,
+              1.043769972297061,
+              0.9786591570789652,
+              0.9732797870736433,
+              1.0147054824307036,
+              1.0120261498137075,
+              1.0823811283152296,
+              1.0926506390265631,
+              1.0384493842968572,
+              1.010435677521879,
+              1.004958484883392,
+              0.9985257925168759,
+              0.971558457407922,
+              0.9122713503157674,
+              0.9601524623099671,
+              1.0186489796026257,
+              1.0139712121775712,
+              1.038175543850632,
+              1.0030625585028226
+            ]
+          },
+          "candidateSlowerRounds": 17
+        },
+        "usage_chat_count_typical": {
+          "baselineMedianUs": 4.385019999999713,
+          "candidateMedianUs": 4.683840000006967,
+          "medianChangePercent": 6.814564129861966,
+          "pairedRatio": {
+            "n": 24,
+            "min": 0.9834003037626474,
+            "p10": 1.012603030236139,
+            "median": 1.078754994240032,
+            "p90": 1.228214766613295,
+            "p95": 1.3515730438513731,
+            "max": 2.4464606744163477,
+            "mean": 1.1464559239052605,
+            "raw": [
+              1.0977673100386116,
+              1.012603030236139,
+              1.0270720528543176,
+              2.4464606744163477,
+              1.0815387368912996,
+              1.091656137736571,
+              1.068014059095699,
+              1.3515730438513731,
+              1.134557191101335,
+              1.1248145700226078,
+              1.228214766613295,
+              0.9834003037626474,
+              1.0944362100963618,
+              1.1479893425055099,
+              1.0724401280625977,
+              1.0233746128131374,
+              1.0790773666957554,
+              1.001700824695883,
+              1.15305621160144,
+              1.0413605730989928,
+              1.078754994240032,
+              1.05371405368276,
+              1.0625020551856086,
+              1.0588639244279225
+            ]
+          },
+          "candidateSlowerRounds": 23
+        },
+        "usage_date_filter_real_chart": {
+          "baselineMedianUs": 4225.875999999516,
+          "candidateMedianUs": 4214.460000000145,
+          "medianChangePercent": -0.27014517225240064,
+          "pairedRatio": {
+            "n": 24,
+            "min": 0.9619072978069537,
+            "p10": 0.9654699493949587,
+            "median": 0.9966211546273601,
+            "p90": 1.0255349959312274,
+            "p95": 1.0278397865832702,
+            "max": 1.0287802098250376,
+            "mean": 0.9983592897424348,
+            "raw": [
+              1.0278397865832702,
+              0.9654699493949587,
+              0.9909172175958599,
+              0.9966211546273601,
+              1.0255349959312274,
+              0.9619072978069537,
+              1.0084510169791285,
+              0.9976563004954487,
+              1.0129537270311952,
+              0.9834945872189957,
+              0.9882820579006286,
+              0.983385641594375,
+              0.992795092873969,
+              0.9833350940706159,
+              1.0134826483315567,
+              1.001968106131148,
+              1.0120596968589,
+              0.9829769093755844,
+              1.016890445911034,
+              1.0209941990576832,
+              1.0287802098250376,
+              0.9944723269288884,
+              1.0055418459763854,
+              0.9648126453182303
+            ]
+          },
+          "candidateSlowerRounds": 11
+        },
+        "usage_chat_date_count_probe": {
+          "baselineMedianUs": 71.82994000002509,
+          "candidateMedianUs": 71.78490000002057,
+          "medianChangePercent": -0.06270365811874568,
+          "pairedRatio": {
+            "n": 24,
+            "min": 0.9512770930574558,
+            "p10": 0.9601286345885163,
+            "median": 0.9863034486860861,
+            "p90": 1.020320814818367,
+            "p95": 1.0213840744835754,
+            "max": 1.0377323765286157,
+            "mean": 0.9895410758466858,
+            "raw": [
+              0.9957239214573825,
+              0.9830231748670625,
+              0.9974795514471123,
+              0.9601286345885163,
+              0.9863034486860861,
+              0.9956938235307584,
+              0.9652989825333933,
+              1.0031704903555694,
+              1.020320814818367,
+              1.0377323765286157,
+              0.9512770930574558,
+              0.9522249657827632,
+              0.9620461168956063,
+              0.9818844342619618,
+              1.0143302153972185,
+              0.9623035791514072,
+              1.0213840744835754,
+              1.0080763060338687,
+              0.9840499288786569,
+              0.9928241852573415,
+              0.9785731909970969,
+              1.007747704764922,
+              1.003298086754033,
+              0.9840907197916919
+            ]
+          },
+          "candidateSlowerRounds": 8
+        }
+      },
+      "writes": {
+        "attachment_insert": {
+          "baselineMedianUs": 55.9990149999976,
+          "candidateMedianUs": 56.14199499999813,
+          "medianChangePercent": 0.25532591957293516,
+          "pairedRatio": {
+            "n": 20,
+            "min": 0.3422958002460511,
+            "p10": 0.9791152546802456,
+            "median": 0.9935762925269169,
+            "p90": 1.031476639988829,
+            "p95": 1.0397930253038172,
+            "max": 1.0896047103644435,
+            "mean": 0.9738155653551862,
+            "raw": [
+              0.9791152546802456,
+              1.0174481904516404,
+              0.9872405547653538,
+              0.3422958002460511,
+              1.0896047103644435,
+              1.0199305349009238,
+              1.0061926982108804,
+              0.9804562534366649,
+              0.9886185178714035,
+              1.0068421010053965,
+              1.0140899323659054,
+              1.0397930253038172,
+              1.0080061282583606,
+              0.9811213324729986,
+              0.9898184887484475,
+              0.9847631736247902,
+              0.9935762925269169,
+              1.0256628393680731,
+              1.031476639988829,
+              0.9902588385125847
+            ]
+          },
+          "candidateSlowerRounds": 10
+        },
+        "kv_set_existing_with_count": {
+          "baselineMedianUs": 83.02591000000575,
+          "candidateMedianUs": 84.2631750000055,
+          "medianChangePercent": 1.4902155242859427,
+          "pairedRatio": {
+            "n": 20,
+            "min": 0.896025197491703,
+            "p10": 0.9084018363796871,
+            "median": 1.0173240883780814,
+            "p90": 1.2585225867821204,
+            "p95": 1.3525478765833707,
+            "max": 1.3720242920373205,
+            "mean": 1.0768114859999487,
+            "raw": [
+              1.3525478765833707,
+              1.0494879795503114,
+              1.0043258785118783,
+              1.3720242920373205,
+              1.2565136036217366,
+              1.2585225867821204,
+              0.9140932536882865,
+              1.0552582529451946,
+              1.0144428439735178,
+              0.98469402140438,
+              1.0173240883780814,
+              1.0002447936713723,
+              1.0155593106293008,
+              1.2329718948938349,
+              0.896025197491703,
+              1.0926710716765582,
+              0.9084018363796871,
+              1.0850121138215039,
+              0.918684776887709,
+              1.107424047071104
+            ]
+          },
+          "candidateSlowerRounds": 15
+        },
+        "kv_set_new_with_count": {
+          "baselineMedianUs": 181.32932000000437,
+          "candidateMedianUs": 174.17460999999093,
+          "medianChangePercent": -3.9456994599733064,
+          "pairedRatio": {
+            "n": 20,
+            "min": 0.6682313931442285,
+            "p10": 0.676362339709077,
+            "median": 0.9191075069362172,
+            "p90": 1.0499187769231235,
+            "p95": 1.058349070518161,
+            "max": 2.115901588772197,
+            "mean": 0.9671330887515847,
+            "raw": [
+              0.6682313931442285,
+              0.888284077187477,
+              0.676362339709077,
+              0.8586864065932076,
+              1.022757371487997,
+              0.6993812937527336,
+              1.0438269252873336,
+              0.9418716676681257,
+              1.0499187769231235,
+              0.9223200362743399,
+              1.058349070518161,
+              0.9594158677756852,
+              0.9191075069362172,
+              0.8891926180639413,
+              0.9393975910261991,
+              0.9869650234994544,
+              0.8939252077041354,
+              0.8960016189905282,
+              0.9127653937175298,
+              2.115901588772197
+            ]
+          },
+          "candidateSlowerRounds": 5
+        },
+        "usage_insert": {
+          "baselineMedianUs": 175.23597999999765,
+          "candidateMedianUs": 154.9733599999854,
+          "medianChangePercent": -11.56304772570822,
+          "pairedRatio": {
+            "n": 20,
+            "min": 0.6962924695941823,
+            "p10": 0.7041069011844447,
+            "median": 0.8668299023821393,
+            "p90": 1.148401548873971,
+            "p95": 1.533777762350101,
+            "max": 1.5840618783647036,
+            "mean": 0.9360673818091876,
+            "raw": [
+              0.8668299023821393,
+              0.8765869885853068,
+              0.8467021752002093,
+              0.7072235269327002,
+              0.8075674272831385,
+              0.9536973143610942,
+              0.7041069011844447,
+              0.934682799701496,
+              0.9117390490802693,
+              0.8434234131327666,
+              1.032955945712877,
+              1.533777762350101,
+              1.148401548873971,
+              0.8691947589616871,
+              0.7838132733739759,
+              0.8377155067813267,
+              1.5840618783647036,
+              0.846095133095086,
+              0.6962924695941823,
+              0.9364798612322754
+            ]
+          },
+          "candidateSlowerRounds": 4
+        }
+      }
+    },
+    "limitations": [
+      "Single-process offline synthetic warm-cache measurements, not production performance or concurrent lock testing.",
+      "No cold-cache or fsync-per-operation latency claim; batches commit under FULL durability; synchronous=FULL, WAL and mmap explicitly configured.",
+      "Exact createSchema literal plus historical attachment index, not full core migrations/init; unrelated migration schemas omitted.",
+      "Aggregate float costs use exact binary fractions to make deterministic digest comparison reliable.",
+      "Read digest canonicalizes unordered SQL rows; no ordering claim for DISTINCT batch results.",
+      "KV count index is narrower than PK; left-prefix coverage alone does not establish equal scan cost.",
+      "Committed write cleanup excluded; physical freelist/cache state may drift identically; SQL-only, excludes JS serialization, compression, budget side effects and FTS attachment extraction.",
+      "Final fileBytes excludes outstanding WAL; walBytes and page/freelist counts reported separately, no compacted-size savings claim.",
+      "Chat/date combined count is a supplemental probe; real chat count and chart date-filter SQL also measured."
+    ]
+  },
+  "selectedAttachmentOnly": {
+    "profile": "attachment",
+    "sourceCommit": "f31c76aac2a1a2696031bb3bc4e52de3eead300e",
+    "sourceFilesSha256": {
+      "runtime/src/db/connection.ts": "e816b4265804d957ca0cbaee3d0382c8b81b8dbaa8dc8cc73946eb9c29b467ff",
+      "runtime/src/db/media.ts": "cd8dad529b8a87babe18bc8d8a4d3efc023a820c6df7eb84d8b6653e5125f982",
+      "runtime/src/db/extension-kv.ts": "7876147ea038368de6a13ced6b3b5c5ef2cbb1b8e1ba7539ab1da087f5c56a27",
+      "runtime/src/db/token-usage.ts": "22adfe28b602ab48b5ec4c5e544c28ebb7a2179c3eb131badd8d196d731a67e1",
+      "runtime/src/db/chat-branches.ts": "fbc8a4ffcdaa1c0c776b03ad65b7286e15e99970b232757dc921073acd9512bf",
+      "runtime/skills/operator/token-chart/token-usage-by-provider-model-chart.ts": "9a3d2b328570c8f74bd5d7a0fa2a794ee1d1946827f9f5d78f6a81c8cb68a3df",
+      "runtime/scripts/local-test-priority.ts": "b74f881f25ec7a243ac94d5e580a41d35f5f376e79ace65b7b1c91f208c8682f",
+      "runtime/scripts/test-filesystem-isolation.ts": "d4582c3c3301b1b70b1aed31d7b461201dd744f4d653a91789a249ec1e22089d",
+      "runtime/src/db/attachment-index-retirement.ts": "1c9b527ae24ed98d356d6ed1730d7587daaa16fa46c2779ddf2f4ed7950a1d21"
+    },
+    "scriptSha256": "a65978af26f76d371b96710ed7d6796122e928621a3a554306af445c70ff0f5f",
+    "rawReportSha256": "66e6aedd18653f28b89f9183e139fc281414d0427e6db381aba3f9a803f07180",
+    "fixture": {
+      "synthetic": true,
+      "attachments": 50000,
+      "messages": 25000,
+      "media": 40000,
+      "extensions": 75,
+      "keysPerExtension": 900,
+      "kvRows": 67500,
+      "usage": 80000,
+      "chats": 500,
+      "hotChatRows": 8000,
+      "kvKeyBytes": 81,
+      "mediaBlobBytes": 256
+    },
+    "schemaMode": "Exact complete createSchema literal plus historical attachment-only index and partial usage-event unique index; not core init. No live DB accessed.",
+    "method": {
+      "readRounds": 24,
+      "readWarmupRounds": 3,
+      "alternatingOrder": true,
+      "units": "microseconds per SQL operation (batch amortized)",
+      "writeRounds": 20,
+      "writeWarmupRounds": 2,
+      "writeBatchOperations": 200,
+      "writeTransactions": "committed batches; cleanup excluded from timing; same deterministic inputs; KV count + existence + UPSERT every set",
+      "analyze": "once on identical seed before clone; no re-ANALYZE after dropping indexes",
+      "sql": [
+        {
+          "name": "attachment_single",
+          "sql": "SELECT media_id FROM message_media WHERE message_rowid = ? ORDER BY media_id",
+          "exampleArgs": [
+            1
+          ],
+          "operationsPerRound": 400,
+          "source": "source SQL; attachment batch substitutes 50 placeholders"
+        },
+        {
+          "name": "attachment_batch_50",
+          "sql": "SELECT DISTINCT media_id FROM message_media WHERE message_rowid IN (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+          "exampleArgs": [
+            1,
+            38,
+            75,
+            112,
+            149,
+            186,
+            223,
+            260,
+            297,
+            334,
+            371,
+            408,
+            445,
+            482,
+            519,
+            556,
+            593,
+            630,
+            667,
+            704,
+            741,
+            778,
+            815,
+            852,
+            889,
+            926,
+            963,
+            1000,
+            1037,
+            1074,
+            1111,
+            1148,
+            1185,
+            1222,
+            1259,
+            1296,
+            1333,
+            1370,
+            1407,
+            1444,
+            1481,
+            1518,
+            1555,
+            1592,
+            1629,
+            1666,
+            1703,
+            1740,
+            1777,
+            1814
+          ],
+          "operationsPerRound": 30,
+          "source": "source SQL; attachment batch substitutes 50 placeholders"
+        },
+        {
+          "name": "kv_count_900",
+          "sql": "SELECT COUNT(*) as cnt FROM extension_kv WHERE extension_id = ?",
+          "exampleArgs": [
+            "synthetic.extension.000"
+          ],
+          "operationsPerRound": 300,
+          "source": "source SQL; attachment batch substitutes 50 placeholders"
+        },
+        {
+          "name": "kv_scoped_list",
+          "sql": "SELECT key FROM extension_kv WHERE extension_id = ? AND scope = ? AND scope_key = ? ORDER BY key",
+          "exampleArgs": [
+            "synthetic.extension.000",
+            "chat",
+            "synthetic:chat:0001"
+          ],
+          "operationsPerRound": 100,
+          "source": "source SQL; attachment batch substitutes 50 placeholders"
+        },
+        {
+          "name": "kv_scoped_prefix",
+          "sql": "SELECT key FROM extension_kv WHERE extension_id = ? AND scope = ? AND scope_key = ? AND key LIKE ? ORDER BY key",
+          "exampleArgs": [
+            "synthetic.extension.000",
+            "chat",
+            "synthetic:chat:0001",
+            "settings.preference.01%"
+          ],
+          "operationsPerRound": 100,
+          "source": "source SQL; attachment batch substitutes 50 placeholders"
+        },
+        {
+          "name": "usage_chat_aggregate_hot",
+          "sql": "SELECT\n      COALESCE(SUM(input_tokens), 0) AS input_tokens,\n      COALESCE(SUM(output_tokens), 0) AS output_tokens,\n      COALESCE(SUM(reasoning_tokens), 0) AS reasoning_tokens,\n      COALESCE(SUM(cache_read_tokens), 0) AS cache_read_tokens,\n      COALESCE(SUM(cache_write_tokens), 0) AS cache_write_tokens,\n      COALESCE(SUM(total_tokens), 0) AS total_tokens,\n      COALESCE(SUM(cost_total), 0) AS cost_total,\n      COUNT(*) AS runs,\n      COALESCE(SUM(cost_provenance = 'provider_reported'), 0) AS provider_reported_cost_runs,\n      COALESCE(SUM(cost_provenance = 'catalogue_estimate'), 0) AS catalogue_estimate_cost_runs,\n      COALESCE(SUM(cost_provenance = 'unavailable'), 0) AS unavailable_cost_runs,\n      COALESCE(SUM(cost_provenance IS NULL), 0) AS legacy_cost_runs\n     FROM token_usage\n     WHERE chat_jid = ?",
+          "exampleArgs": [
+            "synthetic:chat:0000"
+          ],
+          "operationsPerRound": 5,
+          "source": "source SQL; attachment batch substitutes 50 placeholders"
+        },
+        {
+          "name": "usage_chat_aggregate_typical",
+          "sql": "SELECT\n      COALESCE(SUM(input_tokens), 0) AS input_tokens,\n      COALESCE(SUM(output_tokens), 0) AS output_tokens,\n      COALESCE(SUM(reasoning_tokens), 0) AS reasoning_tokens,\n      COALESCE(SUM(cache_read_tokens), 0) AS cache_read_tokens,\n      COALESCE(SUM(cache_write_tokens), 0) AS cache_write_tokens,\n      COALESCE(SUM(total_tokens), 0) AS total_tokens,\n      COALESCE(SUM(cost_total), 0) AS cost_total,\n      COUNT(*) AS runs,\n      COALESCE(SUM(cost_provenance = 'provider_reported'), 0) AS provider_reported_cost_runs,\n      COALESCE(SUM(cost_provenance = 'catalogue_estimate'), 0) AS catalogue_estimate_cost_runs,\n      COALESCE(SUM(cost_provenance = 'unavailable'), 0) AS unavailable_cost_runs,\n      COALESCE(SUM(cost_provenance IS NULL), 0) AS legacy_cost_runs\n     FROM token_usage\n     WHERE chat_jid = ?",
+          "exampleArgs": [
+            "synthetic:chat:0001"
+          ],
+          "operationsPerRound": 50,
+          "source": "source SQL; attachment batch substitutes 50 placeholders"
+        },
+        {
+          "name": "usage_chat_count_hot",
+          "sql": "SELECT COUNT(*) AS count FROM token_usage WHERE chat_jid = ?",
+          "exampleArgs": [
+            "synthetic:chat:0000"
+          ],
+          "operationsPerRound": 50,
+          "source": "source SQL; attachment batch substitutes 50 placeholders"
+        },
+        {
+          "name": "usage_chat_count_typical",
+          "sql": "SELECT COUNT(*) AS count FROM token_usage WHERE chat_jid = ?",
+          "exampleArgs": [
+            "synthetic:chat:0001"
+          ],
+          "operationsPerRound": 200,
+          "source": "source SQL; attachment batch substitutes 50 placeholders"
+        },
+        {
+          "name": "usage_date_filter_real_chart",
+          "sql": "SELECT substr(run_at,1,10) AS day,\n              COALESCE(provider,'(unknown)') AS provider,\n              COALESCE(model,'(unknown)') AS model,\n              SUM(COALESCE(total_tokens,0)) AS tokens\n       FROM token_usage\n       WHERE run_at >= ?\n       GROUP BY day, COALESCE(provider,'(unknown)'), COALESCE(model,'(unknown)')\n       ORDER BY day, tokens DESC",
+          "exampleArgs": [
+            "2025-03-25T00:00:00Z"
+          ],
+          "operationsPerRound": 2,
+          "source": "source SQL; attachment batch substitutes 50 placeholders"
+        },
+        {
+          "name": "usage_chat_date_count_probe",
+          "sql": "SELECT COUNT(*) AS count FROM token_usage WHERE chat_jid = ? AND run_at >= ? AND run_at <= ?",
+          "exampleArgs": [
+            "synthetic:chat:0000",
+            "2025-02-01T00:00:00.000Z",
+            "2025-03-01T00:00:00.000Z"
+          ],
+          "operationsPerRound": 50,
+          "source": "supplemental synthetic conjunction probe, NOT claimed source SQL"
+        }
+      ],
+      "writeSQL": {
+        "attachment": "INSERT OR IGNORE INTO message_media (message_rowid, media_id) VALUES (NULL, NULL)",
+        "kvCount": "SELECT COUNT(*) as cnt FROM extension_kv WHERE extension_id = ?",
+        "kvExists": "SELECT 1 FROM extension_kv WHERE extension_id = ? AND scope = ? AND scope_key = ? AND key = ?",
+        "kvUpsert": "\n    INSERT INTO extension_kv (extension_id, scope, scope_key, key, value, created_at, updated_at)\n    VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))\n    ON CONFLICT (extension_id, scope, scope_key, key)\n    DO UPDATE SET value = excluded.value, updated_at = datetime('now')\n  ",
+        "usage": "INSERT OR IGNORE INTO token_usage (\n      chat_jid,\n      run_at,\n      input_tokens,\n      output_tokens,\n      reasoning_tokens,\n      cache_read_tokens,\n      cache_write_tokens,\n      cache_read_reported,\n      cache_write_reported,\n      total_tokens,\n      cost_input,\n      cost_output,\n      cost_cache_read,\n      cost_cache_write,\n      cost_total,\n      provider_cost_total,\n      catalogue_cost_total,\n      cost_provenance,\n      model,\n      response_model,\n      provider,\n      api,\n      usage_source,\n      turns,\n      work_id,\n      invocation_id,\n      usage_event_id,\n      api_equivalent_cost_microusd,\n      api_equivalent_cost_known,\n      valuation_provenance,\n      api_equivalent_known_subtotal_microusd,\n      api_equivalent_unknown_categories,\n      pricing_currency,\n      pricing_source,\n      pricing_version,\n      pricing_context_tier,\n      pricing_cache_fallbacks\n    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+      }
+    },
+    "correctness": "PASS: all query digests match before/after dropping candidate indexes; table-content digests (excluding created_at/updated_at timestamps) match initially and after committed write cleanup; protected indexes asserted",
+    "sqlite": {
+      "version": "3.53.2"
+    },
+    "bun": "1.4.2",
+    "baseline": {
+      "pragmas": {
+        "journal_mode": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "page_size": {
+          "page_size": 4096
+        },
+        "page_count": {
+          "page_count": 24320
+        },
+        "freelist_count": {
+          "freelist_count": 11
+        },
+        "cache_size": {
+          "cache_size": -1000
+        },
+        "mmap_size": {
+          "mmap_size": 268435456
+        },
+        "secure_delete": {
+          "secure_delete": 1
+        }
+      },
+      "plans": {
+        "attachment_single": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 44,
+            "detail": "SEARCH message_media USING COVERING INDEX sqlite_autoindex_message_media_1 (message_rowid=?)"
+          }
+        ],
+        "attachment_batch_50": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 100,
+            "detail": "SEARCH message_media USING COVERING INDEX sqlite_autoindex_message_media_1 (message_rowid=?)"
+          },
+          {
+            "id": 172,
+            "parent": 0,
+            "notused": 0,
+            "detail": "USE TEMP B-TREE FOR DISTINCT"
+          }
+        ],
+        "kv_count_900": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 111,
+            "detail": "SEARCH extension_kv USING COVERING INDEX idx_extension_kv_ext_scope (extension_id=?)"
+          }
+        ],
+        "kv_scoped_list": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 72,
+            "detail": "SEARCH extension_kv USING COVERING INDEX sqlite_autoindex_extension_kv_1 (extension_id=? AND scope=? AND scope_key=?)"
+          }
+        ],
+        "kv_scoped_prefix": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 72,
+            "detail": "SEARCH extension_kv USING COVERING INDEX sqlite_autoindex_extension_kv_1 (extension_id=? AND scope=? AND scope_key=?)"
+          }
+        ],
+        "usage_chat_aggregate_hot": [
+          {
+            "id": 4,
+            "parent": 0,
+            "notused": 96,
+            "detail": "SEARCH token_usage USING INDEX idx_token_usage_chat_jid (chat_jid=?)"
+          }
+        ],
+        "usage_chat_aggregate_typical": [
+          {
+            "id": 4,
+            "parent": 0,
+            "notused": 96,
+            "detail": "SEARCH token_usage USING INDEX idx_token_usage_chat_jid (chat_jid=?)"
+          }
+        ],
+        "usage_chat_count_hot": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 82,
+            "detail": "SEARCH token_usage USING COVERING INDEX idx_token_usage_chat_jid (chat_jid=?)"
+          }
+        ],
+        "usage_chat_count_typical": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 82,
+            "detail": "SEARCH token_usage USING COVERING INDEX idx_token_usage_chat_jid (chat_jid=?)"
+          }
+        ],
+        "usage_date_filter_real_chart": [
+          {
+            "id": 8,
+            "parent": 0,
+            "notused": 165,
+            "detail": "SEARCH token_usage USING INDEX idx_token_usage_run_at (run_at>?)"
+          },
+          {
+            "id": 14,
+            "parent": 0,
+            "notused": 0,
+            "detail": "USE TEMP B-TREE FOR GROUP BY"
+          },
+          {
+            "id": 69,
+            "parent": 0,
+            "notused": 0,
+            "detail": "USE TEMP B-TREE FOR ORDER BY"
+          }
+        ],
+        "usage_chat_date_count_probe": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 44,
+            "detail": "SEARCH token_usage USING COVERING INDEX idx_token_usage_chat_jid_run_at (chat_jid=? AND run_at>? AND run_at<?)"
+          }
+        ]
+      },
+      "resultDigests": {
+        "attachment_single": "a4abd148b43de60355630bfd48ba42bf334fb2b26608fa70cd019ee69dcdd266",
+        "attachment_batch_50": "eba700be041d626de308a4cddc8752c8ffa5fda6b9817e857ce684d3158317ca",
+        "kv_count_900": "4f4c070fa64628015deb512af6b8a79faa9c78d8993870611e8704c3b25822a3",
+        "kv_scoped_list": "6bf66c0cee06779775db2b208784574065566f74f88788d0a441b344e06637aa",
+        "kv_scoped_prefix": "4562202187a6ee5b4e964a8c22d6589e80efb45db0afcbc39c44057da094e94a",
+        "usage_chat_aggregate_hot": "7c474483c70f62088bd4309716c7a520cbb6b9c78e6f5d5dc6618dff20dc2bcd",
+        "usage_chat_aggregate_typical": "a927efd173c78e49e548ce7051bb45b4865e6a99c3df18d7fa82e52c33a16d8f",
+        "usage_chat_count_hot": "033097033b074231be098c0ea3fd032c2888bddf6359074d8e4ef48d58548e94",
+        "usage_chat_count_typical": "8283a7788694fe490baec63840a605a7b79455b5eb3f9f2e60dc30bd49e1e620",
+        "usage_date_filter_real_chart": "145d2d90e13c0b527dba2a2770f9823df111049c1db79c5fab1e53f971e29e3b",
+        "usage_chat_date_count_probe": "0bf8fd98c38439ea9ff78d7b306723c0be6917fe2664ff9bb980a02534c0b740"
+      }
+    },
+    "candidate": {
+      "pragmas": {
+        "journal_mode": {
+          "journal_mode": "wal"
+        },
+        "synchronous": {
+          "synchronous": 2
+        },
+        "page_size": {
+          "page_size": 4096
+        },
+        "page_count": {
+          "page_count": 24295
+        },
+        "freelist_count": {
+          "freelist_count": 132
+        },
+        "cache_size": {
+          "cache_size": -1000
+        },
+        "mmap_size": {
+          "mmap_size": 268435456
+        },
+        "secure_delete": {
+          "secure_delete": 1
+        }
+      },
+      "plans": {
+        "attachment_single": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 44,
+            "detail": "SEARCH message_media USING COVERING INDEX sqlite_autoindex_message_media_1 (message_rowid=?)"
+          }
+        ],
+        "attachment_batch_50": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 100,
+            "detail": "SEARCH message_media USING COVERING INDEX sqlite_autoindex_message_media_1 (message_rowid=?)"
+          },
+          {
+            "id": 172,
+            "parent": 0,
+            "notused": 0,
+            "detail": "USE TEMP B-TREE FOR DISTINCT"
+          }
+        ],
+        "kv_count_900": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 111,
+            "detail": "SEARCH extension_kv USING COVERING INDEX idx_extension_kv_ext_scope (extension_id=?)"
+          }
+        ],
+        "kv_scoped_list": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 72,
+            "detail": "SEARCH extension_kv USING COVERING INDEX sqlite_autoindex_extension_kv_1 (extension_id=? AND scope=? AND scope_key=?)"
+          }
+        ],
+        "kv_scoped_prefix": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 72,
+            "detail": "SEARCH extension_kv USING COVERING INDEX sqlite_autoindex_extension_kv_1 (extension_id=? AND scope=? AND scope_key=?)"
+          }
+        ],
+        "usage_chat_aggregate_hot": [
+          {
+            "id": 4,
+            "parent": 0,
+            "notused": 96,
+            "detail": "SEARCH token_usage USING INDEX idx_token_usage_chat_jid (chat_jid=?)"
+          }
+        ],
+        "usage_chat_aggregate_typical": [
+          {
+            "id": 4,
+            "parent": 0,
+            "notused": 96,
+            "detail": "SEARCH token_usage USING INDEX idx_token_usage_chat_jid (chat_jid=?)"
+          }
+        ],
+        "usage_chat_count_hot": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 82,
+            "detail": "SEARCH token_usage USING COVERING INDEX idx_token_usage_chat_jid (chat_jid=?)"
+          }
+        ],
+        "usage_chat_count_typical": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 82,
+            "detail": "SEARCH token_usage USING COVERING INDEX idx_token_usage_chat_jid (chat_jid=?)"
+          }
+        ],
+        "usage_date_filter_real_chart": [
+          {
+            "id": 8,
+            "parent": 0,
+            "notused": 165,
+            "detail": "SEARCH token_usage USING INDEX idx_token_usage_run_at (run_at>?)"
+          },
+          {
+            "id": 14,
+            "parent": 0,
+            "notused": 0,
+            "detail": "USE TEMP B-TREE FOR GROUP BY"
+          },
+          {
+            "id": 69,
+            "parent": 0,
+            "notused": 0,
+            "detail": "USE TEMP B-TREE FOR ORDER BY"
+          }
+        ],
+        "usage_chat_date_count_probe": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 44,
+            "detail": "SEARCH token_usage USING COVERING INDEX idx_token_usage_chat_jid_run_at (chat_jid=? AND run_at>? AND run_at<?)"
+          }
+        ]
+      },
+      "resultDigests": {
+        "attachment_single": "a4abd148b43de60355630bfd48ba42bf334fb2b26608fa70cd019ee69dcdd266",
+        "attachment_batch_50": "eba700be041d626de308a4cddc8752c8ffa5fda6b9817e857ce684d3158317ca",
+        "kv_count_900": "4f4c070fa64628015deb512af6b8a79faa9c78d8993870611e8704c3b25822a3",
+        "kv_scoped_list": "6bf66c0cee06779775db2b208784574065566f74f88788d0a441b344e06637aa",
+        "kv_scoped_prefix": "4562202187a6ee5b4e964a8c22d6589e80efb45db0afcbc39c44057da094e94a",
+        "usage_chat_aggregate_hot": "7c474483c70f62088bd4309716c7a520cbb6b9c78e6f5d5dc6618dff20dc2bcd",
+        "usage_chat_aggregate_typical": "a927efd173c78e49e548ce7051bb45b4865e6a99c3df18d7fa82e52c33a16d8f",
+        "usage_chat_count_hot": "033097033b074231be098c0ea3fd032c2888bddf6359074d8e4ef48d58548e94",
+        "usage_chat_count_typical": "8283a7788694fe490baec63840a605a7b79455b5eb3f9f2e60dc30bd49e1e620",
+        "usage_date_filter_real_chart": "145d2d90e13c0b527dba2a2770f9823df111049c1db79c5fab1e53f971e29e3b",
+        "usage_chat_date_count_probe": "0bf8fd98c38439ea9ff78d7b306723c0be6917fe2664ff9bb980a02534c0b740"
+      }
+    },
+    "removedInCandidate": [
+      "idx_message_media_message_rowid"
+    ],
+    "preserved": [
+      "idx_extension_kv_ext_scope",
+      "idx_token_usage_chat_jid",
+      "sqlite_autoindex_message_media_1",
+      "sqlite_autoindex_extension_kv_1",
+      "idx_token_usage_chat_jid_run_at",
+      "idx_messages_chat_jid"
+    ],
+    "comparisons": {
+      "reads": {
+        "attachment_single": {
+          "baselineMedianUs": 0.6480499999997846,
+          "candidateMedianUs": 0.6400124999981927,
+          "medianChangePercent": -1.2402592395022949,
+          "pairedRatio": {
+            "n": 24,
+            "min": 0.2292318320841492,
+            "p10": 0.9092276120741332,
+            "median": 0.9824992641126254,
+            "p90": 1.0402575616098566,
+            "p95": 1.059105269289101,
+            "max": 1.1173419080008564,
+            "mean": 0.9569120212225037,
+            "raw": [
+              1.0371416697961187,
+              0.9272969976368789,
+              1.059105269289101,
+              1.0049250759731667,
+              0.9737387698662425,
+              1.0036563143442627,
+              0.9648467231485462,
+              0.8858948110781998,
+              0.9812793946784006,
+              0.9824992641126254,
+              0.9092276120741332,
+              0.9991865963918316,
+              1.1173419080008564,
+              0.9907367860097479,
+              0.9911581117037951,
+              0.9869902614140489,
+              0.9700201622130848,
+              0.9584868811048435,
+              0.9873346901089813,
+              0.9699560219087902,
+              1.023916328081418,
+              0.9716594667110096,
+              0.2292318320841492,
+              1.0402575616098566
+            ]
+          },
+          "candidateSlowerRounds": 7
+        },
+        "attachment_batch_50": {
+          "baselineMedianUs": 27.074666666703706,
+          "candidateMedianUs": 27.596233333315467,
+          "medianChangePercent": 1.9264010635195783,
+          "pairedRatio": {
+            "n": 24,
+            "min": 0.9573663024998186,
+            "p10": 0.9755928997961717,
+            "median": 1.014610499331685,
+            "p90": 1.098717584063285,
+            "p95": 1.1256600958304248,
+            "max": 1.3925141026676726,
+            "mean": 1.0334701680544958,
+            "raw": [
+              1.0122470425610057,
+              1.0423294173895625,
+              0.958717023792991,
+              1.0095829276598494,
+              1.0170392987267067,
+              1.039474698275683,
+              1.0673222750831415,
+              1.014610499331685,
+              1.0116432749864586,
+              0.9573663024998186,
+              0.9760534198302309,
+              0.9755928997961717,
+              0.9970877457934684,
+              1.023157598369164,
+              1.3925141026676726,
+              0.9822153715312185,
+              0.9952189541032134,
+              1.0204105568946336,
+              1.098717584063285,
+              1.031384898451166,
+              1.1256600958304248,
+              1.0149976154086906,
+              0.9974992235339775,
+              1.0424412067276798
+            ]
+          },
+          "candidateSlowerRounds": 16
+        },
+        "kv_count_900": {
+          "baselineMedianUs": 20.742016666663403,
+          "candidateMedianUs": 20.927076666666835,
+          "medianChangePercent": 0.8921986852939989,
+          "pairedRatio": {
+            "n": 24,
+            "min": 0.7624774316439108,
+            "p10": 0.9303392110017872,
+            "median": 1.00892198685294,
+            "p90": 1.0717144882663956,
+            "p95": 1.0811731885457112,
+            "max": 1.1511561040220242,
+            "mean": 1.001064221886369,
+            "raw": [
+              1.0717144882663956,
+              0.9355448561874309,
+              1.0605108506995398,
+              0.9814955869381268,
+              1.0294279134549065,
+              0.9877258995091772,
+              1.0397561558805275,
+              0.975435671509248,
+              1.04058224136608,
+              0.947859232953216,
+              1.0417726798780342,
+              1.00892198685294,
+              1.0516993726944124,
+              0.9385354549470366,
+              1.0485730882397621,
+              0.7624774316439108,
+              0.9074904535028581,
+              1.0811731885457112,
+              1.0575415774668584,
+              0.9653989269984252,
+              1.1511561040220242,
+              0.9784304632152442,
+              1.0319784894992048,
+              0.9303392110017872
+            ]
+          },
+          "candidateSlowerRounds": 13
+        },
+        "kv_scoped_list": {
+          "baselineMedianUs": 10.59782999998788,
+          "candidateMedianUs": 8.672260000003007,
+          "medianChangePercent": -18.16947431679009,
+          "pairedRatio": {
+            "n": 24,
+            "min": 0.6249315042383233,
+            "p10": 0.7388071648656495,
+            "median": 0.8170936648016909,
+            "p90": 0.885131703547104,
+            "p95": 0.9202607463217878,
+            "max": 1.101974903952426,
+            "mean": 0.8264170760057595,
+            "raw": [
+              0.7253477565737816,
+              0.7667306101357012,
+              0.8689902258771047,
+              0.8774674132156786,
+              0.8780744510643315,
+              0.885131703547104,
+              0.9202607463217878,
+              0.7388071648656495,
+              0.6249315042383233,
+              0.803120479538246,
+              0.8504132231407541,
+              0.8010838763783459,
+              0.8151316430539999,
+              0.8140609917323147,
+              0.8280822067369467,
+              0.8275214139166683,
+              0.8429408734367613,
+              0.763095366192442,
+              0.8124207846329983,
+              0.8377966483347615,
+              1.101974903952426,
+              0.7967903551906758,
+              0.8170936648016909,
+              0.8367418172597348
+            ]
+          },
+          "candidateSlowerRounds": 1
+        },
+        "kv_scoped_prefix": {
+          "baselineMedianUs": 13.14740999998321,
+          "candidateMedianUs": 13.161479999998846,
+          "medianChangePercent": 0.10701727576498676,
+          "pairedRatio": {
+            "n": 24,
+            "min": 0.9830451799028361,
+            "p10": 0.9852396783871189,
+            "median": 1.0037192242507609,
+            "p90": 1.0401094893077931,
+            "p95": 1.0735000345984054,
+            "max": 1.5724077932565033,
+            "mean": 1.03129997061646,
+            "raw": [
+              0.9928342135869638,
+              1.0031979024924667,
+              0.9852396783871189,
+              0.9860030782661499,
+              1.0158630406685223,
+              0.9831742687394222,
+              1.0007675230327762,
+              0.9986190014305667,
+              1.0401094893077931,
+              1.0104133180162291,
+              1.0159217797317655,
+              0.9965547100565717,
+              1.0039193134971336,
+              1.0235126523076996,
+              1.0037192242507609,
+              0.9996685658262139,
+              1.0085325599704755,
+              0.9991601564269431,
+              1.0064682927047066,
+              1.0735000345984054,
+              1.5724077932565033,
+              1.0329560804661326,
+              1.015611437870883,
+              0.9830451799028361
+            ]
+          },
+          "candidateSlowerRounds": 15
+        },
+        "usage_chat_aggregate_hot": {
+          "baselineMedianUs": 3631.1757999999827,
+          "candidateMedianUs": 3691.146799999842,
+          "medianChangePercent": 1.6515587044796831,
+          "pairedRatio": {
+            "n": 24,
+            "min": 0.9332360574446972,
+            "p10": 0.9368869108019992,
+            "median": 0.9992879996724776,
+            "p90": 1.1078139521044494,
+            "p95": 1.117226576460326,
+            "max": 1.1981867649627238,
+            "mean": 1.0197308503760356,
+            "raw": [
+              1.1981867649627238,
+              1.0458123274400746,
+              1.0769947939498674,
+              0.9343465506785346,
+              1.0370274307072092,
+              0.9497509349626941,
+              1.1078139521044494,
+              0.9769226746300672,
+              1.0460538178435455,
+              0.97922499296549,
+              1.0729630377905723,
+              0.9742111545933201,
+              1.0591490386221012,
+              0.9992879996724776,
+              1.0909286585565885,
+              0.9741796866448128,
+              1.0150479032611381,
+              0.9732754931811636,
+              1.0270831833589358,
+              0.9530444612024856,
+              1.117226576460326,
+              0.9332360574446972,
+              0.9948860071895771,
+              0.9368869108019992
+            ]
+          },
+          "candidateSlowerRounds": 12
+        },
+        "usage_chat_aggregate_typical": {
+          "baselineMedianUs": 87.78346000002784,
+          "candidateMedianUs": 86.53362000000925,
+          "medianChangePercent": -1.423776187471082,
+          "pairedRatio": {
+            "n": 24,
+            "min": 0.7013734565726476,
+            "p10": 0.8417086814177708,
+            "median": 0.8980642233848032,
+            "p90": 1.168121319259887,
+            "p95": 1.1981523115736619,
+            "max": 1.202186806654496,
+            "mean": 0.9960795543097672,
+            "raw": [
+              1.1981523115736619,
+              0.8666239856759909,
+              1.152805182858858,
+              0.8335514263853422,
+              1.168121319259887,
+              0.8500136187030347,
+              1.122745331961309,
+              0.852659031666641,
+              1.166643726427712,
+              0.8417086814177708,
+              1.159893465300268,
+              0.8427020084650344,
+              1.202186806654496,
+              0.8486489870000643,
+              1.1472802957484616,
+              0.8697947379887674,
+              1.151699718445584,
+              0.7013734565726476,
+              1.0982111186616792,
+              0.8833026059501009,
+              1.0654894626899845,
+              0.8980642233848032,
+              1.1118318175636093,
+              0.8724059830787069
+            ]
+          },
+          "candidateSlowerRounds": 12
+        },
+        "usage_chat_count_hot": {
+          "baselineMedianUs": 170.16012000000046,
+          "candidateMedianUs": 170.0854999999865,
+          "medianChangePercent": -0.04385281346414027,
+          "pairedRatio": {
+            "n": 24,
+            "min": 0.791861314686844,
+            "p10": 0.9541604695623824,
+            "median": 0.9981493051148784,
+            "p90": 1.0349293610927206,
+            "p95": 1.0482726193454424,
+            "max": 1.059207698708222,
+            "mean": 0.9904622187617406,
+            "raw": [
+              1.0482726193454424,
+              1.059207698708222,
+              1.0349293610927206,
+              1.0032375527612893,
+              0.9997195583871619,
+              1.011937023171438,
+              0.791861314686844,
+              1.0008005532669293,
+              1.0096576274343667,
+              0.9906032060023789,
+              0.9328913833798191,
+              0.9541604695623824,
+              1.0085157248869472,
+              1.0206036356346877,
+              0.9962349782895692,
+              0.9980844759677656,
+              0.9598580829078912,
+              0.9817595173044183,
+              1.0101686862974768,
+              0.9877805382066283,
+              0.998732279423781,
+              0.9855152927902991,
+              0.9981493051148784,
+              0.9884123656584308
+            ]
+          },
+          "candidateSlowerRounds": 10
+        },
+        "usage_chat_count_typical": {
+          "baselineMedianUs": 4.223234999999477,
+          "candidateMedianUs": 4.213209999998071,
+          "medianChangePercent": -0.2373772712483957,
+          "pairedRatio": {
+            "n": 24,
+            "min": 0.9634393494372444,
+            "p10": 0.9704559864180855,
+            "median": 1.000427696820723,
+            "p90": 1.0541298951834994,
+            "p95": 1.0735141285981984,
+            "max": 1.351712157657026,
+            "mean": 1.016668071643582,
+            "raw": [
+              1.027403556598164,
+              1.0143278305334649,
+              1.0006036389094324,
+              0.9910068940048712,
+              1.351712157657026,
+              0.991525340726521,
+              0.9966644220673058,
+              1.0115058566160742,
+              0.9705305639074322,
+              0.9704559864180855,
+              1.0541298951834994,
+              0.9634393494372444,
+              0.966066143163315,
+              1.0070703861675445,
+              1.0735141285981984,
+              0.9756108497882435,
+              1.0429402513176473,
+              1.008089941041669,
+              0.9814683917077035,
+              0.9904558385127489,
+              1.000427696820723,
+              1.0005616449905619,
+              0.9997523025133035,
+              1.0107706527651938
+            ]
+          },
+          "candidateSlowerRounds": 13
+        },
+        "usage_date_filter_real_chart": {
+          "baselineMedianUs": 4271.244500000648,
+          "candidateMedianUs": 4257.832499999495,
+          "medianChangePercent": -0.3140068427633036,
+          "pairedRatio": {
+            "n": 24,
+            "min": 0.7887713846641067,
+            "p10": 0.8977589351070832,
+            "median": 0.9915403876288272,
+            "p90": 1.0289350442702405,
+            "p95": 1.0313518694607948,
+            "max": 1.0389493139149621,
+            "mean": 0.9764489056239084,
+            "raw": [
+              1.0289350442702405,
+              0.7887713846641067,
+              0.8977589351070832,
+              1.0243222170269688,
+              1.017375720908325,
+              0.939678712300444,
+              0.9656303736910902,
+              0.9614510604331727,
+              1.0016570946208092,
+              0.9401782502926939,
+              0.9664137129295118,
+              0.8339622030411816,
+              1.0389493139149621,
+              1.0159185459644096,
+              1.0107462524011348,
+              0.9738527231135798,
+              1.0036400193061676,
+              0.9915403876288272,
+              1.0313518694607948,
+              0.9761164471119235,
+              1.017835247879349,
+              0.9992853857134415,
+              1.0276559542306987,
+              0.9817468789628762
+            ]
+          },
+          "candidateSlowerRounds": 11
+        },
+        "usage_chat_date_count_probe": {
+          "baselineMedianUs": 72.8386799999862,
+          "candidateMedianUs": 72.51392000001943,
+          "medianChangePercent": -0.4458620062401386,
+          "pairedRatio": {
+            "n": 24,
+            "min": 0.8909430390910085,
+            "p10": 0.9739762046821295,
+            "median": 0.9993967490899625,
+            "p90": 1.01802612925674,
+            "p95": 1.019418915667015,
+            "max": 1.1562758756821487,
+            "mean": 0.9997984643023671,
+            "raw": [
+              1.0128327110383208,
+              1.01802612925674,
+              0.994393238478942,
+              1.006789543854521,
+              1.0032346404916426,
+              0.9752963996371741,
+              0.9739762046821295,
+              0.9771764796218034,
+              1.0098854149116487,
+              0.9993967490899625,
+              1.0009556853410084,
+              0.9988649586002732,
+              1.0017663862980941,
+              1.0035545550062266,
+              0.9723471696250572,
+              0.982296983280096,
+              1.004674932271179,
+              0.9949748812290201,
+              0.9901061805811309,
+              0.9926860775436204,
+              1.1562758756821487,
+              0.8909430390910085,
+              1.019418915667015,
+              1.0152899919780463
+            ]
+          },
+          "candidateSlowerRounds": 12
+        }
+      },
+      "writes": {
+        "attachment_insert": {
+          "baselineMedianUs": 56.42281499999626,
+          "candidateMedianUs": 55.89744499999142,
+          "medianChangePercent": -0.9311304301369505,
+          "pairedRatio": {
+            "n": 20,
+            "min": 0.3357887515160626,
+            "p10": 0.9680808946960816,
+            "median": 0.9850429949361436,
+            "p90": 1.0191102192471173,
+            "p95": 1.0206233381083063,
+            "max": 1.039800710604219,
+            "mean": 0.9626298565676151,
+            "raw": [
+              1.0034270182639782,
+              0.3357887515160626,
+              0.9905698615533411,
+              0.9690958456012142,
+              0.9898192413254642,
+              0.9687348485117655,
+              1.0149388682032279,
+              1.0086832833328316,
+              0.9850429949361436,
+              1.0135583862049933,
+              0.9680808946960816,
+              1.0206233381083063,
+              0.9786121362687088,
+              0.9843417950699146,
+              1.0191102192471173,
+              1.039800710604219,
+              0.9834062234739447,
+              1.0147640794494677,
+              0.9821858849891462,
+              0.9820127499963749
+            ]
+          },
+          "candidateSlowerRounds": 8
+        },
+        "kv_set_existing_with_count": {
+          "baselineMedianUs": 106.72968500000025,
+          "candidateMedianUs": 93.90204500000436,
+          "medianChangePercent": -12.018811823529552,
+          "pairedRatio": {
+            "n": 20,
+            "min": 0.22934521897019955,
+            "p10": 0.3445836166327714,
+            "median": 0.9966728855218099,
+            "p90": 1.2079147825032917,
+            "p95": 1.231179187146975,
+            "max": 3.529047228957414,
+            "mean": 1.0436982998422126,
+            "raw": [
+              1.0306727192013239,
+              0.9522963166707338,
+              0.9316908724652122,
+              0.8784121774555804,
+              1.2079147825032917,
+              0.7885916240022759,
+              1.1809873537138402,
+              0.8320989967315984,
+              1.1569031053428815,
+              0.8512621368391792,
+              1.231179187146975,
+              0.22934521897019955,
+              0.7208200853907905,
+              3.529047228957414,
+              1.0019574961302744,
+              0.9998310302593078,
+              1.0096206646199966,
+              0.9966728855218099,
+              1.0000784982887982,
+              0.3445836166327714
+            ]
+          },
+          "candidateSlowerRounds": 9
+        },
+        "kv_set_new_with_count": {
+          "baselineMedianUs": 286.25051999999414,
+          "candidateMedianUs": 287.3955600000045,
+          "medianChangePercent": 0.40001324714111774,
+          "pairedRatio": {
+            "n": 20,
+            "min": 0.6036907985355056,
+            "p10": 0.6824972452040509,
+            "median": 0.9245146860928475,
+            "p90": 1.3714283104350182,
+            "p95": 1.3880480645710682,
+            "max": 2.3994156560342677,
+            "mean": 1.0365603203764535,
+            "raw": [
+              0.8632670686064338,
+              0.9385780030902611,
+              0.8611360150669718,
+              1.0841079659269774,
+              1.219158861727364,
+              0.6824972452040509,
+              0.8622017605034334,
+              0.9873761290197183,
+              0.6962622745104322,
+              0.8175380710538429,
+              0.7866224028080372,
+              2.3994156560342677,
+              1.3880480645710682,
+              0.9245146860928475,
+              1.2929379830192982,
+              1.166600936098243,
+              0.7156772387975289,
+              0.6036907985355056,
+              1.3714283104350182,
+              1.070146936427769
+            ]
+          },
+          "candidateSlowerRounds": 8
+        },
+        "usage_insert": {
+          "baselineMedianUs": 448.429885000005,
+          "candidateMedianUs": 483.20314500000677,
+          "medianChangePercent": 7.754447498520611,
+          "pairedRatio": {
+            "n": 20,
+            "min": 0.4743318911427601,
+            "p10": 0.4847796115602339,
+            "median": 1.0041162014846574,
+            "p90": 1.5126601278564455,
+            "p95": 2.0517707077514085,
+            "max": 2.859680348913398,
+            "mean": 1.1596909761545509,
+            "raw": [
+              1.2874120906159712,
+              1.4914097412995637,
+              1.1062930826264945,
+              2.0517707077514085,
+              0.9098024013502819,
+              1.3668835431219353,
+              2.859680348913398,
+              1.0041162014846574,
+              0.4743318911427601,
+              0.8947227661025573,
+              1.1547503061118924,
+              1.5126601278564455,
+              0.9509888372456226,
+              1.0264165164327765,
+              0.7714130190780535,
+              1.346068059963386,
+              0.8564710436781076,
+              0.4847796115602339,
+              0.7513607435578658,
+              0.8924884831976024
+            ]
+          },
+          "candidateSlowerRounds": 11
+        }
+      }
+    },
+    "limitations": [
+      "Single-process offline synthetic warm-cache measurements, not production performance or concurrent lock testing.",
+      "No cold-cache or fsync-per-operation latency claim; batches commit under FULL durability; synchronous=FULL, WAL and mmap explicitly configured.",
+      "Exact createSchema literal plus historical attachment index, not full core migrations/init; unrelated migration schemas omitted.",
+      "Aggregate float costs use exact binary fractions to make deterministic digest comparison reliable.",
+      "Read digest canonicalizes unordered SQL rows; no ordering claim for DISTINCT batch results.",
+      "KV count index is narrower than PK; left-prefix coverage alone does not establish equal scan cost.",
+      "Committed write cleanup excluded; physical freelist/cache state may drift identically; SQL-only, excludes JS serialization, compression, budget side effects and FTS attachment extraction.",
+      "Final fileBytes excludes outstanding WAL; walBytes and page/freelist counts reported separately, no compacted-size savings claim.",
+      "Chat/date combined count is a supplemental probe; real chat count and chart date-filter SQL also measured."
+    ]
+  }
+}

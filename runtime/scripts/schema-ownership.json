@@ -1,0 +1,4785 @@
+{
+  "version": 1,
+  "sources": {
+    "core": "3c66c54de0bc4826dc51655bb5f009ce6f9905d9",
+    "sdk": "@earendil-works/pi-durable@1.5.1",
+    "approved-variant:table:tasks:4ef5a9a019b90afd9b640bc034f451f8601869d6ed2ffd3f525414d008ea338e": "SDK 1.4.0 immutable SQLite migration 2 rebuilds tasks with sleeping status and a quoted final table header. Isolated v1-to-v2 proof preserves task rows/IDs byte-for-byte; only this table fingerprint changes. Retain the exact v1 fingerprint for read-only historical inventory. Opening v2 with SDK 1.3.0 is unsupported; no live migration is authorised here.",
+    "nativeAddons": "e8aac2399148cbef638764ba2b5a1cd916cc5ecc",
+    "approved-variant:table:chat_branches:ca1502052e5b89e1bea6419cf9448b2b81bf0c76dbfc585548d58bb2d11f5bc7": "Current migrateChatBranchAgentNameUniqueness rebuild quotes the table header; isolated historical chats/branches + legacy token_usage fixture; all other clauses/constraints unchanged. See runtime/src/db/connection.ts and qualification/pi-durable-130/schema-ownership-fixture.ts.",
+    "host.scheduled-history/occurrence-payload-v1": "{\"base\":\"047d08b1b8f78d5e3bd25b559da6c1917e1dd939\",\"owner\":\"host.scheduled-history\",\"id\":\"occurrence-payload-v1\",\"migration_order\":1,\"checksum\":\"7d717432ca22388076f53de373fb1ee710b92ad8368107bc7186a850cdae03f4\"}",
+    "host.scheduled-definitions/versioned-payload-v1": "{\"base\":\"852e677276dc85e6504190e52286548ad1dcb54b\",\"owner\":\"host.scheduled-definitions\",\"id\":\"versioned-payload-v1\",\"migration_order\":1,\"checksum\":\"0e14073a0e90dcd92be152464e52faf4604777f2e6f6b1d75e88d3f894cfeb31\"}",
+    "host.usage-reports/event-payload-v1": "{\"base\":\"96172d04b369980f7066de99d118df790b303a06\",\"owner\":\"host.usage-reports\",\"id\":\"event-payload-v1\",\"migration_order\":1,\"checksum\":\"0da9f38aeba12085f66855a829c0277b225137d08de7acdf04d17391109484ed\"}",
+    "host.historical-accounts/offline-empty-v1": "{\"base\":\"bae0a32550a17711957b75ae8d45bbc6b008e4c9\",\"historicalSource\":\"cdc214fcc06349dc9d315c2d17c866764e4557d5\",\"owner\":\"host.historical-accounts\",\"id\":\"offline-empty-v1\",\"migration_order\":1,\"checksum\":\"746a4c82365ce5a36baf333a86d4331c9272e9c812920652ab0c7743ba2bc09e\"}",
+    "host.chat-cursors/native-frontier-prequeue-v1": "{\"base\":\"fc16a0c51d76b7200e263997619d434609afa043\",\"owner\":\"host.chat-cursors\",\"id\":\"native-frontier-prequeue-v1\",\"migration_order\":1,\"checksum\":\"8e9e5d0741ff9d493dd3b1032cd0cb2ee9b2ba703c9cf1dcb2c7b4ad7b4afdb3\"}",
+    "host.chat-cursors/native-frontier-v1": "{\"base\":\"fc16a0c51d76b7200e263997619d434609afa043\",\"owner\":\"host.chat-cursors\",\"id\":\"native-frontier-v1\",\"migration_order\":1,\"checksum\":\"e5f26cdd5e61243ef522e2cedc1ec175c96df433feed354f6418479a988f72d5\"}",
+    "host.chat-cursors/polling-frontier-v1": "{\"base\":\"fc16a0c51d76b7200e263997619d434609afa043\",\"owner\":\"host.chat-cursors\",\"id\":\"polling-frontier-v1\",\"migration_order\":1,\"checksum\":\"539339d735a1b5fa7411e90c948484746a7d71675ebb60e01b860f0d702fb0ef\"}",
+    "service_effect_s01/native-harness-binding-v1": "{\"base\":\"75e5b08d5399beb1c3728e4d96ec6fdbebda08bf\",\"owner\":\"service_effect_s01\",\"id\":\"native-harness-binding-v1\",\"migration_order\":2,\"checksum\":\"e88db3dc4c81f5f3dd319ed92a2a79aa92e759d6ae12c6eb1180351daddc0742\"}",
+    "service_effect_s01/retire-harness-mirrors-v1": "{\"base\":\"75e5b08d5399beb1c3728e4d96ec6fdbebda08bf\",\"owner\":\"service_effect_s01\",\"id\":\"retire-harness-mirrors-v1\",\"migration_order\":2,\"checksum\":\"eb5306aba410376f94eb9d4a2c9bcdbbf9ba2fad0337b4d06994143640a9d809\"}",
+    "service_effect_s01/sdk-scheduled-admission-index-v1": "{\"base\":\"771e500528b3e64cd0634f66d068b7aeff785296\",\"owner\":\"service_effect_s01\",\"id\":\"sdk-scheduled-admission-index-v1\",\"migration_order\":3,\"checksum\":\"c8858ac8795d15c48f46fcf76b77bdc19c78b3e48d240be1c3751150ac9b944a\"}",
+    "host.timeline-inline-media/message-inline-media-v1": "{\"base\":\"3b5f4bf0115f9e4ddc03fd431dbb5c0dfe165fb8\",\"owner\":\"host.timeline-inline-media\",\"id\":\"message-inline-media-v1\",\"migration_order\":1,\"checksum\":\"37cade0bed95caf5578755fc811b0a3bc6d35d1f94e914bf3457006ee7b45ed4\"}",
+    "host.timeline-inline-media/link-preview-backfill-v1": "{\"base\":\"3b5f4bf0115f9e4ddc03fd431dbb5c0dfe165fb8\",\"owner\":\"host.timeline-inline-media\",\"id\":\"link-preview-backfill-v1\",\"migration_order\":2,\"checksum\":\"fe1d9437f6c2bb9d20679dbb71402c843b3e1cb2aa349ee27389414731a58c01\"}"
+  },
+  "owners": {
+    "core:background-contexts": {
+      "category": "core",
+      "initializer": "runtime/durable-engine/src/host-background-context.ts#publishNativeBackgroundContext",
+      "writers": ["runtime/durable-engine/src/host-background-context.ts"],
+      "sourceOfTruth": "Single application-owned stable operation-context key to private SDK conversation/session identity. This index grants no execution and is excluded from public chat/session ingress.",
+      "replayRetention": "Preserve private identities and source-keyed policy families across input epochs and ACK/reopen. Staged contexts retain their immutable payload references; no duplicate allocation, physical pruning or implicit source replay.",
+      "references": ["runtime/durable-engine/src/application-bootstrap.ts", "runtime/durable-engine/src/default-application-runtime.ts", "runtime/src/agent-pool/background-operation-contract.ts"]
+    },
+    "core:background-policy": {
+      "category": "core",
+      "initializer": "runtime/durable-engine/src/host-background-policy.ts#bindNativeBackgroundPolicy (opt-in public SDK allocation transaction)",
+      "writers": ["runtime/durable-engine/src/host-background-policy.ts"],
+      "sourceOfTruth": "The immutable accepted payload owns background policy. Each source-keyed SDK document family member binds its input/hash and bounds exact public tool-task quota claims; it is not execution permission or an effect/replay receipt.",
+      "replayRetention": "Preserve the binding and claimed task IDs across ACK loss/reopen. Same-policy binding never resets quota. Forks start unbound. No physical SDK pruning, policy renewal, schema migration or automatic registration.",
+      "references": ["runtime/src/agent-pool/background-operation-contract.ts", "runtime/durable-engine/src/host-background-policy.ts"]
+    },
+    "core:access_state": {
+      "category": "core",
+      "initializer": "runtime/src/db/access-state.ts#initializeAccessSchema",
+      "writers": [
+        "runtime/src/db/access-state.ts"
+      ],
+      "sourceOfTruth": "Activation marker; validated with users; existing marker never recreates default administrator.",
+      "replayRetention": "Preserve; no automatic mode transition/downgrade.",
+      "references": [
+        "runtime/src/db/access-state.ts"
+      ]
+    },
+    "core:addon_operation_events": {
+      "category": "core",
+      "initializer": "runtime/src/db/addon-operations-schema.ts#initializeAddonOperationsSchema",
+      "writers": [
+        "runtime/src/db/addon-operations.ts"
+      ],
+      "sourceOfTruth": "Bounded event replay of operation snapshots, not sole current-state authority.",
+      "replayRetention": "transitionAddonOperation bounds replay by sequence; old cursor gets current snapshot/gap; purge terminal operations removes events.",
+      "references": [
+        "runtime/src/db/addon-operations-schema.ts",
+        "runtime/src/db/addon-operations.ts"
+      ]
+    },
+    "core:addon_operations": {
+      "category": "core",
+      "initializer": "runtime/src/db/addon-operations-schema.ts#initializeAddonOperationsSchema",
+      "writers": [
+        "runtime/src/db/addon-operations-schema.ts",
+        "runtime/src/db/addon-operations.ts"
+      ],
+      "sourceOfTruth": "Idempotent admitted operation snapshot and aggregate input bookkeeping.",
+      "replayRetention": "purgeAddonOperations terminal cleanup; not proof every state can expire.",
+      "references": [
+        "runtime/src/db/addon-operations-schema.ts",
+        "runtime/src/db/addon-operations.ts"
+      ]
+    },
+    "retired:expense-history": {
+      "category": "retired",
+      "initializer": "None; preserved historical financial schema, not created or migrated on startup",
+      "writers": [
+        "No active financial writer; original SQLite constraints remain as historical data"
+      ],
+      "sourceOfTruth": "Opaque original expense tables, immutable usage/request payloads and migration receipts. They cannot govern fresh SDK execution or become a replacement ledger.",
+      "replayRetention": "Preserve original tables, rows, foreign keys, triggers and receipts without repair, backfill, hold clearance or deletion. Existing report retention protects references when the corresponding historical tables exist.",
+      "references": [
+        "runtime/src/db/connection.ts",
+        "runtime/src/db/usage-report-projection.ts",
+        "runtime/test/fixtures/historical-expense-schema.sql"
+      ]
+    },
+
+    "core:chat_branches": {
+      "category": "core",
+      "initializer": "runtime/src/db/connection.ts#createSchema",
+      "writers": [
+        "runtime/src/dream.ts",
+        "runtime/src/runtime/startup.ts",
+        "runtime/src/db/chat-branches.ts",
+        "runtime/src/db/owned-forks.ts",
+        "runtime/src/db/session-handles.ts"
+      ],
+      "sourceOfTruth": "Host stable branch identity, friendly handles/display names, owner namespace and archive policy. The SDK application manifest alone binds native conversation/session IDs. Native address/reparent/destructive legacy mutations are fenced; registration cannot unarchive or rename a native branch. Copied/native routing is never inferred from metadata or a first/default row.",
+      "replayRetention": "Keep native identity metadata while manifest, accepted-source, imported-history and accounting references require it. Native archive retains immutable bindings/history and gates current admission. Default-native restore requires the exact existing route in one synchronous metadata frame. Legacy Dream/startup cleanup and owned/deferred fork writers cannot remove or create dangling native identities. Explicit owner-specific retirement remains separate (#1691/#1702).",
+      "references": [
+        "runtime/src/db/connection.ts",
+        "runtime/src/db/native-routing-policy.ts",
+        "runtime/durable-engine/src/default-application-runtime.ts",
+        "runtime/durable-engine/src/application-bootstrap.ts",
+        "runtime/src/agent-pool.ts",
+        "runtime/src/db/owned-forks.ts"
+      ]
+    },
+    "core:chat_cursors": {
+      "category": "core",
+      "initializer": "runtime/src/db/chat-cursor-storage.ts#initializeChatCursorStorage",
+      "writers": [
+        "runtime/src/dream.ts",
+        "runtime/src/db/chat-branches.ts",
+        "runtime/src/db/connection.ts",
+        "runtime/src/db/chat-cursors.ts"
+      ],
+      "sourceOfTruth": "Host routing/delivery compatibility progress cursors; legacy seed from router_state is one-time. These cursors grant no native operation, execution or continuation authority.",
+      "replayRetention": "Polling position and queued payload/provenance survive the owned frontier migration unchanged. They grant no native execution or accepted-source frontier authority. Retired execution/recovery values are retained separately in the optional immutable historical archive; fresh roots create no archive.",
+      "references": [
+        "runtime/src/db/chat-cursor-storage.ts",
+        "runtime/src/db/chat-cursors.ts",
+        "runtime/durable-engine/src/host-frontier.ts"
+      ]
+    },
+    "core:chat_projects": {
+      "category": "core",
+      "initializer": "runtime/src/db/chat-project-schema.ts#initializeChatProjects",
+      "writers": [
+        "runtime/src/db/chat-project-schema.ts",
+        "runtime/src/db/chat-project.ts"
+      ],
+      "sourceOfTruth": "Canonical user project/path assignments for a chat, owned by chat-project APIs; message content and SDK history do not reconstruct all assignments.",
+      "replayRetention": "No universal reconstruction or age-expiry guarantee. Preserve persisted identity, history and FK/receipt obligations; changes belong to the cited owner APIs. This read-only inventory adds no deletion, pruning, replay or migration authority.",
+      "references": [
+        "runtime/src/db/chat-project-schema.ts"
+      ]
+    },
+    "core:chats": {
+      "category": "core",
+      "initializer": "runtime/src/db/connection.ts#createSchema",
+      "writers": [
+        "runtime/src/dream.ts",
+        "runtime/src/runtime/startup.ts",
+        "runtime/src/extensions/messages-crud.ts",
+        "runtime/src/db/chat-branches.ts",
+        "runtime/src/db/owned-forks.ts",
+        "runtime/src/db/messages.ts",
+        "runtime/src/service-effects/current-piclaw/terminal-settlement-timeline-statements.ts",
+        "runtime/src/service-effects/current-piclaw/timeline-draft-store.ts",
+        "runtime/src/channels/web/messaging/message-store.ts"
+      ],
+      "sourceOfTruth": "Canonical host chat identity and user label with derived last-message metadata; FK parent for messages and host branch/source state. Whole rows cannot be reconstructed solely from messages.",
+      "replayRetention": "No universal reconstruction or age-expiry guarantee. Preserve persisted identity, history and FK/receipt obligations; changes belong to the cited owner APIs. This read-only inventory adds no deletion, pruning, replay or migration authority.",
+      "references": [
+        "runtime/src/db/connection.ts"
+      ]
+    },
+    "core:compaction_telemetry": {
+      "category": "core",
+      "initializer": "runtime/src/db/connection.ts#createSchema",
+      "writers": [
+        "runtime/src/db/compaction-telemetry.ts"
+      ],
+      "sourceOfTruth": "Persisted compaction_telemetry rows; no complete replay-from-other-store guarantee established.",
+      "replayRetention": "pruneCompactionTelemetry defaults to 10,000 most recent rows; storeCompactionTelemetry invokes pruning. This does not authorize retention changes elsewhere.",
+      "references": [
+        "runtime/src/db/connection.ts",
+        "runtime/src/db/compaction-telemetry.ts"
+      ]
+    },
+    "core:core_schema_migrations": {
+      "category": "core",
+      "initializer": "runtime/src/db/connection.ts#dropObsoleteRemoteInteropSchema",
+      "writers": [
+        "runtime/src/db/connection.ts"
+      ],
+      "sourceOfTruth": "Legacy core cleanup receipt drop-core-remote-interop-v1.",
+      "replayRetention": "Preserve; source initializer removes six named obsolete remote tables once, not a general cleanup entitlement.",
+      "references": [
+        "runtime/src/db/connection.ts"
+      ]
+    },
+    "core:extension_kv": {
+      "category": "core",
+      "initializer": "runtime/src/db/connection.ts#createSchema",
+      "writers": [
+        "runtime/src/db/chat-branches.ts",
+        "runtime/src/db/extension-kv.ts",
+        "runtime/durable-engine/src/host-codex-artifacts.ts",
+        "runtime/durable-engine/src/host-regrets-bindings.ts"
+      ],
+      "sourceOfTruth": "Shared physical namespaced KV persistence for active add-on/caller payloads, including Goal, Plan and configuration, plus retained historical namespaces. Payload semantics and lifecycle belong to the originating add-on/caller; no complete replay-from-another-store guarantee.",
+      "replayRetention": "extensionKvDelete/clear/deleteByChatJid and extensionKvPrune(staleDays=30) exist; default prune argument does not establish automatic scheduling or universal expiry.",
+      "references": [
+        "runtime/src/db/connection.ts",
+        "runtime/src/db/extension-kv.ts"
+      ]
+    },
+    "core:keychain_entries": {
+      "category": "core",
+      "initializer": "runtime/src/db/connection.ts#createSchema",
+      "writers": [
+        "runtime/src/secure/keychain.ts"
+      ],
+      "sourceOfTruth": "Encrypted credential entries and credential metadata owned by keychain APIs. SDK transcripts and config references cannot reconstruct secrets; inventory never reads credential payloads.",
+      "replayRetention": "No universal reconstruction or age-expiry guarantee. Preserve persisted identity, history and FK/receipt obligations; changes belong to the cited owner APIs. This read-only inventory adds no deletion, pruning, replay or migration authority.",
+      "references": [
+        "runtime/src/db/connection.ts"
+      ]
+    },
+    "core:link_preview_image_cache": {
+      "category": "projection-cache",
+      "initializer": "runtime/src/db/connection.ts#createSchema",
+      "writers": [
+        "runtime/src/db/link-preview-image-cache.ts"
+      ],
+      "sourceOfTruth": "URL-to-media fetch/expiry mapping; cache depends on media.",
+      "replayRetention": "purgeExpiredLinkPreviewImageCache uses expiry and reference checks before media deletion.",
+      "references": [
+        "runtime/src/db/connection.ts",
+        "runtime/src/db/link-preview-image-cache.ts"
+      ]
+    },
+    "core:media": {
+      "category": "core",
+      "initializer": "runtime/src/db/connection.ts#createSchema",
+      "writers": [
+        "runtime/src/db/media-recompress.ts",
+        "runtime/src/db/media.ts"
+      ],
+      "sourceOfTruth": "Attachment blobs/thumbnails and metadata; not reconstructible merely from message_media.",
+      "replayRetention": "Explicit media deletion and unused-media/cache cleanup exist; do not infer all unreferenced blobs disposable.",
+      "references": [
+        "runtime/src/db/connection.ts",
+        "runtime/src/db/media.ts",
+        "runtime/src/db/link-preview-image-cache.ts"
+      ]
+    },
+    "core:message_media": {
+      "category": "core",
+      "initializer": "runtime/src/db/connection.ts#createSchema",
+      "writers": [
+        "runtime/src/dream.ts",
+        "runtime/src/db/chat-branches.ts",
+        "runtime/src/db/media.ts",
+        "runtime/src/db/chat-cursors.ts",
+        "runtime/src/db/messages.ts",
+        "runtime/src/service-effects/current-piclaw/terminal-settlement-timeline-statements.ts"
+      ],
+      "sourceOfTruth": "Authoritative message-rowid/media association.",
+      "replayRetention": "Coupled to explicit message/media/chat cleanup; covering PK replaces only the retired redundant index.",
+      "references": [
+        "runtime/src/db/connection.ts"
+      ]
+    },
+    "core:message_inline_media": {
+      "category": "core",
+      "initializer": "runtime/src/db/message-inline-media.ts#initializeMessageInlineMediaSchema",
+      "writers": [
+        "runtime/src/db/message-inline-media.ts",
+        "runtime/src/db/messages.ts",
+        "runtime/src/channels/web/media/tool-image-thumbnails.ts"
+      ],
+      "sourceOfTruth": "Message-rowid association for derived inline media (link-preview images, tool image previews); media rows hold the bytes.",
+      "replayRetention": "Coupled to its message: the messages_inline_media_ad trigger removes rows and derived media no other message or attachment uses. Previews are re-creatable from the durable transcript; link-preview images from their source URLs.",
+      "references": [
+        "runtime/src/db/message-inline-media.ts",
+        "runtime/src/db/media.ts",
+        "runtime/src/db/messages.ts"
+      ]
+    },
+    "core:messages": {
+      "category": "core",
+      "initializer": "runtime/src/db/connection.ts#createSchema",
+      "writers": [
+        "runtime/src/dream.ts",
+        "runtime/src/extensions/messages-crud.ts",
+        "runtime/src/db/chat-branches.ts",
+        "runtime/src/db/chat-cursors.ts",
+        "runtime/src/db/messages.ts",
+        "runtime/src/service-effects/current-piclaw/terminal-settlement-timeline-statements.ts",
+        "runtime/src/channels/web/messaging/message-store.ts"
+      ],
+      "sourceOfTruth": "Host timeline projections, user-visible metadata and retained legacy message bytes. Native SDK entries and accepted-source/effect receipts separately own native history and execution identity; a display-row edit does not rewrite accepted SDK payloads. messages_fts derives from host rows.",
+      "replayRetention": "Message deletion/edit and chat merge/delete paths exist; no universal time retention established.",
+      "references": [
+        "runtime/src/db/connection.ts",
+        "runtime/src/db/messages.ts",
+        "runtime/src/db/chat-branches.ts"
+      ]
+    },
+    "core:messages_fts": {
+      "category": "projection-cache",
+      "initializer": "runtime/src/db/connection.ts#createSchema",
+      "writers": [
+        "runtime/src/db/chat-branches.ts",
+        "runtime/src/db/connection.ts",
+        "runtime/src/db/media.ts",
+        "runtime/src/service-effects/current-piclaw/timeline-media-test-schema.ts",
+        "runtime/src/service-effects/current-piclaw/terminal-settlement-timeline-statements.ts"
+      ],
+      "sourceOfTruth": "External-content FTS5 over messages; insert/update/delete triggers maintain it.",
+      "replayRetention": "ensureFts performs user_version-gated rebuild from messages; preserve parent timeline.",
+      "references": [
+        "runtime/src/db/connection.ts"
+      ]
+    },
+    "core:owned_fork_operations": {
+      "category": "core",
+      "initializer": "runtime/src/db/owned-forks.ts#initializeOwnedForkSchema",
+      "writers": [
+        "runtime/src/db/owned-forks.ts"
+      ],
+      "sourceOfTruth": "Owner/request idempotency receipt plus captured fork seed.",
+      "replayRetention": "finishOwnedForkSeed clears seed_json and sets materialised_at, retaining operation identity; no receipt TTL found.",
+      "references": [
+        "runtime/src/db/owned-forks.ts"
+      ]
+    },
+    "core:picker_pin_imports": {
+      "category": "core",
+      "initializer": "runtime/src/db/picker-pins.ts#initializePickerPins",
+      "writers": [
+        "runtime/src/db/picker-pins.ts"
+      ],
+      "sourceOfTruth": "Source-hash/idempotency receipts for importing legacy picker pins into the scoped pin authority.",
+      "replayRetention": "No universal reconstruction or age-expiry guarantee. Preserve persisted identity, history and FK/receipt obligations; changes belong to the cited owner APIs. This read-only inventory adds no deletion, pruning, replay or migration authority.",
+      "references": [
+        "runtime/src/db/picker-pins.ts"
+      ]
+    },
+    "core:picker_pin_scopes": {
+      "category": "core",
+      "initializer": "runtime/src/db/picker-pins.ts#initializePickerPins",
+      "writers": [
+        "runtime/src/db/picker-pins.ts"
+      ],
+      "sourceOfTruth": "Scoped picker-pin revision/authority state; guards concurrent pin changes and legacy import ownership.",
+      "replayRetention": "No universal reconstruction or age-expiry guarantee. Preserve persisted identity, history and FK/receipt obligations; changes belong to the cited owner APIs. This read-only inventory adds no deletion, pruning, replay or migration authority.",
+      "references": [
+        "runtime/src/db/picker-pins.ts"
+      ]
+    },
+    "core:picker_pins": {
+      "category": "core",
+      "initializer": "runtime/src/db/picker-pins.ts#initializePickerPins",
+      "writers": [
+        "runtime/src/db/picker-pins.ts"
+      ],
+      "sourceOfTruth": "Canonical user-selected pin membership/order per scoped picker-pin authority.",
+      "replayRetention": "No universal reconstruction or age-expiry guarantee. Preserve persisted identity, history and FK/receipt obligations; changes belong to the cited owner APIs. This read-only inventory adds no deletion, pruning, replay or migration authority.",
+      "references": [
+        "runtime/src/db/picker-pins.ts"
+      ]
+    },
+    "core:piclaw_schema_migrations": {
+      "category": "core",
+      "initializer": "runtime/src/db/migrations.ts#ensureOwnedMigrationLedger",
+      "writers": [
+        "runtime/src/db/migrations.ts"
+      ],
+      "sourceOfTruth": "Owned migration identity/order/checksum/applied receipt ledger.",
+      "replayRetention": "Preserve all receipts; no TTL; never replace with freshness inference.",
+      "references": [
+        "runtime/src/db/migrations.ts"
+      ]
+    },
+    "core:portainer_configs": {
+      "category": "core",
+      "initializer": "runtime/src/db/connection.ts#createSchema",
+      "writers": [
+        "runtime/src/db/chat-branches.ts"
+      ],
+      "sourceOfTruth": "Historical config rows imported into extension_kv; branch transfer/delete remains tracked.",
+      "replayRetention": "No blanket deletion authorization; do not mistake historical/empty for dead.",
+      "references": [
+        "runtime/src/db/connection.ts"
+      ]
+    },
+    "core:proxmox_configs": {
+      "category": "core",
+      "initializer": "runtime/src/db/connection.ts#createSchema",
+      "writers": [
+        "runtime/src/db/chat-branches.ts"
+      ],
+      "sourceOfTruth": "Historical config rows imported by migrateProxmoxPortainerToKv into extension_kv; branch transfer/delete remains tracked.",
+      "replayRetention": "No blanket deletion authorization; do not mistake historical/empty for dead.",
+      "references": [
+        "runtime/src/db/connection.ts"
+      ]
+    },
+    "core:router_state": {
+      "category": "core",
+      "initializer": "runtime/src/db/connection.ts#createSchema",
+      "writers": [
+        "runtime/src/db/router-state.ts",
+        "runtime/durable-engine/src/host-command-policy.ts"
+      ],
+      "sourceOfTruth": "Persisted typed router/configuration keys and legacy cursor inputs, including compatibility state that may retain protected work/provenance. Individual key owners determine semantics; table presence grants no native execution authority or blanket reconstruction guarantee.",
+      "replayRetention": "No blanket retention established.",
+      "references": [
+        "runtime/src/db/connection.ts"
+      ]
+    },
+    "core:scheduled_tasks": {
+      "category": "projection-cache",
+      "initializer": "runtime/src/db/connection.ts#createSchema",
+      "writers": [
+        "runtime/src/db/scheduled-task-definitions.ts",
+        "runtime/src/db/scheduled-task-authority.ts"
+      ],
+      "sourceOfTruth": "Compatibility/UI projection of the versioned host definition and S07 head/held-successor decision. Payload/status/next_run/revision are never execution authority. Legacy last_run/last_result remain auxiliary UI evidence only.",
+      "replayRetention": "Rebuild known definitions and head metadata without executing work. Historical unavailable payloads are never fabricated or adopted from cache. Explicit deletion belongs to the canonical owner and retires bodies/tombstones authority; preserve unlinked legacy result evidence until that explicit deletion.",
+      "references": [
+        "runtime/src/db/connection.ts",
+        "runtime/src/db/tasks.ts",
+        "runtime/src/db/scheduled-task-authority.ts",
+        "runtime/src/db/scheduled-task-definitions.ts",
+        "runtime/src/db/scheduled-task-head.ts"
+      ]
+    },
+    "core:service_effect_s01_chats": {
+      "category": "core",
+      "initializer": "runtime/src/service-effects/current-piclaw/service-work-schema.ts#installServiceWorkSchema (via installScheduledRunCompositionSchema)",
+      "writers": [
+        "runtime/src/task-scheduler.ts",
+        "runtime/src/service-effects/current-piclaw/terminal-settlement-store.ts",
+        "runtime/src/service-effects/current-piclaw/service-work-store.ts"
+      ],
+      "sourceOfTruth": "S01 durable accepted sources/operations/queue/intents and decision receipts; replay identity is authoritative, not a disposable projection.",
+      "replayRetention": "service-work-store.ts decision replay/idempotency checks; no broad terminal cleanup/TTL found. Preserve source and operation membership.",
+      "references": [
+        "runtime/src/service-effects/current-piclaw/service-work-schema.ts",
+        "runtime/src/service-effects/current-piclaw/service-work-store.ts"
+      ]
+    },
+    "core:service_effect_s01_decisions": {
+      "category": "core",
+      "initializer": "runtime/src/service-effects/current-piclaw/service-work-schema.ts#installServiceWorkSchema (via installScheduledRunCompositionSchema)",
+      "writers": [
+        "runtime/src/service-effects/current-piclaw/service-work-store.ts"
+      ],
+      "sourceOfTruth": "S01 durable accepted sources/operations/queue/intents and decision receipts; replay identity is authoritative, not a disposable projection.",
+      "replayRetention": "service-work-store.ts decision replay/idempotency checks; no broad terminal cleanup/TTL found. Preserve source and operation membership.",
+      "references": [
+        "runtime/src/service-effects/current-piclaw/service-work-schema.ts",
+        "runtime/src/service-effects/current-piclaw/service-work-store.ts"
+      ]
+    },
+    "core:service_effect_s01_intents": {
+      "category": "core",
+      "initializer": "runtime/src/service-effects/current-piclaw/service-work-schema.ts#installServiceWorkSchema (via installScheduledRunCompositionSchema)",
+      "writers": [
+        "runtime/src/service-effects/current-piclaw/service-work-store.ts"
+      ],
+      "sourceOfTruth": "S01 durable accepted sources/operations/queue/intents and decision receipts; replay identity is authoritative, not a disposable projection.",
+      "replayRetention": "service-work-store.ts decision replay/idempotency checks; no broad terminal cleanup/TTL found. Preserve source and operation membership.",
+      "references": [
+        "runtime/src/service-effects/current-piclaw/service-work-schema.ts",
+        "runtime/src/service-effects/current-piclaw/service-work-store.ts"
+      ]
+    },
+    "core:service_effect_s01_operation_sources": {
+      "category": "core",
+      "initializer": "runtime/src/service-effects/current-piclaw/service-work-schema.ts#installServiceWorkSchema (via installScheduledRunCompositionSchema)",
+      "writers": [
+        "runtime/src/task-scheduler.ts",
+        "runtime/src/service-effects/current-piclaw/service-work-store.ts"
+      ],
+      "sourceOfTruth": "S01 durable accepted sources/operations/queue/intents and decision receipts; replay identity is authoritative, not a disposable projection.",
+      "replayRetention": "service-work-store.ts decision replay/idempotency checks; no broad terminal cleanup/TTL found. Preserve source and operation membership.",
+      "references": [
+        "runtime/src/service-effects/current-piclaw/service-work-schema.ts",
+        "runtime/src/service-effects/current-piclaw/service-work-store.ts"
+      ]
+    },
+    "core:service_effect_s01_operations": {
+      "category": "core",
+      "initializer": "runtime/src/service-effects/current-piclaw/service-work-schema.ts#installServiceWorkSchema (via installScheduledRunCompositionSchema)",
+      "writers": [
+        "runtime/src/task-scheduler.ts",
+        "runtime/src/service-effects/current-piclaw/terminal-settlement-store.ts",
+        "runtime/src/service-effects/current-piclaw/service-work-store.ts"
+      ],
+      "sourceOfTruth": "Host operation admission, source membership, version/cancellation/terminal-delivery phases and immutable session/primary-execution binding. SDK tasks own live status, lane and physical generations; no persisted native execution observation is authoritative here.",
+      "replayRetention": "Preserve operation/source identity, active-operation uniqueness, cancellation, terminal delivery and idempotency receipts. Owned order2 retires only three SDK mirrors, retaining original values in an optional forensic archive without retargeting any inbound FK. No TTL, recovery replay or physical retention authority is created.",
+      "references": [
+        "runtime/src/service-effects/current-piclaw/service-work-schema.ts",
+        "runtime/src/service-effects/current-piclaw/service-work-store.ts"
+      ]
+    },
+    "core:service_effect_s01_queued_inputs": {
+      "category": "core",
+      "initializer": "runtime/src/service-effects/current-piclaw/service-work-schema.ts#installServiceWorkSchema (via installScheduledRunCompositionSchema)",
+      "writers": [
+        "runtime/src/service-effects/current-piclaw/terminal-settlement-store.ts",
+        "runtime/src/service-effects/current-piclaw/service-work-store.ts"
+      ],
+      "sourceOfTruth": "S01 durable accepted sources/operations/queue/intents and decision receipts; replay identity is authoritative, not a disposable projection.",
+      "replayRetention": "service-work-store.ts decision replay/idempotency checks; no broad terminal cleanup/TTL found. Preserve source and operation membership.",
+      "references": [
+        "runtime/src/service-effects/current-piclaw/service-work-schema.ts",
+        "runtime/src/service-effects/current-piclaw/service-work-store.ts"
+      ]
+    },
+    "core:service_effect_s01_sources": {
+      "category": "core",
+      "initializer": "runtime/src/service-effects/current-piclaw/service-work-schema.ts#installServiceWorkSchema (via installScheduledRunCompositionSchema)",
+      "writers": [
+        "runtime/src/task-scheduler.ts",
+        "runtime/src/service-effects/current-piclaw/terminal-settlement-store.ts",
+        "runtime/src/service-effects/current-piclaw/service-work-store.ts"
+      ],
+      "sourceOfTruth": "S01 durable accepted sources/operations/queue/intents and decision receipts; replay identity is authoritative, not a disposable projection.",
+      "replayRetention": "service-work-store.ts decision replay/idempotency checks; no broad terminal cleanup/TTL found. Preserve source and operation membership.",
+      "references": [
+        "runtime/src/service-effects/current-piclaw/service-work-schema.ts",
+        "runtime/src/service-effects/current-piclaw/service-work-store.ts"
+      ]
+    },
+    "core:service_effect_s01_wake_intents": {
+      "category": "core",
+      "initializer": "runtime/src/service-effects/current-piclaw/service-work-schema.ts#installServiceWorkSchema (via installScheduledRunCompositionSchema)",
+      "writers": [
+        "runtime/src/service-effects/current-piclaw/service-work-store.ts"
+      ],
+      "sourceOfTruth": "S01 durable accepted sources/operations/queue/intents and decision receipts; replay identity is authoritative, not a disposable projection.",
+      "replayRetention": "service-work-store.ts decision replay/idempotency checks; no broad terminal cleanup/TTL found. Preserve source and operation membership.",
+      "references": [
+        "runtime/src/service-effects/current-piclaw/service-work-schema.ts",
+        "runtime/src/service-effects/current-piclaw/service-work-store.ts"
+      ]
+    },
+    "core:service_effect_s05_decisions": {
+      "category": "core",
+      "initializer": "runtime/src/service-effects/current-piclaw/service-outbox-schema.ts#installServiceOutboxSchema (via installScheduledRunCompositionSchema)",
+      "writers": [
+        "runtime/src/service-effects/current-piclaw/service-outbox-store.ts"
+      ],
+      "sourceOfTruth": "S05 durable outbox state and certainty/lease/outcome/resolution/decision evidence.",
+      "replayRetention": "cleanupTerminal explicitly limits eligible terminal states and stores cleanup replay receipt; unknown/applied effects are not generic cleanup candidates.",
+      "references": [
+        "runtime/src/service-effects/current-piclaw/service-outbox-schema.ts",
+        "runtime/src/service-effects/current-piclaw/service-outbox-store.ts"
+      ]
+    },
+    "core:service_effect_s05_leases": {
+      "category": "core",
+      "initializer": "runtime/src/service-effects/current-piclaw/service-outbox-schema.ts#installServiceOutboxSchema (via installScheduledRunCompositionSchema)",
+      "writers": [
+        "runtime/src/service-effects/current-piclaw/service-outbox-store.ts"
+      ],
+      "sourceOfTruth": "S05 durable outbox state and certainty/lease/outcome/resolution/decision evidence.",
+      "replayRetention": "cleanupTerminal explicitly limits eligible terminal states and stores cleanup replay receipt; unknown/applied effects are not generic cleanup candidates.",
+      "references": [
+        "runtime/src/service-effects/current-piclaw/service-outbox-schema.ts",
+        "runtime/src/service-effects/current-piclaw/service-outbox-store.ts"
+      ]
+    },
+    "core:service_effect_s05_outbox": {
+      "category": "core",
+      "initializer": "runtime/src/service-effects/current-piclaw/service-outbox-schema.ts#installServiceOutboxSchema (via installScheduledRunCompositionSchema)",
+      "writers": [
+        "runtime/src/service-effects/current-piclaw/service-outbox-store.ts"
+      ],
+      "sourceOfTruth": "S05 durable outbox state and certainty/lease/outcome/resolution/decision evidence.",
+      "replayRetention": "cleanupTerminal explicitly limits eligible terminal states and stores cleanup replay receipt; unknown/applied effects are not generic cleanup candidates.",
+      "references": [
+        "runtime/src/service-effects/current-piclaw/service-outbox-schema.ts",
+        "runtime/src/service-effects/current-piclaw/service-outbox-store.ts"
+      ]
+    },
+    "core:service_effect_s05_outcomes": {
+      "category": "core",
+      "initializer": "runtime/src/service-effects/current-piclaw/service-outbox-schema.ts#installServiceOutboxSchema (via installScheduledRunCompositionSchema)",
+      "writers": [
+        "runtime/src/service-effects/current-piclaw/service-outbox-store.ts"
+      ],
+      "sourceOfTruth": "S05 durable outbox state and certainty/lease/outcome/resolution/decision evidence.",
+      "replayRetention": "cleanupTerminal explicitly limits eligible terminal states and stores cleanup replay receipt; unknown/applied effects are not generic cleanup candidates.",
+      "references": [
+        "runtime/src/service-effects/current-piclaw/service-outbox-schema.ts",
+        "runtime/src/service-effects/current-piclaw/service-outbox-store.ts"
+      ]
+    },
+    "core:service_effect_s05_resolutions": {
+      "category": "core",
+      "initializer": "runtime/src/service-effects/current-piclaw/service-outbox-schema.ts#installServiceOutboxSchema (via installScheduledRunCompositionSchema)",
+      "writers": [
+        "runtime/src/service-effects/current-piclaw/service-outbox-store.ts"
+      ],
+      "sourceOfTruth": "S05 durable outbox state and certainty/lease/outcome/resolution/decision evidence.",
+      "replayRetention": "cleanupTerminal explicitly limits eligible terminal states and stores cleanup replay receipt; unknown/applied effects are not generic cleanup candidates.",
+      "references": [
+        "runtime/src/service-effects/current-piclaw/service-outbox-schema.ts",
+        "runtime/src/service-effects/current-piclaw/service-outbox-store.ts"
+      ]
+    },
+    "core:service_effect_s07_abandonments": {
+      "category": "core",
+      "initializer": "runtime/src/service-effects/current-piclaw/scheduled-run-schema.ts#installScheduledRunSchema (via installScheduledRunCompositionSchema)",
+      "writers": [
+        "runtime/src/service-effects/current-piclaw/scheduled-run-store.ts"
+      ],
+      "sourceOfTruth": "S07 scheduler authority/history. Host scheduled_tasks synchronizes heads and immutable task snapshots; leases, source bindings, receipts and tombstones are not caches.",
+      "replayRetention": "cleanupTerminal replaces eligible completed/abandoned runs with tombstones, then deletes scoped per-run evidence; replayRecordOrRetained uses tombstones. No general tombstone/revision TTL established.",
+      "references": [
+        "runtime/src/service-effects/current-piclaw/scheduled-run-schema.ts",
+        "runtime/src/service-effects/current-piclaw/scheduled-run-store.ts"
+      ]
+    },
+    "core:service_effect_s07_decisions": {
+      "category": "core",
+      "initializer": "runtime/src/service-effects/current-piclaw/scheduled-run-schema.ts#installScheduledRunSchema (via installScheduledRunCompositionSchema)",
+      "writers": [
+        "runtime/src/service-effects/current-piclaw/scheduled-run-store.ts"
+      ],
+      "sourceOfTruth": "S07 scheduler authority/history. Host scheduled_tasks synchronizes heads and immutable task snapshots; leases, source bindings, receipts and tombstones are not caches.",
+      "replayRetention": "cleanupTerminal replaces eligible completed/abandoned runs with tombstones, then deletes scoped per-run evidence; replayRecordOrRetained uses tombstones. No general tombstone/revision TTL established.",
+      "references": [
+        "runtime/src/service-effects/current-piclaw/scheduled-run-schema.ts",
+        "runtime/src/service-effects/current-piclaw/scheduled-run-store.ts"
+      ]
+    },
+    "core:service_effect_s07_lease_renewals": {
+      "category": "core",
+      "initializer": "runtime/src/service-effects/current-piclaw/scheduled-run-schema.ts#installScheduledRunSchema (via installScheduledRunCompositionSchema)",
+      "writers": [
+        "runtime/src/service-effects/current-piclaw/scheduled-run-store.ts"
+      ],
+      "sourceOfTruth": "S07 scheduler authority/history. Host scheduled_tasks synchronizes heads and immutable task snapshots; leases, source bindings, receipts and tombstones are not caches.",
+      "replayRetention": "cleanupTerminal replaces eligible completed/abandoned runs with tombstones, then deletes scoped per-run evidence; replayRecordOrRetained uses tombstones. No general tombstone/revision TTL established.",
+      "references": [
+        "runtime/src/service-effects/current-piclaw/scheduled-run-schema.ts",
+        "runtime/src/service-effects/current-piclaw/scheduled-run-store.ts"
+      ]
+    },
+    "core:service_effect_s07_leases": {
+      "category": "core",
+      "initializer": "runtime/src/service-effects/current-piclaw/scheduled-run-schema.ts#installScheduledRunSchema (via installScheduledRunCompositionSchema)",
+      "writers": [
+        "runtime/src/service-effects/current-piclaw/scheduled-run-store.ts"
+      ],
+      "sourceOfTruth": "S07 scheduler authority/history. Host scheduled_tasks synchronizes heads and immutable task snapshots; leases, source bindings, receipts and tombstones are not caches.",
+      "replayRetention": "cleanupTerminal replaces eligible completed/abandoned runs with tombstones, then deletes scoped per-run evidence; replayRecordOrRetained uses tombstones. No general tombstone/revision TTL established.",
+      "references": [
+        "runtime/src/service-effects/current-piclaw/scheduled-run-schema.ts",
+        "runtime/src/service-effects/current-piclaw/scheduled-run-store.ts"
+      ]
+    },
+    "core:service_effect_s07_next_decisions": {
+      "category": "core",
+      "initializer": "runtime/src/service-effects/current-piclaw/scheduled-run-schema.ts#installScheduledRunSchema (via installScheduledRunCompositionSchema)",
+      "writers": [
+        "runtime/src/service-effects/current-piclaw/scheduled-run-store.ts"
+      ],
+      "sourceOfTruth": "S07 scheduler authority/history. Host scheduled_tasks synchronizes heads and immutable task snapshots; leases, source bindings, receipts and tombstones are not caches.",
+      "replayRetention": "cleanupTerminal replaces eligible completed/abandoned runs with tombstones, then deletes scoped per-run evidence; replayRecordOrRetained uses tombstones. No general tombstone/revision TTL established. A current paused revision/slot retains its exact successor decision even if result payload bytes are lost; resume/edit/delete releases this reference hold.",
+      "references": [
+        "runtime/src/service-effects/current-piclaw/scheduled-run-schema.ts",
+        "runtime/src/service-effects/current-piclaw/scheduled-run-store.ts"
+      ]
+    },
+    "core:service_effect_s07_occurrences": {
+      "category": "core",
+      "initializer": "runtime/src/service-effects/current-piclaw/scheduled-run-schema.ts#installScheduledRunSchema (via installScheduledRunCompositionSchema)",
+      "writers": [
+        "runtime/src/service-effects/current-piclaw/scheduled-run-store.ts"
+      ],
+      "sourceOfTruth": "S07 scheduler authority/history. Host scheduled_tasks synchronizes heads and immutable task snapshots; leases, source bindings, receipts and tombstones are not caches.",
+      "replayRetention": "cleanupTerminal replaces eligible completed/abandoned runs with tombstones, then deletes scoped per-run evidence; replayRecordOrRetained uses tombstones. No general tombstone/revision TTL established.",
+      "references": [
+        "runtime/src/service-effects/current-piclaw/scheduled-run-schema.ts",
+        "runtime/src/service-effects/current-piclaw/scheduled-run-store.ts"
+      ]
+    },
+    "core:service_effect_s07_outbox_links": {
+      "category": "core",
+      "initializer": "runtime/src/service-effects/current-piclaw/scheduled-run-schema.ts#installScheduledRunSchema (via installScheduledRunCompositionSchema)",
+      "writers": [
+        "runtime/src/service-effects/current-piclaw/scheduled-run-store.ts"
+      ],
+      "sourceOfTruth": "S07 scheduler authority/history. Host scheduled_tasks synchronizes heads and immutable task snapshots; leases, source bindings, receipts and tombstones are not caches.",
+      "replayRetention": "cleanupTerminal replaces eligible completed/abandoned runs with tombstones, then deletes scoped per-run evidence; replayRecordOrRetained uses tombstones. No general tombstone/revision TTL established.",
+      "references": [
+        "runtime/src/service-effects/current-piclaw/scheduled-run-schema.ts",
+        "runtime/src/service-effects/current-piclaw/scheduled-run-store.ts"
+      ]
+    },
+    "core:service_effect_s07_run_logs": {
+      "category": "core",
+      "initializer": "runtime/src/service-effects/current-piclaw/scheduled-run-schema.ts#installScheduledRunSchema (via installScheduledRunCompositionSchema)",
+      "writers": [
+        "runtime/src/service-effects/current-piclaw/scheduled-run-store.ts"
+      ],
+      "sourceOfTruth": "S07 scheduler authority/history. Host scheduled_tasks synchronizes heads and immutable task snapshots; leases, source bindings, receipts and tombstones are not caches.",
+      "replayRetention": "cleanupTerminal replaces eligible completed/abandoned runs with tombstones, then deletes scoped per-run evidence; replayRecordOrRetained uses tombstones. No general tombstone/revision TTL established.",
+      "references": [
+        "runtime/src/service-effects/current-piclaw/scheduled-run-schema.ts",
+        "runtime/src/service-effects/current-piclaw/scheduled-run-store.ts"
+      ]
+    },
+    "core:service_effect_s07_source_bindings": {
+      "category": "core",
+      "initializer": "runtime/src/service-effects/current-piclaw/scheduled-run-schema.ts#installScheduledRunSchema (via installScheduledRunCompositionSchema)",
+      "writers": [
+        "runtime/src/service-effects/current-piclaw/scheduled-run-store.ts"
+      ],
+      "sourceOfTruth": "S07 scheduler authority/history. Host scheduled_tasks synchronizes heads and immutable task snapshots; leases, source bindings, receipts and tombstones are not caches.",
+      "replayRetention": "cleanupTerminal replaces eligible completed/abandoned runs with tombstones, then deletes scoped per-run evidence; replayRecordOrRetained uses tombstones. No general tombstone/revision TTL established.",
+      "references": [
+        "runtime/src/service-effects/current-piclaw/scheduled-run-schema.ts",
+        "runtime/src/service-effects/current-piclaw/scheduled-run-store.ts"
+      ]
+    },
+    "core:service_effect_s07_task_revisions": {
+      "category": "core",
+      "initializer": "runtime/src/service-effects/current-piclaw/scheduled-run-schema.ts#installScheduledRunSchema (via installScheduledRunCompositionSchema)",
+      "writers": [
+        "runtime/src/db/scheduled-task-authority.ts",
+        "runtime/src/service-effects/current-piclaw/scheduled-task-authority.ts"
+      ],
+      "sourceOfTruth": "Immutable S07 admission snapshots/config hashes, paired with versioned host definition bodies. New refs bind body hashes; every old snapshot/ref/hash is preserved and unknown old body history remains explicit.",
+      "replayRetention": "cleanupTerminal replaces eligible completed/abandoned runs with tombstones, then deletes scoped per-run evidence; replayRecordOrRetained uses tombstones. No general tombstone/revision TTL established.",
+      "references": [
+        "runtime/src/service-effects/current-piclaw/scheduled-run-schema.ts",
+        "runtime/src/service-effects/current-piclaw/scheduled-run-store.ts",
+        "runtime/src/db/scheduled-task-definitions.ts",
+        "runtime/src/db/scheduled-task-authority.ts",
+        "runtime/src/db/scheduled-task-head.ts"
+      ]
+    },
+    "core:service_effect_s07_tasks": {
+      "category": "core",
+      "initializer": "runtime/src/service-effects/current-piclaw/scheduled-run-schema.ts#installScheduledRunSchema (via installScheduledRunCompositionSchema)",
+      "writers": [
+        "runtime/src/db/scheduled-task-head.ts"
+      ],
+      "sourceOfTruth": "Single authoritative current revision/status/scheduling slot. One CAS head writer serves canonical CRUD, direct compatibility settlement and S07 completion. Its owner transaction also writes the UI projection. SDK execution tasks never own recurrence or leases.",
+      "replayRetention": "cleanupTerminal replaces eligible completed/abandoned runs with tombstones, then deletes scoped per-run evidence; replayRecordOrRetained uses tombstones. No general tombstone/revision TTL established. A current paused revision/slot retains its exact successor decision even if result payload bytes are lost; resume/edit/delete releases this reference hold.",
+      "references": [
+        "runtime/src/service-effects/current-piclaw/scheduled-run-schema.ts",
+        "runtime/src/service-effects/current-piclaw/scheduled-run-store.ts",
+        "runtime/src/db/scheduled-task-definitions.ts",
+        "runtime/src/db/scheduled-task-authority.ts",
+        "runtime/src/db/scheduled-task-head.ts"
+      ]
+    },
+    "core:service_effect_s07_tombstones": {
+      "category": "core",
+      "initializer": "runtime/src/service-effects/current-piclaw/scheduled-run-schema.ts#installScheduledRunSchema (via installScheduledRunCompositionSchema)",
+      "writers": [
+        "runtime/src/service-effects/current-piclaw/scheduled-run-store.ts"
+      ],
+      "sourceOfTruth": "S07 scheduler authority/history. Host scheduled_tasks synchronizes heads and immutable task snapshots; leases, source bindings, receipts and tombstones are not caches.",
+      "replayRetention": "cleanupTerminal replaces eligible completed/abandoned runs with tombstones, then deletes scoped per-run evidence; replayRecordOrRetained uses tombstones. No general tombstone/revision TTL established.",
+      "references": [
+        "runtime/src/service-effects/current-piclaw/scheduled-run-schema.ts",
+        "runtime/src/service-effects/current-piclaw/scheduled-run-store.ts"
+      ]
+    },
+    "core:session_roots": {
+      "category": "core",
+      "initializer": "runtime/src/db/session-ownership.ts#initializeSessionOwnershipSchema",
+      "writers": [
+        "runtime/src/db/session-ownership.ts"
+      ],
+      "sourceOfTruth": "Explicit root owner mapping; JID prefixes do not establish ownership.",
+      "replayRetention": "Immutable owner trigger and owned-root deletion fence; no TTL established.",
+      "references": [
+        "runtime/src/db/session-ownership.ts"
+      ]
+    },
+    "core:sqlite_sequence": {
+      "category": "core",
+      "initializer": "SQLite engine, induced by createSchema AUTOINCREMENT",
+      "writers": [
+        "SQLite engine: AUTOINCREMENT"
+      ],
+      "sourceOfTruth": "AUTOINCREMENT state for compaction_telemetry, keychain_entries, media, task_run_logs, token_usage, webauthn_credentials (exact fresh DDL set)",
+      "replayRetention": "Not application data and not a cache to reset; preserve high-water state. No sqlite_* wildcard exemption.",
+      "references": [
+        "runtime/scripts/lib/schema-ownership.ts"
+      ]
+    },
+    "core:ssh_configs": {
+      "category": "core",
+      "initializer": "runtime/src/db/connection.ts#createSchema",
+      "writers": [
+        "runtime/src/db/chat-branches.ts",
+        "runtime/src/db/ssh-configs.ts"
+      ],
+      "sourceOfTruth": "Persisted SSH connection profiles owned by the SSH configuration APIs; keychain secret references remain separate from profile data.",
+      "replayRetention": "No universal reconstruction or age-expiry guarantee. Preserve persisted identity, history and FK/receipt obligations; changes belong to the cited owner APIs. This read-only inventory adds no deletion, pruning, replay or migration authority.",
+      "references": [
+        "runtime/src/db/connection.ts"
+      ]
+    },
+    "core:task_run_logs": {
+      "category": "core",
+      "initializer": "runtime/src/db/connection.ts#createSchema + runtime/src/db/scheduled-history-schema.ts#initializeScheduledHistorySchema",
+      "writers": [
+        "runtime/src/ipc.ts",
+        "runtime/src/db/chat-branches.ts",
+        "runtime/src/db/tasks.ts",
+        "runtime/src/service-effects/current-piclaw/scheduled-history-projection.ts"
+      ],
+      "sourceOfTruth": "Retained legacy/direct result payload rows remain explicitly unlinked. New native payload bytes are versioned/hash-bound and keyed by exact S07 occurrence identity; copied UI metadata derives from committed S07 history. Execution/lease/head authority remains exclusively S07.",
+      "replayRetention": "Same sealed completion repairs metadata/payload from original hash-validated evidence without reexecution; missing bytes without evidence are explicit unavailable. Owner deletion suppresses resurrection. Canonical cleanup retains authority while exact linked payload/reference rows survive; unlinked historical identities are never guessed.",
+      "references": [
+        "runtime/src/db/connection.ts",
+        "runtime/src/db/scheduled-history-schema.ts",
+        "runtime/src/service-effects/current-piclaw/scheduled-history-projection.ts"
+      ]
+    },
+    "core:thinking_content": {
+      "category": "core",
+      "initializer": "runtime/src/db/connection.ts#createSchema",
+      "writers": [
+        "runtime/src/db/thinking-cleanup.ts",
+        "runtime/src/db/messages.ts"
+      ],
+      "sourceOfTruth": "Persisted reasoning tied to stored message rows, not the FTS index.",
+      "replayRetention": "db/thinking-cleanup.ts deletes alongside message/chat lifecycle; no age-based policy confirmed.",
+      "references": [
+        "runtime/src/db/connection.ts",
+        "runtime/src/db/thinking-cleanup.ts"
+      ]
+    },
+    "core:token_usage": {
+      "category": "projection-cache",
+      "initializer": "runtime/src/db/connection.ts#createSchema",
+      "writers": [
+        "runtime/src/db/token-usage.ts",
+        "runtime/src/db/usage-report-projection.ts",
+        "runtime/src/db/chat-branches.ts",
+        "scripts/backfill-token-usage.ts (unlinked legacy rows only)"
+      ],
+      "sourceOfTruth": "Event-linked native reports are rebuildable from immutable budget_usage_events payloads. Original accounting identity/valuation and reservations remain canonical. Unlinked historical rows retain legacy source evidence without invented request identities. Existing chat routing is an explicit mutable display projection exception; loss restores original event chat, never fabricates a later move.",
+      "replayRetention": "Event-linked rows remain mandatory compatibility/FK parents and cannot be report-pruned. Reconciliation preserves numeric IDs, actual provider/catalogue valuations and original run timestamps; event/reservation/work evidence never changes. Unlinked legacy rows retain existing retention behavior and legacy valuation fallback until separately retired; unknown old payloads are explicitly unavailable.",
+      "references": [
+        "runtime/src/db/connection.ts",
+        "runtime/src/db/token-usage.ts",
+        "runtime/src/db/usage-report-projection.ts",
+        "runtime/src/db/budget-request-reservations.ts",
+        "runtime/src/budget/evaluator.ts",
+        "runtime/src/budget/usage-total.ts"
+      ]
+    },
+    "core:tool_outputs": {
+      "category": "core",
+      "initializer": "runtime/src/db/connection.ts#createSchema",
+      "writers": [
+        "runtime/src/tool-output.ts",
+        "runtime/src/db/tool-outputs.ts"
+      ],
+      "sourceOfTruth": "Output metadata and ownership/path records; paired retained files and FTS chunks.",
+      "replayRetention": "tool-output.ts pruneToolOutputs + db deleteToolOutputsBefore, configured domains.tools retention; ownership validation applies.",
+      "references": [
+        "runtime/src/db/connection.ts",
+        "runtime/src/tool-output.ts",
+        "runtime/src/db/tool-outputs.ts",
+        "runtime/src/core/config-tools.ts"
+      ]
+    },
+    "core:tool_outputs_fts": {
+      "category": "projection-cache",
+      "initializer": "runtime/src/db/connection.ts#createSchema",
+      "writers": [
+        "runtime/src/db/tool-outputs.ts"
+      ],
+      "sourceOfTruth": "Application-managed chunk FTS; tool_outputs stores output metadata/path, not necessarily all chunk bytes.",
+      "replayRetention": "storeToolOutputWithChunks/insertToolOutputChunk maintain; delete/prune paired with metadata. Exact full replay depends on retained output files, not proven by fresh DB.",
+      "references": [
+        "runtime/src/db/connection.ts",
+        "runtime/src/db/tool-outputs.ts"
+      ]
+    },
+    "core:users": {
+      "category": "core",
+      "initializer": "runtime/src/db/users.ts#initializeUserSchema (via initializeAccessSchema)",
+      "writers": [
+        "runtime/src/db/users.ts",
+        "runtime/src/db/session-ownership.ts"
+      ],
+      "sourceOfTruth": "User identity/role/enabled/home authority.",
+      "replayRetention": "User lifecycle constrained by administrator and ownership invariants; no automatic TTL established.",
+      "references": [
+        "runtime/src/db/users.ts",
+        "runtime/src/db/session-ownership.ts"
+      ]
+    },
+    "core:web_sessions": {
+      "category": "core",
+      "initializer": "runtime/src/db/connection.ts#createSchema",
+      "writers": [
+        "runtime/src/db/auth-maintenance.ts",
+        "runtime/src/db/web-sessions.ts"
+      ],
+      "sourceOfTruth": "Bearer session authentication state, not rebuildable cache.",
+      "replayRetention": "Expiry pruning, per-user revocation, all-session invalidation are explicit APIs.",
+      "references": [
+        "runtime/src/db/connection.ts",
+        "runtime/src/db/auth-maintenance.ts",
+        "runtime/src/db/web-sessions.ts"
+      ]
+    },
+    "core:webauthn_credentials": {
+      "category": "core",
+      "initializer": "runtime/src/db/connection.ts#createSchema",
+      "writers": [
+        "runtime/src/db/webauthn.ts",
+        "runtime/src/channels/web/auth/single-user-passkeys.ts"
+      ],
+      "sourceOfTruth": "Credential/public-key authentication state and counters.",
+      "replayRetention": "Explicit credential deletion; no automatic credential TTL established.",
+      "references": [
+        "runtime/src/db/connection.ts",
+        "runtime/src/channels/web/auth/single-user-passkeys.ts",
+        "runtime/src/db/webauthn.ts"
+      ]
+    },
+    "core:webauthn_enrollments": {
+      "category": "core",
+      "initializer": "runtime/src/db/connection.ts#createSchema",
+      "writers": [
+        "runtime/src/db/webauthn.ts",
+        "runtime/src/db/auth-maintenance.ts"
+      ],
+      "sourceOfTruth": "One-use enrollment token state.",
+      "replayRetention": "get auto-prunes expiry; consume deletes token (default creation TTL 5 minutes).",
+      "references": [
+        "runtime/src/db/connection.ts",
+        "runtime/src/db/auth-maintenance.ts",
+        "runtime/src/db/webauthn.ts"
+      ]
+    },
+    "core:workspace_files": {
+      "category": "projection-cache",
+      "initializer": "runtime/src/db/connection.ts#createSchema",
+      "writers": [
+        "runtime/src/workspace-index-core.ts"
+      ],
+      "sourceOfTruth": "Workspace file metadata derived from indexable files.",
+      "replayRetention": "workspace-index-core.ts updates/prunes according to index policy and actual file set.",
+      "references": [
+        "runtime/src/db/connection.ts",
+        "runtime/src/workspace-index-core.ts"
+      ]
+    },
+    "core:workspace_fts": {
+      "category": "projection-cache",
+      "initializer": "runtime/src/db/connection.ts#createSchema",
+      "writers": [
+        "runtime/src/workspace-index-core.ts"
+      ],
+      "sourceOfTruth": "Application-managed FTS contents derived from allowed workspace filesystem files.",
+      "replayRetention": "workspace-index-core.ts validates policy/path and removes stale/excluded entries; rebuild source is workspace, not live DB.",
+      "references": [
+        "runtime/src/db/connection.ts",
+        "runtime/src/workspace-index-core.ts"
+      ]
+    },
+    "core:workspace_index_status": {
+      "category": "projection-cache",
+      "initializer": "runtime/src/db/connection.ts#createSchema",
+      "writers": [
+        "runtime/src/workspace-index-core.ts"
+      ],
+      "sourceOfTruth": "Status/count/error bookkeeping for workspace indexing.",
+      "replayRetention": "Index lifecycle updates; no independent TTL confirmed.",
+      "references": [
+        "runtime/src/db/connection.ts",
+        "runtime/src/workspace-index-core.ts"
+      ]
+    },
+    "sdk:storage": {
+      "category": "sdk",
+      "initializer": "SqliteStorage.open → applySqliteMigrationsForSchema",
+      "writers": [
+        "SDK SqliteStorage public record/document/conversation/task transaction APIs"
+      ],
+      "sourceOfTruth": "SDK record IDs, conversations, entries, tasks, submissions, metadata and document revisions; JSON document semantics belong to each registered document owner or caller.",
+      "replayRetention": "SDK-owned persistence/version contract. Document history and fork guarantees follow the document registration; latest document replacement may retire old bases. Host inventory grants no pruning, schema migration or SDK-internal write authority.",
+      "references": [
+        "sdk:storage/sqlite/schema.js",
+        "sdk:storage/sqlite/migrations.js",
+        "sdk:storage/sqlite/storage.js"
+      ]
+    },
+    "core:native-bindings": {
+      "category": "core",
+      "initializer": "runtime/durable-engine/src/host-schema.ts#initializeHostSchema",
+      "writers": [
+        "runtime/durable-engine/src/host-schema.ts#createHostDurableBindings",
+        "runtime/durable-engine/src/host-cutover.ts"
+      ],
+      "sourceOfTruth": "Immutable host source/submission identity bindings and exact cutover ownership/frontier/work receipts; native SDK remains conversation/entry authority.",
+      "replayRetention": "Preserve source identity, payload/request hashes, recovery bindings and recorded-work receipts across replay/reopen/rollback. Owned host.native-bindings migration and exact schema checks remain sole migration authority.",
+      "references": [
+        "runtime/durable-engine/src/host-schema.ts",
+        "runtime/durable-engine/src/application-bootstrap.ts",
+        "runtime/src/db/native-host-schema-contract.ts"
+      ]
+    },
+    "core:native-timeline-media": {
+      "category": "core",
+      "initializer": "runtime/src/service-effects/current-piclaw/terminal-settlement-schema.ts#installTerminalSettlementCompositionSchema → installTimelineMediaAdapterTestSchema",
+      "writers": [
+        "runtime/src/service-effects/current-piclaw/timeline-draft-store.ts",
+        "runtime/src/service-effects/current-piclaw/operation-media-store.ts",
+        "runtime/src/service-effects/current-piclaw/terminal-settlement-store.ts"
+      ],
+      "sourceOfTruth": "Timeline write idempotency/request-hash receipts, upload/history/deletion receipts, operation-media bindings and outbox retention references; messages/media hold projected display/content bytes.",
+      "replayRetention": "Preserve effect certainty, source hashes and upload history. Media release/deletion follows owner reference/preflight and request-hash checks; absence on fresh core never authorises removal. Existing test-named schema helper is actually called by the production settlement installer.",
+      "references": [
+        "runtime/src/service-effects/current-piclaw/timeline-media-test-schema.ts",
+        "runtime/src/service-effects/current-piclaw/terminal-settlement-schema.ts",
+        "runtime/src/service-effects/current-piclaw/operation-media-store.ts"
+      ]
+    },
+    "core:native-settlement": {
+      "category": "core",
+      "initializer": "runtime/src/service-effects/current-piclaw/terminal-settlement-schema.ts#installTerminalSettlementCompositionSchema",
+      "writers": [
+        "runtime/src/service-effects/current-piclaw/terminal-settlement-store.ts"
+      ],
+      "sourceOfTruth": "Atomic terminal commitment and ordered outbox membership, tied by exact FK/identity to S01 operation and S05 outbox.",
+      "replayRetention": "Same-key same-hash replay is idempotent; mismatches fail. Keep terminal/source/operation/outbox certainty and immutable commit outcomes; no inventory-driven retention or replay action.",
+      "references": [
+        "runtime/src/service-effects/current-piclaw/terminal-settlement-schema.ts",
+        "runtime/src/service-effects/current-piclaw/terminal-settlement-store.ts"
+      ]
+    },
+    "addon:code-review": {
+      "category": "active-addon",
+      "initializer": "Approved code-review ReviewDatabase.initializeBorrowed; default native factory reviewService()",
+      "writers": [
+        "addon:code-review/database.ts#ReviewDatabase",
+        "addon:code-review/store.ts#ReviewStore",
+        "addon:code-review/runtime.ts"
+      ],
+      "sourceOfTruth": "Add-on saved-review state: reviews/settings; immutable blob/snapshot/file content; threads/messages/revisions/drafts; dispatch items/attempts/events and request receipts. Projections derive display content from saved snapshot/blob state. Schema version belongs to this exact approved add-on.",
+      "replayRetention": "Borrow main database under native owner fence. Add-on transactional request receipts and lifecycle own replay/retention; preserve blobs, draft/dispatch/revision/projection identities and receipts while absent/disabled. Core inventory never recreates, drops or migrates optional add-on schema.",
+      "references": [
+        "addon:code-review/database.ts",
+        "addon:code-review/store.ts",
+        "runtime/durable-engine/src/default-application-runtime.ts",
+        "docs/development/code-review-persistence.md"
+      ]
+    },
+    "core:application-documents": {
+      "category": "core",
+      "initializer": "Native factory public SDK defineDoc registrations and startup identity binding",
+      "writers": [
+        "runtime/durable-engine/src/default-application-runtime.ts",
+        "runtime/durable-engine/src/host-managed-instructions.ts"
+      ],
+      "sourceOfTruth": "One immutable branch/chat-to-native-conversation/session binding authority, plus exact single-base creation anchors. A single public SDK publisher serves atomic root initialisation and lazy root allocation. Host names/ownership/archive policy remains separate; current active admission cross-validates SQL without overwriting anchors. Managed instructions remain a derived SDK document.",
+      "replayRetention": "Preserve native domain, branch/conversation/session IDs, accepted-source hashes and imported mappings. Archived default-native bindings stay historically valid but cannot admit inputs/controls. Unknown publication ACK requires reopen, never duplicate allocation. Interrupted unbound SDK schema prefix remains fail-closed until explicit matching checkpoint recovery. No physical schema, document-version, migration or cleanup authority added.",
+      "references": [
+        "runtime/durable-engine/src/default-application-runtime.ts",
+        "runtime/durable-engine/src/host-managed-instructions.ts",
+        "runtime/src/db/native-routing-policy.ts",
+        "runtime/durable-engine/src/application-bootstrap.ts",
+        "runtime/durable-engine/src/host-application-input.ts",
+        "docs/development/native-routing-identity.md"
+      ]
+    },
+    "archive:copied-legacy-documents": {
+      "category": "migration-archive",
+      "initializer": "Pure LegacyImportManifest/LegacyTreeImportManifest registration; explicit copied-history preparation only",
+      "writers": [
+        "runtime/durable-engine/src/legacy-import.ts#importCopiedLegacy",
+        "runtime/durable-engine/src/legacy-import.ts#importCopiedLegacyTree"
+      ],
+      "sourceOfTruth": "Imported original entry bytes, source hashes, import/binding/branch identity and source-to-durable entry mappings.",
+      "replayRetention": "conversation-scoped latest/initial documents preserve copied source provenance; current readers import pure schema only. Native startup grants no importer execution or source mutation.",
+      "references": [
+        "runtime/durable-engine/src/legacy-import-schema.ts"
+      ]
+    },
+    "archive:session-store": {
+      "category": "migration-archive",
+      "initializer": "SqliteSessionStore explicit archive-tool constructor; owned piclaw-agent-sessions / 001-namespaced-session-import",
+      "writers": [
+        "runtime/scripts/lib/sqlite-session-archive.ts#SqliteSessionStore.importJsonl",
+        "runtime/scripts/lib/sqlite-session-archive.ts#SqliteSessionStore.appendRawEntry"
+      ],
+      "sourceOfTruth": "Exact imported JSONL header/raw entry bytes, source path/hash/byte/trailing-LF metadata and branch/entry identities. Archive FTS and shadows derive search text from retained imported entries.",
+      "replayRetention": "Same-path same-source-hash import replays without rewriting rows; changed source hash fails. Exact JSONL export and migration/checksum receipts are preserved. Native fresh startup does not instantiate this archive store or authorise cleanup.",
+      "references": [
+        "runtime/scripts/lib/sqlite-session-archive.ts",
+        "runtime/test/archive/sqlite-session-archive.test.ts"
+      ]
+    },
+    "sqlite:planner-statistics": {
+      "category": "projection-cache",
+      "initializer": "SQLite PRAGMA optimize / ANALYZE on its existing owning connection",
+      "writers": [
+        "SQLite query planner statistics maintenance"
+      ],
+      "sourceOfTruth": "Derived planner statistics for concrete main-schema tables/indexes. Table contents/index populations remain source data.",
+      "replayRetention": "Optional engine-owned statistics may be generated/recomputed by the existing SQLite optimiser. Inventory never runs ANALYZE/optimize or deletes statistics. Exact observed engine names/shapes only, no sqlite_* wildcard.",
+      "references": [
+        "runtime/src/db/connection.ts",
+        "runtime/scripts/lib/schema-ownership.ts"
+      ]
+    },
+    "core:host_scheduled_task_definitions": {
+      "category": "core",
+      "initializer": "runtime/src/db/scheduled-task-definitions.ts#initializeScheduledTaskDefinitions (via runtime/src/db/scheduled-task-authority.ts#migrateScheduledTaskAuthorities)",
+      "writers": [
+        "runtime/src/db/scheduled-task-definitions.ts",
+        "runtime/src/db/scheduled-task-authority.ts"
+      ],
+      "sourceOfTruth": "Versioned immutable user-authored task definition/payload, bound by body hash and S07 admission snapshot. Current legacy capture has explicit captured-at/origin; missing historical bodies remain unavailable. S07 owns head/status/slot and occurrence policy; SDK tasks remain execution records.",
+      "replayRetention": "Keep revision hashes and payload provenance. No age pruning. Explicit task deletion retires body bytes while preserving S07 heads/revisions/tombstones and captured hashes. Missing bytes never recapture from scheduled_tasks. Main SQLite backups include all rows; archive export includes exact revision/body provenance.",
+      "references": [
+        "runtime/src/db/scheduled-task-definitions.ts",
+        "runtime/src/db/scheduled-task-authority.ts",
+        "runtime/src/db/scheduled-task-head.ts",
+        "runtime/durable-engine/src/application-bootstrap.ts"
+      ]
+    },
+    "archive:input-authority": {
+      "category": "migration-archive",
+      "initializer": "Historical initializeMessageAuthoritySchema only; current startup does not recreate these objects",
+      "writers": [
+        "runtime/src/db/migration-input-holds.ts"
+      ],
+      "sourceOfTruth": "Original input snapshots, execution admission, dismissal and recovery receipts",
+      "replayRetention": "Retain all rows and guards. This retirement neither deletes nor replays imported input/authority history.",
+      "references": [
+        "cdc214fcc06349dc9d315c2d17c866764e4557d5:runtime/src/db/message-authority-schema.ts",
+        "runtime/src/db/migration-input-holds.ts",
+        "docs/development/historical-account-schema-retirement.md"
+      ]
+    },
+    "archive:chat-cursor-state": {
+      "category": "migration-archive",
+      "initializer": "runtime/src/db/chat-cursor-storage.ts#initializeChatCursorStorage",
+      "writers": [
+        "runtime/src/db/chat-cursor-storage.ts (one owned historical upgrade only)"
+      ],
+      "sourceOfTruth": "Exact original legacy cursor table: rowids, polling position, queued bytes/provenance, preflight/inflight/failed-run and compaction fields. Native dispatch neither reads nor writes its execution markers. Explicit legacy capture may refuse unsettled evidence; it never grants execution.",
+      "replayRetention": "Preserve original rows, schema and migration receipts. No pruning, rollback, restore, live DDL or legacy replay is authorised by this read-only inventory. Fresh roots omit this archive. Historical binary rollback requires a separately owned offline procedure; never recreate execution markers from native task observations.",
+      "references": [
+        "runtime/src/db/chat-cursor-storage.ts",
+        "runtime/src/runtime/bootstrap.ts",
+        "runtime/test/fixtures/legacy-chat-cursors.sql"
+      ]
+    },
+    "archive:s01-harness-observations": {
+      "category": "migration-archive",
+      "initializer": "runtime/src/service-effects/current-piclaw/service-work-schema.ts#installServiceWorkSchema",
+      "writers": [
+        "runtime/src/service-effects/current-piclaw/service-work-schema.ts (one owned historical retirement only)"
+      ],
+      "sourceOfTruth": "Original lane/state/watch values keyed by original operation identity and full-width rowid, copied before retiring the exclusive columns. Host protocol/binding records remain active; this historical snapshot grants no execution, cancellation, maintenance or owner-generation authority.",
+      "replayRetention": "Preserve raw historical observations and migration receipts. No runtime reader/writer, pruning or restore API. This archive is not the complete recovery/rollback unit. Fresh roots create no archive.",
+      "references": [
+        "runtime/src/service-effects/current-piclaw/service-work-schema.ts",
+        "runtime/src/service-effects/current-piclaw/service-work-store.ts",
+        "runtime/durable-engine/src/host-runtime.ts"
+      ]
+    }
+  },
+  "objects": {
+    "index:idx_budget_allowances_work_cap": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "fd2044a46a9b80dd7b842620ea26169e49f6e1edd8af35865b71e253ecfca8cc"
+      ],
+      "requiredIn": [],
+      "table": "budget_allowances"
+    },
+    "index:idx_budget_cap_revisions_recorded": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "71e8cd1a70452e07a47a7303c06ace42917b8dc21ae509fa60af10caff9aa3de"
+      ],
+      "requiredIn": [],
+      "table": "budget_cap_revisions"
+    },
+    "index:idx_budget_cap_windows_range": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "73c86988710bc66bf11e2d09873bb26eabe220d2602c2cd88d1012407d14d4dc"
+      ],
+      "requiredIn": [],
+      "table": "budget_cap_windows"
+    },
+    "index:idx_budget_caps_enabled_scope": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "d4d4c529ea26d34fbb88000c8e8686b0c96a5893bee730e2a94fb485a75e25c5"
+      ],
+      "requiredIn": [],
+      "table": "budget_caps"
+    },
+    "index:idx_budget_caps_provider": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "5e40d2cf60122b7a7a3a623fe87d63f058edb927fe9775e93782f65d79e94c5a"
+      ],
+      "requiredIn": [],
+      "table": "budget_caps"
+    },
+    "index:idx_budget_caps_scheduled_task": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "ee1e66e5d7b42bdce9ee3f61a97b2668adeb4c5d944d2ce961af04788ee2129d"
+      ],
+      "requiredIn": [],
+      "table": "budget_caps"
+    },
+    "index:idx_budget_caps_work": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "d1d8b50ff256cb107957a8c88b35147d8a773256b0709c2ddfdfc7bdcff53d7b"
+      ],
+      "requiredIn": [],
+      "table": "budget_caps"
+    },
+    "index:idx_budget_decisions_work_time": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "92fc7c2bcd1640b231619e4eed6e994dd9068b134ad08d7471312c2ca8ff1d54"
+      ],
+      "requiredIn": [],
+      "table": "budget_decisions"
+    },
+    "index:idx_budget_overrides_chat": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "f53b3f55b0675859a453875f4bbb89a1430d856542c4ef1abd88523e4252d8e7"
+      ],
+      "requiredIn": [],
+      "table": "budget_overrides"
+    },
+    "index:idx_budget_provider_evidence_lookup": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "3dd9537402b45d9fe344b67d6dfe06fa4b4241c7e8ca2e8b92496d166ad37c7d"
+      ],
+      "requiredIn": [],
+      "table": "budget_provider_evidence"
+    },
+    "index:idx_budget_requests_state": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "8a056a5d1a4f14324be60892a5be136e53a0bc99e302df9469e43cd822680d62"
+      ],
+      "requiredIn": [],
+      "table": "budget_request_reservations"
+    },
+    "index:idx_budget_requests_work_state": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "31abb6f52efcbd1c631929cb11558de19973adbdd485852a55904ce5534919d7"
+      ],
+      "requiredIn": [],
+      "table": "budget_request_reservations"
+    },
+    "index:idx_budget_usage_chat_time": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "4918dd3a735817cb9b468f25498e785a8e39dda8d7c02856650ea180b806996a"
+      ],
+      "requiredIn": [],
+      "table": "budget_usage_events"
+    },
+    "index:idx_budget_usage_time": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "2bb0ce056c74d30b86e16ad844ab43524c6e143372ac6a91c2cb31c45c56f3dc"
+      ],
+      "requiredIn": [],
+      "table": "budget_usage_events"
+    },
+    "index:idx_budget_usage_work_time": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "c47fa5584000156ca9020422ac675549356bfce2867bdd7de27a6b30eb9f1f77"
+      ],
+      "requiredIn": [],
+      "table": "budget_usage_events"
+    },
+    "index:idx_budget_work_chat_status": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "2f7afdb8cb5987a911ba3471f99a61392ef0e589bc4f87845690f2cb704f49c9"
+      ],
+      "requiredIn": [],
+      "table": "budget_work"
+    },
+    "index:idx_budget_work_parent": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "e171e5e7e6cc144b6ae3266b667e1e411b854a4664099678cb22669adfd783e9"
+      ],
+      "requiredIn": [],
+      "table": "budget_work"
+    },
+    "index:idx_budget_work_scheduled_task": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "8f9958f2c6060437395f120e6593dd9d1e5796b4c2f8251b85607ec553bfdba1"
+      ],
+      "requiredIn": [],
+      "table": "budget_work"
+    },
+    "index:idx_chat_branches_agent_name_active_unique": {
+      "owner": "core:chat_branches",
+      "fingerprints": [
+        "8fd7ae6caed7b9836a737559c761cef955c49fbbf0d37c22e8afba35d87dd76c"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "chat_branches"
+    },
+    "index:idx_chat_branches_archived_at": {
+      "owner": "core:chat_branches",
+      "fingerprints": [
+        "a8486987a308d9e2471fd88b0eb427c3c44fa4ba45b8782d5924c7555abfa69c"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "chat_branches"
+    },
+    "index:idx_chat_branches_owned_handle_active_unique": {
+      "owner": "core:chat_branches",
+      "fingerprints": [
+        "fb8b2131eb6b3b8e6fdbe59e212c4b112cfce7ef88ced6c73ea31c63b474e20f"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "chat_branches"
+    },
+    "index:idx_chat_branches_parent_branch_id": {
+      "owner": "core:chat_branches",
+      "fingerprints": [
+        "dbbf07b1e55f486a908c26f9ef90d818816f5ac4f1990b8db1665578c3a7d97a"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "chat_branches"
+    },
+    "index:idx_chat_branches_root_chat_jid": {
+      "owner": "core:chat_branches",
+      "fingerprints": [
+        "312e7c94346eea5d8728a7253a1c1aaf7c993ded87d509a6c2e1b2b484d6d473"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "chat_branches"
+    },
+    "index:idx_chats_last_message_time": {
+      "owner": "core:chats",
+      "fingerprints": [
+        "fc146bd0c61c7cf0fe9b42144db83e426187cb3db7c7b7149c694a6a764b2eaf"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "chats"
+    },
+    "index:idx_compaction_telemetry_model": {
+      "owner": "core:compaction_telemetry",
+      "fingerprints": [
+        "b2147f8d37fa74e10b2a63d9b8444d53c43a0ef5368483bd8b0b660e7816d58c"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "compaction_telemetry"
+    },
+    "index:idx_compaction_telemetry_recorded_at": {
+      "owner": "core:compaction_telemetry",
+      "fingerprints": [
+        "9b748321e9e3ccc9b9680d73f6c82ed234d8fe856c6b6e09decc100ec0e8c4f0"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "compaction_telemetry"
+    },
+    "index:idx_extension_kv_ext_scope": {
+      "owner": "core:extension_kv",
+      "fingerprints": [
+        "5b5c26b5dc8a6c053b48ff0eb1d369b0aefee98bfc25c9afbb0158d9c758291c"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "extension_kv"
+    },
+    "index:idx_extension_kv_updated": {
+      "owner": "core:extension_kv",
+      "fingerprints": [
+        "1315adfbf3d2d6e1bda45a181c8dc77a2461468b80d81f4951c213a06b91b540"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "extension_kv"
+    },
+    "index:idx_keychain_entries_type": {
+      "owner": "core:keychain_entries",
+      "fingerprints": [
+        "3cdb94ef525b2883c91baa914d2be0cbed64f4e59bbd96451163713363ca5d43"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "keychain_entries"
+    },
+    "index:idx_link_preview_image_cache_expires_at": {
+      "owner": "core:link_preview_image_cache",
+      "fingerprints": [
+        "a65580caae3c35c0f82ebec2a06a7d03e5954bfd5a801a1e187c0b02f1cf220e"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "link_preview_image_cache"
+    },
+    "index:idx_link_preview_image_cache_last_used_at": {
+      "owner": "core:link_preview_image_cache",
+      "fingerprints": [
+        "af2b0471798893a9e172e0399b96cd7e072a81124bf5ca9dc1c34234662cd63d"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "link_preview_image_cache"
+    },
+    "index:idx_media_created_at": {
+      "owner": "core:media",
+      "fingerprints": [
+        "b03c0f7d621e8768a0dad8c1e52f59d91e14b811505b833c277a6e1364c91d12"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "media"
+    },
+    "index:idx_message_inline_media_media_id": {
+      "owner": "core:message_inline_media",
+      "fingerprints": [
+        "ef79c9706073c591ddd34bdaeb6983679d09304920a760944cdd2ce26b946380"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "message_inline_media"
+    },
+    "index:idx_message_media_media_id": {
+      "owner": "core:message_media",
+      "fingerprints": [
+        "60f27315f6491db83a0f13f1505e686ca78055938987810f8f0470845eec9e2b"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "message_media"
+    },
+    "index:idx_messages_chat_jid": {
+      "owner": "core:messages",
+      "fingerprints": [
+        "9b47550e90ccd392a9a729794c983b9632f872ebf80c43f9944535ded151f75a"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "messages"
+    },
+    "index:idx_messages_chat_jid_bot_timestamp": {
+      "owner": "core:messages",
+      "fingerprints": [
+        "1ff3dd16f8cd5294bb95582959984027d9fe5efce67c113218ac36e450813c24"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "messages"
+    },
+    "index:idx_messages_chat_jid_timestamp": {
+      "owner": "core:messages",
+      "fingerprints": [
+        "f7f1fa328c06fc764ffc5d48afc05d8b1faabcebccf0232c8b90b0cc97a76c29"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "messages"
+    },
+    "index:idx_messages_thread_id": {
+      "owner": "core:messages",
+      "fingerprints": [
+        "2348c2d7b13b08e5581c65e8554f35c351f49d03f82a747c72fbb06a9c7d87e4"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "messages"
+    },
+    "index:idx_next_run": {
+      "owner": "core:scheduled_tasks",
+      "fingerprints": [
+        "ee81fee8ff30ae235ec67aec6800be0f9b4c60c720e827a23936de6ea960be96"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "scheduled_tasks"
+    },
+    "index:idx_piclaw_schema_migrations_owner_order": {
+      "owner": "core:piclaw_schema_migrations",
+      "fingerprints": [
+        "b1a097b7a79e918947113baa9af477951929b6ba2c62915179bd8f8c02c12674"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "piclaw_schema_migrations"
+    },
+    "index:idx_portainer_configs_updated_at": {
+      "owner": "core:portainer_configs",
+      "fingerprints": [
+        "dc1ad11db948a8113bedb4ced3670ee6117e9f666a9cd58ee9f9d52d8bc24dbf"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "portainer_configs"
+    },
+    "index:idx_proxmox_configs_updated_at": {
+      "owner": "core:proxmox_configs",
+      "fingerprints": [
+        "616049b2db241fff3d26d980b5f048386cd7098259f7ecc777edd04864740b60"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "proxmox_configs"
+    },
+    "index:idx_scheduled_tasks_created_at": {
+      "owner": "core:scheduled_tasks",
+      "fingerprints": [
+        "109fc6b3a3f9f56f2bdc193a31034d20fa29002346c439d2701f4ae4c989ed75"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "scheduled_tasks"
+    },
+    "index:idx_scheduled_tasks_last_run": {
+      "owner": "core:scheduled_tasks",
+      "fingerprints": [
+        "f162e72774883560726f74991f721056a464d6b11fd3a6e94f63a055a5e66816"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "scheduled_tasks"
+    },
+    "index:idx_session_roots_owner": {
+      "owner": "core:session_roots",
+      "fingerprints": [
+        "fe041cdbc6a802d2b62453284967eb0b18e4f3bc07045a01d86ca859afadc3c2"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "session_roots"
+    },
+    "index:idx_ssh_configs_updated_at": {
+      "owner": "core:ssh_configs",
+      "fingerprints": [
+        "c9c45455285c823a67f6940609fc454a3cfa0cb1a83aec9f96815d90d1831a33"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "ssh_configs"
+    },
+    "index:idx_status": {
+      "owner": "core:scheduled_tasks",
+      "fingerprints": [
+        "e450b70484ddabf385167165b493145c4b2ae0fe3649c54df5e2029afa5a957a"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "scheduled_tasks"
+    },
+    "index:idx_task_run_logs": {
+      "owner": "core:task_run_logs",
+      "fingerprints": [
+        "1e648a36d1f63bf237cb2924a1517036d1b994659262b654917e9ae6e6674fea"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "task_run_logs"
+    },
+    "index:idx_thinking_content_created_at": {
+      "owner": "core:thinking_content",
+      "fingerprints": [
+        "6820716a5474867d630eaa748cb5e20d64edde711cb0946519bd110030e11130"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "thinking_content"
+    },
+    "index:idx_token_usage_chat_jid": {
+      "owner": "core:token_usage",
+      "fingerprints": [
+        "281faf219adba870f2ad589aa63185f12408d73e680f8ff3a9f897ae39f4baf1"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "token_usage"
+    },
+    "index:idx_token_usage_chat_jid_run_at": {
+      "owner": "core:token_usage",
+      "fingerprints": [
+        "87c72823f593351e8cd9fc5ce3bec860045687a9bf05e8c4c10d901c9929ab93"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "token_usage"
+    },
+    "index:idx_token_usage_chat_totals_covering": {
+      "owner": "core:token_usage",
+      "fingerprints": [
+        "1fce1571bbfeaa8f30e6c755459d11910cc37fbd714b0be15cdf046b4f4c7b96"
+      ],
+      "requiredIn": []
+    },
+    "index:idx_token_usage_chat_totals_covering_v2": {
+      "owner": "core:token_usage",
+      "fingerprints": [
+        "3617f93dd9dad159231cee00b68fa1264c040edc51afe6065fd496daabdf17f0"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "token_usage"
+    },
+    "index:idx_token_usage_run_at": {
+      "owner": "core:token_usage",
+      "fingerprints": [
+        "b6f2757eab52d81e4ae06fd6b04e311b67921a54b11128bd761793459a7c5fa3"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "token_usage"
+    },
+    "index:idx_token_usage_usage_event_id": {
+      "owner": "core:token_usage",
+      "fingerprints": [
+        "5c6f8da0f340733e8081de2cca401ccf5faff58ae413430f5753924dc985a364"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "token_usage"
+    },
+    "index:idx_tool_outputs_created_at": {
+      "owner": "core:tool_outputs",
+      "fingerprints": [
+        "a640d2dd60fe3f66b4790677f2ea29b3c9db477538f5d208902e3e1cbc7f90b2"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "tool_outputs"
+    },
+    "index:idx_tool_outputs_owner_created": {
+      "owner": "core:tool_outputs",
+      "fingerprints": [
+        "fdedeb7888051b3a5eace76a7a2ed5fde92443809d46795b5203487d62c05618"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "tool_outputs"
+    },
+    "index:idx_web_sessions_expires_at": {
+      "owner": "core:web_sessions",
+      "fingerprints": [
+        "2dadc2d059aae305cf346d625f15728533d6964b6a4297e83f73598ab47bed1b"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "web_sessions"
+    },
+    "index:idx_web_sessions_session_id": {
+      "owner": "core:web_sessions",
+      "fingerprints": [
+        "ce1a047e07b5be356967395b994d0a216e185e450c7a4c949833951dc5da1db6"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "web_sessions"
+    },
+    "index:idx_webauthn_credentials_rp_id": {
+      "owner": "core:webauthn_credentials",
+      "fingerprints": [
+        "9065f9640cd7b8330f0052d55474b4f6b7261cc2151712deac169c50c2628477"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "webauthn_credentials"
+    },
+    "index:idx_webauthn_credentials_user_id": {
+      "owner": "core:webauthn_credentials",
+      "fingerprints": [
+        "c0edb9abe078f0a18c95c143e5c2734200b424382508f7fd3a17904e958ca764"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "webauthn_credentials"
+    },
+    "index:idx_webauthn_enrollments_expires_at": {
+      "owner": "core:webauthn_enrollments",
+      "fingerprints": [
+        "29dac77bcbb7775f27553da02c5d36f228f08fc5b5f21d6b7a1b95440a647b12"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "webauthn_enrollments"
+    },
+    "index:idx_workspace_files_indexed_at": {
+      "owner": "core:workspace_files",
+      "fingerprints": [
+        "71a53f0da5b4087bc33ae33235cbb83104e038810c069697eb96a14f84099550"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "workspace_files"
+    },
+    "index:service_effect_s01_one_active_operation": {
+      "owner": "core:service_effect_s01_operations",
+      "fingerprints": [
+        "e846d9a8fb33c0620fe6c02a90fc6b8ad843268ab535964165186083b3fd8bf2",
+        "0a85736c5103d19b1bc3b5a74c138b73e2e9efd43c39124ec4ff408546de5ef7"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "service_effect_s01_operations"
+    },
+    "index:service_effect_s01_open_operations": {
+      "owner": "core:service_effect_s01_operations",
+      "fingerprints": [
+        "3b29767c1e714e9d9747164fbd028088e317d43c8f6999b71f73089ff1801b62"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "service_effect_s01_operations"
+    },
+    "index:service_effect_s01_operation_source_membership": {
+      "owner": "core:service_effect_s01_operation_sources",
+      "fingerprints": [
+        "0c491f1f9c51ed6ed697efc34290a05e670d1594b20c2d2b9b92797bb2824711"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "service_effect_s01_operation_sources"
+    },
+    "index:service_effect_s01_pending_sources": {
+      "owner": "core:service_effect_s01_sources",
+      "fingerprints": [
+        "6025fe21376395461f27ee8e089cbb1eb705de04a4071336ac38007d452cdc5f"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "service_effect_s01_sources"
+    },
+    "index:service_effect_s01_queued_source": {
+      "owner": "core:service_effect_s01_queued_inputs",
+      "fingerprints": [
+        "1803ed0795c7353066f3fc4435f40472067893676128ec39c3b0657e03d1b23b"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "service_effect_s01_queued_inputs"
+    },
+    "index:service_effect_s05_decision_outbox": {
+      "owner": "core:service_effect_s05_decisions",
+      "fingerprints": [
+        "18543565b35a8885975fd6e3b7b7458cac02edc05502d911eac0b2646939a013"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "service_effect_s05_decisions"
+    },
+    "index:service_effect_s05_expired_started": {
+      "owner": "core:service_effect_s05_outbox",
+      "fingerprints": [
+        "b74520a50e012b3cda3a9126eaf72923e5b422c24a69b533e46ef7913053505b"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "service_effect_s05_outbox"
+    },
+    "index:service_effect_s05_failed_claim": {
+      "owner": "core:service_effect_s05_outbox",
+      "fingerprints": [
+        "139fbed39d3fb458834d2bb6301106be6707b24add67aefbf598b05f218a7dba"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "service_effect_s05_outbox"
+    },
+    "index:service_effect_s05_lease_outbox": {
+      "owner": "core:service_effect_s05_leases",
+      "fingerprints": [
+        "0d74dee64b47c9f849fb1f3f61c67259e26f310cf2e7b6b7fb709b15ae9f5913"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "service_effect_s05_leases"
+    },
+    "index:service_effect_s05_operation_lookup": {
+      "owner": "core:service_effect_s05_outbox",
+      "fingerprints": [
+        "24357c136bfd03591ecd715988dd85fe77b1bcf86ae9f6de158edd32d50c0f8f"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "service_effect_s05_outbox"
+    },
+    "index:service_effect_s05_pending_claim": {
+      "owner": "core:service_effect_s05_outbox",
+      "fingerprints": [
+        "78d1bd179fba9063b214ee0e18dd41e23e40acd351e22d66e9e9d627b8c05eb7"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "service_effect_s05_outbox"
+    },
+    "index:service_effect_s05_terminal_cleanup": {
+      "owner": "core:service_effect_s05_outbox",
+      "fingerprints": [
+        "6cb1f237039b4fbf030fe35a9a0a88d2b3b9883568f44971a670b75f55e3bfbd"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "service_effect_s05_outbox"
+    },
+    "index:service_effect_s05_unknown_list": {
+      "owner": "core:service_effect_s05_outbox",
+      "fingerprints": [
+        "3a042d1011cdb121663f050573f53539e7ee47164a35b58cd056c8f03af833fe"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "service_effect_s05_outbox"
+    },
+    "index:service_effect_s07_decision_run": {
+      "owner": "core:service_effect_s07_decisions",
+      "fingerprints": [
+        "92f24338626766625dbda73cdad7e827804f0d7911b25b1b5467e0e77c9ca54a"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "service_effect_s07_decisions"
+    },
+    "index:service_effect_s07_due_tasks": {
+      "owner": "core:service_effect_s07_tasks",
+      "fingerprints": [
+        "ad5161db26db66b9d339af7e217e4815fecfc8a07aad52cd2adcfd1b868275b2"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "service_effect_s07_tasks"
+    },
+    "index:service_effect_s07_expired_occurrences": {
+      "owner": "core:service_effect_s07_occurrences",
+      "fingerprints": [
+        "7be86651e050b8b05a7de7a027f7d2d075072ec0a40a62036c7c30aab4605b1e"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "service_effect_s07_occurrences"
+    },
+    "index:service_effect_s07_task_history": {
+      "owner": "core:service_effect_s07_occurrences",
+      "fingerprints": [
+        "ee7d705200eea913b19cf5058d9cfecdd6a671aba76a28364075fc592cff5f1c"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "service_effect_s07_occurrences"
+    },
+    "index:service_effect_s07_terminal_retention": {
+      "owner": "core:service_effect_s07_occurrences",
+      "fingerprints": [
+        "b294b357d1767f63436ccf4a2cab3177f23d10ccf7e3d0292dcfe5620df340de"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "service_effect_s07_occurrences"
+    },
+    "index:users_username_nocase": {
+      "owner": "core:users",
+      "fingerprints": [
+        "25b5cf95942120bc030bd240836a75672856a059660023868b1b72b24bd5b29c"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "users"
+    },
+    "table:access_state": {
+      "owner": "core:access_state",
+      "fingerprints": [
+        "a6176a0a55a9b05e5d5f5b0a4b452421a74bff3a3463de5e73a2fc8830a0dbe5"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": []
+    },
+    "table:addon_operation_events": {
+      "owner": "core:addon_operation_events",
+      "fingerprints": [
+        "9ffd10615ca8027be586aac12d4c6082ee7ebb0008e47a54dc55b1f15d70773b"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "4e402f80e1e58c1d02953c4554ea20bf0c630937ef301626ea901e6faa9a376e"
+      ]
+    },
+    "table:addon_operations": {
+      "owner": "core:addon_operations",
+      "fingerprints": [
+        "2b1c5ce5ca0f41c06e5c946717a27124ce26f453c6ee49df5837e179229eddad"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "1c4aa95d10237d1ffcb34e05fff7c1e284910accf8aecc1a9275fa8c443fa295",
+        "4b3d9d0a9663c6d197504c49aea7c555520d045a13d6f78009bcd388d2e611fc",
+        "1fe1c3b6c8fa06a3170bfb815a12c0c6f44856cb50b05a7867aca380cf82e0de",
+        "8e6dbae1eef164e7ffbedb4566c6ee1fa3f8f149a2b027783b0b20e098e9dfff"
+      ]
+    },
+    "table:budget_allowances": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "52b34cc60a38e93ea60e29a9e6e067d1495e9700376d6b17e2b4d416093219cd"
+      ],
+      "requiredIn": [],
+      "derivedIndexes": [
+        "1c4aa95d10237d1ffcb34e05fff7c1e284910accf8aecc1a9275fa8c443fa295"
+      ]
+    },
+    "table:budget_cap_revisions": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "53ad30dbd546fab450061d2780704da43d816b85f63fea966f3903fbbb6b2f3e"
+      ],
+      "requiredIn": [],
+      "derivedIndexes": [
+        "693de4445519b0834c73c759ca8f22702a6f2222dfec5c45093d057bd4cfe18c"
+      ]
+    },
+    "table:budget_cap_windows": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "2d17254b52590e8401530475b3e250fb9ee76edc8e1996a88358b0a2eb327ee7"
+      ],
+      "requiredIn": [],
+      "derivedIndexes": [
+        "a1d174d2719f33bd58bb44e1e742db484bf6b19808e283752826a5a1a883b8dc"
+      ]
+    },
+    "table:budget_caps": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "5c61aa8bd61e32641a2475d8d7ede5e9e82a3fed301c05074cd865d2faa8f653"
+      ],
+      "requiredIn": [],
+      "derivedIndexes": [
+        "1c4aa95d10237d1ffcb34e05fff7c1e284910accf8aecc1a9275fa8c443fa295"
+      ]
+    },
+    "table:budget_decisions": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "794970305ee25f2cad560912ff69773e72c0b44708469b922e45d4ec5b728e53"
+      ],
+      "requiredIn": [],
+      "derivedIndexes": [
+        "1c4aa95d10237d1ffcb34e05fff7c1e284910accf8aecc1a9275fa8c443fa295"
+      ]
+    },
+    "table:budget_overrides": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "d79172c005f529006d5bb3b8e389be977650b125ee2b760e54c030085c4ddb0c"
+      ],
+      "requiredIn": [],
+      "derivedIndexes": [
+        "4df83d554e85172db87bcf82b31076e72b2a46f9477ef3def31b2c077eac82b2"
+      ]
+    },
+    "table:budget_provider_evidence": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "cd5f4089cb8646d34370ec0c27b6e5547ae16c4bc9bc0bb41364c8531ce281fd"
+      ],
+      "requiredIn": [],
+      "derivedIndexes": [
+        "fb0924f2e135f26f59403f9f8c99f8366f788d067b611ec3fd3b47e7f468059e",
+        "d1257325880e4ebe42ae43de565e1801c9159e3b263185f5c941b1db8bd4e594"
+      ]
+    },
+    "table:budget_request_reservations": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "0f4122e34d1c9b32875480272a960d9888e4d59afde348ec22bfd4c3e8cceb3d",
+        "620510c4f43e61dcb383c648eb7ca98b966cfe3b45fadcff8b19902483daf4eb"
+      ],
+      "requiredIn": [],
+      "derivedIndexes": [
+        "1c4aa95d10237d1ffcb34e05fff7c1e284910accf8aecc1a9275fa8c443fa295",
+        "6e692cf7e3c2cc8a671d28d3aee38a283b705cff37e5b77ea5da9ef244bdbcdf"
+      ]
+    },
+    "table:budget_usage_events": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "0b9f5816168e506ed2328136b37e3bf769559f6502b7ecb829ca1e2586484783",
+        "57f3a37a36caeff46f37a88f77f6a585b47660e295fa437d74a350c470d3c2ff"
+      ],
+      "requiredIn": [],
+      "derivedIndexes": [
+        "eb3300d5dd490bfb24fd2cc4135cddac4866e121ae28e234a741c36a6014cca3",
+        "57dd1089ec3fa61e6b24a96966611d2828b07002a6e16a78afbde9aadee57a93"
+      ]
+    },
+    "table:budget_work": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "2c6ad665b22a3c6a01fe70a54a54f950952e8f1faea8ff85233a4799fc7e0486"
+      ],
+      "requiredIn": [],
+      "derivedIndexes": [
+        "1c4aa95d10237d1ffcb34e05fff7c1e284910accf8aecc1a9275fa8c443fa295"
+      ]
+    },
+    "table:chat_branches": {
+      "owner": "core:chat_branches",
+      "fingerprints": [
+        "f727674eaadf63c3b245e5cc0147fd7c24b4f33dde1cfd07f14fb5bbcce12a52",
+        "ca1502052e5b89e1bea6419cf9448b2b81bf0c76dbfc585548d58bb2d11f5bc7"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "904769f9ed59b77ea6aa0eeed9ceab6e848a9ba56dde81cc66eb58df80daf81a",
+        "4b3d9d0a9663c6d197504c49aea7c555520d045a13d6f78009bcd388d2e611fc"
+      ]
+    },
+    "table:chat_cursors": {
+      "owner": "core:chat_cursors",
+      "fingerprints": [
+        "3125449c9efbed908701f37c68fa6027df4529f20db9c5014be6f95b71516352",
+        "e8c98fd6860a74cd86adc7b2d27c7d9aed81d77088c98a7225a87aa9af623af7",
+        "1d50d10665c7ed7c01d30a122acd233df072afc6fcad2311b5dfaab1f9ef947c"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "41298dcc3a243b5aee011307b28bcc0e977ab27635f854e4f8f2f346722c9508"
+      ]
+    },
+    "table:chat_projects": {
+      "owner": "core:chat_projects",
+      "fingerprints": [
+        "ce89554a72e946904de372e378894e1ba17ba2bf9ada53252bf9eddeed6f33b9"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "904769f9ed59b77ea6aa0eeed9ceab6e848a9ba56dde81cc66eb58df80daf81a"
+      ]
+    },
+    "table:chats": {
+      "owner": "core:chats",
+      "fingerprints": [
+        "98b83279285aeba935cad2ddcb01aa4a5b5d4324a8824ebd5f2d65fae71c9739"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "8af1f34b7c13d6a8a19b878b8e6363c8c1d4611c46d2b9eb00206d7e55123e60"
+      ]
+    },
+    "table:compaction_telemetry": {
+      "owner": "core:compaction_telemetry",
+      "fingerprints": [
+        "4774256f46fae580c0b1e993b09ae92e96af71024e01661e6c16ca64569d767c"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "3c09ea8823fd24cd2161d7e7e54cb3fa48b368e94ace53e6fd49cd18ccd12618"
+      ]
+    },
+    "table:core_schema_migrations": {
+      "owner": "core:core_schema_migrations",
+      "fingerprints": [
+        "7e78d52fb5555ec7d297751a70614cb4a1adfac558073d7fcc3956eb43b19f12"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "540f9502b08715f4190b1b852902292d5332c591bd9639bdb2aaa03dcfea49ac"
+      ]
+    },
+    "table:extension_kv": {
+      "owner": "core:extension_kv",
+      "fingerprints": [
+        "7b84a5141f567fc464e5e56954f1cdba9d3c83e78143fdfa77c38e6f2aa0b0fc"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "d2656b350312639950461879063b30862a9dc01d83ff6b2fa25b74af1940ec30"
+      ]
+    },
+    "table:keychain_entries": {
+      "owner": "core:keychain_entries",
+      "fingerprints": [
+        "640bd14b18b945b25651cc761427cbb40731fc7c2068cd9edf18c3dff0cf5999"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "5c9f82d33991bf37427875ef5a01677738af700ee7e157ecef2aca1e4f8b1953"
+      ]
+    },
+    "table:link_preview_image_cache": {
+      "owner": "core:link_preview_image_cache",
+      "fingerprints": [
+        "acaad78471559b50308fd3ef0157b804d68859beb565adc43bbebbf7a8d25150"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "9eae2c6860b3d4aff7b6acf29efd6f3a98c68c3a2fe60b0a4762809a3e61ff25",
+        "a2058ee6ea87b51105a8cb70631140e569a58b78280c44ba982cef6d238c53fb"
+      ]
+    },
+    "table:media": {
+      "owner": "core:media",
+      "fingerprints": [
+        "46702ee8e91817db088485a2f344161cae6f3a2ceaf3725460908874876af921"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": []
+    },
+    "table:message_inline_media": {
+      "owner": "core:message_inline_media",
+      "fingerprints": [
+        "6a24ea1d880d3b2a555c9846a5f926b377c31f16015a929fa7ead165e1489c43"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "031ce6583502d8a28b7c40566732c85ce52e480d7da3780f0f1157bcd4bddc36"
+      ]
+    },
+    "table:message_media": {
+      "owner": "core:message_media",
+      "fingerprints": [
+        "d753ade4adfeb54128e1043ca29559f445994f6de2a73b059153fe498dffd76a"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "c4a1564970226c9cae22791eb3a5ca77fcbef587ad5bc116b1423c4c9fe1e2c5"
+      ]
+    },
+    "table:messages": {
+      "owner": "core:messages",
+      "fingerprints": [
+        "4b348bb23c0350070fb0758fb1417a871261683ac7ca815b3f3856ab65fb7aa1"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "b0ddb9f5bf32da83519a0d43a9ed6d515912ebc97763fd10a8810766f0051ee4"
+      ]
+    },
+    "table:messages_fts": {
+      "owner": "core:messages_fts",
+      "fingerprints": [
+        "d59b7defa7ded48d488622482c56bcadad6da08e3a2cb903ec44240420509f35"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": []
+    },
+    "table:messages_fts_config": {
+      "owner": "core:messages_fts",
+      "fingerprints": [
+        "a814f89cbc8190087750acb8e2c0dfe35fb907f59e171761a56760bc13d533f7"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": []
+    },
+    "table:messages_fts_data": {
+      "owner": "core:messages_fts",
+      "fingerprints": [
+        "6988f1e5a90a04992d110c36bd57faaf4bbd5befafdc16f46ecb2a8c2e12fd9c"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": []
+    },
+    "table:messages_fts_docsize": {
+      "owner": "core:messages_fts",
+      "fingerprints": [
+        "0fbf7cde06ebce75b68e08c358daeca59a329ae74161bfa4e35727940d71abc6"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": []
+    },
+    "table:messages_fts_idx": {
+      "owner": "core:messages_fts",
+      "fingerprints": [
+        "56e2da337c70a7ee56b975144eae764f0c257e23d1d69fad9b2e13bfc72aee22"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": []
+    },
+    "table:owned_fork_operations": {
+      "owner": "core:owned_fork_operations",
+      "fingerprints": [
+        "9cddbc843fee51f1a5d4eccfcefb0db7c7a93038d12bb026e17e615e7bea14cc"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "0901f404348d8c46220f6fb728d2a1d183127690a34264e435f1acc862a31201",
+        "288fd414b5ee592d2ea9710e2559c540eb00e32d8e5fdd1025bddfdde78d3281"
+      ]
+    },
+    "table:picker_pin_imports": {
+      "owner": "core:picker_pin_imports",
+      "fingerprints": [
+        "d0fcea0697dcc736b58de24d418c85b19903bed37fef07f4a641afeac295c11e"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "3b2b66942e34f8b168f2da88158db0fadf1579fa4c1270b66de9cb39e7a0c24b"
+      ]
+    },
+    "table:picker_pin_scopes": {
+      "owner": "core:picker_pin_scopes",
+      "fingerprints": [
+        "320631fb475a5291ce6504c397f061b9cac62ea1d1b42e27d231e3b06f9ddd8a"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "a2fa15ecbc1f98fee9f413b04388d84f01a9239e6a78111a6c43f336db95f5cf"
+      ]
+    },
+    "table:picker_pins": {
+      "owner": "core:picker_pins",
+      "fingerprints": [
+        "7a57a791fc5cc7fffd67c18dd00d59e32557d6ec188c8c13169e81c7a5eda650"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "a9d450a847aa4baf1d4703c5129cd03f3e6503d6eeb9b19a21cc09723ba053f4"
+      ]
+    },
+    "table:piclaw_schema_migrations": {
+      "owner": "core:piclaw_schema_migrations",
+      "fingerprints": [
+        "b304b53dddc89d7dcde318bac43f48b0e9ba90bbcc31063924834fc0e0916dac"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": []
+    },
+    "table:portainer_configs": {
+      "owner": "core:portainer_configs",
+      "fingerprints": [
+        "3716572a2e953574f796dcd770238747cb3aa9ebb8b9414eb23e4e78da7c761d"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "41298dcc3a243b5aee011307b28bcc0e977ab27635f854e4f8f2f346722c9508"
+      ]
+    },
+    "table:proxmox_configs": {
+      "owner": "core:proxmox_configs",
+      "fingerprints": [
+        "a7a57d7efc84f97bd3e0042f7f8aeb1d884677a89ca1854b886f0ce396743c6b"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "41298dcc3a243b5aee011307b28bcc0e977ab27635f854e4f8f2f346722c9508"
+      ]
+    },
+    "table:router_state": {
+      "owner": "core:router_state",
+      "fingerprints": [
+        "406fe81f71e5fab04465f133de9429f862d641d8aaa6303e73e31c35924feecc"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "6bf61565db42f74feca6a2684c0390ff71f463143c5909037ddd85f7259deb76"
+      ]
+    },
+    "table:scheduled_tasks": {
+      "owner": "core:scheduled_tasks",
+      "fingerprints": [
+        "5ef4ad4d1035a94a800555d7bb531282aedef87d8079a948757211ad3e911c93"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "1c4aa95d10237d1ffcb34e05fff7c1e284910accf8aecc1a9275fa8c443fa295"
+      ]
+    },
+    "table:service_effect_s01_chats": {
+      "owner": "core:service_effect_s01_chats",
+      "fingerprints": [
+        "82d52de69a726cf37b804b67685ad5b85eb726f1c6b98d2dc06f0664909ded6b"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "41298dcc3a243b5aee011307b28bcc0e977ab27635f854e4f8f2f346722c9508",
+        "75c1fef5e3ca7347ab030124f766e9097597af009e9c8bfb8ad6ea7023ebce39"
+      ]
+    },
+    "table:service_effect_s01_decisions": {
+      "owner": "core:service_effect_s01_decisions",
+      "fingerprints": [
+        "3c7ad05d0489366a5c419cc6f7f07ee86efbc8affbbe7168b6fc04f802190aa7"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "f91ebaf7fbd75b2146f58c4f090cd38141af682fb9e7b48629877cd72eaa467e"
+      ]
+    },
+    "table:service_effect_s01_intents": {
+      "owner": "core:service_effect_s01_intents",
+      "fingerprints": [
+        "8aece79b9665618676d0351a64dbe388af55da1c384a11dfc3f8a63ebcccec84"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "9aa92103dc27c025127ad63244e637710dd7087445f4c5b32bcc47d8b076e1be"
+      ]
+    },
+    "table:service_effect_s01_operation_sources": {
+      "owner": "core:service_effect_s01_operation_sources",
+      "fingerprints": [
+        "a7880919095dcdf35fe07cd32c56eee0ba145458cdf739703c820c522afe516f"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "eb3e56dfea899629588787c6706ba8aca9d3786b478bd559a62309e374b901b7",
+        "d66867c1b73780146647c4d12ae911e33c0485824dd9982f0fc17a1dfdd7235a"
+      ]
+    },
+    "table:service_effect_s01_operations": {
+      "owner": "core:service_effect_s01_operations",
+      "fingerprints": [
+        "a8348c18a290f2a60b965c28fda0159cc3fa58527887b77d1625fdc5e93da9e1",
+        "72020fd8c8eabb024a944c6a20973e210a23177a2f470792ca22551477648bc3"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "64159762982ce5663407e3a742fe21d3a9a5c9ccb7e3843ff75e4038016abd42",
+        "c0f08bc481b04daf62d1013b1244706f8af86035cc498fb53d89a70867bd06bc"
+      ]
+    },
+    "table:service_effect_s01_queued_inputs": {
+      "owner": "core:service_effect_s01_queued_inputs",
+      "fingerprints": [
+        "21f6f5f8f1d625b75282a5c632058b781abb213adf002530cdc53c03f3a0656c"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "eb3e56dfea899629588787c6706ba8aca9d3786b478bd559a62309e374b901b7"
+      ]
+    },
+    "table:service_effect_s01_sources": {
+      "owner": "core:service_effect_s01_sources",
+      "fingerprints": [
+        "6751905c4c11799d73ba36dada86eb835e715c56b6ec6d3726b2e5ef435d0275"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "6322217ae4f2affcb7dfcd29e4eb1ac84a3b4ed8b5c55818570614880bb1d30f",
+        "4c79047eb86e5f504101b990a23a1d90773b69b562287551418d2c6ba07137b1"
+      ]
+    },
+    "table:service_effect_s01_wake_intents": {
+      "owner": "core:service_effect_s01_wake_intents",
+      "fingerprints": [
+        "fe3f2b6bde39accb3309eca5d6cbf8a09be3734c356572749d00ccb6b6a02993"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "6322217ae4f2affcb7dfcd29e4eb1ac84a3b4ed8b5c55818570614880bb1d30f"
+      ]
+    },
+    "table:service_effect_s05_decisions": {
+      "owner": "core:service_effect_s05_decisions",
+      "fingerprints": [
+        "250a14bce813782cb7d66134f86719673d03531a0aa3dacf463f18a84b861a1f"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "c601ac98b953119973fcff9d08b69400ec2d4127ddb15af9efa932c74a84cde2"
+      ]
+    },
+    "table:service_effect_s05_leases": {
+      "owner": "core:service_effect_s05_leases",
+      "fingerprints": [
+        "660a062401cc24c95737b71280bdea15f186f0e00e1a042300876bfa0a1d4902"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "899f8219ae71c660b52be3dd382e23a61685550fe7b451486899464bed872f3f"
+      ]
+    },
+    "table:service_effect_s05_outbox": {
+      "owner": "core:service_effect_s05_outbox",
+      "fingerprints": [
+        "949fcc37d0788dce512979f30a876eaed297cb47cd47552a276a4de79f6a8262"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "c691312cbd874e64604329c8c0a57f408c11da856634ccba5346c0785b8cadfa",
+        "6390d038e833bfd209cfb0db38d7a3152b5643601ae99a6bd0830e275553c1d7"
+      ]
+    },
+    "table:service_effect_s05_outcomes": {
+      "owner": "core:service_effect_s05_outcomes",
+      "fingerprints": [
+        "85077cc263036ab9204eb0846c471a4444f82fcd1e825108f61083899bf613af"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "80c30376e92dced4d8923efd3d864d7e8670edb94b29f9495395a8446ca1e7ba"
+      ]
+    },
+    "table:service_effect_s05_resolutions": {
+      "owner": "core:service_effect_s05_resolutions",
+      "fingerprints": [
+        "dbfca9bf6c93d6dbf59741772cd2109aea381f602cc2559456d87946697c963a"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "80c30376e92dced4d8923efd3d864d7e8670edb94b29f9495395a8446ca1e7ba"
+      ]
+    },
+    "table:service_effect_s07_abandonments": {
+      "owner": "core:service_effect_s07_abandonments",
+      "fingerprints": [
+        "d8cfb5876a0870574e47c8550a8d15b87b5c58070c75d738441c08f1f71b2688"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "c390b25c82fb3c0ace0710b81dc2b2716f4387b634a7a8c9a790e5da039f09d9"
+      ]
+    },
+    "table:service_effect_s07_decisions": {
+      "owner": "core:service_effect_s07_decisions",
+      "fingerprints": [
+        "2f71bc01712060be73b992e6f4232ce1c5989d346d883badeeac14ba36b8b68a"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "c601ac98b953119973fcff9d08b69400ec2d4127ddb15af9efa932c74a84cde2"
+      ]
+    },
+    "table:service_effect_s07_lease_renewals": {
+      "owner": "core:service_effect_s07_lease_renewals",
+      "fingerprints": [
+        "d4ee5ef6be50d37e94928c03208488e182efacee0f177d3be1776a62f4ec37f3"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "50cf24073558e4f59abfa8a71c05eb3ca14f734608b8d674318d49f576f4354c"
+      ]
+    },
+    "table:service_effect_s07_leases": {
+      "owner": "core:service_effect_s07_leases",
+      "fingerprints": [
+        "d585b689470e0b53fd454cccae0a49570d426e9fa870e740f1a840a28655fa01"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "b44463dcfacf0b332945f626413ee318c3aa665925d2efe5c933cfeb69c9b913",
+        "e0083eda3f3196546ebbbbb6e0ecfa4da62fb49f32c91c3bd19ea4c56b2c6ecc"
+      ]
+    },
+    "table:service_effect_s07_next_decisions": {
+      "owner": "core:service_effect_s07_next_decisions",
+      "fingerprints": [
+        "6f12d5e1e7d69bb57cfd033a72b473e1357f5775af0cfcc5ca82d834a6068837"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "c390b25c82fb3c0ace0710b81dc2b2716f4387b634a7a8c9a790e5da039f09d9"
+      ]
+    },
+    "table:service_effect_s07_occurrences": {
+      "owner": "core:service_effect_s07_occurrences",
+      "fingerprints": [
+        "391947af30374820850126c7fcac1e266c028db008fd1ebccfc6d9c993c1ff64"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "c390b25c82fb3c0ace0710b81dc2b2716f4387b634a7a8c9a790e5da039f09d9",
+        "9b17a90266b692f9297524946cdb4d6fcf9a5041e7923bc7961aa3b27e7efd75"
+      ]
+    },
+    "table:service_effect_s07_outbox_links": {
+      "owner": "core:service_effect_s07_outbox_links",
+      "fingerprints": [
+        "e8e8879905b0bfcd1286f90d4a27e42dc0df6cae3bfa03871f5b6c9531ee214b"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "1fb3086196a4c800694ff5fe8a24cc1f4244d8d1569d1d0a4d68441ce12e5870",
+        "fd40982dace86a63fed7c179c006dff8c43f823e4e3b02d93c24e1f1c21e0c12"
+      ]
+    },
+    "table:service_effect_s07_run_logs": {
+      "owner": "core:service_effect_s07_run_logs",
+      "fingerprints": [
+        "6da387882492018f09e88068ca2c03567088b5a20445bd5fa32e919371454ce5"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "c390b25c82fb3c0ace0710b81dc2b2716f4387b634a7a8c9a790e5da039f09d9"
+      ]
+    },
+    "table:service_effect_s07_source_bindings": {
+      "owner": "core:service_effect_s07_source_bindings",
+      "fingerprints": [
+        "85039aa6df2e396f111c3fcaefd488a6c0fbecfd173eac64cf1d8c328aab0ece"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "c390b25c82fb3c0ace0710b81dc2b2716f4387b634a7a8c9a790e5da039f09d9",
+        "1a18781581c32cbb5e5f4758b3d0e8a7e4c86a2ff9ba5134dd83916d0b6ac8b1"
+      ]
+    },
+    "table:service_effect_s07_task_revisions": {
+      "owner": "core:service_effect_s07_task_revisions",
+      "fingerprints": [
+        "0c4acda97e60cd2806251f078010775c3072ae3d6c2fa0d1f49e8c282efc36ed"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "43cd1503996b3dd4d6f2222629f4b72c31547f904be6ee6291313d3ba69b3f23",
+        "94a2862369c2a10a8b1188a28628df4ac80beb27ee69b6febcd438fbad1dec6f"
+      ]
+    },
+    "table:service_effect_s07_tasks": {
+      "owner": "core:service_effect_s07_tasks",
+      "fingerprints": [
+        "589f986155c6db17d9751fbcffd1bfc00510ce0581fc91a877cd1012cb5f7adf"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "0c6f542d17d4157de7a83c90160347d1d784b2a7684208cf0c2301d19c7f3482"
+      ]
+    },
+    "table:service_effect_s07_tombstones": {
+      "owner": "core:service_effect_s07_tombstones",
+      "fingerprints": [
+        "e0960109efa606f4be07c0e40b87e94025d381516885828e2e714d5344f91885"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "c390b25c82fb3c0ace0710b81dc2b2716f4387b634a7a8c9a790e5da039f09d9",
+        "9b17a90266b692f9297524946cdb4d6fcf9a5041e7923bc7961aa3b27e7efd75"
+      ]
+    },
+    "table:session_roots": {
+      "owner": "core:session_roots",
+      "fingerprints": [
+        "ab4867aef938ff2e5e36f2b6aa381866fe4fd9efa21ddf2041040465c8c9de84"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "81face8ac7904de7bf2d6ac15f35f92cd085e3fcfd6bc41ab8836acf1c156c01"
+      ]
+    },
+    "table:sqlite_sequence": {
+      "owner": "core:sqlite_sequence",
+      "fingerprints": [
+        "c35f325744afa9aca50a2ad429628087b3492b4fec2651093da9426020a0e37c"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": []
+    },
+    "table:ssh_configs": {
+      "owner": "core:ssh_configs",
+      "fingerprints": [
+        "10524c70f18581094d3e608343d04a8afb55d6d9b6d95418198e4c364ae10ace"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "41298dcc3a243b5aee011307b28bcc0e977ab27635f854e4f8f2f346722c9508"
+      ]
+    },
+    "table:task_run_logs": {
+      "owner": "core:task_run_logs",
+      "fingerprints": [
+        "3a9232c75c28825a01c429385a62448c2992aab849f8fc2db1a24064f021c240"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": []
+    },
+    "table:thinking_content": {
+      "owner": "core:thinking_content",
+      "fingerprints": [
+        "8637f53478e7437be696c5b37418529b7a6206cd65b967af2b8250d71b6799f3"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "76810b6f97b08e8ebb4a262ea0cb7814e6a4174d8ad6aa5e0d2327eae97e751f"
+      ]
+    },
+    "table:token_usage": {
+      "owner": "core:token_usage",
+      "fingerprints": [
+        "80e39ff09dbc05871052df8ee7f9191d655807aa8f9b46da9e96d635b036d48e",
+        "4030fa7183016951d99adb7dea468c15694edf665a18b53d0a2de194226751fd"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": []
+    },
+    "table:tool_outputs": {
+      "owner": "core:tool_outputs",
+      "fingerprints": [
+        "0130299c1d715fd0cf65f292ca0e50ace5f8283f7289f84ed5f4cf866a52520f"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "1c4aa95d10237d1ffcb34e05fff7c1e284910accf8aecc1a9275fa8c443fa295"
+      ]
+    },
+    "table:tool_outputs_fts": {
+      "owner": "core:tool_outputs_fts",
+      "fingerprints": [
+        "67d4e27e36ff11c75b86b90bfb7fd0b7b6e59551dd49268b5dfacdca1523720f"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": []
+    },
+    "table:tool_outputs_fts_config": {
+      "owner": "core:tool_outputs_fts",
+      "fingerprints": [
+        "14b6973c9003f4011ae86eb7a9c41008d17cd1172f5689dcfe6d0e868999210f"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": []
+    },
+    "table:tool_outputs_fts_content": {
+      "owner": "core:tool_outputs_fts",
+      "fingerprints": [
+        "4232d9d5eebf876114c78467af3eaba3b3b6a0da082086adc6be4ff4ce4e6dff"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": []
+    },
+    "table:tool_outputs_fts_data": {
+      "owner": "core:tool_outputs_fts",
+      "fingerprints": [
+        "81f496fb31c3fb8f4f7ead90e409613b9cc83b46396aa033ab9762af09288386"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": []
+    },
+    "table:tool_outputs_fts_docsize": {
+      "owner": "core:tool_outputs_fts",
+      "fingerprints": [
+        "2b059482544ecb9d0ef30bc205803be54d952b899313a72803d73642bf63cc90"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": []
+    },
+    "table:tool_outputs_fts_idx": {
+      "owner": "core:tool_outputs_fts",
+      "fingerprints": [
+        "3d6a6bddaadf67b7c15d8dac97d439343978ea5f4b86e8ab398bcf3553d5bf29"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": []
+    },
+    "table:users": {
+      "owner": "core:users",
+      "fingerprints": [
+        "d648145b1939f108c4528c87fb25947aba33cd1b9d7c9e499c000b5bb1639f06"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "1c4aa95d10237d1ffcb34e05fff7c1e284910accf8aecc1a9275fa8c443fa295"
+      ]
+    },
+    "table:web_sessions": {
+      "owner": "core:web_sessions",
+      "fingerprints": [
+        "bcea3cd5dcede6dfb1b134d319cfb7060992ede2d24c6e2c8d7f143064680013"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "d95e800713ff06a12b90647fab078700652f6187fc44e777a2423476d73246b5"
+      ]
+    },
+    "table:webauthn_credentials": {
+      "owner": "core:webauthn_credentials",
+      "fingerprints": [
+        "6a6f57a07939f82718e787c4f841b255cb58ecc9ae92d502be87d0e48bbf90d1"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "f1358a52c3043911ab5b5b065c1a10d18dc3b041e74b9f9c2dc6553532ecd938"
+      ]
+    },
+    "table:webauthn_enrollments": {
+      "owner": "core:webauthn_enrollments",
+      "fingerprints": [
+        "6c859106fd54a844b49e3341ea6031ca46657a1fc91432ecdf4438640698eb6f"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "d95e800713ff06a12b90647fab078700652f6187fc44e777a2423476d73246b5"
+      ]
+    },
+    "table:workspace_files": {
+      "owner": "core:workspace_files",
+      "fingerprints": [
+        "ff6c53d5115684d3bc2d88699d474251454237fc9f0c42e6d5314c292c00db27"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "f45aa6af981b43e911f04ed11a742254bd8b3bfe781b4d2697b5ed20511be01e"
+      ]
+    },
+    "table:workspace_fts": {
+      "owner": "core:workspace_fts",
+      "fingerprints": [
+        "04d6fe06819b1d3d48230dc2b2ef2499d2fbc0d4beba74a1fed4d880f562f979"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": []
+    },
+    "table:workspace_fts_config": {
+      "owner": "core:workspace_fts",
+      "fingerprints": [
+        "77069b34ac119ce9fffa14f6a6ac5bd968ad04440d6795895054521dbc832089"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": []
+    },
+    "table:workspace_fts_content": {
+      "owner": "core:workspace_fts",
+      "fingerprints": [
+        "2af3563a6b6bc9437ec5669db219eb86fded56e5071535f6d01c970918463b9b"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": []
+    },
+    "table:workspace_fts_data": {
+      "owner": "core:workspace_fts",
+      "fingerprints": [
+        "f3efa48b347ecadeab83bafb4af856f4764e8c80333aab039e41715e12578c2b"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": []
+    },
+    "table:workspace_fts_docsize": {
+      "owner": "core:workspace_fts",
+      "fingerprints": [
+        "9ed1ccf5a768ab36cf941ad6210ac9d90f75c4e81219263414c6b4c1594968ac"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": []
+    },
+    "table:workspace_fts_idx": {
+      "owner": "core:workspace_fts",
+      "fingerprints": [
+        "0964b2145fe4d400410f6bb46d2217e5376d9450b456d2c528788c945284ec26"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": []
+    },
+    "table:workspace_index_status": {
+      "owner": "core:workspace_index_status",
+      "fingerprints": [
+        "2149c9a159f9c4ef5b44335c8bb1a30a33bb32388205781515d91ac2262985c6"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "c85517b5c5d270ce4af5f1c27f04fb5dcde50653c32006f22e51e0d5a14c5d6d"
+      ]
+    },
+    "trigger:budget_cap_revisions_no_delete": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "4982ef9c8e68d07219dd6212c357aba85711eaf8f3e009e08b6894f971603e95"
+      ],
+      "requiredIn": [],
+      "table": "budget_cap_revisions"
+    },
+    "trigger:budget_cap_revisions_no_update": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "200d4b39a87ce62c38ca30414de73d05318bd0cc79465e2775c6766f4cfcd69f"
+      ],
+      "requiredIn": [],
+      "table": "budget_cap_revisions"
+    },
+    "trigger:budget_usage_events_no_delete": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "891cf457423094f46508a9811a4fd66050713006f5d9057bb63072b141cd89d2"
+      ],
+      "requiredIn": [],
+      "table": "budget_usage_events"
+    },
+    "trigger:budget_usage_events_no_update": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "3e39031c6bc8b3603fdbba4d3cba1cef194d8d8cfb81a7d17807faec0407ef38"
+      ],
+      "requiredIn": [],
+      "table": "budget_usage_events"
+    },
+    "trigger:messages_ad": {
+      "owner": "core:messages_fts",
+      "fingerprints": [
+        "514100b450aff4b59b6208f0cd8334e37c839f014d59fbe2478f87ed66489624"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "messages"
+    },
+    "trigger:messages_inline_media_ad": {
+      "owner": "core:message_inline_media",
+      "fingerprints": [
+        "96755451e180b4065b8c8a60994d9214f9f7ee2b837448cd70e6d2f9fc1c0b65"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "messages"
+    },
+    "trigger:messages_ai": {
+      "owner": "core:messages_fts",
+      "fingerprints": [
+        "395f8af5090bfaad1056aa5ca0a297527ed5bf4dbda49722a5786e66d6c65e96"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "messages"
+    },
+    "trigger:messages_au": {
+      "owner": "core:messages_fts",
+      "fingerprints": [
+        "54b3efa573794c0922846252255d53f7ec32b4c63ee77ed3b775d3fb7f306775"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "messages"
+    },
+    "trigger:session_home_follows_root_jid": {
+      "owner": "core:chat_branches",
+      "fingerprints": [
+        "29f5748e69552f0d7aa7c3e6e7bd9007dbe8ad24a743c33e6a258175ecafb518"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "chat_branches"
+    },
+    "trigger:session_home_root_no_archive": {
+      "owner": "core:chat_branches",
+      "fingerprints": [
+        "cd2b02ecb506def9d70b5bde376220136fef30ae21ec43e99854b87d52d8d85b"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "chat_branches"
+    },
+    "trigger:session_owned_branch_no_delete": {
+      "owner": "core:chat_branches",
+      "fingerprints": [
+        "6876f90a399f60c97c1b276ea1c1cda2eefe822974069fc3c30cb54269df2301"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "chat_branches"
+    },
+    "trigger:session_root_owner_immutable": {
+      "owner": "core:session_roots",
+      "fingerprints": [
+        "809b8ac0942e2c1e8803560dd33220b3439b8febc0b77332d1cf8198fe8302d0"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "session_roots"
+    },
+    "trigger:tool_output_scope_complete": {
+      "owner": "core:tool_outputs",
+      "fingerprints": [
+        "cfd2b9fef213771cbd6127c8b3977eb3fde680c635182e9aa48d48073aea6405"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "tool_outputs"
+    },
+    "trigger:tool_output_scope_immutable": {
+      "owner": "core:tool_outputs",
+      "fingerprints": [
+        "591eea48c57067489d8eda424aa32639180a0ab37aca8efc7e784c3b8f8b8cac"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "tool_outputs"
+    },
+    "trigger:tool_output_scope_valid": {
+      "owner": "core:tool_outputs",
+      "fingerprints": [
+        "af0ca76644726c4ca11f0a07a56bc98f4680d4b21e914743f4e4754ebda20dda"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "tool_outputs"
+    },
+    "trigger:trg_chat_projects_branch_delete": {
+      "owner": "core:chat_branches",
+      "fingerprints": [
+        "a83a9e30b8e0e4831da5513cd28553c3257e0e169cad2c3528c4c22ddc8a3f01"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "chat_branches"
+    },
+    "index:conversations_by_owner_conversation": {
+      "owner": "sdk:storage",
+      "fingerprints": [
+        "34b444372083a8264cfa3abef5fe55f6b1e965a447ee75a12cb2768422e6e569"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "table": "conversations"
+    },
+    "index:conversations_by_owner_task": {
+      "owner": "sdk:storage",
+      "fingerprints": [
+        "aaefd45d38668a5a13202d603fce48817df060e18e88707be61a1a9ec9e88ba3"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "table": "conversations"
+    },
+    "index:document_revisions_by_kind": {
+      "owner": "sdk:storage",
+      "fingerprints": [
+        "420f8914fb8eb3918f8bdc95ea5e4b56ccd60e988199601c138596dcc091422c"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "table": "document_revisions"
+    },
+    "index:documents_by_address": {
+      "owner": "sdk:storage",
+      "fingerprints": [
+        "23bbd25651e25e59eb5fd394f2b2244ded7fb6ae5b04a873e3eb0633018d0c96"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "table": "documents"
+    },
+    "index:documents_by_scope": {
+      "owner": "sdk:storage",
+      "fingerprints": [
+        "f76f533818c5b7e6c3bd025bb198a2ac8c95c3549b8e0cd912a9d0cdaedfa60d"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "table": "documents"
+    },
+    "index:documents_by_scope_kind": {
+      "owner": "sdk:storage",
+      "fingerprints": [
+        "e1b5ef873c0a12f8c61c84f390369e76a077ff9082bc92187b7348b4acc87b06"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "table": "documents"
+    },
+    "index:entries_by_conversation": {
+      "owner": "sdk:storage",
+      "fingerprints": [
+        "970ca384e8508622e88a6a89d98146880e19d3f7cdb2719a7b69e87780dab39d"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "table": "entries"
+    },
+    "index:entry_heads_by_conversation": {
+      "owner": "sdk:storage",
+      "fingerprints": [
+        "52f484b195a9dd43af427efef2b2b3032a3360d5d9a682765244d15a4a13f480"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "table": "entries"
+    },
+    "index:idx_piclaw_durable_bindings_payload_recovery_v1": {
+      "owner": "core:native-bindings",
+      "fingerprints": [
+        "791494033baab8af35bdeec6acc9ccfef7eb12106fdb55134dfbd4df9598d755"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "table": "piclaw_durable_bindings_v1"
+    },
+    "index:service_effect_draft_revision": {
+      "owner": "core:native-timeline-media",
+      "fingerprints": [
+        "1a46507f91b25b9e6ed2b976bce166b9ee7267d605604eed132f9d3aef8e7506"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "table": "service_effect_timeline_writes"
+    },
+    "index:service_effect_notice_source": {
+      "owner": "core:native-timeline-media",
+      "fingerprints": [
+        "d6f957ff52c4cf4af327730ec96fabd2465ad63095a4e8b6e9da869f58cb6f50"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "table": "service_effect_timeline_writes"
+    },
+    "index:service_effect_operation_media_id": {
+      "owner": "core:native-timeline-media",
+      "fingerprints": [
+        "c8afe217376f2d160531473d3396515f43846abbceedb2f7d2086751eb272caf"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "table": "service_effect_operation_media"
+    },
+    "index:service_effect_outbox_media_id": {
+      "owner": "core:native-timeline-media",
+      "fingerprints": [
+        "50351d282682c1e9ceb8710581f061a5d812cf5eaa0b9abc702c1d6ddcca2966"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "table": "service_effect_outbox_media_refs"
+    },
+    "index:service_effect_s02_commit_chat": {
+      "owner": "core:native-settlement",
+      "fingerprints": [
+        "7ca07e4a5055dc88e591c962d786a41e8c9bb0097daa3d09159a8cc214ca31bf"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "table": "service_effect_s02_commits"
+    },
+    "index:service_effect_timeline_operation": {
+      "owner": "core:native-timeline-media",
+      "fingerprints": [
+        "b07fe05fe39a552435e1f97dbe4caf04576492557b737da20f068372a9352832"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "table": "service_effect_timeline_writes"
+    },
+    "index:submissions_by_conversation": {
+      "owner": "sdk:storage",
+      "fingerprints": [
+        "bfde94fce9e6512229e326cd6afdbf087f442645d33432733fc8f619a1d25993"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "table": "submissions"
+    },
+    "index:submissions_by_request": {
+      "owner": "sdk:storage",
+      "fingerprints": [
+        "3b87dd690580a9cc413ff851a8c1e9d7ae5de651b3635001912455e21b2ec949"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "table": "submissions"
+    },
+    "index:submissions_by_status": {
+      "owner": "sdk:storage",
+      "fingerprints": [
+        "2b7d3c17ee8d70b892856dc5a9bf462c1ef01271dea59fe375cb104b5d7568c8"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "table": "submissions"
+    },
+    "index:tasks_by_abort_requested": {
+      "owner": "sdk:storage",
+      "fingerprints": [
+        "49e7e63eb971614d2fc0e7f169a414b01c30c96f94aabec5c279a901c2efc1be"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "table": "tasks"
+    },
+    "index:tasks_by_background": {
+      "owner": "sdk:storage",
+      "fingerprints": [
+        "0f9fdefab1e692d7ee4d6871d5a3cce69c0d37f44a628c0581e385a69040ce91"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "table": "tasks"
+    },
+    "index:tasks_by_conversation": {
+      "owner": "sdk:storage",
+      "fingerprints": [
+        "9265d41db4071b6a9bb4535c80d214db57f72e654221670b82adfbf8ff53184d"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "table": "tasks"
+    },
+    "index:tasks_by_kind": {
+      "owner": "sdk:storage",
+      "fingerprints": [
+        "d4c95e7c63e05fc67c59a6a627280ff9faf11f3aea644fb2e539e35aa38ba55f"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "table": "tasks"
+    },
+    "index:tasks_by_status": {
+      "owner": "sdk:storage",
+      "fingerprints": [
+        "f675ed7e65fc35a9d3e767be6cb33853a307349344293a89292834ae74f5b7a7"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "table": "tasks"
+    },
+    "table:conversations": {
+      "owner": "sdk:storage",
+      "fingerprints": [
+        "77809006812b2b64924340ddc51cf33d8593981b8ea19f39f40791f000b8e7e3"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:document_revisions": {
+      "owner": "sdk:storage",
+      "fingerprints": [
+        "b49a45b6ea31b644d1f4706afa08d910424f3e0fd3538ce3d3c3304c5d32025f"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "93407ea1c57f5ac3097433605eb62d2150d6f1aa031a99696096af3e99573675"
+      ],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:documents": {
+      "owner": "sdk:storage",
+      "fingerprints": [
+        "2bca724f5144a87e403cd1891fa7035b7c4eae1f761477fada9a27a232b14d3e"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:durable_metadata": {
+      "owner": "sdk:storage",
+      "fingerprints": [
+        "044e67abb7404be4c698af30984b82ede3bc4041d6d130d57c970c9f3c909fd3"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:durable_schema": {
+      "owner": "sdk:storage",
+      "fingerprints": [
+        "a5bdc8087b7c2932972769f4e53b3f77bf524355a3a676eb7287714bfd212c18"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:entries": {
+      "owner": "sdk:storage",
+      "fingerprints": [
+        "ba0c9f9b8ecc7d92a817aed89d751dc8ae5b3a8137df566c84c7d2377d26ea26"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:piclaw_durable_bindings_v1": {
+      "owner": "core:native-bindings",
+      "fingerprints": [
+        "836574f4b6884079511c783e081edd50729301d98aedc4347482f3776627ceb4"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "358e9e2982f7855d613a0834e55bcb2c215beb38c65b6653e5a2757b8161d41d",
+        "501d8818c09840f296371d6b6003132f7ae067015d807e566b3168ec9169a45c",
+        "f9bad2b6cc3b174decddb9e42e03fe76b2b65005ced1165582b0e14b0505d0e7",
+        "2cb9886941e26603c1ab5c683f265d22bafc67f3c07df0199b5e253a4de4c88e"
+      ],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:piclaw_durable_intent_bindings_v1": {
+      "owner": "core:native-bindings",
+      "fingerprints": [
+        "998da9224ee731e2bfc8bc935d8717fb17510a8b655931d64f6117bdb8b3e1df"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "3927aed34404790bcd8c5ef90fe26b3feb5a04633cf4d3d752b746a5b034e4ec",
+        "ed09e7fa9eb65d8bd7f765b84d5b8804034c41505d1be2047b65f83ca9fd9f38",
+        "f9bad2b6cc3b174decddb9e42e03fe76b2b65005ced1165582b0e14b0505d0e7",
+        "2cb9886941e26603c1ab5c683f265d22bafc67f3c07df0199b5e253a4de4c88e"
+      ],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:qualification_cutover_v1": {
+      "owner": "core:native-bindings",
+      "fingerprints": [
+        "081d5492fecc0d29681783ca5a498d801b2dadab48ceb4cb54fd16b925770f09"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "995fd9ed1a55a818dff4a30a9a817d6951c42e6f98787987d056805da21c13f3"
+      ],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:qualification_cutover_work_v1": {
+      "owner": "core:native-bindings",
+      "fingerprints": [
+        "8663405a1afc870a286ede3057c26b7940035ddad9dabfc87452007197e70bb5"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "325f7a07b4ba565734b268fc169cace040f369190ffc6e95f495738a88d916ad"
+      ],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:record_ids": {
+      "owner": "sdk:storage",
+      "fingerprints": [
+        "cf7c123dcef3eed51e218a026f0eb5ca330faaa64f6bf75512ae8d5c978e38c8"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:service_effect_media_deletions": {
+      "owner": "core:native-timeline-media",
+      "fingerprints": [
+        "465c6a66586d5abeb48cb60ee32166d69f17cf9e91d40f51043b2b998b709aa7"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "f91ebaf7fbd75b2146f58c4f090cd38141af682fb9e7b48629877cd72eaa467e"
+      ],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:service_effect_media_upload_history": {
+      "owner": "core:native-timeline-media",
+      "fingerprints": [
+        "6f5bd71cf9d5b781e6fb68ada2f67b97097d60f04f70278543ec0c16099f90f7"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "1a18781581c32cbb5e5f4758b3d0e8a7e4c86a2ff9ba5134dd83916d0b6ac8b1",
+        "32ca961ef1f9d8d790ac8fcf1043bdaf2523479b0c0590ff4dc46fe028b79250",
+        "a2058ee6ea87b51105a8cb70631140e569a58b78280c44ba982cef6d238c53fb"
+      ],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:service_effect_media_uploads": {
+      "owner": "core:native-timeline-media",
+      "fingerprints": [
+        "7bc1e42a49cf31a053a4d408ab5d3b8cfeaefaab19fc2e3067bd7123dc193567"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "1a18781581c32cbb5e5f4758b3d0e8a7e4c86a2ff9ba5134dd83916d0b6ac8b1",
+        "32ca961ef1f9d8d790ac8fcf1043bdaf2523479b0c0590ff4dc46fe028b79250",
+        "a2058ee6ea87b51105a8cb70631140e569a58b78280c44ba982cef6d238c53fb"
+      ],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:service_effect_operation_media": {
+      "owner": "core:native-timeline-media",
+      "fingerprints": [
+        "86e83fbdbdf4526269fe39032adb2917867792ef11b5626d3088c8445a855cc7"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "1a18781581c32cbb5e5f4758b3d0e8a7e4c86a2ff9ba5134dd83916d0b6ac8b1",
+        "20dc1cd8e67ccb78ed70dc37a88a985181549b0ba8f234e92756a93578b8468f"
+      ],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:service_effect_outbox_media_refs": {
+      "owner": "core:native-timeline-media",
+      "fingerprints": [
+        "8bdb02c0ce7c14eca22895e2cf3577149342985aba408c68f67650656af231e2"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "13b23e4e50179204c6d074da5b789783b8e363509350df5544f554e5f6785cad"
+      ],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:service_effect_s02_commit_outbox": {
+      "owner": "core:native-settlement",
+      "fingerprints": [
+        "9e234513b2396cd23406bf912ab57a8a3e73cad95864c581bb21e54152a2a068"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "1fb3086196a4c800694ff5fe8a24cc1f4244d8d1569d1d0a4d68441ce12e5870",
+        "4259fce270113390bf83de30803e39387b3ea5239d3e6ca5134d1a06c13f1577"
+      ],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:service_effect_s02_commits": {
+      "owner": "core:native-settlement",
+      "fingerprints": [
+        "3b5ea99fbb7e4715253bf0b5f7f2f6b90221a039773e4911c95ad94fc2db5a78"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "f91ebaf7fbd75b2146f58c4f090cd38141af682fb9e7b48629877cd72eaa467e",
+        "b7db5ffcc31e245aa98a668392a934f4bb9eba9f25730cf2e611058fb90c3bb4"
+      ],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:service_effect_timeline_writes": {
+      "owner": "core:native-timeline-media",
+      "fingerprints": [
+        "9770dca6c282457e05906900b13148f1eabffbf8f6ef9887b9c3dbdd720534dd"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "f91ebaf7fbd75b2146f58c4f090cd38141af682fb9e7b48629877cd72eaa467e"
+      ],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:submissions": {
+      "owner": "sdk:storage",
+      "fingerprints": [
+        "79c744b336556e4700da3eae2d0822780699f6e427488e9f0e20de9a174d848c"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:tasks": {
+      "owner": "sdk:storage",
+      "fingerprints": [
+        "e890f65ad5ea1ffd494e2e4784e48d4902e0d679dacb1f0d143b39bf240dccb0",
+        "4ef5a9a019b90afd9b640bc034f451f8601869d6ed2ffd3f525414d008ea338e"
+      ],
+      "requiredIn": [
+        "native",
+        "native-addons"
+      ],
+      "derivedIndexes": [],
+      "requiredWhenOwnerPresent": true
+    },
+    "index:addon_code_review_dispatch_by_thread": {
+      "owner": "addon:code-review",
+      "fingerprints": [
+        "b93e11f6fea1cc10f0daa21c809b5060e7a7101b960c616d48651a732c2c5f29"
+      ],
+      "requiredIn": [
+        "native-addons"
+      ],
+      "table": "addon_code_review_dispatch_items"
+    },
+    "index:addon_code_review_drafts_owner": {
+      "owner": "addon:code-review",
+      "fingerprints": [
+        "29a77d126a36f1296fb4d71b1d2cc65e6ce2d11c1fb4b5f60737f0c3b43a367c"
+      ],
+      "requiredIn": [
+        "native-addons"
+      ],
+      "table": "addon_code_review_drafts"
+    },
+    "index:addon_code_review_events_review": {
+      "owner": "addon:code-review",
+      "fingerprints": [
+        "3234db2c5428ce4c31e7c96286e84cd5de2c2dd531b42aa47191314115fca5dc"
+      ],
+      "requiredIn": [
+        "native-addons"
+      ],
+      "table": "addon_code_review_events"
+    },
+    "index:addon_code_review_reviews_owner": {
+      "owner": "addon:code-review",
+      "fingerprints": [
+        "e4143cd9fdc93ec854bd50f08971aac53f68a934342ff8e5f05f7012db5a8d4f"
+      ],
+      "requiredIn": [
+        "native-addons"
+      ],
+      "table": "addon_code_review_reviews"
+    },
+    "index:addon_code_review_snapshot_files_order": {
+      "owner": "addon:code-review",
+      "fingerprints": [
+        "ae8d2fc375d66b9c509056e15c3c84a30ab4f5c17694ca23058c70b5c097ed38"
+      ],
+      "requiredIn": [
+        "native-addons"
+      ],
+      "table": "addon_code_review_snapshot_files"
+    },
+    "index:addon_code_review_threads_review": {
+      "owner": "addon:code-review",
+      "fingerprints": [
+        "c148bd56c96f484d1c8fa0652f6ce15f71df6571691af1cee0fe801388245ae9"
+      ],
+      "requiredIn": [
+        "native-addons"
+      ],
+      "table": "addon_code_review_threads"
+    },
+    "table:addon_code_review_attempts": {
+      "owner": "addon:code-review",
+      "fingerprints": [
+        "5f97ac53eaa42c0577cc35058e0fa16457aad46d94e70906f87851ccea80d1ae"
+      ],
+      "requiredIn": [
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "1c4aa95d10237d1ffcb34e05fff7c1e284910accf8aecc1a9275fa8c443fa295",
+        "5c9f94111853a6862b57188a6521a415331886c221733441011a14c2f24235a2"
+      ],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:addon_code_review_blobs": {
+      "owner": "addon:code-review",
+      "fingerprints": [
+        "32346906d916b223004710459147df395a05d97f1207bddb0c531f0aa03eabad"
+      ],
+      "requiredIn": [
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "31a0d83f3f4f13a0827fc2229c2477524f43229b03feb851fdbff45b386fefcc"
+      ],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:addon_code_review_dispatch_items": {
+      "owner": "addon:code-review",
+      "fingerprints": [
+        "855168362f295a812f0fb9446bbf7340b34318c155a778de92c8b8b2fa1a49b5"
+      ],
+      "requiredIn": [
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "540ea4e09c2ec2ba06cf69fceaf37f4189926a63d73abe5716866f4199d60f42",
+        "7fd5e0b44194acf63c654e101486d5726b6f226369ed7b94e7d9a3702c0f00f5"
+      ],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:addon_code_review_dispatches": {
+      "owner": "addon:code-review",
+      "fingerprints": [
+        "5a0f06883dc41b3a1660e37ff35eb111fbef648b58b63a2a25fc5225a173338b"
+      ],
+      "requiredIn": [
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "1c4aa95d10237d1ffcb34e05fff7c1e284910accf8aecc1a9275fa8c443fa295",
+        "b918fe2b073298f880bbfb37ab0038d1bc39817c87bf0548a4a6fab9be3c8cf1"
+      ],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:addon_code_review_drafts": {
+      "owner": "addon:code-review",
+      "fingerprints": [
+        "e4eb29d67c9c57ff4a9b003ebecbcc43a0cd84601948a49f2561a69a6c5f0afb"
+      ],
+      "requiredIn": [
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "1c4aa95d10237d1ffcb34e05fff7c1e284910accf8aecc1a9275fa8c443fa295"
+      ],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:addon_code_review_events": {
+      "owner": "addon:code-review",
+      "fingerprints": [
+        "4f656bb6566d7268ecf6454e29370ce0f92ea2fdec1d0e8976a2efdf49edadb1"
+      ],
+      "requiredIn": [
+        "native-addons"
+      ],
+      "derivedIndexes": [],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:addon_code_review_message_revisions": {
+      "owner": "addon:code-review",
+      "fingerprints": [
+        "8d8a9babbfd91d6e2d47cd6e11fa93db0f55f9a0f43557af0769d4032813f880"
+      ],
+      "requiredIn": [
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "d90a32b007fac9ca7389bae7331e3750d6366277f2eb4db0d967d993b7b8d234"
+      ],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:addon_code_review_messages": {
+      "owner": "addon:code-review",
+      "fingerprints": [
+        "c091db53c87f94515d3b66ddfdc1b8d1868a2da280d2ef9fd9067cdbf24288d5"
+      ],
+      "requiredIn": [
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "1c4aa95d10237d1ffcb34e05fff7c1e284910accf8aecc1a9275fa8c443fa295",
+        "2845c080423e2b8270ef0f87716dd6c73f74650247619209677f5d7d9396e72a",
+        "b918fe2b073298f880bbfb37ab0038d1bc39817c87bf0548a4a6fab9be3c8cf1"
+      ],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:addon_code_review_projections": {
+      "owner": "addon:code-review",
+      "fingerprints": [
+        "72229bcfc59dd12bd6e061b22e3c77f281f52f7c0fd2aa9bf8e436c47594f262"
+      ],
+      "requiredIn": [
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "604000b8caf273dea0c3605f5eea92d45c01f73bab8d7845031cc260ce4766ff"
+      ],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:addon_code_review_request_receipts": {
+      "owner": "addon:code-review",
+      "fingerprints": [
+        "a13535e5ddc0415d686604e6a9e6bab5b444952bb76a1e87d67588e17048b02c"
+      ],
+      "requiredIn": [
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "5ba49dcdf963c0dc89a367ad3f0321e697692352717bb7e90ce94aa976f884ed"
+      ],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:addon_code_review_review_settings": {
+      "owner": "addon:code-review",
+      "fingerprints": [
+        "626ce5c909af91c5cab3d69c3af12720e89e67569db9a2c0b7103a325f07ef6a"
+      ],
+      "requiredIn": [
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "458f44adfeff0b8a4eeb7021320fe6747d4c2dd9ef4a0da99d3861c72eb69d12"
+      ],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:addon_code_review_reviews": {
+      "owner": "addon:code-review",
+      "fingerprints": [
+        "ea231fb25b46f1906c2a037d389ddba83e8eaabe33d2c8bfb9869192c4c0fd61"
+      ],
+      "requiredIn": [
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "1c4aa95d10237d1ffcb34e05fff7c1e284910accf8aecc1a9275fa8c443fa295"
+      ],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:addon_code_review_schema": {
+      "owner": "addon:code-review",
+      "fingerprints": [
+        "6d54dc60e8cd58d15eaddd6b68e0f22d3f6383115d6b1a45423e27dda2a7dd56"
+      ],
+      "requiredIn": [
+        "native-addons"
+      ],
+      "derivedIndexes": [],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:addon_code_review_snapshot_files": {
+      "owner": "addon:code-review",
+      "fingerprints": [
+        "6ea3f78df4a97df7138f8b1be088a75075738a301617493573a776e09f5a9d06"
+      ],
+      "requiredIn": [
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "1c4aa95d10237d1ffcb34e05fff7c1e284910accf8aecc1a9275fa8c443fa295",
+        "b918fe2b073298f880bbfb37ab0038d1bc39817c87bf0548a4a6fab9be3c8cf1"
+      ],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:addon_code_review_snapshots": {
+      "owner": "addon:code-review",
+      "fingerprints": [
+        "5d5b3df20a6523fdf726ecfea6e00c37bd754d89cbe7f65c52edfef12a09b2e1"
+      ],
+      "requiredIn": [
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "1c4aa95d10237d1ffcb34e05fff7c1e284910accf8aecc1a9275fa8c443fa295",
+        "b918fe2b073298f880bbfb37ab0038d1bc39817c87bf0548a4a6fab9be3c8cf1"
+      ],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:addon_code_review_threads": {
+      "owner": "addon:code-review",
+      "fingerprints": [
+        "22664456b898190f744255ff9de06fab3c7d7bc686975ca533e43f8314ce1c5c"
+      ],
+      "requiredIn": [
+        "native-addons"
+      ],
+      "derivedIndexes": [
+        "1c4aa95d10237d1ffcb34e05fff7c1e284910accf8aecc1a9275fa8c443fa295",
+        "b918fe2b073298f880bbfb37ab0038d1bc39817c87bf0548a4a6fab9be3c8cf1"
+      ],
+      "requiredWhenOwnerPresent": true
+    },
+    "index:idx_piclaw_agent_entries_id": {
+      "owner": "archive:session-store",
+      "fingerprints": [
+        "352d9bebe2aba73f05b958ae7837079686218a79b59d1f9c137cc54d8b3d98cb"
+      ],
+      "requiredIn": [],
+      "table": "piclaw_agent_entries"
+    },
+    "index:idx_piclaw_agent_entries_parent": {
+      "owner": "archive:session-store",
+      "fingerprints": [
+        "adfc7ef60b663c5179809d5a44b0af1c8c4777969e38c4fb11e6bababa57e917"
+      ],
+      "requiredIn": [],
+      "table": "piclaw_agent_entries"
+    },
+    "index:idx_piclaw_agent_entries_type": {
+      "owner": "archive:session-store",
+      "fingerprints": [
+        "ef400e0322950f1ea630bd4b1955aa55e8c3f3a082f6fd13e0d28cfb75051282"
+      ],
+      "requiredIn": [],
+      "table": "piclaw_agent_entries"
+    },
+    "index:idx_piclaw_agent_sessions_created_at": {
+      "owner": "archive:session-store",
+      "fingerprints": [
+        "b5db2e6dece5326e4c52433ced4c1f3cb0eadd8f2890ab8b91681f196eff12ed"
+      ],
+      "requiredIn": [],
+      "table": "piclaw_agent_sessions"
+    },
+    "index:idx_piclaw_agent_sessions_session_id": {
+      "owner": "archive:session-store",
+      "fingerprints": [
+        "ccdb37ca71690accb614b1172b30482aac5c0d5ff661bea70dbdc52096ef5959"
+      ],
+      "requiredIn": [],
+      "table": "piclaw_agent_sessions"
+    },
+    "table:piclaw_agent_entries": {
+      "owner": "archive:session-store",
+      "fingerprints": [
+        "7f0b1474bd52e370b58cf834665540f7f2248a896564c165ab323f1d20512c9b"
+      ],
+      "requiredIn": [],
+      "derivedIndexes": [
+        "54fb051fe3a6217312e5555926121bf40802f6b69f859d6bb84a9683a6f95a17"
+      ],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:piclaw_agent_entries_fts": {
+      "owner": "archive:session-store",
+      "fingerprints": [
+        "3f980a4d4f03a118ff23f8675d088d0f5e6c4c82bc6ab594047c2c943ff59038"
+      ],
+      "requiredIn": [],
+      "derivedIndexes": [],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:piclaw_agent_entries_fts_config": {
+      "owner": "archive:session-store",
+      "fingerprints": [
+        "c946c472323c67b253961b9359ffec4325fcfe05c2b2c7e88b902dfec8ea036d"
+      ],
+      "requiredIn": [],
+      "derivedIndexes": [],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:piclaw_agent_entries_fts_data": {
+      "owner": "archive:session-store",
+      "fingerprints": [
+        "7388d5d0a9e543132b66edced1e4a24c5927fbaba9e21ee146e7d38ed980ba9c"
+      ],
+      "requiredIn": [],
+      "derivedIndexes": [],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:piclaw_agent_entries_fts_docsize": {
+      "owner": "archive:session-store",
+      "fingerprints": [
+        "934ce46a0cb9b6c06aed73a3c5b10c12e2e68bd7ad31d137407471a93d9731a2"
+      ],
+      "requiredIn": [],
+      "derivedIndexes": [],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:piclaw_agent_entries_fts_idx": {
+      "owner": "archive:session-store",
+      "fingerprints": [
+        "c4240c0268c3446daee9b9186e03ba9c64586d72507a09068fa7efb830762e5a"
+      ],
+      "requiredIn": [],
+      "derivedIndexes": [],
+      "requiredWhenOwnerPresent": true
+    },
+    "table:piclaw_agent_sessions": {
+      "owner": "archive:session-store",
+      "fingerprints": [
+        "f4a7d8e1124c07621661ff397ec005aa55c3daff71775ba7d3c194bd6510dd88"
+      ],
+      "requiredIn": [],
+      "derivedIndexes": [
+        "3604be6720e6c0d074cf5fe9c66b5ca909c0ba7eebab47cbbcbdbbc035d2869f"
+      ],
+      "requiredWhenOwnerPresent": true
+    },
+    "trigger:piclaw_agent_entries_ad": {
+      "owner": "archive:session-store",
+      "fingerprints": [
+        "6ccfa2bc1c5a35d6e95462cb03537d755f12dce3097c6babaaed08164bec0576"
+      ],
+      "requiredIn": [],
+      "table": "piclaw_agent_entries"
+    },
+    "trigger:piclaw_agent_entries_ai": {
+      "owner": "archive:session-store",
+      "fingerprints": [
+        "3f4fb904dd69908b65017f6067547321737eb7874f52a4e3fc6f4b3838ee689b"
+      ],
+      "requiredIn": [],
+      "table": "piclaw_agent_entries"
+    },
+    "trigger:piclaw_agent_entries_au": {
+      "owner": "archive:session-store",
+      "fingerprints": [
+        "5fd9af9070d60356f21441028acdb07fbb87cc7a0479dbb1ffb13754684895db"
+      ],
+      "requiredIn": [],
+      "table": "piclaw_agent_entries"
+    },
+    "table:sqlite_stat1": {
+      "owner": "sqlite:planner-statistics",
+      "fingerprints": [
+        "8ba0118545babacf8b1d1b1c5b55f2e672b67a17855d89b3282361a65b6f5b74"
+      ],
+      "requiredIn": [],
+      "derivedIndexes": []
+    },
+    "index:idx_task_run_logs_occurrence": {
+      "owner": "core:task_run_logs",
+      "fingerprints": [
+        "83646ec1de291b41b5775cda23703336f495cbabbc72a865de81c5df00aec700"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "task_run_logs"
+    },
+    "index:idx_scheduled_task_paused_successor": {
+      "owner": "core:host_scheduled_task_definitions",
+      "fingerprints": [
+        "0e7a5922a3858e494d3c0807cb73873974af924eaff65d32fc4ed761168dc9b8"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "table": "service_effect_s07_next_decisions"
+    },
+    "table:host_scheduled_task_definitions": {
+      "owner": "core:host_scheduled_task_definitions",
+      "fingerprints": [
+        "37d29b87223b692328f70a7d7c194ddc10eff0d2b7220193a54e37d4b56480f2"
+      ],
+      "requiredIn": [
+        "core",
+        "native",
+        "native-addons"
+      ],
+      "requiredWhenOwnerPresent": true,
+      "derivedIndexes": [
+        "43cd1503996b3dd4d6f2222629f4b72c31547f904be6ee6291313d3ba69b3f23"
+      ]
+    },
+    "index:idx_message_recovery_latest": {
+      "owner": "archive:input-authority",
+      "fingerprints": [
+        "4d0817a29d9139ac08a889f1d7176437dc8e48107e0abfa51f7e6100fe2c237b"
+      ],
+      "requiredIn": [],
+      "table": "message_recovery_authorities"
+    },
+    "table:message_execution_authorities": {
+      "owner": "archive:input-authority",
+      "fingerprints": [
+        "f08f99ab35068590af33411c0fec60e3a6c240b8d4e5a1156a2b420158a49f91"
+      ],
+      "requiredIn": [],
+      "requiredWhenOwnerPresent": true,
+      "derivedIndexes": [
+        "b90ec234dbe7afe7df0063fce46c1f5d4520b7177c53eafe5bab3aa38857561c"
+      ]
+    },
+    "table:message_recovery_authorities": {
+      "owner": "archive:input-authority",
+      "fingerprints": [
+        "e4eb179afdae80b5ab2350610df504c4b2c94cdf569b275056d47627dc32d90b"
+      ],
+      "requiredIn": [],
+      "requiredWhenOwnerPresent": true,
+      "derivedIndexes": [
+        "b90ec234dbe7afe7df0063fce46c1f5d4520b7177c53eafe5bab3aa38857561c"
+      ]
+    },
+    "table:migration_input_dismissals": {
+      "owner": "archive:input-authority",
+      "fingerprints": [
+        "7c75264d62d54afd702a8ec5bf99f64840fa038ca62a6e80bda4fce526366ba7"
+      ],
+      "requiredIn": [],
+      "requiredWhenOwnerPresent": true,
+      "derivedIndexes": [
+        "f5dff51d8508f68b1990cc31764297ce50e8dd41c89ee9e6df20b9effc1d817e",
+        "b90ec234dbe7afe7df0063fce46c1f5d4520b7177c53eafe5bab3aa38857561c"
+      ]
+    },
+    "table:migration_input_holds": {
+      "owner": "archive:input-authority",
+      "fingerprints": [
+        "1fd20df8ed32ad1a4cbbd28bd3a289b3ec5f54ef2ec28f7d9a187dbb95d416d6"
+      ],
+      "requiredIn": [],
+      "requiredWhenOwnerPresent": true,
+      "derivedIndexes": []
+    },
+    "trigger:message_execution_authority_immutable": {
+      "owner": "archive:input-authority",
+      "fingerprints": [
+        "4b0e62262ea023c6145d2321b66368db386fcc4be58cb98067d0032d0d4fe0ab"
+      ],
+      "requiredIn": [],
+      "table": "message_execution_authorities"
+    },
+    "trigger:message_recovery_authority_immutable": {
+      "owner": "archive:input-authority",
+      "fingerprints": [
+        "a726fd6a01c2e202bd7a75c5ebb62e91e068c96749231d831c3525334a999ee2"
+      ],
+      "requiredIn": [],
+      "table": "message_recovery_authorities"
+    },
+    "trigger:migration_input_dismissal_immutable": {
+      "owner": "archive:input-authority",
+      "fingerprints": [
+        "816b383993641d7462a6c6e0c3bd42e288eba06196c1255b34c5fe1838880775"
+      ],
+      "requiredIn": [],
+      "table": "migration_input_dismissals"
+    },
+    "trigger:migration_input_hold_immutable": {
+      "owner": "archive:input-authority",
+      "fingerprints": [
+        "6983e8a8c041be0877bc11c74c0fce1fc1c38e1c4fee65c2ea9614d4227e98e4"
+      ],
+      "requiredIn": [],
+      "table": "migration_input_holds"
+    },
+    "table:host_legacy_chat_cursor_state_v1": {
+      "owner": "archive:chat-cursor-state",
+      "fingerprints": [
+        "098605a4d9c7a5e6c3d2723e105479a228d8d903f9553e5175f3ee02354069aa",
+        "2f5802f93173d7ef3c394efe712d1fb70f5f72dc397d6bd532b3032ddaf10e5d",
+        "34d3d972d8f57ad76093da1cc3d1dd0df65d37fec73cc650de04336a2d1b00be",
+        "3f681c0df7051a291ef05527a1e20403479f89bf51387b3224695e6eda08ff58",
+        "461fe50ab11c41a802657b24eb6bb349dd2060351801a10ed2ce2e56a69972d6",
+        "50a3d59397908ff7f98024c17e61496c5fa7ab25e93018ab06f0fce1c1318259",
+        "71623c4c614e51d8ae5745d3a09188501845616289f39334c4b67e45969a6976",
+        "750aae040bb0757db3d0c0b6c844684ec7e128b8769504bfc1c7f260655ba060",
+        "83564151400193a416b80d62c32d557e395154fe44cb640d91296b74ee770ffd",
+        "970713dbc396a6b4a0bc1e7a189aec78ce317c035ffbb6e972ae6ce556aebabb",
+        "9c94464f16e2fc5e47e5114abbc86daf597b37740fa33e393d34feda779b5374",
+        "a599f8c2e7c2a670d4e074c5196e66d93278c34baa0caaafc37d0360b646b76b",
+        "b4945abd8cee9f692f680ef342915691e35b2ef4d067c02f5e2704abcdccaf07",
+        "be281afc6464d4f4f9b30815bf4a1836aac1390eff21adcadc7b1e791b82b63b",
+        "d5300ec7f030c41fb4326e78d0d446ff2f6bdf1ba8399ec87e21457252d82c90",
+        "dac993334c0130b5094b212c37c5a2f612d25cba18ac5ec40b73d795eec28513",
+        "f70e49382a5e78426e14e2617d2668b352d29c4f2b2b60e461fed1715fc00c25"
+      ],
+      "requiredIn": [],
+      "requiredWhenOwnerPresent": true,
+      "derivedIndexes": [
+        "41298dcc3a243b5aee011307b28bcc0e977ab27635f854e4f8f2f346722c9508"
+      ]
+    },
+    "table:service_effect_s01_legacy_harness_v1": {
+      "owner": "archive:s01-harness-observations",
+      "fingerprints": [
+        "0c5acf61ff1fa8d5e3a8ffa21ed37123590570fc969f26136b5fba37be706ab4"
+      ],
+      "requiredIn": [],
+      "requiredWhenOwnerPresent": true,
+      "derivedIndexes": [
+        "64159762982ce5663407e3a742fe21d3a9a5c9ccb7e3843ff75e4038016abd42",
+        "b5f577c2f6e5e9c25eb8d62245559171ccd5bdf44372fc80435d6e5b59287040"
+      ]
+    },
+    "index:idx_budget_requests_domain_state": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "194e625af756b3df6ba42189fad4b3b4e5674474e795db32c3299d36ca421391"
+      ],
+      "requiredIn": [],
+      "table": "budget_request_reservations"
+    },
+    "index:idx_budget_work_status": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "0f5055166a4220b24010a1fdb503832255e8da8ad2916ad10abda56c93d5148b"
+      ],
+      "requiredIn": [],
+      "table": "budget_work"
+    },
+    "index:idx_budget_requests_model_invocation": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "b2f18d048e571ba1e9ed110462abbca43f3fa2a4632c7420a40637e5da9f9996"
+      ],
+      "requiredIn": [],
+      "table": "budget_request_reservations"
+    },
+    "trigger:budget_request_invocation_insert": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "0f189387442e0f58d31c482aea2719d36b51cf14f68a0e8528810dfbc6f8fb50"
+      ],
+      "requiredIn": [],
+      "table": "budget_request_reservations"
+    },
+    "trigger:budget_request_invocation_no_delete": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "70ab1d8f31af034cfd9602735b5bf296a848825b504969fabfae8f4f410caf78"
+      ],
+      "requiredIn": [],
+      "table": "budget_request_reservations"
+    },
+    "trigger:budget_request_invocation_no_replace": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "20ba08ab93da55e7f02ddab62345f94d37614a9c9abfd6d0e078d5210abd3ee3",
+        "0a0ce3e65d9c97e8a80f390adce04e4b515e4f18606c3aab28a833e72f3366dd"
+      ],
+      "requiredIn": [],
+      "table": "budget_request_reservations"
+    },
+    "trigger:budget_request_invocation_no_update": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "9a728e20bbbe5bddc5f06ec5efdd2e3d2fbd2926665e7ec6886b64dd60b2fa68"
+      ],
+      "requiredIn": [],
+      "table": "budget_request_reservations"
+    },
+    "trigger:budget_request_receipt_capture_state": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "b26830d09f3d0f5888d9183ef5863589c5dc69c5ce3571f7e14984facdac9853"
+      ],
+      "requiredIn": [],
+      "table": "budget_request_reservations"
+    },
+    "trigger:budget_request_receipt_insert_state": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "b80fbf30ddbf924b3450ae6022ed3411c8b99dc9c7710aa5bcf37fffb2dd1b9e"
+      ],
+      "requiredIn": [],
+      "table": "budget_request_reservations"
+    },
+    "trigger:budget_request_receipt_no_delete": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "76e05eabb7ce39778e7b654eaf17c3fd77742768d9df23fb3bd3dd7af26553a1"
+      ],
+      "requiredIn": [],
+      "table": "budget_request_reservations"
+    },
+    "trigger:budget_request_receipt_no_replace": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "49e3a45dea35b8e462c06b02ce321727a92a493e54401da8db2f2d7a6846be07"
+      ],
+      "requiredIn": [],
+      "table": "budget_request_reservations"
+    },
+    "trigger:budget_request_receipt_no_update": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "950ba7377a98d9fb303c0a2d5c02b21c2c2b0d9e47597da1cf59b98088d09310"
+      ],
+      "requiredIn": [],
+      "table": "budget_request_reservations"
+    },
+    "trigger:budget_request_evidence_version_insert": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "7a5589ffc0e4aeef81dad415e6e0fa8dcd0eebef84593b91bddb89e99b094ffd"
+      ],
+      "requiredIn": [],
+      "table": "budget_request_reservations"
+    },
+    "trigger:budget_request_evidence_version_update": {
+      "owner": "retired:expense-history",
+      "fingerprints": [
+        "f1b7a57d084cee4204745b18f8094fd9ed886fd559c1d4132fdace91089d33d7"
+      ],
+      "requiredIn": [],
+      "table": "budget_request_reservations"
+    }
+  },
+  "documents": [
+    {
+      "kind": "app.background-contexts",
+      "owner": "core:background-contexts",
+      "scope": "conversation",
+      "history": "latest",
+      "fork": "initial"
+    },
+    {
+      "kind": "app.background-policy",
+      "owner": "core:background-policy",
+      "scope": "conversation",
+      "history": "latest",
+      "fork": "initial"
+    },
+    {
+      "kind": "pi.agent",
+      "owner": "sdk:storage",
+      "scope": "conversation",
+      "history": "rewindable",
+      "fork": "asOf"
+    },
+    {
+      "kind": "pi.inbox",
+      "owner": "sdk:storage",
+      "scope": "conversation",
+      "history": "latest",
+      "fork": "initial"
+    },
+    {
+      "kind": "pi.live",
+      "owner": "sdk:storage",
+      "scope": "conversation",
+      "history": "latest",
+      "fork": "initial"
+    },
+    {
+      "kind": "pi.provider",
+      "owner": "sdk:storage",
+      "scope": "conversation",
+      "history": "latest",
+      "fork": "initial"
+    },
+    {
+      "kind": "pi.usage",
+      "owner": "sdk:storage",
+      "scope": "conversation",
+      "history": "latest",
+      "fork": "initial"
+    },
+    {
+      "kind": "app.application-conversations",
+      "owner": "core:application-documents",
+      "scope": "conversation",
+      "history": "latest",
+      "fork": "initial"
+    },
+    {
+      "kind": "app.application-identity",
+      "owner": "core:application-documents",
+      "scope": "conversation",
+      "history": "latest",
+      "fork": "initial"
+    },
+    {
+      "kind": "app.host-managed-instructions",
+      "owner": "core:application-documents",
+      "scope": "conversation",
+      "history": "latest",
+      "fork": "initial"
+    },
+    {
+      "kind": "app.copied-legacy-import",
+      "owner": "archive:copied-legacy-documents",
+      "scope": "conversation",
+      "history": "latest",
+      "fork": "initial"
+    },
+    {
+      "kind": "app.copied-legacy-tree-import",
+      "owner": "archive:copied-legacy-documents",
+      "scope": "conversation",
+      "history": "latest",
+      "fork": "initial"
+    },
+    {
+      "kind": "* (public SDK caller-defined document)",
+      "owner": "sdk:storage",
+      "scope": "public SDK document API only; caller selects registered scope",
+      "history": "caller registration through SDK public API",
+      "fork": "caller registration through SDK public API"
+    }
+  ]
+}

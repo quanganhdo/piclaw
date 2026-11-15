@@ -168,6 +168,7 @@ describe("WP-3C active-composition snapshots", () => {
     expect(stringArray(source, "WINDOWS_DEFAULT_ACTIVE_TOOL_NAMES")).toEqual(["bun_run"]);
   });
 
+  // Source-wide AST audit; this is not a runtime latency assertion.
   test("actual default/effective active-tool contracts and AgentToolFactory are unchanged", async () => {
     const [{ AgentToolFactory }, activation] = await Promise.all([
       import("../../src/agent-pool/tool-factory.js"),
@@ -190,7 +191,6 @@ describe("WP-3C active-composition snapshots", () => {
       activation.getEffectiveDefaultActiveToolNames(available(withoutInventory.names)),
     );
   }, 30_000);
-
   test("keeps active name/description/prompt/schema contracts identical with and without latent files", () => {
     const tree = readRepositorySourceTree();
     const withoutLatent = Object.freeze({
@@ -221,7 +221,7 @@ describe("WP-3C active-composition snapshots", () => {
         expect(Object.isFrozen(contract)).toBeTrue();
       }
     }
-  }, 60_000);
+  }, 30_000);
 
   // Four full source-as-data AST compositions are intentionally bounded above Bun's default timeout.
   test("models Linux and Windows production compositions without execution", () => {
@@ -254,5 +254,5 @@ describe("WP-3C active-composition snapshots", () => {
     expect(windowsActiveNames).toContain("powershell");
     expect(linux.unresolvedRegistrations).toEqual([]);
     expect(windows.unresolvedRegistrations).toEqual([]);
-  }, 60_000);
+  }, 30_000);
 });

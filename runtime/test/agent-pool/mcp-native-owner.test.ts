@@ -51,14 +51,14 @@ test('actual Native extension connects stdio, executes a tool and closes its own
   try {
     for (const handler of events.get('session_start') ?? []) await handler({ type: 'session_start' }, ctx);
     let timer: ReturnType<typeof setTimeout>;
-    try { await Promise.race([registered, new Promise((_, reject) => { timer = setTimeout(() => reject(Error('Native tool did not register')), 5000); })]); }
+    try { await Promise.race([registered, new Promise((_, reject) => { timer = setTimeout(() => reject(Error('Native tool did not register')), 15000); })]); }
     finally { clearTimeout(timer!); }
     const result = await tools.get('mcp__fixture__echo').execute('fixture-call', { text: 'synthetic Native result' }, new AbortController().signal, undefined, ctx);
     expect(result.content).toEqual([{ type: 'text', text: 'synthetic Native result' }]);
     expect(tools.has('list_mcp_resources')).toBe(false);
     await lifecycle.shutdown();
   } finally { await lifecycle.shutdown(); }
-}, 10000);
+}, 30000); // Allow bounded cold Native startup under the CI CPU quota.
 
 test('actual Native HTTP uses only its captured server credential for tool requests', async () => {
   const requests: string[] = [];

@@ -4,23 +4,21 @@ import {
   normaliseWebThemeId,
 } from "../../src/core/ui-theme-catalogue.js";
 import { THEME_PRESETS } from "../../src/channels/web/theming/ui-theme-data.js";
-import { BUNDLED_THEMES } from "../../web/static/visual/frontend/src/utils/bundled-themes";
+
 import {
   paletteVariables,
   themeContrast,
   themeForeground,
 } from "../../web/src/ui/theme-palette.js";
 
-test("both skin catalogues share all identities and distinguish Monokai Original and Pro", () => {
+test("the palette catalogue shares all identities and distinguishes Monokai Original and Pro", () => {
   expect(new Set(WEB_THEME_PRESETS.map((t) => t.id)).size).toBe(
     WEB_THEME_PRESETS.length,
   );
   expect(THEME_PRESETS.map((t) => t.name)).toEqual(
     WEB_THEME_PRESETS.map((t) => t.id),
   );
-  expect(BUNDLED_THEMES.map((t) => t.id)).toEqual(
-    WEB_THEME_PRESETS.filter((t) => t.id !== "default").map((t) => t.id),
-  );
+
   for (const [id, label] of [
     ["monokai", "Monokai Original"],
     ["monokai-pro", "Monokai Pro"],
@@ -59,6 +57,15 @@ test("both skin catalogues share all identities and distinguish Monokai Original
   expect(full.glow).toBe(true);
   expect(normaliseWebThemeId("solarized-light")).toBe("solarized-light");
   expect(normaliseWebThemeId("not-a-theme")).toBeNull();
+});
+
+test("Fallout renames Petrol & Copper in Classic without changing saved identity", () => {
+  expect(WEB_THEME_PRESETS.find((theme) => theme.id === "petrol")?.label).toBe("Fallout");
+  expect(THEME_PRESETS.find((theme) => theme.name === "petrol")?.label).toBe("Fallout");
+
+  for (const name of ["petrol", "petrol-copper", "fallout", " Fallout "])
+    expect(normaliseWebThemeId(name)).toBe("petrol");
+  expect(WEB_THEME_PRESETS.find((theme) => theme.id === "petrol-light")?.label).toBe("Ivory & Petrol");
 });
 
 test("all palette variants have consistent aliases, readable text and complete syntax/ANSI roles", () => {

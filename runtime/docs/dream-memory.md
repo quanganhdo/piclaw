@@ -1,6 +1,6 @@
 # Dream and AutoDream
 
-This specification describes the supported single-user pipeline. Family model-memory selection is implemented separately, but owner-scoped Dream/AutoDream collection and writes are unfinished; [family startup remains disabled](../../docs/multi-user/README.md#model-identity-foundation).
+This specification describes the supported single-user pipeline. Family model-memory selection is implemented separately, but owner-scoped Dream/AutoDream collection and writes are unfinished; [family startup remains disabled](../../docs/access-modes.md).
 
 PiClaw has two memory-maintenance features:
 

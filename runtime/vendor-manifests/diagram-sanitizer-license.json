@@ -1,0 +1,11 @@
+{
+  "id": "diagram-sanitizer-license",
+  "packageName": "dompurify",
+  "metadataFile": "web/static/common/js/vendor/diagram-sanitizer-license.meta.json",
+  "exportFiles": [
+    {
+      "packagePath": "LICENSE",
+      "outputFile": "web/static/common/js/vendor/diagram-sanitizer.LICENSE.txt"
+    }
+  ]
+}

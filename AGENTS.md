@@ -25,11 +25,26 @@
 - Local repository-owned test processes use minimum effective niceness `10`; override with `PICLAW_LOCAL_TEST_NICE=0..19`. The launcher never raises priority, and hosted CI bypasses niceness.
 - Do not add raw `bun test`/Playwright test entry points outside the central launcher or its documented nested-runner allowlist.
 - Test filesystem isolation is mandatory, including in CI: preserve the Bun preloads and launcher bootstrap. Use owned temporary fixtures, never cached live `/workspace` paths, for mutation/cleanup. An in-memory DB does not protect files. Do not run older worktrees without the isolation harness on a live workspace host.
-- `make ci-fast` — full CI gate
+- `make ci-fast` — host-only fast checks; does not qualify the native runtime
+- `make ci-native` — required offline native gate: provenance, two private type projects, required source integration and all 109 native files including Goal
+- `make ci-full` — host + native gate (`ci:fast && ci:native`); use before pushing
+- `make ci-integration` — integration gate; native qualification is mandatory regardless of Docker/Playwright skips
+- Prepare all five fixture exports from the shared JSON pins before native validation; see [Native validation](docs/native-validation.md). ADDONS/CORE/GOAL share one native checkout, CONTRACT uses the historical checkout, and catalogue dependencies use frozen `qualification/pi-durable-130/node_modules`, never a live profile. The gate performs no acquisition or installation.
+- Keep the root and private-engine Pi 1.4.0 dependency graphs physically separate. Native exit 0 requires fresh parent-specific JUnit artifacts, terminal positive-pass Bun reports and the printed run receipt. Filtered, empty, skipped-only or interrupted runs and omitted mandatory stages are insufficient.
+
+### Portable build caches and scratch
+
+- `make policy-config` prints paths without creating directories. Build/test targets create the required directories through `policy-dirs`.
+- Select `CACHE_TMP_BASE` explicitly when needed. Otherwise CI uses `RUNNER_TEMP`, then the caller's original `TMPDIR`, then system temp (`/tmp`). Outside CI, use writable/searchable `/workspace/tmp` when available, otherwise `/tmp`.
+- Always append the fixed project name `piclaw`. Use `cache/`, `build/`, `tests/`, `logs/` and `runs/` below that root; unique runs belong below `runs/<run-id>/`.
+- Make snapshots inherited `TMPDIR` as `PICLAW_INHERITED_TMPDIR` before exporting its project-scoped test temp path. It exports the selected base through recursive Make, plus project-scoped Bun, npm and XDG cache paths.
+- Preserve an explicit `PLAYWRIGHT_BROWSERS_PATH`; otherwise use the existing `/workspace/bin/pw-browsers` outside CI when present, or the project's `cache/ms-playwright`. Do not migrate or reinstall an existing browser installation to adopt this policy.
+- Make exports do not change the caller's shell. Direct Bun/Playwright commands must explicitly use the values printed by `make policy-config` and create needed scratch directories first.
+- Do not relocate source, credentials, curated data, published deliverables or service state. Preserve active artifacts; this policy does not authorise cleanup, permission changes or service restarts.
 
 ### Local-first CI policy
 
-- Complete iterative validation locally: use focused tests through the isolated launcher, host-independent fixtures for platform/policy variants, relevant package tests, static/workflow-contract checks, and `make ci-fast` before pushing.
+- Complete iterative validation locally: use focused tests through the isolated launcher, host-independent fixtures for platform/policy variants, relevant package tests, static/workflow-contract checks, and `make ci-full` before pushing. Prepare native fixtures separately; missing prerequisites must fail, never trigger an install inside the gate.
 - Do **not** add temporary or per-feature GitHub Actions workflows to obtain development evidence that can be produced locally.
 - Do **not** dispatch GitHub Actions manually or use hosted CI as an iterative/ad-hoc test runner.
 - Push/open a PR only after the candidate is locally complete. The repository's existing automatic PR check is supplementary hosted evidence, not the development loop.
@@ -44,7 +59,7 @@ Releases follow a two-phase tag workflow. **No release ships without passing UX 
 
 ### Phase 1 — Prerelease validation
 
-1. Build, run `make ci-fast` (unit + integration tests) locally.
+1. Prepare pinned fixtures, build and run `make ci-full` (host + required native qualification) locally.
 2. Push a prerelease tag: `v<version>-ux` (e.g. `v2.3.0-ux`).
 3. This tag triggers the **E2E Tests** workflow (Playwright UX regression suite) on CI.
 4. It does **not** trigger Docker builds, the integration gate, or publish workflows.
@@ -92,7 +107,7 @@ git tag -d v2.3.0-ux && git push origin :refs/tags/v2.3.0-ux
 - Read the [UX guidelines](docs/web-ui.md#ux-guidelines) and inspect the existing implementation for the same interaction before changing it.
 - Keep accepted conversation input in the timeline, queued follow-ups in the existing queue UI, and ongoing activity in the native agent-status surface. Do not add parallel banners, acknowledgements or state displays for the same event.
 - Fix lifecycle and data-flow problems at their source; extra status text or a custom spinner must not conceal a broken handoff.
-- Keep equivalent behaviour consistent across Classic and Visual. Test keyboard, touch, accessibility and pending/error states using the existing conventions.
+- Classic is the only web UI. Do not add alternate skin implementations. Test keyboard, touch, accessibility and pending/error states using the existing conventions.
 - If a genuinely new interaction paradigm is needed, explain why existing patterns cannot meet the requirement and obtain explicit user approval before implementing it.
 
 ## Conventions

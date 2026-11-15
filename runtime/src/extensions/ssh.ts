@@ -2,7 +2,6 @@ import type { ExtensionAPI, ExtensionFactory } from "@earendil-works/pi-coding-a
 import { Type } from "typebox";
 
 import { getChatJid } from "../core/chat-context.js";
-import { requireFamilyToolAccess } from "../agent-pool/family-tool-access.js";
 import { registerToolStatusHintProvider } from "../tool-status-hints.js";
 import type {
   SshConfig,
@@ -17,11 +16,12 @@ type SshToolResult = { content: Array<{ type: "text"; text: string }>; details: 
 export interface SshToolHandlers {
   get(chatJid: string): SshConfig | null;
   isActive?(chatJid: string): boolean;
-  set(chatJid: string, config: SessionSshConfigInput): Promise<SshConfigSetResult>;
-  clear(chatJid: string): Promise<SshConfigClearResult>;
+  set(chatJid: string, config: SessionSshConfigInput, signal?: AbortSignal): Promise<SshConfigSetResult>;
+  clear(chatJid: string, signal?: AbortSignal): Promise<SshConfigClearResult>;
 }
 
 let registeredHandlers: SshToolHandlers | null = null;
+let handlerGeneration = 0;
 
 const SSH_STATUS_ICON_SVG = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 1 1 8 0v3"></path></svg>`;
 
@@ -48,8 +48,10 @@ export function getSshStatusHintTarget(chatJid: string, payload?: Record<string,
   );
 }
 
-export function setSshToolHandlers(handlers: SshToolHandlers | null | undefined): void {
+export function setSshToolHandlers(handlers: SshToolHandlers | null | undefined): () => void {
+  const generation = ++handlerGeneration;
   registeredHandlers = handlers ?? null;
+  return () => { if (handlerGeneration === generation) registeredHandlers = null; };
 }
 
 registerToolStatusHintProvider({
@@ -122,8 +124,7 @@ export const sshTool: ExtensionFactory = (pi: ExtensionAPI) => {
     description: "Get, set, or clear the session-scoped SSH profile that redirects core tools to a remote host. When active, read/grep/find/ls/bash/edit/write execute on the remote host via the configured keychain-backed SSH connection.",
     promptSnippet: "ssh: set up or inspect an SSH profile to redirect read/grep/find/ls/bash/edit/write to a remote host via keychain-backed SSH.",
     parameters: SshToolSchema,
-    async execute(_toolCallId, params): Promise<SshToolResult> {
-      requireFamilyToolAccess("ssh");
+    async execute(_toolCallId, params, signal): Promise<SshToolResult> {
       const handlers = registeredHandlers;
       if (!handlers) {
         return {
@@ -170,7 +171,7 @@ export const sshTool: ExtensionFactory = (pi: ExtensionAPI) => {
           private_key_keychain: privateKeyKeychain,
           known_hosts_keychain: normalizeKnownHostsKeychain(params.known_hosts_keychain),
           strict_host_key_checking: params.strict_host_key_checking ?? "yes",
-        });
+        }, signal);
 
         return {
           content: [{
@@ -188,7 +189,7 @@ export const sshTool: ExtensionFactory = (pi: ExtensionAPI) => {
         };
       }
 
-      const result = await handlers.clear(chatJid);
+      const result = await handlers.clear(chatJid, signal);
       return {
         content: [{
           type: "text",

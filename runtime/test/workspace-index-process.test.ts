@@ -135,7 +135,7 @@ test('background refresh queued while writer active runs after exit',async()=>{
  const children:FakeChild[]=[];setWorkspaceIndexSpawnForTests(()=>{const c=new FakeChild();children.push(c);return c as any;});
  expect(launchWorkspaceIndexProcess({scope:'notes'})).toBe(true);
  // A saved policy refresh cannot disappear behind an active prior writer.
- markWorkspaceIndexStale({scope:'all'});
+ await markWorkspaceIndexStale({scope:'all'});
  await Bun.sleep(25);expect(children).toHaveLength(1);
  children[0]!.exitCode=0;children[0]!.emit('exit',0);
  for(let i=0;i<40&&children.length<2;i++)await Bun.sleep(10);

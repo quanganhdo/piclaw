@@ -325,47 +325,6 @@ export function getSessionRecordingsConfig(): Readonly<SessionRecordingsConfig> 
 
 /** Directory for persisted Pi session files. */
 export const SESSIONS_DIR = resolve(DATA_DIR, "sessions");
-
-const configSessionMaxSizeMb = pickNumber(piclawConfig, [
-  "sessionMaxSizeMb",
-  "session_max_size_mb",
-  "PICLAW_SESSION_MAX_SIZE_MB",
-]);
-const configSessionAutoRotate = pickBoolean(piclawConfig, [
-  "sessionAutoRotate",
-  "session_auto_rotate",
-  "PICLAW_SESSION_AUTO_ROTATE",
-]);
-const configSessionMaxLines = pickNumber(piclawConfig, [
-  "sessionMaxLines",
-  "session_max_lines",
-  "PICLAW_SESSION_MAX_LINES",
-]);
-const configSessionMaxCompactions = pickNumber(piclawConfig, [
-  "sessionMaxCompactions",
-  "session_max_compactions",
-  "maxCompactionsBeforeRotation",
-  "max_compactions_before_rotation",
-  "PICLAW_SESSION_MAX_COMPACTIONS",
-]);
-const configCompactionTimeoutMs = pickNumber(compactionConfig, [
-  "timeoutMs",
-  "timeout_ms",
-  "compactionTimeoutMs",
-  "PICLAW_COMPACTION_TIMEOUT_MS",
-]);
-const configCompactionBackoffBaseMs = pickNumber(compactionConfig, [
-  "backoffBaseMs",
-  "backoff_base_ms",
-  "compactionBackoffBaseMs",
-  "PICLAW_COMPACTION_BACKOFF_BASE_MS",
-]);
-const configCompactionBackoffMaxMs = pickNumber(compactionConfig, [
-  "backoffMaxMs",
-  "backoff_max_ms",
-  "compactionBackoffMaxMs",
-  "PICLAW_COMPACTION_BACKOFF_MAX_MS",
-]);
 const PROGRESS_WATCHDOG_ENABLED_CONFIG_KEYS = [
   "progressWatchdogEnabled",
   "progress_watchdog_enabled",
@@ -380,103 +339,28 @@ const PROGRESS_WATCHDOG_TIMEOUT_CONFIG_KEYS = [
 ];
 const configProgressWatchdogEnabled = pickBoolean(compactionConfig, PROGRESS_WATCHDOG_ENABLED_CONFIG_KEYS);
 const configProgressWatchdogTimeoutMs = pickNumber(compactionConfig, PROGRESS_WATCHDOG_TIMEOUT_CONFIG_KEYS);
-const configSmartCompactionMethod = pickString(compactionConfig, [
-  "smartCompactionMethod",
-  "smart_compaction_method",
-  "PICLAW_SMART_COMPACTION_METHOD",
-]);
 const configAutoCompactionEnabled = pickBoolean(compactionConfig, [
   "autoCompactionEnabled",
   "auto_compaction_enabled",
   "PICLAW_AUTO_COMPACTION_ENABLED",
 ]);
-const configCompactionThresholdPercent = pickNumber(compactionConfig, ["thresholdPercent", "threshold_percent", "PICLAW_COMPACTION_THRESHOLD_PERCENT"]);
-const configCompactionMaxThresholdTokens = pickNumber(compactionConfig, ["maxThresholdTokens", "max_threshold_tokens", "compactionMaxThresholdTokens", "PICLAW_COMPACTION_MAX_THRESHOLD_TOKENS"]);
-const configAutoCompactionScope = pickString(compactionConfig, ["autoCompactionScope", "auto_compaction_scope", "autoCompactScope", "PICLAW_AUTO_COMPACTION_SCOPE"]);
-const configCompactionHardCeilingPercent = pickNumber(compactionConfig, ["hardCeilingPercent", "hard_ceiling_percent", "compactionHardCeilingPercent", "PICLAW_COMPACTION_HARD_CEILING_PERCENT"]);
-const configCompactionWarningThreshold = pickNumber(compactionConfig, ["warningThreshold", "warning_threshold", "repeatedWarningThreshold", "PICLAW_COMPACTION_WARNING_THRESHOLD"]);
-const configCompactionBackoffDecayFactor = pickNumber(compactionConfig, ["backoffDecayFactor", "backoff_decay_factor", "PICLAW_COMPACTION_BACKOFF_DECAY_FACTOR"]);
 const configSystemPromptOverheadTokens = pickNumber(compactionConfig, ["systemPromptOverheadTokens", "system_prompt_overhead_tokens", "PICLAW_SYSTEM_PROMPT_OVERHEAD_TOKENS"]);
 const configCompactionRequestOverheadTokens = pickNumber(compactionConfig, ["compactionRequestOverheadTokens", "compaction_request_overhead_tokens", "PICLAW_COMPACTION_REQUEST_OVERHEAD_TOKENS"]);
 const configTokenEstimateSafetyMultiplier = pickNumber(compactionConfig, ["tokenEstimateSafetyMultiplier", "token_estimate_safety_multiplier", "PICLAW_TOKEN_ESTIMATE_SAFETY_MULTIPLIER"]);
-const configProgressiveCompaction = pickBoolean(compactionConfig, ["progressiveCompaction", "progressive_compaction", "PICLAW_PROGRESSIVE_COMPACTION"]);
-const configSmartCompactionReasoning = pickString(compactionConfig, ["smartCompactionReasoning", "smart_compaction_reasoning", "PICLAW_SMART_COMPACTION_REASONING"]);
-const configRemoteCompactionEnabled = pickBoolean(compactionConfig, ["remoteCompactionEnabled", "remote_compaction_enabled"]);
-const configRemoteCompactionTimeoutMs = pickNumber(compactionConfig, ["remoteCompactionTimeoutMs", "remote_compaction_timeout_ms"]);
-/** Typed session-file safeguards grouped for runtime/session wiring. */
-export interface SessionStorageConfig {
-  maxSizeMb: number;
-  maxSizeBytes: number;
-  maxLines: number;
-  maxCompactionsBeforeRotation: number;
-  autoRotate: boolean;
-}
-
-export type AutoCompactionScope = "total" | "body_after_prefix";
-export type SmartCompactionMethod = "selective" | "pipelined";
-
 export interface CompactionRuntimeConfig {
-  /** Piclaw-managed auto-compaction toggle. Independent from upstream AgentSession suppression. */
   autoCompactionEnabled: boolean;
-  /** Processing method captured once at the start of each smart compaction. */
-  smartCompactionMethod: SmartCompactionMethod;
-  /** Optional provider/model used only for local smart compaction. Empty uses the active model. */
-  compactionModel: string;
-  /** Attempt explicitly supported provider-native compaction before the selected local method. */
-  remoteCompactionEnabled: boolean;
-  /** Provider-native compaction request deadline. */
-  remoteCompactionTimeoutMs: number;
-  timeoutMs: number;
-  backoffBaseMs: number;
-  backoffMaxMs: number;
   progressWatchdogEnabled: boolean;
   progressWatchdogTimeoutMs: number;
-  /** Context utilization % at which auto-compaction triggers (0-100). Default 80. */
-  thresholdPercent: number;
-  /** Optional absolute cap for auto-compaction threshold tokens. 0 disables; disabled by default. */
-  maxThresholdTokens: number;
-  /** Token-accounting scope for auto-compaction threshold checks. Default total. */
-  autoCompactionScope: AutoCompactionScope;
-  /** Full-window utilization % that always triggers compaction even for scoped growth. Default 100. */
-  hardCeilingPercent: number;
-  /** Emit a warning after this many successful auto-compactions in one chat. 0 disables. */
-  warningThreshold: number;
-  /** Multiplier applied to backoff duration after a successful compaction (0-1). Default 0.5. */
-  backoffDecayFactor: number;
-  /** Conservative token overhead reserved for system prompt/tools/skills. Default 4000. */
   systemPromptOverheadTokens: number;
-  /** Conservative token overhead reserved for side-channel compaction requests. Default 1000. */
   compactionRequestOverheadTokens: number;
-  /** Safety multiplier applied to estimated tokens. Default 1.1. */
   tokenEstimateSafetyMultiplier: number;
-  /** Force progressive smart compaction. Default false. */
-  progressiveCompaction: boolean;
-  /** Optional default reasoning effort for smart compaction phases. Empty means phase defaults. */
-  smartCompactionReasoning: string;
 }
 
 interface CompactionDomainConfig {
   autoCompactionEnabled: boolean;
-  smartCompactionMethod: SmartCompactionMethod;
-  model: string;
-  remoteCompactionEnabled: boolean;
-  remoteCompactionTimeoutMs: number;
-  timeoutMs: number;
-  backoffBaseMs: number;
-  backoffMaxMs: number;
-  thresholdPercent: number;
-  maxThresholdTokens: number;
-  autoCompactionScope: AutoCompactionScope;
-  hardCeilingPercent: number;
-  warningThreshold: number;
-  backoffDecayFactor: number;
-  idleAutoCompactionDelayMs: number;
-  prePromptForegroundMs: number;
   systemPromptOverheadTokens: number;
   compactionRequestOverheadTokens: number;
   tokenEstimateSafetyMultiplier: number;
-  progressiveCompaction: boolean;
-  smartCompactionReasoning: string;
 }
 
 function boundedNumberField(options: Omit<DomainConfigField<number>, "type" | "validate"> & { minExclusive?: number; minInclusive?: number; maxInclusive?: number }): DomainConfigField<number> {
@@ -494,98 +378,27 @@ function boundedNumberField(options: Omit<DomainConfigField<number>, "type" | "v
   };
 }
 
-function parseSmartCompactionCompatibilityValue(raw: string): string | undefined {
-  return raw.trim() ? normalizeSmartCompactionMethod(raw, "selective") : undefined;
-}
-
-function parseAutoCompactionScopeCompatibilityValue(raw: string): string | undefined {
-  return raw.trim() ? normalizeAutoCompactionScope(raw, "total") : undefined;
-}
-
-function parseProgressiveCompactionCompatibilityValue(raw: string): boolean {
-  return raw.trim() === "1";
-}
-
-const COMPACTION_REASONING_EFFORT_VALUES = ["", "minimal", "low", "medium", "high"] as const;
-
-function normalizeCompactionModel(value: unknown): string {
-  const normalized = String(value ?? "").trim();
-  if (!normalized) return "";
-  const separator = normalized.indexOf("/");
-  if (separator <= 0 || separator === normalized.length - 1) {
-    throw new Error("Compaction model must use provider/model syntax");
-  }
-  return normalized;
-}
-
-function normalizeCompactionReasoningFallback(value: unknown): string {
-  const normalized = String(value ?? "").trim().toLowerCase();
-  if ((COMPACTION_REASONING_EFFORT_VALUES as readonly string[]).includes(normalized)) return normalized;
-  throw new Error("Invalid smart compaction reasoning effort");
-}
-
 const compactionDomainSchema = registerDomainConfig<CompactionDomainConfig>({
   domain: "compaction",
+  // Preserve historical values without resolving them or accepting stale writes.
+  retiredKeys: [
+    "thresholdPercent", "maxThresholdTokens", "autoCompactionScope", "hardCeilingPercent",
+    "warningThreshold", "backoffDecayFactor", "idleAutoCompactionDelayMs", "prePromptForegroundMs",
+    "smartCompactionMethod", "model", "compactionModel", "remoteCompactionEnabled", "remoteCompactionTimeoutMs",
+    "timeoutMs", "backoffBaseMs", "backoffMaxMs", "progressiveCompaction", "smartCompactionReasoning",
+  ],
   fields: {
     autoCompactionEnabled: boolField({ key: "autoCompactionEnabled", owner: "core", defaultValue: configAutoCompactionEnabled ?? true, persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_AUTO_COMPACTION_ENABLED", replacement: "domains.compaction.autoCompactionEnabled", removalVersion: "3.0.0", skipInvalid: true }] }),
-    smartCompactionMethod: {
-      ...stringField({ key: "smartCompactionMethod", owner: "core", defaultValue: normalizeSmartCompactionMethod(configSmartCompactionMethod, "selective"), allowedValues: ["selective", "pipelined"], persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_SMART_COMPACTION_METHOD", replacement: "domains.compaction.smartCompactionMethod", removalVersion: "3.0.0", parse: parseSmartCompactionCompatibilityValue, skipInvalid: true }] }),
-      validate: (value: unknown) => {
-        if (value === undefined) throw new Error("Invalid smart compaction method");
-        return normalizeSmartCompactionMethod(value, "selective");
-      },
-    } as DomainConfigField<SmartCompactionMethod>,
-    model: {
-      ...stringField({ key: "model", owner: "core", defaultValue: "", persistence: "json-config", precedence: ["persisted", "default"], secretClass: "none" }),
-      validate: normalizeCompactionModel,
-    } as DomainConfigField<string>,
-    remoteCompactionEnabled: boolField({ key: "remoteCompactionEnabled", owner: "core", defaultValue: configRemoteCompactionEnabled ?? false, persistence: "json-config", precedence: ["persisted", "default"], secretClass: "none" }),
-    remoteCompactionTimeoutMs: integerField({ key: "remoteCompactionTimeoutMs", owner: "core", defaultValue: Number.isFinite(configRemoteCompactionTimeoutMs) && (configRemoteCompactionTimeoutMs ?? 0) > 0 ? Math.round(Number(configRemoteCompactionTimeoutMs)) : 300_000, min: 1, bounds: "positive integer ms", persistence: "json-config", precedence: ["persisted", "default"], secretClass: "none" }),
-    timeoutMs: integerField({ key: "timeoutMs", owner: "core", defaultValue: Number.isFinite(configCompactionTimeoutMs) && (configCompactionTimeoutMs ?? 0) > 0 ? Math.round(Number(configCompactionTimeoutMs)) : 300_000, min: 1, bounds: "positive integer ms", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_COMPACTION_TIMEOUT_MS", replacement: "domains.compaction.timeoutMs", removalVersion: "3.0.0", skipInvalid: true }] }),
-    backoffBaseMs: integerField({ key: "backoffBaseMs", owner: "core", defaultValue: Number.isFinite(configCompactionBackoffBaseMs) && (configCompactionBackoffBaseMs ?? 0) > 0 ? Math.round(Number(configCompactionBackoffBaseMs)) : 15 * 60_000, min: 1, bounds: "positive integer ms", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_COMPACTION_BACKOFF_BASE_MS", replacement: "domains.compaction.backoffBaseMs", removalVersion: "3.0.0", skipInvalid: true }] }),
-    backoffMaxMs: integerField({ key: "backoffMaxMs", owner: "core", defaultValue: Number.isFinite(configCompactionBackoffMaxMs) && (configCompactionBackoffMaxMs ?? 0) > 0 ? Math.round(Number(configCompactionBackoffMaxMs)) : 6 * 60 * 60_000, min: 1, bounds: "positive integer ms; normalized >= backoffBaseMs", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_COMPACTION_BACKOFF_MAX_MS", replacement: "domains.compaction.backoffMaxMs", removalVersion: "3.0.0", skipInvalid: true }] }),
-    thresholdPercent: boundedNumberField({ key: "thresholdPercent", owner: "core", defaultValue: typeof configCompactionThresholdPercent === "number" && configCompactionThresholdPercent > 0 && configCompactionThresholdPercent <= 100 ? configCompactionThresholdPercent : 80, minExclusive: 0, maxInclusive: 100, bounds: ">0..100 percent", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_COMPACTION_THRESHOLD_PERCENT", replacement: "domains.compaction.thresholdPercent", removalVersion: "3.0.0", skipInvalid: true }] }),
-    maxThresholdTokens: integerField({ key: "maxThresholdTokens", owner: "core", defaultValue: parseOptionalNonNegativeInt(configCompactionMaxThresholdTokens, 0), min: 0, bounds: "non-negative integer tokens", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_COMPACTION_MAX_THRESHOLD_TOKENS", replacement: "domains.compaction.maxThresholdTokens", removalVersion: "3.0.0", skipInvalid: true }] }),
-    autoCompactionScope: {
-      ...stringField({ key: "autoCompactionScope", owner: "core", defaultValue: normalizeAutoCompactionScope(configAutoCompactionScope, "total"), allowedValues: ["total", "body_after_prefix"], persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_AUTO_COMPACTION_SCOPE", replacement: "domains.compaction.autoCompactionScope", removalVersion: "3.0.0", parse: parseAutoCompactionScopeCompatibilityValue, skipInvalid: true }] }),
-      validate: (value: unknown) => {
-        if (value === undefined) throw new Error("Invalid auto-compaction scope");
-        return normalizeAutoCompactionScope(value, "total");
-      },
-    } as DomainConfigField<AutoCompactionScope>,
-    hardCeilingPercent: boundedNumberField({ key: "hardCeilingPercent", owner: "core", defaultValue: typeof configCompactionHardCeilingPercent === "number" && configCompactionHardCeilingPercent > 0 && configCompactionHardCeilingPercent <= 100 ? configCompactionHardCeilingPercent : 100, minExclusive: 0, maxInclusive: 100, bounds: ">0..100 percent", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_COMPACTION_HARD_CEILING_PERCENT", replacement: "domains.compaction.hardCeilingPercent", removalVersion: "3.0.0", skipInvalid: true }] }),
-    warningThreshold: integerField({ key: "warningThreshold", owner: "core", defaultValue: typeof configCompactionWarningThreshold === "number" && configCompactionWarningThreshold >= 0 ? Math.round(configCompactionWarningThreshold) : 3, min: 0, bounds: "non-negative integer", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_COMPACTION_WARNING_THRESHOLD", replacement: "domains.compaction.warningThreshold", removalVersion: "3.0.0", skipInvalid: true }] }),
-    backoffDecayFactor: boundedNumberField({ key: "backoffDecayFactor", owner: "core", defaultValue: typeof configCompactionBackoffDecayFactor === "number" && configCompactionBackoffDecayFactor > 0 && configCompactionBackoffDecayFactor <= 1 ? configCompactionBackoffDecayFactor : 0.5, minExclusive: 0, maxInclusive: 1, bounds: ">0..1", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_COMPACTION_BACKOFF_DECAY_FACTOR", replacement: "domains.compaction.backoffDecayFactor", removalVersion: "3.0.0", skipInvalid: true }] }),
-    idleAutoCompactionDelayMs: integerField({ key: "idleAutoCompactionDelayMs", owner: "agent-runtime", defaultValue: 5_000, min: 0, bounds: "non-negative integer ms", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_IDLE_AUTO_COMPACTION_DELAY_MS", replacement: "domains.compaction.idleAutoCompactionDelayMs", removalVersion: "3.0.0", skipInvalid: true }] }),
-    prePromptForegroundMs: integerField({ key: "prePromptForegroundMs", owner: "web", defaultValue: 250, min: 0, bounds: "non-negative integer ms", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_PREPROMPT_COMPACTION_FOREGROUND_MS", replacement: "domains.compaction.prePromptForegroundMs", removalVersion: "3.0.0", skipInvalid: true }] }),
     systemPromptOverheadTokens: integerField({ key: "systemPromptOverheadTokens", owner: "agent-runtime", defaultValue: typeof configSystemPromptOverheadTokens === "number" && configSystemPromptOverheadTokens > 0 ? Math.round(configSystemPromptOverheadTokens) : 4_000, min: 1, bounds: "positive integer tokens", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_SYSTEM_PROMPT_OVERHEAD_TOKENS", replacement: "domains.compaction.systemPromptOverheadTokens", removalVersion: "3.0.0", skipInvalid: true }] }),
     compactionRequestOverheadTokens: integerField({ key: "compactionRequestOverheadTokens", owner: "agent-runtime", defaultValue: typeof configCompactionRequestOverheadTokens === "number" && configCompactionRequestOverheadTokens > 0 ? Math.round(configCompactionRequestOverheadTokens) : 1_000, min: 1, bounds: "positive integer tokens", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_COMPACTION_REQUEST_OVERHEAD_TOKENS", replacement: "domains.compaction.compactionRequestOverheadTokens", removalVersion: "3.0.0", skipInvalid: true }] }),
     tokenEstimateSafetyMultiplier: boundedNumberField({ key: "tokenEstimateSafetyMultiplier", owner: "agent-runtime", defaultValue: typeof configTokenEstimateSafetyMultiplier === "number" && configTokenEstimateSafetyMultiplier >= 1 ? configTokenEstimateSafetyMultiplier : 1.1, minInclusive: 1, bounds: ">=1", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_TOKEN_ESTIMATE_SAFETY_MULTIPLIER", replacement: "domains.compaction.tokenEstimateSafetyMultiplier", removalVersion: "3.0.0", skipInvalid: true }] }),
-    progressiveCompaction: boolField({ key: "progressiveCompaction", owner: "core", defaultValue: configProgressiveCompaction ?? false, persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_PROGRESSIVE_COMPACTION", replacement: "domains.compaction.progressiveCompaction", removalVersion: "3.0.0", parse: parseProgressiveCompactionCompatibilityValue, skipInvalid: true }] }),
-    smartCompactionReasoning: {
-      ...stringField({ key: "smartCompactionReasoning", owner: "core", defaultValue: configSmartCompactionReasoning === undefined ? "" : normalizeCompactionReasoningFallback(configSmartCompactionReasoning), allowedValues: COMPACTION_REASONING_EFFORT_VALUES, persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_SMART_COMPACTION_REASONING", replacement: "domains.compaction.smartCompactionReasoning", removalVersion: "3.0.0", parse: (raw) => raw.trim().toLowerCase(), skipInvalid: true }] }),
-      validate: normalizeCompactionReasoningFallback,
-    } as DomainConfigField<string>,
   },
 });
 
 let compactionDomainConfigOverride: CompactionDomainConfig | null = null;
 
 function getCompactionDomainConfig(): CompactionDomainConfig {
-  const resolved = compactionDomainConfigOverride ?? readDomainConfig(compactionDomainSchema, getDomainConfigOptions());
-  return resolved.backoffMaxMs < resolved.backoffBaseMs
-    ? { ...resolved, backoffMaxMs: resolved.backoffBaseMs }
-    : { ...resolved };
-}
-
-/** Return idle auto-compaction delay resolved for this scheduling decision. */
-export function getIdleAutoCompactionDelayMs(): number {
-  return getCompactionDomainConfig().idleAutoCompactionDelayMs;
-}
-
-/** Return foreground pre-prompt compaction wait resolved for this web request. */
-export function getPrePromptCompactionForegroundMs(): number {
-  return getCompactionDomainConfig().prePromptForegroundMs;
+  return { ...(compactionDomainConfigOverride ?? readDomainConfig(compactionDomainSchema, getDomainConfigOptions())) };
 }
 
 export function getSystemPromptOverheadTokenConfig(): number {
@@ -600,80 +413,21 @@ export function getTokenEstimateSafetyMultiplierConfig(): number {
   return getCompactionDomainConfig().tokenEstimateSafetyMultiplier;
 }
 
-export function getProgressiveCompactionConfig(): boolean {
-  return getCompactionDomainConfig().progressiveCompaction;
-}
-
-export function getSmartCompactionReasoningFallback(): string {
-  return getCompactionDomainConfig().smartCompactionReasoning;
-}
-
 export type SessionIsolationLevel = "none" | "summary" | "full";
 
 interface SessionDomainConfig {
-  maxSizeMb: number;
-  maxLines: number;
-  maxCompactionsBeforeRotation: number;
-  autoRotate: boolean;
   isolation: SessionIsolationLevel;
 }
 
 const sessionDomainSchema = registerDomainConfig<SessionDomainConfig>({
   domain: "session",
+  retiredKeys: ["maxSizeMb","maxLines","maxCompactionsBeforeRotation","autoRotate"],
   fields: {
-    maxSizeMb: integerField({ key: "maxSizeMb", owner: "session-runtime", defaultValue: configSessionMaxSizeMb ?? 32, min: 1, max: 256, bounds: "1..256 MiB", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_SESSION_MAX_SIZE_MB", replacement: "domains.session.maxSizeMb", removalVersion: "3.0.0", skipInvalid: true }] }),
-    maxLines: integerField({ key: "maxLines", owner: "session-runtime", defaultValue: configSessionMaxLines ?? 8000, min: 100, max: 50000, bounds: "100..50000 lines", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_SESSION_MAX_LINES", replacement: "domains.session.maxLines", removalVersion: "3.0.0", skipInvalid: true }] }),
-    maxCompactionsBeforeRotation: integerField({ key: "maxCompactionsBeforeRotation", owner: "session-runtime", defaultValue: configSessionMaxCompactions ?? 3, min: 1, max: 20, bounds: "1..20 compactions", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_SESSION_MAX_COMPACTIONS", replacement: "domains.session.maxCompactionsBeforeRotation", removalVersion: "3.0.0", skipInvalid: true }] }),
-    autoRotate: boolField({ key: "autoRotate", owner: "session-runtime", defaultValue: configSessionAutoRotate ?? true, persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_SESSION_AUTO_ROTATE", replacement: "domains.session.autoRotate", removalVersion: "3.0.0", skipInvalid: true }] }),
     isolation: stringField({ key: "isolation", owner: "session-runtime", defaultValue: "none", allowedValues: ["none", "summary", "full"], persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_SESSION_ISOLATION", replacement: "domains.session.isolation", removalVersion: "3.0.0", parse: (raw) => raw.trim().toLowerCase(), skipInvalid: true }] }) as DomainConfigField<SessionIsolationLevel>,
   },
 });
 
-function toSessionStorageConfig(config: SessionDomainConfig): SessionStorageConfig {
-  return {
-    maxSizeMb: config.maxSizeMb,
-    maxSizeBytes: config.maxSizeMb * 1024 * 1024,
-    maxLines: config.maxLines,
-    maxCompactionsBeforeRotation: config.maxCompactionsBeforeRotation,
-    autoRotate: config.autoRotate,
-  };
-}
-
 const SESSION_DOMAIN_CONFIG = readDomainConfig(sessionDomainSchema, getDomainConfigOptions());
-
-/** Grouped session-file safeguards. */
-export let SESSION_STORAGE_CONFIG = Object.freeze<SessionStorageConfig>(toSessionStorageConfig(SESSION_DOMAIN_CONFIG));
-
-/** Return grouped session-file safeguards for runtime wiring and tests. */
-export function getSessionStorageConfig(): Readonly<SessionStorageConfig> {
-  return SESSION_STORAGE_CONFIG;
-}
-
-/** Persist and apply session storage settings so new turns use them immediately. */
-export function setSessionStorageConfig(patch: { maxSizeMb?: number; maxLines?: number; maxCompactionsBeforeRotation?: number; autoRotate?: boolean }): Readonly<SessionStorageConfig> {
-  const nextMaxSizeMb = Number.isFinite(patch.maxSizeMb)
-    ? Math.min(256, Math.max(1, Math.round(Number(patch.maxSizeMb))))
-    : SESSION_STORAGE_CONFIG.maxSizeMb;
-  const nextAutoRotate = typeof patch.autoRotate === "boolean"
-    ? patch.autoRotate
-    : SESSION_STORAGE_CONFIG.autoRotate;
-  const nextMaxLines = Number.isFinite(patch.maxLines)
-    ? Math.min(50000, Math.max(100, Math.round(Number(patch.maxLines))))
-    : SESSION_STORAGE_CONFIG.maxLines;
-  const nextMaxCompactions = Number.isFinite(patch.maxCompactionsBeforeRotation)
-    ? Math.min(20, Math.max(1, Math.round(Number(patch.maxCompactionsBeforeRotation))))
-    : SESSION_STORAGE_CONFIG.maxCompactionsBeforeRotation;
-
-  const resolved = writeDomainConfig(sessionDomainSchema, getDomainConfigOptions(), {
-    maxSizeMb: nextMaxSizeMb,
-    autoRotate: nextAutoRotate,
-    maxLines: nextMaxLines,
-    maxCompactionsBeforeRotation: nextMaxCompactions,
-  });
-  Object.assign(SESSION_DOMAIN_CONFIG, resolved);
-  SESSION_STORAGE_CONFIG = Object.freeze<SessionStorageConfig>(toSessionStorageConfig(resolved));
-  return SESSION_STORAGE_CONFIG;
-}
 
 /** Return the effective cross-session isolation policy. */
 export function getSessionIsolationLevel(): SessionIsolationLevel {
@@ -709,89 +463,6 @@ const SESSION_PERSISTENCE_CONFIG = Object.freeze<SessionPersistenceConfig>(
 /** Return session persistence sanitization limits captured at module startup. */
 export function getSessionPersistenceConfig(): Readonly<SessionPersistenceConfig> {
   return SESSION_PERSISTENCE_CONFIG;
-}
-
-export interface RecoveryPolicyConfig {
-  loopGuardEnabled: boolean;
-  loopGuardMaxFailures: number;
-  loopGuardWindowMs: number;
-  automaticRecoveryEnabled: boolean;
-  transientRecoveryEnabled: boolean;
-  transientRecoveryToolsEnabled: boolean;
-  /** Zero inherits the normalized retry max-attempt setting. */
-  automaticRecoveryMaxAttempts: number;
-  /** Zero derives the per-run budget from the effective agent timeout. */
-  automaticRecoveryTotalBudgetMs: number;
-}
-
-const recoveryPolicyDomainSchema = registerDomainConfig<RecoveryPolicyConfig>({
-  domain: "recovery",
-  fields: {
-    loopGuardEnabled: boolField({ key: "loopGuardEnabled", owner: "agent-runtime", defaultValue: true, persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_RECOVERY_LOOP_GUARD_ENABLED", replacement: "domains.recovery.loopGuardEnabled", removalVersion: "3.0.0", skipInvalid: true }] }),
-    loopGuardMaxFailures: integerField({ key: "loopGuardMaxFailures", owner: "agent-runtime", defaultValue: 3, min: 1, bounds: "positive integer failures", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_RECOVERY_LOOP_GUARD_MAX_FAILURES", replacement: "domains.recovery.loopGuardMaxFailures", removalVersion: "3.0.0", skipInvalid: true }] }),
-    loopGuardWindowMs: integerField({ key: "loopGuardWindowMs", owner: "agent-runtime", defaultValue: 10 * 60 * 1000, min: 1, bounds: "positive integer ms", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_RECOVERY_LOOP_GUARD_WINDOW_MS", replacement: "domains.recovery.loopGuardWindowMs", removalVersion: "3.0.0", skipInvalid: true }] }),
-    automaticRecoveryEnabled: boolField({ key: "automaticRecoveryEnabled", owner: "agent-runtime", defaultValue: true, persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_TURN_AUTO_RECOVERY_ENABLED", replacement: "domains.recovery.automaticRecoveryEnabled", removalVersion: "3.0.0", skipInvalid: true }] }),
-    transientRecoveryEnabled: boolField({ key: "transientRecoveryEnabled", owner: "agent-runtime", defaultValue: true, persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_TURN_TRANSIENT_RECOVERY_ENABLED", replacement: "domains.recovery.transientRecoveryEnabled", removalVersion: "3.0.0", skipInvalid: true }] }),
-    transientRecoveryToolsEnabled: boolField({ key: "transientRecoveryToolsEnabled", owner: "agent-runtime", defaultValue: false, persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_TURN_TRANSIENT_RECOVERY_TOOLS_ENABLED", replacement: "domains.recovery.transientRecoveryToolsEnabled", removalVersion: "3.0.0", skipInvalid: true }] }),
-    automaticRecoveryMaxAttempts: integerField({ key: "automaticRecoveryMaxAttempts", owner: "agent-runtime", defaultValue: 0, min: 0, bounds: "0 inherits retry max; otherwise positive integer", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_TURN_AUTO_RECOVERY_MAX_ATTEMPTS", replacement: "domains.recovery.automaticRecoveryMaxAttempts", removalVersion: "3.0.0", parse: (raw) => { const parsed = Number(raw); return Number.isInteger(parsed) && parsed > 0 ? parsed : -1; }, skipInvalid: true }] }),
-    automaticRecoveryTotalBudgetMs: integerField({ key: "automaticRecoveryTotalBudgetMs", owner: "agent-runtime", defaultValue: 0, min: 0, bounds: "0 derives from effective turn timeout; otherwise positive integer ms", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_TURN_AUTO_RECOVERY_TOTAL_BUDGET_MS", replacement: "domains.recovery.automaticRecoveryTotalBudgetMs", removalVersion: "3.0.0", skipInvalid: true }] }),
-  },
-});
-
-/** Return recovery-loop and automatic-recovery policy resolved for this attempt. */
-export function getRecoveryPolicyConfig(): Readonly<RecoveryPolicyConfig> {
-  return readDomainConfig(recoveryPolicyDomainSchema, getDomainConfigOptions());
-}
-
-export type AutomaticRecoveryPolicyPatch = Partial<Pick<RecoveryPolicyConfig,
-  "automaticRecoveryEnabled" | "automaticRecoveryMaxAttempts" | "automaticRecoveryTotalBudgetMs"
->>;
-
-/** Persist automatic-recovery policy without rewriting compatibility environment variables. */
-export function setAutomaticRecoveryPolicyConfig(patch: AutomaticRecoveryPolicyPatch): Readonly<RecoveryPolicyConfig> {
-  const current = getRecoveryPolicyConfig();
-  const nextEnabled = patch.automaticRecoveryEnabled === undefined
-    ? current.automaticRecoveryEnabled
-    : patch.automaticRecoveryEnabled;
-  if (typeof nextEnabled !== "boolean") throw new Error("automaticRecoveryEnabled must be boolean");
-
-  const nextMaxAttempts = patch.automaticRecoveryMaxAttempts === undefined
-    ? current.automaticRecoveryMaxAttempts
-    : patch.automaticRecoveryMaxAttempts;
-  if (!Number.isInteger(nextMaxAttempts) || nextMaxAttempts < 0) {
-    throw new Error("automaticRecoveryMaxAttempts must be a non-negative integer");
-  }
-
-  const nextTotalBudgetMs = patch.automaticRecoveryTotalBudgetMs === undefined
-    ? current.automaticRecoveryTotalBudgetMs
-    : patch.automaticRecoveryTotalBudgetMs;
-  if (!Number.isInteger(nextTotalBudgetMs) || nextTotalBudgetMs < 0) {
-    throw new Error("automaticRecoveryTotalBudgetMs must be a non-negative integer");
-  }
-
-  return writeDomainConfig(recoveryPolicyDomainSchema, getDomainConfigOptions(), {
-    automaticRecoveryEnabled: nextEnabled,
-    automaticRecoveryMaxAttempts: nextMaxAttempts,
-    automaticRecoveryTotalBudgetMs: nextTotalBudgetMs,
-  });
-}
-
-export interface WebRecoveryConfig {
-  stalePreflightRecoveryMs: number;
-  stalePreflightBackoffMs: number;
-}
-
-const webRecoveryDomainSchema = registerDomainConfig<WebRecoveryConfig>({
-  domain: "webRecovery",
-  fields: {
-    stalePreflightRecoveryMs: integerField({ key: "stalePreflightRecoveryMs", owner: "web", defaultValue: 4 * 60 * 1000, min: 1, bounds: "positive integer ms", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_STALE_PREFLIGHT_RECOVERY_MS", replacement: "domains.webRecovery.stalePreflightRecoveryMs", removalVersion: "3.0.0", skipInvalid: true }] }),
-    stalePreflightBackoffMs: integerField({ key: "stalePreflightBackoffMs", owner: "web", defaultValue: 4 * 60 * 60 * 1000, min: 1, bounds: "positive integer ms", persistence: "json-config", precedence: ["compat-env", "persisted", "default"], secretClass: "none", compatibilityEnv: [{ envKey: "PICLAW_STALE_PREFLIGHT_BACKOFF_MS", replacement: "domains.webRecovery.stalePreflightBackoffMs", removalVersion: "3.0.0", skipInvalid: true }] }),
-  },
-});
-
-/** Return stale-preflight recovery timing policy resolved for this scan. */
-export function getWebRecoveryConfig(): Readonly<WebRecoveryConfig> {
-  return readDomainConfig(webRecoveryDomainSchema, getDomainConfigOptions());
 }
 
 export interface ProgressWatchdogConfig {
@@ -872,12 +543,6 @@ function parseOptionalNonNegativeInt(value: unknown, fallback: number): number {
   return Math.max(0, Math.round(parsed));
 }
 
-function parsePositiveDurationMs(value: unknown, fallback: number): number {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
-  return Math.max(1, Math.round(parsed));
-}
-
 function parseOptionalNonNegativeDurationMs(value: unknown, fallback: number): number {
   const trimmed = typeof value === "string" ? value.trim().toLowerCase() : "";
   if (trimmed && ["0", "off", "false", "disabled", "no"].includes(trimmed)) return 0;
@@ -886,145 +551,64 @@ function parseOptionalNonNegativeDurationMs(value: unknown, fallback: number): n
   return Math.max(0, Math.round(parsed));
 }
 
-export function normalizeSmartCompactionMethod(
-  value: unknown,
-  fallback: SmartCompactionMethod = "selective",
-): SmartCompactionMethod {
-  const normalized = String(value ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
-  if (normalized === "traditional_pipelined" || normalized === "pipelined") return "pipelined";
-  if (normalized === "selective") return "selective";
-  return fallback;
-}
-
-function normalizeAutoCompactionScope(value: unknown, fallback: AutoCompactionScope): AutoCompactionScope {
-  const normalized = String(value ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
-  if (normalized === "body_after_prefix" || normalized === "bodyafterprefix") return "body_after_prefix";
-  if (normalized === "total") return "total";
-  return fallback;
-}
-
-function parsePercentWithBounds(value: unknown, fallback: number, minExclusive = 0, maxInclusive = 100): number {
-  if (value === undefined || value === null || String(value).trim() === "") return fallback;
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed <= minExclusive || parsed > maxInclusive) return fallback;
-  return parsed;
-}
-
-export function enforceProgressWatchdogSafety(config: CompactionRuntimeConfig): CompactionRuntimeConfig {
-  // Watchdog supervision is opt-in. The in-process compaction timeout remains
-  // independent, and callers may keep a timeout value configured while the
-  // watchdog is disabled.
-  return config;
-}
-
 export function getProgressWatchdogSafetyWarning(): string | null {
   return null;
 }
 
+/** Reject a native/UI change which a valid compatibility override would mask.
+ * Reuse the domain field parser and precedence; never rewrite process env. */
+export function assertAutoCompactionSettingWritable(enabled: boolean): void {
+  const field = compactionDomainSchema.fields.autoCompactionEnabled;
+  const env = getDomainConfigOptions().env ?? process.env;
+  for (const alias of field.compatibilityEnv ?? []) {
+    const raw = env[alias.envKey];
+    if (raw === undefined) continue;
+    let enforced: boolean;
+    try { enforced = field.validate(alias.parse ? alias.parse(raw) : raw); }
+    catch (error) { if (alias.skipInvalid) continue; throw error; }
+    if (enforced !== enabled) throw Error(`autoCompactionEnabled is overridden by ${alias.envKey}. No settings were changed.`);
+    return;
+  }
+}
+
 export function getCompactionRuntimeConfig(): Readonly<CompactionRuntimeConfig> {
   const domain = getCompactionDomainConfig();
-  const resolved: CompactionRuntimeConfig = {
+  return Object.freeze({
     autoCompactionEnabled: domain.autoCompactionEnabled,
-    smartCompactionMethod: domain.smartCompactionMethod,
-    compactionModel: domain.model,
-    remoteCompactionEnabled: domain.remoteCompactionEnabled,
-    remoteCompactionTimeoutMs: domain.remoteCompactionTimeoutMs,
-    timeoutMs: domain.timeoutMs,
-    backoffBaseMs: domain.backoffBaseMs,
-    backoffMaxMs: domain.backoffMaxMs,
     progressWatchdogEnabled: getProgressWatchdogConfig().enabled,
     progressWatchdogTimeoutMs: getProgressWatchdogConfig().timeoutMs,
-    thresholdPercent: domain.thresholdPercent,
-    maxThresholdTokens: domain.maxThresholdTokens,
-    autoCompactionScope: domain.autoCompactionScope,
-    hardCeilingPercent: domain.hardCeilingPercent,
-    warningThreshold: domain.warningThreshold,
-    backoffDecayFactor: domain.backoffDecayFactor,
     systemPromptOverheadTokens: domain.systemPromptOverheadTokens,
     compactionRequestOverheadTokens: domain.compactionRequestOverheadTokens,
     tokenEstimateSafetyMultiplier: domain.tokenEstimateSafetyMultiplier,
-    progressiveCompaction: domain.progressiveCompaction,
-    smartCompactionReasoning: domain.smartCompactionReasoning,
-  };
-  // Preserve the backoff ordering invariant for direct environment/config-file
-  // overrides just as the settings setter does. A max below the base would
-  // otherwise shorten the very first failure delay and collapse the series.
-  if (resolved.backoffMaxMs < resolved.backoffBaseMs) {
-    resolved.backoffMaxMs = resolved.backoffBaseMs;
-  }
-  return Object.freeze(enforceProgressWatchdogSafety(resolved));
+  });
 }
 
 export interface CompactionRuntimeConfigPatch {
   autoCompactionEnabled?: boolean;
-  smartCompactionMethod?: SmartCompactionMethod;
-  compactionModel?: string;
-  remoteCompactionEnabled?: boolean;
-  remoteCompactionTimeoutMs?: number;
-  timeoutMs?: number;
-  backoffBaseMs?: number;
-  backoffMaxMs?: number;
   progressWatchdogEnabled?: boolean;
   progressWatchdogTimeoutMs?: number;
-  thresholdPercent?: number;
-  maxThresholdTokens?: number;
-  autoCompactionScope?: AutoCompactionScope;
-  hardCeilingPercent?: number;
-  warningThreshold?: number;
-  backoffDecayFactor?: number;
   systemPromptOverheadTokens?: number;
   compactionRequestOverheadTokens?: number;
   tokenEstimateSafetyMultiplier?: number;
-  progressiveCompaction?: boolean;
-  smartCompactionReasoning?: string;
 }
 
 function applyCompactionRuntimeConfig(
   patch: CompactionRuntimeConfigPatch,
   persist: boolean,
 ): Readonly<CompactionRuntimeConfig> {
+  const retired=Object.keys(patch).filter(key=>compactionDomainSchema.retiredKeys?.includes(key));
+  if(retired.length)throw Error("Retired compaction configuration fields: "+retired.join(", ")+". No settings were changed.");
   const current = getCompactionRuntimeConfig();
   const next: CompactionRuntimeConfig = {
     autoCompactionEnabled: typeof patch.autoCompactionEnabled === "boolean"
       ? patch.autoCompactionEnabled
       : current.autoCompactionEnabled,
-    smartCompactionMethod: patch.smartCompactionMethod === undefined
-      ? current.smartCompactionMethod
-      : normalizeSmartCompactionMethod(patch.smartCompactionMethod, current.smartCompactionMethod),
-    compactionModel: patch.compactionModel === undefined ? current.compactionModel : String(patch.compactionModel).trim(),
-    remoteCompactionEnabled: typeof patch.remoteCompactionEnabled === "boolean"
-      ? patch.remoteCompactionEnabled
-      : current.remoteCompactionEnabled,
-    remoteCompactionTimeoutMs: patch.remoteCompactionTimeoutMs === undefined
-      ? current.remoteCompactionTimeoutMs
-      : parsePositiveDurationMs(patch.remoteCompactionTimeoutMs, current.remoteCompactionTimeoutMs),
-    timeoutMs: patch.timeoutMs === undefined ? current.timeoutMs : parsePositiveDurationMs(patch.timeoutMs, current.timeoutMs),
-    backoffBaseMs: patch.backoffBaseMs === undefined ? current.backoffBaseMs : parsePositiveDurationMs(patch.backoffBaseMs, current.backoffBaseMs),
-    backoffMaxMs: patch.backoffMaxMs === undefined ? current.backoffMaxMs : parsePositiveDurationMs(patch.backoffMaxMs, current.backoffMaxMs),
     progressWatchdogEnabled: typeof patch.progressWatchdogEnabled === "boolean"
       ? patch.progressWatchdogEnabled
       : current.progressWatchdogEnabled,
     progressWatchdogTimeoutMs: patch.progressWatchdogTimeoutMs === undefined
       ? current.progressWatchdogTimeoutMs
       : parseOptionalNonNegativeDurationMs(patch.progressWatchdogTimeoutMs, current.progressWatchdogTimeoutMs),
-    thresholdPercent: typeof patch.thresholdPercent === "number" && patch.thresholdPercent > 0 && patch.thresholdPercent <= 100
-      ? patch.thresholdPercent
-      : current.thresholdPercent,
-    maxThresholdTokens: patch.maxThresholdTokens === undefined
-      ? current.maxThresholdTokens
-      : parseOptionalNonNegativeInt(patch.maxThresholdTokens, current.maxThresholdTokens),
-    autoCompactionScope: patch.autoCompactionScope === undefined
-      ? current.autoCompactionScope
-      : normalizeAutoCompactionScope(patch.autoCompactionScope, current.autoCompactionScope),
-    hardCeilingPercent: patch.hardCeilingPercent === undefined
-      ? current.hardCeilingPercent
-      : parsePercentWithBounds(patch.hardCeilingPercent, current.hardCeilingPercent),
-    warningThreshold: patch.warningThreshold === undefined
-      ? current.warningThreshold
-      : parseOptionalNonNegativeDurationMs(patch.warningThreshold, current.warningThreshold),
-    backoffDecayFactor: typeof patch.backoffDecayFactor === "number" && patch.backoffDecayFactor > 0 && patch.backoffDecayFactor <= 1
-      ? patch.backoffDecayFactor
-      : current.backoffDecayFactor,
     systemPromptOverheadTokens: patch.systemPromptOverheadTokens === undefined
       ? current.systemPromptOverheadTokens
       : parseOptionalNonNegativeInt(patch.systemPromptOverheadTokens, current.systemPromptOverheadTokens) || current.systemPromptOverheadTokens,
@@ -1034,17 +618,7 @@ function applyCompactionRuntimeConfig(
     tokenEstimateSafetyMultiplier: typeof patch.tokenEstimateSafetyMultiplier === "number" && patch.tokenEstimateSafetyMultiplier >= 1
       ? patch.tokenEstimateSafetyMultiplier
       : current.tokenEstimateSafetyMultiplier,
-    progressiveCompaction: typeof patch.progressiveCompaction === "boolean"
-      ? patch.progressiveCompaction
-      : current.progressiveCompaction,
-    smartCompactionReasoning: patch.smartCompactionReasoning === undefined
-      ? current.smartCompactionReasoning
-      : normalizeCompactionReasoningFallback(patch.smartCompactionReasoning),
   };
-
-  if (next.backoffMaxMs < next.backoffBaseMs) {
-    next.backoffMaxMs = next.backoffBaseMs;
-  }
 
   if (persist) {
     const config = readJsonConfig(getConfigPath());
@@ -1056,25 +630,6 @@ function applyCompactionRuntimeConfig(
       "autoCompactionEnabled",
       "auto_compaction_enabled",
       "PICLAW_AUTO_COMPACTION_ENABLED",
-      "smartCompactionMethod",
-      "smart_compaction_method",
-      "PICLAW_SMART_COMPACTION_METHOD",
-      "model",
-      "compactionModel",
-      "compaction_model",
-      "remoteCompactionEnabled",
-      "remote_compaction_enabled",
-      "remoteCompactionTimeoutMs",
-      "remote_compaction_timeout_ms",
-      "timeoutMs",
-      "timeout_ms",
-      "compactionTimeoutMs",
-      "backoffBaseMs",
-      "backoff_base_ms",
-      "compactionBackoffBaseMs",
-      "backoffMaxMs",
-      "backoff_max_ms",
-      "compactionBackoffMaxMs",
       "progressWatchdogEnabled",
       "progress_watchdog_enabled",
       "watchdogEnabled",
@@ -1083,31 +638,7 @@ function applyCompactionRuntimeConfig(
       "watchdogTimeoutMs",
       "PICLAW_PROGRESS_WATCHDOG_ENABLED",
       "PICLAW_PROGRESS_WATCHDOG_TIMEOUT_MS",
-      "thresholdPercent",
-      "threshold_percent",
-      "PICLAW_COMPACTION_THRESHOLD_PERCENT",
-      "maxThresholdTokens",
-      "max_threshold_tokens",
-      "compactionMaxThresholdTokens",
-      "PICLAW_COMPACTION_MAX_THRESHOLD_TOKENS",
-      "autoCompactionScope",
-      "auto_compaction_scope",
-      "autoCompactScope",
-      "PICLAW_AUTO_COMPACTION_SCOPE",
-      "hardCeilingPercent",
-      "hard_ceiling_percent",
-      "compactionHardCeilingPercent",
-      "PICLAW_COMPACTION_HARD_CEILING_PERCENT",
-      "warningThreshold",
-      "warning_threshold",
-      "repeatedWarningThreshold",
-      "PICLAW_COMPACTION_WARNING_THRESHOLD",
-      "backoffDecayFactor",
-      "backoff_decay_factor",
-      "PICLAW_COMPACTION_BACKOFF_DECAY_FACTOR",
-      "PICLAW_COMPACTION_TIMEOUT_MS",
-      "PICLAW_COMPACTION_BACKOFF_BASE_MS",
-      "PICLAW_COMPACTION_BACKOFF_MAX_MS",
+
       "systemPromptOverheadTokens",
       "system_prompt_overhead_tokens",
       "PICLAW_SYSTEM_PROMPT_OVERHEAD_TOKENS",
@@ -1117,12 +648,6 @@ function applyCompactionRuntimeConfig(
       "tokenEstimateSafetyMultiplier",
       "token_estimate_safety_multiplier",
       "PICLAW_TOKEN_ESTIMATE_SAFETY_MULTIPLIER",
-      "progressiveCompaction",
-      "progressive_compaction",
-      "PICLAW_PROGRESSIVE_COMPACTION",
-      "smartCompactionReasoning",
-      "smart_compaction_reasoning",
-      "PICLAW_SMART_COMPACTION_REASONING",
     ];
     for (const key of clearKeys) {
       delete compaction[key];
@@ -1134,56 +659,16 @@ function applyCompactionRuntimeConfig(
 
   const compactionDomainPatch: CompactionDomainConfig = {
     autoCompactionEnabled: next.autoCompactionEnabled,
-    smartCompactionMethod: next.smartCompactionMethod,
-    model: next.compactionModel,
-    remoteCompactionEnabled: next.remoteCompactionEnabled,
-    remoteCompactionTimeoutMs: next.remoteCompactionTimeoutMs,
-    timeoutMs: next.timeoutMs,
-    backoffBaseMs: next.backoffBaseMs,
-    backoffMaxMs: next.backoffMaxMs,
-    thresholdPercent: next.thresholdPercent,
-    maxThresholdTokens: next.maxThresholdTokens,
-    autoCompactionScope: next.autoCompactionScope,
-    hardCeilingPercent: next.hardCeilingPercent,
-    warningThreshold: next.warningThreshold,
-    backoffDecayFactor: next.backoffDecayFactor,
-    idleAutoCompactionDelayMs: getCompactionDomainConfig().idleAutoCompactionDelayMs,
-    prePromptForegroundMs: getCompactionDomainConfig().prePromptForegroundMs,
     systemPromptOverheadTokens: next.systemPromptOverheadTokens,
     compactionRequestOverheadTokens: next.compactionRequestOverheadTokens,
     tokenEstimateSafetyMultiplier: next.tokenEstimateSafetyMultiplier,
-    progressiveCompaction: next.progressiveCompaction,
-    smartCompactionReasoning: next.smartCompactionReasoning,
   };
   if (persist) {
     const resolvedDomain = writeDomainConfig(compactionDomainSchema, getDomainConfigOptions(), compactionDomainPatch);
     compactionDomainConfigOverride = null;
     Object.assign(next, getCompactionDomainConfig(), resolvedDomain);
-    if (next.backoffMaxMs < next.backoffBaseMs) next.backoffMaxMs = next.backoffBaseMs;
   } else if (!persist) {
-    compactionDomainConfigOverride = {
-      autoCompactionEnabled: next.autoCompactionEnabled,
-      smartCompactionMethod: next.smartCompactionMethod,
-      model: next.compactionModel,
-      remoteCompactionEnabled: next.remoteCompactionEnabled,
-      remoteCompactionTimeoutMs: next.remoteCompactionTimeoutMs,
-      timeoutMs: next.timeoutMs,
-      backoffBaseMs: next.backoffBaseMs,
-      backoffMaxMs: next.backoffMaxMs,
-      thresholdPercent: next.thresholdPercent,
-      maxThresholdTokens: next.maxThresholdTokens,
-      autoCompactionScope: next.autoCompactionScope,
-      hardCeilingPercent: next.hardCeilingPercent,
-      warningThreshold: next.warningThreshold,
-      backoffDecayFactor: next.backoffDecayFactor,
-      idleAutoCompactionDelayMs: getCompactionDomainConfig().idleAutoCompactionDelayMs,
-      prePromptForegroundMs: getCompactionDomainConfig().prePromptForegroundMs,
-      systemPromptOverheadTokens: next.systemPromptOverheadTokens,
-      compactionRequestOverheadTokens: next.compactionRequestOverheadTokens,
-      tokenEstimateSafetyMultiplier: next.tokenEstimateSafetyMultiplier,
-      progressiveCompaction: next.progressiveCompaction,
-      smartCompactionReasoning: next.smartCompactionReasoning,
-    };
+    compactionDomainConfigOverride = compactionDomainPatch;
   }
 
   if (persist && (patch.progressWatchdogEnabled !== undefined || patch.progressWatchdogTimeoutMs !== undefined)) {
@@ -1229,8 +714,6 @@ export function setCompactionRuntimeConfigForTests(
     "PICLAW_SYSTEM_PROMPT_OVERHEAD_TOKENS",
     "PICLAW_COMPACTION_REQUEST_OVERHEAD_TOKENS",
     "PICLAW_TOKEN_ESTIMATE_SAFETY_MULTIPLIER",
-    "PICLAW_PROGRESSIVE_COMPACTION",
-    "PICLAW_SMART_COMPACTION_REASONING",
   ];
   for (const key of envKeys) delete process.env[key];
   const result = applyCompactionRuntimeConfig(patch, false);

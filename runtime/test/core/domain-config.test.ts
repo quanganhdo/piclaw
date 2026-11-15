@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -42,6 +42,13 @@ function createSchema() {
 }
 
 describe("domain config framework", () => {
+  let inheritedSchemas: ReturnType<typeof getRegisteredDomainConfigSchemas>;
+  beforeEach(() => { inheritedSchemas = getRegisteredDomainConfigSchemas(); });
+  afterEach(() => {
+    clearDomainConfigRegistryForTests();
+    for (const schema of inheritedSchemas) registerDomainConfig(schema);
+  });
+
   test("registers typed schemas and rejects duplicate domains", () => {
     clearDomainConfigRegistryForTests();
     const schema = createSchema();

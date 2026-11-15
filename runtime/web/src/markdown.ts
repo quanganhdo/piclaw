@@ -1,8 +1,8 @@
 import { highlightCodeToHtml } from './utils/code-highlighting.js';
-import { getThemeMode } from './ui/theme.js';
 import { sanitizeQmdHref } from './qmd-links.js';
 import { sanitizeVaultHref } from './vault-links.js';
-import { MERMAID_THEME_COLORS, stripMermaidFontImports } from './ui/svg-theme.js';
+import { renderMermaidDiagrams as renderDiagrams } from './ui/mermaid-render.js';
+export { isMermaidSourceAllowedForScopedRendering } from './ui/mermaid-render.js';
 import { renderSvgFences, escapeSvgSource, encodeSvgSource } from './utils/svg-images.js';
 import { linkifyChatReferences } from './ui/chat-reference-links.js';
 
@@ -34,6 +34,8 @@ export const URL_REGEX = /(https?:\/\/[^\s<>"{}|\\^`\[\]]+)/g;
 export const HASHTAG_REGEX = /#(\w+)/g;
 
 const ALLOWED_HTML_TAGS = new Set([
+    'code',
+    'pre',
     'strong',
     'em',
     'b',
@@ -376,44 +378,6 @@ function normalizeLeadingFrontmatter(text) {
     ].filter(Boolean).join('\n\n');
 }
 
-function extractMermaidBlocks(text) {
-    if (!text) return { text: '', blocks: [] };
-    const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    const lines = normalized.split('\n');
-    const blocks = [];
-    const output = [];
-    let inMermaid = false;
-    let current = [];
-
-    for (const line of lines) {
-        if (!inMermaid && line.trim().match(/^```mermaid\s*$/i)) {
-            inMermaid = true;
-            current = [];
-            continue;
-        }
-        if (inMermaid && line.trim().match(/^```\s*$/)) {
-            const idx = blocks.length;
-            blocks.push(current.join('\n'));
-            output.push(`@@MERMAID_BLOCK_${idx}@@`);
-            inMermaid = false;
-            current = [];
-            continue;
-        }
-        if (inMermaid) {
-            current.push(line);
-        } else {
-            output.push(line);
-        }
-    }
-
-    if (inMermaid) {
-        output.push('```mermaid');
-        output.push(...current);
-    }
-
-    return { text: output.join('\n'), blocks };
-}
-
 function decodeMermaidBlock(text) {
     if (!text) return text;
     return decodeEntitiesDeep(text, 5);
@@ -428,41 +392,11 @@ function toBase64(value) {
     return btoa(binary);
 }
 
-function fromBase64(value) {
-    const binary = atob(String(value || ''));
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i += 1) {
-        bytes[i] = binary.charCodeAt(i);
-    }
-    return new TextDecoder().decode(bytes);
-}
-
-function injectMermaidBlocks(html, blocks) {
-    if (!html || !blocks || blocks.length === 0) return html;
-    return html.replace(/@@MERMAID_BLOCK_(\d+)@@/g, (match, idxStr) => {
-        const idx = Number(idxStr);
-        const raw = blocks[idx] ?? '';
-        const decoded = decodeMermaidBlock(raw);
-        const encoded = toBase64(decoded);
-        return `<div class="mermaid-container" data-mermaid="${encoded}"><div class="mermaid-loading">Loading diagram...</div></div>`;
-    });
-}
-
-function normalizeHtmlCodeTags(text) {
-    if (!text) return text;
-    return text.replace(/<code>([\s\S]*?)<\/code>/gi, (match, code) => {
-        if (code.includes('\n')) {
-            return `\n\`\`\`\n${code}\n\`\`\`\n`;
-        }
-        return `\`${code}\``;
-    });
-}
-
 export function applySyntaxHighlighting(html) {
     if (!html) return html;
     const highlighted = html.replace(/<pre><code(?:\s+class="language-([A-Za-z0-9_+-]+)")?>([\s\S]*?)<\/code><\/pre>/g, (match, lang, code) => {
         const normalizedLanguage = String(lang || '').trim().toLowerCase();
-        const decodedCode = decodeEntitiesDeep(code, 2);
+        const decodedCode = decodeEntities(code);
         const languageClass = normalizedLanguage || 'plaintext';
         const highlightedCode = highlightCodeToHtml(decodedCode, normalizedLanguage);
         return `<pre><code class="hljs language-${escapeHtmlAttr(languageClass)}">${highlightedCode}</code></pre>`;
@@ -517,40 +451,27 @@ function restoreAllowedHtmlTags(text) {
     });
 }
 
-function decodeCodeEntities(html) {
-    if (!html) return html;
-    const normalize = (value) => value
-        .replace(/&amp;lt;/g, '&lt;')
-        .replace(/&amp;gt;/g, '&gt;')
-        .replace(/&amp;quot;/g, '&quot;')
-        .replace(/&amp;#39;/g, '&#39;')
-        .replace(/&amp;amp;/g, '&amp;');
-    return html
-        .replace(/<pre><code>([\s\S]*?)<\/code><\/pre>/g, (match, code) => `<pre><code>${normalize(code)}</code></pre>`)
-        .replace(/<code>([\s\S]*?)<\/code>/g, (match, code) => `<code>${normalize(code)}</code>`);
-}
-
-function decodeTextEntities(html) {
-    if (!html) return html;
-    const doc = new DOMParser().parseFromString(html, 'text/html');
-    const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
-    const decode = (value) => value
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
-        .replace(/&amp;/g, '&');
-    let node;
-    while ((node = walker.nextNode())) {
-        if (!node.nodeValue) continue;
-        const next = decode(node.nodeValue);
-        if (next !== node.nodeValue) {
-            node.nodeValue = next;
+/** Apply the existing raw-HTML policy only to parser HTML tokens. Code
+ * tokens never enter entity/tag restoration, including nested fences/spans. */
+export function prepareMarkdownToken(token: {type?:string;text?:string;lang?:string}, renderLanguageFences = true): void {
+    if (typeof token.text !== 'string') return;
+    if (token.type === 'code' && renderLanguageFences) {
+        const language = token.lang?.trim().toLowerCase();
+        if (language === 'mermaid') {
+            token.type = 'html';
+            token.text = `<div class="mermaid-container" data-mermaid="${toBase64(decodeMermaidBlock(token.text))}"><div class="mermaid-loading">Loading diagram...</div></div>`;
+            return;
+        }
+        if (language && ['math','katex','latex'].includes(language)) {
+            token.type = 'html';
+            token.text = `<p>$$\n${escapeHtmlAttr(token.text)}\n$$</p>\n`;
+            return;
         }
     }
-    return doc.body.innerHTML;
+    if (token.type !== 'html') return;
+    if (/^<!--frontmatter-block-(?:start|end)-->\s*$/.test(token.text)) return;
+    token.text = restoreAllowedHtmlTags(token.text.replace(/</g, '&lt;'));
 }
-
 
 /**
  * Render LaTeX math expressions using KaTeX.
@@ -615,43 +536,9 @@ export function linkifyHashtagsInHtml(html: string, repositoryUrl: string | null
 /**
  * Render markdown and then linkify hashtags
  */
-function normalizeMathFences(text) {
-    if (!text) return text;
-    const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    const lines = normalized.split('\n');
-    const output = [];
-    let inMath = false;
-
-    for (const line of lines) {
-        if (!inMath && line.trim().match(/^```(?:math|katex|latex)\s*$/i)) {
-            inMath = true;
-            output.push('$$');
-            continue;
-        }
-        if (inMath && line.trim().match(/^```\s*$/)) {
-            inMath = false;
-            output.push('$$');
-            continue;
-        }
-        output.push(line);
-    }
-
-    return output.join('\n');
-}
-
 export function prepareMarkdownSource(text) {
-    const normalizedFrontmatter = normalizeLeadingFrontmatter(text || '');
-    const normalizedMath = normalizeMathFences(normalizedFrontmatter);
-    const { text: stripped, blocks: mermaidBlocks } = extractMermaidBlocks(normalizedMath);
-
-    // Decode HTML entities first (in case content has encoded entities)
-    const decoded = decodeEntitiesDeep(stripped, 2);
-    const normalized = normalizeHtmlCodeTags(decoded);
-    const escaped = normalized
-        .replace(/</g, '&lt;');
-    const safeHtml = restoreAllowedHtmlTags(escaped);
-
-    return { safeHtml, mermaidBlocks };
+    // Leave literal ranges and language fences to the existing Markdown parser.
+    return { safeHtml: normalizeLeadingFrontmatter(text || '') };
 }
 
 /**
@@ -695,15 +582,13 @@ export function renderMarkdown(text, onHashtagClick, options: MarkdownOptions = 
 
 function renderMarkdownBody(text: string, options: MarkdownOptions): string {
 
-    const { safeHtml, mermaidBlocks } = prepareMarkdownSource(text);
+    const { safeHtml } = prepareMarkdownSource(text);
 
     // Render markdown to HTML (preserve escaped HTML)
     let html_content = window.marked
-        ? marked.parse(safeHtml, { headerIds: false, mangle: false })
-        : safeHtml.replace(/\n/g, '<br>');
+        ? marked.parse(safeHtml, { headerIds: false, mangle: false, walkTokens: prepareMarkdownToken })
+        : escapeHtmlAttr(safeHtml).replace(/\n/g, '<br>');
 
-    html_content = decodeCodeEntities(html_content);
-    html_content = decodeTextEntities(html_content);
     html_content = applySyntaxHighlighting(html_content);
 
     // Render math expressions
@@ -714,9 +599,6 @@ function renderMarkdownBody(text: string, options: MarkdownOptions): string {
 
     // Transform GitHub-style admonitions (> [!NOTE], > [!TIP], etc.)
     html_content = transformAdmonitions(html_content);
-
-    // Inject Mermaid blocks after markdown processing to avoid double-encoding
-    html_content = injectMermaidBlocks(html_content, mermaidBlocks);
 
     // Sanitize HTML output (links/attributes/tags)
     html_content = sanitizeHtml(html_content, options);
@@ -730,116 +612,17 @@ function renderMarkdownBody(text: string, options: MarkdownOptions): string {
 export function renderThinkingMarkdown(text) {
     if (!text) return '';
     const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    const decoded = decodeEntitiesDeep(normalized, 2);
-    const normalizedHtml = normalizeHtmlCodeTags(decoded);
-    const escaped = normalizedHtml
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
-    const safeHtml = restoreAllowedHtmlTags(escaped);
-    let html_content = window.marked ? marked.parse(safeHtml) : safeHtml.replace(/\n/g, '<br>');
-    html_content = decodeCodeEntities(html_content);
-    html_content = decodeTextEntities(html_content);
+    let html_content = window.marked ? marked.parse(normalized, { walkTokens: (token: Parameters<typeof prepareMarkdownToken>[0]) => prepareMarkdownToken(token, false) }) : escapeHtmlAttr(normalized).replace(/\n/g, '<br>');
     // Avoid math rendering in thought/draft panels to prevent shell $ variables
     // from being misinterpreted as inline LaTeX.
     html_content = sanitizeHtml(html_content);
     return html_content;
 }
 
-// Render pending mermaid diagrams in the DOM
-/**
- * Post-process Mermaid SVG: replace sharp orthogonal polyline corners with
- * smooth arc-cornered paths.  Radius is clamped so short segments stay valid.
- */
-function roundPolylineCorners(svgString, radius = 6) {
-    return svgString.replace(
-        /<polyline\b([^>]*)\bpoints="([^"]+)"([^>]*)\/?\s*>/g,
-        (_match, before, pointsStr, after) => {
-            const pts = pointsStr.trim().split(/\s+/).map(p => {
-                const [x, y] = p.split(',').map(Number);
-                return { x, y };
-            });
-            if (pts.length < 3) {
-                return `<polyline${before}points="${pointsStr}"${after}/>`;
-            }
-
-            const parts = [`M ${pts[0].x},${pts[0].y}`];
-            for (let i = 1; i < pts.length - 1; i++) {
-                const prev = pts[i - 1];
-                const curr = pts[i];
-                const next = pts[i + 1];
-
-                const dxIn  = curr.x - prev.x;
-                const dyIn  = curr.y - prev.y;
-                const dxOut = next.x - curr.x;
-                const dyOut = next.y - curr.y;
-
-                const lenIn  = Math.sqrt(dxIn * dxIn + dyIn * dyIn);
-                const lenOut = Math.sqrt(dxOut * dxOut + dyOut * dyOut);
-
-                // Clamp radius to half the shortest adjacent segment
-                const r = Math.min(radius, lenIn / 2, lenOut / 2);
-                if (r < 0.5) {
-                    parts.push(`L ${curr.x},${curr.y}`);
-                    continue;
-                }
-
-                // Points where the arc begins and ends
-                const ax = curr.x - (dxIn / lenIn) * r;
-                const ay = curr.y - (dyIn / lenIn) * r;
-                const bx = curr.x + (dxOut / lenOut) * r;
-                const by = curr.y + (dyOut / lenOut) * r;
-
-                // Determine sweep direction via cross product
-                const cross = dxIn * dyOut - dyIn * dxOut;
-                const sweep = cross > 0 ? 1 : 0;
-
-                parts.push(`L ${ax},${ay}`);
-                parts.push(`A ${r},${r} 0 0 ${sweep} ${bx},${by}`);
-            }
-            parts.push(`L ${pts[pts.length - 1].x},${pts[pts.length - 1].y}`);
-
-            return `<path${before}d="${parts.join(' ')}"${after}/>`;
-        },
-    );
-}
-
-export function isMermaidSourceAllowedForScopedRendering(source: string): boolean {
-    const value = typeof source === 'string' ? source : '';
-    if (/(?:https?:\/\/|data:|blob:|\/\/)/i.test(value)) return false;
-    const references = Array.from(value.matchAll(/url\(\s*(['"]?)(.*?)\1\s*\)/gi), (match) => match[2]?.trim() || '');
-    return references.every((reference) => /^#[A-Za-z_][A-Za-z0-9_.:-]*$/.test(reference));
-}
-
-/** Find mermaid code blocks in a container and render them as SVG diagrams. */
-export async function renderMermaidDiagrams(container, options: MarkdownOptions = {}) {
-    if (!window.beautifulMermaid) return;
-
-    const { renderMermaid } = window.beautifulMermaid;
-    const theme = MERMAID_THEME_COLORS;
-
-    const pending = container.querySelectorAll('.mermaid-container[data-mermaid]');
-    for (const el of pending) {
-        try {
-            const encoded = el.dataset.mermaid;
-            const raw = fromBase64(encoded || '');
-            const code = decodeEntitiesDeep(raw, 2);
-            if (typeof options.rewriteImageSrc === 'function' && !isMermaidSourceAllowedForScopedRendering(code)) {
-                throw new Error('External Mermaid resources are unavailable in this view.');
-            }
-            let svg = await renderMermaid(code, { ...theme, font: 'system-ui', transparent: true });
-            svg = stripMermaidFontImports(roundPolylineCorners(svg));
-            el.innerHTML = typeof options.rewriteImageSrc === 'function'
-                ? sanitizeHtml(svg, options)
-                : svg;
-            el.removeAttribute('data-mermaid');
-        } catch (e) {
-            console.error('Mermaid render error:', e);
-            const pre = document.createElement('pre');
-            pre.className = 'mermaid-error';
-            pre.textContent = `Diagram error: ${e.message}`;
-            el.innerHTML = '';
-            el.appendChild(pre);
-            el.removeAttribute('data-mermaid');
-        }
-    }
+/** Render through the shared, sanitized timeline renderer. */
+export async function renderMermaidDiagrams(container: HTMLElement, options: MarkdownOptions = {}) {
+    await renderDiagrams(container, {
+        scoped: typeof options.rewriteImageSrc === 'function',
+        reportError: (error) => console.error('Mermaid render error:', error),
+    });
 }

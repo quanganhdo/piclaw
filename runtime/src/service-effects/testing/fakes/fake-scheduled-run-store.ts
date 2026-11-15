@@ -287,7 +287,11 @@ export class FakeScheduledRunStore implements ScheduledRunStore {
       const key = `cleanupTerminal:${request.settledBefore}:${request.limit}`, hash = requestHash(request);
       const replay = this.decision(key, "cleanupTerminal", hash, null);
       if (replay !== undefined) { const result = decodeCleanupResult(replay); if (!result) throw new FakeFailure(err("corrupt_state")); return Result.ok(result); }
-      const candidates = [...this.backend.runs.values()].filter((run) => (run.record.state === "completed" || run.record.state === "abandoned") && run.record.settledAt! < request.settledBefore).sort((a, b) => a.record.settledAt!.localeCompare(b.record.settledAt!) || a.record.runId.localeCompare(b.record.runId)).slice(0, request.limit);
+      const candidates = [...this.backend.runs.values()].filter(run => {
+        const head = this.backend.heads.get(run.record.taskId);
+        const held = head?.status === "paused" && head.revision === run.record.taskRevision && head.nextRunAt === run.record.scheduledFor;
+        return !held && (run.record.state === "completed" || run.record.state === "abandoned") && run.record.settledAt! < request.settledBefore;
+      }).sort((a, b) => a.record.settledAt!.localeCompare(b.record.settledAt!) || a.record.runId.localeCompare(b.record.runId)).slice(0, request.limit);
       const ids: string[] = [];
       for (const run of candidates) {
         const terminalMethod = run.record.state === "completed" ? "complete" : "abandon";

@@ -11,7 +11,7 @@ beforeAll(() => {
   if (!enabled) return;
   server = Bun.serve({ hostname: "127.0.0.1", port: 0, async fetch(req) {
     const url = new URL(req.url);
-    if (url.pathname === "/") return new Response(Bun.file(join(webRoot, `static/${url.searchParams.get("skin") === "visual" ? "visual" : "classic"}/index.html`)), { headers: { "content-type": "text/html" } });
+    if (url.pathname === "/") return new Response(Bun.file(join(webRoot, `static/${"classic"}/index.html`)), { headers: { "content-type": "text/html" } });
     if (url.pathname === "/editor-vendor/codemirror.js") return new Response(Bun.file(resolve(webRoot, "../extensions/viewers/editor/vendor/codemirror.js")), { headers: { "content-type": "text/javascript" } });
     if (url.pathname.startsWith("/static/")) {
       const path = resolve(webRoot, url.pathname.slice(1));
@@ -23,7 +23,7 @@ beforeAll(() => {
 afterAll(() => server?.stop(true));
 
 for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
-  for (const skin of ["classic", "visual"]) browserTest(`${engineName}: ${skin} About versions and window workspace state`, async () => {
+  for (const skin of ["classic"]) browserTest(`${engineName}: ${skin} About versions and window workspace state`, async () => {
     const browser = await engine.launch({ headless: true, ...(engineName === 'chromium' && process.env.PICLAW_TEST_CHROMIUM_PATH ? {executablePath:process.env.PICLAW_TEST_CHROMIUM_PATH} : {}) });
     const context = await browser.newContext({ viewport: { width: 1280, height: 850 }, colorScheme: "dark", reducedMotion: "reduce", serviceWorkers: "block" });
     const page = await context.newPage();
@@ -73,6 +73,8 @@ for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
       else if (url.pathname === "/timeline") body = { posts: [], has_more: false, chat_jid: chatJid, user: { name: "Fixture User" }, agent: { name: "Fixture" } };
       else if (url.pathname === "/agent/addons/web-entries") body = { entries: [] };
       else if (url.pathname === "/agent/roster") body = { agents: [], default_agent: "fixture" };
+      // System meters are always on and poll this endpoint.
+      else if (url.pathname === "/agent/system-metrics") body = { cpu_percent: 2, ram_percent: 12, cpu_series: [2], ram_series: [12], swap_series: [] };
       else if (url.pathname === "/agent/branches") body = { branches: [{ chat_jid: chatJid, root_chat_jid: "web:default", branch_id: "cold-start", agent_name: "fixture" }] };
       else if (url.pathname === "/agent/active-chats") body = { chats: [{ chat_jid: chatJid, root_chat_jid: "web:default", agent_name: "fixture", is_active: false }] };
       else if (["/agent/queue", "/agent/queue-state"].includes(url.pathname)) body = { items: [], queue: [], queued: [] };
@@ -101,36 +103,36 @@ for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
       await page.goto(server.url+'?skin='+skin+'&chat_jid='+encodeURIComponent(chatJid),{waitUntil:'load'});
       await page.locator('textarea,[contenteditable="true"]').first().waitFor();
       await page.waitForFunction(()=>new URL(location.href).searchParams.get('chat_jid')==='web:default');
-      if(skin==='classic') {
-        const toggle=page.locator('.workspace-toggle-tab');
+      {
+        const toggle=page.locator('.workbench-activity-button[aria-label="Explorer"]');
         await toggle.waitFor();
-        expect(await toggle.getAttribute('aria-expanded')).toBe('true');
+        expect(await toggle.getAttribute('aria-selected')).toBe('true');
         await toggle.click();
-        expect(await toggle.getAttribute('aria-expanded')).toBe('false');
+        expect(await toggle.getAttribute('aria-selected')).toBe('false');
         const second=await context.newPage();
         second.on('pageerror',e=>errors.push(e.message));
         await second.goto(server.url+'?skin='+skin+'&chat_jid='+encodeURIComponent(chatJid),{waitUntil:'load'});
-        const otherToggle=second.locator('.workspace-toggle-tab');
+        const otherToggle=second.locator('.workbench-activity-button[aria-label="Explorer"]');
         await otherToggle.waitFor();
-        expect(await otherToggle.getAttribute('aria-expanded')).toBe('false');
+        expect(await otherToggle.getAttribute('aria-selected')).toBe('false');
         await otherToggle.click();
-        expect(await otherToggle.getAttribute('aria-expanded')).toBe('true');
+        expect(await otherToggle.getAttribute('aria-selected')).toBe('true');
         await page.bringToFront();
         await page.evaluate(()=>{
           window.dispatchEvent(new Event('focus'));
           window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}));
           document.dispatchEvent(new Event('visibilitychange'));
         });
-        expect(await toggle.getAttribute('aria-expanded')).toBe('false');
+        expect(await toggle.getAttribute('aria-selected')).toBe('false');
         await page.reload({waitUntil:'load'});await toggle.waitFor();
-        expect(await toggle.getAttribute('aria-expanded')).toBe('false');
+        expect(await toggle.getAttribute('aria-selected')).toBe('false');
         await second.reload({waitUntil:'load'});await otherToggle.waitFor();
-        expect(await otherToggle.getAttribute('aria-expanded')).toBe('true');
+        expect(await otherToggle.getAttribute('aria-selected')).toBe('true');
         await second.close();
         await page.bringToFront();
-        expect(await toggle.getAttribute('aria-expanded')).toBe('false');
+        expect(await toggle.getAttribute('aria-selected')).toBe('false');
         await toggle.click();
-        await page.waitForFunction(()=>document.querySelector('.workspace-toggle-tab')?.getAttribute('aria-expanded')==='true');
+        await page.waitForFunction(()=>document.querySelector('.workbench-activity-button[aria-label="Explorer"]')?.getAttribute('aria-selected')==='true');
         const menuButton=page.getByTestId('hamburger');
         const openAbout=async()=>{
           await menuButton.click();
@@ -174,7 +176,7 @@ for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
         expect(aboutRequests).toBe(3);
       }
       await page.evaluate(()=>window.dispatchEvent(new CustomEvent('piclaw:open-settings',{detail:{section:'general'}})));
-      const content=page.locator(skin==='classic'?'.settings-content':'.settings-panel__content').filter({visible:true});
+      const content=page.locator('.settings-content').filter({visible:true});
       const about=content.locator('.settings-about');
       await about.locator('.about-version').last().waitFor();
       await about.getByRole('link',{name:'PiClaw 3.2.5 on GitHub',exact:true}).waitFor();
@@ -184,7 +186,7 @@ for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
       expect(await about.getByRole('link').count()).toBe(3);
       expect(errors).toEqual([]);expect([...unhandled]).toEqual([]);
     } catch (error) {
-      console.log("SHELL_FAILURE", JSON.stringify({ engineName, skin, errors, unhandled: [...unhandled], requests, workspace: await page.locator('.workspace-sidebar,.workspace-menu-button,.workspace-toggle-tab').evaluateAll(nodes=>nodes.map(el=>({class:el.className,rect:el.getBoundingClientRect().toJSON(),display:getComputedStyle(el).display,visibility:getComputedStyle(el).visibility,expanded:el.getAttribute('aria-expanded')}))), state: await page.evaluate(()=>({url:location.href,local:localStorage.getItem('workspaceOpen.desktop'),session:sessionStorage.getItem('workspaceOpen.window')})), body: (await page.locator("body").innerText()).slice(-2500), badges: await page.locator(".model-badge-wrapper,.compose-model-meta").evaluateAll(nodes => nodes.map(n => n.outerHTML)), scripts: await page.locator("script[src]").evaluateAll(nodes => nodes.map(n => n.getAttribute("src"))) }));
+      console.log("SHELL_FAILURE", JSON.stringify({ engineName, skin, errors, unhandled: [...unhandled], requests, workspace: await page.locator('.workspace-sidebar,.workspace-menu-button,.workbench-activity-button').evaluateAll(nodes=>nodes.map(el=>({class:el.className,rect:el.getBoundingClientRect().toJSON(),display:getComputedStyle(el).display,visibility:getComputedStyle(el).visibility,expanded:el.getAttribute('aria-expanded')}))), state: await page.evaluate(()=>({url:location.href,local:localStorage.getItem('workspaceOpen.desktop'),session:sessionStorage.getItem('workspaceOpen.window')})), body: (await page.locator("body").innerText()).slice(-2500), badges: await page.locator(".model-badge-wrapper,.compose-model-meta").evaluateAll(nodes => nodes.map(n => n.outerHTML)), scripts: await page.locator("script[src]").evaluateAll(nodes => nodes.map(n => n.getAttribute("src"))) }));
       throw error;
     } finally { await context.close(); await browser.close(); }
   }, 90000);

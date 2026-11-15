@@ -10,6 +10,16 @@ interface RefBox<T> {
   current: T;
 }
 
+export function shouldInvalidateAgentStatusSnapshot(eventType: string, data?: any, currentTurnId?: string | null): boolean {
+  if (eventType === 'model_changed' || eventType === 'connected') return true;
+  if (eventType !== 'agent_status') return false;
+  const turnId = data?.turn_id || data?.turnId;
+  // Keep ownership/terminal fences, but same-turn progress already arrives over
+  // SSE. Invalidating on every tool update can starve a pending return snapshot.
+  return !turnId || turnId !== currentTurnId || data?.type === 'intent'
+    || ['done', 'error', 'idle'].includes(data?.type) || data?.status === 'idle';
+}
+
 export function resolveBackstopIntervalMs(isAgentActive: boolean): number {
   return isAgentActive ? 15_000 : 60_000;
 }
@@ -27,11 +37,10 @@ interface UseRealtimeLifecycleOrchestrationOptions {
   updateAgentProfile: (payload: any) => void;
   updateUserProfile: (payload: any) => void;
   currentTurnIdRef: RefBox<string | null>;
+  agentStatusRef: RefBox<any>;
   activeChatJidRef: RefBox<string>;
-  pendingRequestRef: RefBox<any>;
   draftBufferRef: RefBox<string>;
   thoughtBufferRef: RefBox<string>;
-  previewResyncPendingRef: RefBox<boolean>;
   previewResyncGenerationRef: RefBox<number>;
   steerQueuedTurnIdRef: RefBox<string | null>;
   thoughtExpandedRef: RefBox<boolean>;
@@ -57,9 +66,7 @@ interface UseRealtimeLifecycleOrchestrationOptions {
   setAgentThought: (next: any) => void;
   setPendingRequest: (next: any) => void;
   clearAgentRunState: () => void;
-  getAgentStatus: (chatJid: string) => Promise<any>;
   noteAgentActivity: (options?: Record<string, unknown>) => void;
-  showLastActivity: (payload: any) => void;
   refreshTimeline: () => Promise<void>;
   refreshModelAndQueueState: () => void;
   refreshActiveChatAgents: () => void;
@@ -106,10 +113,8 @@ export function useRealtimeLifecycleOrchestration(options: UseRealtimeLifecycleO
     updateUserProfile,
     currentTurnIdRef,
     activeChatJidRef,
-    pendingRequestRef,
     draftBufferRef,
     thoughtBufferRef,
-    previewResyncPendingRef,
     previewResyncGenerationRef,
     steerQueuedTurnIdRef,
     thoughtExpandedRef,
@@ -135,9 +140,7 @@ export function useRealtimeLifecycleOrchestration(options: UseRealtimeLifecycleO
     setAgentThought,
     setPendingRequest,
     clearAgentRunState,
-    getAgentStatus,
     noteAgentActivity,
-    showLastActivity,
     refreshTimeline,
     refreshModelAndQueueState,
     refreshActiveChatAgents,
@@ -175,17 +178,18 @@ export function useRealtimeLifecycleOrchestration(options: UseRealtimeLifecycleO
       void refreshInstanceBranding();
       window.dispatchEvent(new Event('piclaw:sse-connected'));
     }
-    if (['model_changed', 'connected'].includes(eventType) || (eventType === 'agent_status' && (['done','error'].includes(data?.type) || data?.status === 'idle'))) invalidateAgentUiSnapshot(data?.chat_jid || currentChatJid);
+    // Invalidate active transitions too: a fresh cached Idle snapshot must not
+    // clear a turn whose opening status and previews arrived in one frame.
+    if (shouldInvalidateAgentStatusSnapshot(eventType, data, currentTurnIdRef.current)) invalidateAgentUiSnapshot(data?.chat_jid || currentChatJid);
     handleAppSseEvent(eventType, data, {
       currentChatJid,
       updateAgentProfile,
       updateUserProfile,
       currentTurnIdRef,
+      agentStatusRef: options.agentStatusRef,
       activeChatJidRef,
-      pendingRequestRef,
       draftBufferRef,
       thoughtBufferRef,
-      previewResyncPendingRef,
       previewResyncGenerationRef,
       steerQueuedTurnIdRef,
       thoughtExpandedRef,
@@ -211,9 +215,7 @@ export function useRealtimeLifecycleOrchestration(options: UseRealtimeLifecycleO
       setAgentThought,
       setPendingRequest,
       clearAgentRunState,
-      getAgentStatus,
       noteAgentActivity,
-      showLastActivity,
       refreshTimeline,
       refreshModelAndQueueState,
       refreshActiveChatAgents,
@@ -252,17 +254,14 @@ export function useRealtimeLifecycleOrchestration(options: UseRealtimeLifecycleO
     draftThrottleRef,
     followupQueueItemsRef,
     getAgentContext,
-    getAgentStatus,
     handleUiVersionDrift,
     hasMoreRef,
     lastAgentResponseRef,
     loadMoreRef,
     noteAgentActivity,
     notifyForFinalResponse,
-    pendingRequestRef,
     preserveTimelineScrollTop,
     previewResyncGenerationRef,
-    previewResyncPendingRef,
     refreshActiveChatAgents,
     refreshActiveEditorFromWorkspace,
     refreshContextUsage,
@@ -287,7 +286,6 @@ export function useRealtimeLifecycleOrchestration(options: UseRealtimeLifecycleO
     setPosts,
     setSteerQueuedTurnId,
     showIntentToast,
-    showLastActivity,
     steerQueuedTurnIdRef,
     thoughtBufferRef,
     thoughtExpandedRef,

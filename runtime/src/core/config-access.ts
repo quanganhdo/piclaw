@@ -1,9 +1,8 @@
-import { readFileSync } from "node:fs";
-
 import { getConfigPath } from "./config-context.js";
+import { readCachedJsonFile } from "./config-file-cache.js";
 import { registerDomainConfig, stringField, type DomainConfigField } from "./domain-config.js";
 
-export const ACCESS_MODES = ["single-user", "family-shared", "isolated-containers"] as const;
+export const ACCESS_MODES = ["single-user", "isolated-containers"] as const;
 export type AccessMode = typeof ACCESS_MODES[number];
 
 export interface IsolationBackend {
@@ -97,18 +96,15 @@ export const ACCESS_CONFIG_SCHEMA = registerDomainConfig<AccessConfig>({
 });
 /** Access configuration never uses the forgiving general JSON reader or legacy/env aliases. */
 export function readAccessConfig(configPath = getConfigPath()): AccessConfig & { modeExplicit: boolean } {
-  let text: string;
-  try {
-    text = readFileSync(configPath, "utf8");
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return { mode: "single-user", isolation: null, modeExplicit: false };
-    throw new Error(`Cannot read access configuration at ${configPath}.`, { cause: error });
-  }
   let parsed: unknown;
   try {
-    parsed = JSON.parse(text);
+    parsed = readCachedJsonFile(configPath);
   } catch (error) {
-    throw new Error(`Invalid JSON at ${configPath}; access configuration cannot default safely.`, { cause: error });
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return { mode: "single-user", isolation: null, modeExplicit: false };
+    if (error instanceof SyntaxError) {
+      throw new Error(`Invalid JSON at ${configPath}; access configuration cannot default safely.`, { cause: error });
+    }
+    throw new Error(`Cannot read access configuration at ${configPath}.`, { cause: error });
   }
   const config = object(parsed, "Configuration");
   if (Object.hasOwn(config, "access")) throw new Error("Use domains.access, not a top-level access alias.");
@@ -121,4 +117,9 @@ export function readAccessConfig(configPath = getConfigPath()): AccessConfig & {
   if (mode === "isolated-containers" && !component) throw new Error("isolated-containers requires access.isolation component and trust configuration.");
   if (mode !== "isolated-containers" && component) throw new Error("access.isolation is only valid in isolated-containers mode.");
   return { mode, isolation: component, modeExplicit };
+}
+
+/** Capability check for public entrypoints; invalid configuration never enables execution. */
+export function isSingleUserAccess(): boolean {
+  try { return readAccessConfig().mode === "single-user"; } catch { return false; }
 }

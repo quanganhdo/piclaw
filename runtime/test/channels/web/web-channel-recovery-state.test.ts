@@ -1,3 +1,5 @@
+import {readFileSync} from "node:fs";
+import {initializeChatCursorStorage,legacyCursorArchive} from "../../../src/db/chat-cursor-storage.js";
 import { afterEach, expect, test } from "bun:test";
 import { createTempWorkspace, setEnv } from "../../helpers.js";
 
@@ -25,6 +27,14 @@ async function initWebChannelFixture(chatJids: string[] = ["web:default"]) {
   const db = await import("../../../src/db.js");
   db.initDatabase();
   db.getDb().exec("DELETE FROM message_media; DELETE FROM messages; DELETE FROM chats; DELETE FROM chat_cursors;");
+  // Build a synthetic pre-ledger cursor root inside this blank isolated fixture.
+  // The actual populated file upgrade/reopen is qualified in schema-ownership.
+  if ((db.getDb().query('SELECT COUNT(*) AS n FROM chat_cursors').get() as {n:number}).n !== 0) throw Error('Cursor fixture must be empty');
+  db.getDb().transaction(() => {
+    db.getDb().exec("DROP TABLE chat_cursors; DELETE FROM piclaw_schema_migrations WHERE owner='host.chat-cursors'");
+    db.getDb().exec(readFileSync(new URL('../../fixtures/legacy-chat-cursors.sql',import.meta.url),'utf8'));
+    initializeChatCursorStorage(db.getDb());
+  })();
   const now = new Date().toISOString();
   for (const chatJid of chatJids) {
     db.storeChatMetadata(chatJid, now, "Web");
@@ -34,7 +44,7 @@ async function initWebChannelFixture(chatJids: string[] = ["web:default"]) {
   return { db, webMod };
 }
 
-test("web channel loadState clears stale persisted statuses when there is no inflight durable state", async () => {
+test("a fresh web channel cannot restore historical tool or compaction observations", async () => {
   const { db, webMod } = await initWebChannelFixture(["web:default", "web:compact"]);
 
   db.setRouterState("last_agent_timestamp_web", JSON.stringify({
@@ -62,13 +72,13 @@ test("web channel loadState clears stale persisted statuses when there is no inf
     queue: { enqueue: () => {} },
     agentPool: { runAgent: async () => ({ status: "success", result: "ok" }), getContextUsageForChat: async () => null },
   });
-  second.loadState();
+  expect(second).not.toHaveProperty('loadState');
 
   expect(second.getAgentStatus("web:default")).toBeNull();
   expect(second.getAgentStatus("web:compact")).toBeNull();
 });
 
-test("web channel derives a recovery status from inflight chat cursors instead of trusting persisted compaction state", async () => {
+test("web channel ignores old inflight cursors as display authority while preserving them", async () => {
   const { db, webMod } = await initWebChannelFixture(["web:compact"]);
 
   const userTs = new Date(Date.now() - 5_000).toISOString();
@@ -83,11 +93,9 @@ test("web channel derives a recovery status from inflight chat cursors instead o
     is_from_me: false,
     is_bot_message: false,
   });
-  db.beginChatRun("web:compact", userTs, {
-    prevTs: "",
-    messageId,
-    startedAt: "2026-03-14T14:00:00.000Z",
-  });
+  db.setChatCursor('web:compact',userTs);
+  db.getDb().query('INSERT INTO '+legacyCursorArchive+'(chat_jid,cursor_ts,inflight_message_id,inflight_started_at) VALUES(?,?,?,?)').run('web:compact',userTs,messageId,'2026-03-14T14:00:00.000Z');
+  const archived = db.getDb().query('SELECT rowid,* FROM '+legacyCursorArchive).all();
 
   db.setRouterState("last_agent_timestamp_web", JSON.stringify({
     agentStatuses: {
@@ -108,188 +116,28 @@ test("web channel derives a recovery status from inflight chat cursors instead o
     queue: { enqueue: () => {} },
     agentPool: { runAgent: async () => ({ status: "success", result: "ok" }), getContextUsageForChat: async () => null },
   });
-  second.loadState();
+  expect(second).not.toHaveProperty('loadState');
 
-  expect(second.getAgentStatus("web:compact")).toMatchObject({
-    type: "intent",
-    intent_key: "recovery",
-    title: "Recovering interrupted response",
-    started_at: "2026-03-14T14:00:00.000Z",
-    source: "startup_recovery",
-  });
+  expect(second.getAgentStatus("web:compact")).toBeNull();
+  expect(db.getDb().query('SELECT rowid,* FROM '+legacyCursorArchive).all()).toEqual(archived);
 });
 
-test("recoverInflightRuns persists buffered draft text across restart instead of showing an interrupted marker", async () => {
-  const { db, webMod } = await initWebChannelFixture(["web:default"]);
-
-  const userTs = new Date(Date.now() - 5_000).toISOString();
-  const messageId = `msg-${Math.random()}`;
-  db.storeMessage({
-    id: messageId,
-    chat_jid: "web:default",
-    sender: "user",
-    sender_name: "User",
-    content: "draft please",
-    timestamp: userTs,
-    is_from_me: false,
-    is_bot_message: false,
-  });
-  db.beginChatRun("web:default", userTs, {
-    prevTs: "",
-    messageId,
-    startedAt: new Date(Date.now() - 60_000).toISOString(),
-  });
-
-  const first = new (webMod.WebChannel as any)({
-    queue: { enqueue: () => {} },
-    agentPool: { runAgent: async () => ({ status: "success", result: "ok" }), getContextUsageForChat: async () => null },
-  });
-  first.updateAgentStatus("web:default", { type: "thinking", title: "Thinking", turn_id: "turn-restart-draft" });
-  first.updateDraftBuffer("turn-restart-draft", "Recovered draft after restart", 1);
-
-  const second = new (webMod.WebChannel as any)({
-    queue: { enqueue: async (fn: () => Promise<void>) => fn() },
-    agentPool: { runAgent: async () => ({ status: "success", result: "unexpected recovery replay" }), getContextUsageForChat: async () => null },
-  });
-  second.loadState();
-  second.recoverInflightRuns();
-
-  const timeline = db.getTimeline("web:default", 10);
-  const botMessages = timeline.filter((item: any) => item.data.type === "agent_response");
-  expect(botMessages.some((item: any) => String(item.data.content || "").includes("Recovered draft after restart"))).toBe(true);
-  expect(botMessages.some((item: any) => Array.isArray(item.data.content_blocks)
-    && item.data.content_blocks.some((block: any) => block?.type === "turn_outcome_marker" && block?.kind === "interrupted"))).toBe(false);
-});
-
-test("recoverInflightRuns clears no-output inflight chats without replay while preserving partial and older terminal history", async () => {
-  const chats = ["web:rollback", "web:partial", "web:older-terminal"];
-  const { db, webMod } = await initWebChannelFixture(chats);
-
-  const now = Date.now();
-
-  const rollbackTs = new Date(now - 5_000).toISOString();
-  const rollbackMessageId = `msg-${Math.random()}`;
-  db.storeMessage({
-    id: rollbackMessageId,
-    chat_jid: "web:rollback",
-    sender: "user",
-    sender_name: "User",
-    content: "rollback me",
-    timestamp: rollbackTs,
-    is_from_me: false,
-    is_bot_message: false,
-  });
-  db.beginChatRun("web:rollback", rollbackTs, {
-    prevTs: "",
-    messageId: rollbackMessageId,
-    startedAt: new Date(now - 31 * 60 * 1000).toISOString(),
-  });
-
-  const partialBaseMs = now - 15_000;
-  const partialTs = new Date(partialBaseMs).toISOString();
-  const partialReplyTs = new Date(partialBaseMs + 1_000).toISOString();
-  const partialMessageId = `msg-${Math.random()}`;
-  db.storeMessage({
-    id: partialMessageId,
-    chat_jid: "web:partial",
-    sender: "user",
-    sender_name: "User",
-    content: "partial",
-    timestamp: partialTs,
-    is_from_me: false,
-    is_bot_message: false,
-  });
-  db.beginChatRun("web:partial", partialTs, {
-    prevTs: "",
-    messageId: partialMessageId,
-    startedAt: partialTs,
-  });
-  db.storeMessage({
-    id: `bot-${Math.random()}`,
-    chat_jid: "web:partial",
-    sender: "web-agent",
-    sender_name: "Pi",
-    content: "partial reply",
-    timestamp: partialReplyTs,
-    is_from_me: false,
-    is_bot_message: true,
-    is_terminal_agent_reply: false,
-  });
-
-  const olderBaseMs = now - 31 * 60 * 1000;
-  const prevUserTs = new Date(olderBaseMs).toISOString();
-  const prevReplyTs = new Date(olderBaseMs + 1_000).toISOString();
-  const currentUserTs = new Date(olderBaseMs + 2_000).toISOString();
-  const startedAt = new Date(olderBaseMs + 3_000).toISOString();
-  const currentMessageId = `msg-${Math.random()}`;
-  db.storeMessage({
-    id: `user-prev-${Math.random()}`,
-    chat_jid: "web:older-terminal",
-    sender: "user",
-    sender_name: "User",
-    content: "previous",
-    timestamp: prevUserTs,
-    is_from_me: false,
-    is_bot_message: false,
-  });
-  db.storeMessage({
-    id: `bot-prev-${Math.random()}`,
-    chat_jid: "web:older-terminal",
-    sender: "web-agent",
-    sender_name: "Pi",
-    content: "previous final",
-    timestamp: prevReplyTs,
-    is_from_me: false,
-    is_bot_message: true,
-    is_terminal_agent_reply: true,
-  });
-  db.storeMessage({
-    id: currentMessageId,
-    chat_jid: "web:older-terminal",
-    sender: "user",
-    sender_name: "User",
-    content: "current",
-    timestamp: currentUserTs,
-    is_from_me: false,
-    is_bot_message: false,
-  });
-  db.beginChatRun("web:older-terminal", currentUserTs, {
-    prevTs: prevUserTs,
-    messageId: currentMessageId,
-    startedAt,
-  });
-
-  const web = new (webMod.WebChannel as any)({
-    queue: { enqueue: async (fn: () => Promise<void>) => fn() },
-    agentPool: {
-      setSessionBinder: () => {},
-      runAgent: async () => ({
-        status: "success",
-        result: "unexpected recovery replay",
-        attachments: [],
-      }),
-      getContextUsageForChat: async () => null,
-    },
-  });
-
-  web.recoverInflightRuns();
-
-  expect(db.getInflightRuns()).toEqual([]);
-  expect(db.getChatCursor("web:rollback")).toBe(rollbackTs);
-  expect(db.getChatCursor("web:partial")).toBe(partialTs);
-  expect(db.getChatCursor("web:older-terminal")).toBe(currentUserTs);
-
-  const rollbackTimeline = db.getTimeline("web:rollback", 10);
-  expect(rollbackTimeline.some((item: any) => Array.isArray(item.data.content_blocks)
-    && item.data.content_blocks.some((block: any) => block?.type === "turn_outcome_marker" && block?.kind === "interrupted"))).toBe(true);
-
-  const partialTimeline = db.getTimeline("web:partial", 10);
-  expect(partialTimeline.some((item: any) => String(item.data.content || "") === "partial reply")).toBe(true);
-  expect(partialTimeline.some((item: any) => Array.isArray(item.data.content_blocks)
-    && item.data.content_blocks.some((block: any) => block?.type === "turn_outcome_marker" && block?.kind === "interrupted"))).toBe(false);
-
-  const olderTimeline = db.getTimeline("web:older-terminal", 10);
-  const currentInterruptedMarkers = olderTimeline.filter((item: any) => Array.isArray(item.data.content_blocks)
-    && item.data.content_blocks.some((block: any) => block?.type === "turn_outcome_marker" && block?.kind === "interrupted"));
-  expect(currentInterruptedMarkers.length).toBe(1);
+test("native startup and live draft buffers preserve historical payloads without publishing them", async () => {
+  const { db, webMod } = await initWebChannelFixture(["web:historical"]);
+  const historical = { turnId: "old-turn", text: "Old uncommitted draft", totalLines: 1, updatedAt: 1 };
+  db.setRouterState("last_agent_timestamp_web", JSON.stringify({ agentStatuses: {}, contextUsages: {}, draftRecoveries: { "web:historical": historical } }));
+  db.getDb().query('INSERT INTO '+legacyCursorArchive+'(chat_jid,cursor_ts,inflight_message_id,inflight_started_at) VALUES(?,?,?,?)').run('web:historical','2026-01-01T00:00:01.000Z','old-input','2026-01-01T00:00:00.000Z');
+  const web = new (webMod.WebChannel as any)({ queue: { enqueue() { throw Error("No legacy replay"); } },
+    agentPool: { getContextUsageForChat: async () => null } });
+  const before = db.getDb().serialize();
+  expect(web).not.toHaveProperty('loadState');
+  web.updateAgentStatus("web:historical", { type: "thinking", turn_id: "new-turn" });
+  web.updateDraftBuffer("new-turn", "Current transient draft", 1);
+  const { runWebStartupRecoveryBootstrap } = await import("../../../src/runtime/startup.js");
+  const scheduled: (() => void)[] = [];
+  runWebStartupRecoveryBootstrap(web, resume => scheduled.push(resume));
+  expect(scheduled).toHaveLength(1);
+  expect(web.getBuffer("new-turn", "draft")).toEqual({ text: "Current transient draft", totalLines: 1, updatedAt: expect.any(Number) });
+  expect(db.getDb().serialize()).toEqual(before);
+  expect(db.getTimeline("web:historical", 10)).toEqual([]);
 });

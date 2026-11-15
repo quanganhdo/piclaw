@@ -45,14 +45,16 @@ export function listAppliedOwnedMigrations(database: Database, owner?: string): 
 }
 
 export function applyOwnedMigrations(database: Database, migrations: readonly OwnedSchemaMigration[]): void {
-  ensureOwnedMigrationLedger(database);
-  const sorted = [...migrations].sort((left, right) => left.order - right.order || left.id.localeCompare(right.id));
+  // Validate the complete declaration before any DDL, then serialize the state
+  // lookup and application with competing initializers (savepoint when nested).
+  const sorted = migrations.map(migration => ({ ...migration, owner: migration.owner.trim(), id: migration.id.trim() }))
+    .sort((left, right) => left.order - right.order || left.id.localeCompare(right.id));
   const seenKeys = new Set<string>();
   const seenOrders = new Set<string>();
   for (const migration of sorted) {
     const owner = migration.owner.trim();
     const id = migration.id.trim();
-    if (!owner || !id || !Number.isInteger(migration.order) || migration.order < 1) {
+    if (!owner || !id || !Number.isSafeInteger(migration.order) || migration.order < 1) {
       throw new Error("Schema migrations require non-empty owner/id and a positive integer order.");
     }
     const key = `${owner}\0${id}`;
@@ -62,22 +64,24 @@ export function applyOwnedMigrations(database: Database, migrations: readonly Ow
     }
     seenKeys.add(key);
     seenOrders.add(orderKey);
-
-    const checksum = checksumSql(migration.sql);
-    const applied = database.prepare(`SELECT checksum FROM ${LEDGER_TABLE} WHERE owner = ? AND id = ?`).get(owner, id) as { checksum?: string } | undefined;
-    if (applied) {
-      if (applied.checksum !== checksum) {
-        throw new Error(`Schema migration checksum mismatch for ${owner}:${id}.`);
+  }
+  database.transaction(() => {
+    ensureOwnedMigrationLedger(database);
+    for (const { owner, id, order, sql } of sorted) {
+      const checksum = checksumSql(sql);
+      const applied = database.prepare(`SELECT owner, id, migration_order, checksum FROM ${LEDGER_TABLE} WHERE owner = ? AND id = ?`)
+        .get(owner, id) as { owner: string; id: string; migration_order: number; checksum: string } | undefined;
+      if (applied) {
+        if (applied.owner !== owner || applied.id !== id) throw Error("Schema migration identity mismatch.");
+        if (applied.migration_order !== order) throw Error(`Schema migration order mismatch for ${owner}:${id}.`);
+        if (applied.checksum !== checksum) throw Error(`Schema migration checksum mismatch for ${owner}:${id}.`);
+        continue;
       }
-      continue;
-    }
-
-    database.transaction(() => {
-      database.exec(migration.sql);
+      database.exec(sql);
       database.prepare(`
         INSERT INTO ${LEDGER_TABLE}(owner, id, migration_order, checksum, applied_at)
         VALUES (?, ?, ?, ?, ?)
-      `).run(owner, id, migration.order, checksum, new Date().toISOString());
-    }).immediate();
-  }
+      `).run(owner, id, order, checksum, new Date().toISOString());
+    }
+  }).immediate();
 }

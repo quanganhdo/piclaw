@@ -170,15 +170,6 @@ function compactText(value: string | null | undefined): string | null {
   return compact || null;
 }
 
-function _readOptionalText(path: string): string | null {
-  if (!existsSync(path)) return null;
-  try {
-    return compactText(readFileSync(path, "utf8"));
-  } catch {
-    return null;
-  }
-}
-
 function readOptionalMarkdown(path: string): string | null {
   if (!existsSync(path)) return null;
   try {
@@ -187,30 +178,6 @@ function readOptionalMarkdown(path: string): string | null {
   } catch {
     return null;
   }
-}
-
-function shiftIsoDate(isoDate: string, deltaDays: number): string {
-  const base = new Date(`${isoDate}T00:00:00Z`);
-  base.setUTCDate(base.getUTCDate() + deltaDays);
-  return base.toISOString().slice(0, 10);
-}
-
-function absolutizeRelativeDates(value: string, anchorDate: string): string {
-  return value
-    .replace(/\btoday\b/gi, anchorDate)
-    .replace(/\byesterday\b/gi, shiftIsoDate(anchorDate, -1))
-    .replace(/\btomorrow\b/gi, shiftIsoDate(anchorDate, 1))
-    .replace(/\bthis morning\b/gi, `morning of ${anchorDate}`)
-    .replace(/\bthis afternoon\b/gi, `afternoon of ${anchorDate}`)
-    .replace(/\bthis evening\b/gi, `evening of ${anchorDate}`)
-    .replace(/\blast week\b/gi, `week of ${shiftIsoDate(anchorDate, -7)}`)
-    .replace(/\bthis week\b/gi, `week of ${anchorDate}`);
-}
-
-function normalizeMemoryText(value: string, anchorDate: string): string | null {
-  const compact = compactText(value);
-  if (!compact) return null;
-  return absolutizeRelativeDates(compact, anchorDate);
 }
 
 function tokenizeMemorySignature(value: string): string[] {
@@ -223,59 +190,6 @@ function tokenizeMemorySignature(value: string): string[] {
     .filter((token) => !/^\d{4}$/.test(token))
     .filter((token) => !/^\d{4}\d{2}\d{2}$/.test(token))
     .filter((token) => !MEMORY_STOP_WORDS.has(token));
-}
-
-function buildMemorySignature(value: string): string {
-  return tokenizeMemorySignature(value).slice(0, 6).join(" ");
-}
-
-function sharesMemoryTopic(a: string, b: string): boolean {
-  const left = new Set(tokenizeMemorySignature(a));
-  const right = new Set(tokenizeMemorySignature(b));
-  let overlap = 0;
-  for (const token of left) {
-    if (right.has(token)) overlap += 1;
-    if (overlap >= 2) return true;
-  }
-  return false;
-}
-
-function hasRevisionCue(value: string): boolean {
-  return /\b(now|instead|switched|migrated|moved|replace(?:d)?|use|prefer|no longer|deprecated|removed|drop(?:ped)?)\b/i.test(value);
-}
-
-function hasNegation(value: string): boolean {
-  return /\b(no|not|never|avoid|don['’]t|do not|stop|without|deprecated|removed|no longer)\b/i.test(value);
-}
-
-interface MemoryCandidate {
-  text: string;
-  date: string;
-}
-
-function _curateMemoryCandidates(candidates: MemoryCandidate[], limit = 24): string[] {
-  const curated: Array<{ text: string; signature: string }> = [];
-
-  for (const candidate of candidates) {
-    const normalized = normalizeMemoryText(candidate.text, candidate.date);
-    if (!normalized) continue;
-    const signature = buildMemorySignature(normalized) || normalized.toLowerCase();
-
-    const isDuplicateOrSuperseded = curated.some((existing) => {
-      if (existing.text === normalized) return true;
-      if (existing.signature === signature) return true;
-      if (!sharesMemoryTopic(existing.text, normalized)) return false;
-      if (existing.text.includes(normalized) || normalized.includes(existing.text)) return true;
-      if (hasRevisionCue(existing.text) || hasRevisionCue(normalized)) return true;
-      return hasNegation(existing.text) !== hasNegation(normalized);
-    });
-
-    if (isDuplicateOrSuperseded) continue;
-    curated.push({ text: normalized, signature });
-    if (curated.length >= limit) break;
-  }
-
-  return curated.map((entry) => entry.text);
 }
 
 function truncateText(value: string | null | undefined, maxChars = 220): string | null {

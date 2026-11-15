@@ -1,0 +1,43 @@
+{
+  "model": "gpt-6.1-terra",
+  "currency": "USD",
+  "unit": "per million tokens",
+  "native": {
+    "standard": {
+      "input": 1,
+      "output": 5,
+      "cacheRead": 0.05,
+      "cacheWrite30m": 1.25,
+      "cacheWrite12h": 2.5
+    },
+    "longContext": {
+      "inputTokensGreaterThan": 272000,
+      "appliesTo": "whole request",
+      "input": 2,
+      "output": 7.5,
+      "cacheRead": 0.1,
+      "cacheWrite30m": 2.5,
+      "cacheWrite12h": 5
+    }
+  },
+  "openrouter": {
+    "route": "openai/gpt-6.1-terra",
+    "standard": {
+      "input": 1,
+      "output": 5,
+      "cacheRead": 0.05,
+      "cacheWrite": 1.25
+    },
+    "longContext": {
+      "input": 2,
+      "output": 7.5,
+      "cacheRead": 0.1,
+      "cacheWrite": 2.5
+    },
+    "cacheWrite12h": null
+  },
+  "copilot": {
+    "publishedInCapturedTable": false,
+    "rates": null
+  }
+}

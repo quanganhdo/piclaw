@@ -17,8 +17,6 @@ import type { ExtensionAPI, ExtensionFactory } from "@earendil-works/pi-coding-a
 import { Type } from "typebox";
 import { readAccessConfig } from "../core/config-access.js";
 import { getChatJid } from "../core/chat-context.js";
-import { listCurrentOwnerSessions } from "../agent-pool/owned-session-target.js";
-import { requireFamilyToolAccess } from '../agent-pool/family-tool-access.js';
 import {
   getSessionIsolationLevel,
   setSessionIsolationLevel,
@@ -153,8 +151,8 @@ export const sessionStatus: ExtensionFactory = (pi: ExtensionAPI) => {
       ])),
     }),
     async execute(_toolCallId, params, _signal, _update, ctx) {
-      try { requireFamilyToolAccess('session_status'); }
-      catch { return { content: [{ type: 'text', text: 'Session access denied.' }], details: { error: 'access_denied', available: false, safe_to_restart: false } }; }
+      try { if (readAccessConfig().mode !== "single-user") throw Error("Unsupported access mode"); }
+      catch { return { content: [{ type: "text", text: "Session access denied." }], details: { error: "access_denied", available: false, safe_to_restart: false } }; }
       const level = getSessionIsolationLevel();
 
       if (level === "full") {
@@ -164,20 +162,9 @@ export const sessionStatus: ExtensionFactory = (pi: ExtensionAPI) => {
         };
       }
 
-      const family = readAccessConfig().mode !== "single-user";
-      let allowed: Set<string> | null = null;
-      if (family) {
-        try { allowed = new Set(listCurrentOwnerSessions().map(branch => branch.chat_jid)); }
-        catch { return { content: [{ type: "text", text: "Session access denied." }], details: { error: "access_denied", available: false, safe_to_restart: false } }; }
-      }
-      const callerJid = family ? getChatJid("") : (ctx as any)?.chatJid || "";
-      const active = getActiveSessions(callerJid).filter(session => !allowed || allowed.has(session.chatJid));
+      const callerJid = getChatJid((ctx as any)?.chatJid || "");
+      const active = getActiveSessions(callerJid);
       const action = params.action || "list";
-      if (family && action === "check") return {
-        content: [{ type: "text", text: `${active.length} other owned session(s) active. Other owners are not inspected; this is not permission to restart the shared service.` }],
-        details: { isolation: "owner", active_sessions: active.length, safe_to_restart: false, instance_restart_authorised: false },
-      };
-
       if (action === "check") {
         const count = active.length;
         const text = count === 0
@@ -196,8 +183,8 @@ export const sessionStatus: ExtensionFactory = (pi: ExtensionAPI) => {
       // list
       if (active.length === 0) {
         return {
-          content: [{ type: "text", text: family ? "No other owned sessions are currently active; other owners are not inspected." : "No other sessions are currently active." }],
-          details: { isolation: family ? "owner" : level, sessions: [] },
+          content: [{ type: "text", text: "No other sessions are currently active." }],
+          details: { isolation: level, sessions: [] },
         };
       }
 
@@ -209,7 +196,7 @@ export const sessionStatus: ExtensionFactory = (pi: ExtensionAPI) => {
           model: s.model,
         };
 
-        if (level === "none" && !family) {
+        if (level === "none") {
           // Full visibility: tool names + args
           base.tools = s.activeTools.map((t) => ({
             name: t.toolName,
@@ -237,7 +224,7 @@ export const sessionStatus: ExtensionFactory = (pi: ExtensionAPI) => {
 
       return {
         content: [{ type: "text", text: `${active.length} active session(s):\n${lines.join("\n")}` }],
-        details: { isolation: family ? "owner" : level, sessions },
+        details: { isolation: level, sessions },
       };
     },
   });

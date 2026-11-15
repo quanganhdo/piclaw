@@ -2,7 +2,6 @@ import { expect, test } from "bun:test";
 import "../helpers.js";
 import { initDatabase, getDb, storeMessage, getMessageByRowId, replaceMessageContent } from "../../src/db.js";
 import { promoteCompletedAgentReply } from "../../src/db/messages.js";
-import { projectFamilySseEvent } from "../../src/channels/web/sse/family-event-projector.js";
 import { buildAgentMessageRoleBlock, getAgentMessageRole } from "../../src/db/agent-message-role.js";
 import { sanitizePublicInboundContentBlocks, sanitizeModelPostedContentBlocks, validateServiceEffectContentBlocks } from "../../src/channels/web/messaging/content-block-safety.js";
 
@@ -63,10 +62,4 @@ test('promotion requires exact live-boundary host evidence and matching chat',()
   for(const blocks of [[marker,buildAgentMessageRoleBlock('intermediate',false)],[marker,buildAgentMessageRoleBlock('unknown',false),{type:'agent_message_role'}],[{...marker,followed_by_tool_use:true},buildAgentMessageRoleBlock('unknown',false)]]) {
     const row=put(blocks);expect(promoteCompletedAgentReply('web:promote',row)).toBe(false);
   }
-});
-
-test('family event projection retains server classification but not arbitrary blocks',()=>{
-  const block=buildAgentMessageRoleBlock('final',false);
-  const projected=projectFamilySseEvent('agent_response',{id:12,chat_jid:'web:family',data:{type:'agent_response',content:'answer',agent_message_role:'final',is_terminal_agent_reply:false,content_blocks:[block,{type:'private_runtime',secret:'hidden'}]}})as any;
-  expect(projected.data).toMatchObject({agent_message_role:'final',is_terminal_agent_reply:false,content_blocks:[block]});
 });

@@ -1,111 +1,36 @@
-# Compaction models and deadlines
+# Native compaction policy
 
-Piclaw owns smart-compaction lifecycle, model selection, and the hard wall-clock deadline. Provider SDK timeouts and HTTP idle timeouts are lower-level request controls; they should not be used as competing compaction deadlines.
+Piclaw uses `pi-durable` compaction with the active conversation model. The Settings → Compaction pane and `/auto-compact on|off` share one host-wide enable flag. A save changes the next SDK compaction decision without restarting the runtime. Disabling automatic compaction does not cancel accepted maintenance or disable manual `/compact`.
 
-## Settings
+## Settings contract
 
-| Setting | Default | Scope | Meaning |
-|---|---:|---|---|
-| `domains.compaction.model` | empty | Local smart compaction | Canonical `provider/model`. Empty uses the active conversation model. |
-| `domains.compaction.timeoutMs` | `300000` | Entire compaction generation | One wall-clock deadline covering deterministic preparation, provider connection/prefill, streaming, validation, and abort settlement. |
-| `retry.provider.timeoutMs` | provider SDK default | All provider requests | Optional provider/SDK request timeout. Local smart-compaction calls override this with the remaining Piclaw compaction deadline. |
-| `httpIdleTimeoutMs` | `300000` | HTTP header/body idleness | Earendil transport idle guard. `0` disables it. This is not the Piclaw compaction deadline. |
-| `domains.compaction.remoteCompactionTimeoutMs` | `300000` | Provider-native pre-pass | Separate bounded timeout for explicitly supported provider-native opaque compaction before local fallback. |
+`GET /agent/settings` includes `compactionPolicy: "pi-durable"` and `autoCompactionEnabled`. `POST /agent/settings/compaction` accepts a boolean `autoCompactionEnabled`, persisted as `domains.compaction.autoCompactionEnabled` (default `true`). The native Harness reads that value at each decision through `createHostCommandPolicy`.
 
-The Settings → Compaction pane exposes the local model and compaction deadline. Compatibility environment variable `PICLAW_COMPACTION_TIMEOUT_MS` still has precedence over persisted `domains.compaction.timeoutMs`, but is deprecated for removal in Piclaw 3.0. Prefer the persisted domain setting.
+A valid deprecated `PICLAW_AUTO_COMPACTION_ENABLED` override still takes precedence. A conflicting API or native-command change fails before writing settings. The environment is never rewritten by a settings save. Invalid deprecated values retain the domain parser's existing fallback behaviour.
 
-## Model selection
-
-- Empty `domains.compaction.model` uses the active conversation model.
-- A non-empty value must be an exact `provider/model` available through the process `ModelRuntime`.
-- Explicit model selection is strict. Missing model metadata or credentials cancels compaction and preserves the session; Piclaw does not silently switch to the active model or a billable cloud provider.
-- Local selective and progressive compaction size prompts/chunks against the resolved compaction model’s context window and output limits.
-- Provider-native opaque compaction remains bound to the active model and verified provider capability. A separate local compaction model is used only after provider-native compaction is disabled, unavailable, or safely falls back.
-
-Example persisted configuration:
-
-```json
-{
-  "domains": {
-    "compaction": {
-      "model": "openai-compatible/qwen3-8b",
-      "timeoutMs": 3600000
-    }
-  }
-}
-```
-
-## Deadline ownership
-
-At compaction start Piclaw creates one absolute deadline. Every local provider request receives the **remaining** time rather than a fresh timeout. Deterministic work checks the same deadline cooperatively. If the deadline expires, Piclaw aborts the physical compaction, waits a bounded settlement grace, and quarantines a still-running generation so another compaction cannot mutate the same session concurrently.
-
-This prevents races such as a 10-minute provider timeout running beyond a 5-minute compaction deadline, or each progressive chunk receiving a fresh full deadline.
-
-## Timeout diagnostics
-
-Errors identify the stage that owned the deadline:
-
-| Stage | Meaning |
+| Former API field | Native contract |
 |---|---|
-| `deterministic` | Source preparation, chunk planning, validation, or final assembly before/after model calls. |
-| `provider_connect` | Request creation through receipt of HTTP response headers. |
-| `first_token` | Headers received; waiting for the first text or reasoning delta. |
-| `streaming` | Provider output began, then stopped making progress before completion. |
-| `settlement` | No more specific stage was available while the outer lifecycle deadline expired. |
+| `smartCompactionMethod` | Unsupported. No Selective/Pipelined method selector. |
+| `compactionModel` | Unsupported. Use the active conversation model. |
+| `remoteCompactionEnabled`, `remoteCompactionTimeoutSec` | Unsupported. No provider-native remote pre-pass or local fallback. |
+| `compactionThresholdPercent` | Unsupported. SDK token thresholds apply. |
+| `compactionTimeoutSec` | Unsupported. No legacy wall-clock deadline is translated into native task policy. |
+| `compactionBackoffBaseMin`, `compactionBackoffMaxMin`, `compactionBackoffDecayFactor` | Unsupported. Native tasks own their lifecycle; legacy per-chat suppression does not control them. |
 
-Diagnostics may also include the resolved model, provider request count, first-token latency, total duration, and whether the provider failed to settle within the post-abort grace. They never include prompts, headers, credentials, or raw session content.
+Any retired field in a save request returns HTTP 400 naming the unsupported fields, even when its value is unchanged. The request writes none of its settings. Reads omit retired fields, legacy latency estimates and backoff lists. Old clients must stop sending those fields. The retired `/agent/settings/compaction/probe` and `/reset-backoff` POST routes return HTTP 410 without provider calls or database changes. The obsolete provider-probe runner, AgentPool forwarding methods and probe-only latest-latency selector are removed; historical telemetry and the shared offline estimator remain intact.
 
-During a slow prefill, live status reports:
+With SDK 1.4.0, the native defaults are `reserveTokens: 16384`, `keepRecentTokens: 20000` and `backgroundTokens: 32768`. The SDK selects a summarisation range before admitting threshold work; model context size determines the blocking and background boundaries. These token counts are SDK defaults, not editable percentage settings.
 
-```text
-waiting for first token from provider/model — 75s elapsed, 525s remaining
-```
+## Maintenance and preservation
 
-## Earendil 0.84.4 transport behavior
+Settings writes grant no model/tool authority and do not create, replace, abort or replay tasks. Existing native maintenance admission, source checks, immutable task/request identity, checkpoint recovery and usage accounting still apply. A paused or accepted task retains its identity when the automatic enable flag changes.
 
-Earendil 0.84.4 disables undici’s former five-minute `headersTimeout` and `bodyTimeout` limits for long local-LLM streams. Provider SDK deadlines remain available through `retry.provider.timeoutMs`. Global `fetch` monkey patches or Bun `--preload` wrappers that set `timeout: false` are obsolete and should be removed.
+Persisted legacy compaction values, imported provenance, latency observations and backoff records remain intact. Legacy model/method/remote/deadline/backoff/progressive settings are inert historical keys; direct stale configuration writes reject before changing supported policy. The earlier [model/deadline guide](archive/legacy-compaction-models-and-deadlines.md) describes the removed implementation.
 
-For local compaction, Piclaw passes the remaining compaction deadline into the provider adapter. Ordinary agent requests continue to use their normal Earendil/provider settings.
+## Legacy execution retirement
 
-## Historical latency warnings
+The Selective/Pipelined/Progressive runners, remote provider pre-pass and payload replay, `createSmartCompactionExtension`, its facade/compatibility aliases and the `compactionStreamFn` option are removed. Built-in factory selection no longer registers a `session_before_compact` hook. There is no fallback compaction engine.
 
-Piclaw retains at most 10,000 bounded compaction observations locally. After at least three successful or safe-partial observations for the exact provider/model and the same power-of-two **pre-compaction source-context token bucket**, it reports a median–p90 duration range. Samples older than 14 days, failed attempts, other models, and other token buckets are excluded.
+Explicit offline `createSessionInDir` construction, source/media/history import and resident capture remain. Automatic compaction stays disabled on those legacy sessions; normal application compaction uses the native Harness. Two data-only modules retain historical result parsing, opaque records, file facts and readable checkpoint decoding without provider requests or replay. The shared historical latency estimator and telemetry database APIs remain unchanged. Receipt metadata remains types only; the old asynchronous deadline scope and cancellation-reason cache are removed. Reading an opaque historical record grants no authority to send it to a provider.
 
-A warning appears when p90 reaches 80% of the configured compaction deadline. It is advisory only: Piclaw never extends or rewrites the deadline automatically. Missing, stale, or insufficient data produces no warning and never blocks compaction.
-
-## Bounded local adapter fixture
-
-`runtime/test/extensions/delayed-openai-compaction.integration.test.ts` starts a local OpenAI-compatible SSE server and exercises the real `openai-completions` adapter. It covers delayed response headers, delayed first content, mid-stream stalls, early termination, and abort-resistant settlement with millisecond-scale delays.
-
-Run it with:
-
-```bash
-PICLAW_DB_IN_MEMORY=1 bun test --max-concurrency=1 --timeout=15000 \
-  runtime/test/extensions/delayed-openai-compaction.integration.test.ts
-```
-
-## Manual LM Studio acceptance run
-
-Use this only when a local server is available. Do not run it against a paid provider by accident.
-
-1. Add the local OpenAI-compatible model to `~/.pi/agent/models.json` with its real context window and local base URL.
-2. Confirm the model appears in Settings → Models and credentials resolve without exposing them.
-3. In Settings → Compaction:
-   - set the exact local `provider/model`;
-   - set a deadline longer than the expected prefill plus generation time;
-   - leave provider-native compaction disabled unless that endpoint is explicitly supported.
-4. Use a disposable test chat. Grow context to the target input size, then run `/compact`.
-5. Record:
-   - Piclaw/Earendil/Bun versions;
-   - provider/model and endpoint identity without credentials;
-   - input token estimate and context window;
-   - configured compaction deadline;
-   - response-header time if available;
-   - TTFT and total duration;
-   - model request count and chunk count;
-   - outcome or timeout stage;
-   - compaction generation/trace identifiers.
-6. Verify the session remains readable after success or failure and that no emergency rotation loses authoritative work.
-7. Remove any temporary model/timeout configuration after the run.
-
-For the original #1049 workload, the acceptance target is a context near 139k input tokens with a deliberately slow local model. The expected result is either successful compaction inside the configured deadline or a stage-attributed failure that preserves the session—never an opaque five-minute fetch timeout.
+Local-lite prompt options, tool-result compression, semantic summaries and watchdog fields keep their separate controls and consumers (`config-tools`, `context-mode-api`, `local-lite-prompt-profile`, and the progress-watchdog supervisor). They are independent of native conversation compaction and are not mapped into its SDK policy.

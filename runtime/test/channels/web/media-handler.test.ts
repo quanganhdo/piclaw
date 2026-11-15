@@ -29,7 +29,7 @@ test("handleMedia serves audio inline for native browser playback", () => {
 
     const res = handleMedia(new StubChannel() as any, mediaId, false);
     expect(res.headers.get("Content-Type")).toBe("audio/wav");
-    expect(res.headers.get("Content-Disposition")).toBeNull();
+    expect(res.headers.get("Content-Disposition")).toBe(`inline; filename="recording.wav"; filename*=UTF-8''recording.wav`);
     expect(res.headers.get("Content-Length")).toBe("12");
   } finally {
     restoreEnv();
@@ -76,7 +76,8 @@ test("single byte ranges and HEAD have bounded exact responses", async () => {
     const result = request(range);
     expect(result.status).toBe(206); expect(result.headers.get("content-range")).toBe(header);
     expect(result.headers.get("content-length")).toBe(String(body.length));
-    expect(result.headers.get("content-type")).toBe("audio/wav"); expect(result.headers.get("content-disposition")).toBeNull();
+    expect(result.headers.get("content-type")).toBe("audio/wav");
+    expect(result.headers.get("content-disposition")).toBe(`inline; filename="voice.wav"; filename*=UTF-8''voice.wav`);
     expect(await result.text()).toBe(body);
   }
   for (const range of ["bytes=10-", "bytes=5-2", "bytes=-0", "bytes=9007199254740992-"]) {
@@ -121,4 +122,33 @@ test("legacy malformed MIME values cannot inject or invalidate response headers"
       expect(result.headers.get("x-injected")).toBeNull();
     }
   }
+});
+
+test("stored image filenames survive full, partial, HEAD and thumbnail responses", async () => {
+  initDatabase();
+  const filename = "résumé 日本語.png";
+  const id = createMedia(filename, "image/png", new TextEncoder().encode("original"), new TextEncoder().encode("thumb"), null);
+  const disposition = `inline; filename="r_sum_ ___.png"; filename*=UTF-8''r%C3%A9sum%C3%A9%20%E6%97%A5%E6%9C%AC%E8%AA%9E.png`;
+  for (const thumbnail of [false, true]) for (const method of ["GET", "HEAD"]) for (const range of [undefined, "bytes=1-3"]) {
+    const response = handleMedia(new StubChannel(), id, thumbnail, new Request(`https://test/media/${id}${thumbnail ? "/thumbnail" : ""}`, {
+      method, headers: range ? { Range: range } : {},
+    }));
+    expect(response.status).toBe(range && method === "GET" ? 206 : 200);
+    expect(response.headers.get("content-disposition")).toBe(disposition);
+    expect(response.headers.get("content-type")).toBe("image/png");
+    const source = thumbnail ? "thumb" : "original";
+    expect(await response.text()).toBe(method === "HEAD" ? "" : range ? source.slice(1, 4) : source);
+  }
+});
+
+test("inline media filenames are header-safe and unknown names use an explicit fallback", () => {
+  initDatabase();
+  const channel = new StubChannel();
+  const id = createMedia('folder\\unsafe"\r\nname.png', "image/png", new Uint8Array([1]), null, null);
+  const response = handleMedia(channel, id, false);
+  expect(response.headers.get("content-disposition")).toBe(`inline; filename="unsafe___name.png"; filename*=UTF-8''unsafe___name.png`);
+  expect(response.headers.get("x-injected")).toBeNull();
+  const unnamed = createMedia("", "audio/wav", new Uint8Array([1]), null, null);
+  expect(handleMedia(channel, unnamed, false).headers.get("content-disposition"))
+    .toBe(`inline; filename="attachment-${unnamed}"; filename*=UTF-8''attachment-${unnamed}`);
 });

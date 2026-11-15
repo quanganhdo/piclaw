@@ -27,18 +27,26 @@ for the library reference.
 
 | Library | Global | Use for |
 |---|---|---|
-| `beautiful-mermaid` | `beautifulMermaid` | Diagrams (flowcharts, sequence, ER, etc.) |
+| `beautiful-mermaid` | `beautifulMermaid` | Legacy widget/artifact diagrams; original public API retained |
 | ECharts 6.1 | `echarts` | Charts (bar, line, pie, heatmap, treemap, …) |
 | D3 7.9 | `d3` | Custom SVG, force layouts |
 | KaTeX | `katex` | Math typesetting |
 | IBM Plex Sans | CSS `@font-face` | Body font (OFL 1.1) |
 | JetBrains Mono NF | CSS `@font-face` | Code/mono font with Nerd Font glyphs (OFL 1.1) |
 
-> **Mermaid API:** The vendored Mermaid bundle exposes `window.beautifulMermaid`,
+Timeline Mermaid fences use Pele through a shared application renderer in
+Classic and Family. Existing generated artifacts keep the separate
+`beautiful-mermaid` asset and its public API. The application uses no automatic
+legacy fallback. See [vendored-widget-libraries.md](vendored-widget-libraries.md#timeline-diagrams-pele).
+
+> **Legacy artifact Mermaid API:** The legacy bundle exposes `window.beautifulMermaid`,
 > not `window.mermaid`. Always call `beautifulMermaid.renderMermaidSVGAsync()`
 > and post-process the result with `fixupMermaidSVG()`.
 
-## Post-processing helper
+## Legacy artifact post-processing helper
+
+Do not apply this helper to Pele output. Pele uses its own path geometry and
+CSS variables; its timeline theme mapping is maintained by the application.
 
 The `beautiful-mermaid` renderer requires post-processing to fix colors,
 rounded corners, and Google Fonts imports. A helper handles this in one call:

@@ -75,9 +75,6 @@ test("plain import covers config module init branches with isolated argv and env
         "WEB_RUNTIME_CONFIG",
         "call:getWebRuntimeConfig",
         "same:getWebRuntimeConfig:WEB_RUNTIME_CONFIG",
-        "SESSION_STORAGE_CONFIG",
-        "call:getSessionStorageConfig",
-        "same:getSessionStorageConfig:SESSION_STORAGE_CONFIG",
         "AGENT_RUNTIME_CONFIG",
         "call:getAgentRuntimeConfig",
         "same:getAgentRuntimeConfig:AGENT_RUNTIME_CONFIG",
@@ -157,17 +154,8 @@ test("plain import covers config module init branches with isolated argv and env
       trustProxy: true,
       composeUploadLimitMb: 256,
       workspaceUploadLimitMb: 256,
-      uiMode: "classic",
     });
     expect(snapshot["same:getWebRuntimeConfig:WEB_RUNTIME_CONFIG"]).toBe(true);
-    expect(snapshot.SESSION_STORAGE_CONFIG).toEqual({
-      maxSizeMb: 64,
-      maxSizeBytes: 64 * 1024 * 1024,
-      maxLines: 8000,
-      maxCompactionsBeforeRotation: 3,
-      autoRotate: true,
-    });
-    expect(snapshot["same:getSessionStorageConfig:SESSION_STORAGE_CONFIG"]).toBe(true);
     expect(snapshot.AGENT_RUNTIME_CONFIG).toEqual({ timeoutMs: 120000, backgroundTimeoutMs: 45000 });
     expect(snapshot["same:getAgentRuntimeConfig:AGENT_RUNTIME_CONFIG"]).toBe(true);
     expect(snapshot.RUNTIME_TIMING_CONFIG).toEqual({ pollIntervalMs: 2000, schedulerPollIntervalMs: 60000, ipcPollIntervalMs: 1000, timezone: "UTC" });

@@ -44,7 +44,7 @@ const APP_ASSET_VERSION_PLACEHOLDER = "__APP_ASSET_VERSION__";
 const LOGIN_ASSET_VERSION_PLACEHOLDER = "__LOGIN_ASSET_VERSION__";
 const NOTIFICATION_SOURCE_LABELS_PLACEHOLDER = "__PICLAW_NOTIFICATION_SOURCE_LABELS_FLAG__";
 const SANITIZE_SVG_FENCES_PLACEHOLDER = "__PICLAW_SANITIZE_SVG_FENCES_FLAG__";
-const LOGIN_VERSION_FILES = ["common/dist/login.bundle.js", "common/dist/login.bundle.css", "common/dist/invitation.bundle.js"];
+const LOGIN_VERSION_FILES = ["common/dist/login.bundle.js", "common/dist/login.bundle.css"];
 const TEXT_ASSET_CACHE = new Map<string, { mtimeMs: number; text: string }>();
 const GZIP_ASSET_CACHE = new Map<string, { mtimeMs: number; data: Uint8Array }>();
 
@@ -109,22 +109,8 @@ function renderHtmlTemplate(relPath: string, html: string): string {
   if (relPath === "classic/index.html") {
     return renderedWithSharedFlags.replaceAll(APP_ASSET_VERSION_PLACEHOLDER, getAppAssetVersion());
   }
-  if (relPath === "visual/index.html") {
-    return renderedWithSharedFlags;
-  }
-  if (relPath === "login.html" || relPath === "invitation.html") {
+  if (relPath === "login.html") {
     return renderedWithSharedFlags.replaceAll(LOGIN_ASSET_VERSION_PLACEHOLDER, getLoginAssetVersion());
-  }
-  if (relPath === "family.html") {
-    return renderedWithSharedFlags.replaceAll("__FAMILY_ASSET_VERSION__", readAssetVersion([
-      "common/dist/family.bundle.js",
-      "common/dist/family.bundle.css",
-      "classic/dist/app.bundle.css",
-      "common/js/marked.min.js",
-      "common/js/vendor/katex.min.js",
-      "common/js/vendor/beautiful-mermaid.js",
-      "common/js/vendor/adaptivecards.min.js",
-    ]));
   }
   return renderedWithSharedFlags;
 }

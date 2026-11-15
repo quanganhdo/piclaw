@@ -1,3 +1,4 @@
+import { renderToolIcon } from '../ui/tool-icon.js';
 /**
  * settings-dialog.ts — Floating settings dialog shell.
  * Self-manages open/close via 'piclaw:open-settings' custom event.
@@ -32,14 +33,15 @@ perf('module-eval-start');
 import { html, useState, useEffect, useCallback, useRef } from '../vendor/preact-htm.js';
 import { useTranslation } from '../utils/i18n.js';
 import { BodyPortal } from './body-portal.js';
-import { compareSettingsPanesAlphabetically, getRegisteredSettingsPanes } from './settings/pane-registry.js';
+import { compareSettingsPanesAlphabetically, getRegisteredSettingsPanes, registerSettingsPane, notifySettingsPanesChanged } from './settings/pane-registry.js';
+import { iconDeveloperPane, iconEditorPane } from './settings/core-pane-icons.js';
 import { consumeRequestedSettingsOpenState, normalizeSettingsSectionId, peekRequestedSettingsSection, requestOpenSettingsDialog } from './settings-dialog-events.js';
 // General is statically imported — it's always the first visible section.
 import { GeneralSection } from './settings/general.js';
 perf('imports-done');
 
 type SettingsSectionComponent = unknown;
-type BuiltinSectionId = 'authentication' | 'general' | 'sessions' | 'recordings' | 'compaction' | 'budget' | 'mcp' | 'keyboard' | 'workspace' | 'environment' | 'providers' | 'models' | 'theme' | 'scheduled-tasks' | 'quick-actions' | 'keychain' | 'tools' | 'addons';
+type BuiltinSectionId = 'authentication' | 'general' | 'sessions' | 'recordings' | 'compaction' | 'mcp' | 'keyboard' | 'workspace' | 'environment' | 'providers' | 'models' | 'theme' | 'scheduled-tasks' | 'quick-actions' | 'keychain' | 'tools' | 'addons';
 
 const builtinSectionComponentCache = new Map<BuiltinSectionId, SettingsSectionComponent>();
 const builtinSectionLoadPromiseCache = new Map<BuiltinSectionId, Promise<SettingsSectionComponent>>();
@@ -53,7 +55,6 @@ const BUILTIN_SECTION_LOADERS: Record<BuiltinSectionId, () => Promise<SettingsSe
     sessions: () => import('./settings/sessions.js').then(mod => mod.SessionsSection),
     recordings: () => import('./settings/recordings.js').then(mod => mod.RecordingsSection),
     compaction: () => import('./settings/compaction.js').then(mod => mod.CompactionSection),
-    budget: () => import('./settings/budget.js').then(mod => mod.BudgetSection),
     mcp: () => import('./settings/mcp.js').then(mod => mod.McpSection),
     keyboard: () => import('./settings/keyboard.js').then(mod => mod.KeyboardSection),
     workspace: () => import('./settings/workspace.js').then(mod => mod.WorkspaceSection),
@@ -68,13 +69,21 @@ const BUILTIN_SECTION_LOADERS: Record<BuiltinSectionId, () => Promise<SettingsSe
     addons: () => import('./settings/addons.js').then(mod => mod.AddonsSection),
 };
 
-// Extension panes are loaded lazily only when the user opens those sections.
-// Extension pane loaders — each loads ONE module on demand, not all at once.
-const EXTENSION_SETTINGS_PANE_LOADERS_MAP: Record<string, () => Promise<void>> = {
-    'editor-settings': () => import('./settings/editor-settings.js').then(() => {}),
-    'developer': () => import('./settings/developer-settings.js').then(() => {}),
-};
-const loadedExtensionPanes = new Set<string>();
+// Core-owned extension panes self-register when their module loads. Their nav
+// entries are listed up front (ids match registerSettingsPane) so they remain
+// reachable; each module loads only when its pane is opened.
+const LAZY_EXTENSION_PANES: Array<{ id: string; label: string; icon: unknown; order: number; load: () => Promise<unknown>; searchable?: boolean; searchPlaceholder?: string; component?: any }> = [
+    { id: 'editor', label: 'Editor', icon: iconEditorPane, order: 150, load: () => import('./settings/editor-settings.js') },
+    { id: 'delegate', label: 'Delegate', icon: renderToolIcon(), order: 169, load: () => {
+        const url = '/static/classic/dist/delegate-settings.bundle.js' + new URL(import.meta.url).search;
+        return import(url).then(module => module.registerDelegateSettings({ html, useState, useEffect, useCallback, registerSettingsPane, notifySettingsPanesChanged }));
+    } },
+    { id: 'developer', label: 'Developer', icon: iconDeveloperPane, order: 900, load: () => import('./settings/developer-settings.js') },
+];
+const lazyExtensionPaneLoads = new Map<string, Promise<unknown>>();
+const isKnownSettingsSection = (id) => Object.hasOwn(BUILTIN_SECTION_LOADERS, id)
+    || LAZY_EXTENSION_PANES.some(pane => pane.id === id)
+    || getRegisteredSettingsPanes().some(pane => pane.id === id);
 
 function loadBuiltinSection(id) {
     const cached = builtinSectionComponentCache.get(id);
@@ -115,7 +124,6 @@ const iconGeneral = html`<svg viewBox="0 0 24 24" width="16" height="16" fill="n
 const iconSessions = html`<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`;
 const iconRecordings = html`<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="12" r="2.2"/><path d="m13 10 4-2.5v9L13 14z"/></svg>`;
 const iconCompaction = html`<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><polyline points="3 4 3 10 9 10"/><path d="M12 7v5l3 3"/></svg>`;
-const iconBudget = html`<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18"/><path d="M7 15h4"/></svg>`;
 const iconWorkspace = html`<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>`;
 const iconEnvironment = html`<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/><path d="M8 7v10"/><path d="M16 7v10"/></svg>`;
 const iconKeyboard = html`<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9h.01"/><path d="M10 9h.01"/><path d="M14 9h.01"/><path d="M18 9h.01"/><path d="M8 13h.01"/><path d="M12 13h.01"/><path d="M16 13h.01"/><path d="M7 17h10"/></svg>`;
@@ -123,18 +131,19 @@ const iconProviders = html`<svg viewBox="0 0 24 24" width="16" height="16" fill=
 const iconModels = html`<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="9" width="14" height="10" rx="2"/><circle cx="9" cy="14" r="1.5" fill="currentColor" stroke="none"/><circle cx="15" cy="14" r="1.5" fill="currentColor" stroke="none"/><line x1="12" y1="9" x2="12" y2="5"/><circle cx="12" cy="4" r="1.5"/></svg>`;
 const iconAppearance = html`<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c1.1 0 2-.9 2-2 0-.53-.21-1.01-.55-1.36-.34-.36-.55-.84-.55-1.37 0-1.1.9-2 2-2h2.36c3.08 0 5.64-2.56 5.64-5.64C22.9 5.85 18.05 2 12 2z"/><circle cx="8" cy="10" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="7" r="1.5" fill="currentColor" stroke="none"/><circle cx="16" cy="10" r="1.5" fill="currentColor" stroke="none"/></svg>`;
 const iconScheduledTasks = html`<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/><path d="M7 3.5 4 6"/><path d="m17 3.5 3 2.5"/></svg>`;
-const iconTools = html`<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`;
+const iconTools = renderToolIcon();
 const iconQuickActions = html`<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`;
 const iconKeychain = html`<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="14" r="3"/><path d="M11 14h9"/><path d="M16 14v-2"/><path d="M19 14v2"/></svg>`;
 const iconAddons = html`<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`;
 
 // Built-in sections (order 0-100)
-const BUILTIN_SECTIONS = [
+type SettingsSectionMeta = { id: string; label: string; icon: unknown; searchable?: boolean; placeholder?: string; order?: number; isExtension?: boolean; isCore?: boolean; component?: any };
+
+const BUILTIN_SECTIONS: SettingsSectionMeta[] = [
     { id: 'general', label: 'General', icon: iconGeneral, searchable: false, order: 10 },
     { id: 'sessions', label: 'Sessions', icon: iconSessions, searchable: false, order: 12 },
     { id: 'recordings', label: 'Recordings', icon: iconRecordings, searchable: true, placeholder: 'Filter recordings…', order: 12.5 },
     { id: 'compaction', label: 'Compaction', icon: iconCompaction, searchable: false, order: 13 },
-    { id: 'budget', label: 'Budget', icon: iconBudget, searchable: false, order: 13.5 },
     { id: 'keyboard', label: 'Keyboard', icon: iconKeyboard, searchable: true, placeholder: 'Filter shortcuts…', order: 14 },
     { id: 'workspace', label: 'Workspace', icon: iconWorkspace, searchable: false, order: 15 },
     { id: 'environment', label: 'Environment', icon: iconEnvironment, searchable: true, placeholder: 'Filter environment…', order: 16 },
@@ -150,9 +159,18 @@ const BUILTIN_SECTIONS = [
     { id: 'addons', label: 'Add-ons', icon: iconAddons, searchable: true, placeholder: 'Filter add-ons…', order: 90 },
 ];
 
-export function SettingsDialogContent({ onClose }) {
+/**
+ * Settings content. `variant="tab"` renders it as a work-area tab in the
+ * Classic workbench (no backdrop, close button or Escape-to-close); the
+ * default is the modal dialog.
+ */
+export function SettingsDialogContent({ onClose = null, variant = 'dialog' }) {
+    const isTab = variant === 'tab';
     perf('SettingsDialogContent-render-start');
-    const [activeSection, setActiveSection] = useState(() => peekRequestedSettingsSection() || 'general');
+    const [activeSection, setActiveSection] = useState(() => {
+        const requested = peekRequestedSettingsSection();
+        return requested && isKnownSettingsSection(requested) ? requested : 'general';
+    });
     const [settingsData, setSettingsData] = useState(_settingsDataCache);
     const [statusMessage, setStatusMessage] = useState(null);
     const [filter, setFilter] = useState('');
@@ -175,15 +193,16 @@ export function SettingsDialogContent({ onClose }) {
     }, []);
 
     useEffect(() => {
+        if (isTab || !onClose) return undefined;
         const onKey = (e) => { if (e.key === 'Escape') onClose(); };
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
-    }, [onClose]);
+    }, [isTab, onClose]);
 
     useEffect(() => {
         const onOpenSettings = (event) => {
             const requestedSection = normalizeSettingsSectionId(event?.detail?.section);
-            if (requestedSection) {
+            if (requestedSection && isKnownSettingsSection(requestedSection)) {
                 setActiveSection(requestedSection);
                 setFilter('');
             }
@@ -232,21 +251,27 @@ export function SettingsDialogContent({ onClose }) {
         return () => window.removeEventListener('resize', updateLayoutMode);
     }, []);
 
-    const builtinSections = [...BUILTIN_SECTIONS].sort((a, b) => (a.order ?? 500) - (b.order ?? 500));
     const extensionPanes = getRegisteredSettingsPanes();
+    const toSection = (p, isCore = false) => ({
+        id: p.id,
+        label: p.label,
+        icon: p.icon,
+        searchable: p.searchable || false,
+        placeholder: p.searchPlaceholder,
+        order: p.order ?? 500,
+        isExtension: true,
+        isCore,
+        component: p.component,
+    });
+    // Core-owned Editor and Developer panes sit with the built-in sections;
+    // only registered add-on panes go below the separator.
+    const corePaneSections = LAZY_EXTENSION_PANES.map(lazy => toSection(extensionPanes.find(pane => pane.id === lazy.id) || lazy, true));
+    const builtinSections = [...BUILTIN_SECTIONS, ...corePaneSections].sort((a, b) => (a.order ?? 500) - (b.order ?? 500));
     const extensionSections = extensionPanes
-        .map(p => ({
-            id: p.id,
-            label: p.label,
-            icon: p.icon,
-            searchable: p.searchable || false,
-            placeholder: p.searchPlaceholder,
-            order: p.order ?? 500,
-            isExtension: true,
-            component: p.component,
-        }))
+        .filter(pane => !LAZY_EXTENSION_PANES.some(lazy => lazy.id === pane.id))
+        .map(pane => toSection(pane))
         .sort(compareSettingsPanesAlphabetically);
-    const allSections = [...builtinSections, ...extensionSections];
+    const allSections: SettingsSectionMeta[] = [...builtinSections, ...extensionSections];
 
     const activeMeta = allSections.find(s => s.id === activeSection) || BUILTIN_SECTIONS.find(s => s.id === activeSection);
 
@@ -259,6 +284,16 @@ export function SettingsDialogContent({ onClose }) {
     useEffect(() => {
         if (activeMeta?.isExtension) {
             setLoadingSectionId(null);
+            const lazy = LAZY_EXTENSION_PANES.find(pane => pane.id === activeSection);
+            if (lazy && !activeMeta.component && !lazyExtensionPaneLoads.has(lazy.id)) {
+                const load = lazy.load();
+                lazyExtensionPaneLoads.set(lazy.id, load);
+                load.then(() => forceUpdate(n => n + 1)).catch((error) => {
+                    lazyExtensionPaneLoads.delete(lazy.id);
+                    console.error(`[settings-dialog] Failed to load settings pane "${lazy.id}".`, error);
+                    setStatusMessage({ text: `${lazy.label} settings could not be loaded.`, type: 'error' });
+                });
+            }
             return;
         }
         let cancelled = false;
@@ -289,12 +324,6 @@ export function SettingsDialogContent({ onClose }) {
     const switchSection = useCallback((id) => {
         setActiveSection(id);
         setFilter('');
-        // Lazy-load extension pane module if not yet loaded
-        const extLoader = EXTENSION_SETTINGS_PANE_LOADERS_MAP[id];
-        if (extLoader && !loadedExtensionPanes.has(id)) {
-            loadedExtensionPanes.add(id);
-            extLoader().then(() => forceUpdate(n => n + 1)).catch((e) => { void e; });
-        }
     }, []);
 
     const mergeSettingsData = useCallback((patch) => {
@@ -319,7 +348,6 @@ export function SettingsDialogContent({ onClose }) {
             case 'sessions': return html`<${Comp} settingsData=${settingsData} setStatus=${setStatus} mergeSettingsData=${mergeSettingsData} />`;
             case 'recordings': return html`<${Comp} filter=${filter} setStatus=${setStatus} />`;
             case 'compaction': return html`<${Comp} settingsData=${settingsData} setStatus=${setStatus} mergeSettingsData=${mergeSettingsData} />`;
-            case 'budget': return html`<${Comp} setStatus=${setStatus} />`;
             case 'mcp': return html`<${Comp} />`;
             case 'keyboard': return html`<${Comp} filter=${filter} setStatus=${setStatus} />`;
             case 'workspace': return html`<${Comp} settingsData=${settingsData} setStatus=${setStatus} mergeSettingsData=${mergeSettingsData} />`;
@@ -339,27 +367,29 @@ export function SettingsDialogContent({ onClose }) {
     const showRootLoading = !activeMeta;
     perf('SettingsDialogContent-render-end');
 
-    return html`
-        <div class="settings-dialog-backdrop" onClick=${(e) => { if (e.target === e.currentTarget) onClose(); }}>
-            <div ref=${dialogRef} data-testid="settings-dialog" class=${`settings-dialog${layoutMode.compact ? ' settings-dialog-compact' : ''}${layoutMode.narrow ? ' settings-dialog-narrow' : ''}`}>
+    const panel = html`
+            <div ref=${dialogRef} data-testid="settings-dialog" class=${`settings-dialog${isTab ? ' settings-tab' : ''}${layoutMode.compact ? ' settings-dialog-compact' : ''}${layoutMode.narrow ? ' settings-dialog-narrow' : ''}`}>
                 <div class="settings-dialog-header">
-                    <span class="settings-dialog-title">${t('settings.title')}</span>
+                    <span class="settings-dialog-title">${layoutMode.narrow && activeMeta ? sectionLabel(activeMeta) : t('settings.title')}</span>
                     ${activeMeta?.searchable && html`
                         <input ref=${filterRef} type="search" class="settings-header-filter"
                             aria-label=${sectionPlaceholder(activeMeta)}
                             placeholder=${sectionPlaceholder(activeMeta)}
                             value=${filter} onInput=${e => setFilter(e.target.value)} />
                     `}
-                    <button class="settings-dialog-close" onClick=${onClose} title=${t('settings.close')}>✕</button>
+                    ${!isTab && html`<button class="settings-dialog-close" onClick=${onClose} title=${t('settings.close')}>✕</button>`}
                 </div>
                 <div class="settings-dialog-body">
-                    <nav class="settings-nav">
+                    <nav class="settings-nav" aria-label=${t('settings.title')}>
                         ${allSections.map((s, i) => {
-                            const prevIsBuiltin = i > 0 && !allSections[i - 1].isExtension;
-                            const showSep = s.isExtension && prevIsBuiltin;
+                            const isAddon = (section) => section.isExtension && !section.isCore;
+                            const showSep = isAddon(s) && i > 0 && !isAddon(allSections[i - 1]);
                             return html`
-                                ${showSep && html`<div class="settings-nav-separator"></div>`}
-                                <button class=${`settings-nav-item ${s.id === activeSection ? 'active' : ''}`} onClick=${() => switchSection(s.id)}>
+                                ${showSep && html`<div class="settings-nav-separator" role="separator"></div>`}
+                                <button type="button" class=${`settings-nav-item ${s.id === activeSection ? 'active' : ''}`}
+                                    aria-label=${sectionLabel(s)} title=${sectionLabel(s)}
+                                    aria-current=${s.id === activeSection ? 'page' : undefined}
+                                    onClick=${() => switchSection(s.id)}>
                                     <span class="settings-nav-icon">${typeof s.icon === 'string' && s.icon.trim().startsWith('<')
                                         ? html`<span dangerouslySetInnerHTML=${{ __html: s.icon }}></span>`
                                         : s.icon}</span>
@@ -368,7 +398,7 @@ export function SettingsDialogContent({ onClose }) {
                             `;
                         })}
                     </nav>
-                    <main class=${`settings-content${activeMeta?.isExtension ? ' settings-addon-pane' : ''}`}>
+                    <main class=${`settings-content${activeMeta?.isExtension && !activeMeta?.isCore ? ' settings-addon-pane' : ''}`}>
                         ${showRootLoading ? renderSectionLoading(t('settings.loading')) : renderSection()}
                     </main>
                 </div>
@@ -380,6 +410,11 @@ export function SettingsDialogContent({ onClose }) {
                     </div>
                 `}
             </div>
+    `;
+    if (isTab) return panel;
+    return html`
+        <div class="settings-dialog-backdrop" onClick=${(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
+            ${panel}
         </div>
     `;
 }
@@ -390,7 +425,7 @@ export function SettingsDialog() {
         const handler = (event) => {
             const section = normalizeSettingsSectionId(event?.detail?.section);
             if (section) {
-                try { window.__piclawSettingsRequestedSection = section; } catch (e) { void e; }
+                try { (window as any).__piclawSettingsRequestedSection = section; } catch (e) { void e; }
             }
             setOpen(true);
         };
@@ -398,7 +433,7 @@ export function SettingsDialog() {
         const pending = consumeRequestedSettingsOpenState();
         if (pending.open) {
             if (pending.section) {
-                try { window.__piclawSettingsRequestedSection = pending.section; } catch (e) { void e; }
+                try { (window as any).__piclawSettingsRequestedSection = pending.section; } catch (e) { void e; }
             }
             setOpen(true);
         }

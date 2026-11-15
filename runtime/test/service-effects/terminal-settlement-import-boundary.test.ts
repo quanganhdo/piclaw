@@ -42,7 +42,6 @@ describe("EF-S02 latent import boundary", () => {
       "src/index.ts",
       "src/db/connection.ts",
       "src/channels/web/handlers/agent.ts",
-      "src/channels/web/runtime/process-chat-finalization-runtime.ts",
     ]) {
       const source = readFileSync(join(root, relative), "utf8");
       expect(source).not.toContain("terminal-settlement");

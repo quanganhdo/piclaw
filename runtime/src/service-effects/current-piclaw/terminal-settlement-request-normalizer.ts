@@ -17,13 +17,6 @@ import { normaliseOutboxMutation } from "./service-outbox-request-normalizer.js"
 
 const HASH = /^[0-9a-f]{64}$/;
 const REDACTIONS = new Set(["public", "private", "secret"]);
-const HARNESS_STATES = new Set([
-  "not_started",
-  "running",
-  "suspended",
-  "aborting",
-  "finished",
-]);
 const DISPOSITIONS = new Set([
   "completed",
   "cancelled",
@@ -147,22 +140,14 @@ function normaliseHarness(input: unknown): HarnessCorrelation | null {
     !value ||
     !exact(value, [
       "sessionId",
-      "lane",
       "harnessOperationId",
-      "state",
-      "watchGeneration",
     ])
   ) {
     throw new TypeError();
   }
-  const state = enumText(value.state, HARNESS_STATES);
-  if (!state) throw new TypeError();
   return {
     sessionId: boundedText(value.sessionId, 512),
-    lane: boundedText(value.lane, 512),
     harnessOperationId: nullableBoundedText(value.harnessOperationId, 512),
-    state: state as HarnessCorrelation["state"],
-    watchGeneration: integer(value.watchGeneration, 0),
   };
 }
 

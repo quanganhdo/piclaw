@@ -57,8 +57,8 @@ test("legacy factor commands deny all multi-user actions without creating cards 
     for (const action of [undefined, "list", "delete", "enrol", "reset"]) {
       const passkey = await handlePasskey({} as any, { type: "passkey", action, id: "foreign" } as any);
       const totp = await handleTotp({} as any, { type: "totp", action, code: "123456" } as any);
-      expect(passkey.status).toBe("error"); expect(passkey.message).toContain("account-bound");
-      expect(totp.status).toBe("error"); expect(totp.message).toContain("account-bound");
+      expect(passkey.status).toBe("error"); expect(passkey.message).toContain("Single-user");
+      expect(totp.status).toBe("error"); expect(totp.message).toContain("Single-user");
     }
   }
   expect((getDb().query("SELECT count(*) n FROM web_sessions").get() as any).n).toBe(1);

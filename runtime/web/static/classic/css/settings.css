@@ -49,7 +49,6 @@
     width: auto;
     min-width: 0;
     max-width: 100%;
-    max-height: 54px;
     display: flex;
     flex-wrap: nowrap;
     gap: 6px;
@@ -174,9 +173,8 @@
     padding: 20px 28px;
 }
 
-/* Match General's Widget bearer token Regenerate control. Keep browser-native
- * button typography, as used by .settings-row and the keychain submit control.
- * Visual retains the shared stylesheet's defaults.
+/* Match the widget-token Regenerate control (Authentication → API access),
+ * which uses the shared Settings button base: UI font, 13px, control height.
  */
 .settings-content.settings-addon-pane {
     /* Match ordinary Classic fields; these tokens never restyle built-ins. */
@@ -189,11 +187,11 @@
     --settings-addon-control-accent: var(--accent-color);
     --settings-addon-label-size: 0.88em;
     --settings-addon-help-size: 0.82em;
-    --settings-addon-button-min-height: auto;
+    --settings-addon-button-min-height: var(--settings-control-height, 30px);
     --settings-addon-button-min-width: 70px;
-    --settings-addon-button-font-size: calc(var(--font-size-md, 15px) * 0.84);
+    --settings-addon-button-font-size: var(--settings-text-sm, 13px);
     --settings-addon-button-font-weight: normal;
-    --settings-addon-button-line-height: normal;
+    --settings-addon-button-line-height: 1.2;
     --settings-addon-button-white-space: nowrap;
     --settings-addon-button-transition: all 0s;
     --settings-addon-button-hover-border: var(--border-color, rgba(128,128,128,0.3));
@@ -202,7 +200,7 @@
 }
 
 .settings-content.settings-addon-pane :where(button:not(.settings-number-step-btn):not(.settings-panel__stepper-btn):not([role="tab"]):not([role="switch"]):not([data-settings-button="unstyled"])) {
-    font-family: revert !important;
+    font-family: inherit !important;
 }
 
 .settings-content.settings-addon-pane .settings-addon-control {
@@ -210,22 +208,20 @@
     font-family: revert;
 }
 
-@media (max-width: 640px) {
-    .settings-content.settings-addon-pane {
-        /* Settings content uses 0.9em on phones; Regenerate uses 0.84em. */
-        --settings-addon-button-font-size: calc(var(--font-size-md, 15px) * 0.9 * 0.84);
-    }
-}
-
 .settings-section { margin-bottom: 28px; }
 .settings-section h3 { margin: 0 0 14px; font-size: 1.1em; font-weight: 600; }
 
 .settings-row {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 12px;
     margin-bottom: 12px;
 }
+
+/* Settings can open as a work-area tab narrower than its dialog breakpoints;
+ * rows wrap and selects shrink rather than overflow the pane. */
+.settings-row select { max-width: 100%; min-width: 0; }
 
 .settings-row label {
     min-width: 130px;
@@ -311,7 +307,7 @@
     border-radius: 6px;
     background: var(--bg-hover, var(--bg-secondary));
     color: var(--text-primary);
-    font-size: 0.84em;
+    font-size: var(--settings-text-sm, 13px);
     cursor: pointer;
     min-width: 70px;
 }
@@ -325,9 +321,28 @@
     --settings-dense-label-width: 220px;
     --settings-dense-control-width: 190px;
     display: grid;
-    grid-template-columns: var(--settings-dense-label-width) var(--settings-dense-control-width) minmax(0, 1fr);
+    grid-template-columns: minmax(120px, var(--settings-dense-label-width)) minmax(0, var(--settings-dense-control-width)) minmax(0, 1fr);
     align-items: center;
     column-gap: 12px;
+}
+
+/* Text fields and lists span the control and help columns. */
+.settings-dense-row-wide > :nth-child(2) {
+    grid-column: 2 / -1;
+    width: 100%;
+    max-width: 520px;
+}
+
+.settings-dialog-narrow .settings-dense-row {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 6px;
+}
+
+.settings-dialog-narrow .settings-dense-row > *,
+.settings-dialog-narrow .settings-dense-row-compound > .settings-hint {
+    grid-column: 1;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .settings-dense-row > label {
@@ -354,7 +369,7 @@
 }
 
 .settings-dense-row-checkbox {
-    grid-template-columns: var(--settings-dense-label-width) var(--settings-dense-control-width) minmax(0, 1fr);
+    grid-template-columns: minmax(120px, var(--settings-dense-label-width)) minmax(0, var(--settings-dense-control-width)) minmax(0, 1fr);
 }
 
 .settings-dense-row-compound {
@@ -571,6 +586,10 @@
     max-width: none;
     width: 100%;
 }
+
+/* Phones: QR above full-width fields so the secret is never truncated. */
+.settings-dialog-narrow .settings-totp-grid { grid-template-columns: minmax(0, 1fr); }
+.settings-dialog-narrow .settings-totp-qr { min-height: 0; max-width: 220px; justify-self: center; }
 
 .settings-subsection-list {
     display: grid;
@@ -810,6 +829,8 @@
     text-transform: capitalize;
 }
 
+/* One column grid for the header and every tool row (subgrid), so headers
+ * size their columns instead of overflowing into neighbouring cells. */
 .settings-tool-list {
     display: flex;
     flex-direction: column;
@@ -825,6 +846,28 @@
     padding: 3px 6px;
     border-radius: 4px;
     font-size: 0.84em;
+}
+
+.settings-toolset .settings-tool-list {
+    display: grid;
+    grid-template-columns: auto minmax(7rem, 12rem) auto auto minmax(0, 1fr) auto;
+    column-gap: 10px;
+    row-gap: 2px;
+}
+
+.settings-toolset .settings-tool-row {
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+    gap: 0;
+    column-gap: 10px;
+}
+
+.settings-dialog-narrow .settings-toolset .settings-tool-summary { display: none; }
+
+.settings-toolset .settings-tool-row > :first-child,
+.settings-toolset .settings-tool-row > .settings-tool-kind {
+    justify-self: center;
+    text-align: center;
 }
 
 .settings-tool-row-header {
@@ -895,6 +938,28 @@
     text-transform: capitalize;
 }
 
+/* ── Environment ──────────────────────────────────────────────────────── */
+
+.settings-env-add {
+    display: grid;
+    grid-template-columns: minmax(0, 0.7fr) minmax(0, 1fr) auto;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+}
+
+.settings-env-add input[type="text"] { max-width: none; min-width: 0; }
+
+.settings-env-row {
+    grid-template-columns: minmax(0, 0.45fr) minmax(0, 1fr) auto auto;
+}
+
+.settings-dialog-narrow .settings-env-add { grid-template-columns: minmax(0, 1fr) auto; }
+.settings-dialog-narrow .settings-env-row { grid-template-columns: minmax(0, 1fr) auto auto; }
+
+.settings-dialog-narrow .settings-env-add > input:first-child,
+.settings-dialog-narrow .settings-env-row > .settings-tool-name { grid-column: 1 / -1; }
+
 /* ── Add-on tags ───────────────────────────────────────────────────────── */
 
 .settings-addon-tags {
@@ -931,10 +996,10 @@
     color: var(--text-secondary);
 }
 
+/* Actions flow at the end of the card header; absolute placement covered the
+ * description once the card narrowed. */
 .settings-addon-actions {
-    position: absolute;
-    top: 10px;
-    right: 12px;
+    margin-left: auto;
     white-space: nowrap;
     display: flex;
     gap: 6px;
@@ -961,11 +1026,18 @@
     cursor: not-allowed;
 }
 
+/* Primary actions (Install, Set up, Save, Save & apply) use the theme accent,
+ * like `.primary` in the add-on button contract and MCP's primary button. */
 .settings-addon-btn-install {
-    background: color-mix(in srgb, var(--accent-color, #1d9bf0) 10%, var(--bg-primary));
-    border-color: color-mix(in srgb, var(--accent-color, #1d9bf0) 30%, transparent);
-    color: var(--accent-color, #1d9bf0);
+    background: var(--accent-color, #1d9bf0);
+    border-color: var(--accent-color, #1d9bf0);
+    color: var(--accent-contrast-text, #fff);
     font-weight: 600;
+}
+
+.settings-addon-btn-install:hover:not(:disabled) {
+    background: var(--accent-hover, var(--accent-color, #1d9bf0));
+    border-color: var(--accent-hover, var(--accent-color, #1d9bf0));
 }
 
 .settings-addon-btn-upgrade {
@@ -1313,7 +1385,6 @@
     .settings-nav-item {
         padding: 6px 10px;
         white-space: nowrap;
-        font-size: 0.8em;
         flex-shrink: 0;
     }
 
@@ -1322,7 +1393,6 @@
 
     .settings-content {
         padding: 12px 14px;
-        font-size: 0.9em;
     }
 
     .settings-section h3 {
@@ -1407,12 +1477,7 @@
         min-width: 0;
     }
 
-    .settings-addon-actions {
-        flex-direction: column;
-        gap: 3px;
-    }
-
-    .settings-addon-btn { font-size: 0.74em; padding: 3px 6px; }
+    .settings-addon-btn { padding: 3px 6px; }
     .settings-slider-labels span { font-size: 0.65em; }
 
     .settings-dialog-header { padding: 10px 14px; }
@@ -1522,10 +1587,6 @@
 
 .settings-addon-card.core .settings-addon-card-header {
     padding-right: 36px;
-}
-
-.settings-addon-card.core .settings-addon-actions {
-    right: 50px;
 }
 
 .settings-addon-core-bookmark {
@@ -1947,7 +2008,7 @@
 
 .settings-toggle-btn.active {
     background: var(--accent-color, #4a9eff);
-    color: #fff;
+    color: var(--accent-contrast-text, #fff);
     border-color: var(--accent-color, #4a9eff);
 }
 
@@ -2004,7 +2065,7 @@
 /* ── Model catalogue master/detail ───────────────────────────── */
 
 .model-catalogue-settings {
-    container-type: inline-size;
+    container: model-catalogue / inline-size;
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -2055,7 +2116,7 @@
 .model-catalogue-settings .settings-btn.primary {
     background: var(--accent-color, #1d9bf0);
     border-color: var(--accent-color, #1d9bf0);
-    color: #fff;
+    color: var(--accent-contrast-text, #fff);
 }
 
 .model-catalogue-settings .settings-btn:disabled {
@@ -2134,6 +2195,10 @@
     border: 1px solid var(--border-color, rgba(128,128,128,0.25));
     border-radius: 8px;
     background: var(--bg-primary);
+}
+
+.model-catalogue-settings__list {
+    container: model-catalogue-list / inline-size;
 }
 
 .model-catalogue-settings__list:focus {
@@ -2311,7 +2376,20 @@
     border-top: 1px solid var(--border-color, rgba(128,128,128,0.2));
 }
 
-@container (max-width: 760px) {
+/* Beside the detail panel the list is narrower than the full table. Drop the
+ * family and mode columns (both shown in the detail panel) rather than clip
+ * prices behind a horizontal scrollbar. */
+@container model-catalogue-list (max-width: 640px) {
+    .model-catalogue-settings__columns,
+    .model-catalogue-settings__row {
+        grid-template-columns: 34px minmax(140px, 1.8fr) minmax(68px, 0.75fr) minmax(60px, 0.65fr) minmax(60px, 0.65fr);
+        min-width: 0;
+    }
+    .model-catalogue-settings__row-family,
+    .model-catalogue-settings__row-mode { display: none; }
+}
+
+@container model-catalogue (max-width: 760px) {
     .model-catalogue-settings__filter-toggle { display: block; }
     .model-catalogue-settings__filters:not(.expanded) { display: none; }
     .model-catalogue-settings__filters.expanded { margin-top: 6px; }
@@ -2341,7 +2419,7 @@
     .model-catalogue-settings__filters { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
 }
 
-@container (max-width: 640px) {
+@container model-catalogue (max-width: 640px) {
     .model-catalogue-settings__header,
     .model-catalogue-settings__scope { align-items: stretch; flex-direction: column; }
     .model-catalogue-settings__filters { grid-template-columns: 1fr; }
@@ -2515,6 +2593,8 @@
     letter-spacing: 0.02em;
     background: color-mix(in srgb, var(--accent-color, #1d9bf0) 12%, transparent);
     color: var(--accent-color, #1d9bf0);
+    white-space: nowrap;
+    flex: none;
 }
 
 /* ── Keychain panel ───────────────────────────────────────────────── */
@@ -2537,7 +2617,7 @@
 }
 .settings-keychain-add-btn:hover {
     background: var(--accent-color, #4a9eff);
-    color: #fff;
+    color: var(--accent-contrast-text, #fff);
 }
 .settings-keychain-add-form {
     display: flex;
@@ -2595,7 +2675,7 @@
     border: none;
     border-radius: 6px;
     background: var(--accent-color, #4a9eff);
-    color: #fff;
+    color: var(--accent-contrast-text, #fff);
     cursor: pointer;
     font-size: 0.86em;
     white-space: nowrap;
@@ -2626,6 +2706,24 @@
 .settings-keychain-table th:nth-child(3) { width: 28%; }
 .settings-keychain-table th:nth-child(4) { width: 16%; }
 .settings-keychain-table th:nth-child(5) { width: 18%; }
+.settings-keychain-table th { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Narrow dialogs keep name, variable and actions; the type moves under the
+ * name and the date is omitted, rather than breaking headers mid-word. */
+.settings-keychain-type-inline { display: none; }
+.settings-dialog-narrow .settings-keychain-type-inline {
+    display: block;
+    margin-top: 2px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 400;
+}
+.settings-dialog-narrow .settings-keychain-table th:nth-child(2),
+.settings-dialog-narrow .settings-keychain-table th:nth-child(4),
+.settings-dialog-narrow .settings-keychain-row > td:nth-child(2),
+.settings-dialog-narrow .settings-keychain-row > td:nth-child(4) { display: none; }
+.settings-dialog-narrow .settings-keychain-table th:nth-child(1) { width: 38%; }
+.settings-dialog-narrow .settings-keychain-table th:nth-child(3) { width: 36%; }
+.settings-dialog-narrow .settings-keychain-table th:nth-child(5) { width: 26%; }
 .settings-keychain-table td {
     padding: 7px 10px;
     font-size: 0.88em;
@@ -2739,7 +2837,7 @@
 }
 .settings-keychain-confirm-yes {
     background: var(--error-color, #e55);
-    color: #fff;
+    color: var(--accent-contrast-text, #fff);
     border-color: transparent;
 }
 .settings-keychain-empty {
@@ -2900,7 +2998,7 @@
 }
 .settings-keychain-totp-submit {
     background: var(--accent-color, #4a9eff);
-    color: #fff;
+    color: var(--accent-contrast-text, #fff);
     border-color: transparent;
 }
 .settings-keychain-totp-submit:disabled {
@@ -2956,7 +3054,7 @@
 }
 .settings-keychain-prompt-submit {
     background: var(--accent-color, #4a9eff);
-    color: #fff;
+    color: var(--accent-contrast-text, #fff);
     border-color: transparent;
 }
 .settings-keychain-prompt-submit:disabled {
@@ -3246,51 +3344,127 @@
     color: var(--text-secondary);
 }
 
-/* Budget Settings */
-.settings-budget-intro,
-.settings-budget-cap-header,
-.settings-budget-actions {
+/* ── Shared base controls, legibility floor and touch targets ─────────────
+ * Nested em sizes used to compound to 7–11px (worse on phones). Small text
+ * now floors at 12px; controls share one look; narrow dialogs use 44px
+ * targets like the Models and MCP panes. Registered add-on panes keep their
+ * own button contract (.settings-addon-pane). */
+.settings-dialog {
+    --settings-text-xs: 12px;
+    --settings-text-sm: 13px;
+    --settings-control-height: 30px;
+}
+.settings-dialog-narrow { --settings-control-height: 44px; }
+
+:where(.settings-content:not(.settings-addon-pane)) :where(button:not([role="tab"]):not([role="switch"]):not([data-settings-button="unstyled"]):not(.settings-dialog-close):not(.settings-nav-item)) {
+    min-height: var(--settings-control-height);
+    padding: 4px 12px;
+    border: 1px solid var(--border-color, rgba(128,128,128,0.3));
+    border-radius: 6px;
+    background: var(--bg-secondary, var(--bg-primary));
+    color: var(--text-primary);
+    font: inherit;
+    font-size: var(--settings-text-sm);
+    line-height: 1.2;
+    cursor: pointer;
+}
+:where(.settings-content:not(.settings-addon-pane)) :where(button:not([role="tab"]):not([role="switch"]):not([data-settings-button="unstyled"]):not(.settings-dialog-close):not(.settings-nav-item)):hover:not(:disabled) {
+    border-color: var(--accent-color);
+}
+:where(.settings-content:not(.settings-addon-pane)) :where(button):disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+:where(.settings-content:not(.settings-addon-pane)) :where(select) {
+    min-height: var(--settings-control-height);
+    padding: 4px 8px;
+    border: 1px solid var(--border-color, rgba(128,128,128,0.3));
+    border-radius: 6px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: var(--settings-text-sm);
+}
+.settings-dialog-narrow :is(.settings-addon-btn, .settings-btn, .settings-secondary-btn, .settings-keychain-add-btn, .settings-keychain-save-btn, .settings-number-step-btn, .settings-header-filter),
+.settings-dialog-narrow .settings-content :is(input:not([type]), input[type="text"], input[type="search"], input[type="number"], input[type="password"], input[type="url"], select) {
+    min-height: 44px;
+}
+.settings-dialog-narrow .settings-number-step-btn { min-width: 44px; }
+
+.settings-dialog :is(.passkey-settings__meta dt, .passkey-settings__help, .passkey-settings__badge, .mcp-server-meta, .mcp-server-card-meta, .settings-task-row-main span, .mcp-current, .mcp-badge, .mcp-server-card small, .model-catalogue-settings__columns, .model-catalogue-settings__row, .model-catalogue-settings__row-mobile-meta, .model-catalogue-settings__provider-heading, .model-catalogue-settings__group-heading, .model-catalogue-settings__facts dd, .settings-tool-summary, .settings-hint, .settings-tool-kind, .settings-tool-source, .settings-tool-row-header, .settings-tag, .settings-task-pill, .settings-addon-version, .settings-keychain-type-badge, .settings-keychain-date, .settings-keychain-reveal-label, .settings-shortcut-default, .settings-task-row-times, .settings-provider-id, .settings-tint-hex, .language-switcher-label, .settings-theme-table th, .settings-keychain-table th) {
+    font-size: max(var(--settings-text-xs), 0.84em);
+}
+.settings-dialog :is(.mcp-compatibility-list, .settings-btn, .settings-secondary-btn, .settings-row label, .settings-addon-btn, .settings-keychain-table td, .settings-keychain-name, .settings-tool-name, .settings-addon-card-body, .settings-shortcut-description, .settings-keychain-save-btn, .settings-keychain-add-btn, .settings-keychain-delete-btn, .settings-theme-table) {
+    font-size: max(var(--settings-text-sm), 0.88em);
+}
+.settings-dialog .settings-content :is(code, small, dt, kbd) { font-size: max(var(--settings-text-xs), 0.9em); }
+.settings-header-filter,
+.settings-output-pad-number { min-height: var(--settings-control-height); }
+.settings-dialog-narrow :is(.settings-dialog-close, .settings-nav-item, .model-catalogue-settings__pin) { min-width: 44px; min-height: 44px; }
+.settings-dialog-narrow .settings-content :is(summary, input[type="color"]) { min-height: 44px; }
+.settings-content summary { min-height: var(--settings-control-height); padding-block: 6px; box-sizing: border-box; }
+.settings-dialog-narrow .settings-content :is(input[type="checkbox"], input[type="radio"]) { width: 22px; height: 22px; }
+
+/* One block alert for load and action failures across panes. Inline field
+ * errors stay as red text next to their control. */
+.settings-dialog :is(.settings-addon-error, .settings-keychain-error[role="alert"], .settings-error-state, .mcp-notice.settings-error, .passkey-settings__notice--error, .passkey-settings__status--error, .model-catalogue-settings__notice.error, .workspace-indexing-error) {
+    margin: 0 0 12px;
+    padding: 8px 12px;
+    border: 1px solid color-mix(in srgb, var(--danger-color, #ef4444) 35%, transparent);
+    border-left-width: 3px;
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--danger-color, #ef4444) 8%, var(--bg-primary));
+    color: var(--text-primary);
+    font-size: var(--settings-text-sm);
+}
+
+/* Narrow navigation scrolls sideways; fade the trailing edge so more panes are evident. */
+.settings-dialog-narrow .settings-nav {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+    scroll-padding-inline: 10px 28px;
+}
+
+.settings-identity-field {
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+    max-width: 330px;
 }
-.settings-budget-intro h3 { margin-bottom: 4px; }
-.settings-budget-intro p { margin: 0; color: var(--text-secondary); font-size: .86em; }
-.settings-budget-cap-list { display: grid; gap: 12px; margin-bottom: 24px; }
-.settings-budget-cap-card,
-.settings-budget-work-card,
-.settings-budget-form {
-    padding: 14px;
-    border: 1px solid var(--border-color, rgba(128,128,128,.25));
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--bg-secondary) 68%, transparent);
+.settings-identity-field input[type="text"] { min-width: 0; }
+.settings-dialog-narrow .settings-identity-field { max-width: none; }
+.settings-dialog-narrow .settings-avatar-inline { width: 44px; height: 44px; }
+.settings-row button.settings-avatar-inline { min-width: 0; padding: 0; font: inherit; }
+button.settings-avatar-inline:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+
+/* Toolbar of pane-level actions (left-aligned, wraps; not a label/control row). */
+.settings-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 12px;
 }
-.settings-budget-cap-card.disabled { opacity: .7; }
-.settings-budget-cap-header > div { display: grid; gap: 3px; }
-.settings-budget-cap-header span { color: var(--text-secondary); font-size: .82em; }
-.settings-budget-cap-card dl { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin: 12px 0; }
-.settings-budget-cap-card dl div { min-width: 0; }
-.settings-budget-cap-card dt { color: var(--text-secondary); font-size: .78em; }
-.settings-budget-cap-card dd { margin: 3px 0 0; overflow-wrap: anywhere; }
-.settings-budget-pill { display: inline-flex; width: fit-content; padding: 2px 8px; border-radius: 999px; font-size: .76em; background: var(--bg-hover); }
-.settings-budget-pill-active,.settings-budget-pill-fresh { color: #15803d; background: rgba(34,197,94,.14); }
-.settings-budget-pill-paused,.settings-budget-pill-warning,.settings-budget-pill-stale { color: #a16207; background: rgba(234,179,8,.14); }
-.settings-budget-pill-unknown { color: #b45309; background: rgba(245,158,11,.14); }
-.settings-budget-pill-cancelled,.settings-budget-pill-error { color: #b91c1c; background: rgba(239,68,68,.14); }
-.settings-budget-form-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
-.settings-budget-form-grid label,.settings-budget-allowance label { display: grid; gap: 5px; color: var(--text-secondary); font-size: .84em; }
-.settings-budget-form input,.settings-budget-form select,.settings-budget-allowance input,.settings-budget-allowance select { min-height: 34px; padding: 6px 9px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-primary); color: var(--text-primary); }
-.settings-budget-actions { justify-content: flex-end; margin-top: 12px; flex-wrap: wrap; }
-.settings-budget-actions button,.settings-budget-form button,.settings-budget-allowance button { padding: 7px 12px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-hover); color: var(--text-primary); cursor: pointer; }
-.settings-budget-actions .danger { color: var(--error-color,#dc2626); }
-.settings-budget-allowance { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)) auto; gap: 10px; align-items: end; margin-top: 12px; }
-@media (max-width: 720px) {
-    .settings-budget-intro { align-items: stretch; }
-    .settings-budget-cap-card dl,.settings-budget-form-grid,.settings-budget-allowance { grid-template-columns: 1fr; }
-    .settings-budget-actions button,.settings-budget-intro button { min-height: 44px; }
+
+/* Keychain entry notes: two notes and Save side by side; stacked on phones. */
+.settings-keychain-notes {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: end;
+    padding: 8px 0 10px;
 }
-.settings-task-budget-row { display:grid; grid-template-columns:minmax(0,1fr) minmax(100px,160px) auto auto; gap:8px; align-items:end; margin:14px 0 0; }
-.settings-task-budget-row label { display:grid; gap:5px; color:var(--text-secondary); font-size:.84em; }
-.settings-task-budget-row input { min-height:34px; padding:6px 9px; border:1px solid var(--border-color); border-radius:6px; background:var(--bg-primary); color:var(--text-primary); }
-@media (max-width:720px) { .settings-task-budget-row { grid-template-columns:1fr; } .settings-task-budget-row button { min-height:44px; } }
+.settings-keychain-note { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.settings-keychain-note-input { resize: vertical; min-height: 52px; width: 100%; }
+.settings-dialog-narrow .settings-keychain-notes { grid-template-columns: minmax(0, 1fr); }
+.settings-dialog-narrow .settings-keychain-notes > .settings-keychain-save-btn { justify-self: start; }
+/* Phones: widen the actions column so reveal and delete share a row where
+ * they fit; they still wrap, rather than clip, on the narrowest screens. */
+.settings-dialog-narrow .settings-keychain-table th:nth-child(1) { width: 40%; }
+.settings-dialog-narrow .settings-keychain-table th:nth-child(3) { width: 30%; }
+.settings-dialog-narrow .settings-keychain-table th:nth-child(5) { width: 30%; }
+.settings-dialog-narrow .settings-keychain-table td.settings-keychain-actions { padding-inline: 4px; }
+.settings-dialog-narrow .model-catalogue-settings__row { grid-template-columns: 44px minmax(0, 1fr); }
+.about-version-unknown { color: var(--text-secondary); }

@@ -31,7 +31,7 @@ Database.prototype.exec = function (sql: string) {
       throw new Error("Injected base-schema failure");
     }
   }
-  if (injectFailure && ["late-rollback", "existing-rollback"].includes(mode) && sql.includes('CREATE TABLE IF NOT EXISTS family_scheduled_publications (')) {
+  if (injectFailure && ["late-rollback", "existing-rollback"].includes(mode) && sql.includes('CREATE TABLE IF NOT EXISTS owned_fork_operations (')) {
     assert(this.inTransaction);exec.call(this, "CREATE TABLE fixture_partial (id INTEGER)");
     throw new Error('Injected late-schema failure');
   }
@@ -40,19 +40,23 @@ Database.prototype.exec = function (sql: string) {
 try {
   if (["rollback", "late-rollback", "existing-rollback"].includes(mode)) {
     assert.throws(initDatabase, /Injected (?:base|late)-schema failure/);
-    assert.equal(getDb().inTransaction, false);
-    assert.deepEqual(getDb().query("SELECT name FROM sqlite_schema").all(), mode === "existing-rollback" ? [{ name: "fixture_legacy" }] : []);
-    closeDatabase({ shrinkMemory: false }); injectFailure = false;
+    assert.throws(() => getDb(), /not initialized/);
+    const inspect = new Database(path, { readonly: true });
+    try {
+      assert.equal(inspect.inTransaction, false);
+      assert.deepEqual(inspect.query("SELECT name FROM sqlite_schema").all(), mode === "existing-rollback" ? [{ name: "fixture_legacy" }] : []);
+    } finally { inspect.close(true); }
+    await closeDatabase({ shrinkMemory: false }); injectFailure = false;
   }
   initDatabase();
   const db = getDb();
   assert.equal(db.inTransaction, false);
-  assert.equal((db.query("PRAGMA auto_vacuum").get() as any).auto_vacuum, 2);
+  assert.equal((db.query("PRAGMA auto_vacuum").get() as any).auto_vacuum, mode.startsWith('existing') ? 0 : 2);
   assert.equal((db.query("PRAGMA journal_mode").get() as any).journal_mode, "wal");
   assert.equal((db.query("PRAGMA synchronous").get() as any).synchronous, 2);
   assert.equal((db.query("PRAGMA secure_delete").get() as any).secure_delete, 1);
   assert.equal((db.query("PRAGMA foreign_keys").get() as any).foreign_keys, 0);
-  assert.equal(vacuums, 1);
+  assert.equal(vacuums, 0);
   assert.deepEqual(schemaInTransaction, ["rollback", "late-rollback", "existing-rollback"].includes(mode) ? [true, true] : [true]);
   if (mode === "existing" || mode === "existing-rollback") assert.deepEqual(db.query("SELECT value FROM fixture_legacy").all(), [{ value: "keep-me" }]);
   db.query("INSERT INTO chats (jid, name) VALUES (?, ?)").run("fixture-chat", "Fixture");
@@ -63,11 +67,11 @@ try {
   db.exec("PRAGMA foreign_keys=ON"); initDatabase();
   assert.equal((db.query("PRAGMA foreign_keys").get() as any).foreign_keys, 1);
   assert.equal(schema(), initialSchema);
-  closeDatabase({ shrinkMemory: false }); initDatabase();
+  await closeDatabase({ shrinkMemory: false }); initDatabase();
   assert.equal(schema(), initialSchema);
   assert.equal((getDb().query("PRAGMA quick_check").get() as any).quick_check, "ok");
   assert.equal((getDb().query("SELECT COUNT(*) AS n FROM messages_fts WHERE messages_fts MATCH 'needle'").get() as any).n, 1);
-  assert.equal(vacuums, 1);
-  assert.equal(baseCalls, ["rollback", "late-rollback", "existing-rollback"].includes(mode) ? 4 : 3);
+  assert.equal(vacuums, 0);
+  assert.equal(baseCalls, ["rollback", "late-rollback", "existing-rollback"].includes(mode) ? 3 : 2);
   console.log(JSON.stringify({ mode, vacuums, schemaInTransaction, schemaStable: true, rowsAndFtsPreserved: true }));
-} finally { Database.prototype.exec = exec; closeDatabase({ shrinkMemory: false }); }
+} finally { Database.prototype.exec = exec; await closeDatabase({ shrinkMemory: false }); }

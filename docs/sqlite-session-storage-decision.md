@@ -1,4 +1,8 @@
-# SQLite session storage decision
+# Historical SQLite archive-layout decision
+
+Native Harness execution uses the application database. The prototype described below is retained archive-layout evidence, with its original measurements and decision preserved. Its implementation now lives in `runtime/scripts/lib/sqlite-session-archive.ts`; it owns imported JSONL bytes/search/export, not native execution. The separate `sessions.db` rule applies to the explicit archive importer. See [current import and archive boundaries](development/legacy-import-and-archive-boundaries.md).
+
+## Original prototype decision
 
 Piclaw should use a dedicated `sessions.db` if session persistence moves from JSONL to SQLite. The session store can share Piclaw's SQLite connection, migration, backup and disposal mechanisms without sharing `messages.db`.
 

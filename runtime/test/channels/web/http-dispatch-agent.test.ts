@@ -37,39 +37,25 @@ describe("web http agent dispatch", () => {
     expect(await response?.text()).toBe("/agent/roster/message:web:branch");
   });
 
-  test("dispatches non-destructive compaction model probes", async () => {
-    const calls: string[] = [];
-    const channel = {
-      agentPool: {
-        probeCompactionModel: async (model: string) => {
-          calls.push(model);
-          return { ok: true, model, contextWindow: 64_000, timeoutMs: 30_000 };
-        },
-      },
-      json: (payload: unknown, status = 200) => new Response(JSON.stringify(payload), { status, headers: { "content-type": "application/json" } }),
-    } as any;
-    const req = new Request("https://example.com/agent/settings/compaction/probe", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ model: " local/probe " }),
-    });
-    const response = await handleAgentRoutes(channel, req, "/agent/settings/compaction/probe", new URL(req.url));
-    expect(response?.status).toBe(200);
-    expect(await response?.json()).toMatchObject({ ok: true, model: "local/probe" });
-    expect(calls).toEqual(["local/probe"]);
+  for (const endpoint of ['probe', 'reset-backoff']) test('retired native compaction endpoint ' + endpoint + ' refuses without provider or database effects', async () => {
+    let calls = 0;
+    const channel = { agentPool: {probeCompactionModel: () => {calls++; throw Error('must not run');}},
+      json: (payload: unknown, status = 200) => Response.json(payload, {status}) } as any;
+    const path = '/agent/settings/compaction/' + endpoint;
+    for (const body of ['{', '{}', JSON.stringify({model:'local/probe',chatJid:'web:historical'})]) {
+      const req = new Request('https://example.com' + path, {method:'POST',body});
+      const response = await handleAgentRoutes(channel,req,path,new URL(req.url));
+      expect(response?.status).toBe(410); expect((await response?.json()).error).toContain('Native compaction');
+    }
+    expect(calls).toBe(0);
   });
 
-  test("rejects missing compaction probe models", async () => {
-    const channel = {
-      agentPool: { probeCompactionModel: async () => { throw new Error("must not run"); } },
-      json: (payload: unknown, status = 200) => new Response(JSON.stringify(payload), { status }),
-    } as any;
-    const req = new Request("https://example.com/agent/settings/compaction/probe", {
-      method: "POST",
-      body: "{}",
-    });
-    const response = await handleAgentRoutes(channel, req, "/agent/settings/compaction/probe", new URL(req.url));
-    expect(response?.status).toBe(400);
+  test('native compaction settings API rejects obsolete policy before persistence', async () => {
+    const channel = {json:(payload:unknown,status=200)=>Response.json(payload,{status})} as any;
+    const path='/agent/settings/compaction';
+    const req=new Request('https://example.com'+path,{method:'POST',body:JSON.stringify({smartCompactionMethod:'pipelined',autoCompactionEnabled:false})});
+    const response=await handleAgentRoutes(channel,req,path,new URL(req.url));
+    expect(response?.status).toBe(400);expect((await response?.json()).error).toContain('Unsupported native compaction settings: smartCompactionMethod');
   });
 
   test("dispatches remaining agent endpoints", async () => {
@@ -227,4 +213,21 @@ describe("web http agent dispatch", () => {
     const whitelistReq = new Request("https://example.com/agent/whitelist", { method: "POST" });
     expect((await handleAgentRoutes(channel, whitelistReq, "/agent/whitelist", new URL(whitelistReq.url)))?.status).toBe(404);
   });
+});
+
+test('add-on install route forwards the native compatibility port before mutation', async () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = (async () => Response.json({ addons: [{ slug: 'observability', name: '@rcarmo/piclaw-addon-observability', version: '0.1.23', install: { kind: 'tarball', spec: 'https://example.invalid/blocked.tgz' } }] })) as typeof fetch;
+  let calls = 0;
+  try {
+    const channel = { json: (body: unknown, status = 200) => Response.json(body, { status }), inspectAddonInstall: (name: string, version: string) => {
+      calls++; expect(name).toBe('@rcarmo/piclaw-addon-observability'); expect(version).toBe('0.1.23');
+      return { supportedVersion: '0.1.22', problem: 'This Core release requires Observability 0.1.22.' };
+    } } as any;
+    const url = new URL('https://example.test/agent/addons/install?catalog_url=https://example.test/route-native-incompatible.json');
+    const response = await handleAgentRoutes(channel, new Request(url, { method: 'POST', body: JSON.stringify({ slug: 'observability' }) }), url.pathname, url);
+    expect(response?.status).toBe(409);
+    expect((await response?.json()).error).toContain('requires Observability 0.1.22');
+    expect(calls).toBe(1);
+  } finally { globalThis.fetch = original; }
 });

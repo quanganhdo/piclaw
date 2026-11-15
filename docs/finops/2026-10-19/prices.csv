@@ -1,0 +1,2 @@
+provider,model,pricing_basis,input_usd_per_mtok,cache_read_usd_per_mtok,cache_write_usd_per_mtok,output_usd_per_mtok,source
+inception,mercury-3,regular undiscounted native API,0.20,0.02,,0.70,https://docs.inceptionlabs.ai/get-started/models.md

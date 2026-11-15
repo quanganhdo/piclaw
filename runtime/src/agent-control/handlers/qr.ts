@@ -15,7 +15,7 @@ type QrCommand = Extract<AgentControlCommand, { type: "qr" }>;
 const base64Encode = (value: string): string => Buffer.from(value, "utf8").toString("base64");
 
 /** Handle `/qr` control commands for rendering QR helpers/messages. */
-export async function handleQr(_session: AgentSession, command: QrCommand): Promise<AgentControlResult> {
+export async function handleQr(_session: AgentSession | undefined, command: QrCommand): Promise<AgentControlResult> {
   const text = (command.text || "").trim();
   if (!text) {
     return { status: "error", message: "Usage: /qr <text or URL>" };

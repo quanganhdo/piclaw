@@ -1,6 +1,6 @@
 import type { AuthenticatedPrincipal } from "../../../core/access-types.js";
 
-/** Optional account/session pin supplied by the family shell; it grants no authority itself. */
+/** Optional browser account/session pin; it grants no authority itself. */
 export function enforceBrowserBinding(req: Request, principal: AuthenticatedPrincipal): Response | null {
   const user = req.headers.get("x-piclaw-account-id");
   const login = req.headers.get("x-piclaw-login-id");

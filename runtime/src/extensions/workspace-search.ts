@@ -9,7 +9,7 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { refreshWorkspaceIndex, searchWorkspace, type WorkspaceSearchRow } from "../workspace-search.js";
 
-const WorkspaceSearchSchema = Type.Object({
+export const WorkspaceSearchSchema = Type.Object({
   query: Type.String({ description: "FTS query text (matches workspace content)." }),
   scope: Type.Optional(
     Type.String({ description: "Scope to search: notes|skills|all (default all)." }),

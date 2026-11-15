@@ -35,7 +35,7 @@ const {captureNoteIndexBinding}=await import('../../../src/note-retrieval/access
 if(phase==='incremental'){
  const {markNoteIndexDirty}=await import('../../../src/note-retrieval/coordinator.js');
  const file=join(workspace,'notes/neutral-0000.md');writeFileSync(file,readFileSync(file,'utf8')+'Additional unrelated material.\n');
- markNoteIndexDirty(['notes/neutral-0000.md']);
+ await markNoteIndexDirty(['notes/neutral-0000.md']);
 }
 let interruptions:unknown[]=[];
 if(phase==='recover'){

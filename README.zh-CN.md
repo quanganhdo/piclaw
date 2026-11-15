@@ -65,10 +65,12 @@ docker run -d \
 
 ## 安全与限制
 
-- **默认采用单用户模式。** [实验性家庭模式](docs/multi-user/README.md)是面向小型用户组的可信多用户模式。已提升的 `family-shared` 部署提供各自拥有的对话，但共享同一个工作区和进程，不提供文件系统隔离。隔离容器模式不可用。另请参阅[家庭模式用户指南](docs/multi-user/user-guide.md)。
+- **单用户运行。** 家庭账户和部署已移除；隔离容器模式不可用。请参阅[访问模式](docs/access-modes.md)。
 - 智能体以运行进程的用户权限执行操作。原生安装可访问该用户的文件和命令；容器可访问挂载的文件及其网络配置允许访问的资源。请使用专用环境，只挂载你打算共享的内容。
 - 浏览器认证支持身份验证器验证码（TOTP）和通行密钥。保持后端不对外开放，远程访问使用 HTTPS，并且只信任已配置的[反向代理](docs/reverse-proxy.md)发送的转发头。
 - 自托管将应用状态保存在你的机器上。云端模型和外部工具仍会收到你发送给它们的数据。可选的[钥匙串](docs/keychain.md)需要主密钥，但不会加密整个工作区或聊天历史。
+
+- 启用运行时锁后，任何现有锁路径（包括过期或格式错误的记录）都会阻止启动。崩溃后可能需要先进行[离线管理员清理](docs/runtime-lock.md#existing-runtime-locks)才能启动或维护；只要锁的所有者可能仍在运行，就不要删除锁。
 
 ## 文档
 
@@ -87,7 +89,7 @@ docker run -d \
 - [提问](https://github.com/rcarmo/piclaw/issues/new?template=question.md)
 - [查看项目看板](https://github.com/users/rcarmo/projects/13)
 
-报告问题时请使用 issue 模板。修改代码前，请阅读[开发文档](docs/development.md)和[仓库工作流](AGENTS.md)，并通过拉取请求提交修改。
+报告问题时请使用 issue 模板。修改代码前，请阅读[开发文档](docs/development.md)、[原生验证](docs/native-validation.md)和[仓库工作流](AGENTS.md)，并通过拉取请求提交修改。`make ci-full` 要求主机侧检查和离线原生运行时验证全部通过；`make ci-fast` 仅检查主机侧。
 
 ## 鸣谢
 

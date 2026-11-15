@@ -3,7 +3,7 @@ import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { createTempWorkspace } from "../helpers.js";
 
-for (const scenario of ["success", "persistent", "throw", "errors", "aborted", "reject", "cancel-before", "owner-before", "cancel-during", "owner-during", "dispose-during", "logout-during"]) {
+for (const scenario of ["success", "persistent", "throw", "errors", "aborted", "reject", "cancel-before", "owner-before", "cancel-during", "owner-during", "dispose-during", "logout-during", "native-success", "native-owner-before", "native-dispose-during", "native-logout-during", "native-confirm", "native-logout-sync"]) {
   test(`saved OAuth login local synchronization recovery: ${scenario}`, async () => {
     const ws = createTempWorkspace("login-sync-");
     const agent = join(ws.base, "agent");
@@ -23,10 +23,10 @@ for (const scenario of ["success", "persistent", "throw", "errors", "aborted", "
       expect(exit, err.slice(-2000)).toBe(0);
       expect(out).toContain(scenario);
       const warnings = err.trim() ? err.trim().split("\n").map(line => JSON.parse(line)) : [];
-      const savedFailure = ["persistent", "throw", "errors", "aborted"].includes(scenario);
+      const savedFailure = ["persistent", "throw", "errors", "aborted", "native-logout-sync"].includes(scenario);
       expect(warnings).toHaveLength(savedFailure || scenario === "reject" ? 1 : 0);
       for (const warning of warnings) {
-        expect(warning.operation).toBe("agent_control_login.runtime_login_failed");
+        expect(warning.operation).toBe(scenario === "native-logout-sync" ? "agent_control_login.native_control_failed" : "agent_control_login.runtime_login_failed");
         expect(warning.outcome).toBe(savedFailure ? "saved_credentials_sync_failed" : "failed");
         expect(Object.keys(warning).sort()).toEqual(["ts", "level", "module", "operation", "message", "outcome"].sort());
       }

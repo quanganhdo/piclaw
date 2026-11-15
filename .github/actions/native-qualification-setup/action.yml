@@ -1,0 +1,85 @@
+name: Pinned native qualification setup
+description: Provision the shared native gate fixtures and frozen private dependency graphs before offline validation.
+runs:
+  using: composite
+  steps:
+    - name: Read immutable fixture pins from the shared contract
+      id: contract
+      shell: bash
+      run: |
+        bun --eval '
+          import { appendFileSync, readFileSync } from "node:fs";
+          const contract = JSON.parse(readFileSync("scripts/native-gate-contract.json", "utf8"));
+          if (contract.version !== 1) throw new Error("Unsupported native gate contract");
+          for (const name of ["native", "contract"]) {
+            const fixture = contract.fixtures[name];
+            if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(fixture.repository) ||
+                !/^[0-9a-f]{40}$/.test(fixture.ref)) {
+              throw new Error(`Invalid immutable ${name} fixture pin`);
+            }
+            appendFileSync(process.env.GITHUB_OUTPUT,
+              `${name}-repository=${fixture.repository}\n${name}-ref=${fixture.ref}\n`);
+          }
+          const roots = {
+            DURABLE_ADDONS_ROOT: "native", DURABLE_CORE_ADDONS_ROOT: "native",
+            DURABLE_GOAL_ADDON_ROOT: "native", DURABLE_CONTRACT_ADDONS_ROOT: "contract"
+          };
+          if (Object.keys(contract.roots).length !== 4 ||
+              Object.entries(roots).some(([key, value]) => contract.roots[key] !== value) ||
+              contract.catalogDependencies !== "qualification/pi-durable-130/node_modules" ||
+              JSON.stringify(contract.typeProjects) !== JSON.stringify([
+                "runtime/durable-engine", "qualification/pi-durable-130"
+              ])) throw new Error("Unexpected native fixture/dependency layout");
+        '
+
+    - name: Checkout pinned native add-ons
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        repository: ${{ steps.contract.outputs.native-repository }}
+        ref: ${{ steps.contract.outputs.native-ref }}
+        path: .qualification-native-addons
+        persist-credentials: false
+
+    - name: Checkout pinned historical contract add-ons
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        repository: ${{ steps.contract.outputs.contract-repository }}
+        ref: ${{ steps.contract.outputs.contract-ref }}
+        path: .qualification-addons
+        persist-credentials: false
+
+    # Network access belongs to hosted provisioning, never to ci:native.
+    - name: Install private native engine dependencies
+      shell: bash
+      working-directory: runtime/durable-engine
+      run: bun install --frozen-lockfile --ignore-scripts
+
+    - name: Install qualification catalogue dependencies
+      shell: bash
+      working-directory: qualification/pi-durable-130
+      run: bun install --frozen-lockfile --ignore-scripts
+
+    - name: Install pinned native add-on dependencies
+      shell: bash
+      working-directory: .qualification-native-addons
+      run: bun install --frozen-lockfile --ignore-scripts
+
+    - name: Install pinned code-review parser dependencies
+      shell: bash
+      working-directory: .qualification-native-addons/addons/code-review
+      run: bun install --frozen-lockfile --ignore-scripts
+
+    - name: Export all five prepared fixture paths
+      shell: bash
+      run: |
+        bun --eval '
+          import { appendFileSync, readFileSync } from "node:fs";
+          import { resolve } from "node:path";
+          const contract = JSON.parse(readFileSync("scripts/native-gate-contract.json", "utf8"));
+          const checkouts = { native: ".qualification-native-addons", contract: ".qualification-addons" };
+          for (const [name, fixture] of Object.entries(contract.roots)) {
+            appendFileSync(process.env.GITHUB_ENV, `${name}=${resolve(process.env.GITHUB_WORKSPACE, checkouts[fixture])}\n`);
+          }
+          appendFileSync(process.env.GITHUB_ENV,
+            `DURABLE_CATALOG_DEPENDENCIES=${resolve(process.env.GITHUB_WORKSPACE, contract.catalogDependencies)}\n`);
+        '

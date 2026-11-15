@@ -1,6 +1,15 @@
-# Shared model-request reservations
+# Shared model-request reservations — historical inactive adapter — archived delivery record
 
-The shared boundary reserves capacity for each parent, side or Delegate model invocation. This slice provides an explicit, inactive installer and synthetic integration tests. Production startup does not install it because the real provider/authentication settlement and account-authority contracts are still unqualified.
+This is archived prototype evidence, not the current runtime contract. The prototype and the later active financial request/accounting owners have been removed under #1875. Nothing below is an activation requirement or supported expense-control API. Current passive observations and historical-data protection are described in [Native usage reports](usage-report-projections.md).
+
+## Archived design and qualification
+
+
+The inactive public-StreamFn adapter and installer described below are removed under #1575 together with their unregistered child-request proxy closure. They were never installed by production bootstrap. Shipping native calls use captured `host-request-accounting.ts` and the retained `model-request-accounting.ts`/reservation/admission/valuation owners; these active financial invariants are not retired.
+
+This document preserves the prototype's historical contracts, limitations and measurements. Original [adapter/installer source](https://github.com/rcarmo/piclaw/tree/fc587de57babb118b5f0fd2ace406548bd04bbfa/runtime/src/budget) and [profile fixtures](https://github.com/rcarmo/piclaw/tree/fc587de57babb118b5f0fd2ace406548bd04bbfa/runtime/test/fixtures) remain in immutable history. Direct accounting tests are retained at their actual shipping primitive. No new adapter, session monkey-patch or fallback replaces this code, and test/profile deletion supplies no production LOC credit.
+
+The shared boundary reserved capacity for each parent, side or Delegate model invocation. This slice provides an explicit, inactive installer and synthetic integration tests. Production startup does not install it because the real provider/authentication settlement and account-authority contracts are still unqualified.
 
 ## Per-call admission
 

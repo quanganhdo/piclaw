@@ -1,3 +1,5 @@
+import { admitSqliteWrite } from "../../../db/sqlite-async-admission.js";
+import { getDb } from "../../../db/connection.js";
 /**
  * web/link-previews.ts – OpenGraph metadata fetching for URLs in messages.
  *
@@ -291,15 +293,18 @@ function buildCachedPreviewFilename(imageUrl: string, contentType: string): stri
 
 async function cachePreviewImage(imageUrl: string): Promise<string | undefined> {
   const nowIso = new Date().toISOString();
-  purgeExpiredLinkPreviewImageCache(nowIso);
-
-  const cached = getLinkPreviewImageCache(imageUrl);
-  if (cached) {
-    if (Date.parse(cached.expires_at) > Date.now()) {
+  const database = getDb();
+  const binding = () => { if (getDb() !== database) throw Error("Link preview database changed"); };
+  const cached = await admitSqliteWrite(database, () => {
+    purgeExpiredLinkPreviewImageCache(nowIso);
+    const row = getLinkPreviewImageCache(imageUrl);
+    if (row && Date.parse(row.expires_at) > Date.now()) {
       touchLinkPreviewImageCache(imageUrl, nowIso);
-      return getCachedMediaPath(cached.media_id);
+      return row;
     }
-  }
+    return null;
+  }, undefined, undefined, undefined, binding);
+  if (cached) return getCachedMediaPath(cached.media_id);
 
   const allowed = await isSafeUrl(imageUrl);
   if (!allowed) return undefined;
@@ -339,28 +344,31 @@ async function cachePreviewImage(imageUrl: string): Promise<string | undefined> 
       debugSuppressedError(log, "Link preview image optimisation failed; using original.", error);
     }
 
-    const mediaId = createMedia(
-      buildCachedPreviewFilename(imageUrl, effectiveContentType),
-      effectiveContentType,
-      bytes,
-      null,
-      {
-        size: bytes.byteLength,
-        source_url: imageUrl,
-        cache_kind: "link_preview_image",
-        ttl_ms: PREVIEW_IMAGE_CACHE_TTL_MS,
+    const mediaId = await admitSqliteWrite(database, () => {
+      const created = createMedia(
+        buildCachedPreviewFilename(imageUrl, effectiveContentType),
+        effectiveContentType,
+        bytes,
+        null,
+        {
+          size: bytes.byteLength,
+          source_url: imageUrl,
+          cache_kind: "link_preview_image",
+          ttl_ms: PREVIEW_IMAGE_CACHE_TTL_MS,
+        }
+      );
+      const replacedMediaIds = upsertLinkPreviewImageCache(
+        imageUrl,
+        created,
+        nowIso,
+        getCacheExpiry(nowIso),
+        nowIso,
+      );
+      if (replacedMediaIds.length > 0) {
+        deleteUnreferencedMedia(replacedMediaIds);
       }
-    );
-    const replacedMediaIds = upsertLinkPreviewImageCache(
-      imageUrl,
-      mediaId,
-      nowIso,
-      getCacheExpiry(nowIso),
-      nowIso,
-    );
-    if (replacedMediaIds.length > 0) {
-      deleteUnreferencedMedia(replacedMediaIds);
-    }
+      return created;
+    }, undefined, controller.signal, undefined, binding);
     return getCachedMediaPath(mediaId);
   } catch {
     return undefined;
@@ -454,7 +462,9 @@ export function scheduleLinkPreviews(
     try {
       const previews = await fetchLinkPreviews(urls);
       if (!previews.length) return;
-      updateMessageLinkPreviews(chatJid, rowId, previews);
+      const database = getDb();
+      await admitSqliteWrite(database, () => updateMessageLinkPreviews(chatJid, rowId, previews), undefined, undefined, undefined,
+        () => { if (getDb() !== database) throw Error("Link preview database changed"); });
       const interaction = getMessageByRowId(chatJid, rowId);
       if (interaction) channel.broadcastEvent("interaction_updated", interaction);
     } catch (error) {

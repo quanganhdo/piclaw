@@ -1,4 +1,4 @@
-import { reconcileContextUsageForChat } from './app-status-refresh-orchestration.js';
+import { reconcileContextUsageForChat, restoreContextUsage } from './app-status-refresh-orchestration.js';
 
 export interface AppTextPreviewState {
   text: string;
@@ -230,7 +230,8 @@ export function applyChatPaneStateSnapshot(options: ChatPaneStateRestoreOptions)
   setters.setSupportsThinking(Boolean(next.supportsThinking));
   setters.setActiveModelUsage(next.activeModelUsage ?? null);
   setters.setContextUsage(options.currentChatJid
-    ? reconcileContextUsageForChat(options.currentChatJid, null, next.contextUsage, { requireKnown: true })
+    ? restoreContextUsage(options.currentChatJid)
+      ?? reconcileContextUsageForChat(options.currentChatJid, null, next.contextUsage, { requireKnown: true })
     : next.contextUsage ?? null);
   return next;
 }

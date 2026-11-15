@@ -29,12 +29,6 @@ async function child(fixture: string, args: string[], offline: boolean) {
   }
 }
 
-test('scheduler uses actual AgentPool and restores the real SDK branch without outbound authority', async () => {
-  const result = await child('pi103-scheduler-agent.ts', [], true);
-  expect(result).toMatchObject({ providerCalls: 2, deliveries: 1, realAgentPool: true, realSessionConstruction: true, realLeafRestored: true, scheduledBranchPersisted: true, scheduledBranchExcludedFromActiveContext: true, durableSourceSettled: true, recurrenceVerified: true, networkAttempts: 0, childProcessAttempts: 0 });
-  expect(result.entriesAfter).toBeGreaterThan(result.entriesBefore);
-}, 25000);
-
 for (const shape of ['linear', 'branched', 'tools']) test(`public history soak checks ${shape} context and held controls without forced GC`, async () => {
   const entries = shape === 'tools' ? 102 : 100;
   const result = await child('pi103-history-soak.ts', [shape, String(entries), '1000'], false);

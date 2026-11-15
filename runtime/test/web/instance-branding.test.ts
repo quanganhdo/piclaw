@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from 'bun:test';
 import { applyBrandingIconLinks, applyInstanceBranding, refreshInstanceBranding } from '../../web/src/ui/instance-branding.js';
-import { projectFamilySseEvent } from '../../src/channels/web/sse/family-event-projector.js';
+import { projectPublicBranding } from '../../src/channels/web/sse/public-branding.js';
 const original = { document: (globalThis as any).document, fetch: globalThis.fetch };
 afterEach(() => { (globalThis as any).document = original.document; globalThis.fetch = original.fetch; });
 function setup() {
@@ -32,8 +32,8 @@ test('branding compares href attributes, avoiding redundant same-revision mutati
   applyBrandingIconLinks({getElementById: id => ({getAttribute: () => id === 'dynamic-favicon' ? '/favicon.ico?v=abc' : null, set href(_value: string) { writes++; }})}, 'abc');
   expect(writes).toBe(6);
 });
-test('family profile projection strips operator identity, paths, diagnostics and arbitrary avatar query data', () => {
-  expect(projectFamilySseEvent('profile_update', {agent_id:'default',agent_name:'Fixture',agent_avatar:'/avatar/agent?v=abc123',user_name:'Private',user_avatar:'/private',config:{secret:'x'}})).toEqual({agent_id:'default',agent_name:'Fixture',agent_avatar:'/avatar/agent?v=abc123'});
-  for (const agent_avatar of ['/workspace/private.png','https://private.invalid/image','/avatar/agent?source=/private']) expect((projectFamilySseEvent('profile_update', {agent_id:'default',agent_avatar}) as any).agent_avatar).toBeNull();
-  for (const agent_id of ['branch', 'operator', undefined]) expect(projectFamilySseEvent('profile_update', {agent_id,agent_name:'Private',agent_avatar:'/avatar/agent?v=abc'})).toBeNull();
+test('public profile projection strips operator identity, paths, diagnostics and arbitrary avatar query data', () => {
+  expect(projectPublicBranding({agent_id:'default',agent_name:'Fixture',agent_avatar:'/avatar/agent?v=abc123',user_name:'Private',user_avatar:'/private',config:{secret:'x'}})).toEqual({agent_id:'default',agent_name:'Fixture',agent_avatar:'/avatar/agent?v=abc123'});
+  for (const agent_avatar of ['/workspace/private.png','https://private.invalid/image','/avatar/agent?source=/private']) expect((projectPublicBranding({agent_id:'default',agent_avatar}) as any).agent_avatar).toBeNull();
+  for (const agent_id of ['branch', 'operator', undefined]) expect(projectPublicBranding({agent_id,agent_name:'Private',agent_avatar:'/avatar/agent?v=abc'})).toBeNull();
 });

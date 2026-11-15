@@ -76,6 +76,104 @@ expectTrue(integration.on?.workflow_dispatch !== undefined, "Integration validat
 expectTrue(integration.on?.push === undefined, "Integration must run only inside publish or by explicit dispatch; tag pushes must not duplicate the exact-SHA gate.");
 expectTrue(integration.jobs?.integration?.["timeout-minutes"] === 30, "Integration timeout must remain 30 minutes.");
 
+// Native qualification has one fixture contract, setup action and mandatory entry point.
+const nativeContract = JSON.parse(readFileSync(resolve(ROOT, "scripts/native-gate-contract.json"), "utf8"));
+const nativeSetupRaw = readFileSync(resolve(ROOT, ".github/actions/native-qualification-setup/action.yml"), "utf8");
+const nativeSetup = load(nativeSetupRaw) as Workflow;
+expectEqual(nativeContract.version, 1, "Native setup must consume contract version 1.");
+expectEqual(nativeContract.roots, {
+  DURABLE_ADDONS_ROOT: "native",
+  DURABLE_CORE_ADDONS_ROOT: "native",
+  DURABLE_GOAL_ADDON_ROOT: "native",
+  DURABLE_CONTRACT_ADDONS_ROOT: "contract",
+}, "ADDONS/CORE/GOAL must share the native checkout; historical contracts use their own checkout.");
+expectEqual(nativeContract.catalogDependencies, "qualification/pi-durable-130/node_modules",
+  "Catalogue dependencies must use frozen qualification tooling, never a live profile.");
+expectEqual(nativeContract.typeProjects, ["runtime/durable-engine", "qualification/pi-durable-130"],
+  "Both private native projects must be provisioned.");
+expectEqual(nativeSetup.runs?.using, "composite", "Native setup must be a shared composite action.");
+const nativeSteps: Workflow[] = nativeSetup.runs.steps;
+expectTrue(nativeSteps.every(step => step.if === undefined && !step["continue-on-error"]),
+  "Native provisioning must not be conditional or advisory.");
+const readPins = nativeSteps.find(step => step.id === "contract");
+expectTrue(readPins, "Native setup must define its shared-contract step.");
+expectTrue(readPins?.run?.includes('readFileSync("scripts/native-gate-contract.json"') &&
+  readPins.run.includes("contract.fixtures[name]") && readPins.run.includes("fixture.repository") &&
+  readPins.run.includes("fixture.ref") && readPins.run.includes("^[0-9a-f]{40}$") &&
+  readPins.run.includes("GITHUB_OUTPUT"), "Setup must read and validate immutable pins from the shared JSON.");
+const fixtureCheckouts = nativeSteps.filter(step => step.uses?.startsWith("actions/checkout@"));
+expectEqual(fixtureCheckouts.length, 2, "Native setup must have exactly two fixture checkouts.");
+for (const [index, name] of ["native", "contract"].entries()) {
+  const pin = nativeContract.fixtures[name];
+  expectTrue(/^[0-9a-f]{40}$/.test(pin.ref) && /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(pin.repository),
+    `${name} fixture must have an immutable SHA and repository.`);
+  const checkout = fixtureCheckouts[index];
+  expectTrue(/^actions\/checkout@[0-9a-f]{40}$/.test(checkout.uses), "Fixture checkout action must be SHA-pinned.");
+  expectEqual(checkout.with, {
+    repository: `\${{ steps.contract.outputs.${name}-repository }}`,
+    ref: `\${{ steps.contract.outputs.${name}-ref }}`,
+    path: name === "native" ? ".qualification-native-addons" : ".qualification-addons",
+    "persist-credentials": false,
+  }, `${name} checkout must consume shared pin outputs without persisting credentials.`);
+  expectTrue(nativeSteps.indexOf(readPins) < nativeSteps.indexOf(checkout), "Pins must be validated before checkout.");
+  for (const file of [nativeSetupRaw, readFileSync(resolve(ROOT, ".github/workflows/ci.yml"), "utf8"),
+    readFileSync(resolve(ROOT, ".github/workflows/integration-gate.yml"), "utf8")]) {
+    expectTrue(!file.includes(pin.ref), "Fixture SHAs must occur only in the shared JSON, never duplicated in wiring.");
+  }
+}
+const nativeInstalls = nativeSteps.filter(step => step.run?.includes("bun install"));
+expectEqual(nativeInstalls.map(step => [step["working-directory"], step.run]), [
+  ["runtime/durable-engine", "bun install --frozen-lockfile --ignore-scripts"],
+  ["qualification/pi-durable-130", "bun install --frozen-lockfile --ignore-scripts"],
+  [".qualification-native-addons", "bun install --frozen-lockfile --ignore-scripts"],
+  [".qualification-native-addons/addons/code-review", "bun install --frozen-lockfile --ignore-scripts"],
+], "Setup must prepare the private engine, qualification, native add-on and code-review parser graphs with frozen locks and no lifecycle scripts.");
+const exportPaths = nativeSteps.at(-1);
+expectTrue(exportPaths?.run?.includes('readFileSync("scripts/native-gate-contract.json"') &&
+  exportPaths.run.includes("Object.entries(contract.roots)") && exportPaths.run.includes("checkouts[fixture]") &&
+  exportPaths.run.includes("GITHUB_ENV") && exportPaths.run.includes("DURABLE_CATALOG_DEPENDENCIES=") &&
+  exportPaths.run.includes("contract.catalogDependencies"), "Setup must export all five fixture paths from the shared contract.");
+for (const [event, filter] of Object.entries(ci.on)) {
+  const paths = values((filter as Workflow).paths);
+  for (const path of ["scripts/native-*.ts", "scripts/native-gate-contract.json", "scripts/integration-test-suite.ts",
+    "scripts/check-actions-workflows.ts", ".github/actions/native-qualification-setup/**", ".github/workflows/integration-gate.yml"]) {
+    expectTrue(paths.includes(path), `CI ${event} path filter must include ${path}.`);
+  }
+}
+for (const [data, jobName, command] of [[ci, "web-build", "make ci-full"],
+  [integration, "integration", "make ci-integration"]] as const) {
+  expectEqual(data.permissions, { contents: "read" }, "Native gate workflows need read-only repository permissions.");
+  const steps: Workflow[] = data.jobs[jobName].steps;
+  const setups = steps.filter(step => step.uses === "./.github/actions/native-qualification-setup");
+  const gates = steps.filter(step => step.run === command);
+  expectEqual(setups.length, 1, `${jobName} must use shared native setup exactly once.`);
+  expectEqual(gates.length, 1, `${jobName} must run ${command} exactly once.`);
+  expectTrue(steps.indexOf(setups[0]) < steps.indexOf(gates[0]), "Shared setup must precede validation.");
+  for (const step of [...setups, ...gates]) {
+    expectTrue(step.if === undefined && !step["continue-on-error"], "Required native setup/gate must not be skipped or advisory.");
+    expectTrue(!Object.keys(step.env ?? {}).some(key => key.startsWith("DURABLE_")), "Gate steps must inherit all fixture paths from shared setup.");
+  }
+  expectTrue(!steps.some(step => step.uses?.startsWith("actions/checkout@") && step.with?.repository),
+    "Fixture checkouts belong only in shared setup.");
+  expectTrue(!steps.some(step => /test:goal-tools|test-isolated|native-test-suite|bun run typecheck/.test(step.run ?? "")),
+    "Workflows must not retain duplicate native execution/type/Goal stages.");
+}
+const pkg = JSON.parse(readFileSync(resolve(ROOT, "package.json"), "utf8"));
+expectEqual(pkg.scripts["ci:native"], "bun scripts/native-test-suite.ts", "ci:native must invoke the offline runner without filters.");
+expectEqual(pkg.scripts["ci:full"], "bun run ci:fast && bun run ci:native", "ci:full must require both host and native gates.");
+const makefile = readFileSync(resolve(ROOT, "Makefile"), "utf8");
+for (const name of ["native", "full"]) {
+  expectTrue(makefile.includes(`ci-${name}: ##`) && makefile.includes(`\tbun run ci:${name}`), `Make must expose ci-${name}.`);
+  expectTrue(makefile.split("\n").some(line => line.includes(`ci-${name}`) && line.endsWith("| policy-dirs")),
+    `ci-${name} must preserve scratch policy prerequisites.`);
+}
+const integrationRunner = readFileSync(resolve(ROOT, "scripts/integration-test-suite.ts"), "utf8");
+const nativeStage = 'await runStage("ci:native", ["bun", "run", "ci:native"]);';
+expectEqual(integrationRunner.split(nativeStage).length, 2, "Integration must run one required native stage with no skip/advisory options.");
+expectTrue(integrationRunner.indexOf(nativeStage) < integrationRunner.indexOf("const staticChecks") &&
+  integrationRunner.indexOf(nativeStage) < integrationRunner.indexOf("const hasDocker"),
+  "Native qualification must run outside advisory static checks and Docker/Playwright skip handling.");
+
 const publish = workflow("publish.yml");
 checkPublishSmokeGate(publish);
 expectTrue(publish.jobs?.integration?.uses === "./.github/workflows/integration-gate.yml", "Publish must call the reusable exact-SHA integration gate.");

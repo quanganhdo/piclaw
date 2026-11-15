@@ -2,10 +2,8 @@ import { describe, expect, test } from "bun:test";
 
 import type { AgentPool } from "../../../../src/agent-pool.js";
 import type { InteractionRow } from "../../../../src/db.js";
-import type { WebChannelEndpointFacadeOptions } from "../../../../src/channels/web/endpoints/channel-endpoint-facade-service.js";
 import type { InteractionBroadcasterProfile } from "../../../../src/channels/web/interaction-broadcaster.js";
 import type { WebMessageWriteServiceDeps } from "../../../../src/channels/web/message-write-service.js";
-import type { WebChannelRuntimeStateCallbacks } from "../../../../src/channels/web/runtime/runtime-state-service.js";
 import {
   createWebChannelConstructorFactory,
   type WebChannelConstructorFactoryChannel,
@@ -22,6 +20,8 @@ describe("web channel constructor wiring factory", () => {
     const creationOrder: string[] = [];
     const broadcastCalls: string[] = [];
     const queueCalls: Array<{ key: string; laneKey?: string }> = [];
+    const sends: unknown[][] = [];
+    let sidePromptOptions: Parameters<WebChannelConstructorFactoryDeps["createAdaptiveCardSidePromptService"]>[0] | undefined;
     const processCalls: Array<{ chatJid: string; agentId: string; threadRootId?: number | null }> = [];
     const storeCalls: Array<{
       chatJid: string;
@@ -29,21 +29,6 @@ describe("web channel constructor wiring factory", () => {
       isBot: boolean;
       mediaIds: number[];
       options?: { threadId?: number; contentBlocks?: unknown[]; isTerminalAgentReply?: boolean };
-    }> = [];
-    const replaceCalls: Array<{
-      chatJid: string;
-      rowId: number;
-      text: string;
-      mediaIds: number[];
-      contentBlocks: Array<Record<string, unknown>> | undefined;
-      isTerminalAgentReply?: boolean;
-    }> = [];
-    const queuedPlaceholderCalls: Array<{
-      chatJid: string;
-      rowId: number;
-      queuedContent: string;
-      threadId?: number | null;
-      queuedAt?: string;
     }> = [];
     const dbRuns: Array<{ sql: string; args: unknown[] }> = [];
     const postRequestCalls: Array<{ isReply: boolean; chatJid: string; url: string }> = [];
@@ -70,14 +55,9 @@ describe("web channel constructor wiring factory", () => {
       },
     } as unknown as ReturnType<WebChannelConstructorFactoryDeps["createInteractionBroadcaster"]>;
     const authGateway = sentinel<ReturnType<WebChannelConstructorFactoryDeps["createAuthGateway"]>>("auth-gateway");
-    const messageProcessingStorageService = sentinel<ReturnType<WebChannelConstructorFactoryDeps["createMessageProcessingStorageService"]>>(
-      "message-processing-storage",
-    );
     const messageWriteService = sentinel<ReturnType<WebChannelConstructorFactoryDeps["createMessageWriteService"]>>("message-write");
-    const runtimeFollowupFacade = sentinel<ReturnType<WebChannelConstructorFactoryDeps["createRuntimeFollowupFacade"]>>("runtime-followup");
     const requestRouter = sentinel<ReturnType<WebChannelConstructorFactoryDeps["createRequestRouter"]>>("request-router");
     const endpointContexts = sentinel<ReturnType<WebChannelConstructorFactoryDeps["createEndpointContexts"]>>("endpoint-contexts");
-    const endpointFacade = sentinel<ReturnType<WebChannelConstructorFactoryDeps["createEndpointFacade"]>>("endpoint-facade");
     const controlPlaneService = sentinel<ReturnType<WebChannelConstructorFactoryDeps["createControlPlaneService"]>>("control-plane");
     const serverLifecycleGateway = sentinel<ReturnType<WebChannelConstructorFactoryDeps["createServerLifecycleGateway"]>>("server-lifecycle");
     const terminalVncHttpService = {
@@ -91,14 +71,11 @@ describe("web channel constructor wiring factory", () => {
     );
     const peerMessageRelayService = sentinel<ReturnType<WebChannelConstructorFactoryDeps["createPeerMessageRelayService"]>>("peer-message-relay");
 
-    let runtimeStateCallbacks: WebChannelRuntimeStateCallbacks | null = null;
     let interactionProfileGetter: (() => InteractionBroadcasterProfile) | null = null;
     let authConfig: ConstructorParameters<WebChannelConstructorFactoryDeps["createAuthGateway"]>[0] | null = null;
     let authDeps: ConstructorParameters<WebChannelConstructorFactoryDeps["createAuthGateway"]>[1] | null = null;
     let messageWriteDeps: WebMessageWriteServiceDeps | null = null;
-    let runtimeFollowupDeps: ConstructorParameters<WebChannelConstructorFactoryDeps["createRuntimeFollowupFacade"]>[0] | null = null;
     let endpointContextOptions: Parameters<WebChannelConstructorFactoryDeps["createEndpointContexts"]>[1] | null = null;
-    let endpointFacadeOptions: WebChannelEndpointFacadeOptions | null = null;
 
     const channel: WebChannelConstructorFactoryChannel = {
       queue: {
@@ -108,17 +85,12 @@ describe("web channel constructor wiring factory", () => {
         },
       } as WebChannelConstructorFactoryChannel["queue"],
       agentPool: {
-        listActiveChats: () => ["web:default"],
+        listActiveChats: () => { throw Error("Legacy pool activity must not be read by HTTP wiring"); },
         listKnownChats: (rootChatJid?: string | null, options?: { includeArchived?: boolean }) => [
           rootChatJid ?? null,
           Boolean(options?.includeArchived),
         ],
       } as unknown as AgentPool,
-      queuedFollowupLifecycle: {
-        enqueuePlaceholder: (chatJid, rowId, queuedContent, threadId, queuedAt) => {
-          queuedPlaceholderCalls.push({ chatJid, rowId, queuedContent, threadId, queuedAt });
-        },
-      } as unknown as WebChannelConstructorFactoryChannel["queuedFollowupLifecycle"],
       terminalService: sentinel<WebChannelConstructorFactoryChannel["terminalService"]>("terminal-service"),
       vncService: sentinel<WebChannelConstructorFactoryChannel["vncService"]>("vnc-service"),
       webauthnChallenges: sentinel<WebChannelConstructorFactoryChannel["webauthnChallenges"]>("webauthn-challenges"),
@@ -127,10 +99,11 @@ describe("web channel constructor wiring factory", () => {
       broadcastEvent: () => {},
       handleRequest: async (req) => new Response(new URL(req.url).pathname),
       loadState: () => {},
+      async sendMessage(...args) { expect(this).toBe(channel); sends.push(args); },
       processChat: async (chatJid, agentId, threadRootId) => {
         processCalls.push({ chatJid, agentId, threadRootId });
       },
-      storeMessage: (chatJid, content, isBot, mediaIds, options) => {
+      admitMessage: async (chatJid, content, isBot, mediaIds, options) => {
         storeCalls.push({ chatJid, content, isBot, mediaIds, options });
         return null;
       },
@@ -139,7 +112,6 @@ describe("web channel constructor wiring factory", () => {
     const options: WebChannelConstructorFactoryOptions = {
       defaultChatJid: "web:default",
       defaultAgentId: "default",
-      stateKey: "state-key",
       webServerConfig: {
         host: "127.0.0.1",
         port: 8080,
@@ -160,16 +132,14 @@ describe("web channel constructor wiring factory", () => {
 
     const deps: WebChannelConstructorFactoryDeps = {
       getIdentityConfig: () => identity,
-      getChatCursor: (chatJid) => `cursor:${chatJid}`,
       createSessionBroadcast: (agentPool) => {
         creationOrder.push("sessionBroadcast");
         expect(agentPool).toBe(channel.agentPool);
         return sessionBroadcast;
       },
-      createRuntimeState: (callbacks, runtimeOptions) => {
+      createRuntimeState: (...args) => {
         creationOrder.push("runtimeState");
-        runtimeStateCallbacks = callbacks;
-        expect(runtimeOptions).toEqual({ defaultAgentId: "default", stateKey: "state-key" });
+        expect(args).toEqual([]);
         return runtimeState;
       },
       createIdentitySnapshot: (currentIdentity) => ({
@@ -195,22 +165,10 @@ describe("web channel constructor wiring factory", () => {
         authDeps = gatewayDeps;
         return authGateway;
       },
-      createMessageProcessingStorageService: (seenChannel, defaults) => {
-        creationOrder.push("messageProcessingStorageService");
-        expect(seenChannel).toBe(channel);
-        expect(defaults.defaultAgentId).toBe("default");
-        expect(defaults.getAssistantName()).toBe("Pi");
-        return messageProcessingStorageService;
-      },
       createMessageWriteService: (writeDeps) => {
         creationOrder.push("messageWriteService");
         messageWriteDeps = writeDeps;
         return messageWriteService;
-      },
-      createRuntimeFollowupFacade: (facadeDeps) => {
-        creationOrder.push("runtimeFollowupFacade");
-        runtimeFollowupDeps = facadeDeps;
-        return runtimeFollowupFacade;
       },
       createRequestRouter: (seenChannel) => {
         creationOrder.push("requestRouter");
@@ -222,11 +180,6 @@ describe("web channel constructor wiring factory", () => {
         expect(seenChannel).toBe(channel);
         endpointContextOptions = factoryOptions;
         return endpointContexts;
-      },
-      createEndpointFacade: (facadeOptions) => {
-        creationOrder.push("endpointFacade");
-        endpointFacadeOptions = facadeOptions;
-        return endpointFacade;
       },
       createControlPlaneService: (seenChannel, defaults) => {
         creationOrder.push("controlPlaneService");
@@ -241,6 +194,8 @@ describe("web channel constructor wiring factory", () => {
         expect(seenChannel.vncService).toBe(channel.vncService);
         expect(seenChannel.uiBridge).toBe(sessionBroadcast.uiBridge);
         expect(seenChannel.sse).toBe(sessionBroadcast.sse);
+        expect(seenChannel.runtimeState).toBe(runtimeState);
+        expect(seenChannel.sessionBroadcast).toBe(sessionBroadcast);
         expect(configs).toEqual({
           webServerConfig: options.webServerConfig,
           webRuntimeConfig: options.webRuntimeConfig,
@@ -257,6 +212,7 @@ describe("web channel constructor wiring factory", () => {
       },
       createAdaptiveCardSidePromptService: (serviceOptions) => {
         creationOrder.push("adaptiveCardSidePromptService");
+        sidePromptOptions = serviceOptions;
         expect(serviceOptions.defaultChatJid).toBe("web:default");
         expect(serviceOptions.defaultAgentId).toBe("default");
         expect(serviceOptions.webRuntimeConfig).toEqual(options.webRuntimeConfig);
@@ -271,17 +227,6 @@ describe("web channel constructor wiring factory", () => {
         expect(defaults).toEqual({ defaultAgentId: "default" });
         return peerMessageRelayService;
       },
-      replaceMessageContent: (chatJid, rowId, text, writeOptions) => {
-        replaceCalls.push({
-          chatJid,
-          rowId,
-          text,
-          mediaIds: writeOptions.mediaIds ?? [],
-          contentBlocks: writeOptions.contentBlocks,
-          isTerminalAgentReply: writeOptions.isTerminalAgentReply,
-        });
-        return null;
-      },
       getDb: () => ({
         prepare: (sql: string) => ({
           run: (...args: unknown[]) => {
@@ -289,11 +234,7 @@ describe("web channel constructor wiring factory", () => {
           },
         }),
       }) as unknown as ReturnType<WebChannelConstructorFactoryDeps["getDb"]>,
-      ensureAvatarCache: async () => null,
-      handlePostRequest: async (_seenChannel, req, isReply, chatJid) => {
-        postRequestCalls.push({ isReply, chatJid, url: req.url });
-        return new Response("post");
-      },
+
     };
 
     const result = createWebChannelConstructorFactory(channel, options, deps);
@@ -303,12 +244,9 @@ describe("web channel constructor wiring factory", () => {
       "runtimeState",
       "interactionBroadcaster",
       "authGateway",
-      "messageProcessingStorageService",
       "messageWriteService",
-      "runtimeFollowupFacade",
       "requestRouter",
       "endpointContexts",
-      "endpointFacade",
       "controlPlaneService",
       "serverLifecycleGateway",
       "adaptiveCardSidePromptService",
@@ -317,14 +255,16 @@ describe("web channel constructor wiring factory", () => {
 
     expect(result.sessionBroadcast).toBe(sessionBroadcast);
     expect(result.runtimeState).toBe(runtimeState);
+    expect(result).not.toHaveProperty("runtimeFollowupFacade");
+    await sidePromptOptions?.sendMessage?.("web:side-prompt", "reply", { threadId: 4 });
+    expect(sends).toEqual([["web:side-prompt", "reply", { threadId: 4 }]]);
     expect(result.interactionBroadcaster).toBe(interactionBroadcaster);
     expect(result.authGateway).toBe(authGateway);
-    expect(result.messageProcessingStorageService).toBe(messageProcessingStorageService);
+    expect(result).not.toHaveProperty("messageProcessingStorageService");
     expect(result.messageWriteService).toBe(messageWriteService);
-    expect(result.runtimeFollowupFacade).toBe(runtimeFollowupFacade);
     expect(result.requestRouter).toBe(requestRouter);
     expect(result.endpointContexts).toBe(endpointContexts);
-    expect(result.endpointFacade).toBe(endpointFacade);
+    expect(result).not.toHaveProperty("endpointFacade");
     expect(result.controlPlaneService).toBe(controlPlaneService);
     expect(result.serverLifecycleGateway).toBe(serverLifecycleGateway);
     expect(result.terminalVncHttpService).not.toBe(terminalVncHttpService);
@@ -343,23 +283,15 @@ describe("web channel constructor wiring factory", () => {
     expect(authDeps?.failureTracker).toBe(channel.totpFailureTracker);
     expect((await (authDeps?.json({ ok: true }, 201) ?? new Response(null)).json())).toEqual({ ok: true });
 
-    expect(runtimeStateCallbacks).not.toBeNull();
-    runtimeStateCallbacks?.enqueue(async () => {}, "resume:web:test", "chat:web:test");
-    await runtimeStateCallbacks?.processChat("web:test", "agent-a", 42);
-    expect(runtimeStateCallbacks?.getChatCursor("web:test")).toBe("cursor:web:test");
-    expect(queueCalls).toEqual([{ key: "resume:web:test", laneKey: "chat:web:test" }]);
-    expect(processCalls).toEqual([{ chatJid: "web:test", agentId: "agent-a", threadRootId: 42 }]);
+    expect(queueCalls).toEqual([]);
+    expect(processCalls).toEqual([]);
 
     expect(messageWriteDeps).not.toBeNull();
     const interaction = { id: 1 } as unknown as InteractionRow;
     messageWriteDeps?.broadcastAgentResponse(interaction);
-    messageWriteDeps?.broadcastInteractionUpdated(interaction);
-    messageWriteDeps?.storeMessage("web:test", "hello", false, [1, 2], { threadId: 7 });
-    messageWriteDeps?.replaceMessageContent("web:test", 9, "updated", [4], [{ type: "text" }], true);
-    messageWriteDeps?.enqueueFollowupPlaceholder("web:test", 13, "queued", 7, "2026-03-28T00:00:00.000Z");
-    messageWriteDeps?.setMessageThreadToSelf(21);
+    await messageWriteDeps?.admitMessage("web:test", "hello", false, [1, 2], { threadId: 7 });
 
-    expect(broadcastCalls).toEqual(["agent-response", "interaction-updated"]);
+    expect(broadcastCalls).toEqual(["agent-response"]);
     expect(storeCalls).toEqual([
       {
         chatJid: "web:test",
@@ -369,52 +301,11 @@ describe("web channel constructor wiring factory", () => {
         options: { threadId: 7 },
       },
     ]);
-    expect(replaceCalls).toEqual([
-      {
-        chatJid: "web:test",
-        rowId: 9,
-        text: "updated",
-        mediaIds: [4],
-        contentBlocks: [{ type: "text" }],
-        isTerminalAgentReply: true,
-      },
-    ]);
-    expect(queuedPlaceholderCalls).toEqual([
-      {
-        chatJid: "web:test",
-        rowId: 13,
-        queuedContent: "queued",
-        threadId: 7,
-        queuedAt: "2026-03-28T00:00:00.000Z",
-      },
-    ]);
-    expect(dbRuns).toEqual([
-      {
-        sql: "UPDATE messages SET thread_id = ? WHERE rowid = ?",
-        args: [21, 21],
-      },
-    ]);
+    expect(dbRuns).toEqual([]);
 
-    expect(runtimeFollowupDeps?.getMessageWriteService()).toBe(messageWriteService);
-    expect(runtimeFollowupDeps?.getQueuedFollowupLifecycle()).toBe(channel.queuedFollowupLifecycle);
-    expect(runtimeFollowupDeps?.getRuntimeState()).toBe(runtimeState);
 
     expect(endpointContextOptions?.defaultChatJid).toBe("web:default");
     expect(endpointContextOptions?.defaultAgentId).toBe("default");
-    expect(endpointFacadeOptions?.endpointContexts).toBe(endpointContexts);
-    expect(endpointFacadeOptions?.listActiveChats()).toEqual(["web:default"]);
-    expect(endpointFacadeOptions?.listKnownChats?.("web:root", { includeArchived: true })).toEqual(["web:root", true]);
-    const handlePostRequest = endpointFacadeOptions?.handlePostRequest;
-    expect(handlePostRequest).toBeDefined();
-    if (!handlePostRequest) throw new Error("Expected endpoint facade handlePostRequest");
-    expect(await (await handlePostRequest(new Request("https://example.com/post"), false, "web:branch")).text()).toBe("post");
-    expect(postRequestCalls).toEqual([
-      { isReply: false, chatJid: "web:branch", url: "https://example.com/post" },
-    ]);
-
-    expect(creationOrder).not.toContain("terminalVncHttpService");
-    expect(await result.terminalVncHttpService.handleTerminalSession(new Request("https://example.com/terminal/session")).text()).toBe("terminal-session");
-    expect(creationOrder.filter((entry) => entry === "terminalVncHttpService")).toEqual(["terminalVncHttpService"]);
 
     identity = {
       assistantName: "Nova",
@@ -430,6 +321,5 @@ describe("web channel constructor wiring factory", () => {
     expect(interactionProfileGetter?.().userAvatar).toBe("/avatars/you.png");
     expect(endpointContextOptions?.getIdentitySnapshot().assistantName).toBe("Nova");
     expect(endpointContextOptions?.getIdentitySnapshot().userAvatarBackground).toBe("#654321");
-    expect(runtimeStateCallbacks?.getAssistantName()).toBe("Nova");
   });
 });

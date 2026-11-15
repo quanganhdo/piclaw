@@ -1,10 +1,11 @@
 #!/usr/bin/env bun
+// Explicit archive-layout tooling only; never native execution persistence.
 import Database from "bun:sqlite";
 import { appendFileSync, closeSync, cpSync, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, truncateSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { performance } from "node:perf_hooks";
 
-import { SqliteSessionStore } from "../src/agent-pool/sqlite-session-store.js";
+import { SqliteSessionStore } from "./lib/sqlite-session-archive.js";
 import { createVerifiedSqliteBackup, verifySqliteBackup } from "../src/db/backup.js";
 
 type Layout = "jsonl" | "unified" | "separate";
@@ -243,6 +244,7 @@ faults.restore = { passed: verifySqliteBackup(restorePath).integrityCheck === "o
 
 const report = {
   version: 1,
+  scope: "archive-layout-only",
   generatedAt: new Date().toISOString(),
   host: process.env.HOSTNAME ?? "unknown",
   corpus: { sourceDirectory: config.sessions, files: files.length, bytes: sourceBytes, largestFirst: true },
@@ -254,4 +256,4 @@ const report = {
 };
 const reportPath = join(config.out, "report.json");
 writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`);
-console.log(JSON.stringify({ reportPath, corpus: report.corpus, footprint: report.footprint, faults }, null, 2));
+console.log(JSON.stringify({ reportPath, scope: report.scope, corpus: report.corpus, footprint: report.footprint, faults }, null, 2));

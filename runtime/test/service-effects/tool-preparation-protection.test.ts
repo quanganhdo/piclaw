@@ -46,7 +46,6 @@ const SAFE_PARAMETER_EXCEPTIONS = Object.freeze([
   safeException("list_models", ["limit", "offset"], "Pagination integers reveal only catalog traversal mechanics and no provider credentials or prompts."),
   safeException("switch_model", ["model"], "The model value is a public provider/catalog identifier selected from the runtime model registry."),
   safeException("switch_thinking", ["level"], "Thinking level is a closed public execution-mode enum with no prompt or response content."),
-  safeException("introspect_sql", ["limit"], "The bounded result count is safe while the SQL query and returned database values remain protected."),
   safeException("schedule_task", ["schedule_type", "schedule_value", "model", "task_kind", "timeout_sec", "notify", "muted", "no_nudge"], "Schedule timing, task/model enums, timeout, and notification flags are controls; command and prompt bodies remain protected."),
   safeException("scheduled_tasks", ["action", "status", "limit", "include_latest_run_log", "allow_internal", "notify", "muted", "no_nudge", "schedule_type", "schedule_value", "model", "task_kind", "timeout_sec"], "Closed task actions/status, timing, bounds, and notification flags do not include stored prompts, commands, or run output."),
   safeException("memory_query", ["limit", "offset"], "Bounded count and candidate offset are pagination mechanics; query text and returned notes remain protected."),
@@ -154,6 +153,7 @@ describe("WP-3C protected trace/projection oracle", () => {
     expect(Object.isFrozen(inventory.unresolvedSchemas)).toBeTrue();
   });
 
+  // Source-wide AST audit; this is not a runtime latency assertion.
   test("source schemas are closed by protected fields or explicit safe-field exceptions", () => {
     const sourceTree = readRepositorySourceTree();
     const inventory = inventoryRepositoryToolFamilies(sourceTree);
@@ -209,8 +209,7 @@ describe("WP-3C protected trace/projection oracle", () => {
       expect([...safe].filter((field) => protectedTopLevel.has(field))).toEqual([]);
       expect([...fields].filter((field) => !protectedTopLevel.has(field) && !safe.has(field))).toEqual([]);
     }
-  });
-
+  }, 30_000);
   test("wildcard templates redact arbitrary nested candidate data", () => {
     const secret = "dynamic-template-secret";
     for (const template of DYNAMIC_TOOL_PREPARATION_TEMPLATES) {

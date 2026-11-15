@@ -8,7 +8,6 @@ Start with [getting started](getting-started.md) for installation, first chat, a
 - [Workspace indexing](workspace-indexing.md) — indexed roots, ignore patterns, preview and refresh controls
 - [Configuration](configuration.md) — settings, paths, providers, remote SSH tools and environment overrides
 - [Tools and skills](tools-and-skills.md) — tool discovery, skills and slash commands
-- [Budget limits](budget-limits.md) — opt-in spend/quota caps, status, approvals and enforcement limits
 - [Settings and add-ons](settings-and-addons.md) — installation and configuration; [add-on catalogue](https://rcarmo.github.io/piclaw-addons/)
 - [Visual artefact generation](visual-artifact-generator.md) — diagrams, charts and interactive output
 - [Dream memory](dream-memory.md) — file-based memory maintenance
@@ -52,8 +51,3 @@ Start with [getting started](getting-started.md) for installation, first chat, a
 ## Gated multi-user development
 
 Family and isolated-container modes cannot start. These guides support implementation review and controlled testing, not deployment:
-
-- [Access modes and implementation status](multi-user/README.md)
-- [Family preview user guide](multi-user/user-guide.md)
-- [Administrator guide](multi-user/administrator-guide.md) and [troubleshooting](multi-user/troubleshooting.md)
-- [Copy-only migration](multi-user/migration-copy.md) and [offline recovery](multi-user/operator-recovery.md)

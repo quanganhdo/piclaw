@@ -1,25 +1,36 @@
 import { useEffect, useRef } from '../vendor/preact-htm.js';
 import { SSEClient } from '../api.js';
-import { isIOSDevice } from './app-helpers.js';
 
-export function bindSseWakeLifecycle({ sse, onWake }, runtime = {}) {
+type SseWakeRuntime = {
+  window?: Pick<Window, 'addEventListener' | 'removeEventListener'>;
+  document?: Pick<Document, 'addEventListener' | 'removeEventListener' | 'visibilityState'>;
+  now?: () => number;
+  useFocusReconnect?: boolean;
+};
+
+export function bindSseWakeLifecycle({ sse, onWake }, runtime: SseWakeRuntime = {}) {
   const win = runtime.window ?? (typeof window !== 'undefined' ? window : null);
   const doc = runtime.document ?? (typeof document !== 'undefined' ? document : null);
   if (!win || !doc || !sse) {
     return () => {};
   }
 
+  const now = runtime.now ?? Date.now;
+  let lastWakeAt = -Infinity;
   const reconnectAfterReturn = () => {
+    // Some browsers emit pageshow, visibilitychange and online together.
+    if (now() - lastWakeAt < 500) return;
+    lastWakeAt = now();
     if (typeof sse.forceReconnect === 'function') {
-      sse.forceReconnect();
-      return;
+      sse.forceReconnect({ immediate: true });
+    } else {
+      sse.reconnectIfNeeded({ immediate: true });
     }
-    sse.reconnectIfNeeded();
+    onWake?.();
   };
 
-  const shouldUseFocusReconnect = typeof runtime.useFocusReconnect === 'boolean'
-    ? runtime.useFocusReconnect
-    : !isIOSDevice();
+  // A healthy connection is left alone, including on mobile keyboard focus.
+  const shouldUseFocusReconnect = runtime.useFocusReconnect !== false;
   let pendingWake = doc.visibilityState && doc.visibilityState !== 'visible';
 
   const handleHiddenState = () => {
@@ -35,7 +46,6 @@ export function bindSseWakeLifecycle({ sse, onWake }, runtime = {}) {
     if (pendingWake) {
       pendingWake = false;
       reconnectAfterReturn();
-      onWake?.();
     }
   };
 
@@ -46,11 +56,17 @@ export function bindSseWakeLifecycle({ sse, onWake }, runtime = {}) {
       return;
     }
     if (shouldUseFocusReconnect) {
-      sse.reconnectIfNeeded();
+      if (sse.reconnectIfNeeded({ immediate: true })) onWake?.();
     }
   };
 
-  const handlePageShow = () => {
+  const handlePageShow = (event) => {
+    if (event?.persisted) pendingWake = true;
+    handleVisibleReturn();
+  };
+
+  const handleOnline = () => {
+    pendingWake = true;
     handleVisibleReturn();
   };
 
@@ -60,11 +76,13 @@ export function bindSseWakeLifecycle({ sse, onWake }, runtime = {}) {
 
   win.addEventListener('focus', handleWindowFocus);
   win.addEventListener('pageshow', handlePageShow);
+  win.addEventListener('online', handleOnline);
   doc.addEventListener('visibilitychange', handleVisibilityChange);
 
   return () => {
     win.removeEventListener('focus', handleWindowFocus);
     win.removeEventListener('pageshow', handlePageShow);
+    win.removeEventListener('online', handleOnline);
     doc.removeEventListener('visibilitychange', handleVisibilityChange);
   };
 }

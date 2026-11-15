@@ -139,7 +139,7 @@ try {
  }else if(scenario==='links'){
   unlinkSync(path);symlinkSync(other,path);const r=body(await run({query:'sunrise'}));assert.equal(r.status,'partial');assert.ok(r.reasons.includes('source_stale'));assert.equal(r.hits.length,0);
  }else if(scenario==='dirty'){
-  const {markNoteIndexDirty}=await import('../../../src/note-retrieval/coordinator.js');markNoteIndexDirty(['notes/unrelated.md']);
+  const {markNoteIndexDirty}=await import('../../../src/note-retrieval/coordinator.js');await markNoteIndexDirty(['notes/unrelated.md']);
   const r=body(await run({query:'sunrise'}));assert.equal(r.status,'partial');assert.ok(r.reasons.includes('refresh_pending'));assert.equal(r.hits.length,1);
  }else if(scenario==='overdue'){
   db.query('UPDATE note_retrieval_state SET last_complete=?').run(Date.now()-301000);

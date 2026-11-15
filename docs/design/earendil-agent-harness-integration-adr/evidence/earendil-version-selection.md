@@ -1,5 +1,7 @@
 # Earendil version-selection constraints
 
+The policy below remains applicable; its runtime/candidate selections preserve their original historical capture. Current repository pins are SDK1.4.0. Frozen Harness evidence is now the [inert schema-6 receipt](receipts/earendil-harness-compatibility-schema6.json) with [source/conversion provenance](receipts/earendil-harness-compatibility-schema6.provenance.json); the executable compatibility module is retired under #1575.
+
 Piclaw follows Earendil's type system and semantics. It does not require Earendil to preserve Piclaw compatibility or accept Piclaw-designed APIs.
 
 ## Policy

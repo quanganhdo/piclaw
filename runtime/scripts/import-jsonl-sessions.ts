@@ -1,9 +1,10 @@
 #!/usr/bin/env bun
+// Explicit archive-layout tooling only; never native execution persistence.
 import Database from "bun:sqlite";
 import { existsSync, lstatSync, mkdirSync, readdirSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 
-import { SqliteSessionStore, inspectSessionStore } from "../src/agent-pool/sqlite-session-store.js";
+import { SqliteSessionStore, inspectSessionStore } from "./lib/sqlite-session-archive.js";
 import { createVerifiedSqliteBackup } from "../src/db/backup.js";
 
 interface Options {

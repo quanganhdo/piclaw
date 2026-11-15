@@ -10,8 +10,12 @@ export function constrainNativeTransport(transport: McpTransport) {
   const replyFailures: unknown[] = [];
   let closeFailure: unknown;
   const wrapped: McpTransport = {
-    start: () => transport.start(),
+    async start() {
+      if (closing) throw new Error('Native MCP transport is closing.');
+      await transport.start();
+    },
     async send(message) {
+      if (closing) throw new Error('Native MCP transport is closing.');
       if ('method' in message && deniedMethods.has(message.method)) throw new Error('Native experimental profile disables resources and prompts.');
       await transport.send(message);
     },

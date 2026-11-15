@@ -3,14 +3,13 @@
  *
  * Covers formatCompactNumber(), formatCurrency(), formatShellBlock(),
  * truncateText(), extractTextFromContent(), normalizeModelMatch(),
- * and runPromptAndCapture().
+ * and thinking metadata aliases.
  */
 
 import { resolve } from "path";
 import { beforeEach, expect, test } from "bun:test";
 
 import { createTempWorkspace } from "../helpers.js";
-import { recordCompactionCancellationReason } from "../../src/agent-pool/compaction-cancel-reason.js";
 import {
   extractTextFromContent,
   formatCompactNumber,
@@ -19,36 +18,11 @@ import {
   formatThinkingLevelForDisplay,
   normalizeModelMatch,
   resolveThinkingAlias,
-  runPromptAndCapture,
   truncateText,
 } from "../../src/agent-control/agent-control-helpers.js";
 import { initDatabase } from "../../src/db.js";
 
 beforeEach(() => initDatabase());
-
-class PromptSession {
-  private listeners: Array<(event: any) => void> = [];
-
-  subscribe(fn: (event: any) => void) {
-    this.listeners.push(fn);
-    return () => {
-      this.listeners = this.listeners.filter((listener) => listener !== fn);
-    };
-  }
-
-  async prompt(_text: string) {
-    for (const listener of this.listeners) {
-      listener({
-        type: "message_update",
-        assistantMessageEvent: { type: "text_delta", delta: "Hello" },
-      });
-      listener({
-        type: "message_end",
-        message: { role: "assistant", content: [{ type: "text", text: "Hello world" }] },
-      });
-    }
-  }
-}
 
 test("formatting helpers format numbers and currency", () => {
   expect(formatCompactNumber(950)).toBe("950");
@@ -120,83 +94,4 @@ test("thinking aliases preserve native max while supporting legacy model metadat
   expect(formatThinkingLevelForDisplay("xhigh", legacy)).toBe("max");
   expect(formatThinkingLevelForDisplay("xhigh", native)).toBe("xhigh");
   expect(formatThinkingLevelForDisplay("max", native)).toBe("max");
-});
-
-test("runPromptAndCapture captures assistant output", async () => {
-  const session = new PromptSession();
-  const result = await runPromptAndCapture(session as any, "hi");
-  expect(result).toBe("Hello world");
-});
-
-test("runPromptAndCapture surfaces the recorded smart-compaction cancellation reason", async () => {
-  class FailedCompactionSession extends PromptSession {
-    promptCalls = 0;
-    sessionManager = {};
-
-    async compact() {
-      recordCompactionCancellationReason(this.sessionManager, "Smart compaction rejected an invalid terminal summary");
-      throw new Error("Compaction cancelled");
-    }
-
-    async prompt(_text: string) {
-      this.promptCalls += 1;
-      const listeners = (this as any).listeners as Array<(event: any) => void>;
-      for (const listener of listeners) {
-        listener({
-          type: "message_end",
-          message: {
-            role: "assistant",
-            stopReason: "error",
-            errorMessage: "OpenAI API error (400): Your input exceeds the context window of this model.",
-            content: [],
-          },
-        });
-      }
-    }
-  }
-
-  const session = new FailedCompactionSession();
-  await expect(runPromptAndCapture(session as any, "hi"))
-    .rejects.toThrow("Smart compaction rejected an invalid terminal summary");
-  expect(session.promptCalls).toBe(1);
-});
-
-test("runPromptAndCapture compacts and retries OpenAI context-window errors", async () => {
-  class ContextErrorSession extends PromptSession {
-    promptCalls = 0;
-    compactCalls = 0;
-
-    async compact() {
-      this.compactCalls += 1;
-    }
-
-    async prompt(_text: string) {
-      this.promptCalls += 1;
-      const listeners = (this as any).listeners as Array<(event: any) => void>;
-      for (const listener of listeners) {
-        if (this.promptCalls === 1) {
-          listener({
-            type: "message_end",
-            message: {
-              role: "assistant",
-              stopReason: "error",
-              errorMessage: "OpenAI API error (400): 400 Your input exceeds the context window of this model. Please adjust your input and try again.",
-              content: [],
-            },
-          });
-        } else {
-          listener({
-            type: "message_end",
-            message: { role: "assistant", content: [{ type: "text", text: "Recovered after compaction" }] },
-          });
-        }
-      }
-    }
-  }
-
-  const session = new ContextErrorSession();
-  const result = await runPromptAndCapture(session as any, "hi");
-  expect(result).toBe("Recovered after compaction");
-  expect(session.promptCalls).toBe(2);
-  expect(session.compactCalls).toBe(1);
 });

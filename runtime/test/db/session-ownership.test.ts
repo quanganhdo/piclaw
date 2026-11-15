@@ -19,7 +19,7 @@ function child(id: string, rootId: string, parent: string, archived: string | nu
   db.query("INSERT INTO chat_branches VALUES (?,?,?,?,?)").run(id, id, rootId, parent, archived);
 }
 function principal(id = alice, role: "admin" | "member" = "member"): AuthenticatedPrincipal {
-  return { kind: "user", userId: id, username: id, displayName: id, role, mode: "family-shared", homeChatJid: "untrusted-stale-home", authentication: { method: "totp", sessionId: "login-test", expiresAt: null } };
+  return { kind: "user", userId: id, username: id, displayName: id, role, mode: "single-user", homeChatJid: "untrusted-stale-home", authentication: { method: "totp", sessionId: "login-test", expiresAt: null } };
 }
 beforeEach(() => {
   db = new Database(":memory:");

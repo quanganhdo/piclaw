@@ -1,4 +1,3 @@
-import { operationSessionProfile, operationSessionTools } from "./operation-session-profile.js";
 import { assertCurrentProviderSelection } from './retired-provider-selection.js';
 /**
  * agent-pool/session.ts – pi-agent session creation and directory management.
@@ -12,10 +11,11 @@ import { assertCurrentProviderSelection } from './retired-provider-selection.js'
  * Consumers:
  *   - agent-pool.ts calls createDefaultSession() to initialise or replace
  *     the agent session for a chat.
- *   - ensureSessionDir() is also used by agent-control/handlers/session.ts.
  */
 
-import { createReadStream, createWriteStream, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "fs";
+import { createReadStream, createWriteStream, existsSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "fs";
+import { ensureSessionDir } from "./session-paths.js";
+export { ensureSessionDir, ensureNamedSessionDir, sanitiseJid } from "./session-paths.js";
 import { join, resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 import { createInterface } from "readline";
@@ -38,30 +38,22 @@ import { bindMcpBridgeOwner, createMcpBridgeOwner } from "./mcp-bridge-owner.js"
 import { createConstrainedNativeOwner } from './mcp-native-owner.js';
 import { mcpRuntimeRegistrationPolicy } from "../extensions/mcp-runtime-policy.js";
 import { getPiclawAgentDir } from "../core/agent-dir.js";
-import { SESSIONS_DIR, getRuntimeRoot, getSessionPersistenceConfig, getWorkspaceDir } from "../core/config.js";
+import { getRuntimeRoot, getSessionPersistenceConfig, getWorkspaceDir } from "../core/config.js";
 import { buildChannelSystemPromptAppendix } from "../channels/formatting.js";
 import { detectChannel } from "../router.js";
 import { createBuiltinExtensionFactories } from "../extensions/index.js";
 import { canConstructMcpOwner, bindMcpCodemodePolicy, mcpCodemodeExtension, selectedMcpPolicy } from "./mcp-codemode-runtime.js";
 import { readAccessConfig } from '../core/config-access.js';
-import { requireOwnedSessionExecution } from './owned-session-access.js';
-import { familySessionModelOptions } from './family-model-defaults.js';
 import { installSessionThinkingPolicy, readThinkingPreference, THINKING_POLICY_ENTRY } from './thinking-policy.js';
 import { getDb } from '../db/connection.js';
-import { readOwnedForkSeed } from '../db/owned-forks.js';
-import { createFamilyBuiltinTools, createFamilyToolCallGuard } from './family-builtin-tools.js';
 import type { ToolDefinition } from '@earendil-works/pi-coding-agent';
 import { sanitizePersistedSessionMessage } from "../extensions/persisted-tool-result-sanitizer.js";
 import { freezeExtensionRoutes } from "../channels/web/http/extension-routes.js";
 import { ensureExtensionNodeModulesLink } from "./session-node-modules-link.js";
 import { createLogger, debugSuppressedError } from "../utils/logger.js";
-import type { CompactionStreamFn } from "../extensions/smart-compaction/stream-complete.js";
-import { normalizeLlmContext } from "./llm-context-normalizer.js";
 import { writeMergedSessionArchive } from "../session-archive.js";
 import {
-  listInstalledAddonPackageDirs,
-  readInstalledAddonPackage,
-  resolveAddonPackageEntries,
+  getInstalledAddonExtensionPaths,
 } from "../addons/package-entries.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -205,17 +197,6 @@ function ensureWorkspaceExtensionNodeModulesLink(nodeModulesDir: string | null):
 
   ensureExtensionNodeModulesLink(workspaceExtensionsDir, nodeModulesDir);
   ensuredWorkspaceExtensionLinkKey = ensureKey;
-}
-
-export function getInstalledAddonExtensionPaths(workspaceDir = getWorkspaceDir()): string[] {
-  const addonsNodeModulesDir = join(workspaceDir, ".pi", "extensions", "node_modules");
-  const extensionPaths: string[] = [];
-  for (const packageDir of listInstalledAddonPackageDirs(addonsNodeModulesDir)) {
-    const addonPackage = readInstalledAddonPackage(packageDir);
-    if (!addonPackage) continue;
-    extensionPaths.push(...resolveAddonPackageEntries(packageDir, addonPackage.manifest.pi?.extensions));
-  }
-  return extensionPaths;
 }
 
 function getBundledExtensionPaths(chatJid?: string): string[] {
@@ -533,37 +514,11 @@ export function trimPreCompactionEntries(sessionDir: string): void {
   }
 }
 
-/** Ensure the session directory exists for a chat and return its path. */
-export function ensureSessionDir(chatJid: string): string {
-  const chatSessionDir = join(SESSIONS_DIR, sanitiseJid(chatJid));
-  mkdirSync(chatSessionDir, { recursive: true });
-  return chatSessionDir;
-}
-
-/** Ensure a named auxiliary session directory exists for a chat and return its path. */
-export function ensureNamedSessionDir(chatJid: string, name: string): string {
-  const dir = join(SESSIONS_DIR, `${sanitiseJid(chatJid)}__${sanitiseJid(name)}`);
-  mkdirSync(dir, { recursive: true });
-  return dir;
-}
-
 /**
  * Create a fully-configured pi-agent session for the given chat.
  * Loads workspace resources (AGENTS.md, skills, extensions, prompt templates)
  * and resumes the most recent session tree.
  */
-export function createCompactionStreamFn(modelRuntime: ModelRuntime, settingsManager: SettingsManager): CompactionStreamFn {
-  return (model, context, options) => {
-    const providerRetrySettings = settingsManager.getProviderRetrySettings();
-    return modelRuntime.streamSimple(model, normalizeLlmContext(context), {
-      ...options,
-      timeoutMs: options?.timeoutMs ?? providerRetrySettings.timeoutMs,
-      maxRetries: options?.maxRetries ?? providerRetrySettings.maxRetries,
-      maxRetryDelayMs: options?.maxRetryDelayMs ?? providerRetrySettings.maxRetryDelayMs,
-    });
-  };
-}
-
 export async function createSessionInDir(
   sessionDir: string,
   options: {
@@ -575,26 +530,15 @@ export async function createSessionInDir(
     chatJid?: string;
   }
 ): Promise<AgentSessionRuntime> {
-  const mode = readAccessConfig().mode;
-  if (mode !== 'single-user') {
-    if (mode !== 'family-shared' || !options.chatJid) throw new Error('Owned family session identity is required.');
-    requireOwnedSessionExecution(options.chatJid);
-  }
+  if (readAccessConfig().mode !== "single-user") throw new Error("Single-user session execution is required.");
   ensureValidProcessCwd();
-  const operationProfile = operationSessionProfile(options.chatJid);
-  const channelSystemPromptAppendix = operationProfile ? '' : getChannelSystemPromptAppendix(options.chatJid);
+  const channelSystemPromptAppendix = getChannelSystemPromptAppendix(options.chatJid);
   const appendSystemPromptOverride = getAppendSystemPromptOverride(channelSystemPromptAppendix);
-  const additionalExtensionPaths = operationProfile ? [] : getBundledExtensionPaths(options.chatJid);
+  const additionalExtensionPaths = getBundledExtensionPaths(options.chatJid);
 
   const workspaceDir = getWorkspaceDir();
-  const owner = mode === 'family-shared' ? requireOwnedSessionExecution(options.chatJid!) : null;
-  const pendingSeed = owner ? readOwnedForkSeed(getDb(), owner, options.chatJid!) : null;
-  const pendingAdoption = pendingSeed !== null && JSON.parse(pendingSeed).mode === 'adopted_jsonl';
-  // Do not load or mutate an unverified legacy file before importing the captured adoption snapshot.
-  if (!pendingAdoption) {
-    await sanitizePersistedSessionFileBeforeLoad(sessionDir);
-    trimPreCompactionEntries(sessionDir);
-  }
+  await sanitizePersistedSessionFileBeforeLoad(sessionDir);
+  trimPreCompactionEntries(sessionDir);
 
   const createRuntime = async ({
     cwd,
@@ -607,9 +551,8 @@ export async function createSessionInDir(
     sessionManager: SessionManager;
     sessionStartEvent?: SessionStartEvent;
   }) => {
-    if (mode === 'family-shared' && !requireOwnedSessionExecution(options.chatJid!)) throw new Error('Owned family session identity is required.');
     assertCurrentProviderSelection(options.settingsManager, sessionManager);
-    const mcpAvailable = !operationProfile && canConstructMcpOwner();
+    const mcpAvailable = canConstructMcpOwner();
     const mcpOwner = !mcpAvailable ? null : createMcpBridgeOwner((bridge, onLifecycle) => selectedMcpPolicy().engine === 'native'
       ? createConstrainedNativeOwner({
           servers: (bridge.nativePreview ?? { servers: [], errors: [] }).servers.map(entry => ({ ...entry, config: 'command' in entry.config
@@ -624,10 +567,8 @@ export async function createSessionInDir(
       resolveRuntimeEnv: serverName => bridge.resolveRuntimeEnv(serverName),
     }), undefined, { requireLifecycle: true });
     try {
-    const builtinExtensionFactories = operationProfile ? [] : [
-      ...(mode === 'family-shared' ? [createFamilyToolCallGuard(options.chatJid!)] : []),
+    const builtinExtensionFactories = [
       ...createBuiltinExtensionFactories({
-        compactionStreamFn: createCompactionStreamFn(options.modelRuntime, options.settingsManager),
         modelRuntime: options.modelRuntime,
         chatJid: options.chatJid,
       }),
@@ -645,11 +586,9 @@ export async function createSessionInDir(
         : builtinExtensionFactories,
       additionalExtensionPaths,
       ...(appendSystemPromptOverride ? { appendSystemPromptOverride } : {}),
-      ...operationProfile,
     });
     await resourceLoader.reload();
     mcpOwner?.assertLoaded(resourceLoader.getExtensions());
-    if (mode === 'family-shared' && !requireOwnedSessionExecution(options.chatJid!)) throw new Error('Owned family session identity is required.');
     freezeExtensionRoutes();
 
     const services: AgentSessionServices = {
@@ -670,22 +609,17 @@ export async function createSessionInDir(
       sessionManager,
       sessionStartEvent,
       ...(recordedThinking !== null ? { thinkingLevel: recordedThinking } : {}),
-      ...(mode === 'family-shared' ? familySessionModelOptions(options.chatJid!, sessionManager, options.modelRuntime, options.settingsManager) : {}),
       // Do not pass `tools` here — pi-coding-agent ≥0.68 treats it as an
       // allowlist that silently blocks every extension tool not listed.
       // The tool-activation extension sets the correct default-active set
       // via its session_start handler instead.
-      ...(operationProfile ? { tools: operationSessionTools(options.chatJid!) } : {}),
-      customTools: operationProfile ? [] : mode === 'family-shared'
-        ? createFamilyBuiltinTools(cwd, options.chatJid!, (options.customTools ?? []) as ToolDefinition[])
-        : options.customTools as any,
+      customTools: options.customTools as any,
     });
     try {
     if (mcpOwner) {
       bindMcpBridgeOwner(result.session, resourceLoader, mcpOwner);
       bindMcpCodemodePolicy(result.session);
     }
-    if (mode === 'family-shared' && !requireOwnedSessionExecution(options.chatJid!)) throw new Error('Owned family session identity is required.');
 
     const normalizeResourceDiagnostics = (items: Array<{ path?: string; error?: string }> = []) =>
       items.map((item) => ({
@@ -694,7 +628,7 @@ export async function createSessionInDir(
       }));
 
     const diagnostics = [
-      ...(!operationProfile && !mcpAvailable ? [{ type: "warning" as const, message: "MCP instance policy unavailable; MCP and codemode disabled for this session. Repair the instance configuration before enabling MCP." }] : []),
+      ...(!mcpAvailable ? [{ type: "warning" as const, message: "MCP instance policy unavailable; MCP and codemode disabled for this session. Repair the instance configuration before enabling MCP." }] : []),
       ...normalizeResourceDiagnostics(result.extensionsResult?.errors ?? []),
       ...normalizeResourceDiagnostics(resourceLoader.getSkills().diagnostics ?? []),
       ...normalizeResourceDiagnostics(resourceLoader.getPrompts().diagnostics ?? []),
@@ -704,10 +638,8 @@ export async function createSessionInDir(
 
     installSessionThinkingPolicy(result.session, restoredThinkingPreference);
 
-    // Disable upstream auto-compaction — piclaw manages compaction at safe
-    // boundaries via maybeAutoCompactSessionBeforePrompt and recovery paths.
-    // Upstream auto-compaction fires at agent_end which can interfere with
-    // multi-step tool sequences and break generated file context.
+    // Explicit legacy/offline session construction must not start automatic
+    // compaction. Normal application compaction belongs to the native Harness.
     if (typeof result.session.setAutoCompactionEnabled === "function") {
       result.session.setAutoCompactionEnabled(false);
     }
@@ -724,7 +656,7 @@ export async function createSessionInDir(
   return await createAgentSessionRuntime(createRuntime as any, {
     cwd: workspaceDir,
     agentDir: AGENT_DIR,
-    sessionManager: pendingAdoption ? SessionManager.create(workspaceDir, sessionDir) : SessionManager.continueRecent(workspaceDir, sessionDir),
+    sessionManager: SessionManager.continueRecent(workspaceDir, sessionDir),
   });
 }
 
@@ -761,9 +693,4 @@ export async function lightweightPrewarmSession(
   void getAppendSystemPromptOverride(appendix);
   void getBundledExtensionPaths(chatJid);
   await options.getSessionExtensionFactories?.(chatJid);
-}
-
-/** Replace characters that are unsafe for filesystem paths. */
-export function sanitiseJid(jid: string): string {
-  return jid.replace(/[^a-zA-Z0-9._-]/g, "_");
 }

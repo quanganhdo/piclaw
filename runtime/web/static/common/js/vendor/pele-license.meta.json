@@ -1,0 +1,35 @@
+{
+  "manifest_id": "pele-license",
+  "package_name": "pele",
+  "package_version": "1.13.0",
+  "package_license": "MIT",
+  "package_repository": "git+https://github.com/obsidianmd/pele.git",
+  "package_versions": {
+    "pele": "1.13.0"
+  },
+  "package_licenses": {
+    "pele": "MIT"
+  },
+  "package_repositories": {
+    "pele": "git+https://github.com/obsidianmd/pele.git"
+  },
+  "source_entry": null,
+  "output_file": "web/static/common/js/vendor/pele.LICENSE.txt",
+  "output_files": [
+    {
+      "package_path": "LICENSE",
+      "output_file": "web/static/common/js/vendor/pele.LICENSE.txt",
+      "sha256": "311bccc30de6f7b9cbfb64232bb0c911ccb2191abe316550813ae25b2c7925b9",
+      "size_bytes": 1934
+    }
+  ],
+  "metadata_file": "web/static/common/js/vendor/pele-license.meta.json",
+  "sha256": "311bccc30de6f7b9cbfb64232bb0c911ccb2191abe316550813ae25b2c7925b9",
+  "size_bytes": 1934,
+  "export_files": [
+    {
+      "package_path": "LICENSE",
+      "output_file": "web/static/common/js/vendor/pele.LICENSE.txt"
+    }
+  ]
+}

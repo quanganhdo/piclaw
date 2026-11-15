@@ -10,7 +10,6 @@ import type { AgentToolResult, ExtensionAPI, ExtensionFactory } from "@earendil-
 import { getChatJid } from "../core/chat-context.js";
 import { readAccessConfig } from "../core/config-access.js";
 import { resolveOwnedSessionTarget } from "../agent-pool/owned-session-target.js";
-import { requireFamilyToolAccess } from '../agent-pool/family-tool-access.js';
 
 export type SessionControlAction =
   | "inspect"
@@ -18,8 +17,6 @@ export type SessionControlAction =
   | "compact"
   | "abort"
   | "switch_model"
-  | "retry_failed"
-  | "skip_failed"
   | "wake"
   | "unblock";
 
@@ -64,8 +61,6 @@ const SessionControlSchema = Type.Object({
     Type.Literal("compact"),
     Type.Literal("abort"),
     Type.Literal("switch_model"),
-    Type.Literal("retry_failed"),
-    Type.Literal("skip_failed"),
     Type.Literal("wake"),
     Type.Literal("unblock"),
   ], { description: "Session-control action. Defaults to inspect." })),
@@ -87,7 +82,7 @@ type SessionControlParams = {
 
 const HINT = [
   "## Cross-session session control",
-  "Use session_control for operational control of another session: inspect, assess_stuck, compact, abort, switch_model, retry_failed, skip_failed, wake, or unblock.",
+  "Use session_control for operational control of another session: inspect, assess_stuck, compact, abort, switch_model, wake, or unblock.",
   "This is intentionally separate from the chat tool. chat relays messages; session_control mutates session runtime state.",
   "Prefer target_agent_name with an @alias over raw target_chat_jid/session IDs; aliases resolve through the internal Pi session-tree registry.",
   "Prefer inspect or assess_stuck before mutating a target session unless the user explicitly asks you to unblock it.",
@@ -122,16 +117,17 @@ export const sessionControl: ExtensionFactory = (pi: ExtensionAPI) => {
   pi.registerTool({
     name: "session_control",
     label: "session_control",
-    description: "Inspect or control another @alias/session: assess stuck state, compact, abort, switch model, handle failed runs, wake it, or unblock it.",
-    promptSnippet: "session_control: inspect/assess/compact/abort/switch_model/retry_failed/skip_failed/wake/unblock another session. Prefer target_agent_name='@alias' over raw chat/session IDs. Separate from chat relay.",
+    description: "Inspect or control another @alias/session: assess stuck state, compact, abort, switch model, wake it, or unblock it.",
+    promptSnippet: "session_control: inspect/assess/compact/abort/switch_model/wake/unblock another session. Prefer target_agent_name='@alias' over raw chat/session IDs. Separate from chat relay.",
     parameters: SessionControlSchema,
     async execute(_toolCallId, params: SessionControlParams) {
-      try { requireFamilyToolAccess('session_control'); }
+      try { }
       catch { return err('Session access denied.'); }
       const sourceChatJid = getChatJid("").trim();
       if (!sourceChatJid) return err("Cannot determine the source chat. session_control requires an active chat context.");
 
       const action = params.action || "inspect";
+      if (["retry_failed", "skip_failed"].includes(action)) return err("Legacy failed-run actions are unavailable. Use native inspect/wake or submit an explicit continuation.");
       const targetChatJid = params.target_chat_jid?.trim() || "";
       const targetAgentName = normalizeTargetAgentName(params.target_agent_name);
       if (!targetChatJid && !targetAgentName) return err("Provide target_agent_name (@alias preferred) or target_chat_jid.");

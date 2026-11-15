@@ -1,0 +1,190 @@
+{
+  "version": 1,
+  "issue": 1277,
+  "epic": 1270,
+  "implementationBase": "fc587de57babb118b5f0fd2ace406548bd04bbfa",
+  "metric": "Stable #1270 tracked handwritten runtime/src + runtime/durable-engine/src TS/JS rules; declarations/exact fixture/testing/test/qualification/vendor/generated/dist/node_modules components excluded. Physical lines include comments/blanks.",
+  "before": {
+    "files": 728,
+    "physicalLOC": 146885,
+    "nonblankLines": 136386
+  },
+  "after": {
+    "files": 724,
+    "physicalLOC": 145369,
+    "nonblankLines": 134951
+  },
+  "grossDelta": {
+    "files": -4,
+    "physicalLOC": -1516,
+    "nonblankLines": -1435
+  },
+  "relocationCharge": {
+    "from": "runtime/src/agent-pool/recovery-classification.ts",
+    "to": "runtime/test/helpers/recovery-classification.ts",
+    "physicalLOC": 57,
+    "nonblankLines": 51,
+    "expectedClassificationsChanged": false,
+    "packaged": false
+  },
+  "creditedNetDelta": {
+    "physicalLOC": -1459,
+    "nonblankLines": -1384
+  },
+  "outsideRootReplacementImplementation": 0,
+  "removedSources": [
+    {
+      "path": "runtime/src/channels/web/sse/agent-events.ts",
+      "sha256": "ba6396e861c6337b04c954312f64e425e4e2f075eda474aaf816c71bfb6eee5a",
+      "physical": 1174,
+      "nonblank": 1117
+    },
+    {
+      "path": "runtime/src/channels/web/sse/display-update-coalescer.ts",
+      "sha256": "11f02003aafadba806f801df4af90f7d73b5beb0888deaf7adb3faafd2276ccc",
+      "physical": 84,
+      "nonblank": 77
+    },
+    {
+      "path": "runtime/src/channels/web/messaging/agent-message-store.ts",
+      "sha256": "1c4f9d0e9ee4d2a3d008ce64ad2690186e97179180bb0e016b3399f7dc5d9e9d",
+      "physical": 201,
+      "nonblank": 190
+    },
+    {
+      "path": "runtime/src/agent-pool/recovery-classification.ts",
+      "sha256": "fb91fc0cdfc3e2676a8b79966edbcc5f120108f4ae5b483a111602d49b258e47",
+      "physical": 57,
+      "nonblank": 51
+    }
+  ],
+  "usage": {
+    "candidates": [
+      "runtime/src/channels/web/sse/agent-events.ts",
+      "runtime/src/channels/web/sse/display-update-coalescer.ts",
+      "runtime/src/channels/web/messaging/agent-message-store.ts"
+    ],
+    "externalProductionImports": [],
+    "entryGraphs": [
+      {
+        "entry": "runtime/src/index.ts",
+        "reachable": 546,
+        "candidateMembers": []
+      },
+      {
+        "entry": "runtime/src/agent-pool.ts",
+        "reachable": 324,
+        "candidateMembers": []
+      },
+      {
+        "entry": "runtime/durable-engine/src/default-application-runtime.ts",
+        "reachable": 635,
+        "candidateMembers": []
+      }
+    ],
+    "scope": "Tracked including ignored source and literal static/dynamic imports. Manual registration/package/add-on source audit supplements computed imports; no code was evaluated."
+  },
+  "classifierOnlyProductionCaller": "retired sse/agent-events.ts",
+  "approvedAddonsRevision": "ad7ad0a4b63ee37090b6bee4309fa5c458ec6510",
+  "approvedAddonInternalConsumers": 0,
+  "unrelatedSameNamedVoicePipelineHelperPreserved": true,
+  "owners": {
+    "streamingAdapter": {
+      "before": 1,
+      "after": 0
+    },
+    "displaySchedulerAndTimer": {
+      "before": 1,
+      "after": 0
+    },
+    "legacyPublisher": {
+      "before": 1,
+      "after": 0
+    },
+    "activeNativeWatchPathChanged": false
+  },
+  "paths": {
+    "retired": [
+      "AgentSession event",
+      "streaming adapter/display scheduler",
+      "emitter facade",
+      "channel SSE hub"
+    ],
+    "surviving": [
+      "SDK watch",
+      "native turn view",
+      "channel SSE hub"
+    ],
+    "activeTerminalOwner": "default-application-runtime publishTerminal after committed settlement"
+  },
+  "validation": {
+    "definingBefore": {
+      "pass": 1,
+      "fail": 1,
+      "assertions": 7
+    },
+    "focusedAfter": {
+      "pass": 9,
+      "assertions": 48,
+      "files": 5
+    },
+    "attachmentStore": {
+      "pass": 1,
+      "assertions": 4,
+      "publisherDouble": true,
+      "nativeSettlementQualification": false
+    },
+    "credentialAndFormatOracles": {
+      "pass": 77,
+      "assertions": 882,
+      "expectedAssertionsUnchanged": true
+    },
+    "publicRuntimeAuth": {
+      "pass": 8,
+      "assertions": 48,
+      "providerNetworkRequests": 0
+    },
+    "nativeFactory": [
+      {
+        "scenario": "native-events",
+        "pass": 1,
+        "assertions": 182
+      },
+      {
+        "scenario": "native-web-cursor-ack",
+        "pass": 1,
+        "assertions": 34
+      },
+      {
+        "scenario": "native-codemode-cancel",
+        "pass": 1,
+        "assertions": 40
+      }
+    ],
+    "typeProjects": [
+      "runtime/tsconfig.json",
+      "runtime/durable-engine/tsconfig.json",
+      "qualification/pi-durable-130/tsconfig.json"
+    ],
+    "strictNewTestsAndOracleTypes": true,
+    "circular": {
+      "reachableFiles": 546,
+      "cycles": 0
+    },
+    "envObservationFresh": true,
+    "importBoundaries": {
+      "baselineFindings": 25,
+      "candidateFindings": 25,
+      "sameInvocationByteIdentical": true,
+      "green": false
+    },
+    "packageDryRun": {
+      "ignoreScripts": true,
+      "retiredProductionPathsAbsent": 4,
+      "testOracleAbsent": true,
+      "retainedOwnersPresent": 4,
+      "fullInstallOrReleaseQualification": false
+    }
+  },
+  "creditNote": "57/51 relocated oracle lines charged separately; no test/doc/comment/type-only or prior #1673/#1674 deletion credit. No current native path speedup or event rename. Author-side review only; final merged-head acceptance and explicit user merge approval still required."
+}

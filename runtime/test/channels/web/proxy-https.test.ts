@@ -23,4 +23,4 @@ test('trusted external HTTPS controls cookies and router HSTS; untrusted headers
   expect(data.rows.map((row:any)=>row.secure)).toEqual([trust==='1',trust==='1',false,true,false,trust==='1',trust==='1',false,trust==='1',false]);
   expect(data.rows.every((row:any)=>row.cookie===row.secure&&row.hsts===row.secure)).toBe(true);expect(data.rows.filter((row:any)=>row.hsts).every((row:any)=>row.hstsValue==='max-age=31536000; includeSubDomains')).toBe(true);expect(data.preserved).toBe('max-age=123');expect(data.tlsCookie).toBe(true);
  }
-});
+}, 30_000); // Cold native/subprocess setup under the bounded CI CPU quota.

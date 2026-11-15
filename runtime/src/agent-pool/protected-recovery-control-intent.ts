@@ -1,9 +1,7 @@
-import { TOOL_ENABLED_RECOVERY_CONTINUATION_PROMPT } from "./context-pressure-retry.js";
+// Historical control-intent decoding only; no producer or continuation policy.
 import {
   isProtectedRecoveryHandoffReason,
-  protectedRecoveryHandoffContentBlockFields,
   type ProtectedRecoveryCompactionOutcome,
-  type ProtectedRecoveryHandoffMetadata,
   type ProtectedRecoveryHandoffReason,
 } from "./protected-recovery-handoff-reason.js";
 
@@ -170,36 +168,10 @@ function findControlIntentBlock(contentBlocks: unknown): ProtectedRecoveryContro
   };
 }
 
-export function buildProtectedRecoveryControlIntentBlock(options: {
-  sourceMessageId: string;
-  sourceRowId: number;
-  threadId: number;
-  handoffDepth?: number;
-  handoff?: ProtectedRecoveryHandoffMetadata;
-}): ProtectedRecoveryControlIntentBlock {
-  return {
-    type: "control_intent",
-    intent: PROTECTED_RECOVERY_CONTROL_INTENT,
-    schema_version: 1,
-    label: PROTECTED_RECOVERY_CONTROL_LABEL,
-    source_message_id: options.sourceMessageId,
-    source_row_id: options.sourceRowId,
-    thread_id: options.threadId,
-    handoff_depth: options.handoffDepth ?? 1,
-    ...(options.handoff ? protectedRecoveryHandoffContentBlockFields(options.handoff) : {}),
-  };
-}
-
 export function resolveProtectedRecoveryControlIntent(message: MessageLike): ProtectedRecoveryControlIntentBlock | null {
   return findControlIntentBlock(message.content_blocks);
 }
 
 export function isProtectedRecoveryControlMessage(message: MessageLike): boolean {
   return Boolean(resolveProtectedRecoveryControlIntent(message));
-}
-
-export function resolveProtectedRecoveryPrompt(message: MessageLike): string | null {
-  return resolveProtectedRecoveryControlIntent(message)
-    ? TOOL_ENABLED_RECOVERY_CONTINUATION_PROMPT
-    : null;
 }

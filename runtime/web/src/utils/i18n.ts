@@ -60,6 +60,7 @@ type MessageKey =
   | 'compose.returnToEditor'
   | 'compose.injectSteer'
   | 'compose.steer'
+  | 'compose.queueSteering'
   | 'compose.cancelQueued'
   | 'compose.resizeInput'
   | 'compose.resizeInputHint'
@@ -103,6 +104,7 @@ type MessageKey =
   | 'workspace.openInTab'
   | 'workspace.openInEditor'
   | 'workspace.renameSelected'
+  | 'workspace.renameEntry'
   | 'workspace.downloadSelectedFile'
   | 'workspace.downloadSelectedFolder'
   | 'workspace.deleteSelectedFile'
@@ -123,7 +125,6 @@ type MessageKey =
   | 'settings.section.sessions'
   | 'settings.section.recordings'
   | 'settings.section.compaction'
-  | 'settings.section.budget'
   | 'settings.section.keyboard'
   | 'settings.section.workspace'
   | 'settings.section.environment'
@@ -209,10 +210,6 @@ type MessageKey =
   | 'palette.showWorkspace'
   | 'palette.hideWorkspaceDesc'
   | 'palette.showWorkspaceDesc'
-  | 'palette.exitChatOnly'
-  | 'palette.chatOnly'
-  | 'palette.exitChatOnlyDesc'
-  | 'palette.chatOnlyDesc'
   | 'palette.groupAgents'
   | 'palette.groupWorkspace'
   | 'palette.groupSlash'
@@ -333,6 +330,7 @@ type MessageKey =
   | 'settings.environment.kindProcess'
   | 'settings.environment.clear'
   | 'settings.environment.noMatch'
+  | 'settings.environment.empty'
   | 'settings.environment.refreshedToast'
   | 'settings.environment.savedToast'
   | 'settings.environment.clearedToast'
@@ -347,6 +345,7 @@ type MessageKey =
   | 'settings.quickActions.slashCommands'
   | 'settings.quickActions.slashFallback'
   | 'settings.quickActions.noSlashMatch'
+  | 'settings.quickActions.noSlashCommands'
   | 'settings.quickActions.savingToast'
   | 'settings.quickActions.savedToast'
   | 'settings.providers.authApiKey'
@@ -382,9 +381,6 @@ type MessageKey =
   | 'settings.general.browserNotifications'
   | 'settings.general.notifSecureHint'
   | 'settings.general.notifInsecureHint'
-  | 'settings.general.display'
-  | 'settings.general.systemMeters'
-  | 'settings.general.systemMetersHint'
   | 'settings.general.instanceConfig'
   | 'settings.general.composeUpload'
   | 'settings.general.composeUploadAria'
@@ -676,8 +672,6 @@ type MessageKey =
   | 'menu.showWorkspace'
   | 'menu.hideWorkspace'
   | 'menu.openExplorer'
-  | 'menu.chatOnly'
-  | 'menu.exitChatOnly'
   | 'menu.openTerminal'
   | 'menu.openVnc'
   | 'menu.newFile'
@@ -716,6 +710,7 @@ const EN: Record<MessageKey, string> = {
   'compose.returnToEditor': 'Return queued message to editor',
   'compose.injectSteer': 'Inject queued follow-up as steer',
   'compose.steer': 'Steer',
+  'compose.queueSteering': 'Steering · after this step',
   'compose.cancelQueued': 'Cancel queued message',
   'compose.resizeInput': 'Resize message input',
   'compose.resizeInputHint': 'Drag to resize message input',
@@ -759,6 +754,7 @@ const EN: Record<MessageKey, string> = {
   'workspace.openInTab': 'Open in tab',
   'workspace.openInEditor': 'Open in editor',
   'workspace.renameSelected': 'Rename selected',
+  'workspace.renameEntry': 'Rename',
   'workspace.downloadSelectedFile': 'Download selected file',
   'workspace.downloadSelectedFolder': 'Download selected folder (zip)',
   'workspace.deleteSelectedFile': 'Delete selected file',
@@ -778,7 +774,6 @@ const EN: Record<MessageKey, string> = {
   'settings.section.sessions': 'Sessions',
   'settings.section.recordings': 'Recordings',
   'settings.section.compaction': 'Compaction',
-  'settings.section.budget': 'Budget',
   'settings.section.keyboard': 'Keyboard',
   'settings.section.workspace': 'Workspace',
   'settings.section.environment': 'Environment',
@@ -863,10 +858,6 @@ const EN: Record<MessageKey, string> = {
   'palette.showWorkspace': 'Show workspace',
   'palette.hideWorkspaceDesc': 'Hide the workspace sidebar.',
   'palette.showWorkspaceDesc': 'Show the workspace sidebar.',
-  'palette.exitChatOnly': 'Exit chat-only mode',
-  'palette.chatOnly': 'Chat-only mode',
-  'palette.exitChatOnlyDesc': 'Return to the split workspace layout.',
-  'palette.chatOnlyDesc': 'Switch to the chat-only layout.',
   'palette.groupAgents': 'Agents',
   'palette.groupWorkspace': 'Workspace',
   'palette.groupSlash': 'Slash commands',
@@ -984,6 +975,7 @@ const EN: Record<MessageKey, string> = {
   'settings.environment.kindProcess': 'process',
   'settings.environment.clear': 'Clear',
   'settings.environment.noMatch': 'No environment variables match "{filter}".',
+  'settings.environment.empty': 'No environment variables to show.',
   'settings.environment.refreshedToast': 'Environment refreshed.',
   'settings.environment.savedToast': 'Saved environment override for {name}.',
   'settings.environment.clearedToast': 'Cleared environment override for {name}.',
@@ -998,6 +990,7 @@ const EN: Record<MessageKey, string> = {
   'settings.quickActions.slashCommands': 'Slash commands',
   'settings.quickActions.slashFallback': 'slash command',
   'settings.quickActions.noSlashMatch': 'No slash commands match this filter.',
+  'settings.quickActions.noSlashCommands': 'No slash commands are available.',
   'settings.quickActions.savingToast': 'Saving quick actions…',
   'settings.quickActions.savedToast': 'Quick Actions saved.',
   'settings.providers.authApiKey': 'API key',
@@ -1032,9 +1025,6 @@ const EN: Record<MessageKey, string> = {
   'settings.general.browserNotifications': 'Browser notifications',
   'settings.general.notifSecureHint': 'Use the 🔔 bell button in the compose bar to enable/disable notifications. Web Push requires HTTPS or localhost.',
   'settings.general.notifInsecureHint': '⚠ Not available — requires a secure context (HTTPS or localhost). Access via SSH tunnel or reverse proxy with TLS to enable.',
-  'settings.general.display': 'Display',
-  'settings.general.systemMeters': 'System meters',
-  'settings.general.systemMetersHint': 'CPU/memory/network meters in the status bar. This browser only.',
   'settings.general.instanceConfig': 'Instance Configuration',
   'settings.general.composeUpload': 'Compose upload (MB)',
   'settings.general.composeUploadAria': 'compose upload limit',
@@ -1324,8 +1314,6 @@ const EN: Record<MessageKey, string> = {
   'menu.showWorkspace': 'Show workspace',
   'menu.hideWorkspace': 'Hide workspace',
   'menu.openExplorer': 'Open explorer',
-  'menu.chatOnly': 'Chat-only mode',
-  'menu.exitChatOnly': 'Exit chat-only mode',
   'menu.openTerminal': 'Open terminal in tab',
   'menu.openVnc': 'Open VNC in tab',
   'menu.newFile': 'New file',
@@ -1365,6 +1353,7 @@ const ZH_CN: Partial<Record<MessageKey, string>> = {
   'compose.returnToEditor': '将排队消息返回编辑器',
   'compose.injectSteer': '作为引导插入排队的后续消息',
   'compose.steer': '引导',
+  'compose.queueSteering': '引导 · 在当前步骤之后',
   'compose.cancelQueued': '取消排队消息',
   'compose.resizeInput': '调整消息输入框大小',
   'compose.resizeInputHint': '拖动以调整消息输入框大小',
@@ -1408,6 +1397,7 @@ const ZH_CN: Partial<Record<MessageKey, string>> = {
   'workspace.openInTab': '在标签页打开',
   'workspace.openInEditor': '在编辑器打开',
   'workspace.renameSelected': '重命名所选',
+  'workspace.renameEntry': '重命名',
   'workspace.downloadSelectedFile': '下载所选文件',
   'workspace.downloadSelectedFolder': '下载所选文件夹（zip）',
   'workspace.deleteSelectedFile': '删除所选文件',
@@ -1427,7 +1417,6 @@ const ZH_CN: Partial<Record<MessageKey, string>> = {
   'settings.section.sessions': '会话',
   'settings.section.recordings': '录制',
   'settings.section.compaction': '压缩',
-  'settings.section.budget': '预算',
   'settings.section.keyboard': '键盘',
   'settings.section.workspace': '工作区',
   'settings.section.environment': '环境',
@@ -1512,10 +1501,6 @@ const ZH_CN: Partial<Record<MessageKey, string>> = {
   'palette.showWorkspace': '显示工作区',
   'palette.hideWorkspaceDesc': '隐藏工作区侧边栏。',
   'palette.showWorkspaceDesc': '显示工作区侧边栏。',
-  'palette.exitChatOnly': '退出仅聊天模式',
-  'palette.chatOnly': '仅聊天模式',
-  'palette.exitChatOnlyDesc': '返回分屏工作区布局。',
-  'palette.chatOnlyDesc': '切换到仅聊天布局。',
   'palette.groupAgents': '代理',
   'palette.groupWorkspace': '工作区',
   'palette.groupSlash': '斜杠命令',
@@ -1633,6 +1618,7 @@ const ZH_CN: Partial<Record<MessageKey, string>> = {
   'settings.environment.kindProcess': '进程',
   'settings.environment.clear': '清除',
   'settings.environment.noMatch': '没有匹配 “{filter}” 的环境变量。',
+  'settings.environment.empty': '没有可显示的环境变量。',
   'settings.environment.refreshedToast': '环境已刷新。',
   'settings.environment.savedToast': '已保存 {name} 的环境覆盖。',
   'settings.environment.clearedToast': '已清除 {name} 的环境覆盖。',
@@ -1647,6 +1633,7 @@ const ZH_CN: Partial<Record<MessageKey, string>> = {
   'settings.quickActions.slashCommands': '斜杠命令',
   'settings.quickActions.slashFallback': '斜杠命令',
   'settings.quickActions.noSlashMatch': '没有匹配此筛选的斜杠命令。',
+  'settings.quickActions.noSlashCommands': '没有可用的斜杠命令。',
   'settings.quickActions.savingToast': '正在保存快捷操作…',
   'settings.quickActions.savedToast': '快捷操作已保存。',
   'settings.providers.authApiKey': 'API 密钥',
@@ -1681,9 +1668,6 @@ const ZH_CN: Partial<Record<MessageKey, string>> = {
   'settings.general.browserNotifications': '浏览器通知',
   'settings.general.notifSecureHint': '使用输入栏中的 🔔 铃铛按钮来启用/禁用通知。Web Push 需要 HTTPS 或 localhost。',
   'settings.general.notifInsecureHint': '⚠ 不可用 — 需要安全上下文（HTTPS 或 localhost）。通过 SSH 隐道或带 TLS 的反向代理访问以启用。',
-  'settings.general.display': '显示',
-  'settings.general.systemMeters': '系统仪表',
-  'settings.general.systemMetersHint': '状态栏中的 CPU/内存/网络仪表。仅限此浏览器。',
   'settings.general.instanceConfig': '实例配置',
   'settings.general.composeUpload': '撰写上传（MB）',
   'settings.general.composeUploadAria': '撰写上传限制',
@@ -1973,8 +1957,6 @@ const ZH_CN: Partial<Record<MessageKey, string>> = {
   'menu.showWorkspace': '显示工作区',
   'menu.hideWorkspace': '隐藏工作区',
   'menu.openExplorer': '打开资源管理器',
-  'menu.chatOnly': '仅聊天模式',
-  'menu.exitChatOnly': '退出仅聊天模式',
   'menu.openTerminal': '在标签页中打开终端',
   'menu.openVnc': '在标签页中打开 VNC',
   'menu.newFile': '新建文件',
@@ -2014,6 +1996,7 @@ const JA: Partial<Record<MessageKey, string>> = {
   'compose.returnToEditor': 'キュー済みメッセージを入力欄に戻す',
   'compose.injectSteer': 'キュー済みフォローアップをステアとして挿入',
   'compose.steer': 'ステア',
+  'compose.queueSteering': 'ステア · このステップの後',
   'compose.cancelQueued': 'キュー済みメッセージをキャンセル',
   'compose.resizeInput': 'メッセージ入力欄のサイズ変更',
   'compose.resizeInputHint': 'ドラッグしてメッセージ入力欄のサイズを変更',
@@ -2057,6 +2040,7 @@ const JA: Partial<Record<MessageKey, string>> = {
   'workspace.openInTab': 'タブで開く',
   'workspace.openInEditor': 'エディタで開く',
   'workspace.renameSelected': '選択項目の名前を変更',
+  'workspace.renameEntry': '名前を変更',
   'workspace.downloadSelectedFile': '選択したファイルをダウンロード',
   'workspace.downloadSelectedFolder': '選択したフォルダをダウンロード（zip）',
   'workspace.deleteSelectedFile': '選択したファイルを削除',
@@ -2076,7 +2060,6 @@ const JA: Partial<Record<MessageKey, string>> = {
   'settings.section.sessions': 'セッション',
   'settings.section.recordings': '録画',
   'settings.section.compaction': '圧縮',
-  'settings.section.budget': '予算',
   'settings.section.keyboard': 'キーボード',
   'settings.section.workspace': 'ワークスペース',
   'settings.section.environment': '環境',
@@ -2161,10 +2144,6 @@ const JA: Partial<Record<MessageKey, string>> = {
   'palette.showWorkspace': 'ワークスペースを表示',
   'palette.hideWorkspaceDesc': 'ワークスペースサイドバーを非表示にします。',
   'palette.showWorkspaceDesc': 'ワークスペースサイドバーを表示します。',
-  'palette.exitChatOnly': 'チャットのみモードを終了',
-  'palette.chatOnly': 'チャットのみモード',
-  'palette.exitChatOnlyDesc': '分割ワークスペースレイアウトに戻ります。',
-  'palette.chatOnlyDesc': 'チャットのみのレイアウトに切り替えます。',
   'palette.groupAgents': 'エージェント',
   'palette.groupWorkspace': 'ワークスペース',
   'palette.groupSlash': 'スラッシュコマンド',
@@ -2282,6 +2261,7 @@ const JA: Partial<Record<MessageKey, string>> = {
   'settings.environment.kindProcess': 'プロセス',
   'settings.environment.clear': 'クリア',
   'settings.environment.noMatch': '「{filter}」に一致する環境変数はありません。',
+  'settings.environment.empty': '表示する環境変数はありません。',
   'settings.environment.refreshedToast': '環境を更新しました。',
   'settings.environment.savedToast': '{name} の環境オーバーライドを保存しました。',
   'settings.environment.clearedToast': '{name} の環境オーバーライドをクリアしました。',
@@ -2296,6 +2276,7 @@ const JA: Partial<Record<MessageKey, string>> = {
   'settings.quickActions.slashCommands': 'スラッシュコマンド',
   'settings.quickActions.slashFallback': 'スラッシュコマンド',
   'settings.quickActions.noSlashMatch': 'このフィルターに一致するスラッシュコマンドはありません。',
+  'settings.quickActions.noSlashCommands': '利用できるスラッシュコマンドはありません。',
   'settings.quickActions.savingToast': 'クイックアクションを保存中…',
   'settings.quickActions.savedToast': 'クイックアクションを保存しました。',
   'settings.providers.authApiKey': 'API キー',
@@ -2330,9 +2311,6 @@ const JA: Partial<Record<MessageKey, string>> = {
   'settings.general.browserNotifications': 'ブラウザ通知',
   'settings.general.notifSecureHint': '入力バーの 🔔 ベルボタンで通知を有効/無効にします。Web Push には HTTPS または localhost が必要です。',
   'settings.general.notifInsecureHint': '⚠ 利用不可 — セキュアコンテキスト（HTTPS または localhost）が必要です。SSH トンネルまたは TLS 付きリバースプロキシ経由でアクセスして有効化してください。',
-  'settings.general.display': '表示',
-  'settings.general.systemMeters': 'システムメーター',
-  'settings.general.systemMetersHint': 'ステータスバーの CPU/メモリ/ネットワークメーター。このブラウザのみ。',
   'settings.general.instanceConfig': 'インスタンス設定',
   'settings.general.composeUpload': '作成アップロード（MB）',
   'settings.general.composeUploadAria': '作成アップロード上限',
@@ -2622,8 +2600,6 @@ const JA: Partial<Record<MessageKey, string>> = {
   'menu.showWorkspace': 'ワークスペースを表示',
   'menu.hideWorkspace': 'ワークスペースを非表示',
   'menu.openExplorer': 'エクスプローラーを開く',
-  'menu.chatOnly': 'チャットのみモード',
-  'menu.exitChatOnly': 'チャットのみモードを終了',
   'menu.openTerminal': 'ターミナルをタブで開く',
   'menu.openVnc': 'VNC をタブで開く',
   'menu.newFile': '新規ファイル',

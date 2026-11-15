@@ -9,7 +9,6 @@
  *
  * Consumers:
  *   - router.ts reads/writes cursor positions each poll cycle.
- *   - agent-control/handlers/session.ts may reset cursors on `/clear`.
  */
 
 import { getDb } from "./connection.js";

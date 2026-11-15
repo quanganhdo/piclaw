@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { describe, expect, test } from "bun:test";
 import path from "node:path";
 import {
+  groupDefinitions,
   buildAuditCommandEnv,
   buildFollowupTicketMarkdown,
   computeAuditMetrics,
@@ -45,6 +46,11 @@ async function runAuditWithRootGates(rootGates: Array<{ id: string; label: strin
 }
 
 describe("audit-baseline-quality-deterministic", () => {
+  test("archive tooling tests have exactly one dedicated non-AgentPool group", () => {
+    const matches = groupDefinitions.filter(group => group.match("archive/sqlite-session-archive.test.ts"));
+    expect(matches.map(group => group.id)).toEqual(["archive-tools"]);
+  });
+
   test("buildAuditCommandEnv isolates runtime state away from the live workspace", () => {
     const env = buildAuditCommandEnv({ PATH: process.env.PATH, PICLAW_WORKSPACE: "/workspace" });
 

@@ -5,7 +5,6 @@ import { createAgentSession, DefaultResourceLoader, ModelRegistry, ModelRuntime,
 import { InMemoryCredentialStore, type Model } from '@earendil-works/pi-ai';
 import { createTempWorkspace, setEnv } from '../helpers.js';
 import { getSessionThinkingPolicy, getThinkingDefaults, installSessionThinkingPolicy, readThinkingPreference } from '../../src/agent-pool/thinking-policy.js';
-import { handleModel, handleCycleModel, handleThinking } from '../../src/agent-control/handlers/model.js';
 
 const ws = createTempWorkspace('thinking-policy-');
 const sessions: AgentSession[] = [];
@@ -70,18 +69,18 @@ test('target-model and scoped-cycle preferences override session choice without 
   expect(settings.getDefaultThinkingLevel()).toBe('low');
 });
 
-test('direct/slash and extension APIs share the policy', async () => {
+test('explicit SDK and extension APIs share the policy', async () => {
   let api!: ExtensionAPI;
   const { session, runtime } = await fixture({ extension: pi => { api = pi; } });
   await session.bindExtensions({});
   const registry = new ModelRegistry(runtime);
-  const result = await handleModel(session, registry, { type: 'model', provider: models[1].provider, modelId: models[1].id, raw: '/model fixture-openai/b' });
-  expect(result.thinking_level).toBe('high');
+  await session.setModel(models[1]);
+  expect(session.thinkingLevel).toBe('high');
   expect(await api.setModel(models[2])).toBe(true); expect(session.thinkingLevel).toBe('high');
   api.setThinkingLevel('low'); await api.setModel(models[0]); expect(session.thinkingLevel).toBe('low');
-  await handleThinking(session, registry, { type: 'thinking', level: 'high', raw: '/thinking high' });
-  const cycled = await handleCycleModel(session, registry, { type: 'cycle_model', direction: 'forward', raw: '/cycle-model' });
-  expect(cycled.status).toBe('success'); expect(cycled.thinking_level).toBe(session.thinkingLevel);
+  session.setThinkingLevel('high');
+  const cycled = await session.cycleModel();
+  expect(cycled?.thinkingLevel).toBe(session.thinkingLevel);
 });
 
 test('two concurrent sessions never exchange intent or mutate shared settings', async () => {
@@ -113,17 +112,17 @@ test('reinstallation is idempotent and metadata records only bounded choices', a
 });
 
 
-test('resume and normal/emergency rotation retain both effective clamp and preferred choice', async () => {
-  const { seedRotatedSession, seedEmergencyRotatedSession } = await import('../../src/session-rotation.js');
+test('resume and historical deferred context retain effective clamp and preferred choice', async () => {
+  const { seedSessionManagerFromDeferredBranchSeed } = await import('../../src/agent-pool/branch-seeding.js');
   const { session } = await fixture();
   session.setThinkingLevel('high'); await session.setModel(models[3]);
   const reopened = SessionManager.inMemory(ws.workspace, { id: 'fixture-resume' }, session.sessionManager.getEntries());
   const restored = await fixture({ manager: reopened });
   expect(getSessionThinkingPolicy(restored.session)?.preferred_level).toBe('high');
   await restored.session.setModel(models[1]); expect(restored.session.thinkingLevel).toBe('high');
-  for (const seed of [seedRotatedSession, seedEmergencyRotatedSession]) {
+  {
     const manager = SessionManager.inMemory(ws.workspace);
-    await seed(manager, session.sessionManager.buildSessionContext(), { model: { provider: models[3].provider, modelId: models[3].id }, thinkingLevel: 'off', preferredThinkingLevel: 'high' });
+    await seedSessionManagerFromDeferredBranchSeed(manager, { version: 1, parentSession: null, sessionName: null, mode: 'rotated_context', context: session.sessionManager.buildSessionContext(), model: { provider: models[3].provider, modelId: models[3].id }, thinkingLevel: 'off', preferredThinkingLevel: 'high' });
     const successor = await fixture({ manager });
     expect(getSessionThinkingPolicy(successor.session)?.preferred_level).toBe('high');
     await successor.session.setModel(models[2]); expect(successor.session.thinkingLevel).toBe('high');
@@ -213,24 +212,10 @@ test('new settings provenance handles global, project, untrusted and runtime ove
   expect(getThinkingDefaults(settings)).toEqual({ level: 'medium', source: 'override' });
 });
 
-test('thinking query explains the default source while model changes retain session preference', async () => {
-  const { session } = await fixture();
-  const result = await handleThinking(session, {} as any, { type: 'thinking', raw: '/thinking' });
-  expect(result.message).toContain('Session preference: high');
-  expect(result.message).toContain('low (global)');
-});
-
-test('compat max changes do not persist a shared thinking default', async () => {
-  const { setSessionThinkingLevelCompat } = await import('../../src/agent-control/agent-control-helpers.js');
-  let writes = 0;
-  const legacy = { model: { provider: 'fixture', reasoning: true, thinkingLevelMap: { max: 'max' } }, thinkingLevel: 'high', agent: { state: { thinkingLevel: 'high' } }, getAvailableThinkingLevels: () => ['low', 'high'], sessionManager: { appendThinkingLevelChange: () => {} }, settingsManager: { setDefaultThinkingLevel: () => writes++ } };
-  expect(setSessionThinkingLevelCompat(legacy as any, 'max')).toBe('max'); expect(writes).toBe(0);
-});
-
 
 test('production cold restoration preserves recorded high even before the first message', async () => {
   const { createSessionInDir } = await import('../../src/agent-pool/session.js');
-  const { forcePersistSessionFile } = await import('../../src/session-rotation.js');
+  const { forcePersistSessionFile } = await import('../../src/agent-pool/session-file-persistence.js');
   const { runtime } = await fixture();
   const settings = SettingsManager.inMemory({ defaultProvider: models[0].provider, defaultModel: models[0].id, defaultThinkingLevel: 'low' });
   const isolated = productionWorkspace();
@@ -268,31 +253,6 @@ test('native max and restricted target capabilities clamp without erasing prefer
   await session.setModel({ ...models[2], thinkingLevelMap: { off: null, minimal: null, medium: null, high: null, xhigh: null, max: null } });
   expect(session.thinkingLevel).toBe('low'); expect(getSessionThinkingPolicy(session)?.preferred_level).toBe('high');
   await session.setModel(models[0]); expect(session.thinkingLevel).toBe('high');
-});
-
-
-test('side-session synchronization retains target effective override separately from session intent', async () => {
-  const { AgentSessionManager } = await import('../../src/agent-pool/session-manager.js');
-  const settings = SettingsManager.inMemory({ defaultThinkingLevel: 'low', modelThinkingLevels: { 'fixture-openai/b': 'medium' } });
-  const main = await fixture({ settings });
-  await main.session.setModel(models[1]);
-  expect(main.session.thinkingLevel).toBe('medium');
-  expect(getSessionThinkingPolicy(main.session)?.preferred_level).toBe('high');
-  let side = (await fixture({ settings })).session;
-  const sideRuntime = { get session() { return side; }, newSession: async ({ setup }: any) => {
-    const sm = SessionManager.inMemory(ws.workspace); await setup(sm);
-    side = (await fixture({ settings, manager: sm })).session;
-    return { cancelled: false };
-  } };
-  const manager = new AgentSessionManager({
-    pool: new Map(), sidePool: new Map(), modelRuntime: main.runtime, settingsManager: settings,
-    createDefaultTools: () => [], bindSession: async () => {}, ensureBranchRegistration: () => {},
-  });
-  await manager.syncSideSessionFromMain(main.session, sideRuntime as any);
-  expect(side.thinkingLevel).toBe('medium');
-  expect(getSessionThinkingPolicy(side)?.preferred_level).toBe('high');
-  await side.setModel(models[2]); expect(side.thinkingLevel).toBe('high');
-  expect(settings.getDefaultThinkingLevel()).toBe('low');
 });
 
 

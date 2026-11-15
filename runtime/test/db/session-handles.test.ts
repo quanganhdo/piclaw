@@ -14,7 +14,7 @@ import type { AuthenticatedPrincipal } from "../../src/core/access-types.js";
 
 let alice: string, bob: string;
 function principal(id = alice): AuthenticatedPrincipal {
-  return { kind: "user", userId: id, username: id, displayName: id, role: "member", mode: "family-shared", homeChatJid: null,
+  return { kind: "user", userId: id, username: id, displayName: id, role: "member", mode: "single-user", homeChatJid: null,
     authentication: { method: "totp", sessionId: "login", expiresAt: null } };
 }
 function chat(jid: string, name: string, root = jid, parent?: string) {

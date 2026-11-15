@@ -64,9 +64,8 @@ Do **not** treat add-on settings panes as slash-command clients. The slash-comma
 
 ### Settings buttons
 
-Classic and Visual apply host-owned button styles inside registered add-on
-panes. Classic matches General's **Widget bearer token → Regenerate** button;
-Visual uses its own shared defaults. Plain `<button>` elements need no class.
+Classic applies host-owned button styles inside registered add-on
+panes. Classic matches General's **Widget bearer token → Regenerate** button. Plain `<button>` elements need no class.
 The host normalises typography, padding, borders, colours, hover, keyboard focus and disabled states,
 including older add-ons with inline button styles. Pane layout and event handlers
 remain add-on-owned; controls outside Settings are unaffected.
@@ -95,6 +94,18 @@ Examples:
 - `extension_ui_notify` → `piclaw-extension-ui:notify`
 - `extension_ui_status` → `piclaw-extension-ui:status`
 - `extension_ui_editor_text` → `piclaw-extension-ui:editor-text`
+
+### Native runtime ownership
+
+`WebSessionBroadcastService` owns SSE fanout, chat-scoped `UiBridge` requests and provider-usage refresh notifications. Native agent/tool status uses runtime watch projections; history actions use native control routes.
+
+`UiBridge` retains workspace-file requests, browser acknowledgements, 15-second request expiry and shutdown rejection. Completed requests leave no per-chat adapter state. SSE construction performs no legacy session lookup or binder installation.
+
+The earlier retention of `UiBridge.createUiContext` and `channels/web/ui-context.ts` is superseded by the durable-convergence retirement under #1824. The unused Core `ExtensionUIContext` constructor, fallback Theme, editor/theme caches, cache TTL and synchronous theme writer are removed without a compatibility shim. Theme commands/settings keep their admitted HTTP paths; native browser tools use their existing opener/widget ports. Add-on-owned `ctx.ui` APIs, SSE names and browser rendering are unchanged.
+
+The private `agent-pool-binder.ts` helper, `UiBridge.bindSession`, `bindSessionUiContext` wrapper and `bindSessionBinder` construction option are retired. Their session-bound `waitForIdle`, `newSession`, `fork`, `navigateTree`, `switchSession` and `reload` callbacks are removed. No identified repository or supported add-on consumer requires a compatibility shim.
+
+The separate AgentPool/session-manager binder still exists for the composition cleanup tracked by #1672. Native SSE does not install it. Transport, browser controls and event rendering are unchanged; no persisted data or configuration is migrated.
 
 ### Important non-goal
 
@@ -133,6 +144,16 @@ Extension authors should treat the bridge as a **transport + lightweight afforda
 | Need a transient browser-only notification | `extension_ui_notify` |
 | Need browser-only status updates for custom JS UI | `extension_ui_status` / `extension_ui_working` |
 | Need a bespoke browser-side request/response UI | `extension_ui_request` with your own browser listener |
+
+## Right-edge docking
+
+Classic reads `--piclaw-shell-inset-right` from `:root` and shrinks its shell by that amount. A browser add-on that docks a fixed panel or edge tab on the right can set the variable so the panel does not cover the workspace:
+
+```js
+document.documentElement.style.setProperty('--piclaw-shell-inset-right', `${panelWidth + tabWidth}px`);
+```
+
+Set it only for desktop layouts (`(min-width: 1024px) and (orientation: landscape)`), and set it to `0px` when the panel overlays on smaller screens. Pane sizes are clamped to the remaining shell width. The plan sidebar add-on uses this to dock as a column.
 
 ## Current non-goals / unsupported assumptions
 

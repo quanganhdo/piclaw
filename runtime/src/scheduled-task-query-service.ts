@@ -6,8 +6,7 @@
  */
 
 import { getDb } from "./db.js";
-import { getBudgetCap } from "./db/budget-limits.js";
-import { scheduledBudgetReadiness, type ScheduledBudgetReadiness } from "./budget/scheduled-readiness.js";
+import { canonicalScheduledTasksSql, readCanonicalScheduledTask } from "./db/scheduled-task-definitions.js";
 import type { ScheduledTask, TaskRunLog } from "./types.js";
 
 const TASK_STATUS_VALUES = new Set(["active", "paused", "completed"] as const);
@@ -53,10 +52,6 @@ export interface ScheduledTaskInspectionRecord {
   timeout_sec: number | null;
   notify_on_complete: boolean;
   muted: boolean;
-  budget_usd: number | null;
-  budget_cap_enabled: boolean;
-  budget_cap_revision: number | null;
-  budget_readiness: ScheduledBudgetReadiness;
   prompt_summary: string | null;
   command_summary: string | null;
   summary: string;
@@ -111,7 +106,7 @@ function normalizeStatus(status: string | null | undefined): ScheduledTaskStatus
 
 function getTaskCounts(): ScheduledTaskCounts {
   const rows = getDb()
-    .prepare("SELECT status, COUNT(*) as count FROM scheduled_tasks GROUP BY status")
+    .prepare(`WITH tasks AS (${canonicalScheduledTasksSql}) SELECT status, COUNT(*) as count FROM tasks GROUP BY status`)
     .all() as Array<{ status: string; count: number }>;
   const map = new Map(rows.map((row) => [row.status, row.count]));
   return {
@@ -148,7 +143,6 @@ function getLatestRunLog(taskId: string): ScheduledTaskRunLogSummary | null {
 
 function mapTaskRow(row: ScheduledTask, includeLatestRunLog: boolean, includeRunLogs: boolean, runLogLimit: number): ScheduledTaskInspectionRecord {
   const summary = summarizeTask(row);
-  const budgetCap = getBudgetCap(`scheduled-cap:${row.id}`);
   return {
     id: row.id,
     chat_jid: row.chat_jid,
@@ -167,10 +161,6 @@ function mapTaskRow(row: ScheduledTask, includeLatestRunLog: boolean, includeRun
     timeout_sec: row.timeout_sec ?? null,
     notify_on_complete: row.notify_on_complete !== false && row.notify_on_complete !== 0,
     muted: row.notify_on_complete === false || row.notify_on_complete === 0,
-    budget_usd: budgetCap ? budgetCap.amount / 1_000_000 : null,
-    budget_cap_enabled: Boolean(budgetCap?.enabled),
-    budget_cap_revision: budgetCap?.revision ?? null,
-    budget_readiness: scheduledBudgetReadiness(row),
     prompt_summary: summary.prompt_summary,
     command_summary: summary.command_summary,
     summary: summary.summary,
@@ -206,14 +196,16 @@ export function listScheduledTasks(query: ScheduledTaskQuery = {}): ScheduledTas
 
   const whereClause = filters.length > 0 ? ` WHERE ${filters.join(" AND ")}` : "";
   const orderBy = normalizedStatus ? " ORDER BY next_run IS NULL, next_run ASC, created_at DESC" : " ORDER BY created_at DESC";
-  const rows = db
-    .prepare(`SELECT * FROM scheduled_tasks${whereClause}${orderBy} LIMIT ?`)
-    .all(...params, limit) as ScheduledTask[];
+  return db.transaction(() => {
+    const rows = db
+      .prepare(`WITH tasks AS (${canonicalScheduledTasksSql}) SELECT id FROM tasks${whereClause}${orderBy} LIMIT ?`)
+      .all(...params, limit) as { id: string }[];
 
-  return {
-    counts: getTaskCounts(),
-    tasks: rows.map((row) => mapTaskRow(row, includeLatestRunLog, includeRunLogs, runLogLimit)),
-  };
+    return {
+      counts: getTaskCounts(),
+      tasks: rows.map(row => mapTaskRow(readCanonicalScheduledTask(db, row.id)!, includeLatestRunLog, includeRunLogs, runLogLimit)),
+    };
+  })();
 }
 
 export function getScheduledTaskInspection(taskId: string, options: Omit<ScheduledTaskQuery, "id" | "limit"> = {}): ScheduledTaskInspectionRecord | null {

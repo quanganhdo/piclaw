@@ -1,5 +1,5 @@
-import { createOperationHost } from "../addons/operation-host.js";
-import { setAddonOperationHost } from "../addons/runtime-contributions.js";
+import { unlinkedUsageReportPredicate } from "../db/usage-report-projection.js";
+import { hasNativeRouting } from "../db/native-routing-policy.js";
 /**
  * runtime/startup.ts – Runtime startup wiring helpers.
  */
@@ -7,7 +7,8 @@ import { setAddonOperationHost } from "../addons/runtime-contributions.js";
 import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import type { AgentPool } from "../agent-pool.js";
-import { WebChannel } from "../channels/web.js";
+import { WebChannel, type WebChannelOpts } from "../channels/web.js";
+import { RuntimeStartupCleanupError } from "./shutdown.js";
 import { PushoverChannel } from "../channels/pushover.js";
 import { setMessagesPostFn } from "../extensions/messages-crud.js";
 import { setChatToolRelayFn } from "../extensions/chat-tool.js";
@@ -19,25 +20,21 @@ import {
   STORE_DIR,
   WORKSPACE_DIR,
   getPushoverConfig,
-  getToolOutputConfig,
+  getRuntimeConfigPaths,
   getProgressWatchdogSafetyWarning,
 } from "../core/config.js";
-import { getChatBranchByAgentName, getChatBranchByChatJid, getChatCursor, getDb, getFailedRun, initDatabase } from "../db.js";
+import { getChatBranchByAgentName, getChatBranchByChatJid, getChatCursor, getDb, initDatabase } from "../db.js";
 import type { AgentQueue } from "../queue.js";
 import { validateAccessStartup } from "../db/access-state.js";
 import { startAuthMaintenance } from "./auth-maintenance.js";
 import { readAccessConfig } from "../core/config-access.js";
 import { prepareMcpInstanceConfig } from "../core/config-mcp.js";
-import { inspectOwnedSession } from "./owned-session-control.js";
-import { startToolOutputCleanup } from "../tool-output.js";
 import { createUuid } from "../utils/ids.js";
 import { applyEnvironmentOverrides } from "../environment-overrides.js";
 import { createLogger } from "../utils/logger.js";
 import { seedFreshWorkspaceCoreAddons } from "./core-addon-defaults.js";
-import { parseNonNegativeIntStrict } from "../utils/strict-int.js";
 import { patchConsoleTimestamps } from "./console-timestamps.js";
 import { startExternalProgressWatchdogMonitor } from "./progress-watchdog-supervisor.js";
-import { recoverPendingRestartHandoffs } from "./restart-handoff.js";
 import type { RuntimeState } from "./state.js";
 import { launchWorkspaceIndexProcess, startWorkspaceIndexReconciliation } from "../workspace-index-process.js";
 import { SystemMetricsSampler } from "../channels/web/agent/system-metrics.js";
@@ -51,21 +48,8 @@ import { createAddonMessagingRuntimeHandlers } from "../addons/runtime-messaging
 const log = createLogger("runtime.startup");
 const WORKSPACE_SKEL_DIR = resolve(process.env.PICLAW_SKEL_DIR || resolve(import.meta.dir, "../../../skel"));
 const STARTUP_MEMORY_SNAPSHOT_DIR = join(DATA_DIR, "startup-memory-snapshots");
-export const STARTUP_STATUS_CHAT_JID = "web:default";
-export const STARTUP_STATUS_TURN_ID = "startup:web:default";
 
-function parseStartupWarmupBoolean(value: string | undefined, fallback = false): boolean {
-  const normalized = String(value || "").trim().toLowerCase();
-  if (!normalized) return fallback;
-  if (["1", "true", "yes", "on"].includes(normalized)) return true;
-  if (["0", "false", "no", "off"].includes(normalized)) return false;
-  return fallback;
-}
 
-function parseStartupWarmupLimit(value: string | undefined, fallback = 0): number {
-  const parsed = parseNonNegativeIntStrict(value, fallback);
-  return Math.max(0, Math.min(8, parsed));
-}
 const WORKSPACE_BOOTSTRAP_ENTRIES = [
   "AGENTS.md",
   ".mcp.json.example",
@@ -94,6 +78,10 @@ function isDirectoryEmpty(path: string): boolean {
 
 export function cleanupOrphanedActiveChatArtifacts(): number {
   const db = getDb();
+  // Native conversations are owned by the SDK manifest, not legacy session files.
+  // Migration relocates those files; deleting their branches corrupts routing.
+  if (hasNativeRouting(db)) return 0;
+
   const rows = db.prepare(
     `SELECT b.chat_jid
        FROM chat_branches b
@@ -124,9 +112,11 @@ export function cleanupOrphanedActiveChatArtifacts(): number {
       continue;
     }
 
-    db.prepare("DELETE FROM chat_branches WHERE chat_jid = ?").run(chatJid);
-    db.prepare("DELETE FROM chats WHERE jid = ?").run(chatJid);
-    db.prepare("DELETE FROM token_usage WHERE chat_jid = ?").run(chatJid);
+    db.transaction(() => {
+      db.prepare("DELETE FROM chat_branches WHERE chat_jid = ?").run(chatJid);
+      db.prepare("DELETE FROM chats WHERE jid = ?").run(chatJid);
+      db.prepare(`DELETE FROM token_usage WHERE chat_jid = ? AND ${unlinkedUsageReportPredicate(db, "token_usage")}`).run(chatJid);
+    }).immediate();
 
     if (mainDirExists) rmSync(mainDir, { recursive: true, force: true });
     if (sideDirExists) rmSync(sideDir, { recursive: true, force: true });
@@ -180,7 +170,7 @@ export function initializeRuntimeEnvironment(state: RuntimeState): ReturnType<ty
   if (migration === "migrated") log.info("Migrated legacy instance configuration permissions to private mode.", { operation: "mcp_config.permissions_migrated" });
   if (migration === "unavailable") log.warn("Instance configuration permission migration failed; agents will start without MCP if its policy is unavailable.", { operation: "mcp_config.permissions_migration_failed" });
 
-  initDatabase();
+  initDatabase(getRuntimeConfigPaths());
   const access = validateAccessStartup(getDb());
   startAuthMaintenance();
   if (access.effectiveMode === "single-user") installAddonRuntimeApi();
@@ -201,45 +191,11 @@ export function initializeRuntimeEnvironment(state: RuntimeState): ReturnType<ty
   }
   launchWorkspaceIndexProcess({ scope: "all" });
   startWorkspaceIndexReconciliation();
-  const toolOutputConfig = getToolOutputConfig();
-  startToolOutputCleanup(toolOutputConfig.retentionMs, toolOutputConfig.cleanupIntervalMs);
+  // The production native backend has not validated/imported history yet.
+  // File age or missing registration is not authority to prune its tool payloads.
   state.loadTimestamps();
   state.loadChats();
   return access;
-}
-
-export function resolveStartupSessionWarmupOptions(env: NodeJS.ProcessEnv = process.env): {
-  warmDefaultChat: boolean;
-  recentLimit: number;
-} {
-  return {
-    warmDefaultChat: parseStartupWarmupBoolean(env.PICLAW_STARTUP_WARM_DEFAULT_CHAT, false),
-    recentLimit: parseStartupWarmupLimit(env.PICLAW_STARTUP_WARMUP_RECENT_LIMIT, 0),
-  };
-}
-
-export function queueStartupSessionWarmup(
-  agentPool: AgentPool & {
-    scheduleChatWarmup?: (chatJid: string, options?: { priority?: boolean }) => boolean;
-    scheduleRecentChatWarmup?: (options?: { limit?: number; excludeChatJids?: string[] }) => string[];
-  },
-  options: { defaultChatJid?: string; recentLimit?: number; warmDefaultChat?: boolean } = {},
-): void {
-  const defaultChatJid = typeof options.defaultChatJid === "string" && options.defaultChatJid.trim()
-    ? options.defaultChatJid.trim()
-    : "web:default";
-  const warmDefaultChat = options.warmDefaultChat ?? false;
-  const recentLimit = Math.max(0, Math.min(8, Math.trunc(options.recentLimit ?? 0) || 0));
-
-  if (warmDefaultChat) {
-    agentPool.scheduleChatWarmup?.(defaultChatJid, { priority: true });
-  }
-  if (recentLimit > 0) {
-    agentPool.scheduleRecentChatWarmup?.({
-      limit: recentLimit,
-      excludeChatJids: warmDefaultChat ? [defaultChatJid] : [],
-    });
-  }
 }
 
 function sanitizeStartupSnapshotLabel(label: string): string {
@@ -282,34 +238,7 @@ export function captureStartupMemorySnapshot(
   }
 }
 
-export function buildStartupAgentStatus(options: {
-  phase: string;
-  detail: string;
-  startedAt?: string;
-  title?: string;
-  blocking?: boolean;
-}): Record<string, unknown> {
-  const startedAt = typeof options.startedAt === "string" && options.startedAt.trim()
-    ? options.startedAt.trim()
-    : new Date().toISOString();
-  return {
-    type: "intent",
-    kind: "info",
-    intent_key: "startup",
-    source: "startup",
-    phase: options.phase,
-    title: options.title || "Starting up…",
-    detail: options.detail,
-    blocking: options.blocking ?? true,
-    started_at: startedAt,
-    last_event_at: new Date().toISOString(),
-    turn_id: STARTUP_STATUS_TURN_ID,
-  };
-}
-
 interface StartupRecoveryWebChannel {
-  updateAgentStatus(chatJid: string, status: Record<string, unknown>): void;
-  recoverInflightRuns(): void;
   resumePendingChats(chatJid?: string): void;
 }
 
@@ -318,15 +247,6 @@ function parseModelLabel(label: string): { provider?: string; modelId: string } 
   const slash = trimmed.indexOf("/");
   if (slash > 0) return { provider: trimmed.slice(0, slash), modelId: trimmed.slice(slash + 1) };
   return { modelId: trimmed };
-}
-
-function summarizeFailedRun(chatJid: string): Record<string, unknown> | null {
-  try {
-    const failed = getFailedRun(chatJid);
-    return failed ? { ...failed } as Record<string, unknown> : null;
-  } catch {
-    return null;
-  }
 }
 
 function getCursorSnapshot(chatJid: string): string | null {
@@ -341,7 +261,7 @@ async function buildSessionControlSnapshot(agentPool: AgentPool, chatJid: string
   const models = await agentPool.getAvailableModels(chatJid).catch(() => null);
   const activity = getSessionActivitySnapshot(chatJid);
   const context = await agentPool.getContextUsageForChat(chatJid).catch(() => null);
-  const tree = agentPool.getSessionTreeSummaryForChat(chatJid);
+  const tree = await agentPool.getSessionTreeSummaryForChat(chatJid);
   return {
     chat_jid: chatJid,
     active: agentPool.isActive(chatJid),
@@ -355,15 +275,13 @@ async function buildSessionControlSnapshot(agentPool: AgentPool, chatJid: string
     model: models?.current ?? null,
     thinking_level: models?.thinking_level ?? null,
     context_usage: context,
-    failed_run: summarizeFailedRun(chatJid),
+    failed_run: null, // Compatibility response field; no legacy recovery authority.
     cursor: getCursorSnapshot(chatJid),
     tree: tree ? { leaf_id: tree.leafId, total: tree.total } : null,
   };
 }
 
 function assessSessionSnapshot(snapshot: Record<string, unknown>): string {
-  const failed = snapshot.failed_run as Record<string, unknown> | null;
-  if (failed) return "failed_run";
   if (snapshot.compacting) {
     const lastEvent = snapshot.last_event_at ? Date.parse(String(snapshot.last_event_at)) : 0;
     if (lastEvent && Date.now() - lastEvent > 5 * 60_000) return "stale_compaction";
@@ -413,9 +331,9 @@ function resolveSessionControlTarget(agentPool: AgentPool, request: SessionContr
 }
 
 function registerSessionControlHandler(agentPool: AgentPool, web: WebChannel): void {
-  setSessionControlHandler(async (request): Promise<SessionControlResult> => {
+  setSessionControlHandler((request) => web.runInternalDispatch(async (): Promise<SessionControlResult> => {
     if (getSessionIsolationLevel() === "full") throw new Error("Session isolation is full; session_control is disabled.");
-    if (readAccessConfig().mode !== "single-user") return inspectOwnedSession(agentPool, request);
+    if (readAccessConfig().mode !== "single-user") throw new Error("Session control requires single-user access.");
     const target = resolveSessionControlTarget(agentPool, request);
     const base = {
       action: request.action,
@@ -456,19 +374,8 @@ function registerSessionControlHandler(agentPool: AgentPool, web: WebChannel): v
         modelId,
         raw: `/model ${resolved.model}`,
       });
-      const retried = web.retryFailedOnModelSwitch(target.chatJid);
-      if (retried) web.resumeChat(target.chatJid);
       message = result.message || `Model switch ${result.status}.`;
-      extra = { control_status: result.status, requested_model: model, resolved_model: resolved.model, retried_failed_run: retried };
-    } else if (request.action === "retry_failed") {
-      const retried = web.retryFailedOnModelSwitch(target.chatJid);
-      if (retried) web.resumeChat(target.chatJid);
-      message = retried ? "Failed run marked for retry and chat resumed." : "No failed run to retry.";
-      extra = { retried };
-    } else if (request.action === "skip_failed") {
-      const skipped = web.skipFailedOnModelSwitch(target.chatJid);
-      message = skipped ? "Failed run skipped." : "No failed run to skip.";
-      extra = { skipped };
+      extra = { control_status: result.status, requested_model: model, resolved_model: resolved.model };
     } else if (request.action === "wake") {
       web.resumeChat(target.chatJid);
       message = "Chat wake/resume queued.";
@@ -489,13 +396,7 @@ function registerSessionControlHandler(agentPool: AgentPool, web: WebChannel): v
         steps.push({ action: "switch_model", status: result.status, requested_model: request.model.trim(), resolved_model: resolved.model });
       }
 
-      const retried = web.retryFailedOnModelSwitch(target.chatJid);
-      if (retried) {
-        web.resumeChat(target.chatJid);
-        steps.push({ action: "retry_failed", retried: true });
-        steps.push({ action: "wake", resumed: true });
-        message = "Failed run marked for retry and chat resumed.";
-      } else if (before.streaming || before.compacting || before.active || (Array.isArray(before.active_tools) && before.active_tools.length > 0)) {
+      if (before.streaming || before.compacting || before.active || (Array.isArray(before.active_tools) && before.active_tools.length > 0)) {
         const result = await agentPool.applyControlCommand(target.chatJid, { type: "abort", raw: "/abort" });
         steps.push({ action: "abort", status: result.status });
         web.resumeChat(target.chatJid);
@@ -506,49 +407,22 @@ function registerSessionControlHandler(agentPool: AgentPool, web: WebChannel): v
         steps.push({ action: "wake", resumed: true });
         message = "Chat wake/resume queued.";
       }
-      extra = { assessment_before: assessment, steps, retried_failed_run: retried };
+      extra = { assessment_before: assessment, steps };
     } else {
       throw new Error(`Unsupported session_control action: ${request.action}`);
     }
 
     const after = await buildSessionControlSnapshot(agentPool, target.chatJid);
     return { ok: true, ...base, before, after, message, ...extra };
-  });
+  }));
 }
 
 export function runWebStartupRecoveryBootstrap(
   web: StartupRecoveryWebChannel,
-  recoverRestartHandoffs?: () => void,
   scheduleResumePending: (resume: () => void) => void = (resume) => { setTimeout(resume, 0); },
 ): void {
-  const startedAt = new Date().toISOString();
-  web.updateAgentStatus(STARTUP_STATUS_CHAT_JID, buildStartupAgentStatus({
-    phase: "recovering_inflight",
-    detail: "Restoring runtime state and recovering interrupted chats.",
-    startedAt,
-  }));
-
-  try {
-    web.recoverInflightRuns();
-    recoverRestartHandoffs?.();
-    web.updateAgentStatus(STARTUP_STATUS_CHAT_JID, buildStartupAgentStatus({
-      phase: "resuming_pending",
-      detail: "Resuming pending chats and queued follow-ups.",
-      startedAt,
-    }));
-    // Defer the pending-resume scan so the HTTP server can bind and start
-    // accepting connections before heavy chat processing begins. Queue
-    // dedupe keeps this safe when IPC-driven resume_pending runs too.
-    scheduleResumePending(() => web.resumePendingChats());
-  } finally {
-    web.updateAgentStatus(STARTUP_STATUS_CHAT_JID, {
-      type: "done",
-      source: "startup",
-      turn_id: STARTUP_STATUS_TURN_ID,
-      title: "Startup ready",
-      detail: "Runtime recovery complete.",
-    });
-  }
+  // The SDK owns execution recovery/status. Reconcile native source delivery only.
+  scheduleResumePending(() => web.resumePendingChats());
 }
 
 export async function initializeWebAddonMessagingRuntime(
@@ -566,29 +440,28 @@ export async function initializeWebAddonMessagingRuntime(
 }
 
 /** Start web channel and run immediate crash-recovery bootstrap. */
-export async function startWebChannel(queue: AgentQueue, agentPool: AgentPool): Promise<WebChannel> {
-  const web = new WebChannel({ queue, agentPool });
+export async function startWebChannel(
+  queue: AgentQueue, agentPool: AgentPool,
+  bind?: (options: Pick<WebChannelOpts, "queue" | "agentPool">) => Readonly<WebChannelOpts>,
+): Promise<WebChannel> {
+  const options = { queue, agentPool };
+  const web = new WebChannel(bind ? bind(options) : options);
+  try {
   await web.start();
   // office-viewer route removed: now registered by @rcarmo/piclaw-addon-office-viewer
   // Do not freeze extension routes here: workspace/add-on extension factories
   // register their HTTP routes during the first session resource reload.
   // createSessionInDir() freezes the registry after that initial load pass.
 
-  if (readAccessConfig().mode === "family-shared") {
-    registerSessionControlHandler(agentPool, web);
-    return web;
-  }
-
   // Wire the first-class add-on runtime API to the web channel's in-process
   // message storage/queue/run path. Add-ons should use this instead of
   // synthesizing authenticated localhost HTTP requests to /agent/:id/message.
   // Wire the messages tool post action to use the web channel for broadcast.
-  setMessagesPostFn((chatJid, content, isBot, mediaIds, contentBlocks) => {
-    const interaction = web.storeMessage(chatJid, content, isBot, mediaIds, {
-      contentBlocks,
-    });
+  setMessagesPostFn(async (chatJid, content, isBot, mediaIds, contentBlocks, authorise, signal) => {
+    const interaction = await web.admitMessage(chatJid,content,isBot,mediaIds,{contentBlocks},authorise,signal);
     if (!interaction) return null;
-    web.broadcastEvent(isBot ? "agent_response" : "new_post", interaction);
+    try { web.broadcastEvent(isBot ? "agent_response" : "new_post", interaction); }
+    catch (error) { log.warn("Committed message post publication failed", { operation: "messages.post.publish", err: error }); }
     return interaction.id;
   });
 
@@ -601,13 +474,15 @@ export async function startWebChannel(queue: AgentQueue, agentPool: AgentPool): 
   // Startup runtime entries may register chat transports and other process-wide
   // services. Wire the complete ABI before importing them, and load them before
   // warmups/recovery can resume chats that use those transports.
-  setAddonOperationHost(createOperationHost(agentPool));
   await initializeWebAddonMessagingRuntime(agentPool, web);
 
   captureStartupMemorySnapshot(agentPool, { label: "post-web-start" });
-  queueStartupSessionWarmup(agentPool, resolveStartupSessionWarmupOptions());
-  runWebStartupRecoveryBootstrap(web, () => {
-    recoverPendingRestartHandoffs(web);
+  runWebStartupRecoveryBootstrap(web, (resume) => {
+    setTimeout(() => {
+      void web.runInternalDispatch(resume).catch((error) => {
+        log.info("Deferred startup recovery not admitted", { error: String(error) });
+      });
+    }, 0);
   });
 
   // Wire session_control separately from chat relay. This tool controls target
@@ -615,6 +490,13 @@ export async function startWebChannel(queue: AgentQueue, agentPool: AgentPool): 
   registerSessionControlHandler(agentPool, web);
 
   return web;
+  } catch (error) {
+    if (bind) {
+      try { await web.stop(); }
+      catch (cleanupError) { throw new RuntimeStartupCleanupError([error, cleanupError], "Web startup cleanup uncertain"); }
+    }
+    throw error;
+  }
 }
 
 /**
@@ -662,6 +544,3 @@ export async function startOptionalPushoverChannel(): Promise<PushoverChannel | 
   await pushover.start();
   return pushover;
 }
-
-
-

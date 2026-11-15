@@ -11,8 +11,7 @@ import { WebAdaptiveCardSidePromptService } from "../../src/channels/web/cards/a
 import { initDatabase, getDb, getMessageByRowId, deleteMessageByRowId } from "../../src/db.js";
 import { WebSessionBroadcastService } from "../../src/channels/web/sse/session-broadcast-service.js";
 import { createInteractionBroadcaster } from "../../src/channels/web/interaction-broadcaster.js";
-import { WebMessageProcessingStorageService } from "../../src/channels/web/messaging/message-processing-storage-service.js";
-import { storeWebMessage } from "../../src/channels/web/messaging/message-store.js";
+import { admitWebMessage } from "../../src/channels/web/messaging/message-store.js";
 import { startSessionRecording, stopSessionRecording, getSessionRecording, recordSessionFixtureNote } from "../../src/session-recordings/session-recordings.js";
 import { handleSessionRecordingRoutes } from "../../src/channels/web/handlers/session-recordings.js";
 import { TestAgentControlSession } from "../agent-control/session-fixture.js";
@@ -90,23 +89,20 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       let latestPost = 0, latestMessage = "";
       const broadcasts: unknown[] = [];
       const broadcast = new WebSessionBroadcastService({ setProviderUsageRefreshListener: () => {} } as any, {
-        bindSessionBinder: () => {}, sse: { broadcast: (type: string, data: unknown) => broadcasts.push({ type, data }) } as any,
+        sse: { broadcast: (type: string, data: unknown) => broadcasts.push({ type, data }) } as any,
       });
       const broadcaster = createInteractionBroadcaster(broadcast, () => ({ agentName: "Agent", userName: "Fixture" }));
-      const storage = new WebMessageProcessingStorageService({ pendingLinkPreviews: new Set(), broadcastEvent: (type: string, data: unknown) => broadcast.broadcastEvent(type, data) } as any, {
-        defaultAgentId: "default", getAssistantName: () => "Agent", processChat: async () => { throw new Error("Inference forbidden"); },
-        storeWebMessage,
-      });
-      const write = (text: string, blocks: unknown[] = []) => {
+      const projection = { pendingLinkPreviews: new Set<number>(), broadcastEvent: (type: string, data: unknown) => broadcast.broadcastEvent(type, data) };
+      const write = async (text: string, blocks: unknown[] = []) => {
         latestMessage = text;
-        const row = storage.storeMessage(chat, text, true, [], { contentBlocks: blocks });
+        const row = await admitWebMessage(projection, { chatJid: chat, content: text, isBot: true, mediaIds: [], agentId: "default", agentName: "Agent" }, { contentBlocks: blocks });
         if (!row) throw new Error("Auth fixture message was not stored");
         latestPost = row.id;
         savedRows.push(latestPost);
         broadcaster.broadcastAgentResponse(row);
       };
       const run = (command: any) => withChatContext(chat, "web", () => handleLogin(session as any, registry, command));
-      const start = async () => { const result = await run({ type: "login", raw: "/login" }); write(result.message, result.contentBlocks); };
+      const start = async () => { const result = await run({ type: "login", raw: "/login" }); await write(result.message, result.contentBlocks); };
       const service = new WebAdaptiveCardSidePromptService({
         defaultChatJid: chat, defaultAgentId: "default", json: (value, status = 200) => Response.json(value, { status }), webRuntimeConfig: {},
         agentPool: { applyControlCommand: async (_chat, command) => run(command) },

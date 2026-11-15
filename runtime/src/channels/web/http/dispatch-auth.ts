@@ -1,3 +1,5 @@
+import { getDb } from "../../../db/connection.js";
+import { admitSqliteWrite } from "../../../db/sqlite-async-admission.js";
 /**
  * web/http/dispatch-auth.ts – WebAuthn/TOTP auth route dispatch helpers.
  */
@@ -21,7 +23,7 @@ import type { RouteFlags } from "./route-flags.js";
 
 const E2E_BOOTSTRAP_TTL_SECONDS = 10 * 60;
 
-function handleE2eBootstrapEndpoint(req: Request): Response {
+async function handleE2eBootstrapEndpoint(req: Request): Promise<Response> {
   const config = getWebRuntimeConfig();
   // The E2E runner often talks to a remote microVM, so loopback-only access
   // would make the bootstrap endpoint unusable. Keep this endpoint secret-only,
@@ -35,7 +37,10 @@ function handleE2eBootstrapEndpoint(req: Request): Response {
 
   const ttlSeconds = Math.max(60, Math.min(config.sessionTtl || E2E_BOOTSTRAP_TTL_SECONDS, E2E_BOOTSTRAP_TTL_SECONDS));
   const sessionToken = randomSessionToken();
-  const session = createWebSession(sessionToken, DEFAULT_WEB_USER_ID, ttlSeconds, "e2e");
+  const session = await admitSqliteWrite(getDb(), () => createWebSession(sessionToken, DEFAULT_WEB_USER_ID, ttlSeconds, "e2e"), () => {
+    const current = getWebRuntimeConfig();
+    if (!current.internalSecret.trim() || !isInternalSecretRequestAuthorized(req, current.internalSecret)) throw Error("Bootstrap authority changed");
+  }, req.signal);
   const setCookie = buildSessionCookieHeader(sessionToken, req, ttlSeconds, req.url.startsWith("https://"));
 
   return new Response(JSON.stringify({

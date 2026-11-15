@@ -1,0 +1,26 @@
+{
+  "id": "pele",
+  "packageName": "pele",
+  "sourceEntry": "web/src/vendor/pele-entry.ts",
+  "outputFile": "web/static/common/js/vendor/pele.js",
+  "metadataFile": "web/static/common/js/vendor/pele.meta.json",
+  "buildCommand": [
+    "bun",
+    "build",
+    "$SOURCE_ENTRY",
+    "--target=browser",
+    "--format=iife",
+    "--minify",
+    "--outfile",
+    "$OUTPUT_FILE"
+  ],
+  "installCommand": [
+    "bun",
+    "add",
+    "--exact",
+    "$PACKAGE_NAME@$VERSION"
+  ],
+  "additionalPackages": [
+    "dompurify"
+  ]
+}

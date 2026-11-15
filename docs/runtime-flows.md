@@ -2,7 +2,7 @@
 
 Piclaw uses the following web-first authentication, message, agent, media, and lifecycle flows. [whatsapp.md](whatsapp.md) describes the WhatsApp channel.
 
-The flows below describe supported single-user operation unless marked **gated family backend**. Family/isolated startup is disabled; branch queues, tools, WebSocket upgrades and notification delivery still need full owner-context integration.
+The flows below describe single-user operation. Native runtime ownership, accepted sources and operations remain durable across restart. Older diagrams referring to direct `AgentSession.prompt()`, `runAgent()` or mutable session-tree navigation are retained historical descriptions of the retired Core execution path. Current execution follows [native web dispatch](development/native-web-execution.md), [native caller ownership](development/native-prompt-retirement.md) and [immutable routing](development/native-routing-identity.md).
 
 ## Authentication flow (single-user TOTP + passkeys)
 
@@ -15,22 +15,6 @@ The web UI can be gated behind TOTP with optional WebAuthn passkeys. Passkeys ar
 - **Login**: optional conditional passkey mediation or explicit passkey button; enabled TOTP is a separate form. Explicit passkey/code actions cancel competing passkey work.
 - **Multiple passkeys**: list, name, rename and remove in Settings. Writes require a login no older than five minutes. Removal must leave an accepted sign-in factor and does not revoke existing sessions. `/passkey list` remains read-only; enrol/delete redirect to Settings.
 - Every TOTP card submission returns explicit feedback describing validation success/failure and any changes performed
-
-## Gated family backend flows
-
-These code paths are tested behind the startup gate, not available as a family deployment or complete browser workflow:
-
-1. Resolve the request principal from its account cookie; never derive identity from `chat_jid`, an internal secret or a caller-supplied username header.
-2. Select the current owned home when a target is omitted; reject explicit foreign, unknown or malformed targets. Validate the authoritative parent chain before reads/forks.
-3. Scope search in SQL before pagination. Bind SSE to the authorised chat and login; revalidate before delivery and every 30-second heartbeat. Unknown/global events are withheld.
-4. Fork captures a stable boundary, rechecks execution identity after asynchronous reads, then commits child registry and seed atomically. First-use hydration persists/reopens before clearing the seed; friendly rename uses the current stored handle.
-5. Account administration requires live role/login checks and recent authentication for mutations. Restricted TOTP invitations enable only the invited account after possession proof; they do not issue login cookies.
-6. Each account can register multiple passkeys through login/RP/Origin-bound, expiring, one-use ceremonies. Removing a key cannot remove the final factor permitted by current policy/RP.
-7. Another recently authenticated admin can reset an account into disabled/no-factor state and issue a restricted invitation, without changing conversation ownership.
-8. Text-only message admission commits the user message and immutable execution authority together. Queue wakes recover that authority per persisted message before hydration; replies revalidate the current owner. Explicit owner retry/skip runs on the same chat lane and appends a recovery grant instead of modifying admission or silently skipping held failures. Attachment/control/steering variants and special automatic followups remain disabled.
-9. Startup auth maintenance prunes transient expiry after access validation and every minute. Confirmed factors/accounts/audit records are preserved.
-
-See [Access modes](multi-user/README.md) and the [HTTP inventory](../runtime/docs/web-api-endpoint-inventory.md#family-development-routes) for exact routes and unfinished work.
 
 ## Web UI → Agent → Web UI
 
@@ -60,56 +44,15 @@ sequenceDiagram
 
 ### Follow‑up queueing and steering
 
-When the agent is streaming a response, the user can submit additional messages. These are automatically queued as follow‑ups rather than interrupting the active turn:
+Queued follow-ups have one storage owner: `QueuedFollowupLifecycleService` persists them in `chat_cursors.queued_followups_json`. Newly allocated negative row IDs identify queue actions; host-generated `source_id` values identify durable input. Existing positive-row records remain readable. Reading queue state does not adopt a source or rewrite historical timeline rows.
 
-```mermaid
-sequenceDiagram
-  participant User
-  participant Web as Web UI
-  participant API as WebChannel
-  participant Queue as Deferred Queue
-  participant Placeholder as Placeholder Store
-  participant Pool as AgentPool
+Materialisation reads the persisted head, writes its user timeline row and consumes the queued record in the same SQL transaction. Accepted sources keep their native binding and payload identity. Deferred controls settle before later ordinary input is admitted. There is no parallel in-memory placeholder queue or placeholder replacement API.
 
-  User->>Web: Submit while agent is streaming
-  Web->>API: POST /agent
-  API->>API: isStreaming(chatJid) = true
+The compose-area queue keeps its existing controls:
 
-  alt Deferred follow‑up (queue full path)
-    API->>Queue: Append to queued_followups_json
-    API-->>Web: { queued: "followup" }
-    Web->>Web: Add to queue stack UI
-  end
-
-  Note over Pool: Active turn completes
-  API->>Queue: Peek next deferred item
-  Queue-->>API: { rowId, content, threadId }
-  API->>Placeholder: Move to placeholder store
-  API->>Pool: processChat(content)
-  Pool->>Pool: Run agent turn
-  Note over Web: Queue stack item disappears
-```
-
-There are two queue storage layers:
-
-1. **Deferred Queue** — persisted in `queued_followups_json` column of `chat_cursors`. Uses negative synthetic row IDs. Survives restarts.
-2. **Placeholder Store** — in‑memory FIFO (`FollowupPlaceholderStore`). Uses positive real row IDs (from the stored message). Lost on restart but recovered via the deferred queue.
-
-`getQueuedFollowupItems()` merges both stores, deduplicating by `rowId`.
-
-The user can interact with queued items in the compose area:
-
-- **Cancel (×)** — calls `removeAgentQueueItem(rowId)`, which splices the item from the server‑side queue array and broadcasts `agent_followup_removed`.
-- **Steer (→)** — calls `steerAgentQueueItem(rowId)`, which injects the item's content as steering into the active agent session. The agent sees it as mid‑turn user input.
-- **Move up / move down** — calls `POST /agent/queue-reorder` with `from_index` / `to_index`, which reorders the deferred queue in `queued_followups_json` and persists the new order on the backend instead of leaving the stack at the mercy of timestamp sorting.
-
-Queue reorder now preserves deliberate user ordering all the way through execution:
-
-- the backend control-plane surface exposes `handleAgentQueueReorder()`
-- the queued-followup lifecycle service mutates the persisted deferred queue order in place
-- the old timestamp-based re-sort that used to quietly undo user moves has been removed
-
-The client tracks a `dismissedQueueRowIdsRef` (Set) to prevent `refreshQueueState` from re‑adding items that were just cancelled or steered. The set is cleared when the agent turn completes or when the server queue empties.
+- **Cancel (×)** calls `removeAgentQueueItem(rowId)`. Accepted sources require the host withdrawal callback in the removal transaction; successful removal publishes `agent_followup_removed`.
+- **Steer (→)** calls `steerAgentQueueItem(rowId)` through the captured native intent port. Unaccepted historical/manual items return409 without changing queue state or timeline rows.
+- **Move up / move down** calls `POST /agent/queue-reorder` with `from_index` and `to_index`. The persisted order and accepted-source priority survive subsequent execution; protected continuations keep their ordering constraints.
 
 ### Turn state machine
 
@@ -222,7 +165,11 @@ The web client refreshes this state on:
 - `visibilitychange` when the document becomes visible again
 - successful manual `/compact`, through an immediate `context_usage` status event
 
-After `/compact`, the backend prefers an estimate from the rebuilt session. If that estimate has null tokens—for example while a provider-native session rewrite is settling—it uses the compaction report's safety-adjusted estimate instead. Direct and deferred command paths do not persist or broadcast null-token updates. `GET /agent/context` awaits the live session lookup, then falls back to validated persisted channel usage when the session was evicted, lookup failed, or runtime tokens are null.
+Native reset (`/new-session`) and manual/automatic compaction retain conversation identity. Fresh native estimates remain valid; unavailable counts are `null`, never a fabricated zero or a revived stored/report estimate. Direct/deferred command events and completed-turn snapshots can clear same-session meters. Failed native display reads also clear counts when the current identity remains known. Context endpoints never fall back to a host-persisted estimate.
+
+`GET /agent/context` returns a full snapshot with `contextUpdate: "replace"`. This public marker replaces `tokens`, `contextWindow` and `percent`, including nulls. Runtime authority hints stay private. Without the marker, partial/cache-only telemetry retains omitted meters. Cache accounting remains independent. Both skins retain generation/revision guards and bounded page-local observations; late polls cannot undo a newer accepted boundary. Same-identity reconnect and authoritative unbound snapshots clear stale meters.
+
+Ordinary context requests perform **zero full-tree summary reads** and omit `sessionTree`. Clients needing the historical summary field must request `GET /agent/context?include_tree=1` (and their usual `chat_jid`). Each opt-in request reads the existing exact public tree: `{ sessionTree: { leafId, total } }`. `/tree`, session pickers, imported-history redaction and head/count semantics are unchanged. The repository consumer audit found no Classic meter consumer for that field; the qualification consumer now requests it explicitly. Arbitrary external clients were not observable in this audit. No latency improvement has been measured.
 
 Together, those paths keep the context compaction affordance in sync immediately after compaction and when returning to the tab or reopening the webapp, without requiring another agent turn or waiting for the slower backstop poller.
 
@@ -232,7 +179,7 @@ The persistence model is intentionally split:
 - backend truth decides whether the compaction-related affordance is currently warranted
 - browser-local state is reserved for lightweight local UI memory such as dismissal/seen state
 
-The web shell now also restores the **last known context usage for the active chat from `localStorage`** before issuing the fresh `/agent/context` request. That gives the footer an immediate post-reload value instead of a brief blank state while the runtime is still waking up.
+Context usage is never read from or written to `localStorage`. Classic can reuse a value accepted by the current page revision. A fresh page starts without a historical meter estimate and reads the bound SDK context. Old browser/router snapshot bytes remain opaque and inert. See [native UI observations](development/native-ui-projections.md) for cache bounds, unsent composer text, preferences and OOBE ownership.
 
 ## Request timing / perf tracing
 
@@ -264,26 +211,27 @@ This cache is browser-local performance state, not backend truth. It reduces vis
 
 ## Branch JID rename behavior (single-user maintenance)
 
-This is distinct from a friendly handle rename. Family mode denies internal JID migration, merge and purge. Its separate owner-bound root creation, home selection and archive/restore routes preserve durable IDs and do not reuse this migration path; see [owned-session lifecycle](multi-user/README.md#owned-roots-home-selection-and-archiverestore).
+A friendly handle rename preserves the chat JID and native binding. Internal JID maintenance is a separate operation.
 
-Chat JID rename/migration now treats descendants as any JID under `oldJid + ":"`, not only legacy `:branch:` forms.
+The following address-rewrite behaviour belongs to historical compatibility paths. Current native chat JIDs and branch bindings are immutable; native rename/reparent/merge paths refuse before effects. Friendly names remain host metadata under [native routing ownership](development/native-routing-identity.md).
+
+Historical chat JID rename/migration treats descendants as any JID under `oldJid + ":"`, not only legacy `:branch:` forms.
 
 That means renaming a branch like `web:default:research` to `web:default:research-notes` also rewrites descendants such as `web:default:research:analysis` across DB tables and associated session artifacts.
 
-## Model restore across reloads
+## Model state across reloads
 
-Piclaw persists the active model choice so a warm session can restore it after a reload or restart.
-
-There are two practical consequences:
-
-- post-reload UI state can show the last known model/context footprint immediately from browser-local memory while the backend finishes hydrating
-- session-manager/runtime restoration paths reapply the resolved provider/model when the session comes back, so a reload is less likely to feel like a personality transplant
-
-This reduces model resets during reload and recovery flows, but restoration still depends on successful session hydration.
+The bound native SDK conversation owns its model/context. The web UI reads current model metadata and context through the existing status snapshot; it does not hydrate a legacy session or restore context estimates from browser storage. Until that read succeeds, the UI keeps unknown values instead of inventing a model/context footprint. Preferences retain their independent owners.
 
 ## Scheduled tasks / IPC
 
-Scheduled tasks run on the same `AgentSession` as normal user messages but are isolated using the **session tree**. Before executing a task, the scheduler saves the current tree position (leaf ID) and the active model. The task's prompt and response are appended to the session as usual, then the scheduler **navigates back** to the saved leaf. This leaves the task's output in a side branch of the session tree — it persists in history but does not pollute the user's conversation context.
+Native agent tasks use admitted S07 occurrences and private SDK contexts with exact source/lease bindings. The scheduler reads the canonical versioned definition, dispatches that occurrence and commits result/history through its existing completion owner. It never switches/restores the public chat's model or navigates its session tree. Shell tasks and internal maintenance retain their separate host paths. See [versioned definitions](development/scheduled-task-definitions.md), [result history](development/scheduled-result-history.md) and [native caller decisions](development/native-prompt-retirement.md).
+
+### Historical same-session scheduler (retired)
+
+The following diagram and rationale preserve the former implementation for historical reference; they describe no supported production executor.
+
+Scheduled tasks ran on the same `AgentSession` as normal user messages but are isolated using the **session tree**. Before executing a task, the scheduler saves the current tree position (leaf ID) and the active model. The task's prompt and response are appended to the session as usual, then the scheduler **navigates back** to the saved leaf. This leaves the task's output in a side branch of the session tree — it persists in history but does not pollute the user's conversation context.
 
 If the task specifies a different model (e.g. a cheaper one for periodic summaries), the model is switched before execution and restored afterwards. Because the tree navigation also rewinds the conversation state, the model restore happens on the original branch where it belongs.
 

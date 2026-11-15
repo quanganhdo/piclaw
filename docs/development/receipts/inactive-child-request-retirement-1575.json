@@ -1,0 +1,232 @@
+{
+  "version": 1,
+  "issue": 1575,
+  "epic": 1270,
+  "partial": true,
+  "implementationBase": "fc587de57babb118b5f0fd2ace406548bd04bbfa",
+  "metric": "Tracked handwritten TS/JS under runtime/src and runtime/durable-engine/src, excluding declarations and exact testing/fixture/test/qualification/vendor/generated/dist/node_modules segments; physical lines include comments/blanks. Same #1270 rules.",
+  "before": {
+    "files": 728,
+    "physicalLOC": 146885,
+    "nonblankLines": 136386
+  },
+  "after": {
+    "files": 716,
+    "physicalLOC": 146076,
+    "nonblankLines": 135588
+  },
+  "delta": {
+    "files": -12,
+    "physicalLOC": -809,
+    "nonblankLines": -798
+  },
+  "productionAdditions": 0,
+  "relocatedProductionImplementation": 0,
+  "outsideRootProductionAdditions": 0,
+  "removedSources": [
+    {
+      "path": "runtime/src/addons/child-request-accounting.ts",
+      "sha256": "f571b77904271e0ea43366641bc372e44f4a3cca237bc27d1c5f7e627e0ec1a5",
+      "physical": 25,
+      "nonblank": 24
+    },
+    {
+      "path": "runtime/src/addons/child-request-captured-provider.ts",
+      "sha256": "d5f2940ee9ddcf51b60a75f7a8c15a5508ccb531b25431e2c9d778ecbd7b7925",
+      "physical": 48,
+      "nonblank": 47
+    },
+    {
+      "path": "runtime/src/addons/child-request-contracts.ts",
+      "sha256": "c8ebf5520c122d5d7ba263b852436c6b2c0a10f0fe13e3973977abcf64e236ea",
+      "physical": 35,
+      "nonblank": 34
+    },
+    {
+      "path": "runtime/src/addons/child-request-errors.ts",
+      "sha256": "15fbea322b1a6c7a974e8e5459d85d497afa5678f73c5711c19bf5c03408f4c8",
+      "physical": 5,
+      "nonblank": 5
+    },
+    {
+      "path": "runtime/src/addons/child-request-executor.ts",
+      "sha256": "4e24191c0de57ab46000409f71e3262667a7b43c38a2fbfd277b4e0c783bab18",
+      "physical": 90,
+      "nonblank": 89
+    },
+    {
+      "path": "runtime/src/addons/child-request-host.ts",
+      "sha256": "bc10d37759558bc920b2b76f5cec2a32de1d85b5b3ed2b3e52696ffd637f4a38",
+      "physical": 25,
+      "nonblank": 24
+    },
+    {
+      "path": "runtime/src/addons/child-request-http.ts",
+      "sha256": "f425c36ff79d698615e9846ff5a62e4fbf2aa0d9bb5dc0f8215e602cc1d90300",
+      "physical": 117,
+      "nonblank": 116
+    },
+    {
+      "path": "runtime/src/addons/child-request-output.ts",
+      "sha256": "d2fc4501586bd6b91d8fe513cdfd6f616e7d59c426697e3f3f31bf41f758c260",
+      "physical": 40,
+      "nonblank": 39
+    },
+    {
+      "path": "runtime/src/addons/child-request-scope.ts",
+      "sha256": "75800609cb083642e58c51b975394a0a8c567a9594666d09808ae0b238ffd045",
+      "physical": 191,
+      "nonblank": 190
+    },
+    {
+      "path": "runtime/src/addons/child-request-validation.ts",
+      "sha256": "f447783c3355e34ef5eea43885e0f9c647e1b077dc718b4f7b999d18cbb9f592",
+      "physical": 91,
+      "nonblank": 90
+    },
+    {
+      "path": "runtime/src/budget/shared-model-request-boundary.ts",
+      "sha256": "ed94cbdd45a532f0d13a752dc150c1e98ad130ccaba1e5737062e71193720df4",
+      "physical": 102,
+      "nonblank": 101
+    },
+    {
+      "path": "runtime/src/budget/install-shared-request-boundary.ts",
+      "sha256": "275a51429dc6f16a04fec38aefed4b4cbcc639f779b4f466ef601897f20ff9c5",
+      "physical": 40,
+      "nonblank": 39
+    }
+  ],
+  "usage": {
+    "candidates": [
+      "runtime/src/addons/child-request-accounting.ts",
+      "runtime/src/addons/child-request-captured-provider.ts",
+      "runtime/src/addons/child-request-contracts.ts",
+      "runtime/src/addons/child-request-errors.ts",
+      "runtime/src/addons/child-request-executor.ts",
+      "runtime/src/addons/child-request-host.ts",
+      "runtime/src/addons/child-request-http.ts",
+      "runtime/src/addons/child-request-output.ts",
+      "runtime/src/addons/child-request-scope.ts",
+      "runtime/src/addons/child-request-validation.ts",
+      "runtime/src/budget/shared-model-request-boundary.ts",
+      "runtime/src/budget/install-shared-request-boundary.ts"
+    ],
+    "externalProductionImports": [],
+    "entryGraphs": [
+      {
+        "entry": "runtime/src/index.ts",
+        "reachable": 546,
+        "candidateMembers": []
+      },
+      {
+        "entry": "runtime/src/agent-pool.ts",
+        "reachable": 324,
+        "candidateMembers": []
+      },
+      {
+        "entry": "runtime/durable-engine/src/default-application-runtime.ts",
+        "reachable": 635,
+        "candidateMembers": []
+      }
+    ],
+    "scope": "Tracked including ignored source and literal static/dynamic imports. Manual registration/package/add-on source audit supplements computed imports; no code was evaluated."
+  },
+  "approvedAddonsRevision": "ad7ad0a4b63ee37090b6bee4309fa5c458ec6510",
+  "approvedAddonConsumers": 0,
+  "removedOwners": {
+    "before": [
+      "unregistered child scope/delivery state machine",
+      "prepared executor/raw-tail lifecycle",
+      "HTTP body/send/finish lifecycle",
+      "mutable runtime/session stream installer"
+    ],
+    "after": [],
+    "privateChildProtocolsBefore": 1,
+    "privateChildProtocolsAfter": 0,
+    "shippingNativePathChanged": false
+  },
+  "retainedOwners": [
+    "native createHostDelegateTool",
+    "host-request-accounting.ts",
+    "model-request-accounting.ts",
+    "request-cost-bound.ts",
+    "request-reservation-admission.ts",
+    "budget-request-reservations.ts",
+    "valuation/evaluator and immutable usage projection",
+    "active model/provider auth and MCP services"
+  ],
+  "tests": {
+    "definingBefore": {
+      "pass": 6,
+      "fail": 1,
+      "assertions": 26
+    },
+    "definingAfter": {
+      "pass": 7,
+      "fail": 0,
+      "assertions": 38
+    },
+    "directPrimitiveTestsPreserved": [
+      "shared settlement retry preserves host accounting time and exact usage payload",
+      "accounting rejects disclosed response-model changes and keeps the dispatched hold"
+    ],
+    "existingFinancialCases": {
+      "pass": 8,
+      "assertions": 40
+    },
+    "actualDefaultFactory": [
+      {
+        "scenario": "native-delegate",
+        "pass": 1,
+        "assertions": 37
+      },
+      {
+        "scenario": "native-delegate-files",
+        "pass": 1,
+        "assertions": 44
+      },
+      {
+        "scenario": "native-delegate-timeout",
+        "pass": 1,
+        "assertions": 40
+      },
+      {
+        "scenario": "native-parent-budget-cap",
+        "pass": 1,
+        "assertions": 32
+      }
+    ],
+    "typeProjects": [
+      "runtime/tsconfig.json",
+      "runtime/durable-engine/tsconfig.json",
+      "qualification/pi-durable-130/tsconfig.json"
+    ],
+    "newTestsStrictTypes": true,
+    "circular": {
+      "reachable": 546,
+      "cycles": 0
+    },
+    "envObservationFresh": true,
+    "importBoundaries": {
+      "baselineFindings": 25,
+      "candidateFindings": 25,
+      "byteIdentical": true,
+      "green": false
+    },
+    "packageDryRun": {
+      "ignoreScripts": true,
+      "retiredPathsAbsent": 12,
+      "retainedOwnersPresent": 3,
+      "fullInstallOrReleaseQualification": false
+    }
+  },
+  "unmergedHistoricalBranchesPreserved": [
+    "core PR1568",
+    "addons PR175",
+    "addons PR177",
+    "addons PR178"
+  ],
+  "historicalManifestRemoved": false,
+  "creditNote": "No tests/docs/profile/generated deletion credit, no moved implementation, no production speedup claim. This is a bounded unused closure; #1575 and the whole epic require further work and merged-head acceptance."
+}

@@ -1,26 +1,21 @@
+import { hasNativeRouting, requireLegacyRoutingMutation, assertNativeBranchPolicyIdle } from "./native-routing-policy.js";
+import { unlinkedUsageReportPredicate } from "./usage-report-projection.js";
 /**
  * db/chat-branches.ts – Explicit branch/session registry for web chat branches.
  *
- * Branch identity is defined entirely by the `agent_name` handle.
+ * branch_id is the stable host identity; agent_name is a mutable friendly handle.
+ * Native conversation/session routing belongs to the immutable SDK manifest.
  * The legacy `display_name` column is dropped on first startup via migration.
  */
 
 import { getDb } from "./connection.js";
+import { deleteTask, moveScheduledTasksToChat } from "./tasks.js";
+import { canonicalScheduledTasksSql, readCanonicalScheduledTask } from "./scheduled-task-definitions.js";
 import { ChatAccessDenied } from "./session-ownership.js";
-import { attachMediaToMessage, deleteUnreferencedMedia } from "./media.js";
+import { deleteUnreferencedMedia } from "./media.js";
 import { deleteThinkingContentByChatJid } from "./thinking-cleanup.js";
 import type { ChatBranchRecord } from "./types.js";
 import { createUuid } from "../utils/ids.js";
-
-interface QueuedFollowupForMerge {
-  rowId: number;
-  queuedContent: string;
-  threadId: number | null;
-  queuedAt: string;
-  mediaIds?: number[];
-  contentBlocks?: unknown[];
-  linkPreviews?: unknown[];
-}
 
 interface ChatBranchRow {
   branch_id: string;
@@ -182,6 +177,12 @@ export function ensureChatBranch(input: {
 
   if (existing) {
     requireLegacyHandleNamespace(chatJid);
+    if (hasNativeRouting(db)) {
+      if (input.root_chat_jid != null && input.root_chat_jid !== existing.root_chat_jid
+        || input.parent_branch_id !== undefined && (input.parent_branch_id || null) !== existing.parent_branch_id) requireLegacyRoutingMutation(db, "reparent");
+      if (input.agent_name && normalizeBranchAgentName(input.agent_name) !== existing.agent_name) throw Error("Native branch metadata requires explicit handle rename");
+      return existing; // Registration never restores or rewrites a native identity.
+    }
     const rootChatJid = String(input.root_chat_jid || existing.root_chat_jid || chatJid).trim() || chatJid;
     const parentBranchId = input.parent_branch_id === undefined ? existing.parent_branch_id : (input.parent_branch_id || null);
     const requestedAgentName = input.agent_name ? normalizeBranchAgentName(input.agent_name) : existing.agent_name;
@@ -211,6 +212,7 @@ export function ensureChatBranch(input: {
 
   const rootChatJid = String(input.root_chat_jid || chatJid).trim() || chatJid;
   requireLegacyHandleNamespace(rootChatJid);
+  if (hasNativeRouting(db) && (input.parent_branch_id || rootChatJid !== chatJid)) requireLegacyRoutingMutation(db, "legacy child fork");
   const branchId = createUuid("branch");
   const agentName = getUniqueAgentName(input.agent_name || deriveBaseAgentName(chatJid));
   const parentBranchId = input.parent_branch_id ? String(input.parent_branch_id).trim() : null;
@@ -258,43 +260,46 @@ export function renameChatBranchIdentity(input: {
 }
 
 export function archiveChatBranch(chatJid: string): ChatBranchRecord {
-  const normalizedChatJid = String(chatJid || "").trim();
-  if (!normalizedChatJid) throw new Error("chat_jid is required");
+  return getDb().transaction(() => {
+    const normalizedChatJid = String(chatJid || "").trim();
+    if (!normalizedChatJid) throw new Error("chat_jid is required");
 
-  const existing = getChatBranchByChatJid(normalizedChatJid);
-  if (!existing) throw new Error(`Unknown chat branch: ${normalizedChatJid}`);
+    const existing = getChatBranchByChatJid(normalizedChatJid);
+    if (!existing) throw new Error(`Unknown chat branch: ${normalizedChatJid}`);
 
-  const isRootChat = existing.chat_jid === existing.root_chat_jid;
-  if (isRootChat && existing.chat_jid === "web:default") {
-    throw new Error("Cannot archive the default chat session.");
-  }
-  if (isRootChat) {
-    const db = getDb();
-    const row = db.prepare(
-      `SELECT COUNT(*) AS count
-         FROM chat_branches
-        WHERE root_chat_jid = ?
-          AND chat_jid != ?
-          AND archived_at IS NULL`
-    ).get(existing.chat_jid, existing.chat_jid) as { count?: number } | undefined;
-    if (Number(row?.count || 0) > 0) {
-      throw new Error("Cannot archive a root chat session while it still has active branch sessions.");
+    const isRootChat = existing.chat_jid === existing.root_chat_jid;
+    if (isRootChat && existing.chat_jid === "web:default") {
+      throw new Error("Cannot archive the default chat session.");
     }
-  }
-  if (existing.archived_at) {
-    return existing;
-  }
+    if (isRootChat) {
+      const db = getDb();
+      const row = db.prepare(
+        `SELECT COUNT(*) AS count
+           FROM chat_branches
+          WHERE root_chat_jid = ?
+            AND chat_jid != ?
+            AND archived_at IS NULL`
+      ).get(existing.chat_jid, existing.chat_jid) as { count?: number } | undefined;
+      if (Number(row?.count || 0) > 0) {
+        throw new Error("Cannot archive a root chat session while it still has active branch sessions.");
+      }
+    }
+    if (existing.archived_at) {
+      return existing;
+    }
 
-  const now = new Date().toISOString();
-  const db = getDb();
-  db.prepare(
-    `UPDATE chat_branches
-        SET archived_at = ?,
-            updated_at = ?
-      WHERE branch_id = ?`
-  ).run(now, now, existing.branch_id);
+    assertNativeBranchPolicyIdle(getDb(), existing.branch_id);
+    const now = new Date().toISOString();
+    const db = getDb();
+    db.prepare(
+      `UPDATE chat_branches
+          SET archived_at = ?,
+              updated_at = ?
+        WHERE branch_id = ?`
+    ).run(now, now, existing.branch_id);
 
-  return getChatBranchByChatJid(normalizedChatJid)!;
+    return getChatBranchByChatJid(normalizedChatJid)!;
+  }).immediate();
 }
 
 export interface ArchivedBranchPurgePreview {
@@ -330,9 +335,12 @@ export interface ArchivedBranchDownloadData {
   chat: Record<string, unknown> | null;
   messages: Record<string, unknown>[];
   message_media: Record<string, unknown>[];
+  /** Derived inline media (link-preview images, tool image previews) per message. */
+  message_inline_media: Record<string, unknown>[];
   chat_cursor: Record<string, unknown> | null;
   token_usage: Record<string, unknown>[];
   scheduled_tasks: Record<string, unknown>[];
+  scheduled_definition_revisions: Record<string, unknown>[];
   task_run_logs: Record<string, unknown>[];
   configs: {
     ssh: Record<string, unknown> | null;
@@ -380,10 +388,7 @@ function requireArchivedPurgeTarget(chatJid: string): ChatBranchRecord {
 function getArchivedBranchTaskIds(chatJid: string): string[] {
   const db = getDb();
   const rows = db.prepare(
-    `SELECT id
-       FROM scheduled_tasks
-      WHERE chat_jid = ?
-      ORDER BY id ASC`
+    `WITH tasks AS (${canonicalScheduledTasksSql}) SELECT id FROM tasks WHERE chat_jid = ? ORDER BY id ASC`
   ).all(chatJid) as Array<{ id: string }>;
   return rows.map((row) => row.id);
 }
@@ -427,10 +432,20 @@ export function exportArchivedBranchDownloadData(chatJid: string): ArchivedBranc
     chat: db.prepare(`SELECT * FROM chats WHERE jid = ?`).get(branch.chat_jid) as Record<string, unknown> | null,
     messages,
     message_media: messageMedia,
+    message_inline_media: db.prepare(
+      `SELECT i.*
+         FROM message_inline_media i
+         JOIN messages m ON m.rowid = i.message_rowid
+        WHERE m.chat_jid = ?
+        ORDER BY i.message_rowid ASC, i.kind ASC, i.ref ASC`
+    ).all(branch.chat_jid) as Record<string, unknown>[],
     chat_cursor: db.prepare(`SELECT * FROM chat_cursors WHERE chat_jid = ?`).get(branch.chat_jid) as Record<string, unknown> | null,
     token_usage: db.prepare(`SELECT * FROM token_usage WHERE chat_jid = ? ORDER BY run_at ASC, id ASC`).all(branch.chat_jid) as Record<string, unknown>[],
-    scheduled_tasks: taskIds.length > 0
-      ? db.prepare(`SELECT * FROM scheduled_tasks WHERE chat_jid = ? ORDER BY id ASC`).all(branch.chat_jid) as Record<string, unknown>[]
+    scheduled_tasks: taskIds.map(id => readCanonicalScheduledTask(db, id) as unknown as Record<string, unknown>),
+    scheduled_definition_revisions: taskIds.length > 0
+      ? db.prepare(`SELECT d.*,r.config_hash,r.snapshot_json,r.authored_at FROM main.host_scheduled_task_definitions d
+          JOIN main.service_effect_s07_task_revisions r ON r.task_id=d.task_id AND r.revision=d.revision
+          WHERE d.task_id IN (${taskPlaceholders}) ORDER BY d.task_id,d.revision`).all(...taskIds) as Record<string, unknown>[]
       : [],
     task_run_logs: taskIds.length > 0
       ? db.prepare(`SELECT * FROM task_run_logs WHERE task_id IN (${taskPlaceholders}) ORDER BY run_at ASC, id ASC`).all(...taskIds) as Record<string, unknown>[]
@@ -477,42 +492,6 @@ export function previewPermanentDeleteArchivedBranch(chatJid: string): ArchivedB
   };
 }
 
-function sanitizeQueuedFollowupForMerge(value: unknown): QueuedFollowupForMerge | null {
-  if (!value || typeof value !== "object") return null;
-  const record = value as Record<string, unknown>;
-  if (typeof record.queuedContent !== "string" || !record.queuedContent.trim()) return null;
-  return {
-    rowId: Number.isFinite(record.rowId) ? Number(record.rowId) : 0,
-    queuedContent: record.queuedContent,
-    threadId: Number.isFinite(record.threadId) ? Number(record.threadId) : null,
-    queuedAt: typeof record.queuedAt === "string" && record.queuedAt.trim()
-      ? record.queuedAt.trim()
-      : new Date().toISOString(),
-    mediaIds: Array.isArray(record.mediaIds)
-      ? record.mediaIds.map((id) => Number(id)).filter((id) => Number.isFinite(id))
-      : undefined,
-    contentBlocks: Array.isArray(record.contentBlocks) ? [...record.contentBlocks] : undefined,
-    linkPreviews: Array.isArray(record.linkPreviews) ? [...record.linkPreviews] : undefined,
-  };
-}
-
-function readQueuedFollowupsForMerge(chatJid: string): QueuedFollowupForMerge[] {
-  const db = getDb();
-  const row = db.prepare(
-    `SELECT queued_followups_json FROM chat_cursors WHERE chat_jid = ?`
-  ).get(chatJid) as { queued_followups_json: string | null } | undefined;
-  if (!row?.queued_followups_json) return [];
-  try {
-    const parsed = JSON.parse(row.queued_followups_json);
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .map((item) => sanitizeQueuedFollowupForMerge(item))
-      .filter((item): item is QueuedFollowupForMerge => Boolean(item));
-  } catch {
-    return [];
-  }
-}
-
 function getLatestChatPosition(chatJid: string): string {
   const db = getDb();
   const row = db.prepare(
@@ -537,70 +516,6 @@ function moveChatCursorToLastPosition(chatJid: string): void {
   `).run(chatJid, ts);
 }
 
-function materializeQueuedFollowupsForTimelineMove(chatJid: string): number {
-  const queued = readQueuedFollowupsForMerge(chatJid);
-  if (queued.length === 0) return 0;
-
-  const db = getDb();
-  let inserted = 0;
-  let latestTimestamp = "";
-  const existingRow = db.prepare(`SELECT rowid FROM messages WHERE chat_jid = ? AND rowid = ?`);
-  const insertMessage = db.prepare(`INSERT INTO messages (
-      id, chat_jid, sender, sender_name, content, content_blocks, link_previews,
-      thread_id, timestamp, is_from_me, is_bot_message, is_terminal_agent_reply, is_steering_message
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
-  const getInsertedRow = db.prepare(`SELECT rowid FROM messages WHERE chat_jid = ? AND id = ?`);
-  const threadExists = db.prepare(`SELECT rowid FROM messages WHERE chat_jid = ? AND rowid = ?`);
-
-  for (const item of queued) {
-    if (item.rowId > 0 && existingRow.get(chatJid, item.rowId)) {
-      if (item.queuedAt > latestTimestamp) latestTimestamp = item.queuedAt;
-      continue;
-    }
-
-    const messageId = createUuid("web");
-    const contentBlocks = Array.isArray(item.contentBlocks) ? JSON.stringify(item.contentBlocks) : null;
-    const linkPreviews = Array.isArray(item.linkPreviews) ? JSON.stringify(item.linkPreviews) : null;
-    const explicitThreadId = item.threadId && threadExists.get(chatJid, item.threadId) ? item.threadId : null;
-    insertMessage.run(
-      messageId,
-      chatJid,
-      "web-user",
-      "You",
-      item.queuedContent,
-      contentBlocks,
-      linkPreviews,
-      explicitThreadId,
-      item.queuedAt,
-      0,
-      0,
-      0,
-      0,
-    );
-    const row = getInsertedRow.get(chatJid, messageId) as { rowid: number } | undefined;
-    const rowId = row?.rowid ?? 0;
-    if (rowId > 0) {
-      if (!explicitThreadId) db.prepare(`UPDATE messages SET thread_id = ? WHERE rowid = ?`).run(rowId, rowId);
-      if (item.mediaIds?.length) attachMediaToMessage(rowId, item.mediaIds);
-      inserted += 1;
-    }
-    if (item.queuedAt > latestTimestamp) latestTimestamp = item.queuedAt;
-  }
-
-  db.prepare(`UPDATE chat_cursors SET queued_followups_json = NULL WHERE chat_jid = ?`).run(chatJid);
-  if (latestTimestamp) {
-    db.prepare(
-      `UPDATE chats
-          SET last_message_time = CASE
-                WHEN last_message_time IS NULL OR ? > last_message_time THEN ?
-                ELSE last_message_time
-              END
-        WHERE jid = ?`
-    ).run(latestTimestamp, latestTimestamp, chatJid);
-  }
-  return inserted;
-}
-
 export interface MergeChatBranchIntoParentResult {
   source: ChatBranchRecord;
   parent: ChatBranchRecord;
@@ -618,51 +533,57 @@ export interface MergeChatBranchIntoParentResult {
   };
 }
 
+/** SQL-only helpers borrow an outer transaction through a savepoint, or own an
+ * immediate transaction when called standalone. Returning from a borrowed scope
+ * does not certify physical commit; the outer owner controls publication. */
 export function mergeChatBranchIntoParent(chatJid: string): MergeChatBranchIntoParentResult {
-  const normalizedChatJid = String(chatJid || "").trim();
-  if (!normalizedChatJid) throw new Error("chat_jid is required");
-
-  const source = getChatBranchByChatJid(normalizedChatJid);
-  if (!source) throw new Error(`Unknown chat branch: ${normalizedChatJid}`);
-  if (!source.parent_branch_id) {
-    throw new Error(`Cannot merge a root chat session into a parent: ${normalizedChatJid}`);
-  }
-
-  const parent = getChatBranchByBranchId(source.parent_branch_id);
-  if (!parent) throw new Error(`Missing parent branch for chat: ${normalizedChatJid}`);
-  if (parent.archived_at) throw new Error(`Cannot merge into an archived parent chat: ${parent.chat_jid}`);
-
-  const childCount = countRows(
-    `SELECT COUNT(*) AS count FROM chat_branches WHERE parent_branch_id = ?`,
-    source.branch_id,
-  );
-  if (childCount > 0) {
-    throw new Error(`Cannot merge a chat branch that still has child branches: ${normalizedChatJid}`);
-  }
-
-  const messageCollisionCount = countRows(
-    `SELECT COUNT(*) AS count
-       FROM messages source
-       JOIN messages parent ON parent.chat_jid = ? AND parent.id = source.id
-      WHERE source.chat_jid = ?`,
-    parent.chat_jid,
-    source.chat_jid,
-  );
-  if (messageCollisionCount > 0) {
-    throw new Error(`Cannot merge chat branch because ${messageCollisionCount} message id(s) already exist in the parent chat.`);
-  }
-
   const db = getDb();
-  let counts: MergeChatBranchIntoParentResult["counts"];
+  requireLegacyRoutingMutation(db, "legacy merge");
+  return db.transaction(() => {
+    requireLegacyRoutingMutation(db, "legacy merge");
+    const normalizedChatJid = String(chatJid || "").trim();
+    if (!normalizedChatJid) throw new Error("chat_jid is required");
 
-  db.exec("BEGIN IMMEDIATE");
-  try {
-    materializeQueuedFollowupsForTimelineMove(source.chat_jid);
+    const source = getChatBranchByChatJid(normalizedChatJid);
+    if (!source) throw new Error(`Unknown chat branch: ${normalizedChatJid}`);
+    if (!source.parent_branch_id) {
+      throw new Error(`Cannot merge a root chat session into a parent: ${normalizedChatJid}`);
+    }
 
-    counts = {
+    const parent = getChatBranchByBranchId(source.parent_branch_id);
+    if (!parent) throw new Error(`Missing parent branch for chat: ${normalizedChatJid}`);
+    if (parent.archived_at) throw new Error(`Cannot merge into an archived parent chat: ${parent.chat_jid}`);
+
+    const childCount = countRows(
+      `SELECT COUNT(*) AS count FROM chat_branches WHERE parent_branch_id = ?`,
+      source.branch_id,
+    );
+    if (childCount > 0) {
+      throw new Error(`Cannot merge a chat branch that still has child branches: ${normalizedChatJid}`);
+    }
+
+    const messageCollisionCount = countRows(
+      `SELECT COUNT(*) AS count
+         FROM messages source
+         JOIN messages parent ON parent.chat_jid = ? AND parent.id = source.id
+        WHERE source.chat_jid = ?`,
+      parent.chat_jid,
+      source.chat_jid,
+    );
+    if (messageCollisionCount > 0) {
+      throw new Error(`Cannot merge chat branch because ${messageCollisionCount} message id(s) already exist in the parent chat.`);
+    }
+
+    // Historical queue bytes remain inert; never turn them into new messages.
+    const queued = db.prepare("SELECT queued_followups_json FROM chat_cursors WHERE chat_jid = ?").get(source.chat_jid) as { queued_followups_json: string | null } | undefined;
+    if (queued?.queued_followups_json && !["", "[]"].includes(queued.queued_followups_json.trim())) {
+      throw new Error("Cannot merge a branch with preserved legacy queue records.");
+    }
+
+    const counts: MergeChatBranchIntoParentResult["counts"] = {
       messages: countRows(`SELECT COUNT(*) AS count FROM messages WHERE chat_jid = ?`, source.chat_jid),
       token_usage: countRows(`SELECT COUNT(*) AS count FROM token_usage WHERE chat_jid = ?`, source.chat_jid),
-      scheduled_tasks: countRows(`SELECT COUNT(*) AS count FROM scheduled_tasks WHERE chat_jid = ?`, source.chat_jid),
+      scheduled_tasks: countRows(`WITH tasks AS (${canonicalScheduledTasksSql}) SELECT COUNT(*) AS count FROM tasks WHERE chat_jid = ?`, source.chat_jid),
       chat_cursors: countRows(`SELECT COUNT(*) AS count FROM chat_cursors WHERE chat_jid = ?`, source.chat_jid),
       ssh_configs: countRows(`SELECT COUNT(*) AS count FROM ssh_configs WHERE chat_jid = ?`, source.chat_jid),
       proxmox_configs: countRows(`SELECT COUNT(*) AS count FROM proxmox_configs WHERE chat_jid = ?`, source.chat_jid),
@@ -674,7 +595,7 @@ export function mergeChatBranchIntoParent(chatJid: string): MergeChatBranchIntoP
 
     db.prepare(`UPDATE messages SET chat_jid = ? WHERE chat_jid = ?`).run(parent.chat_jid, source.chat_jid);
     db.prepare(`UPDATE token_usage SET chat_jid = ? WHERE chat_jid = ?`).run(parent.chat_jid, source.chat_jid);
-    db.prepare(`UPDATE scheduled_tasks SET chat_jid = ? WHERE chat_jid = ?`).run(parent.chat_jid, source.chat_jid);
+    moveScheduledTasksToChat(source.chat_jid, parent.chat_jid);
 
     moveChatCursorToLastPosition(parent.chat_jid);
     db.prepare(`DELETE FROM chat_cursors WHERE chat_jid = ?`).run(source.chat_jid);
@@ -732,34 +653,26 @@ export function mergeChatBranchIntoParent(chatJid: string): MergeChatBranchIntoP
     db.prepare(`DELETE FROM chat_branches WHERE branch_id = ?`).run(source.branch_id);
     db.prepare(`DELETE FROM chats WHERE jid = ?`).run(source.chat_jid);
 
-    db.exec("COMMIT");
-  } catch (error) {
-    db.exec("ROLLBACK");
-    throw error;
-  }
-
-  return { source, parent, counts };
+    return { source, parent, counts };
+  }).immediate();
 }
 
 export function permanentDeleteArchivedBranch(chatJid: string): PermanentDeleteArchivedBranchResult {
-  const preview = previewPermanentDeleteArchivedBranch(chatJid);
-  const branch = preview.branch;
-  const mediaIds = getArchivedBranchMediaIds(branch.chat_jid);
-  const taskIds = getArchivedBranchTaskIds(branch.chat_jid);
   const db = getDb();
+  requireLegacyRoutingMutation(db, "legacy purge");
+  return db.transaction(() => {
+    requireLegacyRoutingMutation(db, "legacy purge");
+    const preview = previewPermanentDeleteArchivedBranch(chatJid);
+    const branch = preview.branch;
+    const mediaIds = getArchivedBranchMediaIds(branch.chat_jid);
+    const taskIds = getArchivedBranchTaskIds(branch.chat_jid);
 
-  const deleted = {
-    ...preview.counts,
-    media_deleted: 0,
-  };
+    const deleted = {
+      ...preview.counts,
+      media_deleted: 0,
+    };
 
-  db.exec("BEGIN IMMEDIATE");
-  try {
-    if (taskIds.length > 0) {
-      const taskPlaceholders = taskIds.map(() => "?").join(",");
-      db.prepare(`DELETE FROM task_run_logs WHERE task_id IN (${taskPlaceholders})`).run(...taskIds);
-      db.prepare(`DELETE FROM scheduled_tasks WHERE id IN (${taskPlaceholders})`).run(...taskIds);
-    }
+    for (const taskId of taskIds) deleteTask(taskId);
 
     db.prepare(
       `DELETE FROM message_media
@@ -771,7 +684,7 @@ export function permanentDeleteArchivedBranch(chatJid: string): PermanentDeleteA
     deleteThinkingContentByChatJid(branch.chat_jid);
     db.prepare(`DELETE FROM messages WHERE chat_jid = ?`).run(branch.chat_jid);
     db.prepare(`DELETE FROM chat_cursors WHERE chat_jid = ?`).run(branch.chat_jid);
-    db.prepare(`DELETE FROM token_usage WHERE chat_jid = ?`).run(branch.chat_jid);
+    deleted.token_usage = db.prepare(`DELETE FROM token_usage WHERE chat_jid = ? AND ${unlinkedUsageReportPredicate(db, "token_usage")}`).run(branch.chat_jid).changes;
     db.prepare(`DELETE FROM ssh_configs WHERE chat_jid = ?`).run(branch.chat_jid);
     db.prepare(`DELETE FROM proxmox_configs WHERE chat_jid = ?`).run(branch.chat_jid);
     db.prepare(`DELETE FROM portainer_configs WHERE chat_jid = ?`).run(branch.chat_jid);
@@ -780,16 +693,11 @@ export function permanentDeleteArchivedBranch(chatJid: string): PermanentDeleteA
     db.prepare(`DELETE FROM chats WHERE jid = ?`).run(branch.chat_jid);
     deleted.media_deleted = deleteUnreferencedMedia(mediaIds);
 
-    db.exec("COMMIT");
-  } catch (error) {
-    db.exec("ROLLBACK");
-    throw error;
-  }
-
-  return {
-    branch,
-    counts: deleted,
-  };
+    return {
+      branch,
+      counts: deleted,
+    };
+  }).immediate();
 }
 
 // ---------------------------------------------------------------------------
@@ -805,42 +713,46 @@ export interface RenameChatJidResult {
 }
 
 /**
- * Rename a chat JID across *all* DB tables in a single transaction.
- *
- * The caller is responsible for:
- *   - evicting the session from the in-memory agent pool *before* calling this
- *   - renaming the session directory on disk *after* this succeeds
+ * Rename a chat JID across its identity tables in one SQL transaction.
+ * With an existing transaction, this scope borrows a savepoint. Foreign-key
+ * deferral belongs to that physical outer transaction until commit/rollback.
+ * Dispose cached sessions and rename directories only after the outer owner
+ * certifies physical commit, not merely after a borrowed helper returns.
  *
  * Child branches whose `chat_jid` starts with `oldJid + ":"` are
  * rewritten to start with `newJid + ":"` so the tree stays intact for both
  * legacy `:branch:` and modern hierarchical JID forms.
  */
 export function renameChatJid(oldJid: string, newJid: string): RenameChatJidResult {
-  const old = String(oldJid || "").trim();
-  const next = String(newJid || "").trim();
-  if (!old) throw new Error("oldJid is required");
-  if (!next) throw new Error("newJid is required");
-  if (old === next) throw new Error("Old and new JID are identical.");
-
-  // Disallow reserved characters that would break the branch-tree model.
-  if (/[\s]/.test(next)) throw new Error("JID must not contain whitespace.");
-
-  const existing = getChatBranchByChatJid(old);
-  if (!existing) throw new Error(`Unknown chat: ${old}`);
-
-  // Make sure the target JID is not already in use.
-  const collision = getChatBranchByChatJid(next);
-  if (collision) throw new Error(`Target JID already exists: ${next}`);
-
   const db = getDb();
-  const now = new Date().toISOString();
-  const updated: string[] = [];
-  const childPrefix = `${old}:`;
-  const childNextPrefix = `${next}:`;
-  const childPrefixLength = childPrefix.length;
+  requireLegacyRoutingMutation(db, "address rename");
+  return db.transaction(() => {
+    requireLegacyRoutingMutation(db, "address rename");
+    const old = String(oldJid || "").trim();
+    const next = String(newJid || "").trim();
+    if (!old) throw new Error("oldJid is required");
+    if (!next) throw new Error("newJid is required");
+    if (old === next) throw new Error("Old and new JID are identical.");
 
-  db.exec("BEGIN IMMEDIATE");
-  try {
+    // Disallow reserved characters that would break the branch-tree model.
+    if (/[\s]/.test(next)) throw new Error("JID must not contain whitespace.");
+
+    const existing = getChatBranchByChatJid(old);
+    if (!existing) throw new Error(`Unknown chat: ${old}`);
+
+    // Make sure the target JID is not already in use.
+    const collision = getChatBranchByChatJid(next);
+    if (collision) throw new Error(`Target JID already exists: ${next}`);
+
+    const now = new Date().toISOString();
+    const updated: string[] = [];
+    const childPrefix = `${old}:`;
+    const childNextPrefix = `${next}:`;
+    const childPrefixLength = childPrefix.length;
+
+    // Parent and child chat identities move together; enforce all foreign keys
+    // at this transaction's commit instead of between the linked updates.
+    db.exec("PRAGMA defer_foreign_keys=ON");
     // --- chats (PK = jid) -----------------------------------------------
     const chatsRows = db.prepare(
       `UPDATE chats SET jid = ? WHERE jid = ?`
@@ -901,14 +813,11 @@ export function renameChatJid(oldJid: string, newJid: string): RenameChatJidResu
     updated.push("token_usage");
 
     // --- scheduled_tasks ------------------------------------------------
-    db.prepare(
-      `UPDATE scheduled_tasks SET chat_jid = ? WHERE chat_jid = ?`
-    ).run(next, old);
-    db.prepare(
-      `UPDATE scheduled_tasks
-          SET chat_jid = ? || substr(chat_jid, ?)
-        WHERE substr(chat_jid, 1, ?) = ?`
-    ).run(childNextPrefix, childPrefixLength + 1, childPrefixLength, childPrefix);
+    const taskChats = db.prepare(`WITH tasks AS (${canonicalScheduledTasksSql})
+      SELECT DISTINCT chat_jid FROM tasks WHERE chat_jid=? OR substr(chat_jid,1,?)=?`)
+      .all(old, childPrefixLength, childPrefix) as { chat_jid: string }[];
+    for (const task of taskChats) moveScheduledTasksToChat(task.chat_jid,
+      task.chat_jid === old ? next : childNextPrefix + task.chat_jid.slice(childPrefixLength));
 
     // --- config tables (ssh, proxmox, portainer) -----------------------
     for (const tbl of ["ssh_configs", "proxmox_configs", "portainer_configs"]) {
@@ -922,29 +831,13 @@ export function renameChatJid(oldJid: string, newJid: string): RenameChatJidResu
       ).run(childNextPrefix, childPrefixLength + 1, childPrefixLength, childPrefix);
     }
 
-    db.exec("COMMIT");
-  } catch (err) {
-    db.exec("ROLLBACK");
-    throw err;
-  }
-
-  // Rebuild the FTS index for the renamed rows so full-text search stays
-  // accurate. The content-sync FTS5 table reads through to `messages`, so
-  // after the UPDATE above the shadow table chat_jid column is stale.
-  // A targeted rebuild is safest:
-  try {
-    db.exec(`INSERT INTO messages_fts(messages_fts) VALUES ('rebuild')`);
-  } catch (_ftsErr) {
-    // Non-fatal: search may lag until the next natural rebuild.
-    console.debug("[chat-branches] FTS rebuild after rename failed — search may lag", _ftsErr);
-  }
-
-  return {
-    oldJid: old,
-    newJid: next,
-    branch: getChatBranchByChatJid(next)!,
-    updatedTables: updated,
-  };
+    return {
+      oldJid: old,
+      newJid: next,
+      branch: getChatBranchByChatJid(next)!,
+      updatedTables: updated,
+    };
+  }).immediate();
 }
 
 export function restoreChatBranchIdentity(input: {

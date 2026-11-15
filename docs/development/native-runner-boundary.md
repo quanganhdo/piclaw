@@ -1,0 +1,28 @@
+# Native direct-runner boundary
+
+`AgentPool.runAgent()` is a legacy compatibility API. A pool constructed with a captured native session lookup, including an empty lookup, rejects this method before eviction protection, option getters, budget work, orchestration, session construction or model calls.
+
+The result is `{ status: "error", result: null, error: "Native execution requires an admitted operation", failureCategory: "non_recoverable" }`. Caller-supplied budget IDs or provenance cannot turn a direct prompt into accepted native work. Non-native compatibility pools retain their existing runner behaviour.
+
+Native execution must use its qualified accepted-source dispatch: ordinary input admission, scheduled dispatch with the exact lease/source proof, private Dream dispatch, or the existing bound side-prompt contract. These ports have different authority and context requirements; a side prompt is not a generic substitute for unbound background work.
+
+The guard was a prerequisite in #1670. Dream now maps its private context directly to public SDK submit/wait/result/abort APIs, without S01/S02 execution ownership. The S07 internal caller retains its exact model, current occurrence lease and stable invocation identity. Focused actual-SDK tests retain provider/source/caller/model, cancellation and joined-cleanup checks. A2A and its exclusive Core operations service have been deleted. See [Dream mapping review](dream-durable-mapping-review.md) and [A2A retirement](a2a-retirement.md) for current evidence and historical-data policy.
+
+The polling caller also refuses native messages explicitly with `Native non-web message processing requires host input admission`. This happens before control/slash commands, command deduplication, timestamp commits or a call to `runAgent()`. The coordinator passes the captured pool mode to the polling loop, which checks this boundary before enqueueing any fetched batch or publishing its global timestamp. Checking only inside asynchronous per-chat work would still consume the polling cursor. Pending inputs and both per-chat/global cursors remain intact; no outbound success or fabricated user message is produced. Empty polling batches still return normally. Legacy non-native transports retain their existing execution path. This is the explicit unsupported native polling decision allowed by #1670, without retiring non-web transport support or certifying unattended native transport admission.
+
+Focused qualification covers the real native pool with independent pending ordinary, model-control and slash-command inputs: all records remain unchanged, no command/dedup/timestamp/runner/provider path runs and legacy factories stay unused. The directly affected non-native processing, poll-cancellation/partial-admission/shutdown and coordinator fixtures still pass.
+
+Dream's deterministic failure refresh is also retained: a thrown agent outcome still refreshes authorised notes and the workspace index, then propagates the original exception without marking consolidation complete or retrying. A refresh/cleanup failure preserves both errors; revoked access blocks further data mutation while the held lock is released. Its lock lease is bound to the exclusively opened descriptor, device/inode and exact PID bytes; maintenance rechecks that identity after awaits. Creation writes through the descriptor. Cleanup and process exit retain replacement/aliased locks, and both the owned lease and stale-inspection descriptor stay open through their binding decisions to prevent inode reuse. Only `ESRCH` plus an unchanged regular-file snapshot permits stale reaping; malformed, aliased, unreadable or unknown-process locks remain held. FIFO/special-file checks cannot block inspection. The legacy PID-file format is unchanged. The actual native Dream port now retains that descriptor lease through accepted SDK execution and resource cleanup. Held provider/tool shutdown tests prevent deterministic refresh and lock release until the SDK work ends.
+
+## Tracked direct-runner consumers
+
+| Consumer | Native decision | Retained compatibility / remaining work |
+| --- | --- | --- |
+| `dream.ts` | Direct Dream uses private public-SDK submission/result/abort and its exact model override. | `runAgent` and model controls execute only for a legacy pool. S07 occurrence authority remains separate from SDK execution. |
+| `runtime/message-loop.ts` | Native polling refuses before queue admission, commands or cursor commits. | Legacy transports retain their runner. Native transport admission needs an explicit supported port. |
+| `task-scheduler.ts` | Agent occurrences use the exact S07 lease/source port; internal native Dream owns its private model, current occurrence lease, stable invocation and current caller authority. | The exported lease-free compatibility helper has no tracked production caller and now refuses native direct use before getters or bookkeeping. Legacy internal/shell behavior remains. |
+| `channels/web/handlers/agent.ts` | Accepted native input uses public SDK admission before the legacy runner. | Native queue/steering/status are SDK-owned; no host web lifecycle is restored. |
+
+The audit uses all tracked `runtime/src` consumers with `git grep`, including ignored tracked paths. It does not authorise removal of any supported product or legacy migration surface.
+
+Other focused qualification covers real default-factory/native-pool calls for bound, missing, Dream and non-web-shaped identities; exact/empty captured lookup cases; untouched database/files and zero option/factory/provider calls; and one existing non-native compatibility run. No deployment, live-state cleanup or historical-data removal is implied.

@@ -3,7 +3,7 @@ import { join, resolve } from "node:path";
 import { chromium, webkit } from "playwright";
 
 // Exercise the shipped entrypoints and API adapter, not injected hook callbacks.
-const enabled = process.env.PICLAW_RUN_OPTIONAL_BROWSER_TESTS === "1";
+const enabled = process.env.PICLAW_RUN_OPTIONAL_BROWSER_TESTS === "1" && process.env.PICLAW_E2E_DISPOSABLE === "1";
 const browserTest = enabled ? test : test.skip;
 const webRoot = resolve(import.meta.dir, "../../web");
 let server: ReturnType<typeof Bun.serve>;
@@ -11,7 +11,7 @@ beforeAll(() => {
   if (!enabled) return;
   server = Bun.serve({ hostname: "127.0.0.1", port: 0, async fetch(req) {
     const url = new URL(req.url);
-    if (url.pathname === "/") return new Response(Bun.file(join(webRoot, `static/${url.searchParams.get("skin") === "visual" ? "visual" : "classic"}/index.html`)), { headers: { "content-type": "text/html" } });
+    if (url.pathname === "/") return new Response(Bun.file(join(webRoot, `static/${"classic"}/index.html`)), { headers: { "content-type": "text/html" } });
     if (url.pathname === "/editor-vendor/codemirror.js") return new Response(Bun.file(resolve(webRoot, "../extensions/viewers/editor/vendor/codemirror.js")), { headers: { "content-type": "text/javascript" } });
     if (url.pathname.startsWith("/static/")) {
       const path = resolve(webRoot, url.pathname.slice(1));
@@ -23,7 +23,7 @@ beforeAll(() => {
 afterAll(() => server?.stop(true));
 
 for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
-  for (const skin of ["classic", "visual"]) for (const width of [390, 1024]) browserTest(`${engineName}: ${skin} ${width}px shipped Settings placement, persistence and passkeys`, async () => {
+  for (const skin of ["classic"]) for (const width of [390, 1024]) browserTest(`${engineName}: ${skin} ${width}px shipped Settings placement, persistence and passkeys`, async () => {
     const browser = await engine.launch({ headless: true });
     const context = await browser.newContext({ viewport: { width, height: 800 }, reducedMotion: "reduce", serviceWorkers: "block" });
     const page = await context.newPage();
@@ -63,7 +63,7 @@ for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
     }, { chatJid });
     let passkeyName = 'Existing key'; let passkeyWrites = 0;
     const settings = { providers: [], toolsets: [], themes: [], colorKeys: [], uiTheme: "default", assistantName: "Fixture", userName: "Fixture User", widgetToken: 'fixture-token-initial',
-      automaticRecoveryEnabled: true, automaticRecoveryMaxAttempts: 2, automaticRecoveryTotalBudgetMs: 123000, automaticRecoveryEffectiveBudgetMs: 123000,
+      toolUseBudget:64,sessionIsolation:"none",
       instanceTotp: { configured: true, issuer: 'Fixture', label: 'Fixture User', secret: 'FIXTUREONLY', otpauth:'otpauth://totp/fixture', qrSvg:'<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" /></svg>' } };
     const saves: Record<string, unknown>[] = [];
     let tokenWrites = 0, rejectToken = false, rejectSave = false;
@@ -93,6 +93,8 @@ for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
       else if (url.pathname === "/timeline") body = { posts: [], has_more: false, chat_jid: chatJid, user: { name: "Fixture User" }, agent: { name: "Fixture" } };
       else if (url.pathname === "/agent/addons/web-entries") body = { entries: [] };
       else if (url.pathname === "/agent/roster") body = { agents: [], default_agent: "fixture" };
+      // System meters are always on and poll this endpoint.
+      else if (url.pathname === "/agent/system-metrics") body = { cpu_percent: 2, ram_percent: 12, cpu_series: [2], ram_series: [12], swap_series: [] };
       else if (url.pathname === "/agent/branches") body = { branches: [{ chat_jid: chatJid, root_chat_jid: "web:default", branch_id: "cold-start", agent_name: "fixture" }] };
       else if (url.pathname === "/agent/active-chats") body = { chats: [{ chat_jid: chatJid, root_chat_jid: "web:default", agent_name: "fixture", is_active: false }] };
       else if (["/agent/queue", "/agent/queue-state"].includes(url.pathname)) body = { items: [], queue: [], queued: [] };
@@ -119,10 +121,10 @@ for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
       await page.locator('textarea,[contenteditable="true"]').first().waitFor();
       // Allow pending layout hydration to settle before the user's Settings action.
       await page.waitForTimeout(500);
-      await page.evaluate(({skin,width}) => window.dispatchEvent(new CustomEvent('piclaw:open-settings', {detail:skin === 'classic' || width === 1024 ? {section:'api-access'} : {}})), {skin,width});
+      await page.evaluate(({_skin,_width}) => window.dispatchEvent(new CustomEvent('piclaw:open-settings', {detail:{section:'api-access'}})), {skin,width});
       const panel = page.locator('.passkey-settings').filter({visible:true});
       await panel.getByRole('heading',{name:'Existing key',exact:true}).waitFor({timeout:10000});
-      if (skin === 'visual') expect(await page.evaluate(() => localStorage.getItem('piclaw-settings-category'))).toBe('authentication');
+
       expect(await panel.getByText('Never used',{exact:true}).count()).toBe(1);
       await panel.getByRole('button',{name:'Rename',exact:true}).click();
       await panel.getByLabel('Rename passkey',{exact:true}).fill('Desktop backup');
@@ -130,18 +132,18 @@ for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
       await panel.getByRole('heading',{name:'Desktop backup',exact:true}).waitFor();
       expect(passkeyWrites).toBe(1);
       expect(await panel.getByRole('button',{name:'Remove',exact:true}).isDisabled()).toBe(true);
-      const content = page.locator(skin === 'classic' ? '.settings-content' : '.settings-panel__content').filter({visible:true});
+      const content = page.locator('.settings-content').filter({visible:true});
       const openSection = async (section: string) => {
         await page.evaluate(section => window.dispatchEvent(new CustomEvent('piclaw:open-settings',{detail:{section}})),section);
         await page.waitForTimeout(250);
       };
       expect(await content.getByLabel('Secret',{exact:true}).inputValue()).toBe('FIXTUREONLY');
-      const nav = page.locator(skin === 'classic' ? '.settings-nav' : '.settings-panel__nav').filter({visible:true});
+      const nav = page.locator('.settings-nav').filter({visible:true});
       const labels = (await nav.getByRole('button').allTextContents()).map(label => label.trim());
       expect(labels[labels.indexOf('General') + 1]).toBe('Appearance');
-      expect(labels[labels.indexOf('Models') + 1]).toBe('Tools');
+      expect(labels.slice(labels.indexOf('Models'),labels.indexOf('Models')+3)).toEqual(['Models','MCP','Tools']);
       expect(labels[labels.indexOf('Environment') + 1]).toBe('Keychain');
-      if (skin === 'classic') expect(labels[labels.indexOf('Keyboard') + 1]).toBe('Quick Actions');
+      expect(labels[labels.indexOf('Keyboard') + 1]).toBe('Quick Actions');
       expect(labels).not.toContain('API access');
       expect(labels.filter(label => label === 'Authentication')).toHaveLength(1);
       expect(await content.getByRole('heading',{name:'API access',exact:true}).count()).toBe(1);
@@ -158,19 +160,21 @@ for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
       const generalSaves=saves.slice();
       expect(generalSaves.every(patch => !Object.keys(patch).some(key => key.startsWith('automaticRecovery') || key === 'totp' || key === 'widgetToken'))).toBe(true);
       await openSection('sessions');
-      const attempts=content.getByLabel(/^(automatic recovery maximum attempts|Maximum recovery attempts)$/,{exact:true});
-      await attempts.fill('4'); await attempts.blur(); await page.waitForTimeout(1000);
-      expect(settings.automaticRecoveryMaxAttempts).toBe(4);
-      const budget=content.getByLabel(/^(automatic recovery total budget.*|Recovery time allowance.*)$/,{exact:true});
-      await budget.fill('456000'); await budget.blur(); await page.waitForTimeout(1000);
-      expect(settings.automaticRecoveryTotalBudgetMs).toBe(456000);
+      expect(await content.getByText('Agent recovery',{exact:true}).count()).toBe(0);
+      expect(await content.getByText(/Auto-rotate sessions|Session Lifecycle|Recovery time allowance/).count()).toBe(0);
+      const toolBudget=content.getByLabel(/^tool use budget$/i);
+      await toolBudget.fill('91');await toolBudget.blur();await page.waitForTimeout(1000);
+      expect(settings.toolUseBudget).toBe(91);
+      await content.locator('select').first().selectOption('summary');
+      await page.waitForTimeout(1000);expect(settings.sessionIsolation).toBe('summary');
       rejectSave=true;
-      await attempts.fill('7'); await attempts.blur(); await page.waitForTimeout(1000);
-      expect(settings.automaticRecoveryMaxAttempts).toBe(4);
+      await toolBudget.fill('94');await toolBudget.blur();await page.waitForTimeout(1000);
+      expect(settings.toolUseBudget).toBe(91);
       expect(await page.getByText(/Fixture save failed|Save failed/).count()).toBeGreaterThan(0);
       rejectSave=false;
-      await openSection('general'); await openSection('sessions');
-      expect(await content.getByLabel(/^(automatic recovery maximum attempts|Maximum recovery attempts)$/,{exact:true}).inputValue()).toBe('4');
+      await openSection('general');await openSection('sessions');
+      expect(await content.getByLabel(/^tool use budget$/i).inputValue()).toBe('91');
+      expect(saves.every(patch=>!Object.keys(patch).some(key=>key.startsWith('automaticRecovery')||['sessionAutoRotate','sessionMaxSizeMb','sessionMaxLines','sessionMaxCompactions'].includes(key)))).toBe(true);
       expect(await content.evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
       // The nav can be scrolled outside the accessibility viewport on narrow layouts.
       await nav.locator('button').filter({ hasText: /^Authentication$/ }).click();
@@ -182,9 +186,9 @@ for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
       await content.getByRole('button',{name:'Copy token',exact:true}).click();
       expect(await page.evaluate(() => (window as any).copiedToken)).toBe('fixture-token-initial');
       const rotate=async (accept: boolean) => {
-        if(skin==='classic') page.once('dialog',dialog=>accept?dialog.accept():dialog.dismiss());
+        page.once('dialog',dialog=>accept?dialog.accept():dialog.dismiss());
         await content.getByRole('button',{name:'Regenerate',exact:true}).click();
-        if(skin==='visual') await page.getByRole('dialog').getByRole('button',{name:accept?'Regenerate':'Cancel',exact:true}).click();
+
         await page.waitForTimeout(250);
       };
       await rotate(false); expect(tokenWrites).toBe(0);

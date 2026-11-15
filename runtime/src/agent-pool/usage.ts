@@ -8,8 +8,7 @@
 import type { AgentSession, AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 import { createHash } from "node:crypto";
 import { storeTokenUsage } from "../db.js";
-import { getBudgetWorkContext } from "../budget/context.js";
-import { valueApiEquivalentCost } from "../budget/valuation.js";
+import { valueApiEquivalentCost } from "./usage-valuation.js";
 
 export type UsageRecordSource = "assistant" | "tool" | "compaction" | "branch_summary" | "unknown";
 
@@ -131,13 +130,15 @@ function normalizeRunAt(timestamp: unknown): string {
 
 function hasUsageTokensOrCost(usage: Record<string, unknown>): boolean {
   const cost = asRecord(usage.cost) ?? {};
-  return [
+  return (cost.totalFromProvider === true && asOptionalNonNegativeNumber(cost.total) !== null)
+    || asOptionalNonNegativeNumber(usage.providerCost, usage.provider_cost) !== null || [
     usage.input,
     usage.output,
     usage.cacheRead,
     usage.cacheWrite,
     usage.totalTokens,
     usage.total,
+    extractReasoningTokens(usage),
     cost.input,
     cost.output,
     cost.cacheRead,
@@ -166,19 +167,23 @@ function storeUsageRecord(chatJid: string, usage: Record<string, unknown>, metad
   const costOutput = asNumber(cost, "output");
   const costCacheRead = asNumber(cost, "cacheRead");
   const costCacheWrite = asNumber(cost, "cacheWrite");
-  const catalogueCostCandidate = asOptionalNonNegativeNumber(cost.total)
-    ?? costInput + costOutput + costCacheRead + costCacheWrite;
-  // Earendil's catalogue cost object has no field-presence signal: zero can mean
-  // unknown rates, so only a positive total is a trustworthy estimate.
+  // SDK category costs are catalogue-derived; its total may instead be an
+  // actual provider bill. Never value the catalogue using that billed total.
+  const categoryEstimate = costInput + costOutput + costCacheRead + costCacheWrite;
+  const catalogueCostCandidate = cost.totalFromProvider === true ? categoryEstimate
+    : asOptionalNonNegativeNumber(cost.total) ?? categoryEstimate;
+  // Zero category costs alone do not prove a known free catalogue tariff.
   const catalogueCostTotal = catalogueCostCandidate > 0 ? catalogueCostCandidate : null;
-  const providerCostTotal = asOptionalNonNegativeNumber(usage.providerCost, usage.provider_cost);
+  const providerCostTotal = (cost.totalFromProvider === true ? asOptionalNonNegativeNumber(cost.total) : null)
+    ?? asOptionalNonNegativeNumber(usage.providerCost, usage.provider_cost);
+  const providerCostCurrency = providerCostTotal === null ? null : cost.totalFromProvider === true ? "USD"
+    : firstString(usage.providerCostCurrency, usage.provider_cost_currency)?.toUpperCase() ?? null;
   const costTotal = providerCostTotal ?? catalogueCostTotal ?? 0;
   const costProvenance = providerCostTotal !== null
     ? "provider_reported"
     : catalogueCostTotal !== null
       ? "catalogue_estimate"
       : "unavailable";
-  const work = getBudgetWorkContext();
   const provider = asStringOrNull(metadata.provider);
   const cacheWriteFallback = cacheWrite > 0
     && (provider === "openai" || provider === "openai-codex")
@@ -218,6 +223,7 @@ function storeUsageRecord(chatJid: string, usage: Record<string, unknown>, metad
     cost_cache_write: costCacheWrite,
     cost_total: costTotal,
     provider_cost_total: providerCostTotal,
+    provider_cost_currency: providerCostCurrency,
     catalogue_cost_total: catalogueCostTotal,
     cost_provenance: costProvenance,
     model: asStringOrNull(metadata.model),
@@ -226,7 +232,6 @@ function storeUsageRecord(chatJid: string, usage: Record<string, unknown>, metad
     api: asStringOrNull(metadata.api),
     usage_source: metadata.source,
     turns: metadata.turns ?? null,
-    work_id: work?.workId ?? null,
     invocation_id: metadata.invocationId ?? metadata.eventId ?? null,
     usage_event_id: eventId,
     api_equivalent_cost_microusd: valuation.amountMicros,
@@ -239,7 +244,6 @@ function storeUsageRecord(chatJid: string, usage: Record<string, unknown>, metad
     pricing_version: "pi-ai-usage-cost-v1",
     pricing_context_tier: asStringOrNull(metadata.contextTier ?? usage.contextTier ?? usage.context_tier),
     pricing_cache_fallbacks: JSON.stringify(valuation.fallbackCategories),
-    execution_kind: work?.kind ?? null,
   });
 }
 
@@ -247,7 +251,7 @@ function storeUsageRecord(chatJid: string, usage: Record<string, unknown>, metad
  * Extract token usage from an assistant message and store it in the database.
  * Kept for direct side-prompt streams and existing call sites/tests.
  */
-export function recordMessageUsage(chatJid: string, message: unknown): void {
+export function recordMessageUsage(chatJid: string, message: unknown, source: UsageRecordSource = "assistant"): void {
   const msg = asRecord(message) as UsageCarrier | null;
   if (!msg || msg.role !== "assistant") return;
 
@@ -255,7 +259,7 @@ export function recordMessageUsage(chatJid: string, message: unknown): void {
   if (!usage) return;
 
   storeUsageRecord(chatJid, usage, {
-    source: "assistant",
+    source,
     timestamp: msg.timestamp,
     model: msg.model,
     responseModel: msg.responseModel,

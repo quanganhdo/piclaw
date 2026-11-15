@@ -47,6 +47,75 @@ test("SSEClient reconnectIfNeeded respects cooldown", () => {
   expect(connected).toBe(false);
 });
 
+for (const state of ["connected", "connecting", "cooldown"] as const) {
+  test(`SSEClient visible return immediately replaces a suspended ${state} connection`, () => {
+    const original = globalThis.EventSource;
+    const instances: any[] = [];
+    class FakeEventSource {
+      onopen: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      closed = false;
+      constructor(readonly url: string) { instances.push(this); }
+      addEventListener() {}
+      close() { this.closed = true; }
+    }
+    globalThis.EventSource = FakeEventSource as any;
+    const statuses: string[] = [];
+    const client = new SSEClient(() => {}, status => statuses.push(status), { chatJid: "web:resume" });
+    try {
+      client.connect();
+      const old = instances[0];
+      if (state === "connected") old.onopen();
+      if (state === "cooldown") old.onerror();
+      client.lastActivityAt = Date.now() - 80000;
+      client.reconnectDelay = 30000;
+      client.cooldownUntil = Date.now() + 60000;
+      client.scheduleReconnect();
+      expect(client.reconnectIfNeeded({ immediate: true })).toBe(true);
+      expect(instances).toHaveLength(2);
+      expect(instances[1].url).toBe("/sse/stream?chat_jid=web%3Aresume");
+      expect(old.closed).toBe(true);
+      expect(client.reconnectTimeout).toBeNull();
+      expect(client.cooldownUntil).toBe(0);
+      expect(client.reconnectDelay).toBe(1000);
+      const beforeCallbacks = statuses.length;
+      old.onopen(); old.onerror();
+      expect(statuses).toHaveLength(beforeCallbacks);
+      // Focus during a healthy in-progress handshake must not start a third source.
+      expect(client.reconnectIfNeeded({ immediate: true })).toBe(false);
+      instances[1].onopen();
+      expect(client.status).toBe("connected");
+      expect(client.reconnectIfNeeded({ immediate: true })).toBe(false);
+      expect(instances).toHaveLength(2);
+      client.disconnect();
+      client.forceReconnect({ immediate: true });
+      expect(instances).toHaveLength(2);
+    } finally {
+      client.disconnect(); globalThis.EventSource = original;
+    }
+  });
+}
+
+test("SSEClient watchdog also detects a handshake that never opens or errors", () => {
+  const originalSource = globalThis.EventSource, originalInterval = globalThis.setInterval, originalClear = globalThis.clearInterval;
+  let tick: (() => void) | undefined, closed = false;
+  globalThis.EventSource = class { addEventListener() {} close() { closed = true; } } as any;
+  globalThis.setInterval = ((callback: () => void) => { tick = callback; return 1; }) as any;
+  globalThis.clearInterval = (() => {}) as any;
+  const client = new SSEClient(() => {}, () => {});
+  try {
+    client.connect();
+    client.lastActivityAt = Date.now() - 80000;
+    tick!();
+    expect(closed).toBe(true);
+    expect(client.connecting).toBe(false);
+    expect(client.reconnectTimeout).not.toBeNull();
+  } finally {
+    client.disconnect(); globalThis.EventSource = originalSource;
+    globalThis.setInterval = originalInterval; globalThis.clearInterval = originalClear;
+  }
+});
+
 test("SSEClient connects to a chat-scoped SSE stream when chatJid is provided", () => {
   const OriginalEventSource = globalThis.EventSource;
   const opened: string[] = [];
@@ -66,6 +135,7 @@ test("SSEClient connects to a chat-scoped SSE stream when chatJid is provided", 
     const client = new SSEClient(() => {}, () => {}, { chatJid: "web:branch-a" });
     client.connect();
     expect(opened[0]).toBe("/sse/stream?chat_jid=web%3Abranch-a");
+    client.disconnect();
   } finally {
     globalThis.EventSource = OriginalEventSource;
   }

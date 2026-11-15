@@ -126,23 +126,11 @@ function harness(input: unknown): HarnessCorrelation | null {
   if (input === null) return null;
   const raw = object(input, [
     "sessionId",
-    "lane",
     "harnessOperationId",
-    "state",
-    "watchGeneration",
   ]);
   return {
     sessionId: text(raw.sessionId, 512),
-    lane: text(raw.lane, 512),
     harnessOperationId: nullableText(raw.harnessOperationId, 512),
-    state: member([
-      "not_started",
-      "running",
-      "suspended",
-      "aborting",
-      "finished",
-    ])(raw.state),
-    watchGeneration: integer(raw.watchGeneration, 0),
   };
 }
 

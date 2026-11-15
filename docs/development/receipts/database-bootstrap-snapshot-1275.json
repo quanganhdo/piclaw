@@ -1,0 +1,164 @@
+{
+  "version": 1,
+  "issue": 1275,
+  "epic": 1270,
+  "implementationBase": "c637741fba10cb92f3d38d01b8be6d18f1c6ed43",
+  "metric": "Same stable #1270 tracked handwritten runtime/src + runtime/durable-engine/src rules/exclusions; physical includes comments/blanks.",
+  "before": {
+    "files": 712,
+    "physicalLOC": 144517,
+    "nonblankLines": 134115
+  },
+  "after": {
+    "files": 712,
+    "physicalLOC": 144515,
+    "nonblankLines": 134114
+  },
+  "delta": {
+    "files": 0,
+    "physicalLOC": -2,
+    "nonblankLines": -1
+  },
+  "productionDiff": {
+    "files": 5,
+    "additions": 25,
+    "deletions": 27
+  },
+  "outsideRootProductionAdditions": 0,
+  "relocatedProductionImplementationOutsideRoots": 0,
+  "withinRootModeExpressionMovementCredit": 0,
+  "removed": {
+    "policyFreeRawOverrideForwarder": {
+      "before": 1,
+      "after": 0
+    },
+    "storedDuplicateModeProjection": {
+      "before": 1,
+      "after": 0
+    },
+    "selectedIndependentPathModeSources": {
+      "before": 2,
+      "after": 1
+    }
+  },
+  "snapshot": {
+    "resolver": "existing resolveRuntimeConfigPaths/getRuntimeConfigPaths",
+    "newDataField": "databasePath",
+    "boundary": "initDatabase(Readonly<RuntimeConfigPaths>)",
+    "bootstrapCaller": "initializeRuntimeEnvironment passes one explicit snapshot",
+    "defaultCallersRetained": true,
+    "modePolicy": "exact1/true memory flag or trimmed raw store sentinel; existing CLI directory precedence/sentinel behavior preserved",
+    "fileCacheIdentity": "absolute databasePath",
+    "memoryCacheIdentity": "memory-prefixed normalized workspace/store/data tuple",
+    "unsupportedRebind": "reject before old handle close/checkpoint release",
+    "isolatedTestMemoryIdentityChange": true,
+    "nonTestMemoryIdentityChangeRefused": true
+  },
+  "retained": [
+    "module bootstrap constants and intentionally live candidate getters",
+    "underlying raw reader and runtime-root consumers",
+    "SQLite root/SDK/scheduler role policy and FK/schema/ledger/VACUUM/checkpoint owners",
+    "actual file device/inode/instance binding",
+    "same-target stale-handle recovery",
+    "file-backed backup and canonical live-database test refusal"
+  ],
+  "validation": {
+    "originalDefining": {
+      "pass": 1,
+      "fail": 4,
+      "assertions": 6
+    },
+    "finalDefining": {
+      "pass": 6,
+      "assertions": 12
+    },
+    "obsoleteForwarderFixtureBeforeMigration": {
+      "pass": 0,
+      "fail": 1,
+      "missingExport": true
+    },
+    "focused": {
+      "pass": 23,
+      "assertions": 91,
+      "files": 4
+    },
+    "runtimeStartup": {
+      "pass": 4,
+      "assertions": 15
+    },
+    "diskStartup": {
+      "pass": 6,
+      "assertions": 12
+    },
+    "schemaAndCache": {
+      "pass": 18,
+      "assertions": 75
+    },
+    "typeProjects": [
+      "runtime/tsconfig.json",
+      "runtime/durable-engine/tsconfig.json",
+      "qualification/pi-durable-130/tsconfig.json"
+    ],
+    "strictNewFixtureTypes": true,
+    "actualNativeFactory": {
+      "scenario": "native-events",
+      "pass": 1,
+      "assertions": 182
+    },
+    "circular": {
+      "reachableFiles": 546,
+      "cycles": 0
+    },
+    "importBoundaries": {
+      "baselineFindings": 25,
+      "candidateFindings": 25,
+      "byteIdentical": true,
+      "green": false
+    },
+    "envObservationRefresh": {
+      "readerRelocatedNotFunctionallyRemoved": true,
+      "scanRulesUnchanged": true,
+      "directNameBaselineUnchanged": true,
+      "acceptReductionUsed": false,
+      "directNames": 7
+    },
+    "packageDryRun": {
+      "ignoreScripts": true,
+      "retainedOwnersPresent": 4,
+      "testFixtureAbsent": true
+    },
+    "integratedBootstrapAndLog": {
+      "pass": 25,
+      "assertions": 96,
+      "files": 5
+    }
+  },
+  "approvedAddonInventory": {
+    "revision": "ad7ad0a4b63ee37090b6bee4309fa5c458ec6510",
+    "productionRetiredForwarderConsumers": 0,
+    "existingNoArgInitIntegrationTests": 2
+  },
+  "creditNote": "Small actual wrapper/state reduction; moved mode logic, docs/tests/types and prior1696/1697role/checkpoint work earn no extra credit. No new config facade, live migration, dependency install or restart. Final merged-head acceptance still required.",
+  "originalImplementationBase": "36610b74f1b5e3244325130270b290ab4eb437a8",
+  "hostedFixtureCorrection": {
+    "failedCI": 40787779998,
+    "hostPassesBeforeFailure": 7092,
+    "failures": 26,
+    "causes": [
+      "WAL fixtures target frozen store instead of actual opened file",
+      "copied-profile restore placed in a different frozen directory",
+      "file queue fixture switches away from open memory owner"
+    ],
+    "reproduction": "direct media/auth files plus owned import-order seed for history/queue",
+    "productionChanges": 0,
+    "oldAssertionsAndTimeoutsUnchanged": true,
+    "addedActualBindingAndBothConnectionPathAssertions": true,
+    "removedUnrelatedFrozenStoreCleanup": true,
+    "after": {
+      "pass": 26,
+      "assertions": 271,
+      "files": 4
+    },
+    "mediaHelperImportCorrectionRetained": true
+  }
+}

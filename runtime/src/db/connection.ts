@@ -1,7 +1,7 @@
 /**
  * db/connection.ts – SQLite database initialisation and schema management.
  *
- * Opens (or creates) the main SQLite database at `<STORE_DIR>/messages.db`,
+ * Opens (or creates) the SQLite target from one explicit bootstrap path snapshot,
  * sets pragmas for WAL mode and busy timeout, and ensures all required tables,
  * indexes, FTS virtual tables, and triggers exist.
  *
@@ -17,91 +17,67 @@
  */
 
 import Database from "bun:sqlite";
+import { initializeChatCursorStorage } from "./chat-cursor-storage.js";
 import { initializeAccessSchema } from "./access-state.js";
 import { initializeSessionOwnershipSchema } from "./session-ownership.js";
 import { initializeSessionHandleSchema } from "./session-handles.js";
 import { initializeOwnedForkSchema } from "./owned-forks.js";
-import { initializeMessageAuthoritySchema } from "./message-authority-schema.js";
-import { initializeFamilyMediaUploads } from "./family-media-uploads.js";
-import { initializeAuthFactorSchema } from "./auth-factors-schema.js";
 import { initializeAuthLabelsSchema } from "./auth-labels-schema.js";
-import { initializeFamilyToolRestrictions } from './family-tool-restrictions.js';
-import { initializeAccountPreferences } from './account-preferences.js';
 import { initializePickerPins } from './picker-pins.js';
-import { initializeAccountAvatars } from './account-avatar.js';
-import { initializeAccountModelDefaults } from './account-model-defaults.js';
-import { initializeFamilyScheduledGrants } from './family-scheduled-grants-schema.js';
-import { initializeFamilyTaskAdmission } from './family-task-admission-schema.js';
-import { initializeFamilyScheduledOccurrences } from './family-scheduled-occurrences-schema.js';
-import { initializeFamilyScheduledExecutions } from './family-scheduled-executions-schema.js';
-import { initializeFamilyScheduledDispatch } from './family-scheduled-dispatch-schema.js';
-import { initializeFamilyScheduledExpiry } from './family-scheduled-expiry-schema.js';
-import { initializeFamilyScheduledInterruptions } from './family-scheduled-interruptions-schema.js';
-import { initializeFamilyScheduledCancellations } from './family-scheduled-cancellations-schema.js';
-import { initializeFamilyExecutionAdmission } from './family-execution-admission-schema.js';
-import { initializeFamilyWorkspaceIndex } from './family-workspace-index-schema.js';
-import { initializeFamilyMemory } from './family-memory-schema.js';
-import { initializeFamilyScheduledPublications } from './family-scheduled-publications-schema.js';
 import { initializeToolOutputOwnership } from './tool-output-ownership-schema.js';
-import { initializeBudgetLimitsSchema } from './budget-limits-schema.js';
 import { initializeAddonOperationsSchema } from './addon-operations-schema.js';
 import { initializeChatProjects } from './chat-project-schema.js';
+import { initializeScheduledHistorySchema } from './scheduled-history-schema.js';
 import fs from "fs";
 import path from "path";
 
-import { STORE_DIR, WORKSPACE_DIR, getRuntimeBootstrapPathOverrides } from "../core/config.js";
-import { createLogger, debugSuppressedError } from "../utils/logger.js";
-import { recompressExistingMedia } from "./media-recompress.js";
+import { WORKSPACE_DIR, getRuntimeConfigPaths, getWorkspaceDir, getStoreDir, getConfigPath } from "../core/config.js";
+import type { RuntimeConfigPaths } from "../core/config-paths.js";
+import { createLogger } from "../utils/logger.js";
+import { migrateMediaCompression } from "./media-recompress.js";
+import { ensureLegacyColumns } from "./legacy-columns.js";
 import { createVerifiedSqliteBackup, type SqliteBackupManifest } from "./backup.js";
-import { enableSqliteWal } from "./sqlite-journal.js";
-import { ensureOwnedMigrationLedger } from "./migrations.js";
+import { registerSqliteCheckpoint } from "./sqlite-checkpoint.js";
+import { openSqliteRole } from "./sqlite-role-policy.js";
+import { RuntimeStartupCleanupError } from "../runtime/startup-cleanup-error.js";
+import { applyOwnedMigrations } from "./migrations.js";
+import { initializeMessageInlineMediaSchema } from "./message-inline-media.js";
+import { retireAttachmentRowidIndex } from "./attachment-index-retirement.js";
 import { migrateScheduledTaskAuthorities } from "./scheduled-task-authority.js";
 import { installScheduledRunCompositionSchema } from "../service-effects/current-piclaw/scheduled-run-schema.js";
 
 const log = createLogger("db.connection");
 
-/**
- * Detect whether `dbPath` resides on a ZFS filesystem by parsing
- * /proc/self/mountinfo. Returns false on any error or non-Linux platform.
- */
-function isZfsFilesystem(dbPath: string): boolean {
-  try {
-    const mountInfo = fs.readFileSync("/proc/self/mountinfo", "utf-8");
-    const resolved = path.resolve(dbPath);
-    let bestLen = 0;
-    let bestFs = "";
-    for (const line of mountInfo.split("\n")) {
-      const dashIdx = line.indexOf(" - ");
-      if (dashIdx === -1) continue;
-      const fields = line.slice(0, dashIdx).split(" ");
-      const mountpoint = fields[4];
-      const afterDash = line.slice(dashIdx + 3).trim().split(" ");
-      const fstype = afterDash[0];
-      if (mountpoint && resolved.startsWith(mountpoint) && mountpoint.length > bestLen) {
-        bestLen = mountpoint.length;
-        bestFs = fstype;
-      }
-    }
-    return bestFs === "zfs";
-  } catch {
-    return false;
-  }
-}
-
 /** Singleton database handle; set by initDatabase(), accessed via getDb(). */
 let db: Database | null = null;
-let dbMode: "memory" | "file" | null = null;
 /** Cache key for the currently-open database target or in-memory test identity. */
 let dbPathCache: string | null = null;
+let stopCheckpoint: (() => void | Promise<void>) | undefined;
+let pendingCleanup: Promise<void> | undefined;
+let cleanupDatabase: Database | undefined;
 let dbFileIdentity: string | null = null;
 let dbInstance = 0;
+type PublishedDatabaseRole = "root" | "index-worker" | "maintenance-reader" | "maintenance-writer";
+let dbRole: PublishedDatabaseRole | undefined;
+let cleanupFailure: RuntimeStartupCleanupError | undefined;
 function currentFileIdentity(pathname: string): string {
   const stat = fs.statSync(pathname);
   return `${stat.dev}:${stat.ino}`;
 }
 export function getDatabaseBinding(): { path: string; identity: string; instance: number } | null {
-  if (!db || dbMode !== "file" || !dbPathCache || !dbFileIdentity) return null;
+  if (!db || !dbPathCache || !dbFileIdentity) return null;
   return { path: dbPathCache, identity: dbFileIdentity, instance: dbInstance };
+}
+
+/** Capture this host singleton's existing binding. A pre-start snapshot is safe
+ * for pure controls, but can never authorise a later database write. */
+export function captureHostDatabaseBinding(database: Database | null = db): () => void {
+  const binding = getDatabaseBinding(), paths = JSON.stringify([getWorkspaceDir(), getStoreDir(), getConfigPath()]);
+  return () => {
+    if (!database || db !== database || JSON.stringify(getDatabaseBinding()) !== JSON.stringify(binding)
+      || JSON.stringify([getWorkspaceDir(), getStoreDir(), getConfigPath()]) !== paths) throw Error('Host database binding changed.');
+    if (binding && currentFileIdentity(binding.path) !== binding.identity) throw Error('Host database file changed.');
+  };
 }
 
 const CANONICAL_WORKSPACE_DIR = path.resolve("/workspace");
@@ -158,7 +134,7 @@ export function shouldBlockLiveDatabaseOpenInTests(options: {
  *   - message_media – join table linking messages to media records
  *   - tool_outputs – large tool invocation results (bash output, file reads)
  *   - tool_outputs_fts – FTS5 index for searching tool output content
- *   - scheduled_tasks – cron/interval/once task definitions
+ *   - scheduled_tasks – compatibility/UI projection of versioned S07 definitions
  *   - task_run_logs – execution history for scheduled tasks
  *   - router_state – key-value store for router cursor positions
  *   - token_usage – per-run LLM token and cost accounting
@@ -232,9 +208,9 @@ function createSchema(database: Database): void {
       PRIMARY KEY (id, chat_jid),
       FOREIGN KEY (chat_jid) REFERENCES chats(jid)
     );
-    -- Indexes for common timeline queries and thread operations.
-    -- idx_messages_chat_jid_timestamp covers both chat and time ordering.
-    -- idx_messages_chat_jid_bot_timestamp is used for agent/user filters.
+    -- The chat-only index implicitly orders each chat by rowid for timeline pagination.
+    -- Timestamp and bot/timestamp indexes serve time-ordered and agent/user queries.
+    CREATE INDEX IF NOT EXISTS idx_messages_chat_jid ON messages(chat_jid);
     CREATE INDEX IF NOT EXISTS idx_messages_chat_jid_timestamp ON messages(chat_jid, timestamp);
     CREATE INDEX IF NOT EXISTS idx_messages_chat_jid_bot_timestamp ON messages(chat_jid, is_bot_message, timestamp);
     CREATE INDEX IF NOT EXISTS idx_messages_thread_id ON messages(chat_jid, thread_id);
@@ -301,7 +277,6 @@ function createSchema(database: Database): void {
       PRIMARY KEY (message_rowid, media_id),
       FOREIGN KEY (media_id) REFERENCES media(id)
     );
-    CREATE INDEX IF NOT EXISTS idx_message_media_message_rowid ON message_media(message_rowid);
     CREATE INDEX IF NOT EXISTS idx_message_media_media_id ON message_media(media_id);
 
     CREATE TABLE IF NOT EXISTS thinking_content (
@@ -435,52 +410,6 @@ function createSchema(database: Database): void {
       value TEXT NOT NULL
     );
 
-    -- Per-chat cursor, preflight, and inflight-run tracking.
-    -- cursor_ts        : ISO timestamp of the last fully-processed message.
-    -- preflight_*      : set while pre-prompt work (like compaction) is running
-    --                    before the user message is consumed into inflight state.
-    --                    If still set on startup the message remains pending and
-    --                    the marker can be cleared without cursor rollback.
-    -- inflight_*       : set atomically with the cursor advance immediately
-    --                    before prompt execution begins; cleared by endChatRun /
-    --                    endChatRunWithError after the run. If still set on
-    --                    startup the process died mid-run and the cursor must be
-    --                    rolled back to inflight_prev_ts.
-    -- failed_*         : set atomically by endChatRunWithError when a run errors;
-    --                    cleared atomically by endChatRun on success, or by
-    --                    clearFailedRun on model switch. Because these columns
-    --                    share a row with inflight_*, every completion path is
-    --                    a single UPDATE with no intermediate inconsistent state.
-    -- compaction_active_* : durable marker for an in-flight compaction phase.
-    --                    If the process is killed by the external watchdog
-    --                    during recovery compaction, startup recovery can mark
-    --                    the chat as failed/backed off instead of replaying the
-    --                    same compaction loop.
-    CREATE TABLE IF NOT EXISTS chat_cursors (
-      chat_jid             TEXT PRIMARY KEY,
-      cursor_ts            TEXT NOT NULL DEFAULT '',
-      preflight_prev_ts    TEXT,
-      preflight_message_id TEXT,
-      preflight_started_at TEXT,
-      inflight_prev_ts     TEXT,
-      inflight_message_id  TEXT,
-      inflight_started_at  TEXT,
-      failed_prev_ts       TEXT,
-      failed_ts            TEXT,
-      failed_message_id    TEXT,
-      failed_thread_root   INTEGER,
-      failed_created_at    TEXT,
-      queued_followups_json TEXT,
-      compaction_active_started_at TEXT,
-      compaction_active_reason TEXT,
-      auto_compaction_window_ordinal INTEGER,
-      auto_compaction_baseline_tokens INTEGER,
-      auto_compaction_prefill_tokens INTEGER,
-      auto_compaction_success_count INTEGER,
-      auto_compaction_warned_count INTEGER,
-      auto_compaction_updated_at TEXT
-    );
-
     CREATE TABLE IF NOT EXISTS token_usage (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       chat_jid TEXT NOT NULL,
@@ -499,6 +428,7 @@ function createSchema(database: Database): void {
       cost_cache_write REAL DEFAULT 0,
       cost_total REAL DEFAULT 0,
       provider_cost_total REAL,
+      provider_cost_currency TEXT,
       catalogue_cost_total REAL,
       cost_provenance TEXT,
       model TEXT,
@@ -636,27 +566,15 @@ function createSchema(database: Database): void {
  * added for the web channel's rich-message support.
  */
 function ensureMessageColumns(database: Database): void {
-  const columns = database.prepare("PRAGMA table_info(messages)").all() as Array<{ name: string }>;
-  const existing = new Set(columns.map((col) => col.name));
-  const ensureColumn = (name: string, type = "TEXT") => {
-    if (existing.has(name)) return;
-    try {
-      database.exec(`ALTER TABLE messages ADD COLUMN ${name} ${type}`);
-    } catch (err) {
-      debugSuppressedError(log, "Message-column migration raced an already-updated schema state.", err, {
-        operation: "db.ensure_message_columns.add_column",
-        name,
-        type,
-      });
-    }
-  };
-  ensureColumn("content_blocks");
-  ensureColumn("link_previews");
-  ensureColumn("screen_hint");
-  ensureColumn("thread_id", "INTEGER");
-  ensureColumn("is_terminal_agent_reply", "INTEGER DEFAULT 0");
-  ensureColumn("is_steering_message", "INTEGER DEFAULT 0");
-  ensureColumn("annotations");
+  ensureLegacyColumns(database, "messages", [
+    { name: "content_blocks", type: "TEXT" },
+    { name: "link_previews", type: "TEXT" },
+    { name: "screen_hint", type: "TEXT" },
+    { name: "thread_id", type: "INTEGER" },
+    { name: "is_terminal_agent_reply", type: "INTEGER", defaultSql: "0" },
+    { name: "is_steering_message", type: "INTEGER", defaultSql: "0" },
+    { name: "annotations", type: "TEXT" },
+  ]);
 }
 
 /**
@@ -676,100 +594,72 @@ function ensureFts(database: Database): void {
  * version to allow per-task model overrides).
  */
 function ensureKeychainNoteColumns(database: Database): void {
-  const columns = database.prepare("PRAGMA table_info(keychain_entries)").all() as Array<{ name: string }>;
-  const existing = new Set(columns.map((col) => col.name));
-  const ensureColumn = (name: string) => {
-    if (existing.has(name)) return;
-    try {
-      database.exec(`ALTER TABLE keychain_entries ADD COLUMN ${name} TEXT NOT NULL DEFAULT ''`);
-    } catch (err) {
-      debugSuppressedError(log, "Keychain-note column migration raced an already-updated schema state.", err, {
-        operation: "db.ensure_keychain_note_columns.add_column",
-        name,
-      });
-    }
-  };
-  ensureColumn("user_note");
-  ensureColumn("agent_note");
+  ensureLegacyColumns(database, "keychain_entries", [
+    { name: "user_note", type: "TEXT", notNull: true, defaultSql: "''" },
+    { name: "agent_note", type: "TEXT", notNull: true, defaultSql: "''" },
+  ]);
+}
+
+// These historical columns have presence-only compatibility contracts (some
+// released schemas differ in nullability). Keep the stricter selected-column
+// bridge separate. The schema transaction owns the writer: ALTER errors are
+// failures, not evidence of a concurrent migration to suppress.
+function addMissingLegacyColumns(database: Database, table: 'token_usage' | 'scheduled_tasks' | 'thinking_content',
+  columns: ReadonlyArray<readonly [string, string]>): void {
+  const existing = new Set((database.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map(column => column.name));
+  for (const [name, definition] of columns) {
+    if (!existing.has(name)) database.exec(`ALTER TABLE ${table} ADD COLUMN ${name} ${definition}`);
+  }
 }
 
 function ensureTokenUsageColumns(database: Database): void {
-  const columns = database.prepare("PRAGMA table_info(token_usage)").all() as Array<{ name: string }>;
-  const existing = new Set(columns.map((col) => col.name));
-  const ensureColumn = (name: string, type: string) => {
-    if (existing.has(name)) return;
-    try {
-      database.exec(`ALTER TABLE token_usage ADD COLUMN ${name} ${type}`);
-    } catch (err) {
-      debugSuppressedError(log, "Token-usage column migration raced an already-updated schema state.", err, {
-        operation: "db.ensure_token_usage_columns.add_column",
-        name,
-        type,
-      });
-    }
-  };
-
-  ensureColumn("response_model", "TEXT");
-  ensureColumn("reasoning_tokens", "INTEGER DEFAULT 0");
-  ensureColumn("usage_source", "TEXT DEFAULT 'assistant'");
-  ensureColumn("cache_read_reported", "INTEGER");
-  ensureColumn("cache_write_reported", "INTEGER");
-  ensureColumn("provider_cost_total", "REAL");
-  ensureColumn("catalogue_cost_total", "REAL");
-  ensureColumn("cost_provenance", "TEXT");
-  ensureColumn("work_id", "TEXT");
-  ensureColumn("invocation_id", "TEXT");
-  ensureColumn("usage_event_id", "TEXT");
-  ensureColumn("api_equivalent_cost_microusd", "INTEGER");
-  ensureColumn("api_equivalent_cost_known", "INTEGER");
-  ensureColumn("valuation_provenance", "TEXT");
-  ensureColumn("api_equivalent_known_subtotal_microusd", "INTEGER");
-  ensureColumn("api_equivalent_unknown_categories", "TEXT");
-  ensureColumn("pricing_currency", "TEXT");
-  ensureColumn("pricing_source", "TEXT");
-  ensureColumn("pricing_version", "TEXT");
-  ensureColumn("pricing_context_tier", "TEXT");
-  ensureColumn("pricing_cache_fallbacks", "TEXT");
+  addMissingLegacyColumns(database, 'token_usage', [
+    ['response_model', 'TEXT'],
+    ['reasoning_tokens', 'INTEGER DEFAULT 0'],
+    ['usage_source', "TEXT DEFAULT 'assistant'"],
+    ['cache_read_reported', 'INTEGER'],
+    ['cache_write_reported', 'INTEGER'],
+    ['provider_cost_total', 'REAL'],
+    ['provider_cost_currency', 'TEXT'],
+    ['catalogue_cost_total', 'REAL'],
+    ['cost_provenance', 'TEXT'],
+    ['work_id', 'TEXT'],
+    ['invocation_id', 'TEXT'],
+    ['usage_event_id', 'TEXT'],
+    ['api_equivalent_cost_microusd', 'INTEGER'],
+    ['api_equivalent_cost_known', 'INTEGER'],
+    ['valuation_provenance', 'TEXT'],
+    ['api_equivalent_known_subtotal_microusd', 'INTEGER'],
+    ['api_equivalent_unknown_categories', 'TEXT'],
+    ['pricing_currency', 'TEXT'],
+    ['pricing_source', 'TEXT'],
+    ['pricing_version', 'TEXT'],
+    ['pricing_context_tier', 'TEXT'],
+    ['pricing_cache_fallbacks', 'TEXT'],
+  ]);
   database.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_token_usage_usage_event_id ON token_usage(usage_event_id) WHERE usage_event_id IS NOT NULL");
+  // Context polling sums chat history on the main thread. Cover the existing
+  // totals query after legacy columns exist, avoiding scattered table reads.
+  const oldIndex="CREATE INDEX idx_token_usage_chat_totals_covering ON token_usage (chat_jid, run_at, id, input_tokens, output_tokens, reasoning_tokens, cache_read_tokens, cache_write_tokens, total_tokens, cost_total, cost_provenance)";
+  const prior=database.query("SELECT sql FROM main.sqlite_schema WHERE type='index' AND name='idx_token_usage_chat_totals_covering'").get() as {sql:string}|null;
+  // Retire only our exact old covering declaration; never erase an unknown index.
+  if(prior?.sql.replace(/\s+/g,' ').replace(/\s*\(/g,' (').trim()===oldIndex)database.exec('DROP INDEX main.idx_token_usage_chat_totals_covering');
+  database.exec(`CREATE INDEX IF NOT EXISTS idx_token_usage_chat_totals_covering_v2 ON token_usage
+    (chat_jid, run_at, id, input_tokens, output_tokens, reasoning_tokens,
+     cache_read_tokens, cache_write_tokens, total_tokens, cost_total, cost_provenance,
+     provider_cost_total, provider_cost_currency, catalogue_cost_total, pricing_currency)`);
 }
 
 function ensureScheduledTaskColumns(database: Database): void {
-  const columns = database.prepare("PRAGMA table_info(scheduled_tasks)").all() as Array<{ name: string }>;
-  const existing = new Set(columns.map((col) => col.name));
-  const ensureColumn = (name: string, type: string) => {
-    if (existing.has(name)) return;
-    try {
-      database.exec(`ALTER TABLE scheduled_tasks ADD COLUMN ${name} ${type}`);
-    } catch (err) {
-      debugSuppressedError(log, "Scheduled-task column migration raced an already-updated schema state.", err, {
-        operation: "db.ensure_scheduled_task_columns.add_column",
-        name,
-        type,
-      });
-    }
-  };
-
-  ensureColumn("model", "TEXT");
-  ensureColumn("task_kind", "TEXT DEFAULT 'agent'");
-  ensureColumn("command", "TEXT");
-  ensureColumn("cwd", "TEXT");
-  ensureColumn("timeout_sec", "INTEGER");
-  ensureColumn("notify_on_complete", "INTEGER NOT NULL DEFAULT 1");
-  ensureColumn("revision", "INTEGER NOT NULL DEFAULT 1");
-}
-
-function ensureWebSessionColumns(database: Database): void {
-  const columns = database.prepare("PRAGMA table_info(web_sessions)").all() as Array<{ name: string }>;
-  const existing = new Set(columns.map((col) => col.name));
-  if (!existing.has("auth_method")) {
-    try {
-      database.exec("ALTER TABLE web_sessions ADD COLUMN auth_method TEXT");
-    } catch (err) {
-      debugSuppressedError(log, "Web-session auth_method migration raced an already-updated schema state.", err, {
-        operation: "db.ensure_web_session_columns.add_auth_method",
-      });
-    }
-  }
+  addMissingLegacyColumns(database, 'scheduled_tasks', [
+    ['model', 'TEXT'],
+    ['task_kind', "TEXT DEFAULT 'agent'"],
+    ['command', 'TEXT'],
+    ['cwd', 'TEXT'],
+    ['timeout_sec', 'INTEGER'],
+    ['notify_on_complete', 'INTEGER NOT NULL DEFAULT 1'],
+    ['revision', 'INTEGER NOT NULL DEFAULT 1'],
+  ]);
 }
 
 function ensureChatBranchConstraints(database: Database): void {
@@ -814,55 +704,6 @@ function ensureChatBranchConstraints(database: Database): void {
 }
 
 /**
- * Add newer per-chat state columns to chat_cursors for databases created
- * before they were introduced. ALTER TABLE ADD COLUMN is safe to run
- * repeatedly – SQLite ignores the statement if the column already exists
- * (we catch the error).
- */
-function ensureChatCursorColumns(database: Database): void {
-  const cols = new Set(
-    (database.prepare("PRAGMA table_info(chat_cursors)").all() as Array<{ name: string }>)
-      .map((r) => r.name)
-  );
-  const toAdd: Array<[string, string]> = [
-    ["preflight_prev_ts",         "TEXT"],
-    ["preflight_message_id",      "TEXT"],
-    ["preflight_started_at",      "TEXT"],
-    ["failed_prev_ts",            "TEXT"],
-    ["failed_ts",                 "TEXT"],
-    ["failed_message_id",         "TEXT"],
-    ["failed_thread_root",        "INTEGER"],
-    ["failed_created_at",         "TEXT"],
-    ["queued_followups_json",     "TEXT"],
-    ["compaction_failure_count",  "INTEGER"],
-    ["compaction_last_failed_at", "TEXT"],
-    ["compaction_backoff_until",  "TEXT"],
-    ["compaction_last_error",     "TEXT"],
-    ["compaction_active_started_at", "TEXT"],
-    ["compaction_active_reason",     "TEXT"],
-    ["auto_compaction_window_ordinal", "INTEGER"],
-    ["auto_compaction_baseline_tokens", "INTEGER"],
-    ["auto_compaction_prefill_tokens", "INTEGER"],
-    ["auto_compaction_success_count", "INTEGER"],
-    ["auto_compaction_warned_count", "INTEGER"],
-    ["auto_compaction_updated_at", "TEXT"],
-  ];
-  for (const [col, type] of toAdd) {
-    if (!cols.has(col)) {
-      try {
-        database.exec(`ALTER TABLE chat_cursors ADD COLUMN ${col} ${type}`);
-      } catch (err) {
-        debugSuppressedError(log, "Chat-cursor migration raced an already-updated schema state.", err, {
-          operation: "db.ensure_chat_cursor_columns.add_column",
-          column: col,
-          type,
-        });
-      }
-    }
-  }
-}
-
-/**
  * One-time migration: seed chat_cursors from the old lastAgentTimestamp JSON
  * blob stored in router_state under key "last_agent_timestamp_web".
  * Runs inside a transaction so all rows land together or not at all.
@@ -901,23 +742,46 @@ function migrateChatCursors(database: Database): void {
 
 /**
  * Open (or create) the SQLite database and run all schema migrations.
- * Must be called once at application startup before any other db/* function.
- *
- * Called by index.ts (the application entry point).
+ * Call once at startup before any other db/* function. Reuse verifies binding
+ * and liveness without reconfiguring or migrating; explicit offline schema
+ * work uses initializeDatabaseSchema on a caller-owned idle handle.
  */
-export function initDatabase(): void {
-  const pathOverrides = getRuntimeBootstrapPathOverrides();
-  const useMemory =
-    process.env.PICLAW_DB_IN_MEMORY === "1" ||
-    process.env.PICLAW_DB_IN_MEMORY === "true" ||
-    pathOverrides.store === ":memory:";
+export function initDatabase(paths: Readonly<RuntimeConfigPaths> = getRuntimeConfigPaths()): void {
+  openDatabase(paths, "root");
+}
+
+/** Borrow ready state or open an existing index store; never acquire core migration ownership. */
+export function openWorkspaceIndexDatabase(paths: Readonly<RuntimeConfigPaths> = getRuntimeConfigPaths(),
+  assertCurrent: () => void = () => {}, expectedIdentity?: string): void {
+  openDatabase(paths, "index-worker", assertCurrent, expectedIdentity);
+}
+
+/** Open an existing store for explicit maintenance, without migration or checkpoint ownership. */
+export function openMaintenanceDatabase(paths: Readonly<RuntimeConfigPaths> = getRuntimeConfigPaths(), readOnly = true): void {
+  openDatabase(paths, readOnly ? "maintenance-reader" : "maintenance-writer");
+}
+
+function assertIndexStore(database: Database): void {
+  for (const sql of [
+    "SELECT path,mtime_ms,size_bytes,indexed_at FROM main.workspace_files LIMIT 0",
+    "SELECT scope,state,last_indexed_at,last_error,indexed_file_count,roots_json,updated_at FROM main.workspace_index_status LIMIT 0",
+    "SELECT content,path,mtime_ms,size_bytes FROM main.workspace_fts LIMIT 0",
+  ]) database.query(sql).all();
+}
+
+function openDatabase(paths: Readonly<RuntimeConfigPaths>, role: PublishedDatabaseRole,
+  assertCurrent: () => void = () => {}, expectedIdentity?: string): void {
+  assertCurrent();
+  if (cleanupFailure) throw cleanupFailure;
+  if (pendingCleanup) throw Error("Database cleanup is pending; await closeDatabase() before reopening");
+  const useMemory = paths.databasePath === ":memory:";
   const nextMode: "memory" | "file" = useMemory ? "memory" : "file";
-  const nextPath = useMemory ? ":memory:" : path.join(STORE_DIR, "messages.db");
+  const nextPath = paths.databasePath;
   const nextCacheKey = useMemory
-    ? `memory:${pathOverrides.workspace ?? ""}:${pathOverrides.store ?? ""}:${pathOverrides.data ?? ""}`
+    ? `memory:${JSON.stringify([paths.workspaceDir, paths.storeDir, paths.dataDir])}`
     : nextPath;
 
-  if (shouldBlockLiveDatabaseOpenInTests({ useMemory, nextPath })) {
+  if (shouldBlockLiveDatabaseOpenInTests({ useMemory, nextPath, workspaceDir: paths.workspaceDir })) {
     throw new Error(
       `Refusing to open live database from a test process: ${nextPath}. ` +
       `Set PICLAW_DB_IN_MEMORY=1 or isolate PICLAW_WORKSPACE/PICLAW_STORE, ` +
@@ -925,204 +789,148 @@ export function initDatabase(): void {
     );
   }
 
-  let reuse = false;
-  if (db && dbMode === nextMode && dbPathCache === nextCacheKey) {
-    try {
-      if (!useMemory && dbFileIdentity !== currentFileIdentity(nextPath)) throw new Error("Database file identity changed.");
-      db.prepare("SELECT 1;").get();
-      reuse = true;
-    } catch (err) {
-      debugSuppressedError(log, "Detected a stale SQLite handle; reopening the database.", err, {
-        operation: "init_database.detect_stale_handle",
-        mode: nextMode,
-        path: nextPath,
-      });
-      reuse = false;
-    }
+  const isolatedMemoryChange = useMemory && dbPathCache?.startsWith("memory:") === true && isLikelyTestHarnessProcess();
+  if (db && dbPathCache !== nextCacheKey && !isolatedMemoryChange) {
+    throw Error("Database bootstrap target changed; close the database before selecting another target.");
   }
-
-  if (!reuse) {
-    if (db) {
+  if (db && dbPathCache === nextCacheKey) {
+    if (role === "root" && dbRole !== "root") throw Error(`${dbRole === "index-worker" ? "Index worker" : "Maintenance"} connection cannot become a migration owner; close it first.`);
+    if (role.startsWith("maintenance-") && dbRole !== role) throw Error("Maintenance connection role cannot change before close.");
+    if (expectedIdentity && dbFileIdentity !== expectedIdentity) throw Error("SQLite role database identity changed");
+    if (!useMemory) {
       try {
-        db.close();
+        if (dbFileIdentity !== currentFileIdentity(nextPath)) throw Error("Database file identity changed.");
       } catch (error) {
-        log.warn("Failed to close previous database handle before reinitializing", {
-          operation: "init_database.close_previous_handle",
-          err: error,
-        });
+        const failure = new Error("Database file identity changed.", { cause: error });
+        try { closeDatabase({ shrinkMemory: false }); }
+        catch (cleanup) { throw new RuntimeStartupCleanupError([failure, cleanup], "Database replacement cleanup uncertain"); }
+        throw failure;
       }
     }
-
-    if (useMemory) {
-      db = new Database(":memory:");
-    } else {
-      fs.mkdirSync(path.dirname(nextPath), { recursive: true });
-      db = new Database(nextPath);
+    try { db.prepare("SELECT 1;").get(); }
+    catch (error) {
+      // Only the pinned Bun liveness probe may classify a closed handle.
+      if (!(error instanceof RangeError) || error.message !== "Cannot use a closed database") throw error;
+      closeDatabase({ shrinkMemory: false });
     }
-    dbMode = nextMode;
-    dbPathCache = nextCacheKey;
-    dbFileIdentity = useMemory ? null : currentFileIdentity(nextPath);
-    dbInstance += 1;
+    if (db) {
+      if (role === "index-worker") assertIndexStore(db);
+      assertCurrent(); return;
+    }
+  }
+  if (role === "index-worker" && useMemory) throw Error("Index worker requires an existing file-backed database.");
+  if (role.startsWith("maintenance-") && useMemory) throw Error("Maintenance requires an existing file-backed database.");
+  closeDatabase({ shrinkMemory: false });
+  if (pendingCleanup) throw Error("Database cleanup is pending; await closeDatabase() before reopening");
+  if (role === "root" && !useMemory) fs.mkdirSync(path.dirname(nextPath), { recursive: true });
+  let database: Database | undefined, releaseCheckpoint: (() => void | Promise<void>) | undefined;
+  try {
+    database = openSqliteRole(nextPath, { role, create: role === "root", assertOwner: assertCurrent, expectedIdentity,
+      expectedPath: role === "index-worker" ? nextPath : undefined });
+    const identity = useMemory ? null : currentFileIdentity(nextPath);
+    if (role === "root") {
+      initializeDatabaseSchema(database);
+      if (!useMemory) releaseCheckpoint = registerSqliteCheckpoint(database, nextPath);
+    } else if (role === "index-worker") assertIndexStore(database);
+    if (!useMemory && identity !== currentFileIdentity(nextPath)) throw Error("Database file identity changed.");
+    assertCurrent();
     log.info("Opened database connection", {
-      operation: "init_database.open",
-      mode: nextMode,
-      path: nextPath,
-      reusedConnection: false,
+      operation: "init_database.open", mode: nextMode, role, path: nextPath, reusedConnection: false,
     });
-  }
-
-  if (!db) {
-    log.error("Database initialization failed", { operation: "init_database" });
-    throw new Error("Database initialization failed");
-  }
-
-  // Configure lock waiting before schema inspection and file-header pragmas.
-  db.exec("PRAGMA busy_timeout = 5000;");
-  const foreignKeysBeforeInitialization = (db.query("PRAGMA foreign_keys").get() as { foreign_keys?: number } | undefined)?.foreign_keys === 1;
-  if (useMemory) db.exec("PRAGMA journal_mode = MEMORY;");
-  else enableSqliteWal(db);
-  db.exec("PRAGMA foreign_keys = ON;");
-  db.exec("PRAGMA secure_delete = ON;");
-  if (!useMemory) {
-    if (isZfsFilesystem(nextPath)) {
-      // ZFS has its own ARC — mmap causes double-caching and D-state stalls
-      // under I/O pressure. Use SQLite's conventional page cache instead.
-      db.exec("PRAGMA mmap_size = 0;");
-      db.exec("PRAGMA cache_size = -8000;"); // 8 MB page cache
-    } else {
-      // A1: Use mmap for DB reads — moves page I/O from anonymous heap to file-backed memory.
-      db.exec("PRAGMA mmap_size = 268435456;"); // 256 MB
-      // A2: Reduce malloc'd page cache since mmap handles hot pages.
-      db.exec("PRAGMA cache_size = -1000;"); // 1 MB (was default 2 MB)
-    }
-  }
-  const database = db;
-  // Serialize schema inspection and migration in one writer transaction. This
-  // prevents competing initializers starving behind separately committed DDL
-  // and keeps the ordered schema/owned-ledger updates atomic. Nested migration
-  // transactions become savepoints; file-header pragmas and VACUUM stay outside.
-  database.transaction(() => initializeSchema(database)).immediate();
-  // The legacy live store historically runs without global FK enforcement.
-  // EF-S07 uses a dedicated FK-enabled scheduler connection in production;
-  // restore the caller's prior setting so unrelated legacy write paths retain
-  // their established behaviour.
-  if (!foreignKeysBeforeInitialization) db.exec("PRAGMA foreign_keys = OFF;");
-  if (!useMemory) {
-    ensureIncrementalAutoVacuum(db);
+    // Readiness is published together, only after all owned startup work succeeds.
+    db = database; dbPathCache = nextCacheKey; dbFileIdentity = identity;
+    stopCheckpoint = releaseCheckpoint; dbRole = role; dbInstance += 1;
+  } catch (error) {
+    const cleanup = database ? disposeDatabase(database, releaseCheckpoint, error) : [];
+    if (cleanup.length) throw cleanupFailure = new RuntimeStartupCleanupError([error, ...cleanup], "Database initialization cleanup uncertain");
+    if (!database && error instanceof RuntimeStartupCleanupError) cleanupFailure = error;
+    throw error;
   }
 }
 
-/** Schema work only; foreign-key policy and VACUUM remain outside the batch. */
+/** Explicit offline schema boundary for an idle, caller-owned handle; no publication or maintenance. */
+export function initializeDatabaseSchema(database: Database): void {
+  if (database.inTransaction) throw Error("Database schema initialization requires an idle connection.");
+  const foreignKeys = (database.query("PRAGMA foreign_keys").get() as { foreign_keys: number }).foreign_keys;
+  const failures: unknown[] = [];
+  try {
+    database.exec("PRAGMA foreign_keys = ON;");
+    if ((database.query("PRAGMA foreign_keys").get() as { foreign_keys: number }).foreign_keys !== 1)
+      throw Error("Database schema requires foreign_keys ON.");
+    database.transaction(() => initializeSchema(database)).immediate();
+  } catch (error) { failures.push(error); }
+  if (!foreignKeys) {
+    try { database.exec("PRAGMA foreign_keys = OFF;"); }
+    catch (error) { failures.push(error); }
+  }
+  if (failures.length === 1) throw failures[0];
+  if (failures.length) throw new RuntimeStartupCleanupError(failures, "Database schema and policy restoration failed");
+}
+
+/** One ordered schema batch; the explicit schema boundary owns its transaction. */
 function initializeSchema(database: Database): void {
   migrateLegacyConfigTables(database);
   createSchema(database);
-  ensureOwnedMigrationLedger(database);
+  // Historical profiles join the existing schema transaction before readiness.
+  // Preserve original JSON/timestamps; an existing KV override always wins.
+  for (const extensionId of ['proxmox', 'portainer'] as const) {
+    const rows = database.prepare(`SELECT chat_jid,base_url,api_token_keychain,allow_insecure_tls,created_at,updated_at
+      FROM ${extensionId}_configs`).all() as Array<{ chat_jid: string; base_url: string; api_token_keychain: string;
+        allow_insecure_tls: number; created_at: string; updated_at: string }>;
+    const insert = database.prepare(`INSERT OR IGNORE INTO extension_kv
+      (extension_id,scope,scope_key,key,value,created_at,updated_at) VALUES (?,'chat',?,'config',?,?,?)`);
+    for (const row of rows) {
+      const value = JSON.stringify({
+        base_url: row.base_url,
+        api_token_keychain: row.api_token_keychain,
+        allow_insecure_tls: row.allow_insecure_tls === 1,
+      });
+      insert.run(extensionId, row.chat_jid, value, row.created_at, row.updated_at);
+    }
+  }
+  retireAttachmentRowidIndex(database);
   ensureChatBranchConstraints(database);
   initializeChatProjects(database);
   ensureMessageColumns(database);
   ensureKeychainNoteColumns(database);
   ensureTokenUsageColumns(database);
-  initializeBudgetLimitsSchema(database);
   initializeAddonOperationsSchema(database);
   ensureScheduledTaskColumns(database);
   installScheduledRunCompositionSchema(database);
+  initializeScheduledHistorySchema(database);
   migrateScheduledTaskAuthorities(database);
-  ensureWebSessionColumns(database);
-  ensureWebSessionIdentity(database);
+  ensureLegacyColumns(database, "web_sessions", [
+    { name: "auth_method", type: "TEXT" },
+    { name: "session_id", type: "TEXT" },
+  ]);
+  const sessionIdentitySql = "CREATE UNIQUE INDEX IF NOT EXISTS idx_web_sessions_session_id ON web_sessions(session_id) WHERE session_id IS NOT NULL";
+  applyOwnedMigrations(database, [
+    { owner: "host.web-sessions", id: "session-identity-index-v1", order: 1, sql: sessionIdentitySql },
+  ]);
+  const sessionIdentity = database.prepare("SELECT sql FROM main.sqlite_schema WHERE type='index' AND tbl_name='web_sessions' AND name='idx_web_sessions_session_id'")
+    .get() as { sql: string } | null;
+  if (sessionIdentity?.sql.replace(/\s+/g, " ").trim().toUpperCase() !== sessionIdentitySql.replace(" IF NOT EXISTS", "").toUpperCase()) {
+    throw Error("Web session identity index postcondition failed.");
+  }
   ensureFts(database);
-  ensureChatCursorColumns(database);
+  initializeChatCursorStorage(database);
   migrateChatCursors(database);
   dropChatBranchDisplayName(database);
   dropObsoleteRemoteInteropSchema(database);
   ensureMediaCompression(database);
+  initializeMessageInlineMediaSchema(database);
   ensureThinkingContentDuration(database);
   initializeAccessSchema(database);
   initializeSessionOwnershipSchema(database);
   initializeToolOutputOwnership(database);
   initializeOwnedForkSchema(database);
-  initializeMessageAuthoritySchema(database);
-  initializeFamilyMediaUploads(database);
-  initializeAuthFactorSchema(database);
   initializeAuthLabelsSchema(database);
-  initializeFamilyToolRestrictions(database);
-  initializeAccountPreferences(database);
   initializePickerPins(database);
-  initializeAccountAvatars(database);
-  initializeAccountModelDefaults(database);
-  initializeFamilyScheduledGrants(database);
-  initializeFamilyTaskAdmission(database);
-  initializeFamilyScheduledOccurrences(database);
-  initializeFamilyScheduledExecutions(database);
-  initializeFamilyScheduledDispatch(database);
-  initializeFamilyScheduledExpiry(database);
-  initializeFamilyScheduledInterruptions(database);
-  initializeFamilyScheduledCancellations(database);
-  initializeFamilyExecutionAdmission(database);
-  initializeFamilyWorkspaceIndex(database);
-  initializeFamilyMemory(database);
-  initializeFamilyScheduledPublications(database);
-}
-
-/** Add a non-secret login identifier without rewriting existing bearer tokens. */
-function ensureWebSessionIdentity(database: Database): void {
-  const columns = database.prepare("PRAGMA table_info(web_sessions)").all() as Array<{ name: string }>;
-  if (!columns.some(column => column.name === "session_id")) database.exec("ALTER TABLE web_sessions ADD COLUMN session_id TEXT");
-  database.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_web_sessions_session_id ON web_sessions(session_id) WHERE session_id IS NOT NULL");
 }
 
 /** Add duration_ms column to thinking_content for databases created before it was introduced. */
 function ensureThinkingContentDuration(database: Database): void {
-  try {
-    const cols = new Set(
-      (database.prepare("PRAGMA table_info(thinking_content)").all() as Array<{ name: string }>)
-        .map((r) => r.name)
-    );
-    if (!cols.has("duration_ms")) {
-      database.exec("ALTER TABLE thinking_content ADD COLUMN duration_ms INTEGER NOT NULL DEFAULT 0");
-    }
-  } catch (err) {
-    debugSuppressedError(log, "thinking_content duration_ms migration skipped.", err, {
-      operation: "db.ensure_thinking_content_duration",
-    });
-  }
-}
-
-/**
- * Switch to incremental auto_vacuum (one-time) and reclaim freelist pages
- * on every startup. Reduces database bloat from deleted rows so scans
- * and page-cache operations cover only live data.
- */
-function ensureIncrementalAutoVacuum(database: Database): void {
-  try {
-    const avRow = database.prepare("PRAGMA auto_vacuum").get() as { auto_vacuum: number } | undefined;
-    if (avRow?.auto_vacuum === 0) {
-      database.exec("PRAGMA auto_vacuum = INCREMENTAL;");
-      database.exec("VACUUM;");
-      log.info("Switched database to incremental auto_vacuum", {
-        operation: "init_database.auto_vacuum_migration",
-      });
-    }
-  } catch (err) {
-    debugSuppressedError(log, "auto_vacuum migration failed (non-fatal).", err, {
-      operation: "init_database.auto_vacuum_migration",
-    });
-  }
-
-  try {
-    const row = database.prepare("PRAGMA freelist_count").get() as { freelist_count: number } | undefined;
-    const freePages = row?.freelist_count ?? 0;
-    if (freePages > 5000) {
-      database.exec("PRAGMA incremental_vacuum(10000);");
-      log.info("Reclaimed freelist pages", {
-        operation: "init_database.incremental_vacuum",
-        freePagesBefore: freePages,
-      });
-    }
-  } catch (err) {
-    debugSuppressedError(log, "Incremental vacuum failed (non-fatal).", err, {
-      operation: "init_database.incremental_vacuum",
-    });
-  }
+  addMissingLegacyColumns(database, 'thinking_content', [['duration_ms', 'INTEGER NOT NULL DEFAULT 0']]);
 }
 
 const REMOTE_INTEROP_CLEANUP_MIGRATION = "drop-core-remote-interop-v1";
@@ -1154,29 +962,12 @@ export function dropObsoleteRemoteInteropSchema(database: Database): void {
  * Uses PRAGMA user_version >= 2 as a migration marker.
  */
 function ensureMediaCompression(database: Database): void {
-  const row = database.prepare("PRAGMA user_version").get() as { user_version?: number } | undefined;
-  const version = typeof row?.user_version === "number" ? row.user_version : 0;
-  if (version >= 2) return;
-
-  try {
-    const result = recompressExistingMedia(database);
-    if (result.compressed > 0) {
-      log.info("Media compression migration completed", {
-        operation: "migration.media_compression",
-        scanned: result.scanned,
-        compressed: result.compressed,
-        savedBytes: result.savedBytes,
-        skipped: result.skipped,
-        errors: result.errors,
-      });
-    }
-  } catch (err) {
-    debugSuppressedError(log, "Media compression migration failed (non-fatal).", err, {
-      operation: "migration.media_compression",
-    });
-  }
-
-  database.exec("PRAGMA user_version = 2;");
+  const result = migrateMediaCompression(database);
+  if (result.status === "already_complete") return;
+  const fields = { operation: "migration.media_compression", ...result };
+  if (result.status === "complete") {
+    if (result.compressed > 0) log.info("Media compression migration completed", fields);
+  } else log.warn("Media compression migration incomplete; retained marker permits retry", fields);
 }
 
 /**
@@ -1205,46 +996,47 @@ export function getDb(): Database {
 
 /** Create a verified online snapshot of the initialized file-backed messages database. */
 export function backupDatabase(destinationPath: string): SqliteBackupManifest {
-  if (!db || dbMode !== "file" || !dbPathCache) {
+  if (!db || !dbFileIdentity || !dbPathCache) {
     throw new Error("Database backup requires an initialized file-backed database.");
   }
   return createVerifiedSqliteBackup(db, dbPathCache, destinationPath);
 }
 
-export function closeDatabase(options?: { shrinkMemory?: boolean }): void {
-  if (!db) return;
-
-  const database = db;
-  db = null;
-  dbMode = null;
-  dbPathCache = null;
-  dbFileIdentity = null;
-
-  if (options?.shrinkMemory !== false) {
-    try {
-      database.exec("PRAGMA optimize;");
-    } catch (error) {
-      debugSuppressedError(log, "Failed to optimize SQLite before closing the database.", error, {
-        operation: "close_database.optimize",
-      });
-    }
-    try {
-      database.exec("PRAGMA shrink_memory;");
-    } catch (error) {
-      debugSuppressedError(log, "Failed to shrink SQLite page-cache memory before closing the database.", error, {
-        operation: "close_database.shrink_memory",
-      });
-    }
-  }
-
-  try {
-    database.close();
-  } catch (error) {
-    log.warn("Failed to close database handle", {
-      operation: "close_database.close",
-      err: error,
+function disposeDatabase(database: Database, releaseCheckpoint?: () => void | Promise<void>, originalError?: unknown): unknown[] {
+  const failures: unknown[] = [];
+  let released: void | Promise<void> = undefined;
+  cleanupDatabase = database;
+  try { released = releaseCheckpoint?.(); } catch (error) { failures.push(error); }
+  // Without positive worker closure, retain the Root handle and terminal failure.
+  const finish = () => {
+    try { database.close(true); cleanupDatabase = undefined; } catch (error) { failures.push(error); }
+  };
+  if (released) {
+    pendingCleanup = released.then(() => {
+      finish();
+      if (failures.length) throw new RuntimeStartupCleanupError(originalError === undefined ? failures : [originalError, ...failures], "Database cleanup uncertain");
+    }, error => {
+      throw new RuntimeStartupCleanupError(originalError === undefined ? [error] : [originalError, error], "Database cleanup uncertain");
+    }).then(() => { pendingCleanup = undefined; }, error => {
+      cleanupFailure = error; pendingCleanup = undefined; throw error;
     });
+    void pendingCleanup.catch(error => { cleanupFailure = error; });
+  } else if (!failures.length) finish();
+  return failures;
+}
+
+/** Unpublish immediately; complete worker SQLite teardown before closing its last writer. */
+export function closeDatabase(_options?: { shrinkMemory?: boolean }): void | Promise<void> {
+  if (cleanupFailure) throw cleanupFailure;
+  if (!db) {
+    if (cleanupDatabase && !pendingCleanup) throw Error("Database cleanup remains uncertain");
+    return pendingCleanup;
   }
+  const database = db, releaseCheckpoint = stopCheckpoint;
+  db = null; dbPathCache = null; dbFileIdentity = null; stopCheckpoint = undefined; dbRole = undefined;
+  const failures = disposeDatabase(database, releaseCheckpoint);
+  if (failures.length) throw cleanupFailure = new RuntimeStartupCleanupError(failures, "Database close cleanup uncertain");
+  return pendingCleanup;
 }
 
 /**

@@ -34,16 +34,18 @@ test('session picker search covers handle, JID, lifecycle state, and model while
 });
 
 test('session picker selection follows a stable chat JID after pinning reorders filtered results', () => {
-  const filtered = chats.slice(0, 3);
-  const reordered = groupSessionPickerChats(filtered, 'web:root', ['web:root:branch:b'])
+  const filtered = chats.slice(0, 4);
+  // Pinning lifts web:other above the idle tree branch; the active branch stays first.
+  const reordered = groupSessionPickerChats(filtered, 'web:root', ['web:other'])
     .flatMap(section => section.items);
 
   expect(reordered.map(chat => chat.chat_jid)).toEqual([
     'web:root',
-    'web:root:branch:b',
     'web:root:branch:a',
+    'web:other',
+    'web:root:branch:b',
   ]);
-  expect(resolveSessionPickerChatIndex(reordered, 'web:root:branch:b')).toBe(1);
+  expect(resolveSessionPickerChatIndex(reordered, 'web:other')).toBe(2);
   expect(resolveSessionPickerChatIndex(reordered, 'missing')).toBe(-1);
 });
 
@@ -78,15 +80,20 @@ test('session picker formats model and bounded context metrics without inventing
     context_percent: 32.8125,
   })).toBe('openai/gpt-5 · 42K / 128K (33% context)');
   expect(formatSessionPickerMetrics({ model: 'local/qwen' })).toBe('local/qwen');
+  expect(formatSessionPickerMetrics({ context_tokens: 80000, context_window: 100000, context_percent: null })).toBe('80K / 100K');
+  expect(formatSessionPickerMetrics({ context_usage: { tokens: null, contextWindow: 100000, percent: null } })).toBe('');
+  expect(formatSessionPickerMetrics({ context_usage: { tokens: 0, contextWindow: 100000, percent: 0 } })).toBe('0 / 100K (0% context)');
   expect(formatSessionPickerMetrics({ context_percent: 140 })).toBe('100% context');
   expect(formatSessionPickerMetrics({ context_tokens: -1, context_window: 0 })).toBe('');
 });
 
-test('session picker grouping uses current-pinned-active-tree-other-archived precedence', () => {
+test('session picker grouping puts active sessions straight after the current one, then pinned, tree, other and archived', () => {
   const sections = groupSessionPickerChats(chats, 'web:root', ['web:root', 'web:root:branch:a', 'web:other', 'web:archived']);
-  expect(sections.map(section => section.key)).toEqual(['current', 'pinned', 'tree', 'archived']);
+  expect(sections.map(section => section.key)).toEqual(['current', 'active', 'pinned', 'tree', 'archived']);
   expect(sections.find(section => section.key === 'current')?.items.map(chat => chat.chat_jid)).toEqual(['web:root']);
-  expect(sections.find(section => section.key === 'pinned')?.items.map(chat => chat.chat_jid)).toEqual(['web:root:branch:a', 'web:other']);
+  // A pinned session that is running is listed with the active ones.
+  expect(sections.find(section => section.key === 'active')?.items.map(chat => chat.chat_jid)).toEqual(['web:root:branch:a']);
+  expect(sections.find(section => section.key === 'pinned')?.items.map(chat => chat.chat_jid)).toEqual(['web:other']);
   expect(sections.find(section => section.key === 'archived')?.items[0].chat_jid).toBe('web:archived');
   const orderedChatJids = sections.flatMap(section => section.items).map(chat => chat.chat_jid);
   expect(orderedChatJids).toEqual([

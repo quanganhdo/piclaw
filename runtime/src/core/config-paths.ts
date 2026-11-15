@@ -12,6 +12,7 @@ export interface RuntimeConfigPaths {
   workspaceDir: string;
   storeDir: string;
   dataDir: string;
+  databasePath: string;
   configPath: string;
   defaultTlsCertPath: string;
   defaultTlsKeyPath: string;
@@ -46,12 +47,17 @@ export function resolveRuntimeConfigPaths(options: {
   const dataDir = resolve(options.cliWorkspace
     ? `${workspaceDir}/.piclaw/data`
     : (overrides.data || `${workspaceDir}/.piclaw/data`));
+  const useMemory =
+    env.PICLAW_DB_IN_MEMORY === "1" ||
+    env.PICLAW_DB_IN_MEMORY === "true" ||
+    overrides.store === ":memory:";
   const defaultTlsCertPath = resolve(workspaceDir, ".piclaw", "certs", "sandbox.local.crt");
   const defaultTlsKeyPath = resolve(workspaceDir, ".piclaw", "certs", "sandbox.local.key");
   return {
     workspaceDir,
     storeDir,
     dataDir,
+    databasePath: useMemory ? ":memory:" : resolve(storeDir, "messages.db"),
     configPath: resolve(workspaceDir, ".piclaw", "config.json"),
     defaultTlsCertPath,
     defaultTlsKeyPath,

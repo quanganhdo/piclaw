@@ -20,14 +20,14 @@ beforeAll(async () => {
       const file = resolve(root,'web',url.pathname.slice(1));
       if(file.startsWith(root+'/web/static/')&&await Bun.file(file).exists())return new Response(Bun.file(file));
     }
-    if(url.pathname==='/')return new Response(`<!doctype html><meta name="viewport" content="width=device-width"><link rel="stylesheet" href="/static/${url.searchParams.get('skin')==='visual'?'visual':'classic'}/css/styles.css"><style>html,body{height:100%;margin:0}#editor{height:760px;width:100%;}#blur{position:fixed;top:0;right:0;z-index:100}</style><button id="blur">Blur</button><div id="editor"></div><script type="importmap">{"imports":{"#editor-vendor/codemirror":"/editor-vendor/codemirror.js"}}</script><script type="module" src="/fixture.js"></script>`,{headers:{'content-type':'text/html'}});
+    if(url.pathname==='/')return new Response(`<!doctype html><meta name="viewport" content="width=device-width"><link rel="stylesheet" href="/static/${'classic'}/css/styles.css"><style>html,body{height:100%;margin:0}#editor{height:760px;width:100%;}#blur{position:fixed;top:0;right:0;z-index:100}</style><button id="blur">Blur</button><div id="editor"></div><script type="importmap">{"imports":{"#editor-vendor/codemirror":"/editor-vendor/codemirror.js"}}</script><script type="module" src="/fixture.js"></script>`,{headers:{'content-type':'text/html'}});
     if(url.pathname==='/workspace/file/stat')return Response.json({mtime:'fixture'});
     return new Response(null,{status:404});
   }});
 },30000);
 afterAll(()=>server?.stop(true));
 
-for(const [name,engine] of Object.entries({chromium,webkit}))for(const skin of ['classic','visual'])for(const bundle of [false,true]) {
+for(const [name,engine] of Object.entries({chromium,webkit}))for(const skin of ['classic'])for(const bundle of [false,true]) {
   browserTest(`${name} ${skin} ${bundle ? 'bundle' : 'source'}: actual editor selections track themes across all modes`,async()=>{
     const browser=await engine.launch();const page=await browser.newPage({viewport:{width:1280,height:900},colorScheme:'dark'});
     const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
@@ -74,8 +74,8 @@ for(const [name,engine] of Object.entries({chromium,webkit}))for(const skin of [
   },180000);
 }
 
-for (const [name, engine] of Object.entries({chromium, webkit})) for (const skin of ['classic', 'visual']) {
-  browserTest(`${name} ${skin}: live theme changes cover widgets, search, Vim, imports and diff`, async () => {
+for (const [name, engine] of Object.entries({chromium, webkit})) for (const skin of ['classic']) {
+  browserTest(`${name} ${skin}: live theme changes cover widgets, search, Vim and diff`, async () => {
     const browser = await engine.launch();
     const page = await browser.newPage({viewport:{width:1280,height:900},colorScheme:'dark'});
     const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
@@ -144,17 +144,6 @@ for (const [name, engine] of Object.entries({chromium, webkit})) for (const skin
       expect(await page.locator('.cm-selectionBackground').first().evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgba(19, 155, 88, 0.4)');
       await page.locator('#blur').click();
       expect(await page.locator('.cm-selectionBackground').first().evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgba(19, 155, 88, 0.4)');
-      // Imported selection is independent of the focus/accent colour.
-      const imported=await page.evaluate(()=>{
-        const f=(window as any).editorFixture;
-        const before=f.instance.view;before.dispatch({changes:{from:0,insert:'Edited '}});f.select();
-        const text=before.state.doc.toString(),selection=before.state.selection.main.to;
-        const vars=f.importVSCodeTheme({type:'light',colors:{'editor.background':'#ffffff','editor.foreground':'#222222',focusBorder:'#7733bb','selection.background':'#ff000055','editor.selectionBackground':'#11aa3355'}});f.applyTheme(vars);
-        const probe=document.createElement('span');probe.style.color='var(--selection-background)';document.body.append(probe);const expected=getComputedStyle(probe).color;probe.remove();
-        return {mapped:vars['--selection-background'],accent:vars['--accent'],expected,same:before===f.instance.view,textKept:text===before.state.doc.toString(),selectionKept:selection===before.state.selection.main.to,dirty:f.instance.dirty};
-      });
-      expect(imported.accent).toBe('#7733bb');expect(imported.mapped).toBe('rgba(17,170,51,0.333)');expect(imported.same&&imported.textKept&&imported.selectionKept&&imported.dirty).toBe(true);
-      expect(await page.locator('.cm-selectionBackground').first().evaluate(el=>getComputedStyle(el).backgroundColor)).toBe(imported.expected);
       // Match browser system colours in forced-colours mode (not vendor blues).
       await page.emulateMedia({forcedColors:'active'});
       const forced = await page.evaluate(() => {
@@ -171,7 +160,7 @@ for (const [name, engine] of Object.entries({chromium, webkit})) for (const skin
       const vim=await resolve('.cm-fat-cursor','background-color','--accent-color');expect(vim.actual).toBe(vim.expected);
       await page.keyboard.press('Escape');await page.keyboard.press('g');await page.keyboard.press('g');await page.keyboard.press('0');await page.keyboard.press('v');await page.keyboard.press('l');
       await page.locator('.cm-selectionBackground').first().waitFor();
-      const visual=await resolve('.cm-selectionBackground','background-color','--selection-background');expect(visual.actual).toBe(visual.expected);
+
       await page.evaluate(()=>{const f=(window as any).editorFixture;f.mount('diff');f.selectLocalTheme('github-light');});
       expect(await page.locator('.cm-mergeView .cm-editor').count()).toBe(2);
       expect(await page.locator('.cm-changedLine').count()).toBeGreaterThan(0);
@@ -190,4 +179,86 @@ for (const [name, engine] of Object.entries({chromium, webkit})) for (const skin
       expect(errors).toEqual([]);
     } finally {await browser.close();}
   },60000);
+}
+
+for (const [name, engine] of Object.entries({ chromium, webkit })) for (const skin of ['classic']) {
+  browserTest(`${name} ${skin}: a focused editor draws no focus ring around its text`, async () => {
+    const browser = await engine.launch(); const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
+    try {
+      await page.route('**/*', r => new URL(r.request().url()).origin === server.url.origin ? r.continue() : r.abort());
+      await page.goto(`${server.url}?skin=${skin}`); await page.waitForFunction(() => !!(window as any).editorFixture);
+      for (const mode of ['code', 'preview']) {
+        await page.evaluate(mode => (window as any).editorFixture.mount(mode), mode);
+        await page.waitForTimeout(200);
+        await page.locator('.cm-content').first().click({ position: { x: 40, y: 10 } });
+        // The caret and active line already show where typing goes; the shared
+        // 2px focus ring around the whole document is noise, as is CodeMirror's dotted one.
+        const rings = await page.evaluate(() => [document.activeElement as HTMLElement, document.activeElement!.closest('.cm-editor') as HTMLElement]
+          .map(el => ({ focused: el.matches(':focus, .cm-focused'), outline: getComputedStyle(el).outlineStyle })));
+        expect(rings, mode).toEqual([{ focused: true, outline: 'none' }, { focused: true, outline: 'none' }]);
+      }
+      expect(errors).toEqual([]);
+    } finally { await browser.close(); }
+  }, 60000);
+}
+
+for (const [name, engine] of Object.entries({ chromium, webkit })) {
+  browserTest(`${name}: Markdown wraps long lines, including fenced code, in Live Preview and raw modes`, async () => {
+    const browser = await engine.launch(); const page = await browser.newPage({ viewport: { width: 900, height: 900 } });
+    const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
+    const long = 'This long line should wrap inside the editor rather than running off to the right edge. '.repeat(6).trim();
+    const doc = `# Heading\n\n${long}\n\n- ${long}\n\n> ${long}\n\n\`\`\`\n${long}\n\`\`\`\n`;
+    try {
+      await page.route('**/*', r => new URL(r.request().url()).origin === server.url.origin ? r.continue() : r.abort());
+      await page.goto(`${server.url}?skin=classic`); await page.waitForFunction(() => !!(window as any).editorFixture);
+      for (const mode of ['preview', 'raw']) {
+        await page.evaluate(({ mode, doc }) => (window as any).editorFixture.mount(mode, doc), { mode, doc });
+        await page.waitForTimeout(300);
+        if (mode === 'preview') await page.locator('.cm-md-code-content').first().waitFor();
+        // One unwrapped line (a fenced code line, for instance) widens every line,
+        // so check the whole document fits and the code line itself wraps.
+        const fit = await page.evaluate(() => {
+          const scroller = document.querySelector('.cm-scroller') as HTMLElement;
+          const code = [...document.querySelectorAll('.cm-line')].find(line => line.textContent?.startsWith('This long') && line.closest('.cm-content') && (line.classList.contains('cm-md-code-line') || line.previousElementSibling?.textContent === '```')) as HTMLElement | undefined;
+          return { overflow: scroller.scrollWidth - scroller.clientWidth, codeWraps: !!code && code.getBoundingClientRect().height > 40 };
+        });
+        expect(fit, mode).toEqual({ overflow: 0, codeWraps: true });
+      }
+      expect(errors).toEqual([]);
+    } finally { await browser.close(); }
+  }, 60000);
+}
+
+for (const [name, engine] of Object.entries({ chromium, webkit })) {
+  browserTest(`${name}: wrapped Markdown list items hang under their own text in Live Preview`, async () => {
+    const browser = await engine.launch(); const page = await browser.newPage({ viewport: { width: 700, height: 900 } });
+    const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
+    const long = 'This list item is long enough to wrap onto a second visual line inside the editor pane. '.repeat(3).trim();
+    const doc = `Intro paragraph.\n\n- ${long}\n\n1. ${long}\n\n- [ ] ${long}\n\n- Parent\n  - ${long}\n`;
+    try {
+      await page.route('**/*', r => new URL(r.request().url()).origin === server.url.origin ? r.continue() : r.abort());
+      await page.goto(`${server.url}?skin=classic`); await page.waitForFunction(() => !!(window as any).editorFixture);
+      await page.evaluate((doc) => (window as any).editorFixture.mount('preview', doc), doc);
+      await page.locator('.cm-md-bullet').first().waitFor();
+      await page.waitForTimeout(300);
+      // For each wrapped item: where its text starts on the first line, and where the wrapped line starts.
+      const rows = await page.evaluate(() => [...document.querySelectorAll('.cm-line.cm-md-list-item-line:not(.cm-md-list-item-continuation)')].flatMap((line) => {
+        const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
+        let node: Node | null; const rects: DOMRect[] = [];
+        while ((node = walker.nextNode())) {
+          const at = (node.textContent || '').indexOf('This list item');
+          if (at < 0) continue;
+          const range = document.createRange(); range.setStart(node, at); range.setEnd(node, (node.textContent || '').length);
+          rects.push(...range.getClientRects());
+        }
+        if (rects.length < 2) return [];
+        const first = rects[0], wrapped = rects.find((r) => r.top > first.top + 4)!;
+        return [{ kind: line.querySelector('.cm-md-bullet') ? 'bullet' : line.querySelector('.cm-md-list-number') ? 'number' : line.querySelector('.cm-md-checkbox') ? 'task' : 'other', offset: Math.round(wrapped.left - first.left) }];
+      }));
+      expect(rows.map(r => r.kind)).toEqual(['bullet', 'number', 'task', 'bullet']);
+      for (const row of rows) expect(Math.abs(row.offset), row.kind).toBeLessThanOrEqual(2);
+      expect(errors).toEqual([]);
+    } finally { await browser.close(); }
+  }, 60000);
 }

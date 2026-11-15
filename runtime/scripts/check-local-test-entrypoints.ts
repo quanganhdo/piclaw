@@ -30,12 +30,17 @@ const RAW_PATTERNS = [
 
 function repositoryFiles(root: string, files?: readonly string[]): string[] {
   if (files) return [...files].map(normalizePath).sort();
-  const result = spawnSync("git", ["ls-files", "-co", "--exclude-standard"], {
+  const result = spawnSync("git", ["ls-files", "-co", "--exclude-standard", "-z"], {
     cwd: root,
     encoding: "utf8",
   });
   if (result.status !== 0) throw new Error(`git ls-files failed: ${result.stderr.trim()}`);
-  return result.stdout.split("\n").filter(Boolean).map(normalizePath).sort();
+  const removed = spawnSync("git", ["ls-files", "--deleted", "-z"], { cwd: root, encoding: "utf8" });
+  if (removed.status !== 0) throw new Error(`git ls-files --deleted failed: ${removed.stderr.trim()}`);
+  // Audit current tracked/untracked source, excluding only Git-proven working
+  // tree deletions. Missing explicit inputs and other read failures still throw.
+  const deleted = new Set(removed.stdout.split("\0").filter(Boolean).map(normalizePath));
+  return result.stdout.split("\0").filter(Boolean).map(normalizePath).filter(path => !deleted.has(path)).sort();
 }
 
 function normalizePath(path: string): string {
@@ -56,7 +61,11 @@ export async function auditLocalTestEntrypoints(
   const violations: string[] = [];
   for (const path of repositoryFiles(root, files)) {
     if (!isAuditedSource(path) || ALLOWLIST.has(path)) continue;
-    const lines = readFileSync(join(root, path), "utf8").split("\n");
+    const source = readFileSync(join(root, path), "utf8");
+    // Negative-only prefilter: every per-line match also exists in the full text.
+    // Keep the same files, patterns, comment rules and findings below.
+    if (!RAW_PATTERNS.some((pattern) => pattern.test(source))) continue;
+    const lines = source.split("\n");
     for (let index = 0; index < lines.length; index += 1) {
       const line = lines[index];
       if (/^\s*(?:#|\/\/|\*)/.test(line)) continue;

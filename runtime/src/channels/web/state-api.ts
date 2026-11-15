@@ -4,6 +4,7 @@
 
 import { getIdentityConfig, getOrCreateWebWidgetToken, getWebRuntimeConfig } from "../../core/config.js";
 import { safeEqual } from "./auth/auth.js";
+import { publicContextUsage } from "./context-usage.js";
 import type { WebChannelLike } from "./core/web-channel-contracts.js";
 
 export const PICLAW_STATE_SCHEMA = "piclaw.state.v1";
@@ -81,22 +82,12 @@ export async function buildPiclawStateSnapshot(channel: WebChannelLike): Promise
     const record = chat as unknown as Record<string, unknown>;
     const chatJid = String(record.chat_jid || "").trim();
     if (!chatJid) continue;
+    const generation = () => channel.agentPool.getSessionGenerationForChat?.(chatJid) ?? null;
+    const before = generation();
     const runtimeContext = await channel.agentPool.getContextUsageForChat(chatJid).catch(() => null);
-    const storedContext = channel.getContextUsage(chatJid);
-    const currentGeneration = (typeof channel.agentPool.getSessionGenerationForChat === "function"
-      ? channel.agentPool.getSessionGenerationForChat(chatJid)
-      : null)
-      ?? (typeof record.session_id === "string" ? record.session_id : null)
-      ?? (typeof runtimeContext?.sessionGeneration === "string" ? runtimeContext.sessionGeneration : null);
-    const runtimeGeneration = typeof runtimeContext?.sessionGeneration === "string" ? runtimeContext.sessionGeneration : null;
-    const storedGeneration = typeof storedContext?.sessionGeneration === "string" ? storedContext.sessionGeneration : null;
-    const context = runtimeContext && (!runtimeGeneration || !currentGeneration || runtimeGeneration === currentGeneration)
-      ? { ...runtimeContext, ...(currentGeneration ? { sessionGeneration: currentGeneration } : {}) }
-      : storedContext && (!currentGeneration || storedGeneration === currentGeneration)
-        ? storedContext
-        : currentGeneration
-          ? { tokens: null, contextWindow: null, percent: null, sessionGeneration: currentGeneration }
-          : null;
+    const current = generation();
+    const context = before === current && runtimeContext && (!current || runtimeContext.sessionGeneration === current)
+      ? runtimeContext : current ? {tokens:null,contextWindow:null,percent:null,sessionGeneration:current,contextUpdate:'replace'} : null;
     chats.push({
       chat_jid: chatJid,
       agent_name: typeof record.agent_name === "string" ? record.agent_name : null,
@@ -107,9 +98,9 @@ export async function buildPiclawStateSnapshot(channel: WebChannelLike): Promise
       root_chat_jid: typeof record.root_chat_jid === "string" ? record.root_chat_jid : null,
       is_active: Boolean(record.is_active),
       has_side_session: Boolean(record.has_side_session),
-      queued_followups: channel.getQueuedFollowupCount(chatJid),
+      queued_followups: (await channel.readNativeQueue!(chatJid)).length,
       status: channel.getAgentStatus(chatJid),
-      context: context ? { ...context } : null,
+      context: publicContextUsage(context),
     });
   }
 

@@ -29,21 +29,17 @@ test('saveGeneralSettings persists and applies general settings immediately', as
     db.initDatabase();
     const config = await import('../../src/core/config.js');
     config.setUserAvatarBackground('');
+    const legacyUi = JSON.parse(readFileSync(join(workspace.workspace, '.piclaw', 'config.json'), 'utf8')).ui;
 
     const saved = await handler.saveGeneralSettings({
       assistantName: 'Smith',
       assistantAvatar: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSJyZWQiLz48L3N2Zz4=',
       userName: 'Rui',
       userAvatar: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSJyZWQiLz48L3N2Zz4=',
-      sessionAutoRotate: false,
-      sessionMaxSizeMb: 48,
       webTerminalEnabled: false,
       composeUploadLimitMb: 24,
       workspaceUploadLimitMb: 256,
       toolUseBudget: 23,
-      automaticRecoveryEnabled: false,
-      automaticRecoveryMaxAttempts: 4,
-      automaticRecoveryTotalBudgetMs: 120000,
       uiTheme: 'dracula',
       uiTint: '#7c3aed',
       outputPad: 12,
@@ -54,15 +50,10 @@ test('saveGeneralSettings persists and applies general settings immediately', as
       assistantAvatar: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSJyZWQiLz48L3N2Zz4=',
       userName: 'Rui',
       userAvatar: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSJyZWQiLz48L3N2Zz4=',
-      sessionAutoRotate: false,
-      sessionMaxSizeMb: 48,
       webTerminalEnabled: false,
       composeUploadLimitMb: 256,
       workspaceUploadLimitMb: 256,
       toolUseBudget: 23,
-      automaticRecoveryEnabled: false,
-      automaticRecoveryMaxAttempts: 4,
-      automaticRecoveryTotalBudgetMs: 120000,
       uiTheme: 'dracula',
       uiTint: '#7c3aed',
       outputPad: 12,
@@ -94,21 +85,11 @@ test('saveGeneralSettings persists and applies general settings immediately', as
         agent: {
           toolUseMessageBudget: 23,
         },
-        session: {
-          autoRotate: false,
-          maxSizeMb: 48,
-        },
-        recovery: {
-          automaticRecoveryEnabled: false,
-          automaticRecoveryMaxAttempts: 4,
-          automaticRecoveryTotalBudgetMs: 120000,
-        },
-      },
-      ui: {
-        theme: 'dracula',
-        tint: '#7c3aed',
       },
     });
+    expect(persisted.ui).toEqual(legacyUi);
+    expect(db.extensionKvGet('piclaw-ui', 'theme', 'global', '')).toEqual({ theme: 'dracula', tint: '#7c3aed' });
+    expect(db.extensionKvGet('piclaw-ui', 'output-pad', 'global', '')).toEqual({ outputPad: 12 });
     for (const name of [
       'PICLAW_ASSISTANT_NAME',
       'PICLAW_ASSISTANT_AVATAR',
@@ -122,66 +103,11 @@ test('saveGeneralSettings persists and applies general settings immediately', as
       'PICLAW_WEB_WORKSPACE_UPLOAD_LIMIT_MB',
       'PICLAW_WEB_NOTIFICATION_DEBUG_LABELS',
       'PICLAW_WEB_TERMINAL_ENABLED',
-      'PICLAW_SESSION_AUTO_ROTATE',
-      'PICLAW_SESSION_MAX_SIZE_MB',
-      'PICLAW_SESSION_MAX_LINES',
-      'PICLAW_SESSION_MAX_COMPACTIONS',
       'PICLAW_TURN_MAX_TOOL_USE_MESSAGES',
       'PICLAW_DEBUG_CARD_SUBMISSIONS',
     ]) {
       expect(process.env[name], name).toBeUndefined();
     }
-  });
-});
-
-test('getGeneralSettingsData exposes recovery defaults without writing configuration', async () => {
-  await withTempWorkspaceEnv('piclaw-general-settings-recovery-read-', {
-    PICLAW_TURN_AUTO_RECOVERY_ENABLED: undefined,
-    PICLAW_TURN_AUTO_RECOVERY_MAX_ATTEMPTS: undefined,
-    PICLAW_TURN_AUTO_RECOVERY_TOTAL_BUDGET_MS: undefined,
-  }, async (workspace) => {
-    const handler = await importFresh<typeof import('../../src/channels/web/handlers/general-settings.js')>(
-      '../src/channels/web/handlers/general-settings.js',
-    );
-    const configPath = join(workspace.workspace, '.piclaw', 'config.json');
-    expect(existsSync(configPath)).toBe(false);
-    expect(handler.getGeneralSettingsData()).toMatchObject({
-      automaticRecoveryEnabled: true,
-      automaticRecoveryMaxAttempts: 0,
-      automaticRecoveryTotalBudgetMs: 0,
-      automaticRecoveryEffectiveBudgetMs: 1200000,
-    });
-    expect(existsSync(configPath)).toBe(false);
-  });
-});
-
-test('saveGeneralSettings persists automatic recovery budget mode', async () => {
-  await withTempWorkspaceEnv('piclaw-general-settings-recovery-automatic-', {}, async (workspace) => {
-    const handler = await importFresh<typeof import('../../src/channels/web/handlers/general-settings.js')>(
-      '../src/channels/web/handlers/general-settings.js',
-    );
-    const automatic = await handler.saveGeneralSettings({ automaticRecoveryTotalBudgetMs: 0 });
-    expect(automatic).toMatchObject({ automaticRecoveryTotalBudgetMs: 0, automaticRecoveryEffectiveBudgetMs: 1200000 });
-    const persisted = JSON.parse(readFileSync(join(workspace.workspace, '.piclaw', 'config.json'), 'utf8'));
-    expect(persisted.domains.recovery.automaticRecoveryTotalBudgetMs).toBe(0);
-  });
-});
-
-test('saveGeneralSettings rejects invalid recovery bounds without persisting them', async () => {
-  await withTempWorkspaceEnv('piclaw-general-settings-recovery-invalid-', {}, async (workspace) => {
-    const handler = await importFresh<typeof import('../../src/channels/web/handlers/general-settings.js')>(
-      '../src/channels/web/handlers/general-settings.js',
-    );
-    const configPath = join(workspace.workspace, '.piclaw', 'config.json');
-    await expect(handler.saveGeneralSettings({ automaticRecoveryMaxAttempts: -1 }))
-      .rejects.toThrow('non-negative integer');
-    await expect(handler.saveGeneralSettings({ automaticRecoveryMaxAttempts: 1.5 }))
-      .rejects.toThrow('non-negative integer');
-    await expect(handler.saveGeneralSettings({ automaticRecoveryTotalBudgetMs: -1 }))
-      .rejects.toThrow('non-negative integer');
-    await expect(handler.saveGeneralSettings({ automaticRecoveryTotalBudgetMs: 1000.5 }))
-      .rejects.toThrow('non-negative integer');
-    expect(existsSync(configPath)).toBe(false);
   });
 });
 

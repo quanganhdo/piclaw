@@ -21,6 +21,7 @@ import { closeSync, constants, existsSync, fstatSync, lstatSync, mkdirSync, open
 import { basename, dirname, join, relative, resolve } from "path";
 import { createHash } from 'node:crypto';
 import { getDataDir } from "./core/config.js";
+import { NativeToolOutputRetentionHeld, nativeToolOutputRetentionHeld } from "./db/tool-outputs.js";
 import { canUseLegacyToolOutput, createToolOutputAccessGuard, ToolOutputAccessDenied, type ToolOutputScope } from "./core/tool-output-access.js";
 import { createUuid } from "./utils/ids.js";
 import { createLogger, debugSuppressedError } from "./utils/logger.js";
@@ -216,12 +217,13 @@ function listRegisteredToolOutputPaths(scope:ToolOutputScope|null): Set<string> 
     debugSuppressedError(log, "Failed to list registered tool-output paths during filesystem pruning.", error, {
       operation: "tool_output.prune.list_registered_paths",
     });
-    return new Set();
+    throw new Error("Tool-output reference inventory unavailable");
   }
 }
 
 /** Remove unreferenced tool-output log files older than the retention window. */
 export function pruneToolOutputFiles(maxAgeMs = DEFAULT_TOOL_OUTPUT_RETENTION_MS): number {
+  if(nativeToolOutputRetentionHeld())throw new NativeToolOutputRetentionHeld();
   const access=createToolOutputAccessGuard(),scope=access.scope;
   const toolOutputDir = scopeOutputDir(scope);
   if (!existsSync(toolOutputDir)) return 0;
@@ -288,6 +290,7 @@ export function pruneToolOutputFiles(maxAgeMs = DEFAULT_TOOL_OUTPUT_RETENTION_MS
  * Existing flat DB paths remain readable if migration cannot move a file.
  */
 export function migrateFlatToolOutputsToDateShards(): number {
+  if(nativeToolOutputRetentionHeld())throw new NativeToolOutputRetentionHeld();
   const access=createToolOutputAccessGuard();if(access.scope)return 0;
   const toolOutputDir = getToolOutputDir();
   mkdirSync(toolOutputDir, { recursive: true });
@@ -388,7 +391,11 @@ export function startToolOutputCleanup(
   maxAgeMs = DEFAULT_TOOL_OUTPUT_RETENTION_MS,
   intervalMs = DEFAULT_TOOL_OUTPUT_CLEANUP_INTERVAL_MS,
 ): void {
-  if (!canUseLegacyToolOutput() || cleanupTimer) return;
+  if (!canUseLegacyToolOutput()) return;
+  if(nativeToolOutputRetentionHeld()){
+    stopToolOutputCleanup();log.info("Tool-output retention held: native history/reference retirement is not qualified",{operation:"tool_output.retention.held"});return;
+  }
+  if(cleanupTimer)return;
   try {
     migrateFlatToolOutputsToDateShards();
     // Run an initial prune immediately, then on a recurring interval.
@@ -405,7 +412,7 @@ export function startToolOutputCleanup(
       return;
     }
     try { pruneToolOutputs(maxAgeMs); } catch (error) {
-      if (!(error instanceof ToolOutputAccessDenied)) throw error;
+      if (!(error instanceof ToolOutputAccessDenied) && !(error instanceof NativeToolOutputRetentionHeld)) throw error;
       stopToolOutputCleanup();
     }
   }, intervalMs);

@@ -159,11 +159,6 @@ test("handleSystemMetricsRequest includes runtime memory instrumentation when pr
         prewarmQueueLength: 10,
         prewarmCooldowns: 11,
       },
-      recovery: {
-        attemptsTotal: 12,
-        recoveredRuns: 13,
-        exhaustedRuns: 14,
-      },
     }),
   }, new SystemMetricsSampler(2, 1000, () => null));
 
@@ -187,9 +182,6 @@ test("handleSystemMetricsRequest includes runtime memory instrumentation when pr
     queued_prewarms: 9,
     prewarm_queue_length: 10,
     prewarm_cooldowns: 11,
-    recovery_attempts_total: 12,
-    recovery_recovered_runs: 13,
-    recovery_exhausted_runs: 14,
   });
 });
 

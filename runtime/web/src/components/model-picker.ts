@@ -1,7 +1,6 @@
 import { html, useCallback, useEffect, useMemo, useRef, useState } from '../vendor/preact-htm.js';
 import {
     buildModelPickerProjection,
-    describeModelContextFit,
     formatModelCatalogueContextWindow,
     formatModelCataloguePricing,
     moveModelPickerActiveKey,
@@ -23,6 +22,7 @@ function formatModelBadges(entry) {
 }
 
 export function ClassicModelPicker({
+    anchor = null,
     entries,
     loading = false,
     switching = false,
@@ -37,7 +37,6 @@ export function ClassicModelPicker({
     rootRef,
 }) {
     const [query, setQuery] = useState('');
-    const [showBlocked, setShowBlocked] = useState(false);
     const [activeKey, setActiveKey] = useState(null);
     const searchRef = useRef(null);
     const optionRefs = useRef(new Map());
@@ -46,11 +45,11 @@ export function ClassicModelPicker({
     const searchId = `compose-model-search-${instanceIdRef.current}`;
     const resultsId = `compose-model-results-${instanceIdRef.current}`;
     const projection = useMemo(
-        () => buildModelPickerProjection(entries, { query, showBlocked }),
-        [entries, query, showBlocked],
+        () => buildModelPickerProjection(entries, { query }),
+        [entries, query],
     );
     const selectableEntries = useMemo(
-        () => projection.renderedEntries.filter((entry) => entry.contextFit.state !== 'blocked'),
+        () => projection.renderedEntries,
         [projection],
     );
 
@@ -69,7 +68,7 @@ export function ClassicModelPicker({
     }, [activeKey]);
 
     const choose = useCallback((entry) => {
-        if (!entry || switching || entry.contextFit.state === 'blocked') return;
+        if (!entry || switching) return;
         onSelect(entry);
     }, [onSelect, switching]);
 
@@ -105,7 +104,6 @@ export function ClassicModelPicker({
     }, [activeKey, choose, onClose, onTogglePin, projection.renderedEntries]);
 
     const renderEntry = (entry) => {
-        const blocked = entry.contextFit.state === 'blocked';
         const selected = entry.current;
         const active = entry.key === activeKey;
         const badges = formatModelBadges(entry);
@@ -118,12 +116,11 @@ export function ClassicModelPicker({
                 aria-label=${`${entry.displayName}, ${entry.pinned ? 'pinned' : 'not pinned'}. Alt+Enter to ${entry.pinned ? 'unpin' : 'pin'}.`}
                 aria-keyshortcuts="Alt+Enter"
                 aria-selected=${selected ? 'true' : 'false'}
-                aria-disabled=${blocked ? 'true' : 'false'}
                 tabIndex=${-1}
-                class=${`compose-model-catalogue-option${selected ? ' selected' : ''}${active ? ' focused' : ''}${blocked ? ' blocked' : ''}`}
+                class=${`compose-model-catalogue-option${selected ? ' selected' : ''}${active ? ' focused' : ''}`}
                 ref=${(node) => node ? optionRefs.current.set(entry.key, node) : optionRefs.current.delete(entry.key)}
                 onMouseDown=${(event) => event.preventDefault()}
-                onMouseEnter=${() => !blocked && setActiveKey(entry.key)}
+                onMouseEnter=${() => setActiveKey(entry.key)}
                 onClick=${() => choose(entry)}
             >
                 <span
@@ -143,7 +140,7 @@ export function ClassicModelPicker({
                             ${badges.map((badge) => html`<span class="compose-model-catalogue-badge" key=${badge}>${badge}</span>`)}
                         </span>
                     `}
-                    ${blocked && html`<span class="compose-model-catalogue-option-note">${describeModelContextFit(entry)}</span>`}
+
                 </span>
             </button>
         `;
@@ -151,7 +148,8 @@ export function ClassicModelPicker({
 
     return html`
         <div
-            class="compose-model-popup compose-model-catalogue"
+            class=${`compose-model-popup compose-model-catalogue${anchor ? ' is-statusbar-anchored' : ''}`}
+            style=${anchor ? `--model-popup-left: ${anchor.left}px; --model-popup-bottom: ${anchor.bottom}px` : undefined}
             data-compose-model-catalogue="true"
             ref=${rootRef}
             onKeyDown=${handleKeyboard}
@@ -181,7 +179,7 @@ export function ClassicModelPicker({
                 </div>
             </div>
             <div id=${resultsId} class="compose-model-popup-menu compose-model-catalogue-results" role="listbox" aria-label="Models">
-                ${projection.sections.map((section) => !section.collapsed && html`
+                ${projection.sections.map((section) => html`
                     <section class=${`compose-model-catalogue-section ${`compose-model-catalogue-section--${section.key}`}`} key=${section.key} role="presentation">
                         <div class="compose-model-catalogue-section-heading" role="presentation">
                             <span>${section.label}</span><span>${section.totalCount}</span>
@@ -219,12 +217,7 @@ export function ClassicModelPicker({
                             </select>
                         </label>
                     `}
-                    ${projection.blockedCount > 0 && html`
-                        <button type="button" class="compose-model-popup-btn" onClick=${() => setShowBlocked((value) => !value)}>
-                            ${showBlocked ? 'Hide' : 'Show'} incompatible (${projection.blockedCount})
-                        </button>
-                    `}
-                    ${onCompact && projection.blockedCount > 0 && html`<button type="button" class="compose-model-popup-btn" onClick=${onCompact}>Compact context</button>`}
+                    ${onCompact && html`<button type="button" class="compose-model-popup-btn" onClick=${onCompact}>Compact context</button>`}
                 </div>
                 ${onOpenSettings && html`<button type="button" class="compose-model-popup-btn primary" onClick=${onOpenSettings}>Open Models settings</button>`}
             </div>

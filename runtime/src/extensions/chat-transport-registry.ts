@@ -4,7 +4,6 @@ import type { ParsedChatAddress, ChatAddressKind } from "./chat-address.js";
 import { readAccessConfig } from "../core/config-access.js";
 import { listCurrentOwnerSessions } from "../agent-pool/owned-session-target.js";
 import { ChatAccessDenied } from "../db/session-ownership.js";
-import { requireFamilyToolAccess } from '../agent-pool/family-tool-access.js';
 
 export type ChatTransportMode = "auto" | "queue" | "steer";
 
@@ -147,7 +146,6 @@ export function getChatTransport(kind: ChatAddressKind): ChatTransport | null {
 }
 
 export async function getChatTransportDirectories(options: { advisory?: boolean } = {}): Promise<ChatTransportDirectory[]> {
-  requireFamilyToolAccess('chat');
   if (readAccessConfig().mode !== "single-user") {
     // Discovery is metadata-only until durable owner-aware delivery is integrated.
     return [{ transport: "local", generated_at: new Date().toISOString(),

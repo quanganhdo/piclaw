@@ -4,7 +4,7 @@
  * Provides helpers for building previews of agent drafts/thoughts, tracking
  * tool call titles, and constructing agent profile metadata objects.
  *
- * Consumers: web/agent-events.ts, web/agent-message-store.ts.
+ * Consumers: native-turn-view.ts and handlers/agent.ts.
  */
 
 import { buildPreviewLines, countSoftLines, splitLines } from "../../../utils/preview.js";
@@ -150,14 +150,15 @@ export function resolveMcpToolStatusIdentity(toolName: string, args: unknown): M
   return { operation: "status", server, tool: null, target: server, label: server ? `mcp: ${server} → status` : "mcp: status" };
 }
 
-function formatToolTitle(toolName: string, args: unknown): string {
+/** Short "tool: detail" label shared by live status and the turn activity log. */
+export function formatToolTitle(toolName: string, args: unknown): string {
   const mcpIdentity = resolveMcpToolStatusIdentity(toolName, args);
   if (mcpIdentity) return mcpIdentity.label;
   const record = extractToolArgs(args);
   if (!record) return toolName;
   let detail: string | null = null;
 
-  const command = record.command;
+  const command = record.command ?? (toolName === "exec_command" ? record.cmd : undefined);
   if (typeof command === "string") detail = command;
 
   if (!detail && Array.isArray(record.commands)) {

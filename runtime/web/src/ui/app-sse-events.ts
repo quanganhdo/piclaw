@@ -12,8 +12,8 @@ import {
   resolveSteerQueuedTurnId,
   shouldAdoptIncomingTurn,
   shouldIgnoreMismatchedTurn,
+  shouldIgnoreAgentStatus,
 } from './app-agent-turn-events.js';
-import { readAgentTurnId, resolveAgentPreviewRestoreState } from './app-agent-status-refresh.js';
 import { parseStatusLastEventAt } from './status-duration.js';
 import { invalidateAgentUiSnapshot } from './agent-ui-snapshot.js';
 import { resolveLiveGeneratedWidgetEvent } from './app-generated-widget-events.js';
@@ -44,14 +44,13 @@ import {
   isNoisyAgentSseEvent,
   resolveSseEventRoutingContext,
 } from './app-sse-event-routing.js';
-import { isAppChatActivationRecent } from './app-refresh-coordination.js';
 import {
   getContextSessionGeneration,
   getContextUsageRevision,
   haveSameContextUsage,
   normalizeContextUsage,
-  persistContextUsage,
   reconcileContextUsageForChat,
+  restoreContextUsage,
 } from './app-status-refresh-orchestration.js';
 
 type StateSetter<T> = (next: T | ((prev: T) => T)) => void;
@@ -59,13 +58,6 @@ type StateSetter<T> = (next: T | ((prev: T) => T)) => void;
 interface RefBox<T> {
   current: T;
 }
-
-// Preview SSE events can race the reconnect status snapshot. While a snapshot
-// is pending, record that newer preview state exists and refetch until one
-// snapshot completes without an intervening preview event. This avoids both
-// dropped deltas and duplicate replay when the first snapshot already included
-// an event that was in flight.
-const dirtyPreviewResyncRefs = new WeakSet<object>();
 
 interface PreviewTrailingFlushState {
   generation: number;
@@ -116,11 +108,10 @@ export interface HandleAppSseEventDependencies {
   updateUserProfile: (payload: any) => void;
 
   currentTurnIdRef: RefBox<string | null>;
+  agentStatusRef: RefBox<any>;
   activeChatJidRef: RefBox<string>;
-  pendingRequestRef: RefBox<any>;
   draftBufferRef: RefBox<string>;
   thoughtBufferRef: RefBox<string>;
-  previewResyncPendingRef: RefBox<boolean>;
   previewResyncGenerationRef: RefBox<number>;
   steerQueuedTurnIdRef: RefBox<string | null>;
   thoughtExpandedRef: RefBox<boolean>;
@@ -147,9 +138,7 @@ export interface HandleAppSseEventDependencies {
   setAgentThought: StateSetter<any>;
   setPendingRequest: StateSetter<any>;
   clearAgentRunState: () => void;
-  getAgentStatus: (chatJid: string) => Promise<any>;
   noteAgentActivity: (options?: Record<string, unknown>) => void;
-  showLastActivity: (payload: any) => void;
   refreshTimeline: () => Promise<void> | void;
   refreshModelAndQueueState: () => void;
   refreshActiveChatAgents: () => Promise<unknown> | void;
@@ -189,10 +178,8 @@ export function handleAppSseEvent(
 
     currentTurnIdRef,
     activeChatJidRef,
-    pendingRequestRef,
     draftBufferRef,
     thoughtBufferRef,
-    previewResyncPendingRef,
     previewResyncGenerationRef,
     steerQueuedTurnIdRef,
     thoughtExpandedRef,
@@ -219,9 +206,7 @@ export function handleAppSseEvent(
     setAgentThought,
     setPendingRequest,
     clearAgentRunState,
-    getAgentStatus,
     noteAgentActivity,
-    showLastActivity,
     refreshTimeline,
     refreshModelAndQueueState,
     refreshActiveChatAgents,
@@ -305,15 +290,6 @@ export function handleAppSseEvent(
     }
   };
 
-  const clearPreviewState = () => {
-    invalidateAppPreviewTrailingFlushes(previewResyncGenerationRef);
-    draftBufferRef.current = '';
-    thoughtBufferRef.current = '';
-    setAgentDraft({ text: '', totalLines: 0 });
-    setAgentPlan('');
-    setAgentThought({ text: '', totalLines: 0 });
-  };
-
   const consumeTextPreviews = () => {
     invalidateAppPreviewTrailingFlushes(previewResyncGenerationRef);
     draftBufferRef.current = '';
@@ -391,87 +367,9 @@ export function handleAppSseEvent(
     if (data?.ui_meters) {
       applyMetersFromEvent(data.ui_meters);
     }
-    const resyncGeneration = previewResyncGenerationRef.current + 1;
-    previewResyncGenerationRef.current = resyncGeneration;
-    previewResyncPendingRef.current = true;
-    dirtyPreviewResyncRefs.delete(previewResyncPendingRef);
-    setAgentStatus(null);
-    setExtensionWorkingState({ message: null, indicator: null, visible: true });
-    setPendingRequest(null);
-    pendingRequestRef.current = null;
-    if (isAppChatActivationRecent(currentChatJid)) {
-      if (previewResyncGenerationRef.current === resyncGeneration) {
-        previewResyncPendingRef.current = false;
-      }
-      return;
-    }
-
-    const targetChatJid = currentChatJid;
-    const applyStatusSnapshot = (response) => {
-      if (activeChatJidRef.current !== targetChatJid) return;
-      if (!response?.data) {
-        clearPreviewState();
-        clearAgentRunState();
-        return;
-      }
-
-      const payload = response.data;
-      if (payload.type === 'done' || payload.type === 'error') {
-        // A terminal event may have landed while SSE was disconnected. The
-        // connected handler already refreshes timeline/model state; refresh
-        // context explicitly so session rotation completion is fully applied.
-        clearPreviewState();
-        clearAgentRunState();
-        void refreshContextUsage();
-        return;
-      }
-      if (response.status !== 'active') {
-        clearPreviewState();
-        clearAgentRunState();
-        return;
-      }
-      const activeTurn = readAgentTurnId(payload);
-      if (activeTurn) setActiveTurn(activeTurn);
-      setAgentStatus(payload);
-      noteAgentActivity({
-        clearSilence: true,
-        atMs: parseStatusLastEventAt(payload) ?? Date.now(),
-      });
-      showLastActivity(payload);
-
-      const thoughtRestore = resolveAgentPreviewRestoreState(response.thought);
-      if (thoughtRestore) {
-        thoughtBufferRef.current = thoughtRestore.text;
-        setAgentThought(thoughtRestore);
-      }
-      const draftRestore = resolveAgentPreviewRestoreState(response.draft);
-      if (draftRestore) {
-        draftBufferRef.current = draftRestore.text;
-        setAgentDraft(draftRestore);
-      }
-    };
-    void (async () => {
-      try {
-        do {
-          dirtyPreviewResyncRefs.delete(previewResyncPendingRef);
-          const response = await getAgentStatus(targetChatJid);
-          if (previewResyncGenerationRef.current !== resyncGeneration) return;
-          applyStatusSnapshot(response);
-        } while (dirtyPreviewResyncRefs.has(previewResyncPendingRef));
-      } catch (error) {
-        console.warn('Failed to fetch agent status:', error);
-      } finally {
-        if (previewResyncGenerationRef.current === resyncGeneration) {
-          previewResyncPendingRef.current = false;
-          dirtyPreviewResyncRefs.delete(previewResyncPendingRef);
-        }
-      }
-    })();
-
-    if (isMainTimelineView(viewStateRef.current)) {
-      void refreshTimeline();
-    }
-    refreshModelAndQueueState();
+    // Connection transitions already restore the coherent native projection via
+    // useAgentStatusLifecycle. A second unfenced fetch here can erase a newer
+    // turn and suppress its previews while an old reconnect snapshot is pending.
     return;
   }
 
@@ -479,15 +377,22 @@ export function handleAppSseEvent(
     if (!isCurrentChatEvent) {
       const eventChatJid = typeof data?.chat_jid === 'string' ? data.chat_jid.trim() : '';
       const inactiveContextUsage = normalizeContextUsage(data?.context_usage);
-      if (eventChatJid && data?.context_reset === true && inactiveContextUsage?.sessionGeneration) {
-        const resetUsage = reconcileContextUsageForChat(eventChatJid, null, inactiveContextUsage, { reset: true });
-        persistContextUsage(eventChatJid, resetUsage);
+      if (eventChatJid && (data?.context_reset === true || inactiveContextUsage?.contextUpdate === 'replace') && inactiveContextUsage?.sessionGeneration) {
+        reconcileContextUsageForChat(eventChatJid, restoreContextUsage(eventChatJid), inactiveContextUsage, {
+          reset: data?.context_reset === true,
+        });
       }
       if (data?.type === 'done' || data?.type === 'error') {
         void refreshActiveChatAgents();
         void refreshCurrentChatBranches();
       }
       return;
+    }
+
+    if (data.type !== 'context_usage') {
+      const current = deps.agentStatusRef.current || { turn_id: currentTurnIdRef.current };
+      if (shouldIgnoreAgentStatus(data, current)) return;
+      deps.agentStatusRef.current = data;
     }
 
     if (data.type === 'intent' && data.intent_key === 'compaction') invalidateAgentUiSnapshot(currentChatJid);
@@ -498,7 +403,6 @@ export function handleAppSseEvent(
           reset: data.context_reset === true,
         });
         if (haveSameContextUsage(prev, merged)) return prev;
-        persistContextUsage(currentChatJid, merged);
         return merged;
       });
     }
@@ -530,8 +434,9 @@ export function handleAppSseEvent(
       setExtensionWorkingState({ message: null, indicator: null, visible: true });
       setPendingRequest(null);
       if (data.type === 'error') {
-        setAgentStatus({ type: 'error', title: data.title || 'Agent error' });
-        setTimeout(() => setAgentStatus(null), 8000);
+        const errorStatus = { type: 'error', title: data.title || 'Agent error' };
+        setAgentStatus(errorStatus);
+        setTimeout(() => setAgentStatus(previous => previous === errorStatus ? null : previous), 8000);
       } else {
         setAgentStatus(null);
       }
@@ -560,6 +465,8 @@ export function handleAppSseEvent(
 
   if (eventType === 'agent_steer_queued') {
     if (!isCurrentChatEvent) return;
+    // A queued item promoted to steering stays queued until the next tool round.
+    void refreshQueueState();
     if (shouldIgnoreMismatchedTurn(turnId, currentTurnIdRef.current)) {
       return;
     }
@@ -591,6 +498,12 @@ export function handleAppSseEvent(
     return;
   }
 
+  if (eventType === 'agent_followup_reordered') {
+    if (!isCurrentChatEvent) return;
+    void refreshQueueState();
+    return;
+  }
+
   if (eventType === 'agent_followup_removed') {
     if (!isCurrentChatEvent) return;
     const optimisticRemoval = resolveFollowupQueueRemovalPlan(followupQueueItemsRef.current, data);
@@ -606,19 +519,12 @@ export function handleAppSseEvent(
   if (eventType === 'agent_preview_consumed') {
     if (!isCurrentChatEvent) return;
     if (shouldIgnoreMismatchedTurn(turnId, currentTurnIdRef.current)) return;
-    if (previewResyncPendingRef.current) {
-      dirtyPreviewResyncRefs.add(previewResyncPendingRef);
-    }
     consumeTextPreviews();
     return;
   }
 
   if (eventType === 'agent_draft_delta') {
     if (!isCurrentChatEvent) return;
-    if (previewResyncPendingRef.current) {
-      dirtyPreviewResyncRefs.add(previewResyncPendingRef);
-      return;
-    }
     if (shouldIgnoreMismatchedTurn(turnId, currentTurnIdRef.current)) {
       return;
     }
@@ -651,10 +557,6 @@ export function handleAppSseEvent(
 
   if (eventType === 'agent_draft') {
     if (!isCurrentChatEvent) return;
-    if (previewResyncPendingRef.current) {
-      dirtyPreviewResyncRefs.add(previewResyncPendingRef);
-      return;
-    }
     if (shouldIgnoreMismatchedTurn(turnId, currentTurnIdRef.current)) {
       return;
     }
@@ -681,10 +583,6 @@ export function handleAppSseEvent(
 
   if (eventType === 'agent_thought_delta') {
     if (!isCurrentChatEvent) return;
-    if (previewResyncPendingRef.current) {
-      dirtyPreviewResyncRefs.add(previewResyncPendingRef);
-      return;
-    }
     if (shouldIgnoreMismatchedTurn(turnId, currentTurnIdRef.current)) {
       return;
     }
@@ -720,10 +618,6 @@ export function handleAppSseEvent(
 
   if (eventType === 'agent_thought') {
     if (!isCurrentChatEvent) return;
-    if (previewResyncPendingRef.current) {
-      dirtyPreviewResyncRefs.add(previewResyncPendingRef);
-      return;
-    }
     if (shouldIgnoreMismatchedTurn(turnId, currentTurnIdRef.current)) {
       return;
     }
@@ -760,7 +654,6 @@ export function handleAppSseEvent(
             expectedRevision,
           });
           if (haveSameContextUsage(prev, merged)) return prev;
-          persistContextUsage(targetChatJid, merged);
           return merged;
         });
       })

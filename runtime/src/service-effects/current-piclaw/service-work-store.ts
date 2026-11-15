@@ -1,10 +1,16 @@
+import { admitSqliteWrite, isSqliteContention as isBusy } from '../../db/sqlite-async-admission.js';
+import { getQueuedInputIntent } from "./queued-input-intent.js";
+import { assertProcessAdmission } from "../../runtime/process-admission.js";
 import {
   Result,
   type Result as ResultValue,
 } from "../contracts/result.js";
 import type Database from "bun:sqlite";
+import { computeClosedSourceFrontier } from "./source-frontier.js";
+import { normaliseWithdrawalRequest, normaliseQueuedSourceAttachment, type AttachQueuedSourceRequest, type WithdrawUnclaimedSourceRequest, type FinishHarnessRequest } from "./service-work-request-normalizer.js";
+export type { AttachQueuedSourceRequest, WithdrawUnclaimedSourceRequest, FinishHarnessRequest } from "./service-work-request-normalizer.js";
 
-import type { NormalisedTraceInput } from "../contracts/common.js";
+import { hashCanonicalRequest, type CanonicalJsonValue, type NormalisedTraceInput } from "../contracts/common.js";
 import type {
   AcceptCancellationRequest,
   AcceptedSourceSnapshot,
@@ -39,6 +45,35 @@ export interface ServiceWorkAdapterRuntime {
     method: MutationMethod,
   ): unknown;
   recordTrace(input: NormalisedTraceInput): void;
+}
+
+/** Optional host writer fence for all new mutations. Committed replays remain observational. */
+export interface ServiceWorkAcceptanceRuntime extends ServiceWorkAdapterRuntime {
+  /** Synchronous, fail-closed check inside each mutation SQL transaction, before/after apply. */
+  validateAcceptance?: (method?: MutationMethod, operationId?: string | null) => boolean;
+  /** Host-owned persisted queue order. Reorders only the leading queued-source batch;
+   * normal/internal sources remain barriers. Source IDs and receipts never change. */
+  pendingQueuedSourceOrder?: (chatJid: string) => readonly string[];
+}
+
+/** Precommit failure: the transaction owner MUST let this escape and roll back. */
+export class EffectAdmissionError extends Error {
+  constructor(readonly tag: ServiceWorkErrorTag) {
+    super(`EF-S01 admission failed: ${tag}`);
+    this.name = "EffectAdmissionError";
+  }
+}
+
+class AcceptanceOwnershipError extends Error {}
+
+function mutationError(cause: unknown): ServiceWorkError {
+  return cause instanceof AcceptanceOwnershipError
+    ? serviceError("owner_conflict")
+    : cause instanceof CorruptStateError
+      ? serviceError("corrupt_state")
+      : isBusy(cause)
+        ? serviceError("storage_unavailable", "not_applied", true)
+        : serviceError("corrupt_state");
 }
 
 type MutationRequest = NormalisedMutationRequest;
@@ -89,10 +124,7 @@ interface OperationRow {
   cancellation_cause: string | null;
   cancellation_requested_at: string | null;
   harness_session_id: string | null;
-  harness_lane: string | null;
   harness_operation_id: string | null;
-  harness_state: HarnessCorrelation["state"] | null;
-  harness_watch_generation: number | null;
   terminal_disposition: string | null;
   terminal_message_row_id: number | null;
   terminal_error_code: string | null;
@@ -110,7 +142,7 @@ export type ServiceWorkStoreConstructionResult = ResultValue<
  */
 export function createCurrentPiclawServiceWorkStore(
   database: Database,
-  runtime: ServiceWorkAdapterRuntime,
+  runtime: ServiceWorkAcceptanceRuntime,
 ): ServiceWorkStoreConstructionResult {
   return CurrentPiclawServiceWorkStore.create(database, runtime);
 }
@@ -118,7 +150,7 @@ export function createCurrentPiclawServiceWorkStore(
 export class CurrentPiclawServiceWorkStore implements ServiceWorkStore {
   static create(
     database: Database,
-    runtime: ServiceWorkAdapterRuntime,
+    runtime: ServiceWorkAcceptanceRuntime,
   ): ServiceWorkStoreConstructionResult {
     try {
       return Result.ok(new CurrentPiclawServiceWorkStore(database, runtime));
@@ -132,14 +164,13 @@ export class CurrentPiclawServiceWorkStore implements ServiceWorkStore {
 
   private constructor(
     readonly database: Database,
-    private readonly runtime: ServiceWorkAdapterRuntime,
+    private readonly runtime: ServiceWorkAcceptanceRuntime,
   ) {
     const foreignKeys = database.query("PRAGMA foreign_keys").get() as
       { foreign_keys?: number } | undefined;
     if (foreignKeys?.foreign_keys !== 1) {
       throw new Error("EF-S01 requires SQLite foreign-key enforcement.");
     }
-    database.exec("PRAGMA busy_timeout = 5000");
   }
 
   acceptSource(
@@ -148,6 +179,207 @@ export class CurrentPiclawServiceWorkStore implements ServiceWorkStore {
     return this.mutate("acceptSource", input, (request) =>
       this.applyAcceptSource(request as AcceptSourceRequest),
     );
+  }
+
+  /**
+   * Host-only synchronous precommit receipt, NOT a public applied EffectResult.
+   * Caller owns commit/rollback and acknowledgement. Pass its actual owned
+   * connection; another connection's transaction is never sufficient. Failures
+   * MUST escape the outer transaction. No lost-ack hook runs before commit.
+   */
+  acceptSourceInTransaction(
+    input: AcceptSourceRequest,
+    transactionDatabase: Database,
+  ): AcceptedSourceSnapshot {
+    if (transactionDatabase !== this.database || !this.database.inTransaction)
+      throw new EffectAdmissionError("owner_conflict");
+    const request = this.prepareMutation("acceptSource", input);
+    if (!request) throw new EffectAdmissionError("invalid_transition");
+    try {
+      const fault = this.fault("acceptSource", "before_effect");
+      if (!fault.ok || fault.injected)
+        throw new EffectAdmissionError("storage_unavailable");
+      const outcome = this.applyMutationWithinTransaction("acceptSource", request,
+        value => this.applyAcceptSource(value as AcceptSourceRequest));
+      if (!outcome.ok) throw new EffectAdmissionError(outcome.error._tag);
+      return outcome.value;
+    } catch (cause) {
+      if (cause instanceof EffectAdmissionError) throw cause;
+      throw new EffectAdmissionError(cause instanceof RollbackFault
+        ? "storage_unavailable" : mutationError(cause)._tag);
+    }
+  }
+
+  /** Host-only exact-source admission/claim in one caller-owned transaction.
+   * Receipt is precommit; failures MUST escape and roll back the outer transaction.
+   * Both ordinary decision receipts retain replay/source/operation identity.
+   */
+  acceptAndClaimSourceInTransaction(accept: AcceptSourceRequest, claim: ClaimNextSourceRequest, transactionDatabase: Database): ClaimedOperation {
+    if (transactionDatabase !== this.database || !this.database.inTransaction) throw new EffectAdmissionError("owner_conflict");
+    const prepared = this.prepareMutation("claimNext", claim) as ClaimNextSourceRequest | null;
+    if (!prepared || claim.chatJid !== accept.chatJid || accept.targetOperationId !== null || accept.parentSourceSeq !== null)
+      throw new EffectAdmissionError("invalid_transition");
+    const source = this.acceptSourceInTransaction(accept, transactionDatabase);
+    try {
+      const fault = this.fault("claimNext", "before_effect");
+      if (!fault.ok || fault.injected) throw new EffectAdmissionError("storage_unavailable");
+      const outcome = this.applyMutationWithinTransaction("claimNext", prepared, request => this.applyClaimNext(request as ClaimNextSourceRequest));
+      if (!outcome.ok) throw new EffectAdmissionError(outcome.error._tag);
+      const claimed = outcome.value as ClaimedOperation | null;
+      if (!claimed || claimed.source.chatJid !== source.chatJid || claimed.source.sourceSeq !== source.sourceSeq ||
+        claimed.source.sourceId !== source.sourceId || claimed.operation.primarySourceSeq !== source.sourceSeq)
+        throw new EffectAdmissionError("owner_conflict");
+      return claimed;
+    } catch (cause) {
+      if (cause instanceof EffectAdmissionError) throw cause;
+      throw new EffectAdmissionError(cause instanceof RollbackFault ? "storage_unavailable" : mutationError(cause)._tag);
+    }
+  }
+
+  /** Accept and attach a targeted cancellation so normal terminal settlement
+   * retires it with the operation. Caller owns the transaction and rollback. */
+  acceptAndCancelSourceInTransaction(input: AcceptSourceRequest, expectedVersion: number, cause: string, transactionDatabase: Database): OperationSnapshot {
+    if (transactionDatabase !== this.database || !this.database.inTransaction) throw new EffectAdmissionError("owner_conflict");
+    if (input.kind !== "cancellation" || !input.targetOperationId || input.parentSourceSeq === null) throw new EffectAdmissionError("invalid_transition");
+    const source = this.acceptSourceInTransaction(input, transactionDatabase);
+    const operation = this.operationRow(input.targetOperationId);
+    if (!operation || source.targetOperationId !== operation.operation_id || operation.chat_jid !== source.chatJid ||
+      !this.database.query("SELECT 1 FROM service_effect_s01_operation_sources WHERE operation_id=? AND chat_jid=? AND source_seq=?")
+        .get(operation.operation_id, source.chatJid, input.parentSourceSeq)) throw new EffectAdmissionError("owner_conflict");
+    const request: AcceptCancellationRequest = { effect: { ...input.effect, idempotencyKey: `cancel:${input.effect.idempotencyKey}`,
+      requestHash: "", operationId: operation.operation_id, sourceSeq: source.sourceSeq },
+      expectedVersion, sourceId: source.sourceId, sourceSeq: source.sourceSeq, cause, requestedAt: input.acceptedAt };
+    const sealedRequest = { ...request, effect: { ...request.effect, requestHash: hashCanonicalRequest(request as unknown as CanonicalJsonValue) } };
+    const prepared = this.prepareMutation("acceptCancellation", sealedRequest);
+    if (!prepared) throw new EffectAdmissionError("invalid_transition");
+    try {
+      const fault = this.fault("acceptCancellation", "before_effect");
+      if (!fault.ok || fault.injected) throw new EffectAdmissionError("storage_unavailable");
+      this.validateAcceptance();
+      const currentSource = this.sourceRow(source.chatJid, source.sourceSeq);
+      if (currentSource?.state === "pending") {
+        this.database.query("UPDATE service_effect_s01_sources SET state='claimed' WHERE chat_jid=? AND source_seq=? AND state='pending'")
+          .run(source.chatJid, source.sourceSeq);
+        this.database.query("INSERT INTO service_effect_s01_operation_sources(operation_id,chat_jid,source_seq) VALUES (?,?,?)")
+          .run(operation.operation_id, source.chatJid, source.sourceSeq);
+      } else if (!this.database.query("SELECT 1 FROM service_effect_s01_operation_sources WHERE operation_id=? AND chat_jid=? AND source_seq=?")
+        .get(operation.operation_id, source.chatJid, source.sourceSeq)) throw new EffectAdmissionError("owner_conflict");
+      const outcome = this.applyMutationWithinTransaction("acceptCancellation", prepared, value => this.applyCancellation(value as AcceptCancellationRequest));
+      if (!outcome.ok) throw new EffectAdmissionError(outcome.error._tag);
+      this.validateAcceptance();
+      return outcome.value as OperationSnapshot;
+    } catch (error) {
+      if (error instanceof EffectAdmissionError) throw error;
+      throw new EffectAdmissionError(error instanceof RollbackFault ? "storage_unavailable" : mutationError(error)._tag);
+    }
+  }
+
+  /** Host-only precommit receipt. The caller MUST roll back on any failure. */
+  withdrawUnclaimedSourceInTransaction(input: WithdrawUnclaimedSourceRequest, transactionDatabase: Database): AcceptedSourceSnapshot {
+    if (transactionDatabase !== this.database || !this.database.inTransaction) throw new EffectAdmissionError("owner_conflict");
+    const request = normaliseWithdrawalRequest(input);
+    if (!request) throw new EffectAdmissionError("invalid_transition");
+    try {
+      // Unlike historical admission, withdrawal requires an explicit writer fence.
+      if (!this.runtime.validateAcceptance) throw new AcceptanceOwnershipError();
+      this.validateAcceptance();
+      const method = "withdrawUnclaimedSource.v1";
+      const replay = this.readDecision<AcceptedSourceSnapshot>(method, request.effect.idempotencyKey, request.effect.requestHash);
+      if (replay) {
+        if (!replay.ok) throw new EffectAdmissionError(replay.error._tag);
+        this.validateAcceptance();
+        return replay.value;
+      }
+      const raw = this.database.query("SELECT * FROM service_effect_s01_sources WHERE chat_jid=? AND source_id=?")
+        .get(request.chatJid, request.sourceId) as Record<string, unknown> | null;
+      if (!raw) throw new EffectAdmissionError("invalid_transition");
+      const source = sourceRow(raw);
+      if (source.kind !== "message" || source.source_hash !== request.sourceHash || source.payload_ref !== request.payloadRef
+        || request.payloadRef !== `queued-source:${request.sourceId}` || source.state !== "pending"
+        || source.target_operation_id !== null || source.disposition_reason !== null) throw new EffectAdmissionError("invalid_transition");
+      const owned = this.database.query(`SELECT 1 FROM service_effect_s01_operation_sources WHERE chat_jid=? AND source_seq=?
+        UNION ALL SELECT 1 FROM service_effect_s01_operations WHERE chat_jid=? AND (primary_source_seq=? OR cancellation_source_seq=?)
+        UNION ALL SELECT 1 FROM service_effect_s01_queued_inputs WHERE chat_jid=? AND source_seq=? LIMIT 1`)
+        .get(request.chatJid, source.source_seq, request.chatJid, source.source_seq, source.source_seq, request.chatJid, source.source_seq);
+      if (owned) throw new EffectAdmissionError("owner_conflict");
+      const changed = this.database.query("UPDATE service_effect_s01_sources SET state='disposed', disposition_reason='host_cancelled' WHERE chat_jid=? AND source_seq=? AND state='pending'")
+        .run(request.chatJid, source.source_seq);
+      if (changed.changes !== 1) throw new EffectAdmissionError("invalid_transition");
+      const chat = this.chatRow(request.chatJid);
+      // An active operation owns its frontier until EF-S02 releases it.
+      if (!chat.activeOperationId) {
+        const frontier = computeClosedSourceFrontier(this.database, request.chatJid, chat.consumedThroughSourceSeq, chat.nextSourceSeq);
+        this.database.query("UPDATE service_effect_s01_chats SET consumed_through_source_seq=? WHERE chat_jid=?")
+          .run(frontier, request.chatJid);
+      }
+      const snapshot = sourceSnapshot(this.requireSourceRow(request.chatJid, source.source_seq));
+      this.writeDecision(method, request.effect.idempotencyKey, request.effect.requestHash, snapshot);
+      this.validateAcceptance();
+      return snapshot;
+    } catch (cause) {
+      if (cause instanceof EffectAdmissionError) throw cause;
+      throw new EffectAdmissionError(mutationError(cause)._tag);
+    }
+  }
+
+  /**
+   * Host-only precommit attachment of an EXISTING accepted queue source. The
+   * caller owns the same SQL transaction for queue removal/user materialization
+   * and MUST roll back on failure. This receipt is not candidate dispatch or ACK.
+   * No runtime/UI caller is enabled until exact-target dispatch is supported.
+   */
+  attachQueuedSourceInTransaction(input: AttachQueuedSourceRequest, transactionDatabase: Database): OperationSnapshot {
+    if (transactionDatabase !== this.database || !this.database.inTransaction) throw new EffectAdmissionError("owner_conflict");
+    const request = normaliseQueuedSourceAttachment(input);
+    if (!request) throw new EffectAdmissionError("invalid_transition");
+    try {
+      if (!this.runtime.validateAcceptance) throw new AcceptanceOwnershipError();
+      this.validateAcceptance();
+      const method = "attachQueuedSource.v1";
+      const replay = this.readDecision<OperationSnapshot>(method, request.effect.idempotencyKey, request.effect.requestHash);
+      if (replay) {
+        if (!replay.ok) throw new EffectAdmissionError(replay.error._tag);
+        this.validateAcceptance();
+        return replay.value;
+      }
+      const operation = this.operationRow(request.effect.operationId);
+      if (!operation || operation.chat_jid !== request.chatJid
+        || this.chatRow(request.chatJid).activeOperationId !== operation.operation_id
+        || operation.phase !== "executing" || operation.cancellation_source_seq !== null) throw new EffectAdmissionError("owner_conflict");
+      if (operation.version !== request.expectedVersion) throw new EffectAdmissionError("version_mismatch");
+      const harness = request.expectedHarness;
+      if (operation.harness_session_id !== harness.sessionId || operation.harness_operation_id !== harness.harnessOperationId) throw new EffectAdmissionError("owner_conflict");
+      const source = this.sourceRow(request.chatJid, request.effect.sourceSeq);
+      if (!source || source.source_id !== request.sourceId || source.source_hash !== request.sourceHash
+        || source.kind !== "message" || source.payload_ref !== request.payloadRef || request.payloadRef !== `queued-source:${request.sourceId}`
+        || source.state !== "pending" || source.target_operation_id !== null || source.disposition_reason !== null) throw new EffectAdmissionError("invalid_transition");
+      const owned = this.database.query(`SELECT 1 FROM service_effect_s01_operation_sources WHERE chat_jid=? AND source_seq=?
+        UNION ALL SELECT 1 FROM service_effect_s01_operations WHERE chat_jid=? AND (primary_source_seq=? OR cancellation_source_seq=?)
+        UNION ALL SELECT 1 FROM service_effect_s01_queued_inputs WHERE chat_jid=? AND source_seq=? LIMIT 1`)
+        .get(request.chatJid, source.source_seq, request.chatJid, source.source_seq, source.source_seq, request.chatJid, source.source_seq);
+      const intentId = `queued-steer:${request.sourceId}`;
+      if (owned || this.database.query("SELECT 1 FROM service_effect_s01_intents WHERE operation_id=? AND intent_id=?")
+        .get(operation.operation_id, intentId)) throw new EffectAdmissionError("owner_conflict");
+      this.database.query(`UPDATE service_effect_s01_sources SET state='claimed', target_operation_id=?
+        WHERE chat_jid=? AND source_seq=? AND source_id=? AND source_hash=? AND state='pending' AND target_operation_id IS NULL AND disposition_reason IS NULL`)
+        .run(operation.operation_id, request.chatJid, source.source_seq, request.sourceId, request.sourceHash);
+      // Bun's run().changes can include trigger writes on the full host schema.
+      // SQLite changes() is the direct CAS row count, excluding those triggers.
+      if ((this.database.query('SELECT changes() AS n').get() as { n: number }).n !== 1)
+        throw new EffectAdmissionError("invalid_transition");
+      this.database.query("INSERT INTO service_effect_s01_operation_sources(chat_jid, operation_id, source_seq) VALUES (?, ?, ?)")
+        .run(request.chatJid, operation.operation_id, source.source_seq);
+      // Reuse S01 intent application/version CAS, without accepting another source.
+      const outcome = this.applyAppendIntent({ effect: request.effect, expectedVersion: request.expectedVersion,
+        intentId, kind: "queue_input", payloadRef: request.payloadRef, createdAt: request.createdAt });
+      if (!outcome.ok) throw new EffectAdmissionError(outcome.error._tag);
+      this.writeDecision(method, request.effect.idempotencyKey, request.effect.requestHash, outcome.value);
+      this.validateAcceptance();
+      return outcome.value;
+    } catch (cause) {
+      if (cause instanceof EffectAdmissionError) throw cause;
+      throw new EffectAdmissionError(mutationError(cause)._tag);
+    }
   }
 
   claimNext(
@@ -182,6 +414,43 @@ export class CurrentPiclawServiceWorkStore implements ServiceWorkStore {
     );
   }
 
+  /**
+   * Host-only synchronous precommit receipt, NOT execution authority or an applied
+   * EffectResult. Caller owns commit/rollback and acknowledgement on this exact
+   * connection. Failures MUST escape the outer transaction. No lost-ack hook runs
+   * before commit; replay, validation and CAS use the ordinary mutation path.
+   */
+  bindHarnessInTransaction(
+    input: BindHarnessRequest,
+    transactionDatabase: Database,
+  ): OperationSnapshot {
+    if (transactionDatabase !== this.database || !this.database.inTransaction)
+      throw new EffectAdmissionError("owner_conflict");
+    const request = this.prepareMutation("bindHarness", input);
+    if (!request) throw new EffectAdmissionError("invalid_transition");
+    try {
+      const fault = this.fault("bindHarness", "before_effect");
+      if (!fault.ok || fault.injected)
+        throw new EffectAdmissionError("storage_unavailable");
+      const outcome = this.applyMutationWithinTransaction("bindHarness", request,
+        value => this.applyHarnessBinding(value as BindHarnessRequest));
+      if (!outcome.ok) throw new EffectAdmissionError(outcome.error._tag);
+      return outcome.value;
+    } catch (cause) {
+      if (cause instanceof EffectAdmissionError) throw cause;
+      throw new EffectAdmissionError(cause instanceof RollbackFault
+        ? "storage_unavailable" : mutationError(cause)._tag);
+    }
+  }
+
+  /** Host-only settlement CAS, not candidate execution authority. The current owner must
+   * first verify committed outcomes for EVERY claimed input; this store cannot read
+   * candidate storage. Version + immutable execution binding fence late completions.
+   * Cancellation may finish only once the candidate has actually stopped. */
+  finishHarness(input: FinishHarnessRequest): Promise<ResultValue<OperationSnapshot, ServiceWorkError>> {
+    return this.mutate("finishHarness", input, request => this.applyHarnessFinish(request as FinishHarnessRequest));
+  }
+
   recordQueuedInput(
     input: RecordQueuedInputRequest,
   ): Promise<ResultValue<OperationSnapshot, ServiceWorkError>> {
@@ -199,6 +468,30 @@ export class CurrentPiclawServiceWorkStore implements ServiceWorkStore {
     );
   }
 
+  /** Concrete host lookup; does not admit work or create wake intents. */
+  getAcceptedSource(chatJid: string, sourceId: string): AcceptedSourceSnapshot | null {
+    const row = this.database.query(
+      "SELECT * FROM service_effect_s01_sources WHERE chat_jid = ? AND source_id = ?",
+    ).get(chatJid, sourceId);
+    return row ? sourceSnapshot(sourceRow(row as Record<string, unknown>)) : null;
+  }
+
+  /** Concrete recovery lookup by the operation's persisted claimed-source sequence. */
+  getSourceBySeq(chatJid: string, sourceSeq: number): AcceptedSourceSnapshot | null {
+    const row = this.database.query(
+      "SELECT * FROM service_effect_s01_sources WHERE chat_jid = ? AND source_seq = ?",
+    ).get(chatJid, sourceSeq);
+    return row ? sourceSnapshot(sourceRow(row as Record<string, unknown>)) : null;
+  }
+
+  /** Read-only host recovery proof, scoped to the exact operation/source membership. */
+  getQueuedInputIntent(operationId: string, source: AcceptedSourceSnapshot): Readonly<{
+    operationId: string; sourceSeq: number; sourceId: string; intentId: string;
+    kind: "queue_input"; payloadRef: string; createdAt: string; intentHash: string; sourceHash: string;
+  }> | null {
+    return getQueuedInputIntent(this.database, operationId, source);
+  }
+
   getChatFrontier(
     chatJid: string,
   ): Promise<ResultValue<ChatFrontierSnapshot, ServiceWorkError>> {
@@ -207,16 +500,7 @@ export class CurrentPiclawServiceWorkStore implements ServiceWorkStore {
       if (id === null) return invalidRead();
       this.ensureChat(id);
       const chat = this.chatRow(id);
-      const pending = this.database
-        .query(
-          `
-        SELECT MIN(source_seq) AS source_seq
-        FROM service_effect_s01_sources
-        WHERE chat_jid = ? AND state = 'pending'
-      `,
-        )
-        .get(id) as { source_seq?: unknown } | undefined;
-      const nextPendingSourceSeq = nullableInteger(pending?.source_seq, 1);
+      const nextPendingSourceSeq = this.nextPendingSource(id)?.source_seq ?? null;
       return Object.freeze({
         chatJid: id,
         consumedThroughSourceSeq: chat.consumedThroughSourceSeq,
@@ -264,6 +548,8 @@ export class CurrentPiclawServiceWorkStore implements ServiceWorkStore {
   private applyAcceptSource(
     request: AcceptSourceRequest,
   ): MutationOutcome<AcceptedSourceSnapshot> {
+    // Cancellation is an explicit reconciliation control, not new executable work.
+    if (request.kind !== "cancellation") assertProcessAdmission();
     this.ensureChat(request.chatJid);
     const known = this.database
       .query(
@@ -352,6 +638,26 @@ export class CurrentPiclawServiceWorkStore implements ServiceWorkStore {
     );
   }
 
+  private nextPendingSource(chatJid: string): SourceRow | null {
+    const rows = this.database.query("SELECT * FROM service_effect_s01_sources WHERE chat_jid=? AND state='pending' ORDER BY source_seq")
+      .all(chatJid) as Record<string, unknown>[];
+    const first = rows[0] ? sourceRow(rows[0]) : null;
+    if (!first || !this.runtime.pendingQueuedSourceOrder) return first;
+    const queued = new Map<string, SourceRow>();
+    for (const row of rows) {
+      const source = sourceRow(row);
+      if (source.kind !== "message" || source.target_operation_id !== null || source.payload_ref !== `queued-source:${source.source_id}`) break;
+      queued.set(source.source_id, source);
+    }
+    if (!queued.size) return first;
+    const order = this.runtime.pendingQueuedSourceOrder(chatJid);
+    for (const id of order) {
+      const source = queued.get(id);
+      if (source) return source;
+    }
+    return first;
+  }
+
   private applyClaimNext(
     request: ClaimNextSourceRequest,
   ): MutationOutcome<ClaimedOperation | null> {
@@ -367,18 +673,12 @@ export class CurrentPiclawServiceWorkStore implements ServiceWorkStore {
         conflictingOperationId: chat.activeOperationId,
       });
     }
-    const candidate = this.database
-      .query(
-        `
-      SELECT * FROM service_effect_s01_sources
-      WHERE chat_jid = ? AND state = 'pending' AND source_seq > ?
-      ORDER BY source_seq LIMIT 1
-    `,
-      )
-      .get(request.chatJid, request.expectedFrontier) as
-      Record<string, unknown> | undefined;
-    if (!candidate) return this.applied(null, false);
-    const source = sourceRow(candidate);
+    const source = this.nextPendingSource(request.chatJid);
+    if (!source) return this.applied(null, false);
+    // The caller may have observed an older queue order before this transaction.
+    // Reject rather than claim a different source under the requested operation ID.
+    if (request.effect.sourceSeq !== null && request.effect.sourceSeq !== source.source_seq)
+      return this.rejected("owner_conflict");
     if (this.operationRow(request.newOperationId)) {
       return this.rejected("owner_conflict", {
         conflictingOperationId: request.newOperationId,
@@ -551,10 +851,7 @@ export class CurrentPiclawServiceWorkStore implements ServiceWorkStore {
     if (row.harness_session_id !== null) {
       const equal =
         row.harness_session_id === request.sessionId &&
-        row.harness_lane === request.lane &&
-        row.harness_operation_id === request.harnessOperationId &&
-        row.harness_state === request.state &&
-        row.harness_watch_generation === request.watchGeneration;
+        row.harness_operation_id === request.harnessOperationId;
       return equal
         ? this.applied(this.requireOperationSnapshot(row.operation_id), true)
         : this.rejected("owner_conflict", {
@@ -569,18 +866,14 @@ export class CurrentPiclawServiceWorkStore implements ServiceWorkStore {
       .query(
         `
       UPDATE service_effect_s01_operations
-      SET harness_session_id = ?, harness_lane = ?, harness_operation_id = ?, harness_state = ?,
-          harness_watch_generation = ?, phase = ?, version = version + 1
+      SET harness_session_id = ?, harness_operation_id = ?,
+          phase = CASE WHEN cancellation_source_seq IS NULL THEN 'executing' ELSE 'cancelling' END, version = version + 1
       WHERE operation_id = ? AND version = ? AND phase <> 'terminal' AND harness_session_id IS NULL
     `,
       )
       .run(
         request.sessionId,
-        request.lane,
         request.harnessOperationId,
-        request.state,
-        request.watchGeneration,
-        phaseForHarness(request.state),
         row.operation_id,
         request.expectedVersion,
       );
@@ -588,6 +881,24 @@ export class CurrentPiclawServiceWorkStore implements ServiceWorkStore {
       return this.rejected("version_mismatch", {
         observedVersion: this.requireOperationRow(row.operation_id).version,
       });
+    return this.applied(this.requireOperationSnapshot(row.operation_id), false);
+  }
+
+  private applyHarnessFinish(request: FinishHarnessRequest): MutationOutcome<OperationSnapshot> {
+    const row = this.operationRow(request.effect.operationId);
+    if (!row) return this.rejected("not_found");
+    if (row.version !== request.expectedVersion)
+      return this.rejected("version_mismatch", { observedVersion: row.version });
+    const h = request.expectedHarness;
+    if (this.chatRow(row.chat_jid).activeOperationId !== row.operation_id ||
+      !["executing", "cancelling"].includes(row.phase) ||
+      row.harness_session_id !== h.sessionId || row.harness_operation_id !== h.harnessOperationId)
+      return this.rejected("owner_conflict", { conflictingOperationId: row.operation_id });
+    const update = this.database.query(`UPDATE service_effect_s01_operations
+      SET phase = 'settling', version = version + 1
+      WHERE operation_id = ? AND version = ? AND phase IN ('executing', 'cancelling')`)
+      .run(row.operation_id, request.expectedVersion);
+    if (update.changes !== 1) return this.rejected("version_mismatch");
     return this.applied(this.requireOperationSnapshot(row.operation_id), false);
   }
 
@@ -743,16 +1054,8 @@ export class CurrentPiclawServiceWorkStore implements ServiceWorkStore {
     input: unknown,
     apply: (request: MutationRequest) => MutationOutcome<T>,
   ): Promise<ResultValue<T, ServiceWorkError>> {
-    const request = normaliseMutationRequest(method, input);
+    const request = this.prepareMutation(method, input);
     const effect = request?.effect;
-    this.trace(
-      method,
-      effect?.idempotencyKey ?? "invalid",
-      effect?.operationId ?? null,
-      effect?.sourceSeq ?? null,
-      null,
-      "call",
-    );
     if (!request || !effect)
       return this.fail(method, effect, serviceError("invalid_transition"));
 
@@ -766,28 +1069,7 @@ export class CurrentPiclawServiceWorkStore implements ServiceWorkStore {
       );
 
     try {
-      const outcome = this.database
-        .transaction(() => {
-          const replay = this.readDecision<T>(
-            method,
-            effect.idempotencyKey,
-            effect.requestHash,
-          );
-          if (replay) return replay;
-          const value = apply(request);
-          if (!value.ok) return value;
-          const transactionFault = this.fault(method, "before_effect");
-          if (!transactionFault.ok || transactionFault.injected)
-            throw new RollbackFault();
-          this.writeDecision(
-            method,
-            effect.idempotencyKey,
-            effect.requestHash,
-            value.value,
-          );
-          return value;
-        })
-        .immediate();
+      const outcome = await admitSqliteWrite(this.database, () => this.applyMutationWithinTransaction(method, request, apply));
       if (!outcome.ok) return this.fail(method, effect, outcome.error);
 
       const acknowledgementFault = this.fault(
@@ -809,14 +1091,48 @@ export class CurrentPiclawServiceWorkStore implements ServiceWorkStore {
         outcome.duplicate ? "duplicate" : "ok",
       );
     } catch (cause) {
-      const error =
-        cause instanceof CorruptStateError
-          ? serviceError("corrupt_state")
-          : isBusy(cause)
-            ? serviceError("storage_unavailable", "not_applied", true)
-            : serviceError("corrupt_state");
-      return this.fail(method, effect, error);
+      return this.fail(method, effect, mutationError(cause));
     }
+  }
+
+  private prepareMutation(method: MutationMethod, input: unknown): MutationRequest | null {
+    const request = normaliseMutationRequest(method, input);
+    const effect = request?.effect;
+    this.trace(method, effect?.idempotencyKey ?? "invalid", effect?.operationId ?? null,
+      effect?.sourceSeq ?? null, null, "call");
+    return request;
+  }
+
+  private applyMutationWithinTransaction<T>(
+    method: MutationMethod,
+    request: MutationRequest,
+    apply: (request: MutationRequest) => MutationOutcome<T>,
+  ): MutationOutcome<T> {
+    const effect = request.effect;
+    const replay = this.readDecision<T>(method, effect.idempotencyKey, effect.requestHash);
+    if (replay) return replay;
+    this.validateAcceptance(method, effect.operationId);
+    const value = apply(request);
+    if (!value.ok) return value;
+    const transactionFault = this.fault(method, "before_effect");
+    if (!transactionFault.ok || transactionFault.injected) throw new RollbackFault();
+    this.writeDecision(method, effect.idempotencyKey, effect.requestHash, value.value);
+    this.validateAcceptance(method, effect.operationId);
+    return value;
+  }
+
+  private validateAcceptance(method?: MutationMethod, operationId?: string | null): void {
+    try {
+      if (!this.runtime.validateAcceptance) return;
+      const observed: unknown = this.runtime.validateAcceptance(method, operationId);
+      if (observed === true) return;
+      // Invalid asynchronous guards must be denied, but their rejections still need an observer.
+      if ((typeof observed === "object" && observed !== null) || typeof observed === "function")
+        void Promise.resolve(observed).then(() => undefined, () => undefined);
+    } catch (error) {
+      void error;
+    }
+    throw new AcceptanceOwnershipError();
   }
 
   private async read<T>(
@@ -871,7 +1187,7 @@ export class CurrentPiclawServiceWorkStore implements ServiceWorkStore {
   }
 
   private readDecision<T>(
-    method: MutationMethod,
+    method: string,
     key: string,
     hash: string,
   ): MutationOutcome<T> | null {
@@ -913,7 +1229,7 @@ export class CurrentPiclawServiceWorkStore implements ServiceWorkStore {
   }
 
   private writeDecision(
-    method: MutationMethod,
+    method: string,
     key: string,
     hash: string,
     value: unknown,
@@ -931,7 +1247,7 @@ export class CurrentPiclawServiceWorkStore implements ServiceWorkStore {
 
   private materialiseDecision(
     decision: StoredDecision,
-    method: MutationMethod,
+    method: string,
   ): unknown {
     if (decision.kind === "empty") return null;
     if (decision.kind === "operation")
@@ -1235,15 +1551,7 @@ function operationRow(raw: Record<string, unknown>): OperationRow {
         ? null
         : requiredInstant(raw.cancellation_requested_at),
     harness_session_id: harnessSessionId,
-    harness_lane:
-      harnessSessionId === null ? null : requiredText(raw.harness_lane),
     harness_operation_id: nullableText(raw.harness_operation_id),
-    harness_state:
-      harnessSessionId === null ? null : harnessState(raw.harness_state),
-    harness_watch_generation:
-      harnessSessionId === null
-        ? null
-        : requiredInteger(raw.harness_watch_generation, 0),
     terminal_disposition: terminalDisposition,
     terminal_message_row_id: nullableInteger(raw.terminal_message_row_id, 1),
     terminal_error_code: nullableText(raw.terminal_error_code),
@@ -1290,10 +1598,7 @@ function operationSnapshot(
       ? null
       : Object.freeze({
           sessionId: row.harness_session_id,
-          lane: row.harness_lane!,
           harnessOperationId: row.harness_operation_id,
-          state: row.harness_state!,
-          watchGeneration: row.harness_watch_generation!,
         });
   const terminal =
     row.terminal_disposition === null
@@ -1444,27 +1749,13 @@ function normaliseCancellation(
   });
 }
 
-function normaliseHarness(
-  input: unknown,
-): NonNullable<OperationSnapshot["harness"]> {
-  if (
-    !plainRecord(input) ||
-    !exactKeys(input, [
-      "sessionId",
-      "lane",
-      "harnessOperationId",
-      "state",
-      "watchGeneration",
-    ])
-  )
-    throw new CorruptStateError();
-  return Object.freeze({
-    sessionId: requiredText(input.sessionId),
-    lane: requiredText(input.lane),
-    harnessOperationId: nullableText(input.harnessOperationId),
-    state: harnessState(input.state),
-    watchGeneration: requiredInteger(input.watchGeneration, 0),
-  });
+/** Historical decision JSON is evidence, never a new mutation or SDK observation. */
+function normaliseHarness(input: unknown): NonNullable<OperationSnapshot["harness"]> {
+  if (!plainRecord(input)) throw new CorruptStateError();
+  if (exactKeys(input,["sessionId","lane","harnessOperationId","state","watchGeneration"])) {
+    requiredText(input.lane); requiredInteger(input.watchGeneration,0); legacyHarnessState(input.state);
+  } else if (!exactKeys(input,["sessionId","harnessOperationId"])) throw new CorruptStateError();
+  return Object.freeze({sessionId:requiredText(input.sessionId),harnessOperationId:nullableText(input.harnessOperationId)});
 }
 
 function serviceError(
@@ -1488,20 +1779,6 @@ function serviceError(
       ? { conflictingOperationId: details.conflictingOperationId }
       : {}),
   });
-}
-
-function isBusy(cause: unknown): boolean {
-  if (cause === null || typeof cause !== "object") return false;
-  try {
-    const code = Object.getOwnPropertyDescriptor(cause, "code")?.value;
-    const errno = Object.getOwnPropertyDescriptor(cause, "errno")?.value;
-    return (
-      code === "SQLITE_BUSY" || code === "SQLITE_BUSY_SNAPSHOT" || errno === 5
-    );
-  } catch (caught) {
-    void caught;
-    return false;
-  }
 }
 function requiredText(value: unknown): string {
   if (
@@ -1580,7 +1857,7 @@ function operationPhase(value: unknown): OperationSnapshot["phase"] {
     throw new CorruptStateError();
   return value as OperationSnapshot["phase"];
 }
-function harnessState(value: unknown): HarnessCorrelation["state"] {
+function legacyHarnessState(value: unknown): void {
   if (
     typeof value !== "string" ||
     !["not_started", "running", "suspended", "aborting", "finished"].includes(
@@ -1588,7 +1865,7 @@ function harnessState(value: unknown): HarnessCorrelation["state"] {
     )
   )
     throw new CorruptStateError();
-  return value as HarnessCorrelation["state"];
+
 }
 function queueState(value: unknown): QueuedInputState {
   if (
@@ -1605,19 +1882,6 @@ function queueKind(value: unknown): RecordQueuedInputRequest["queueKind"] {
   )
     throw new CorruptStateError();
   return value as RecordQueuedInputRequest["queueKind"];
-}
-function phaseForHarness(
-  state: HarnessCorrelation["state"],
-): OperationSnapshot["phase"] {
-  return state === "not_started"
-    ? "starting_harness"
-    : state === "running"
-      ? "executing"
-      : state === "suspended"
-        ? "suspended"
-        : state === "aborting"
-          ? "cancelling"
-          : "settling";
 }
 function queueTransition(
   from: QueuedInputState,

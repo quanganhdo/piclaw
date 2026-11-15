@@ -11,7 +11,7 @@ import {
   parseProviderError,
   sanitizeProviderErrorDetail,
 } from "../../../src/channels/web/handlers/provider-error-format.js";
-import { classifyOpaqueAgentFailure } from "../../../src/agent-pool/automatic-recovery.js";
+import { classifyOpaqueAgentFailure } from "../../helpers/recovery-classification.js";
 import { isOrphanFunctionCallOutputError } from "../../../src/utils/provider-payload-errors.js";
 
 // We test through the module's internal functions by importing the file

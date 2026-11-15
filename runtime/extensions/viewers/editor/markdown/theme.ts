@@ -60,18 +60,20 @@ export const markdownPreviewTheme = EditorView.theme({
     },
 
     /* ── Headings ── */
-    '.cm-md-h-line': { paddingTop: '0.1em' },
-    // IMPORTANT: avoid vertical margins on .cm-line decorations
-    // (CodeMirror coordinate mapping drifts when line margins accumulate).
-    // Heading typography lives on line decorations so active/raw and
-    // inactive/preview states keep the same line height.
-    '.cm-md-h1-line': { paddingTop: '0.9em', fontSize: '1.42em', fontWeight: '700', lineHeight: '1.24', letterSpacing: '-0.01em' },
-    '.cm-md-h2-line': { paddingTop: '0.82em', fontSize: '1.28em', fontWeight: '700', lineHeight: '1.25', letterSpacing: '-0.005em' },
-    '.cm-md-h3-line': { paddingTop: '0.72em', fontSize: '1.16em', fontWeight: '650', lineHeight: '1.26' },
-    '.cm-md-h4-line': { paddingTop: '0.6em', fontSize: '1.08em', fontWeight: '650', lineHeight: '1.28' },
-    '.cm-md-h5-line': { paddingTop: '0.6em', fontSize: '1.02em', fontWeight: '600', lineHeight: '1.3' },
-    '.cm-md-h6-line': { paddingTop: '0.6em', fontSize: '0.98em', fontWeight: '600', lineHeight: '1.32', opacity: '0.92' },
+    // Source blank lines own the spacing. Vertical margins accumulate outside
+    // CodeMirror's measured line boxes; keep padding and margins off headings.
+    // Line typography stays the same in editing and reading states.
+    '.cm-md-h-line': { paddingBlock: '0', marginBlock: '0' },
+    '.cm-md-h1-line': { fontSize: '1.42em', fontWeight: '700', lineHeight: '1.24', letterSpacing: '-0.01em' },
+    '.cm-md-h2-line': { fontSize: '1.28em', fontWeight: '700', lineHeight: '1.25', letterSpacing: '-0.005em' },
+    '.cm-md-h3-line': { fontSize: '1.16em', fontWeight: '650', lineHeight: '1.26' },
+    '.cm-md-h4-line': { fontSize: '1.08em', fontWeight: '650', lineHeight: '1.28' },
+    '.cm-md-h5-line': { fontSize: '1.02em', fontWeight: '600', lineHeight: '1.3' },
+    '.cm-md-h6-line': { fontSize: '0.98em', fontWeight: '600', lineHeight: '1.32', opacity: '0.92' },
     '.cm-md-h1, .cm-md-h2, .cm-md-h3, .cm-md-h4, .cm-md-h5, .cm-md-h6': { fontSize: 'inherit', fontWeight: 'inherit', lineHeight: 'inherit', letterSpacing: 'inherit' },
+    // The syntax highlighter also sizes heading tokens; the line is the sole
+    // typography owner in preview, in both editing and reading states.
+    '.cm-md-h-line .tok-heading': { fontSize: 'inherit', lineHeight: 'inherit' },
     '.cm-md-heading-fold': {
         display: 'inline-flex',
         alignItems: 'center',
@@ -192,7 +194,9 @@ export const markdownPreviewTheme = EditorView.theme({
     },
     '.cm-md-code-content': {
         display: 'inline',
-        whiteSpace: 'pre',
+        // Follow the editor: wrap with line wrapping on, as other lines do. A
+        // fixed `pre` line widened the whole document and stopped every line wrapping.
+        whiteSpace: 'inherit',
         margin: '0',
         padding: '0',
         lineHeight: '1.35',
@@ -361,11 +365,17 @@ export const markdownPreviewTheme = EditorView.theme({
     '.cm-md-blockquote-line.cm-md-list-item-line': {
         paddingLeft: 'calc(12px + var(--cm-md-list-indent, 0px))',
     },
+    '.cm-md-blockquote-line.cm-md-list-item-hang': {
+        paddingLeft: 'calc(12px + var(--cm-md-list-indent, 0px) + var(--cm-md-list-hang, 0px))',
+    },
     '.cm-md-blockquote-line.cm-md-list-item-continuation': {
         paddingLeft: 'calc(12px + var(--cm-md-list-indent, 0px) + var(--cm-md-list-continuation, 22px))',
     },
     '.cm-md-callout.cm-md-list-item-line': {
         paddingLeft: 'calc(12px + var(--cm-md-list-indent, 0px))',
+    },
+    '.cm-md-callout.cm-md-list-item-hang': {
+        paddingLeft: 'calc(12px + var(--cm-md-list-indent, 0px) + var(--cm-md-list-hang, 0px))',
     },
     '.cm-md-callout.cm-md-list-item-continuation': {
         paddingLeft: 'calc(12px + var(--cm-md-list-indent, 0px) + var(--cm-md-list-continuation, 22px))',
@@ -745,7 +755,7 @@ export const markdownPreviewTheme = EditorView.theme({
         width: '16px',
         height: '16px',
         verticalAlign: 'middle',
-        marginRight: '6px',
+        margin: '0 6px 0 3px',
         accentColor: 'var(--accent-color, #1d9bf0)',
     },
     '.cm-md-task-checked-text': {
@@ -762,12 +772,26 @@ export const markdownPreviewTheme = EditorView.theme({
     '.cm-md-list-item-continuation': {
         paddingLeft: 'calc(var(--cm-md-list-indent, 0px) + var(--cm-md-list-continuation, 22px))',
     },
+    // Marker boxes have fixed widths so a wrapped first line can hang under the
+    // item text: the line is padded by the marker width and outdented by the same.
+    '&': {
+        '--cm-md-list-marker-width': '22px',
+        '--cm-md-list-task-width': '25px',
+        '--cm-md-list-number-width': 'calc(1.8em + 6px)',
+    },
+    '.cm-md-list-item-hang': {
+        paddingLeft: 'calc(var(--cm-md-list-indent, 0px) + var(--cm-md-list-hang, 0px))',
+        textIndent: 'calc(-1 * var(--cm-md-list-hang, 0px))',
+    },
+    '.cm-md-list-item-hang .cm-md-bullet, .cm-md-list-item-hang .cm-md-list-number': {
+        textIndent: '0',
+    },
     '.cm-md-list-item-task .cm-md-checkbox': {
         marginRight: '6px',
     },
     '.cm-md-bullet': {
         display: 'inline-block',
-        minWidth: '1.1em',
+        width: '16px',
         textAlign: 'center',
         marginRight: '6px',
         color: 'var(--accent-color, #1d9bf0)',

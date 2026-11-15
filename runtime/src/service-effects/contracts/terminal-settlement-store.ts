@@ -94,9 +94,12 @@ export interface TerminalSettlementError
   readonly existing?: TerminalCommit;
 }
 
+export type TerminalDatabaseEffect = (commit: Readonly<TerminalCommit>, assertCurrent: (expected: Readonly<TerminalCommit>) => void) => undefined;
+
 export interface TerminalSettlementStore {
   commitTerminal(
     request: CommitTerminalRequest,
+    applyEffect?: TerminalDatabaseEffect,
   ): Promise<Result<TerminalCommit, TerminalSettlementError>>;
   getTerminal(
     operationId: string,

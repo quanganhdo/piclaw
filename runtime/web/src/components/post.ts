@@ -1,3 +1,4 @@
+import { goalInputDisplayText } from "../ui/goal-input-display.ts";
 import { bindSvgImageThemes } from '../utils/svg-images.js';
 import { html, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from '../vendor/preact-htm.js';
 import { useTranslation } from '../utils/i18n.js';
@@ -19,6 +20,7 @@ import { isIOSDevice } from '../ui/app-helpers.js';
 import { attachHeaderAnchor } from '../ui/scroll-anchor.js';
 import { presentProviderAuth } from '../ui/provider-auth-presentation.js';
 import { ImageModal } from './image-modal.js';
+import { TurnActivity, hasTurnActivity } from './turn-activity.js';
 import { ImageAnnotator, canAnnotate } from './image-annotator.js';
 import { FilePill } from './file-pill.js';
 import { isSafeUploadFilename } from '../../../src/core/upload-limits.js';
@@ -39,7 +41,7 @@ import {
     type PostAside,
 } from './post-highlights.js';
 import { buildSpeakablePostText, getSpeechPlaybackState, isSpeechSynthesisSupported, speakPostText, stopSpeechPlayback, subscribeSpeechPlayback } from './post-speech.ts';
-import { copyPlainTextSelectionFromElement, readSessionStorageFlagBestEffort, resolveLinkPreviewSiteName, writeClipboardDataViaExecCommand, writeClipboardTextBestEffort, writeSessionStorageFlagBestEffort } from './post-runtime-safety.js';
+import { copyPlainTextSelectionFromElement, copyTextToClipboard, readSessionStorageFlagBestEffort, resolveLinkPreviewSiteName, writeClipboardDataViaExecCommand, writeSessionStorageFlagBestEffort } from './post-runtime-safety.js';
 
 /**
  * File attachment component - keeps single-click download on the main card while
@@ -274,7 +276,7 @@ function formatAgentCost(usage) {
     const provenance = usage.cost_provenance;
     const cost = provenance === 'provider_reported' ? providerCost ?? effectiveCost : effectiveCost;
     if (cost === null) return null;
-    const formatted = `$${cost.toFixed(cost >= 0.01 ? 2 : 4)}`;
+    const amount=cost.toFixed(cost >= 0.01 ? 2 : 4),currency=provenance==='provider_reported'?usage.provider_cost_currency:'USD',formatted=currency==='USD'?`$${amount}`:typeof currency==='string'&&currency.trim()?`${currency} ${amount}`:`${amount} (currency unknown)`;
     if (provenance === 'provider_reported') return `Provider-reported cost: ${formatted}`;
     if (provenance === 'catalogue_estimate') return `Catalogue cost estimate: ~${formatted}`;
     return null;
@@ -972,7 +974,7 @@ function LinkPreview({ preview, rewriteImageSrc }) {
  * preview card is shown. Users expect their original text to remain visible.
  */
 export function getDisplayContent(content, _linkPreviews) {
-    return typeof content === 'string' ? content : '';
+    return typeof content === 'string' ? goalInputDisplayText(content) : '';
 }
 
 const CODE_COPY_RESET_MS = 1800;
@@ -1059,36 +1061,6 @@ export function getLargeCodeBlockMetadata(text, options = {}) {
         visibleLines,
         omittedLines: Math.max(0, lines.length - visibleLines),
     };
-}
-
-async function copyTextToClipboard(text) {
-    const value = typeof text === 'string' ? text : '';
-    if (!value) return false;
-
-    if (writeClipboardDataViaExecCommand(document, { text: value })) {
-        return true;
-    }
-
-    if (await writeClipboardTextBestEffort(navigator.clipboard, value)) {
-        return true;
-    }
-
-    try {
-        const textarea = document.createElement('textarea');
-        textarea.value = value;
-        textarea.setAttribute('readonly', '');
-        textarea.style.position = 'fixed';
-        textarea.style.opacity = '0';
-        textarea.style.pointerEvents = 'none';
-        document.body.appendChild(textarea);
-        textarea.select();
-        textarea.setSelectionRange(0, textarea.value.length);
-        const copied = document.execCommand('copy');
-        document.body.removeChild(textarea);
-        return copied;
-    } catch {
-        return false;
-    }
 }
 
 async function copyMessageToClipboard(markdown) {
@@ -2162,6 +2134,7 @@ export function Post({ post, onClick, onHashtagClick, onMessageRef, onScrollToMe
                 ${outcomeMarker && html`
                     <${OutcomePill} marker=${outcomeMarker} />
                 `}
+                ${isAgent && hasTurnActivity(post) && html`<${TurnActivity} key=${`turn-activity-${post.id}`} post=${post} chatJid=${post.chat_jid} />`}
                 ${isAgent && thinkingRef && html`<${ThinkingVisibilityPill} messageId=${post.id} chatJid=${post.chat_jid} lines=${thinkingRef.lines || 0} durationMs=${thinkingRef.duration_ms || 0} loadThinking=${loadThinking} />`}
                 ${isHardTruncated && truncatedInfo && html`
                     <div class="post-content truncated">

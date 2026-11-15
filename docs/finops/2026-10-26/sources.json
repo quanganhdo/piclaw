@@ -1,0 +1,26 @@
+[
+  {
+    "file": "openai-pricing.md",
+    "url": "https://developers.openai.com/api/docs/pricing.md",
+    "retrievedAt": "2026-10-26T21:09:27.760Z",
+    "sha256": "93d302a9b7a384877533bc3ab5bb48eebf4b56bd6add0f194095054b2a13f952"
+  },
+  {
+    "file": "terra-model.md",
+    "url": "https://developers.openai.com/api/docs/models/gpt-6.1-terra.md",
+    "retrievedAt": "2026-10-26T21:09:27.898Z",
+    "sha256": "cd34faa8904d85961ab5fe270f079b8be45a9c876af6c809b38b2c069f687a7a"
+  },
+  {
+    "file": "openrouter.json",
+    "url": "https://openrouter.ai/api/v1/models",
+    "retrievedAt": "2026-10-26T21:09:27.941Z",
+    "sha256": "d7ebaaadfbb20ee0af67ed655228a1b351f32d1550563b84072949a20aa48150"
+  },
+  {
+    "file": "copilot.md",
+    "url": "https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing.md",
+    "retrievedAt": "2026-10-26T21:09:27.994Z",
+    "sha256": "be0447fe8938fc2655c0547b485adbeb6c37b0bf811b77866f6398d93e681f6b"
+  }
+]

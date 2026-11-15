@@ -27,7 +27,7 @@ await withTempWorkspaceEnv('multi-session-profile-', { PICLAW_ACCESS_MODE: 'sing
     paths.set(`web:profile-${index}`, sm.getSessionFile()!);
   }
   let creates = 0, disposals = 0, parseMs = 0, contextMs = 0, sdkMs = 0, bytesRead = 0;
-  const pool = new Map(), sidePool = new Map();
+  const pool = new Map();
   const createSession = async (chatJid: string) => {
       creates++;
       const path = paths.get(chatJid)!; bytesRead += statSync(path).size;
@@ -35,8 +35,8 @@ await withTempWorkspaceEnv('multi-session-profile-', { PICLAW_ACCESS_MODE: 'sing
       at = performance.now(); const built = await createAgentSessionFromServices({ services: { cwd: ws.workspace, agentDir: ws.base, modelRuntime, settingsManager, resourceLoader, diagnostics: [] }, sessionManager: sm, tools: [], customTools: [] }); sdkMs += performance.now() - at;
       return { session: built.session, dispose: async () => { disposals++; built.session.dispose(); } } as any;
     };
-  const manager = new AgentSessionManager({ pool, sidePool, modelRuntime, settingsManager, mainSessionMaxSize: max, createDefaultTools: () => [], bindSession: async () => {}, ensureBranchRegistration: () => {}, createSession, disposePersistence: () => {} });
-  const agentPool = fullPool ? new AgentPool({ modelRuntime, credentialStore: createTestCredentialStore(), createSession }) : null;
+  const manager = new AgentSessionManager({ pool, modelRuntime, settingsManager, mainSessionMaxSize: max, createDefaultTools: () => [], bindSession: async () => {}, createSession, disposePersistence: () => {} });
+  const agentPool = fullPool ? new AgentPool({ legacyCapture:true, modelRuntime, credentialStore: createTestCredentialStore(), createSession }) : null;
   const acquire = (chat: string) => agentPool ? (agentPool as any).getOrCreateRuntime(chat) : manager.getOrCreate(chat);
   const delays: number[] = [], requests: number[] = [], outputs = new Set<string>();
   let expected = performance.now() + 5;

@@ -3,7 +3,7 @@ import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { getInstalledAddonRuntimeEntries } from "../../src/addons/runtime-contributions.js";
-import { getInstalledAddonExtensionPaths } from "../../src/agent-pool/session.js";
+import { getInstalledAddonExtensionPaths } from "../../src/addons/package-entries.js";
 import { getInstalledAddonConfigEntryPaths } from "../../src/channels/web/handlers/addon-config-api.js";
 import { getInstalledAddonWebEntries } from "../../src/channels/web/handlers/addons.js";
 import { withTempWorkspaceEnv } from "../helpers.js";

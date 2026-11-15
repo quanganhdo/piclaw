@@ -2,17 +2,13 @@ import "../helpers.js";
 
 import { describe, expect, test } from "bun:test";
 
-import type { ProjectionAuthority, ProjectionOwner, ProjectionTransport, PublicAgentProjection } from "../../src/service-effects/contracts/agent-projection-sink.js";
 import type { DeliveryBoundary, DeliveryBoundarySuccess, DeliveryDriverError, DeliveryKind } from "../../src/service-effects/contracts/delivery-driver.js";
-import { CurrentPiclawAgentProjectionSink } from "../../src/service-effects/current-piclaw/agent-projection-sink.js";
 import { CurrentPiclawDeliveryDriver } from "../../src/service-effects/current-piclaw/delivery-driver.js";
-import { defineAgentProjectionSinkContract, type AgentProjectionContractSubject } from "../../src/service-effects/testing/contract-suites/agent-projection-sink-contract.js";
 import { defineDeliveryDriverContract, type DeliveryDriverContractSubject } from "../../src/service-effects/testing/contract-suites/delivery-driver-contract.js";
 import type { ContractSubjectFactory, ContractTestContext } from "../../src/service-effects/testing/contract-suite.js";
 import { TestingCurrentPiclawAdapterRuntime } from "../../src/service-effects/testing/current-piclaw-adapter-runtime.js";
 import { ManualEffectClock, SequenceEffectIdSource } from "../../src/service-effects/testing/deterministic-controls.js";
 import { DeterministicFaultPlan } from "../../src/service-effects/testing/fault-plan.js";
-import { FakeAgentProjectionSink } from "../../src/service-effects/testing/fakes/fake-agent-projection-sink.js";
 import { FakeDeliveryDriver, type ScriptedDeliveryStep } from "../../src/service-effects/testing/fakes/fake-delivery-driver.js";
 import { InMemoryEffectPayloadResolver } from "../../src/service-effects/testing/in-memory-payload-resolver.js";
 
@@ -30,15 +26,6 @@ for (const kind of ["timeline_broadcast", "channel_delivery", "web_push", "pusho
     });
   });
 }
-
-describe("EF-S08 AgentProjectionSink shared contract", () => {
-  test("current-Piclaw adapter", async () => {
-    expect(await defineAgentProjectionSinkContract(currentProjectionFactory, createContext)).toHaveLength(13);
-  });
-  test("independent captured-DTO fake", async () => {
-    expect(await defineAgentProjectionSinkContract(fakeProjectionFactory, createContext)).toHaveLength(13);
-  });
-});
 
 function currentDeliveryFactory(kind: DeliveryKind): ContractSubjectFactory<DeliveryDriverContractSubject> {
   const external = { attempts: 0 };
@@ -159,51 +146,5 @@ function fakeDeliverySubject(kind: DeliveryKind, external: { attempts: number },
       });
     },
     observedPayloadBytes() { return driver.observedPayloadBytes(); },
-  };
-}
-
-class TestAuthority implements ProjectionAuthority {
-  readonly owners = new Set<string>(); readonly commits = new Set<string>(); throwOwner = false; throwTerminal = false; ownerResult: unknown = undefined; terminalResult: unknown = undefined;
-  isCurrentOwner(owner: ProjectionOwner): boolean { if (this.throwOwner) { this.throwOwner = false; throw new Error("owner predicate fault"); } if (this.ownerResult !== undefined) { const result = this.ownerResult; this.ownerResult = undefined; return result as boolean; } return this.owners.has(ownerKey(owner)); }
-  isCommittedTerminalRef(owner: ProjectionOwner, ref: string): boolean { if (this.throwTerminal) { this.throwTerminal = false; throw new Error("terminal predicate fault"); } if (this.terminalResult !== undefined) { const result = this.terminalResult; this.terminalResult = undefined; return result as boolean; } return this.commits.has(`${ownerKey(owner)}:${ref}`); }
-}
-class TestTransport implements ProjectionTransport {
-  readonly calls: PublicAgentProjection[] = []; failNext = false; asyncNext = false;
-  publish(value: PublicAgentProjection): void { if (this.asyncNext) { this.asyncNext = false; return Promise.resolve() as unknown as void; } if (this.failNext) { this.failNext = false; throw new Error("partial fanout"); } this.calls.push(value); }
-}
-function ownerKey(owner: ProjectionOwner): string { return JSON.stringify([owner.chatJid, owner.operationId, owner.harnessOperationId]); }
-
-const currentProjectionFactory: ContractSubjectFactory<AgentProjectionContractSubject> = {
-  name: "current-piclaw-agent-projection",
-  create(context) {
-    const authority = new TestAuthority(); const transport = new TestTransport(); const runtime = new TestingCurrentPiclawAdapterRuntime(context);
-    return projectionSubject(new CurrentPiclawAgentProjectionSink(authority, transport, runtime), authority, transport, runtime);
-  },
-  crashAndRestore(subject, context) {
-    const current = subject as ProjectionSubject; const transport = new TestTransport(); const runtime = current.runtime.restore();
-    return { subject: projectionSubject(new CurrentPiclawAgentProjectionSink(current.authority, transport, runtime), current.authority, transport, runtime), context };
-  },
-  inspectTrace(subject) { return (subject as ProjectionSubject).runtime.snapshot(); },
-};
-const fakeProjectionFactory: ContractSubjectFactory<AgentProjectionContractSubject> = {
-  name: "fake-agent-projection",
-  create() { const authority = new TestAuthority(); const transport = new TestTransport(); return projectionSubject(new FakeAgentProjectionSink(authority), authority, transport); },
-  crashAndRestore(subject, context) {
-    const current = subject as ProjectionSubject; const transport = new TestTransport(); const sink = new FakeAgentProjectionSink(current.authority, current.fakeTrace());
-    return { subject: projectionSubject(sink, current.authority, transport), context };
-  },
-  inspectTrace(subject) { return (subject.sink as FakeAgentProjectionSink).trace.snapshot(); },
-};
-interface ProjectionSubject extends AgentProjectionContractSubject { runtime: TestingCurrentPiclawAdapterRuntime; authority: TestAuthority; fakeTrace(): ReturnType<FakeAgentProjectionSink["trace"]["snapshot"]>; }
-function projectionSubject(sink: AgentProjectionContractSubject["sink"], authority: TestAuthority, transport: TestTransport, runtime = new TestingCurrentPiclawAdapterRuntime(createContext())): ProjectionSubject {
-  const fake = sink instanceof FakeAgentProjectionSink;
-  return {
-    sink, runtime, authority, fakeTrace() { return fake ? (sink as FakeAgentProjectionSink).trace.snapshot() : []; },
-    authorize(owner) { authority.owners.add(ownerKey(owner)); }, commit(owner, ref) { authority.commits.add(`${ownerKey(owner)}:${ref}`); },
-    rejectTransportOnce() { if (fake) (sink as FakeAgentProjectionSink).rejectTransportOnce(); else transport.failNext = true; },
-    returnAsyncTransportOnce() { if (fake) (sink as FakeAgentProjectionSink).returnAsyncTransportOnce(); else transport.asyncNext = true; },
-    throwAuthorityOnce(predicate) { if (predicate === "owner") authority.throwOwner = true; else authority.throwTerminal = true; },
-    returnAuthorityOnce(predicate, value) { if (predicate === "owner") authority.ownerResult = value; else authority.terminalResult = value; },
-    transportCalls() { return fake ? (sink as FakeAgentProjectionSink).published : transport.calls; },
   };
 }

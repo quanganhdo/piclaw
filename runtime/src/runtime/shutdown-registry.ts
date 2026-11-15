@@ -6,14 +6,13 @@
  * requestGracefulShutdown() to trigger the same orderly teardown
  * (queue drain → session dispose → web stop → process.exit) that SIGINT uses.
  *
- * For agent-initiated exits (exit_process tool), the actual shutdown is
- * **deferred** until the current turn completes and is persisted to the DB.
- * Call markPendingShutdown() during a tool call, then checkPendingShutdown()
- * from finalizeSuccessfulRun() after the response is committed.
+ * Native exit_process uses the SDK's singleton tool-round termination. Its
+ * host coordinator verifies the committed tool receipt and visible reply,
+ * then proves global idleness and joins native cleanup before
+ * calling requestGracefulShutdown(). Recovery never rearms that request.
  *
- * isPendingShutdown() returns true while the flag is set, so the run-agent
- * orchestrator can abort the session immediately after the exit_process tool
- * executes — preventing further tool calls in the same turn.
+ * markPendingShutdown/checkPendingShutdown retain the legacy finalisation
+ * contract. The native coordinator does not use that process-global flag.
  */
 
 import { createLogger } from "../utils/logger.js";
@@ -23,63 +22,16 @@ const log = createLogger("runtime.shutdown-registry");
 type ShutdownFn = (signal: string) => Promise<void>;
 type PreShutdownHook = () => void | Promise<void>;
 
-interface PendingShutdown {
-  reason: string;
-  ownerChatJid: string;
-  canFailSafeShutdown: () => boolean;
+/** Per-runtime success-only lifetime gate. Failure never certifies resource release. */
+export function createShutdownCompletion(): { promise: Promise<void>; complete: () => void } {
+  const { promise, resolve } = Promise.withResolvers<void>();
+  return { promise, complete: resolve };
 }
-
-const FAIL_SAFE_DELAY_MS = 30_000;
-const FAIL_SAFE_RETRY_MS = 5_000;
 
 let registeredShutdown: ShutdownFn | null = null;
-let pendingShutdown: PendingShutdown | null = null;
-let pendingShutdownTimer: ReturnType<typeof setTimeout> | null = null;
-const preShutdownHooks = new Set<PreShutdownHook>();
+let pendingShutdownReason: string | null = null;
+const preShutdownHooks = new Set<{ hook: PreShutdownHook }>();
 let preShutdownHooksRan = false;
-
-function clearPendingShutdownTimer(): void {
-  if (!pendingShutdownTimer) return;
-  clearTimeout(pendingShutdownTimer);
-  pendingShutdownTimer = null;
-}
-
-function runPendingShutdownFailSafe(): void {
-  pendingShutdownTimer = null;
-  const pending = pendingShutdown;
-  if (!pending) return;
-  if (!pending.canFailSafeShutdown()) {
-    log.info("Pending shutdown fail-safe deferred while another session is active", {
-      operation: "fail_safe.defer",
-      ownerChatJid: pending.ownerChatJid,
-      retryMs: FAIL_SAFE_RETRY_MS,
-    });
-    schedulePendingShutdownFailSafe(FAIL_SAFE_RETRY_MS);
-    return;
-  }
-
-  pendingShutdown = null;
-  log.warn("Pending shutdown fail-safe executing", {
-    operation: "fail_safe.execute",
-    reason: pending.reason,
-    ownerChatJid: pending.ownerChatJid,
-  });
-  requestGracefulShutdown(pending.reason);
-}
-
-function schedulePendingShutdownFailSafe(delayMs: number): void {
-  clearPendingShutdownTimer();
-  const testScheduler = (globalThis as {
-    __PICLAW_PENDING_SHUTDOWN_FAIL_SAFE_SCHEDULER__?: (callback: () => void, delayMs: number) => void;
-  }).__PICLAW_PENDING_SHUTDOWN_FAIL_SAFE_SCHEDULER__;
-  if (typeof testScheduler === "function") {
-    testScheduler(runPendingShutdownFailSafe, delayMs);
-    return;
-  }
-
-  pendingShutdownTimer = setTimeout(runPendingShutdownFailSafe, delayMs);
-  if (typeof pendingShutdownTimer.unref === "function") pendingShutdownTimer.unref();
-}
 
 /**
  * Register the graceful shutdown handler.
@@ -91,11 +43,13 @@ export function registerShutdownHandler(handler: ShutdownFn): void {
 
 /**
  * Register a best-effort hook that runs immediately before graceful shutdown
- * begins. Used for cheap persistence cleanup such as clearing transient UI
- * state that should not survive a clean restart.
+ * begins. Each registration owns its release, including a reused callback.
+ * Releasing cannot cancel cleanup that has already started.
  */
-export function registerPreShutdownHook(hook: PreShutdownHook): void {
-  preShutdownHooks.add(hook);
+export function registerPreShutdownHook(hook: PreShutdownHook): () => void {
+  const registration = { hook };
+  preShutdownHooks.add(registration);
+  return () => { preShutdownHooks.delete(registration); };
 }
 
 export async function runPreShutdownHooksOnce(): Promise<void> {
@@ -103,7 +57,7 @@ export async function runPreShutdownHooksOnce(): Promise<void> {
   preShutdownHooksRan = true;
   // Start every independent cleanup before awaiting any of them. A stuck hook
   // is bounded by shutdown.ts and must not prevent later hooks from starting.
-  await Promise.all([...preShutdownHooks].map(async (hook, index) => {
+  await Promise.all([...preShutdownHooks].map(async ({ hook }, index) => {
     try {
       await hook();
     } catch (error) {
@@ -119,8 +73,8 @@ export async function runPreShutdownHooksOnce(): Promise<void> {
 /**
  * Request an immediate graceful shutdown of the entire runtime.
  *
- * Used by /exit slash command (which runs outside the agent turn).
- * For exit_process tool (mid-turn), use markPendingShutdown() instead.
+ * Used by /exit outside an agent turn and by the native exit coordinator only
+ * after exact terminal persistence, final activity checks and native cleanup.
  */
 export function requestGracefulShutdown(reason: string, delayMs = 800): void {
   const testScheduler = (globalThis as { __PICLAW_EXIT_SCHEDULER__?: () => void }).__PICLAW_EXIT_SCHEDULER__;
@@ -134,7 +88,9 @@ export function requestGracefulShutdown(reason: string, delayMs = 800): void {
     // pre-shutdown hooks inside that deadline. Waiting here first would let a
     // stuck extensible hook prevent the backstop from ever being armed.
     log.info("Graceful shutdown requested", { operation: "request", reason });
-    void registeredShutdown(`exit_process: ${reason}`);
+    void registeredShutdown(`exit_process: ${reason}`).catch((error) => {
+      log.error("Requested runtime shutdown failed", { operation: "request_shutdown", reason, err: error });
+    });
     return;
   }
 
@@ -153,33 +109,18 @@ export function requestGracefulShutdown(reason: string, delayMs = 800): void {
  * Mark that a graceful shutdown should happen after the current turn
  * completes and is persisted. Called by the exit_process tool.
  */
-export function markPendingShutdown(
-  reason: string,
-  ownerChatJid: string,
-  canFailSafeShutdown: () => boolean,
-): void {
-  pendingShutdown = { reason, ownerChatJid, canFailSafeShutdown };
-  schedulePendingShutdownFailSafe(FAIL_SAFE_DELAY_MS);
-  log.info("Pending shutdown marked", {
-    operation: "mark_pending",
-    reason,
-    ownerChatJid,
-    failSafeDelayMs: FAIL_SAFE_DELAY_MS,
-  });
+export function markPendingShutdown(reason: string): void {
+  pendingShutdownReason = reason;
+  log.info("Pending shutdown marked", { operation: "mark_pending", reason });
 }
 
 /**
- * Query whether a pending shutdown has been requested. When a chat JID is
- * supplied, only the requesting chat can observe the pending shutdown.
+ * Query whether a pending shutdown has been requested.
+ * Used by the run-agent orchestrator to abort the session after
+ * exit_process executes, preventing further tool calls.
  */
-export function isPendingShutdown(chatJid?: string): boolean {
-  if (!pendingShutdown) return false;
-  return chatJid === undefined || pendingShutdown.ownerChatJid === chatJid;
-}
-
-export function clearPendingShutdownForTests(): void {
-  pendingShutdown = null;
-  clearPendingShutdownTimer();
+export function isPendingShutdown(): boolean {
+  return pendingShutdownReason !== null;
 }
 
 /**
@@ -192,23 +133,10 @@ export function clearPendingShutdownForTests(): void {
  * Without it the client may miss the agent's final reply even though it is
  * already persisted in the DB.
  */
-export function checkPendingShutdown(chatJid?: string): void {
-  if (!pendingShutdown) return;
-  if (chatJid !== undefined && pendingShutdown.ownerChatJid !== chatJid) return;
-  if (!pendingShutdown.canFailSafeShutdown()) {
-    log.info("Pending shutdown finalization deferred while another session is active", {
-      operation: "check_pending.defer",
-      ownerChatJid: pendingShutdown.ownerChatJid,
-    });
-    return;
-  }
-  const { reason, ownerChatJid } = pendingShutdown;
-  pendingShutdown = null;
-  clearPendingShutdownTimer();
-  log.info("Pending shutdown: delaying 1.5s for SSE flush", {
-    operation: "check_pending.delay",
-    reason,
-    ownerChatJid,
-  });
+export function checkPendingShutdown(): void {
+  if (!pendingShutdownReason) return;
+  const reason = pendingShutdownReason;
+  pendingShutdownReason = null;
+  log.info("Pending shutdown: delaying 1.5s for SSE flush", { operation: "check_pending.delay", reason });
   setTimeout(() => requestGracefulShutdown(reason), 1500);
 }

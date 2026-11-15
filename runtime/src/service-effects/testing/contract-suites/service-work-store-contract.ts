@@ -135,7 +135,6 @@ const cases: readonly ParameterisedContractCase<ServiceWorkContractSubject>[] =
         const bindPending = subject.store.bindHarness(bindRequest);
         mutateAfterReturn(bindRequest, {
           sessionId: "mutated-session",
-          lane: "mutated-lane",
           harnessOperationId: "mutated-harness",
         });
         const bound = await bindPending;
@@ -325,8 +324,9 @@ const cases: readonly ParameterisedContractCase<ServiceWorkContractSubject>[] =
         const first = await subject.store.bindHarness(request);
         const replay = await subject.store.bindHarness(request);
         assert(
-          first.ok && replay.ok && replay.value.harness?.watchGeneration === 7,
-          "binding replay preserves caller generation",
+          first.ok && replay.ok && JSON.stringify(replay.value.harness) === JSON.stringify(first.value.harness) &&
+            !Object.hasOwn(replay.value.harness!, "watchGeneration"),
+          "binding replay preserves immutable identity without a generation mirror",
         );
         const changed = await subject.store.bindHarness(
           withHash({
@@ -1110,10 +1110,7 @@ function binding(op: OperationSnapshot, key: string): BindHarnessRequest {
     effect: ownedEffect(key, op.operationId),
     expectedVersion: op.version,
     sessionId: "session-1",
-    lane: "main",
     harnessOperationId: "run-1",
-    state: "running",
-    watchGeneration: 7,
   });
 }
 function queue(

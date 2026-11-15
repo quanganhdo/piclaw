@@ -181,7 +181,7 @@ test("workspace service exposes index status and marks it stale after file write
   expect((reindexed.body as any).state).toBe("ready");
   expect(typeof (reindexed.body as any).indexed_file_count).toBe("number");
 
-  const updated = service.updateFile("notes/alpha.md", "alpha workspace status updated");
+  const updated = await service.updateFile("notes/alpha.md", "alpha workspace status updated");
   expect(updated.status).toBe(200);
 
   const stale = service.getIndexStatus("notes");

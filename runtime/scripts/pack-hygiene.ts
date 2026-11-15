@@ -1,8 +1,19 @@
 #!/usr/bin/env bun
 
 const BLOCKED_PREFIXES = ["coverage/", "test/", "dist/", "runtime/generated/"];
-const BLOCKED_EXACT = new Set(["coverage/lcov.info", "runtime/generated/coverage/lcov.info"]);
+const BLOCKED_EXACT = new Set(["coverage/lcov.info", "runtime/generated/coverage/lcov.info", "runtime/src/agent-pool/sqlite-session-store.ts"]);
 export const REQUIRED_PACK_ENTRIES = [
+  "scripts/install-durable-engine.ts",
+  "runtime/src/runtime/durable-engine-dependencies.ts",
+  "runtime/durable-engine/package.json",
+  "runtime/durable-engine/bun.lock",
+  "runtime/durable-engine/src/default-application-runtime.ts",
+  "runtime/durable-engine/src/legacy-import-schema.ts",
+  "runtime/scripts/pi-cli.ts",
+  "runtime/scripts/lib/sqlite-session-archive.ts",
+  "runtime/scripts/import-jsonl-sessions.ts",
+  "runtime/scripts/benchmark-sqlite-session-layouts.ts",
+  "runtime/src/durable-legacy-sdk.ts",
   "runtime/src/dream.ts",
   "runtime/src/agent-memory/daily-notes.ts",
   "runtime/src/agent-memory/dream-prompt.ts",

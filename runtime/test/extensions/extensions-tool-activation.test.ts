@@ -78,7 +78,7 @@ describe("tool-activation extension", () => {
     await sessionStart!.handler({}, {});
     expect(fake.api.getActiveTools()).toEqual(getEffectiveDefaultActiveToolNames(availableTools));
     expect(fake.api.getActiveTools()).toContain("search_workspace");
-    expect(fake.api.getActiveTools()).toContain("introspect_sql");
+    expect(fake.api.getActiveTools()).not.toContain("introspect_sql"); // Unknown third-party SQL is not silently declared safe.
     expect(fake.api.getActiveTools()).toContain("list_models");
     expect(fake.api.getActiveTools()).toContain("schedule_task");
     expect(fake.api.getActiveTools()).toContain("read_attachment");
@@ -170,7 +170,7 @@ describe("tool-activation extension", () => {
     const resetResult = await resetActiveTools.execute("t3", {});
     expect(resetResult.details.availability).toBe("same_turn");
     expect(fake.api.getActiveTools()).toEqual(getEffectiveDefaultActiveToolNames(availableTools));
-    expect(fake.api.getActiveTools()).toContain("introspect_sql");
+    expect(fake.api.getActiveTools()).not.toContain("introspect_sql");
     expect(fake.api.getActiveTools()).toContain("list_models");
     expect(fake.api.getActiveTools()).toContain("schedule_task");
     expect(fake.api.getActiveTools()).toContain("read_attachment");
@@ -223,13 +223,4 @@ test('activation reports the effective scoped tool set without bypassing a ceili
  fake.api.setActiveTools=(names:string[])=>fake.setActiveTools(names.filter(name=>name!=='plan'));toolActivation(fake.api);
  const result=await fake.tools.get('activate_tools')!.execute('test',{names:['plan']},undefined,undefined,fake.ctx);
  expect(result.details.accepted).toEqual(['plan']);expect(result.details.unavailable).toEqual(['plan']);expect(result.details.newlyActivated).toEqual([]);expect(result.details.activeToolNames).toEqual(['activate_tools']);expect(result.content[0].text).toContain('Not activated in this execution scope');
-});
-
-test('activation respects the real run ceiling and reads back effective names',async()=>{
- const {toolActivation}=await import('../../src/extensions/tool-activation');const {createRunToolCeilingController}=await import('../../src/agent-pool/run-tool-ceiling');const fake=createFakeExtensionApi({allTools:[{name:'activate_tools',description:'activation'},{name:'plan',description:'plan'}],activeTools:['activate_tools']});
- const session:any={getActiveToolNames:()=>fake.api.getActiveTools(),setActiveToolsByName:(names:string[])=>fake.setActiveTools(names),abort:async()=>{}};const ceiling=createRunToolCeilingController({chatJid:'web:branch',runOptions:{toolCeilingFilter:name=>name==='activate_tools'}});ceiling.apply(session);
- fake.api.setActiveTools=(names:string[])=>session.setActiveToolsByName(names);toolActivation(fake.api);
- try{for(let i=0;i<2;i++){const result=await fake.tools.get('activate_tools')!.execute('test',{names:['plan']},undefined,undefined,fake.ctx);expect(result.details.unavailable).toEqual(['plan']);expect(result.details.activeToolNames).toEqual(['activate_tools']);expect(result.details.newlyActivated).toEqual([]);}}
- finally{ceiling.release();}
- const restored=await fake.tools.get('activate_tools')!.execute('restored',{names:['plan']},undefined,undefined,fake.ctx);expect(restored.details.newlyActivated).toEqual(['plan']);
 });

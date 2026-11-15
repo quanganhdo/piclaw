@@ -142,14 +142,39 @@ export interface BindScheduledSourceRequest extends ScheduledRunLeaseFence {
   readonly boundAt: string;
 }
 
+export interface ScheduledRunResultPayload {
+  readonly version: 1;
+  readonly result: string | null;
+  readonly error: string | null;
+}
+
 export interface CompleteScheduledRunRequest extends ScheduledRunLeaseFence {
   readonly effect: EffectIdentity;
+  /** Optional host result bytes. Authority remains the fenced S07 completion. */
+  readonly resultPayload?: ScheduledRunResultPayload;
   readonly status: ScheduledRunResultStatus;
   readonly durationMs: number;
   readonly resultRef: string | null;
   readonly errorCode: string | null;
   readonly completedAt: string;
   readonly outboxIntents: readonly EnqueueOutboxRequest[];
+}
+
+/** Reconcile only an expired, source-bound agent occurrence whose original
+ * interrupted operation and source are already terminal. No lease is fabricated. */
+export interface ReconcileInterruptedScheduledRunRequest {
+  readonly effect: EffectIdentity;
+  readonly runId: string;
+  readonly expectedAttempt: number;
+  readonly expectedTaskRevision: number;
+  readonly expectedOperationVersion: number;
+  readonly expectedLeaseExpiresAt: string;
+  readonly now: string;
+}
+
+/** Native host capability; generic stores need not support historical repair. */
+export interface InterruptedScheduledRunReconciler {
+  reconcileInterruptedAgentSource(request: ReconcileInterruptedScheduledRunRequest): Promise<Result<ScheduledRunRecord, ScheduledRunStoreError>>;
 }
 
 export interface AbandonScheduledRunRequest extends ScheduledRunLeaseFence {
@@ -203,6 +228,7 @@ export interface ScheduledRunStore {
   ): Promise<Result<readonly ScheduledRunLease[], ScheduledRunStoreError>>;
   renew(
     request: RenewScheduledRunRequest,
+    context?: { signal?: AbortSignal; assertCurrent?: () => void },
   ): Promise<Result<ScheduledRunLease, ScheduledRunStoreError>>;
   bindAcceptedSource(
     request: BindScheduledSourceRequest,

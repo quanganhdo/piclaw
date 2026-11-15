@@ -3,9 +3,9 @@ import { expect, test } from 'bun:test';
 import { resolveAgentStatusContent, resolveIntentElapsedLabel, resolveStatusActivityAgeLabel, shouldTickIntentElapsed, shouldTickStatusActivityAge } from '../../web/src/components/status.ts';
 
 test('resolveAgentStatusContent preserves the last visible tool activity label without inlining age text', () => {
-  expect(resolveAgentStatusContent({ type: 'tool_call', title: 'bash', last_activity: true, last_event_at: '2026-04-22T06:00:00.000Z' })).toBe('Recent activity: Running: bash');
-  expect(resolveAgentStatusContent({ type: 'tool_status', title: 'bash', status: 'Working...', last_activity: true, last_event_at: '2026-04-22T06:00:00.000Z' })).toBe('Recent activity: bash: Working...');
-  expect(resolveAgentStatusContent({ type: 'tool_status', title: 'bash', status: 'Streaming output...', last_activity: true, last_event_at: '2026-04-22T06:00:00.000Z' })).toBe('Recent activity: bash');
+  expect(resolveAgentStatusContent({ type: 'tool_call', title: 'bash', last_activity: true, last_event_at: '2026-04-22T06:00:00.000Z' })).toBe('Running: bash');
+  expect(resolveAgentStatusContent({ type: 'tool_status', title: 'bash', status: 'Working...', last_activity: true, last_event_at: '2026-04-22T06:00:00.000Z' })).toBe('bash: Working...');
+  expect(resolveAgentStatusContent({ type: 'tool_status', title: 'bash', status: 'Streaming output...', last_activity: true, last_event_at: '2026-04-22T06:00:00.000Z' })).toBe('bash');
 });
 
 test('resolveAgentStatusContent omits redundant streaming-output suffixes when output is already shown below', () => {

@@ -15,7 +15,6 @@ import {
   getConfigPath,
   getDataDir,
   getDomainConfigOptions,
-  getRuntimeBootstrapPathOverrides,
   getRuntimeRoot,
   getStoreDir,
   getWorkspaceDir,
@@ -24,7 +23,6 @@ import {
   WORKSPACE_DIR,
 } from "../../src/core/config-context.js";
 import {
-  getAgentLogConfig,
   getLoggingConfig,
   getPushoverConfig,
 } from "../../src/core/config-integrations.js";
@@ -38,9 +36,7 @@ import {
   getCompactionRuntimeConfig,
   getDreamConfig,
   getProgressWatchdogConfig,
-  getRecoveryPolicyConfig,
   getSessionPoolConfig,
-  getSessionStorageConfig,
 } from "../../src/core/config-runtime.js";
 import {
   getSearchMatchMode,
@@ -76,12 +72,14 @@ test("resolveRuntimeConfigPaths preserves CLI workspace and environment preceden
   expect(envPaths.workspaceDir).toBe("/env/ws");
   expect(envPaths.storeDir).toBe("/env/store");
   expect(envPaths.dataDir).toBe("/env/data");
+  expect(envPaths.databasePath).toBe("/env/store/messages.db");
 
   const cliPaths = resolveRuntimeConfigPaths({ cliWorkspace: "/cli/ws", env });
   expect(cliPaths.workspaceDir).toBe("/cli/ws");
   expect(cliPaths.storeDir).toBe("/cli/ws/.piclaw/store");
   expect(cliPaths.dataDir).toBe("/cli/ws/.piclaw/data");
   expect(cliPaths.configPath).toBe("/cli/ws/.piclaw/config.json");
+  expect(cliPaths.databasePath).toBe("/cli/ws/.piclaw/store/messages.db");
 });
 
 test("bootstrap path helpers preserve sentinels, trimming, and runtime-root fallbacks", () => {
@@ -98,6 +96,7 @@ test("bootstrap path helpers preserve sentinels, trimming, and runtime-root fall
     runtimeRoot: "/runtime/root",
   });
   expect(resolveRuntimeConfigPaths({ env }).storeDir).toBe(resolve(":memory:"));
+  expect(resolveRuntimeConfigPaths({ env }).databasePath).toBe(":memory:");
   expect(resolveRuntimeRoot("/fallback", env)).toBe("/runtime/root");
   expect(resolveRuntimeRoot("/fallback", {} as NodeJS.ProcessEnv)).toBe("/fallback");
 });
@@ -135,7 +134,7 @@ test("config context resolves path overrides at call time", () => {
     expect(getStoreDir()).toBe("/live/store");
     expect(getDataDir()).toBe("/live/data");
     expect(getRuntimeRoot("/fallback")).toBe("/live/runtime");
-    expect(getRuntimeBootstrapPathOverrides()).toEqual({
+    expect(readRuntimeBootstrapPathOverrides()).toEqual({
       workspace: "/live/ws",
       store: "/live/store",
       data: "/live/data",
@@ -177,10 +176,9 @@ test("config runtime module preserves grouped session and recovery contracts", (
   expect(getAgentRuntimeConfig().timeoutMs).toBeGreaterThan(0);
   expect(getDreamConfig().agentTimeoutMs).toBeGreaterThan(0);
   expect(getSessionPoolConfig().cleanupIntervalMs).toBeGreaterThan(0);
-  expect(getSessionStorageConfig().maxSizeBytes).toBe(getSessionStorageConfig().maxSizeMb * 1024 * 1024);
-  expect(getCompactionRuntimeConfig().backoffMaxMs).toBeGreaterThanOrEqual(getCompactionRuntimeConfig().backoffBaseMs);
+  expect(getCompactionRuntimeConfig()).not.toHaveProperty("backoffMaxMs");
+  expect(typeof getCompactionRuntimeConfig().autoCompactionEnabled).toBe("boolean");
   expect(getProgressWatchdogConfig().timeoutMs).toBeGreaterThanOrEqual(0);
-  expect(getRecoveryPolicyConfig().automaticRecoveryTotalBudgetMs).toBe(0);
 });
 
 test("identity and integration modules preserve grouped facade contracts", () => {
@@ -188,7 +186,6 @@ test("identity and integration modules preserve grouped facade contracts", () =>
   expect(getRoutingConfig().triggerPattern).toBeInstanceOf(RegExp);
   expect(getUiThemeConfig().theme).toBeTruthy();
   expect(["debug", "info", "warn", "error"]).toContain(getLoggingConfig().level);
-  expect(getAgentLogConfig().retentionMs).toBeGreaterThan(0);
   expect(Number.isFinite(getPushoverConfig().priority)).toBe(true);
 });
 

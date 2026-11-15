@@ -49,6 +49,8 @@ export interface DomainConfigField<T> {
 export interface DomainConfigSchema<T extends object> {
   domain: string;
   fields: { [K in keyof T]: DomainConfigField<T[K]> };
+  /** Historical persisted keys: preserve bytes, never resolve or accept new writes. */
+  retiredKeys?: readonly string[];
 }
 
 export interface DomainConfigRuntimeOptions {
@@ -110,6 +112,9 @@ export function registerDomainConfig<T extends object>(schema: DomainConfigSchem
     }
     if (field.precedence.length === 0) throw new Error(`Domain config field requires precedence: ${schema.domain}.${field.key}`);
   }
+  const retired = new Set(schema.retiredKeys ?? []);
+  if (retired.size !== (schema.retiredKeys?.length ?? 0) || [...retired].some(key => !key.trim() || fieldKeys.has(key)))
+    throw Error('Invalid retired domain config keys: ' + schema.domain);
   schemas.set(schema.domain, schema as unknown as DomainConfigSchema<Record<string, unknown>>);
   return schema;
 }
@@ -146,7 +151,7 @@ function writeDomainBlock(config: Record<string, unknown>, domain: string, block
 }
 
 function assertNoUnknownPersistedKeys<T extends object>(schema: DomainConfigSchema<T>, persisted: Record<string, unknown>): void {
-  const known = new Set(Object.keys(schema.fields));
+  const known = new Set([...Object.keys(schema.fields), ...(schema.retiredKeys ?? [])]);
   for (const key of Object.keys(persisted)) {
     if (!known.has(key)) throw new Error(`Unknown persisted domain config key: ${schema.domain}.${key}`);
   }

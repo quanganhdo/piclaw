@@ -60,7 +60,7 @@ function loadConfigInSubprocess(
   return runConfigSubprocess(workspace, exports, options).snapshot;
 }
 
-test("compaction runtime settings survive a fresh process restart", () => {
+test("native auto-compaction and watchdog settings survive a fresh process restart", () => {
   const ws = createTempWorkspace("piclaw-compaction-persistence-");
   try {
     const write = Bun.spawnSync({
@@ -79,25 +79,25 @@ test("compaction runtime settings survive a fresh process restart", () => {
     });
     expect(write.exitCode, write.stderr.toString()).toBe(0);
     expect(JSON.parse(write.stdout.toString())).toMatchObject({
-      smartCompactionMethod: "pipelined",
-      remoteCompactionEnabled: true,
-      remoteCompactionTimeoutMs: 300_000,
+      autoCompactionEnabled: false,
+      progressWatchdogEnabled: true,
+      progressWatchdogTimeoutMs: 120_000,
     });
 
     const restarted = loadConfigInSubprocess(ws, ["call:getCompactionRuntimeConfig"], {
       env: { PICLAW_SMART_COMPACTION_METHOD: undefined },
     });
     expect(restarted["call:getCompactionRuntimeConfig"]).toMatchObject({
-      smartCompactionMethod: "pipelined",
-      remoteCompactionEnabled: true,
-      remoteCompactionTimeoutMs: 300_000,
+      autoCompactionEnabled: false,
+      progressWatchdogEnabled: true,
+      progressWatchdogTimeoutMs: 120_000,
     });
   } finally {
     ws.cleanup();
   }
 });
 
-test("uses proportional compaction thresholds with the 300s progress watchdog disabled by default", () => {
+test("native auto-compaction defaults on with the 300s progress watchdog disabled by default", () => {
   const ws = createTempWorkspace("piclaw-config-");
 
   try {
@@ -110,12 +110,10 @@ test("uses proportional compaction thresholds with the 300s progress watchdog di
     });
 
     expect(snapshot["call:getCompactionRuntimeConfig"].autoCompactionEnabled).toBe(true);
-    expect(snapshot["call:getCompactionRuntimeConfig"].smartCompactionMethod).toBe("selective");
-    expect(snapshot["call:getCompactionRuntimeConfig"].timeoutMs).toBe(300_000);
+    expect(snapshot["call:getCompactionRuntimeConfig"]).not.toHaveProperty("smartCompactionMethod");
+    expect(snapshot["call:getCompactionRuntimeConfig"]).not.toHaveProperty("timeoutMs");
     expect(snapshot["call:getCompactionRuntimeConfig"].progressWatchdogEnabled).toBe(false);
     expect(snapshot["call:getCompactionRuntimeConfig"].progressWatchdogTimeoutMs).toBe(300_000);
-    expect(snapshot["call:getCompactionRuntimeConfig"].thresholdPercent).toBe(80);
-    expect(snapshot["call:getCompactionRuntimeConfig"].maxThresholdTokens).toBe(0);
   } finally {
     ws.cleanup();
   }
@@ -151,7 +149,7 @@ test("loads Piclaw-owned auto-compaction enable state without honoring poisoned 
   }
 });
 
-test("loads provider-native compaction settings from the compaction domain", () => {
+test("keeps historical provider/method/deadline settings inert in the compaction domain", () => {
   const ws = createTempWorkspace("piclaw-compaction-config-");
   try {
     writeWorkspaceConfig(ws.workspace, {
@@ -178,22 +176,18 @@ test("loads provider-native compaction settings from the compaction domain", () 
       },
     });
     expect(snapshot["call:getCompactionRuntimeConfig"]).toMatchObject({
-      smartCompactionMethod: "pipelined",
-      remoteCompactionEnabled: true,
-      remoteCompactionTimeoutMs: 300_000,
-      timeoutMs: 600_000,
-      backoffBaseMs: 120_000,
-      backoffMaxMs: 600_000,
-      thresholdPercent: 70,
-      maxThresholdTokens: 123456,
-      backoffDecayFactor: 0.25,
+      autoCompactionEnabled: true,
+      progressWatchdogEnabled: false,
+      progressWatchdogTimeoutMs: 300_000,
     });
+    for (const key of ["smartCompactionMethod", "remoteCompactionEnabled", "remoteCompactionTimeoutMs", "timeoutMs", "backoffBaseMs", "backoffMaxMs"])
+      expect(snapshot["call:getCompactionRuntimeConfig"]).not.toHaveProperty(key);
   } finally {
     ws.cleanup();
   }
 });
 
-test("normalizes smart-compaction method aliases and honors environment precedence", () => {
+test("legacy method aliases and environment overrides cannot configure a retired engine", () => {
   const ws = createTempWorkspace("piclaw-config-");
 
   try {
@@ -204,24 +198,24 @@ test("normalizes smart-compaction method aliases and honors environment preceden
     let snapshot = loadConfigInSubprocess(ws, ["call:getCompactionRuntimeConfig"], {
       env: { PICLAW_SMART_COMPACTION_METHOD: undefined },
     });
-    expect(snapshot["call:getCompactionRuntimeConfig"].smartCompactionMethod).toBe("pipelined");
+    expect(snapshot["call:getCompactionRuntimeConfig"]).not.toHaveProperty("smartCompactionMethod");
 
     snapshot = loadConfigInSubprocess(ws, ["call:getCompactionRuntimeConfig"], {
       env: { PICLAW_SMART_COMPACTION_METHOD: "selective" },
     });
-    expect(snapshot["call:getCompactionRuntimeConfig"].smartCompactionMethod).toBe("selective");
+    expect(snapshot["call:getCompactionRuntimeConfig"]).not.toHaveProperty("smartCompactionMethod");
 
     for (const alias of ["traditional_pipelined", "traditional pipelined", "pipelined"]) {
       snapshot = loadConfigInSubprocess(ws, ["call:getCompactionRuntimeConfig"], {
         env: { PICLAW_SMART_COMPACTION_METHOD: alias },
       });
-      expect(snapshot["call:getCompactionRuntimeConfig"].smartCompactionMethod).toBe("pipelined");
+      expect(snapshot["call:getCompactionRuntimeConfig"]).not.toHaveProperty("smartCompactionMethod");
     }
 
     snapshot = loadConfigInSubprocess(ws, ["call:getCompactionRuntimeConfig"], {
       env: { PICLAW_SMART_COMPACTION_METHOD: "not-a-method" },
     });
-    expect(snapshot["call:getCompactionRuntimeConfig"].smartCompactionMethod).toBe("selective");
+    expect(snapshot["call:getCompactionRuntimeConfig"]).not.toHaveProperty("smartCompactionMethod");
 
     writeWorkspaceConfig(ws.workspace, {
       compaction: { smart_compaction_method: "pipelined" },
@@ -229,13 +223,13 @@ test("normalizes smart-compaction method aliases and honors environment preceden
     snapshot = loadConfigInSubprocess(ws, ["call:getCompactionRuntimeConfig"], {
       env: { PICLAW_SMART_COMPACTION_METHOD: undefined },
     });
-    expect(snapshot["call:getCompactionRuntimeConfig"].smartCompactionMethod).toBe("pipelined");
+    expect(snapshot["call:getCompactionRuntimeConfig"]).not.toHaveProperty("smartCompactionMethod");
   } finally {
     ws.cleanup();
   }
 });
 
-test("normalizes direct compaction backoff overrides so max never falls below base", () => {
+test("legacy backoff environment overrides do not expose execution policy", () => {
   const ws = createTempWorkspace("piclaw-config-");
 
   try {
@@ -246,8 +240,8 @@ test("normalizes direct compaction backoff overrides so max never falls below ba
       },
     });
 
-    expect(snapshot["call:getCompactionRuntimeConfig"].backoffBaseMs).toBe(900_000);
-    expect(snapshot["call:getCompactionRuntimeConfig"].backoffMaxMs).toBe(900_000);
+    expect(snapshot["call:getCompactionRuntimeConfig"]).not.toHaveProperty("backoffBaseMs");
+    expect(snapshot["call:getCompactionRuntimeConfig"]).not.toHaveProperty("backoffMaxMs");
   } finally {
     ws.cleanup();
   }
@@ -420,7 +414,6 @@ test("config and env fallback chains handle booleans and session settings", () =
 
     const snapshot = loadConfigInSubprocess(ws, [
       "WEB_RUNTIME_CONFIG",
-      "SESSION_STORAGE_CONFIG",
     ], {
       env: {
         PICLAW_WEB_SESSION_TTL: "120",
@@ -455,14 +448,6 @@ test("config and env fallback chains handle booleans and session settings", () =
       trustProxy: false,
       composeUploadLimitMb: 256,
       workspaceUploadLimitMb: 256,
-      uiMode: "classic",
-    });
-    expect(snapshot.SESSION_STORAGE_CONFIG).toEqual({
-      maxSizeMb: 8,
-      maxSizeBytes: 8 * 1024 * 1024,
-      maxLines: 8000,
-      maxCompactionsBeforeRotation: 3,
-      autoRotate: false,
     });
   } finally {
     ws.cleanup();
@@ -511,28 +496,19 @@ test("tool output config getter groups retention env settings", () => {
   }
 });
 
-test("log retention config defaults and caps retention at 30 days", () => {
+test("tool-output retention config defaults and caps retention at 30 days", () => {
   const ws = createTempWorkspace("piclaw-config-");
   try {
     const dayMs = 24 * 60 * 60 * 1000;
-    const defaults = loadConfigInSubprocess(ws, [
-      "AGENT_LOG_CONFIG",
-      "TOOL_OUTPUT_CONFIG",
-      "call:getAgentLogConfig",
-      "call:getToolOutputConfig",
-    ]);
-    expect(defaults.AGENT_LOG_CONFIG.retentionMs).toBe(30 * dayMs);
+    const defaults = loadConfigInSubprocess(ws, ["TOOL_OUTPUT_CONFIG", "call:getToolOutputConfig"]);
     expect(defaults.TOOL_OUTPUT_CONFIG.retentionMs).toBe(30 * dayMs);
-    expect(defaults["call:getAgentLogConfig"]).toEqual(defaults.AGENT_LOG_CONFIG);
     expect(defaults["call:getToolOutputConfig"]).toEqual(defaults.TOOL_OUTPUT_CONFIG);
 
-    const capped = loadConfigInSubprocess(ws, ["AGENT_LOG_CONFIG", "TOOL_OUTPUT_CONFIG"], {
+    const capped = loadConfigInSubprocess(ws, ["TOOL_OUTPUT_CONFIG"], {
       env: {
-        PICLAW_AGENT_LOG_RETENTION_DAYS: "90",
         PICLAW_TOOL_OUTPUT_RETENTION_MS: String(90 * dayMs),
       },
     });
-    expect(capped.AGENT_LOG_CONFIG.retentionMs).toBe(30 * dayMs);
     expect(capped.TOOL_OUTPUT_CONFIG.retentionMs).toBe(30 * dayMs);
   } finally {
     ws.cleanup();
@@ -612,32 +588,6 @@ test("pushover config getter groups aliased config file settings", () => {
   }
 });
 
-test("session storage config getter groups size and auto-rotate settings", () => {
-  const ws = createTempWorkspace("piclaw-config-");
-  try {
-    const snapshot = loadConfigInSubprocess(ws, [
-      "SESSION_STORAGE_CONFIG",
-      "call:getSessionStorageConfig",
-      "same:getSessionStorageConfig:SESSION_STORAGE_CONFIG",
-      "frozen:SESSION_STORAGE_CONFIG",
-    ], {
-      env: { PICLAW_SESSION_MAX_SIZE_MB: "64", PICLAW_SESSION_AUTO_ROTATE: "on" },
-    });
-    expect(snapshot["same:getSessionStorageConfig:SESSION_STORAGE_CONFIG"]).toBe(true);
-    expect(snapshot["frozen:SESSION_STORAGE_CONFIG"]).toBe(true);
-    expect(snapshot.SESSION_STORAGE_CONFIG).toEqual({
-      maxSizeMb: 64,
-      maxSizeBytes: 64 * 1024 * 1024,
-      maxLines: 8000,
-      maxCompactionsBeforeRotation: 3,
-      autoRotate: true,
-    });
-    expect(snapshot["call:getSessionStorageConfig"]).toEqual(snapshot.SESSION_STORAGE_CONFIG);
-  } finally {
-    ws.cleanup();
-  }
-});
-
 test("agent runtime config getter groups foreground and background timeout settings", () => {
   const ws = createTempWorkspace("piclaw-config-");
   try {
@@ -653,23 +603,6 @@ test("agent runtime config getter groups foreground and background timeout setti
     expect(snapshot["frozen:AGENT_RUNTIME_CONFIG"]).toBe(true);
     expect(snapshot.AGENT_RUNTIME_CONFIG).toEqual({ timeoutMs: 120000, backgroundTimeoutMs: 45000 });
     expect(snapshot["call:getAgentRuntimeConfig"]).toEqual(snapshot.AGENT_RUNTIME_CONFIG);
-  } finally {
-    ws.cleanup();
-  }
-});
-
-test("session storage config defaults to 32 MB with auto-rotate enabled", () => {
-  const ws = createTempWorkspace("piclaw-config-");
-  try {
-    const snapshot = loadConfigInSubprocess(ws, ["SESSION_STORAGE_CONFIG", "call:getSessionStorageConfig"]);
-    expect(snapshot.SESSION_STORAGE_CONFIG).toEqual({
-      maxSizeMb: 32,
-      maxSizeBytes: 32 * 1024 * 1024,
-      maxLines: 8000,
-      maxCompactionsBeforeRotation: 3,
-      autoRotate: true,
-    });
-    expect(snapshot["call:getSessionStorageConfig"]).toEqual(snapshot.SESSION_STORAGE_CONFIG);
   } finally {
     ws.cleanup();
   }
@@ -810,7 +743,6 @@ test("web runtime config getter groups auth/session/proxy settings", () => {
       trustProxy: false,
       composeUploadLimitMb: 256,
       workspaceUploadLimitMb: 256,
-      uiMode: "classic",
     });
     expect(snapshot["call:getWebRuntimeConfig"]).toEqual(snapshot.WEB_RUNTIME_CONFIG);
   } finally {
@@ -851,9 +783,6 @@ test("in-process module init handles deprecated env warnings, argv parsing, and 
         "WEB_RUNTIME_CONFIG",
         "call:getWebRuntimeConfig",
         "same:getWebRuntimeConfig:WEB_RUNTIME_CONFIG",
-        "SESSION_STORAGE_CONFIG",
-        "call:getSessionStorageConfig",
-        "same:getSessionStorageConfig:SESSION_STORAGE_CONFIG",
         "AGENT_RUNTIME_CONFIG",
         "call:getAgentRuntimeConfig",
         "same:getAgentRuntimeConfig:AGENT_RUNTIME_CONFIG",
@@ -930,19 +859,9 @@ test("in-process module init handles deprecated env warnings, argv parsing, and 
       trustProxy: false,
       composeUploadLimitMb: 256,
       workspaceUploadLimitMb: 256,
-      uiMode: "classic",
     });
     expect(snapshot["same:getWebRuntimeConfig:WEB_RUNTIME_CONFIG"]).toBe(true);
     expect(snapshot["call:getWebRuntimeConfig"]).toEqual(snapshot.WEB_RUNTIME_CONFIG);
-    expect(snapshot.SESSION_STORAGE_CONFIG).toEqual({
-      maxSizeMb: 64,
-      maxSizeBytes: 64 * 1024 * 1024,
-      maxLines: 8000,
-      maxCompactionsBeforeRotation: 3,
-      autoRotate: true,
-    });
-    expect(snapshot["same:getSessionStorageConfig:SESSION_STORAGE_CONFIG"]).toBe(true);
-    expect(snapshot["call:getSessionStorageConfig"]).toEqual(snapshot.SESSION_STORAGE_CONFIG);
     expect(snapshot.AGENT_RUNTIME_CONFIG).toEqual({ timeoutMs: 120000, backgroundTimeoutMs: 45000 });
     expect(snapshot["same:getAgentRuntimeConfig:AGENT_RUNTIME_CONFIG"]).toBe(true);
     expect(snapshot["call:getAgentRuntimeConfig"]).toEqual(snapshot.AGENT_RUNTIME_CONFIG);

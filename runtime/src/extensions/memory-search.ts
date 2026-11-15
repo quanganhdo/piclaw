@@ -175,8 +175,8 @@ export function createMemorySearchExtension(chatJid?: string): ExtensionFactory 
             return row?.revision ?? null;
           };
           const dirty = (path: string) => Boolean(db.query("SELECT 1 FROM note_retrieval_dirty WHERE path=? OR path='*'").get(path));
-          const stale = (path: string) => {
-            check(); reasons.add('source_stale'); markNoteIndexDirty([path]); ownDirty++; check();
+          const stale = async (path: string) => {
+            check(); reasons.add('source_stale'); await markNoteIndexDirty([path]); ownDirty++; check();
             requestBackgroundWorkspaceIndexRefresh({ scope: 'notes' });
           };
           for (const row of candidates) {
@@ -194,7 +194,7 @@ export function createMemorySearchExtension(chatJid?: string): ExtensionFactory 
               catch (error) {
                 check();
                 if (error instanceof NoteSourceExcluded || ['ENOENT','ENOTDIR','ELOOP'].includes((error as NodeJS.ErrnoException).code ?? '')) {
-                  stale(row.path); sources.set(row.path,null);
+                  await stale(row.path); sources.set(row.path,null);
                 } else if (error instanceof Cancelled || error instanceof Deadline || error instanceof NoteIndexDenied) throw error;
                 else { reasons.add('source_unavailable'); sources.set(row.path,null); }
               }
@@ -202,7 +202,7 @@ export function createMemorySearchExtension(chatJid?: string): ExtensionFactory 
             check();
             const source = sources.get(row.path);
             if (!source) continue;
-            if (source.revision !== row.revision) { stale(row.path); sources.set(row.path,null); continue; }
+            if (source.revision !== row.revision) { await stale(row.path); sources.set(row.path,null); continue; }
             const bytes = source.bytes;
             const text=verifiedNoteSlice(row,bytes);
             if(!queryPlan.anchors.every(anchor=>hasLiteralAnchor(headings.join(' / ')+'\n'+text,anchor)))continue;
@@ -249,7 +249,7 @@ export function createMemorySearchExtension(chatJid?: string): ExtensionFactory 
               check();
               if (error instanceof NoteSourceUnstable || error instanceof NoteSourceExcluded
                 || ['ENOENT','ENOTDIR','ELOOP'].includes((error as NodeJS.ErrnoException).code ?? '')) {
-                stale(path); verified.splice(0,verified.length,...verified.filter(hit=>hit.path!==path));
+                await stale(path); verified.splice(0,verified.length,...verified.filter(hit=>hit.path!==path));
               } else { reasons.add('source_unavailable'); verified.splice(0,verified.length,...verified.filter(hit=>hit.path!==path)); }
             }
           }
@@ -363,8 +363,8 @@ export function createMemorySearchExtension(chatJid?: string): ExtensionFactory 
           const headings: unknown = JSON.parse(row.heading);
           if (!Array.isArray(headings) || !headings.every(s => typeof s === 'string')) return finish('index_unavailable');
           const dirty = () => Boolean(db.query("SELECT 1 FROM note_retrieval_dirty WHERE path=? OR path='*'").get(row.path));
-          const stale = () => {
-            check(); markNoteIndexDirty([row.path]); check();
+          const stale = async () => {
+            check(); await markNoteIndexDirty([row.path]); check();
             requestBackgroundWorkspaceIndexRefresh({ scope: 'notes' });
             return finish('source_stale');
           };

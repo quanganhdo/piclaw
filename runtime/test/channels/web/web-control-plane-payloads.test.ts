@@ -3,7 +3,8 @@ import { describe, expect, test } from "bun:test";
 import "../../helpers.ts";
 import { WebChannel } from "../../../src/channels/web.ts";
 import { WebAgentControlPlaneService } from "../../../src/channels/web/agent/agent-control-plane-service.js";
-import type { QueuedFollowupLifecycleService } from "../../../src/channels/web/runtime/queued-followup-lifecycle-service.js";
+import { createWebAdaptiveCardSidePromptService } from "../../../src/channels/web/cards/adaptive-card-side-prompt-service.js";
+import { createWebAgentPeerMessageRelayService } from "../../../src/channels/web/agent/agent-peer-message-relay-service.js";
 
 function jsonResponse(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), {
@@ -12,19 +13,7 @@ function jsonResponse(payload: unknown, status = 200): Response {
   });
 }
 
-type QueueLifecycleStub = Pick<
-  QueuedFollowupLifecycleService,
-  "getQueuedFollowupCount" | "listQueuedStateItems" | "prependQueuedFollowupItem" | "removeQueuedFollowupForAction"
->;
-
 function createControlPlaneChannel() {
-  const queuedFollowupLifecycle: QueueLifecycleStub = {
-    getQueuedFollowupCount: () => 0,
-    listQueuedStateItems: () => [],
-    prependQueuedFollowupItem: () => {},
-    removeQueuedFollowupForAction: async () => ({ removed: null, source: null }),
-  };
-
   return {
     json: jsonResponse,
     controlPlaneService: new WebAgentControlPlaneService({
@@ -34,10 +23,8 @@ function createControlPlaneChannel() {
       broadcastEvent: () => {},
       queue: { enqueue: () => {} },
       agentPool: { setSessionBinder: () => {} },
-      queuedFollowupLifecycle,
-      queuePendingSteering: () => {},
-      storeMessage: () => null,
-      processChat: () => {},
+      readNativeQueue: async () => [],
+      controlNativeQueue: async () => false,
     }),
   };
 }
@@ -54,18 +41,7 @@ describe("web control-plane payload guards", () => {
       handleUiResponse: () => ({ status: "ok" as const }),
     };
     const channel = {
-      endpointFacade: {
-        handleThoughtVisibility: async (req: Request) => {
-          const ctx = uiContext;
-          const mod = await import("../../../src/channels/web/endpoints/ui-endpoints.js");
-          return await mod.handleThoughtVisibilityRequest(req, ctx as any);
-        },
-        handleAgentRespond: async (req: Request) => {
-          const ctx = uiContext;
-          const mod = await import("../../../src/channels/web/endpoints/ui-endpoints.js");
-          return await mod.handleAgentRespondRequest(req, ctx as any);
-        },
-      },
+      endpointContexts: { ui: () => uiContext },
     } as any;
 
     const thoughtReq = new Request("https://example.com/agent/thought/visibility", {
@@ -191,6 +167,8 @@ describe("web control-plane payload guards", () => {
 
   test("adaptive-card and side-prompt handlers reject non-object JSON payloads", async () => {
     const channel = { json: jsonResponse } as any;
+    channel.adaptiveCardSidePromptService = createWebAdaptiveCardSidePromptService(channel, { defaultChatJid: "web:default", defaultAgentId: "default" });
+    channel.peerMessageRelayService = createWebAgentPeerMessageRelayService(channel, { defaultAgentId: "default" });
 
     const cardReq = new Request("https://example.com/agent/card-action", {
       method: "POST",

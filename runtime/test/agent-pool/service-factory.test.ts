@@ -21,6 +21,7 @@ function createServicesOptions(modelServices: Awaited<ReturnType<typeof createFa
     modelRegistry: modelServices.modelRegistry,
     settingsManager: SettingsManager.inMemory(),
     workspaceDir,
+    legacyCapture:true as const,
   };
 }
 
@@ -30,15 +31,13 @@ test("createAgentPoolServices wires the extracted helper services together", asy
     const modelServices = await createFactoryModelServices(workspace.base);
     const services = createAgentPoolServices({
       pool: new Map(),
-      sidePool: new Map(),
-      activeForkBaseLeafByChat: new Map(),
       ...createServicesOptions(modelServices, workspace.workspace),
     });
 
     expect(services.attachments).toBeDefined();
     expect(services.sessionBinder).toBeDefined();
-    expect(services.toolFactory).toBeDefined();
-    expect(services.turnCoordinator).toBeDefined();
+    expect(services).not.toHaveProperty("toolFactory");
+    expect(services).not.toHaveProperty("turnCoordinator");
     expect(services.sessionManager).toBeDefined();
     expect(services.runtimeFacade).toBeDefined();
     expect(services.branchManager).toBeDefined();
@@ -54,10 +53,10 @@ test("createAgentPoolServices scopes attachment registries per pool", async () =
     const modelServices = await createFactoryModelServices(workspace.base);
     const options = createServicesOptions(modelServices, workspace.workspace);
     const first = createAgentPoolServices({
-      pool: new Map(), sidePool: new Map(), activeForkBaseLeafByChat: new Map(), ...options,
+      pool: new Map(), ...options,
     });
     const second = createAgentPoolServices({
-      pool: new Map(), sidePool: new Map(), activeForkBaseLeafByChat: new Map(), ...options,
+      pool: new Map(), ...options,
     });
 
     first.attachments.register("web:default", {
@@ -75,63 +74,3 @@ test("createAgentPoolServices scopes attachment registries per pool", async () =
     workspace.cleanup();
   }
 });
-
-for (const fails of [false, true]) {
-  test(`service factory wires command eviction protection through ${fails ? "failure" : "completion"}`, async () => {
-    const workspace = createTempWorkspace("service-factory-command-protection-");
-    const modelServices = await createFactoryModelServices(workspace.base);
-    const pool = new Map<string, { runtime: AgentSessionRuntime; lastUsed: number }>();
-    const services = createAgentPoolServices({
-      pool, sidePool: new Map(), activeForkBaseLeafByChat: new Map(),
-      mainSessionMaxSize: 1,
-      ...createServicesOptions(modelServices, workspace.workspace),
-    });
-    let release!: () => void;
-    const held = new Promise<void>((resolve) => { release = resolve; });
-    let entered!: () => void;
-    const started = new Promise<void>((resolve) => { entered = resolve; });
-    let disposed = 0;
-    const runtime = {
-      session: { sessionId: "factory-command", isStreaming: false, isBashRunning: false, isCompacting: false },
-      newSession: async () => {
-        entered();
-        await held;
-        if (fails) throw new Error("factory command failed");
-        return { cancelled: false };
-      },
-      dispose: async () => { disposed += 1; },
-    } as unknown as AgentSessionRuntime;
-    pool.set("web:factory-held", { runtime, lastUsed: Date.now() });
-    const pending = services.runtimeFacade.applyControlCommand("web:factory-held", { type: "new_session", raw: "/new-session" });
-    const settled = pending.then(result => ({ result, error: null }), error => ({ result: null, error }));
-    try {
-      await started;
-      expect(services.sessionManager.hasProtectedRun("web:factory-held")).toBe(true);
-      pool.get("web:factory-held")!.lastUsed = Date.now() - 20_000;
-      // First force pool-cap eviction without TTL expiry, then force TTL.
-      pool.set("web:factory-other", {
-        runtime: { session: { isStreaming: false }, dispose: async () => {} } as unknown as AgentSessionRuntime,
-        lastUsed: Date.now() - 10_000,
-      });
-      services.sessionManager.evictIdle({ mainIdleTtlMs: 60_000, sideIdleTtlMs: 60_000 });
-      expect(pool.get("web:factory-held")?.runtime).toBe(runtime);
-      expect(pool.has("web:factory-other")).toBe(false);
-      services.sessionManager.evictIdle({ mainIdleTtlMs: 1, sideIdleTtlMs: 1 });
-      expect(pool.get("web:factory-held")?.runtime).toBe(runtime);
-      expect(disposed).toBe(0);
-      release();
-      const outcome = await settled;
-      if (fails) expect(outcome.error?.message).toBe("factory command failed");
-      else expect(outcome.result?.status).toBe("success");
-      expect(services.sessionManager.hasProtectedRun("web:factory-held")).toBe(false);
-      services.sessionManager.evictIdle({ mainIdleTtlMs: 1, sideIdleTtlMs: 1 });
-      expect(pool.has("web:factory-held")).toBe(false);
-      await waitFor(() => disposed === 1);
-    } finally {
-      release();
-      await settled;
-      await services.sessionManager.shutdown();
-      workspace.cleanup();
-    }
-  });
-}

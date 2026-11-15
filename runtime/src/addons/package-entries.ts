@@ -47,6 +47,16 @@ export function listInstalledAddonPackageDirs(addonsNodeModulesDir: string): str
   return results.sort();
 }
 
+/** Shared installed extension discovery for session and application lifetimes. */
+export function getInstalledAddonExtensionPaths(workspaceDir: string): string[] {
+  const paths: string[] = [];
+  for (const packageDir of listInstalledAddonPackageDirs(join(workspaceDir, ".pi", "extensions", "node_modules"))) {
+    const addon = readInstalledAddonPackage(packageDir);
+    if (addon) paths.push(...resolveActiveAddonEntries(packageDir, addon.manifest, addon.manifest.pi?.extensions));
+  }
+  return paths;
+}
+
 /** Read one installed package manifest, or null when absent/malformed. */
 export function readInstalledAddonPackage(packageDir: string): InstalledAddonPackage | null {
   const packageJsonPath = join(packageDir, "package.json");
@@ -92,4 +102,17 @@ export function resolveAddonPackageEntries(packageDir: string, declared: unknown
     }
   }
   return entries;
+}
+
+export function isRetiredCoreAddon(name: unknown): boolean {
+  return name === "@rcarmo/piclaw-addon-plan-sidebar" || name === "@rcarmo/piclaw-addon-delegate";
+}
+
+/** Core owns Plan and Delegate. Filter retired entries before evaluation (including old
+ * aggregate installs), not after their import-time hooks/API have registered. */
+export function resolveActiveAddonEntries(packageDir: string, manifest: AddonPackageManifest, declared: unknown): string[] {
+  if (isRetiredCoreAddon(manifest.name)) return [];
+  return resolveAddonPackageEntries(packageDir, declared).filter(entry =>
+    manifest.name !== "@rcarmo/piclaw-addons" || (relative(packageDir, entry).replaceAll("\\", "/").startsWith("addons/")
+      && !["plan-sidebar", "delegate"].some(slug => relative(packageDir, entry).replaceAll("\\", "/").startsWith(`addons/${slug}/`))));
 }

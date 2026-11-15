@@ -12,7 +12,7 @@
       "repository": "https://github.com/e965/sheetjs-npm-publisher"
     },
     "chart.js": {
-      "version": "4.5.1",
+      "version": "4.6.1",
       "license": "MIT",
       "repository": "https://github.com/chartjs/Chart.js.git"
     },
@@ -51,8 +51,8 @@
       "package_name": "chart.js",
       "package_path": "dist/chart.umd.min.js",
       "output_file": "extensions/viewers/office-viewer/vendor/chart.umd.min.js",
-      "sha256": "48444a82d4edcb5bec0f1965faacdde18d9c17db3063d042abada2f705c9f54a",
-      "size_bytes": 208522
+      "sha256": "87364cc2b2a76a6684929e7d6b80b18a897794db38400caff1fcf1791c6925d2",
+      "size_bytes": 210082
     },
     {
       "package_name": "pptxviewjs",
@@ -84,5 +84,5 @@
     }
   ],
   "metadata_file": "extensions/viewers/office-viewer/vendor/office-viewer-libs.meta.json",
-  "total_size_bytes": 2088029
+  "total_size_bytes": 2089589
 }

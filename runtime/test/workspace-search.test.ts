@@ -39,7 +39,7 @@ test("workspace search status tracks never-indexed, ready, and stale lifecycle",
   expect(ready.last_indexed_at).toBeTruthy();
 
   await fs.writeFile(path.join(ws.workspace, "notes", "alpha.md"), "alpha kittens updated");
-  workspaceSearch.markWorkspaceIndexStale({ paths: ["notes/alpha.md"] });
+  await workspaceSearch.markWorkspaceIndexStale({ paths: ["notes/alpha.md"] });
 
   const stale = workspaceSearch.getWorkspaceIndexStatus({ scope: "notes" });
   expect(stale.state).toBe("stale");
@@ -68,7 +68,7 @@ test("markWorkspaceIndexStale requests a background relaunch for affected scopes
       requests.push({ scope: params?.scope as string | undefined, max_kb: params?.max_kb });
     });
 
-    workspaceSearch.markWorkspaceIndexStale({ paths: ["notes/alpha.md"] });
+    await workspaceSearch.markWorkspaceIndexStale({ paths: ["notes/alpha.md"] });
     expect(workspaceSearch.getWorkspaceIndexStatus({ scope: "notes" }).state).toBe("stale");
     expect(requests).toEqual([{ scope: "notes", max_kb: undefined }, { scope: "all", max_kb: undefined }]);
 

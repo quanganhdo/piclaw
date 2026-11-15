@@ -85,9 +85,9 @@ const mockSettingsData = {
     qrSvg: '<svg viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg"><rect width="96" height="96" rx="10" fill="#fff"/><g fill="#111"><rect x="10" y="10" width="22" height="22"/><rect x="64" y="10" width="22" height="22"/><rect x="10" y="64" width="22" height="22"/><rect x="40" y="14" width="8" height="8"/><rect x="52" y="26" width="8" height="8"/><rect x="42" y="42" width="10" height="10"/><rect x="62" y="46" width="8" height="8"/><rect x="76" y="60" width="8" height="8"/><rect x="48" y="72" width="8" height="8"/></g></svg>',
   },
   providers: [
-    { id: 'openai', label: 'OpenAI', authType: 'api_key', configured: true },
-    { id: 'anthropic', label: 'Anthropic', authType: 'api_key', configured: false },
-    { id: 'github-copilot', label: 'GitHub Copilot', authType: 'oauth', configured: true },
+    { id: 'openai', name: 'OpenAI', label: 'OpenAI', authType: 'api_key', configured: true, hasApiKey: true },
+    { id: 'anthropic', name: 'Anthropic', label: 'Anthropic', authType: 'api_key', configured: false, hasApiKey: true },
+    { id: 'github-copilot', name: 'GitHub Copilot', label: 'GitHub Copilot', authType: 'oauth', configured: true, hasOAuth: true },
   ],
   models: fixtureModelOptions.map((model) => model.label),
   model_options: fixtureModelOptions,
@@ -95,15 +95,8 @@ const mockSettingsData = {
   thinking_level: 'medium',
   supports_thinking: true,
   available_thinking_levels: ['off', 'minimal', 'low', 'medium', 'high'],
-  compactionModel: fixtureModelOptions[0].label,
-  compactionLatencyEstimate: {
-    provider: fixtureModelOptions[0].provider, model: fixtureModelOptions[0].id,
-    inputBucketMin: 32768, inputBucketMax: 65536, sampleCount: 5,
-    oldestSampleAt: '2026-08-28T10:00:00Z', newestSampleAt: '2026-08-30T10:00:00Z',
-    medianDurationMs: 240000, p90DurationMs: 290000, medianTtftMs: 180000, p90TtftMs: 220000,
-    warning: true,
-    warningText: 'Observed compaction may approach the configured deadline. Consider a faster/smaller compaction model, progressive compaction, or a longer deadline.',
-  },
+  autoCompactionEnabled: true,
+  compactionPolicy: 'pi-durable',
   themes: [
     { id: 'system', label: 'System', dark: false },
     { id: 'ipad-pro', label: 'iPad Pro', dark: true },
@@ -133,33 +126,11 @@ const mockAddonsPayload = {
   sources: ['fixture-catalog'],
   failed_sources: [],
   addons: [
-    { slug: 'goal', name: 'Goal', description: 'Persisted thread goals and bounded autonomous continuation.', tags: ['automation', 'core'], installed: true, enabled: true, version: '0.1.46', bundled: false },
-    { slug: 'observability', name: 'Observability', description: 'Local metrics and tracing panels.', tags: ['metrics'], installed: true, enabled: true, version: '0.2.0', bundled: false },
+    { slug: 'goal', name: 'Goal', description: 'Persisted thread goals and bounded autonomous continuation.', tags: ['automation', 'core'], installed: true, enabled: true, version: '0.1.46', installedVersion: '0.1.46', bundled: false },
+    { slug: 'observability', name: 'Observability', description: 'Local metrics and tracing panels.', tags: ['metrics'], installed: true, enabled: true, version: '0.2.0', installedVersion: '0.2.0', bundled: false },
     { slug: 'portainer', name: 'Portainer', description: 'Container management add-on.', installed: false, enabled: false, version: '0.3.0', bundled: false },
-    { slug: 'proxmox', name: 'Proxmox', description: 'Proxmox inventory and workflow add-on.', installed: true, enabled: false, version: '0.4.0', bundled: false },
+    { slug: 'proxmox', name: 'Proxmox', description: 'Proxmox inventory and workflow add-on.', installed: true, enabled: false, version: '0.4.0', installedVersion: '0.4.0', bundled: false },
   ],
-};
-
-const mockBudgetPayload = {
-  ok: true,
-  message: 'Budget policy and current work loaded.',
-  timezone: 'Europe/Lisbon',
-  enforcement: 'best_effort_boundaries',
-  pricing_notice: 'API-equivalent USD is an estimate, not an invoice or subscription balance.',
-  reservation_notice: 'Budget limits v1 does not reserve spend and never selects a cheaper model automatically.',
-  caps: [
-    { id: 'daily-fixture', scope: 'instance_daily', metric: 'api_usd_micros', amount: 10_000_000, enabled: true, timezone: 'Europe/Lisbon', revision: 2, known_usage: 3_250_000, remaining: 6_750_000, unknown_events: 0, window: { id: 'daily:Europe/Lisbon:2026-09-09', ends_at: '2026-09-10T23:00:00Z' }, evidence: null },
-    { id: 'codex-fixture', scope: 'provider_window', metric: 'provider_percent_used_micros', amount: 80_000_000, enabled: true, provider_id: 'openai-codex', quota_dimension: 'primary.percent_used', revision: 1, known_usage: 62_000_000, remaining: 18_000_000, unknown_events: 0, window: { id: 'codex:5h', ends_at: '2026-09-10T01:00:00Z' }, evidence: { fetched_at: new Date().toISOString(), resets_at: '2026-09-10T01:00:00Z', stale: false, availability: 'available', source: 'fixture', value_micros: 62_000_000 } },
-  ],
-  work: { id: 'fixture-work', chat_jid: 'web:default', execution_kind: 'interactive', status: 'paused', last_boundary: 'model_call', updated_at: new Date().toISOString() },
-  decision: { action: 'pause', blockers: [{ capId: 'daily-fixture', capRevision: 2, windowId: 'daily:Europe/Lisbon:2026-09-09' }] },
-  override: null,
-  allowances: [],
-  provider_capabilities: [
-    { provider_id: 'openai-codex', dimensions: ['primary.percent_used', 'secondary.percent_used', 'credits.remaining'] },
-    { provider_id: 'openrouter', dimensions: ['key.usd.used'] },
-  ],
-  scheduled_task_settings_section: 'scheduled-tasks',
 };
 
 const mockScheduledTasksPayload = {
@@ -169,10 +140,26 @@ const mockScheduledTasksPayload = {
 };
 
 const mockKeychainPayload = {
+  ok: true,
   entries: [
     { name: 'github/piclaw-bot-pat', type: 'token', envVar: 'GITHUB_PICLAW_BOT_PAT', updatedAt: new Date().toISOString(), userNote: 'Fixture note', agentNote: 'Use only through env injection.' },
     { name: 'ssh/relay.local', type: 'secret', envVar: 'SSH_RELAY_LOCAL', updatedAt: new Date().toISOString(), userNote: '', agentNote: '' },
   ],
+};
+
+const mockMcpServers = [
+  { name: 'knowledge-service', enabled: true, localOverride: false, source: 'user', withheldFields: ['headers'], patch: { url: 'https://knowledge.example.test/mcp', auth: 'bearer', bearerTokenKeychain: 'services/reader', lifecycle: 'lazy', directTools: false } },
+  { name: 'local-tools', enabled: false, localOverride: true, source: 'project', withheldFields: ['args', 'env'], patch: { command: 'example-service', disabled: true } },
+];
+const mockMcpPolicy = {
+  ok: true, revision: 'fixture', effect: 'abort_active_turns_and_update_codemode',
+  nativeBlockReason: 'Native is unavailable for this configuration.', nativeBlockers: [],
+  persisted: { policy: { engine: 'adapter', codemode: 'auto' } },
+  runtime: { configuredFactory: 'adapter', observedPolicy: { engine: 'adapter', codemode: 'auto' }, connectionStatus: 'unknown', applyAvailable: true },
+  readiness: { adapter: true, native: false, codemode: true },
+  servers: mockMcpServers.map((server) => ({ name: server.name, nativeProjectionStatus: 'mapped' })),
+  plan: { policy: { engine: 'adapter', codemode: 'auto' }, applicable: true, codemodeEnabled: false, issues: [] },
+  applyAvailable: true,
 };
 
 let mockMode = new URLSearchParams(window.location.search).get('real') !== '1';
@@ -192,8 +179,7 @@ function installMockFetch() {
     if (!mockMode) return originalFetch(input, init);
 
     if (url.pathname === '/agent/settings-data') {
-      const configuredModel = new URLSearchParams(window.location.search).get('compaction_model');
-      return json(configuredModel === null ? mockSettingsData : { ...mockSettingsData, compactionModel: configuredModel });
+      return json(mockSettingsData);
     }
     if (url.pathname === '/agent/models') return json(mockModelsPayload);
     if (url.pathname === '/agent/addons') return json(mockAddonsPayload);
@@ -203,16 +189,16 @@ function installMockFetch() {
       if (method === 'POST') return json({ ok: true, ...mockKeychainPayload });
     }
     if (url.pathname === '/agent/settings/general') return json({ ok: true, settings: mockSettingsData });
-    if (url.pathname === '/agent/settings/budget') return json(mockBudgetPayload);
-    if (url.pathname === '/agent/settings/budget/action') return json({ ...mockBudgetPayload, continuation_required: true });
     if (url.pathname === '/agent/scheduled-tasks') return json(mockScheduledTasksPayload);
     if (url.pathname === '/agent/scheduled-tasks/action') return json({ ok: true, action: 'fixture', task: mockScheduledTasksPayload.tasks[0] });
-    if (url.pathname === '/agent/settings/compaction/probe') {
-      const body = init?.body ? JSON.parse(String(init.body)) : {};
-      return json({ ok: true, model: body.model || mockSettingsData.current, contextWindow: 128000, timeoutMs: 30000, responseReceived: true, credentialStatus: 'verified', stage: 'completed', timeToFirstTokenMs: 42, durationMs: 84, compactionLatencyEstimate: mockSettingsData.compactionLatencyEstimate, error: null });
-    }
     if (url.pathname === '/agent/settings/widget-token/regenerate') return json({ ok: true, settings: { ...mockSettingsData, widgetToken: `piclaw_widget_fixture_regenerated_${Date.now()}` } });
     if (url.pathname.startsWith('/agent/default/message')) return json({ command: { status: 'success', message: 'Fixture command accepted.' } });
+    if (url.pathname === '/agent/settings/compaction' && method === 'POST') {
+      Object.assign(mockSettingsData, JSON.parse(String(init?.body || '{}')));
+      return json({ ok: true, settings: mockSettingsData });
+    }
+    if (url.pathname === '/agent/settings/mcp') return json(mockMcpPolicy);
+    if (url.pathname === '/agent/settings/mcp/servers') return json({ ok: true, revision: 'fixture', servers: mockMcpServers, preview: null, applyAvailable: true, phase: 'ready' });
     if (url.pathname.startsWith('/agent/settings/')) return json({ ok: true, settings: mockSettingsData, items: [], entries: [] });
     if (url.pathname === '/agent/client-perf') return json({ ok: true });
 
@@ -251,7 +237,7 @@ function FixtureApp() {
   const [renderKey, setRenderKey] = useState(0);
 
   const sections = useMemo(() => [
-    'general', 'sessions', 'compaction', 'budget', 'keyboard', 'workspace', 'environment', 'providers', 'models', 'theme', 'scheduled-tasks', 'quick-actions', 'keychain', 'tools', 'addons',
+    'general', 'theme', 'sessions', 'recordings', 'compaction', 'keyboard', 'quick-actions', 'workspace', 'environment', 'keychain', 'providers', 'models', 'mcp', 'tools', 'authentication', 'scheduled-tasks', 'addons', 'editor', 'developer',
     'fixture-b-cheapskate', 'fixture-z-observability', 'fixture-a-portainer', 'fixture-m-proxmox',
   ], []);
 

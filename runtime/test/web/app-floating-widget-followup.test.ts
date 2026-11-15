@@ -39,7 +39,7 @@ test('buildFloatingWidgetDashboardData composes settled payloads into dashboard 
   expect(dashboard.timeline.latestPostId).toBe(11);
 });
 
-test('handleInjectQueuedFollowupAction removes item optimistically then refreshes queue on success', async () => {
+test('steering keeps its SDK item visible until actual placement and refreshes on acceptance', async () => {
   const followupQueueItemsRef = { current: [{ row_id: 'r1', content: 'Queued' }] };
   const dismissedQueueRowIdsRef = { current: new Set<string | number>() };
   let followupQueueItems = [...followupQueueItemsRef.current];
@@ -58,13 +58,14 @@ test('handleInjectQueuedFollowupAction removes item optimistically then refreshe
     showIntentToast: () => {},
     steerAgentQueueItem: async (rowId, chatJid) => {
       calls.push([rowId, chatJid]);
-      return { ok: true };
+      return { queued: 'steer', removed: false };
     },
     removeAgentQueueItem: async () => ({ ok: true }),
   });
 
-  expect(followupQueueItems).toEqual([]);
-  expect(dismissedQueueRowIdsRef.current.has('r1')).toBe(true);
+  // Still visible, now shown as steering until the SDK places it.
+  expect(followupQueueItems).toEqual([{ row_id: 'r1', content: 'Queued', mode: 'steer' }]);
+  expect(dismissedQueueRowIdsRef.current.has('r1')).toBe(false);
 
   await Promise.resolve();
   await Promise.resolve();
@@ -102,8 +103,8 @@ test('handleRemoveQueuedFollowupAction restores dismissed row marker on failure 
     },
   });
 
-  expect(followupQueueItems).toEqual([]);
-  expect(clearCounts).toEqual([0]);
+  expect(followupQueueItems).toEqual(followupQueueItemsRef.current);
+  expect(clearCounts).toEqual([]);
 
   await Promise.resolve();
   await Promise.resolve();
@@ -111,6 +112,7 @@ test('handleRemoveQueuedFollowupAction restores dismissed row marker on failure 
   expect(dismissedQueueRowIdsRef.current.has('r1')).toBe(false);
   expect(refreshCount).toBe(1);
   expect(toastMessages).toContain('Failed to remove message');
+  expect(followupQueueItems).toEqual(followupQueueItemsRef.current);
 });
 
 test('openFloatingWidgetFromHost and closeFloatingWidgetFromHost update dismissed session tracking', () => {
@@ -188,4 +190,23 @@ test('handleFloatingWidgetEventFromHost acknowledges refresh-only requests witho
   expect(toasts).toContain('Widget refresh requested');
   expect(widgetState.runtimeState.lastHostUpdate.type).toBe('refresh_ack');
   expect(widgetState.runtimeState.refreshCount).toBe(3);
+});
+
+for(const changed of [false,true])test(`removal returns its real server acknowledgement without publishing into a changed chat: changed=${changed}`,async()=>{
+  const ack=Promise.withResolvers<{removed:boolean}>(),items=[{row_id:17,content:'Queued'}],dismissed={current:new Set<string|number>()};let current=true,writes=0,refreshes=0;
+  const pending=handleRemoveQueuedFollowupAction({queuedItem:items[0],followupQueueItemsRef:{current:items},dismissedQueueRowIdsRef:dismissed,currentChatJid:'chat-a',
+    isCurrent:()=>current,setFollowupQueueItems:()=>{writes++;},refreshQueueState:()=>{refreshes++;},showIntentToast:()=>{throw Error('Confirmed removal must not warn');},
+    removeAgentQueueItem:()=>ack.promise,steerAgentQueueItem:async()=>({queued:'steer'})});
+  expect(writes).toBe(0);if(changed)current=false;ack.resolve({removed:true});expect(await pending).toBe(true);
+  expect(writes).toBe(changed?0:1);expect(refreshes).toBe(changed?0:1);expect(dismissed.current.has(17)).toBe(!changed);
+});
+
+for (const rejected of [false,true]) test(`steer completion cannot update a different session; rejected=${rejected}`,async()=>{
+ let current=true,resolve!:(value:unknown)=>void,reject!:(error:Error)=>void;
+ const pending=new Promise((a,b)=>{resolve=a;reject=b;});let updates=0,refreshes=0,toasts=0;
+ handleInjectQueuedFollowupAction({queuedItem:{row_id:1},followupQueueItemsRef:{current:[{row_id:1,content:'A'}]},dismissedQueueRowIdsRef:{current:new Set()},currentChatJid:'chat-a',isCurrent:()=>current,refreshQueueState(){refreshes++;},setFollowupQueueItems(){updates++;},showIntentToast(){toasts++;},steerAgentQueueItem:()=>pending,removeAgentQueueItem:async()=>({})});
+ expect(updates).toBe(1);current=false;
+ if(rejected)reject(Error('Late rejection'));else resolve({queued:'steer'});
+ await Promise.resolve();await Promise.resolve();await Promise.resolve();
+ expect(updates).toBe(1);expect(refreshes).toBe(0);expect(toasts).toBe(0);
 });

@@ -18,8 +18,8 @@ run_tests \
   test/remote/remote-interop.test.ts \
   test/remote/ssrf.test.ts
 run_tests \
-  test/agent-pool/agent-pool-slash-command.test.ts \
-  test/agent-pool/session-auto-rotation.test.ts
+  test/agent-pool/slash-recognition.test.ts \
+  test/agent-pool/manual-control-retirement.test.ts
 run_tests \
   test/runtime/bootstrap.test.ts \
   test/runtime/scheduler.test.ts \

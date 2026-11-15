@@ -194,6 +194,13 @@ test("provider errors containing secrets never enter results or structured log f
 
 test("single-model login refreshes availability but requires owner-bound one-time activation", async () => {
   const f = fixture();
+  const { createNativeControlFixture } = await import('./native-control-fixture.js');
+  const control = createNativeControlFixture(f.session, f.registry, 'web:auth-owner');
+  const previous = f.run;
+  f.run = (step, data, chat = 'web:auth-owner') => control.facade.applyControlCommand(chat, {
+    type: 'login', provider: '__' + step + ' ' + JSON.stringify(data), raw: '/login',
+  });
+  try {
   let refreshes = 0;
   f.registry.refresh = async () => { refreshes++; };
   const start = await f.run("step1", { provider: "openai" });
@@ -206,6 +213,7 @@ test("single-model login refreshes availability but requires owner-bound one-tim
   expect((await foreign.run("step3", { ...data, model: "one" })).status).toBe("error");
   expect((await f.run("step3", { ...data, model: "one" })).model_label).toBe("openai/one");
   expect((await f.run("step3", { ...data, model: "one" })).status).toBe("error");
+  } finally { control.dispose(); f.run = previous; }
 });
 
 test("disposal during availability refresh cannot mint a post-login activation", async () => {

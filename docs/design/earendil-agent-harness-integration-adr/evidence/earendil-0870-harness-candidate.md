@@ -1,5 +1,7 @@
 # Earendil 0.87.0 stable Harness candidate evidence
 
+Historical as-of assessment: version/installed labels, commands and results below describe the original environment. The full frozen object now lives in an [inert schema-6 receipt](receipts/earendil-harness-compatibility-schema6.json) with [source/conversion provenance](receipts/earendil-harness-compatibility-schema6.provenance.json), outside executable Core. Current SDK1.4.0 selection and native qualification are separate; no old installation or activation permission is extended.
+
 Evidence date: 21 September 2026. Published release: `0.87.0`, commit `16787ad5b2dc748047f314ca1bfe7708f30f54f3`.
 
 Piclaw still installs the coordinated 0.85.1 package family. This record assesses a packed, disposable 0.87.0 consumer. It does not select 0.87.0 for the current loop or activate a Harness runtime.

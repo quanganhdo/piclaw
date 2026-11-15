@@ -16,10 +16,9 @@ const SHELL_OUTPUT_LIMIT = 20000;
 const SHELL_TIMEOUT_SECONDS = 30;
 
 type ShellCommand = Extract<AgentControlCommand, { type: "shell" }>;
-type BashCommand = Extract<AgentControlCommand, { type: "bash" }>;
 
 /** Handle /shell: execute a shell command with process tracking. */
-export async function handleShell(session: AgentSession, command: ShellCommand): Promise<AgentControlResult> {
+export async function handleShell(_session: AgentSession | undefined, command: ShellCommand): Promise<AgentControlResult> {
   const rawCommand = command.command?.trim();
   if (!rawCommand) {
     return {
@@ -80,37 +79,4 @@ export async function handleShell(session: AgentSession, command: ShellCommand):
     status: isSuccess ? "success" : "error",
     message: formatShellBlock(rawCommand, output, meta),
   };
-}
-
-/** Handle /bash: execute a raw bash command. */
-export async function handleBash(session: AgentSession, command: BashCommand): Promise<AgentControlResult> {
-  const rawCommand = command.command?.trim();
-  if (!rawCommand) {
-    return {
-      status: "error",
-      message: "Usage: /bash <command>",
-    };
-  }
-
-  try {
-    const bashOps = createTrackedBashOperations();
-    const result = await session.executeBash(rawCommand, undefined, { operations: bashOps });
-    const meta: string[] = [];
-    if (result.cancelled) meta.push("(cancelled)");
-    if (result.truncated) meta.push("(output truncated)");
-    if (result.exitCode !== undefined && result.exitCode !== null) {
-      meta.push(`(exit code ${result.exitCode})`);
-    }
-    if (result.fullOutputPath) meta.push(`(full output: ${result.fullOutputPath})`);
-
-    const isSuccess = !result.cancelled && (result.exitCode === undefined || result.exitCode === null || result.exitCode === 0);
-
-    return {
-      status: isSuccess ? "success" : "error",
-      message: formatShellBlock(rawCommand, result.output ?? "", meta),
-    };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return { status: "error", message };
-  }
 }

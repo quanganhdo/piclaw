@@ -37,4 +37,10 @@ const incompleteInteraction: Parameters<typeof composeMainInteractionResult>[0] 
 const incompleteShell: Parameters<typeof composeMainAppShellOptions>[0] = { ...shellInput, composeReferenceActions: { addFileRef() {} } };
 // @ts-expect-error Options require an actual editor opener.
 const badOptions: UseComposeReferenceOrchestrationOptions = { ...options, openEditor: 123 };
-void [badRemoval, incompleteInteraction, incompleteShell, badOptions];
+// @ts-expect-error The removal action must accept every normalisable reference, not only numbers.
+const badCallback: RemoveFileReference = (_path: number) => {};
+// @ts-expect-error Editor opener parameters must accept file paths.
+const badEditorCallback: UseComposeReferenceOrchestrationOptions = { ...options, openEditor: (_path: number) => {} };
+// @ts-expect-error Misspelled action members cannot satisfy the close bridge.
+bindComposeReferenceRemoval({ removeFileRefRef: ref, composeReferenceActions: { removeFileReference: removal } });
+void [badRemoval, incompleteInteraction, incompleteShell, badOptions, badCallback, badEditorCallback];

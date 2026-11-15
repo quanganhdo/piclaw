@@ -14,7 +14,7 @@ const result = Bun.spawnSync([process.execPath, compiler, '--noEmit', '--pretty'
 const output = new TextDecoder().decode(result.stdout) + new TextDecoder().decode(result.stderr);
 const actual = [...new Set(output.split('\n')
   .filter(line => /^.+\(\d+,\d+\): error TS\d+: /.test(line))
-  .map(line => line.replace(/^runtime\//, '')))].sort();
+  .map(line => line.replace(/^runtime\//, '').replaceAll(runtimeDir, '<runtime>')))].sort();
 if (result.exitCode !== 0 && actual.length === 0) {
   throw new Error(`Frontend compiler failed without TypeScript diagnostics:\n${output}`);
 }
@@ -26,4 +26,4 @@ if (additions.length || resolved.length) {
   if (resolved.length) console.error('Resolved baseline diagnostics (update the audited baseline):\n' + resolved.join('\n'));
   process.exit(1);
 }
-console.log(`Compose-reference contract and six explicit frontend modules checked; ${baseline.length} unchanged pre-existing transitive diagnostics.`);
+console.log(`Compose-reference contract, MainApp caller and six composition modules checked with strict callback variance; ${baseline.length} unchanged pre-existing out-of-seam diagnostics. Raw frontend compilation is not clean.`);

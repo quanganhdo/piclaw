@@ -18,10 +18,10 @@ export class WorkspaceService {
   private treeCache = new WorkspaceTreeCache();
   private fileService = new WorkspaceFileService();
 
-  private markIndexStale(paths: Array<string | null | undefined>) {
+  private async markIndexStale(paths: Array<string | null | undefined>) {
     const affected = paths.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0);
     if (affected.length === 0) return;
-    markWorkspaceIndexStale({ paths: affected });
+    await markWorkspaceIndexStale({ paths: affected });
   }
 
   getTree(pathParam: string | null, depthParam?: string | null, includeHidden = false) {
@@ -62,15 +62,15 @@ export class WorkspaceService {
     };
   }
 
-  attachFile(pathParam: string | null) {
-    return this.fileService.attachFile(pathParam);
+  attachFile(pathParam: string | null, signal?: AbortSignal) {
+    return this.fileService.attachFile(pathParam, signal);
   }
 
   async uploadFile(pathParam: string | null, file: File, overwrite = false) {
     const result = await this.fileService.uploadFile(pathParam, file, overwrite);
     if (result.status === 200) {
       const body = result.body as { path?: string } | undefined;
-      this.markIndexStale([body?.path]);
+      await this.markIndexStale([body?.path]);
     }
     return result;
   }
@@ -80,53 +80,53 @@ export class WorkspaceService {
     if (result.status === 200) {
       const body = result.body as { path?: string; complete?: boolean } | undefined;
       if (body?.complete) {
-        this.markIndexStale([body?.path]);
+        await this.markIndexStale([body?.path]);
       }
     }
     return result;
   }
 
-  createFile(pathParam: string | null, nameParam: string | null, content: string) {
+  async createFile(pathParam: string | null, nameParam: string | null, content: string) {
     const result = this.fileService.createFile(pathParam, nameParam, content);
     if (result.status === 200) {
       const body = result.body as { path?: string } | undefined;
-      this.markIndexStale([body?.path]);
+      await this.markIndexStale([body?.path]);
     }
     return result;
   }
 
-  renameFile(pathParam: string | null, nameParam: string | null) {
+  async renameFile(pathParam: string | null, nameParam: string | null) {
     const result = this.fileService.renameFile(pathParam, nameParam);
     if (result.status === 200) {
       const body = result.body as { path?: string; old_path?: string } | undefined;
-      this.markIndexStale([body?.old_path, body?.path]);
+      await this.markIndexStale([body?.old_path, body?.path]);
     }
     return result;
   }
 
-  moveEntry(pathParam: string | null, targetParam: string | null) {
+  async moveEntry(pathParam: string | null, targetParam: string | null) {
     const result = this.fileService.moveEntry(pathParam, targetParam);
     if (result.status === 200) {
       const body = result.body as { path?: string; old_path?: string; target?: string } | undefined;
-      this.markIndexStale([body?.old_path, body?.path, body?.target]);
+      await this.markIndexStale([body?.old_path, body?.path, body?.target]);
     }
     return result;
   }
 
-  updateFile(pathParam: string | null, content: string) {
+  async updateFile(pathParam: string | null, content: string) {
     const result = this.fileService.updateFile(pathParam, content);
     if (result.status === 200) {
       const body = result.body as { path?: string } | undefined;
-      this.markIndexStale([body?.path]);
+      await this.markIndexStale([body?.path]);
     }
     return result;
   }
 
-  deleteFile(pathParam: string | null) {
+  async deleteFile(pathParam: string | null) {
     const result = this.fileService.deleteFile(pathParam);
     if (result.status === 200) {
       const body = result.body as { path?: string } | undefined;
-      this.markIndexStale([body?.path]);
+      await this.markIndexStale([body?.path]);
     }
     return result;
   }

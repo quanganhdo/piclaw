@@ -143,7 +143,7 @@ export class McpCodemodeController {
   private readonly revisions = new Map<string, Revision>();
   private readonly serverRevisions = new Map<string, ServerRevision>();
 
-  constructor(private readonly manager: CodemodeHost, private readonly timeoutMs = 30_000) {
+  constructor(private readonly manager?: CodemodeHost, private readonly timeoutMs = 30_000) {
     if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0) throw new Error("Invalid MCP update deadline.");
   }
 
@@ -163,14 +163,14 @@ export class McpCodemodeController {
     const revision = randomUUID();
     this.revisions.set(revision, { config: persisted.revision, bridge: snapshot.revision, expires: now + 300_000 });
     const { bridgeRevision: _private, ...publicPlan } = plan;
-    const available = this.phase === "ready" && !blocked && !degradedConstruction && (selectedMcpPolicy().engine === 'adapter' || READINESS.native);
+    const available = !!this.manager && this.phase === "ready" && !blocked && !degradedConstruction && (selectedMcpPolicy().engine === 'adapter' || READINESS.native);
     return {
       ok: true,
       persisted: { policy: persisted.policy },
       revision,
       runtime: {
         configuredFactory: selectedMcpPolicy().engine,
-        observedPolicy: blocked || (selectedMcpPolicy().engine === 'native' && !READINESS.native) ? null : { ...selectedMcpPolicy() },
+        observedPolicy: !this.manager || blocked || (selectedMcpPolicy().engine === 'native' && !READINESS.native) ? null : { ...selectedMcpPolicy() },
         connectionStatus: "unknown",
         applyAvailable: available,
         phase: this.phase,
@@ -196,12 +196,14 @@ export class McpCodemodeController {
     this.serverRevisions.set(revision, { config: current.revision, bridge: snapshot.revision, workspace, expires: now + 300_000,
       ...(prepared ? { candidate: prepared.candidate, preview: prepared.preview } : {}) });
     return { ok: true, servers, revision, preview: prepared?.preview ?? null,
-      applyAvailable: this.phase === 'ready' && !blocked && !degradedConstruction && selectedMcpPolicy().engine === 'adapter' && current.policy.engine === 'adapter',
+      applyAvailable: !!this.manager && this.phase === 'ready' && !blocked && !degradedConstruction && selectedMcpPolicy().engine === 'adapter' && current.policy.engine === 'adapter',
       phase: this.phase, effect: 'abort_turns_and_reload_extensions' };
   }
 
   async applyServers(input: { revision: string; acknowledgeInterruptions: boolean }, authorise: () => void, signal: AbortSignal) {
     authorise(); signal.throwIfAborted();
+    const manager=this.manager;
+    if(!manager)throw new McpPolicyApplyError(409,'Native MCP live reconfiguration unavailable; the startup-owned native context must be replaced explicitly.');
     if (degradedConstruction) throw new McpPolicyApplyError(409, "Repair the MCP configuration and restart before applying MCP settings to degraded sessions.");
     if (!input.acknowledgeInterruptions) throw new McpPolicyApplyError(400, 'Confirm turn interruption and extension reload before applying server changes.');
     if (this.phase !== 'ready' || blocked) throw new McpPolicyApplyError(409, 'MCP settings are busy or blocked.');
@@ -225,9 +227,9 @@ export class McpCodemodeController {
       if (getWorkspaceDir() !== token.workspace || readMcpInstancePolicy().revision !== token.config) throw Error('MCP instance binding changed.'); };
     let sessions: readonly AgentSessionRuntime[] = [], committed = false, failed = false;
     try {
-      this.manager.blockMcpAdmissions();
-      const pending = this.manager.fenceMcpAndSnapshot(combined);
-      void pending.then(late => { if (combined.aborted) for (const runtime of late) void this.manager.quarantineMcpRuntime(runtime).catch(() => undefined); }, () => undefined);
+      manager.blockMcpAdmissions();
+      const pending = manager.fenceMcpAndSnapshot(combined);
+      void pending.then(late => { if (combined.aborted) for (const runtime of late) void manager.quarantineMcpRuntime(runtime).catch(() => undefined); }, () => undefined);
       sessions = [...new Set(await bounded(pending))]; check();
       const receipt = await bounded(acknowledgeMcpSessionsShutdown(sessions.map(runtime => runtime.session), combined));
       check(); assertMcpBridgeSourcesCurrent();
@@ -252,20 +254,20 @@ export class McpCodemodeController {
       const replacing = ownerReloadContext.run(true, () => reloadAcknowledgedMcpSessions(receipt, { beforeSessionStart: async () => {
         check(); if (++count === sessions.length) arrived(); await start; check();
       } }));
-      void replacing.finally(() => { if (failed) for (const runtime of sessions) void this.manager.quarantineMcpRuntime(runtime).catch(() => undefined); }).catch(() => undefined);
+      void replacing.finally(() => { if (failed) for (const runtime of sessions) void manager.quarantineMcpRuntime(runtime).catch(() => undefined); }).catch(() => undefined);
       void replacing.catch(error => failStart(error));
       try {
         await bounded(Promise.race([ready, replacing.then(() => { if (sessions.length) throw Error('MCP reload bypassed start barrier.'); })]));
         check(); release(); await bounded(replacing);
       } catch (error) { failStart(error); throw error; }
       for (const runtime of sessions) syncMcpCodemodeSession(runtime.session, selectedMcpPolicy());
-      check(); this.manager.resumeMcpAdmissions(); check(); blocked = false; this.phase = 'ready'; this.revisions.clear(); this.serverRevisions.clear();
+      check(); manager.resumeMcpAdmissions(); check(); blocked = false; this.phase = 'ready'; this.revisions.clear(); this.serverRevisions.clear();
       return this.inspectServers();
     } catch (error) {
       debugSuppressedError(log, 'MCP server transition failed; admissions stay fenced.', error, { operation: 'mcp_settings.server_transition', committed });
       failed = true;
-      deadlineAbort.abort(); blocked = true; this.phase = 'blocked'; this.manager.blockMcpAdmissions();
-      for (const runtime of sessions) void this.manager.quarantineMcpRuntime(runtime).catch(() => undefined);
+      deadlineAbort.abort(); blocked = true; this.phase = 'blocked'; manager.blockMcpAdmissions();
+      for (const runtime of sessions) void manager.quarantineMcpRuntime(runtime).catch(() => undefined);
       throw new McpPolicyApplyError(committed ? 503 : 409, committed
         ? 'Server configuration saved, but activation was not confirmed. Operations remain blocked; repair the instance.'
         : 'Server update failed before configuration commit. Operations remain blocked; no fallback was selected.', error);
@@ -274,6 +276,8 @@ export class McpCodemodeController {
 
   async apply(input: { policy: unknown; revision: string; acknowledgeInterruptions: boolean }, authorise: () => void) {
     authorise();
+    const manager=this.manager;
+    if(!manager)throw new McpPolicyApplyError(409,'Native MCP live reconfiguration unavailable; the startup-owned native context must be replaced explicitly.');
     if (degradedConstruction) throw new McpPolicyApplyError(409, "Repair the MCP configuration and restart before applying MCP settings to degraded sessions.");
     const policy = parseMcpEnginePolicy(input.policy);
     if (input.acknowledgeInterruptions !== true) {
@@ -312,12 +316,12 @@ export class McpCodemodeController {
       authorise();
       fenced = true;
       blocked = true;
-      this.manager.blockMcpAdmissions();
-      const pending = this.manager.fenceMcpAndSnapshot(abort.signal);
+      manager.blockMcpAdmissions();
+      const pending = manager.fenceMcpAndSnapshot(abort.signal);
       // A timed-out snapshot may still deliver captured runtimes later.
       void pending.then(late => {
         if (abort.signal.aborted) {
-          for (const runtime of late) void this.manager.quarantineMcpRuntime(runtime).catch(() => undefined);
+          for (const runtime of late) void manager.quarantineMcpRuntime(runtime).catch(() => undefined);
         }
       }, () => undefined);
       sessions = [...new Set(await bounded(pending))];
@@ -374,7 +378,7 @@ export class McpCodemodeController {
       authorise(); abort.signal.throwIfAborted();
       assertMcpBridgeSourcesCurrent();
       for (const runtime of sessions) syncMcpCodemodeSession(runtime.session, policy);
-      this.manager.resumeMcpAdmissions();
+      manager.resumeMcpAdmissions();
       blocked = false;
       this.phase = "ready";
       this.revisions.clear();
@@ -384,8 +388,8 @@ export class McpCodemodeController {
       if (fenced) {
         blocked = true;
         this.phase = "blocked";
-        this.manager.blockMcpAdmissions();
-        for (const runtime of sessions) void this.manager.quarantineMcpRuntime(runtime).catch(() => undefined);
+        manager.blockMcpAdmissions();
+        for (const runtime of sessions) void manager.quarantineMcpRuntime(runtime).catch(() => undefined);
       } else {
         this.phase = "ready";
       }

@@ -1,0 +1,140 @@
+{
+  "version": 1,
+  "issue": 1279,
+  "epic": 1270,
+  "partial": true,
+  "implementationBase": "c637741fba10cb92f3d38d01b8be6d18f1c6ed43",
+  "metric": "Same stable #1270 tracked handwritten runtime/src + runtime/durable-engine/src rules/exclusions; physical includes comments/blanks.",
+  "before": {
+    "files": 712,
+    "physicalLOC": 144517,
+    "nonblankLines": 134115
+  },
+  "after": {
+    "files": 711,
+    "physicalLOC": 144440,
+    "nonblankLines": 134048
+  },
+  "delta": {
+    "files": -1,
+    "physicalLOC": -77,
+    "nonblankLines": -67
+  },
+  "productionDiff": {
+    "files": 7,
+    "additions": 0,
+    "deletions": 77
+  },
+  "outsideRootProductionAdditions": 0,
+  "relocatedProductionImplementation": 0,
+  "deletedModule": {
+    "path": "runtime/src/channels/web/runtime/pending-steering.ts",
+    "sha256": "1c43313d3f43ab8d022a53f985fbb1e39f94ec938c022298bd815bd6daf41cbc",
+    "physicalLOC": 22
+  },
+  "removed": {
+    "timestampMapOwner": {
+      "before": 1,
+      "after": 0
+    },
+    "privateAppendStages": {
+      "before": [
+        "control-plane timestamp callback",
+        "WebChannel prototype",
+        "runtime public surface",
+        "follow-up facade",
+        "runtime state",
+        "PendingSteeringStore.queue"
+      ],
+      "after": []
+    },
+    "queueConsumeFamilyMethodsOrDescriptors": 10
+  },
+  "usage": {
+    "currentProductionReader": 0,
+    "soleRemainingWriter": "accepted queue steering post-materialisation; now removed",
+    "finalProductionSymbolConsumers": 0,
+    "approvedAddonsRevision": "ad7ad0a4b63ee37090b6bee4309fa5c458ec6510",
+    "approvedAddonConsumers": 0
+  },
+  "retained": [
+    "captured accepted native queued-steering port and coordinator",
+    "same accepted source/intent IDs/digests/frontier/sibling/foreign queues",
+    "wire ordering and201pending/uncertainty results",
+    "fencing, publication failure/lost ACK, cancellation and no replay",
+    "current queue/status/buffer/resume services and store/SDK authority"
+  ],
+  "validation": {
+    "absenceBefore": {
+      "pass": 0,
+      "fail": 1,
+      "assertions": 1
+    },
+    "writerBefore": {
+      "pass": 0,
+      "fail": 1,
+      "assertions": 7
+    },
+    "absenceAfter": {
+      "pass": 1,
+      "assertions": 9
+    },
+    "acceptedWriterAfter": {
+      "pass": 1,
+      "assertions": 27
+    },
+    "focused": {
+      "pass": 40,
+      "assertions": 323,
+      "files": 6
+    },
+    "publicUi": {
+      "pass": 18,
+      "assertions": 274
+    },
+    "startingTurn": {
+      "pass": 10,
+      "assertions": 87
+    },
+    "payloads": {
+      "pass": 6,
+      "assertions": 44
+    },
+    "actualNativeFactory": [
+      {
+        "scenario": "native-routing-queued-race",
+        "pass": 1,
+        "assertions": 29
+      },
+      {
+        "scenario": "native-events",
+        "pass": 1,
+        "assertions": 182
+      }
+    ],
+    "typeProjects": [
+      "runtime/tsconfig.json",
+      "runtime/durable-engine/tsconfig.json",
+      "qualification/pi-durable-130/tsconfig.json"
+    ],
+    "strictNewTestTypes": true,
+    "circular": {
+      "beforeReachable": 546,
+      "afterReachable": 545,
+      "cycles": 0
+    },
+    "envObservationFresh": true,
+    "importBoundaries": {
+      "baselineFindings": 25,
+      "candidateFindings": 25,
+      "byteIdentical": true,
+      "green": false
+    },
+    "packageDryRun": {
+      "ignoreScripts": true,
+      "retiredMirrorAbsent": true,
+      "retainedAuthorityOwners": 3
+    }
+  },
+  "creditNote": "Only actual unused mirror/callback/method deletion. No tests/docs/type-only or prior1673/1674credit, no replacement implementation. Real owner-lifetime repairs still required and any growth must be separately recorded. Source-only; no live data/control/restart operations."
+}

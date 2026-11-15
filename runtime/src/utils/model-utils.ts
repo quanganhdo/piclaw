@@ -6,8 +6,6 @@
  * and handle ambiguous or missing matches with descriptive error messages.
  *
  * Consumers:
- *   - agent-control/handlers/model.ts uses parseModelInput() + findModel() to
- *     implement `/model set`, `/model info`, etc.
  *   - extensions/model-control.ts uses resolveModelLabel() for the model-switch
  *     tool exposed to the agent.
  *   - agent-pool.ts uses resolveModelLabel() when overriding the model for a run.

@@ -49,13 +49,6 @@ const INTENT_KINDS = new Set([
   "settle",
   "maintenance",
 ]);
-const HARNESS_STATES = new Set([
-  "not_started",
-  "running",
-  "suspended",
-  "aborting",
-  "finished",
-]);
 const QUEUE_KINDS = new Set(["steer", "follow_up", "next_run"]);
 const QUEUE_STATES = new Set(["accepted", "queued", "consumed", "disposed"]);
 
@@ -217,18 +210,13 @@ function parseHarness(
   value: Record<string, unknown>,
   effect: EffectIdentity,
 ): BindHarnessRequest | null {
-  const state = enumValue(value.state, HARNESS_STATES);
   if (
     !effect.operationId ||
-    !state ||
     !exactKeys(value, [
       "effect",
       "expectedVersion",
       "sessionId",
-      "lane",
       "harnessOperationId",
-      "state",
-      "watchGeneration",
     ])
   )
     return null;
@@ -236,10 +224,7 @@ function parseHarness(
     effect: { ...effect, operationId: effect.operationId },
     expectedVersion: requiredSafeInteger(value.expectedVersion, 1),
     sessionId: requiredText(value.sessionId),
-    lane: requiredText(value.lane),
-    harnessOperationId: requiredNullableText(value.harnessOperationId),
-    state: state as BindHarnessRequest["state"],
-    watchGeneration: requiredSafeInteger(value.watchGeneration, 0),
+    harnessOperationId: requiredText(value.harnessOperationId),
   };
 }
 

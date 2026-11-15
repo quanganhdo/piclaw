@@ -70,11 +70,15 @@ test('rejects symlink upload destinations and does not write outside workspace',
 });
 
 test('rejects family workspace spillover, staging symlinks and unauthorised routes', async () => {
-  // API contract: the shared workspace is never used for family-owned uploads.
+  // Retired and malformed access configurations deny uploads before any write.
   const configPath=config.getConfigPath();mkdirSync(join(ws.workspace,'.piclaw'),{recursive:true});
-  writeFileSync(configPath,JSON.stringify({domains:{access:{mode:'family-shared'}}}));
-  try { expect((await handler(channel,request(0,{data:new Uint8Array(0)}))).status).toBe(403); }
-  finally { writeFileSync(configPath,'{}'); }
+  try {
+    for(const value of [JSON.stringify({domains:{access:{mode:'family-shared'}}}),'{"private-config-marker":',JSON.stringify({domains:{access:{mode:'unknown'}}})]) {
+      writeFileSync(configPath,value);
+      expect((await handler(channel,request(0,{data:new Uint8Array(0)}))).status).toBe(403);
+      expect(existsSync(join(ws.workspace,'uploads',id))).toBe(false);
+    }
+  } finally { writeFileSync(configPath,'{}'); }
   const staging=join(process.env.PICLAW_DATA!,'workspace-upload-chunks');mkdirSync(staging,{recursive:true});
   const outside=join(ws.workspace,'outside-staging');mkdirSync(outside);
   symlinkSync(outside,join(staging,'attachment-'+id),'dir');

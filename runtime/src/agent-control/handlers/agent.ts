@@ -18,7 +18,7 @@ type AgentNameCommand = Extract<AgentControlCommand, { type: "agent_name" }>;
 type AgentAvatarCommand = Extract<AgentControlCommand, { type: "agent_avatar" }>;
 
 /** Handle /agent-name: update the assistant display name. */
-export async function handleAgentName(_session: AgentSession, command: AgentNameCommand): Promise<AgentControlResult> {
+export async function handleAgentName(_session: AgentSession | undefined, command: AgentNameCommand): Promise<AgentControlResult> {
   if (!command.name) {
     return { status: "success", message: `Agent name: ${getIdentityConfig().assistantName}` };
   }
@@ -38,7 +38,7 @@ export async function handleAgentName(_session: AgentSession, command: AgentName
 }
 
 /** Handle /agent-avatar: update the assistant avatar URL. */
-export async function handleAgentAvatar(_session: AgentSession, command: AgentAvatarCommand): Promise<AgentControlResult> {
+export async function handleAgentAvatar(_session: AgentSession | undefined, command: AgentAvatarCommand): Promise<AgentControlResult> {
   if (!command.avatar) {
     const current = getIdentityConfig().assistantAvatar || "(default)";
     return { status: "success", message: `Agent avatar: ${current}` };

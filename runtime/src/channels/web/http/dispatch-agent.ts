@@ -1,6 +1,10 @@
+import { handlePlan } from "../handlers/plan.js";
+import { captureHostDatabaseBinding } from "../../../db/connection.js";
+import { captureWebRequestAuthority } from "../auth/auth-gateway.js";
 import { createLogger } from '../../../utils/logger.js';
 import { getKeychainStatus } from '../../../secure/keychain.js';
 const keychainLog=createLogger('web.keychain');
+const uiLog=createLogger('web.ui-state');
 /**
  * web/http/dispatch-agent.ts – Agent route dispatch helpers.
  */
@@ -25,9 +29,8 @@ import {
   handleRestartAddonRuntime,
   handleUninstallAddon,
 } from "../handlers/addons.js";
-import { handleBudgetSettingsAction, handleBudgetSettingsRead } from "../handlers/budget-settings.js";
 import { handleMcpSettings } from "../handlers/mcp-settings.js";
-import { getCompactionSettingsData, resetCompactionBackoff, saveCompactionSettings } from "../handlers/compaction-settings.js";
+import { getCompactionSettingsData, saveCompactionSettings } from "../handlers/compaction-settings.js";
 import {
   buildGeneralSettingsProfileUpdate,
   getGeneralSettingsData,
@@ -38,11 +41,10 @@ import { getQuickActionsSettingsData, saveQuickActionsSettings } from "../handle
 import { handleScheduledTasksManagementAction, handleScheduledTasksManagementList } from "../handlers/scheduled-tasks-management.js";
 import { getWorkspaceSettingsData, saveWorkspaceSettings } from "../handlers/workspace-settings.js";
 import { handleWorkspaceIndexingSettings } from "../handlers/workspace-indexing.js";
-import { getServerUiState, setServerUiMetersConfig, setServerUiOutputConfig, setServerUiThemeConfig } from "../ui-state.js";
+import { getServerUiState, admitServerUiState, type ServerUiStatePatch } from "../ui-state.js";
 import {
-  clearEnvironmentOverride,
   getEnvironmentSettingsData,
-  setEnvironmentOverride,
+  admitEnvironmentOverride,
 } from "../../../environment-overrides.js";
 import { getProviderDefs } from "../../../agent-control/provider-defs.js";
 import {
@@ -61,6 +63,7 @@ import {
   handleWebPushVapidPublicKey,
 } from "../push/web-push-routes.js";
 import { getThinkingContentForChat } from "../../../db/messages.js";
+import { handleTurnActivity } from "../handlers/turn-activity.js";
 import { readKeychainBootstrapKeyMaterial } from "../../../core/config.js";
 
 interface ExactAgentRoute {
@@ -70,6 +73,8 @@ interface ExactAgentRoute {
 }
 
 const EXACT_AGENT_ROUTES: ExactAgentRoute[] = [
+  { method: "GET", path: "/agent/plan", handle: handlePlan },
+  { method: "POST", path: "/agent/plan", handle: handlePlan },
   { method: "GET", path: "/agent/settings/mcp", handle: handleMcpSettings },
   { method: "POST", path: "/agent/settings/mcp/preview", handle: handleMcpSettings },
   { method: "POST", path: "/agent/settings/mcp/apply", handle: handleMcpSettings },
@@ -98,6 +103,16 @@ const EXACT_AGENT_ROUTES: ExactAgentRoute[] = [
     method: "POST",
     path: "/agent/thought/visibility",
     handle: (channel, req) => channel.handleThoughtVisibility(req),
+  },
+  {
+    method: "POST",
+    path: "/agent/tool-abort",
+    handle: (channel, req) => channel.handleAgentToolAbort(req),
+  },
+  {
+    method: "GET",
+    path: "/agent/turn-activity",
+    handle: (channel, _req, url) => handleTurnActivity(channel.agentPool, url),
   },
   {
     method: "GET",
@@ -216,16 +231,6 @@ const EXACT_AGENT_ROUTES: ExactAgentRoute[] = [
     method: "GET",
     path: "/agent/system-metrics",
     handle: (channel, req) => channel.handleSystemMetrics(req),
-  },
-  {
-    method: "GET",
-    path: "/agent/settings/budget",
-    handle: (channel, _req, url) => handleBudgetSettingsRead(channel, url),
-  },
-  {
-    method: "POST",
-    path: "/agent/settings/budget/action",
-    handle: (channel, req) => handleBudgetSettingsAction(channel, req),
   },
   {
     method: "GET",
@@ -370,36 +375,32 @@ const EXACT_AGENT_ROUTES: ExactAgentRoute[] = [
     method: "POST",
     path: "/agent/ui-state",
     handle: async (channel, req) => {
-      const body = await req.json().catch(() => ({})) as Record<string, unknown>;
-      const response: Record<string, unknown> = { ok: true };
+      const binding = captureHostDatabaseBinding(), gateway = channel.authGateway, request = captureWebRequestAuthority(gateway, req);
+      const authorise = () => { binding(); if (channel.authGateway !== gateway) throw Error('UI request gateway changed.'); request(); };
+      const body = await req.json().catch(() => ({})) as Record<string, unknown>, patch: ServerUiStatePatch = {};
       if (body?.ui_theme && typeof body.ui_theme === "object") {
-        const themeBody = body.ui_theme as Record<string, unknown>;
-        const nextTheme = setServerUiThemeConfig({
-          ...(typeof themeBody.theme === "string" ? { theme: themeBody.theme } : {}),
-          ...(themeBody.tint !== undefined ? { tint: typeof themeBody.tint === "string" ? themeBody.tint : null } : {}),
-        });
-        response.ui_theme = nextTheme;
-        channel.broadcastEvent("ui_theme", { ...nextTheme });
+        const value = body.ui_theme as Record<string, unknown>;
+        patch.ui_theme = { ...(typeof value.theme === 'string' ? { theme: value.theme } : {}),
+          ...(value.tint !== undefined ? { tint: typeof value.tint === 'string' ? value.tint : null } : {}) };
       }
       if (body?.ui_meters && typeof body.ui_meters === "object") {
-        const metersBody = body.ui_meters as Record<string, unknown>;
-        const nextMeters = setServerUiMetersConfig({
-          ...(typeof metersBody.enabled === "boolean" ? { enabled: metersBody.enabled } : {}),
-          ...(typeof metersBody.collapsed === "boolean" ? { collapsed: metersBody.collapsed } : {}),
-        });
-        response.ui_meters = nextMeters;
-        channel.broadcastEvent("ui_meters", { mode: "set", ...nextMeters });
+        const value = body.ui_meters as Record<string, unknown>;
+        patch.ui_meters = typeof value.collapsed === 'boolean' ? { collapsed: value.collapsed } : {};
       }
       if (body?.ui_output && typeof body.ui_output === "object") {
-        const outputBody = body.ui_output as Record<string, unknown>;
-        const parsedPad = Number(outputBody.outputPad ?? outputBody.output_pad);
-        const nextOutput = setServerUiOutputConfig({
-          ...(Number.isFinite(parsedPad) ? { outputPad: parsedPad } : {}),
-        });
-        response.ui_output = nextOutput;
-        channel.broadcastEvent("ui_theme", { outputPad: nextOutput.outputPad });
+        const value = body.ui_output as Record<string, unknown>, pad = Number(value.outputPad ?? value.output_pad);
+        patch.ui_output = Number.isFinite(pad) ? { outputPad: pad } : {};
       }
-      return channel.json(response, 200);
+      const next = await admitServerUiState(patch, authorise, req.signal), result: Record<string, unknown> = { ok: true }, events: Array<[string, unknown]> = [];
+      if (patch.ui_theme) { result.ui_theme = next.ui_theme; events.push(['ui_theme', { ...next.ui_theme }]); }
+      if (patch.ui_meters) { result.ui_meters = next.ui_meters; events.push(['ui_meters', { mode: 'set', ...next.ui_meters }]); }
+      if (patch.ui_output) { result.ui_output = next.ui_output; events.push(['ui_theme', { outputPad: next.ui_output.outputPad }]); }
+      const response = channel.json(result, 200);
+      for (const [event, data] of events) {
+        try { channel.broadcastEvent(event, data); }
+        catch (error) { try { uiLog.warn('Committed preferences awaiting publication', { error }); } catch { return response; } }
+      }
+      return response;
     },
   },
   {
@@ -437,7 +438,17 @@ const EXACT_AGENT_ROUTES: ExactAgentRoute[] = [
         }
       } catch (e) { /* context usage non-critical — best effort */ void e; }
 
-      const providers = getProviderDefs().map((p) => {
+      const staticProviders = getProviderDefs();
+      let providerDefs = staticProviders;
+      try {
+        const registry = channel.agentPool?.getModelRegistry?.();
+        const runtime = channel.agentPool?.modelRuntime;
+        if (registry || runtime) {
+          const builtins = new Set(staticProviders.map(provider => provider.id));
+          providerDefs = [...staticProviders, ...getProviderDefs(registry, runtime).filter(provider => !builtins.has(provider.id))];
+        }
+      } catch (error) { void error; } // Startup/mid-refresh keeps the existing static Settings list.
+      const providers = providerDefs.map((p) => {
         const auth = authProviders[p.id] as Record<string, unknown> | undefined;
         const authTypeFromAuth = typeof auth?.type === "string" ? auth.type : null;
         const hasCustomConfig = Boolean(p.isCustom && modelProviders[p.id]);
@@ -482,7 +493,7 @@ const EXACT_AGENT_ROUTES: ExactAgentRoute[] = [
   {
     method: "POST",
     path: "/agent/addons/install",
-    handle: (channel, req, url) => handleInstallAddon(req, (body, status) => channel.json(body, status), url),
+    handle: (channel, req, url) => handleInstallAddon(req, (body, status) => channel.json(body, status), url, channel.inspectAddonInstall),
   },
   {
     method: "POST",
@@ -499,11 +510,16 @@ const EXACT_AGENT_ROUTES: ExactAgentRoute[] = [
     path: "/agent/settings/general",
     handle: async (channel, req) => {
       try {
+        const binding = captureHostDatabaseBinding(), gateway = channel.authGateway, request = captureWebRequestAuthority(gateway, req);
+        const authorise = () => { binding(); if (channel.authGateway !== gateway) throw Error('Settings request gateway changed.'); request(); };
         const body = await req.json().catch(() => ({}));
-        const saved = await saveGeneralSettings((body && typeof body === "object") ? body as Record<string, unknown> : {});
-        channel.broadcastEvent("ui_theme", { theme: saved.uiTheme, tint: saved.uiTint, outputPad: saved.outputPad });
-        channel.broadcastEvent("profile_update", buildGeneralSettingsProfileUpdate(saved));
-        return channel.json({ ok: true, settings: saved });
+        const saved = await saveGeneralSettings((body && typeof body === "object") ? body as Record<string, unknown> : {}, authorise, req.signal);
+        const response = channel.json({ ok: true, settings: saved });
+        try {
+          channel.broadcastEvent("ui_theme", { theme: saved.uiTheme, tint: saved.uiTint, outputPad: saved.outputPad });
+          channel.broadcastEvent("profile_update", buildGeneralSettingsProfileUpdate(saved));
+        } catch (error) { try { uiLog.warn('Committed settings awaiting publication', { error }); } catch { return response; } }
+        return response;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         return channel.json({ error: message || "Failed to save general settings." }, 400);
@@ -542,12 +558,13 @@ const EXACT_AGENT_ROUTES: ExactAgentRoute[] = [
     path: "/agent/settings/environment",
     handle: async (channel, req) => {
       try {
+        const binding = captureHostDatabaseBinding(), gateway = channel.authGateway, request = captureWebRequestAuthority(gateway, req);
+        const authorise = () => { binding(); if (channel.authGateway !== gateway) throw Error('Environment request gateway changed.'); request(); };
         const body = await req.json().catch(() => ({}));
         const payload = (body && typeof body === "object") ? body as Record<string, unknown> : {};
         const action = typeof payload.action === "string" ? payload.action.trim().toLowerCase() : "set";
-        const saved = action === "clear"
-          ? clearEnvironmentOverride(payload.name)
-          : setEnvironmentOverride(payload.name, payload.value);
+        const value = action === 'clear' ? null : typeof payload.value === 'string' ? payload.value : String(payload.value ?? '');
+        const saved = await admitEnvironmentOverride(payload.name, value, authorise, req.signal);
         return channel.json({ ok: true, settings: saved }, 200);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -572,35 +589,12 @@ const EXACT_AGENT_ROUTES: ExactAgentRoute[] = [
   {
     method: "POST",
     path: "/agent/settings/compaction/probe",
-    handle: async (channel, req) => {
-      try {
-        const body = await req.json().catch(() => ({})) as Record<string, unknown>;
-        const model = typeof body.model === "string" ? body.model.trim() : "";
-        if (!model) return channel.json({ error: "Provide an exact provider/model compaction model." }, 400);
-        const result = await channel.agentPool.probeCompactionModel(model);
-        return channel.json(result, result.ok ? 200 : 422);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return channel.json({ error: message || "Compaction model probe failed." }, 400);
-      }
-    },
+    handle: (channel) => channel.json({ error: "Native compaction uses the active conversation model; separate compaction-model probes are unsupported." }, 410),
   },
   {
     method: "POST",
     path: "/agent/settings/compaction/reset-backoff",
-    handle: async (channel, req) => {
-      try {
-        const body = await req.json().catch(() => ({})) as Record<string, unknown>;
-        const chatJid = typeof body.chatJid === "string" ? body.chatJid.trim() : "";
-        if (!chatJid) {
-          return channel.json({ error: "Provide chatJid." }, 400);
-        }
-        return channel.json({ ok: true, settings: resetCompactionBackoff(chatJid) });
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return channel.json({ error: message || "Failed to reset compaction backoff." }, 400);
-      }
-    },
+    handle: (channel) => channel.json({ error: "Native compaction does not use legacy chat backoffs; historical records are preserved." }, 410),
   },
   // ── Keychain management ──────────────────────────────────────────────
   {
@@ -630,6 +624,8 @@ const EXACT_AGENT_ROUTES: ExactAgentRoute[] = [
     path: "/agent/keychain",
     handle: async (channel, req) => {
       try {
+        const binding = captureHostDatabaseBinding(), gateway = channel.authGateway, request = captureWebRequestAuthority(gateway, req);
+        const authorise = () => { binding(); if (channel.authGateway !== gateway) throw Error("Keychain request gateway changed"); request(); };
         const body = await req.json().catch(() => ({})) as Record<string, unknown>;
         const name = typeof body.name === "string" ? body.name.trim() : "";
         const secret = typeof body.secret === "string" ? body.secret : "";
@@ -642,7 +638,7 @@ const EXACT_AGENT_ROUTES: ExactAgentRoute[] = [
         const username = typeof body.username === "string" && body.username.trim() ? body.username.trim() : undefined;
         const userNote = typeof body.userNote === "string" ? body.userNote : undefined;
         const agentNote = typeof body.agentNote === "string" ? body.agentNote : undefined;
-        await setKeychainEntry({ name, type, secret, username, userNote, agentNote });
+        await setKeychainEntry({ name, type, secret, username, userNote, agentNote }, authorise, req.signal);
         return channel.json({ ok: true, name, type });
       } catch (error) {
         keychainLog.warn('Keychain write failed', { operation: 'keychain.write_failed', reason: getKeychainStatus().reason });
@@ -656,12 +652,14 @@ const EXACT_AGENT_ROUTES: ExactAgentRoute[] = [
     path: "/agent/keychain",
     handle: async (channel, req) => {
       try {
+        const binding = captureHostDatabaseBinding(), gateway = channel.authGateway, request = captureWebRequestAuthority(gateway, req);
+        const authorise = () => { binding(); if (channel.authGateway !== gateway) throw Error("Keychain request gateway changed"); request(); };
         const body = await req.json().catch(() => ({})) as Record<string, unknown>;
         const name = typeof body.name === "string" ? body.name.trim() : "";
         if (!name) {
           return channel.json({ error: "Provide name." }, 400);
         }
-        const removed = deleteKeychainEntry(name);
+        const removed = await deleteKeychainEntry(name, authorise, req.signal);
         return channel.json({ ok: true, removed });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -674,6 +672,8 @@ const EXACT_AGENT_ROUTES: ExactAgentRoute[] = [
     path: "/agent/keychain/notes",
     handle: async (channel, req) => {
       try {
+        const binding = captureHostDatabaseBinding(), gateway = channel.authGateway, request = captureWebRequestAuthority(gateway, req);
+        const authorise = () => { binding(); if (channel.authGateway !== gateway) throw Error("Keychain request gateway changed"); request(); };
         const body = await req.json().catch(() => ({})) as Record<string, unknown>;
         const name = typeof body.name === "string" ? body.name.trim() : "";
         if (!name) {
@@ -681,7 +681,7 @@ const EXACT_AGENT_ROUTES: ExactAgentRoute[] = [
         }
         const userNote = typeof body.userNote === "string" ? body.userNote : "";
         const agentNote = typeof body.agentNote === "string" ? body.agentNote : "";
-        const updated = updateKeychainEntryNotes(name, { userNote, agentNote });
+        const updated = await updateKeychainEntryNotes(name, { userNote, agentNote }, authorise, req.signal);
         if (!updated) return channel.json({ error: `Keychain entry not found: ${name}` }, 404);
         return channel.json({ ok: true, name, userNote, agentNote });
       } catch (error) {

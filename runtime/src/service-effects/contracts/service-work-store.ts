@@ -6,7 +6,6 @@ export type AcceptedSourceKind = "message" | "steer" | "follow_up" | "continuati
 export type AcceptedSourceState = "pending" | "claimed" | "queued" | "consumed" | "disposed";
 export type PiclawOperationPhase = "accepted" | "claimed" | "starting_harness" | "executing" | "suspended" | "cancelling" | "settling" | "terminal";
 export type PiclawDisposition = "completed" | "cancelled" | "failed" | "skipped" | "superseded";
-export type HarnessState = "not_started" | "running" | "suspended" | "aborting" | "finished";
 export type OperationIntentKind = "open_harness" | "prompt" | "queue_input" | "abort" | "resume" | "settle" | "maintenance";
 export type QueuedInputKind = "steer" | "follow_up" | "next_run";
 export type QueuedInputState = "accepted" | "queued" | "consumed" | "disposed";
@@ -25,12 +24,10 @@ export interface AcceptedSourceSnapshot {
   readonly provenanceRef: string;
 }
 
+/** Immutable host binding only. SDK tasks own status, lane and physical generations. */
 export interface HarnessCorrelation {
   readonly sessionId: string;
-  readonly lane: string;
   readonly harnessOperationId: string | null;
-  readonly state: HarnessState;
-  readonly watchGeneration: number;
 }
 
 export interface CancellationSnapshot { readonly sourceSeq: number; readonly cause: string; readonly requestedAt: string }
@@ -65,7 +62,7 @@ export interface AcceptSourceRequest {
 export interface ClaimNextSourceRequest { readonly effect: EffectIdentity; readonly chatJid: string; readonly expectedFrontier: number; readonly newOperationId: string; readonly claimedAt: string }
 export interface AppendOperationIntentRequest { readonly effect: EffectIdentity & { readonly operationId: string }; readonly expectedVersion: number; readonly intentId: string; readonly kind: OperationIntentKind; readonly payloadRef: string; readonly createdAt: string }
 export interface AcceptCancellationRequest { readonly effect: EffectIdentity & { readonly operationId: string }; readonly expectedVersion: number; readonly sourceId: string; readonly sourceSeq: number; readonly cause: string; readonly requestedAt: string }
-export interface BindHarnessRequest { readonly effect: EffectIdentity & { readonly operationId: string }; readonly expectedVersion: number; readonly sessionId: string; readonly lane: string; readonly harnessOperationId: string | null; readonly state: HarnessState; readonly watchGeneration: number }
+export interface BindHarnessRequest { readonly effect: EffectIdentity & { readonly operationId: string }; readonly expectedVersion: number; readonly sessionId: string; readonly harnessOperationId: string }
 export interface RecordQueuedInputRequest { readonly effect: EffectIdentity & { readonly operationId: string }; readonly expectedVersion: number; readonly sourceSeq: number; readonly queueKind: QueuedInputKind; readonly harnessEntryId: string | null; readonly state: QueuedInputState }
 export interface ListOpenOperationsRequest { readonly chatJid?: string; readonly limit?: number; readonly afterOperationId?: string }
 

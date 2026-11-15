@@ -8,7 +8,7 @@
  */
 
 import type { AgentSession } from "@earendil-works/pi-coding-agent";
-import { readAccessConfig } from "../../core/config-access.js";
+import { isSingleUserAccess } from "../../core/config-access.js";
 import type { AgentControlCommand, AgentControlResult } from "../agent-control-types.js";
 import { getIdentityConfig, getWebRuntimeConfig } from "../../core/config.js";
 import { getChatChannel } from "../../core/chat-context.js";
@@ -41,8 +41,8 @@ function describeFlow(flow: TotpCardFlow): string {
 }
 
 /** Handle `/totp` control commands for single-card setup/reset flows. */
-export async function handleTotp(_session: AgentSession, command: TotpCommand): Promise<AgentControlResult> {
-  if (readAccessConfig().mode !== "single-user") return { status: "error", message: "Use account-bound enrolment or recovery in this access mode." };
+export async function handleTotp(_session: AgentSession | undefined, command: TotpCommand): Promise<AgentControlResult> {
+  if (!isSingleUserAccess()) return { status: "error", message: "Single-user authentication is required." };
   const action = (command.action || "").toLowerCase();
   if (action && action !== "enrol" && action !== "enroll" && action !== "reset") {
     return { status: "error", message: "Usage: /totp enrol|enroll|reset" };

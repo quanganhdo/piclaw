@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, expect, test } from 'bun:test';
-import { closeDatabase, initDatabase } from '../../src/db/connection.js';
+import { closeDatabase, initDatabase, getDb } from '../../src/db/connection.js';
+import { registerRootExtensionKvStore } from '../../src/db/register-extension-kv.js';
 import { storeChatMetadata } from '../../src/db.js';
 import { ensureChatBranch } from '../../src/db/chat-branches.js';
 import { withChatContext } from '../../src/core/chat-context.js';
@@ -61,5 +62,50 @@ test('public wire marker is discarded and failed CSRF never receives local conte
   await handleRegisteredAddonConfigApiRequest(req,'example','dispatch',json);
   const parsed=await parseAgentMessageRequest(new Request('http://localhost/',{method:'POST',body:JSON.stringify({content:'x',content_blocks:[{type:'addon_local_dispatch',dispatch_id:'fake'}]})}));
   expect('payload' in parsed&&parsed.payload.content_blocks).toEqual([]);
+ });
+});
+
+
+test("authenticated configuration KV owner grants are exact, request-fenced and disposable", async () => {
+ const { registerAddonConfigKvAuthority } = await import("../../src/channels/web/handlers/addon-config-api.js");
+ const { getExtensionKvStore, resetExtensionKvStoreForTests, requireExtensionKvAuthority } = await import("../../src/extension-kv-registry.js");
+ await withTempWorkspaceEnv("addon-admin-kv-", {}, async () => {
+  resetExtensionKvStoreForTests(); registerRootExtensionKvStore(); requireExtensionKvAuthority();
+  const kv = getExtensionKvStore(); let valid = true, owned = true, transactions = 0;
+  const release = registerAddonConfigKvAuthority((extensionId, chatJid) => {
+   if (extensionId !== "imap") throw Error("namespace denied");
+   const assertCurrent = () => { if (!owned) throw Error("owner expired"); };
+   return { extensionId, chatJid, globalRead: true, globalWrite: true, assertCurrent,
+    write: body => getDb().transaction(() => { transactions++; assertCurrent(); const result = body(); assertCurrent(); return result; }).immediate() };
+  });
+  try {
+   const path = "/agent/addons/api/imap/config";
+   const channel:any = { authGateway: { isAuthEnabled:()=>false,isInternalSecretEnabled:()=>false,verifyInternalSecret:()=>false,isAuthenticated:()=>valid,getPrincipal:()=>valid?principal:null },endpointContexts:{},json };
+   registerAddonConfigApi("imap", "config", { get: () => kv.get("imap","settings","global"), set: async () => {
+    kv.set("imap","settings", { configured:true },"global");
+    expect(() => kv.set("portainer","settings",{},"global")).toThrow();
+    await Promise.resolve(); valid = false;
+    expect(() => kv.set("imap","settings",{},"global")).toThrow("expired");
+    valid = true; return { ok:true };
+   }});
+   const req = new Request("http://localhost"+path,{method:"POST",headers:{origin:"http://localhost"},body:"{}"});
+   expect(await enforceRequestGuards(channel,req,path,getRouteFlags(req,path))).toBeNull();
+   expect((await handleRegisteredAddonConfigApiRequest(req,"imap","config",json))!.status).toBe(200);
+   const get = new Request("http://localhost"+path);
+   expect(await enforceRequestGuards(channel,get,path,getRouteFlags(get,path))).toBeNull();
+   expect(await (await handleRegisteredAddonConfigApiRequest(get,"imap","config",json))!.json()).toEqual({configured:true});
+   storeChatMetadata("web:target", new Date().toISOString()); ensureChatBranch({chat_jid:"web:target",agent_name:"target"});
+   registerAddonConfigApi("imap", "chat", { get: () => { expect(() => kv.get("imap","plan","chat","web:target")).not.toThrow(); expect(() => kv.get("imap","plan","chat","web:other")).toThrow(); return {ok:true}; } });
+   const scopedPath = "/agent/addons/api/imap/chat";
+   const scoped = new Request("http://localhost"+scopedPath+"?chat_jid=web%3Atarget");
+   expect(await enforceRequestGuards(channel,scoped,scopedPath,getRouteFlags(scoped,scopedPath))).toBeNull();
+   expect((await handleRegisteredAddonConfigApiRequest(scoped,"imap","chat",json))!.status).toBe(200);
+   const evil = new Request("http://localhost"+path,{method:"POST",headers:{origin:"https://evil.example"},body:"{}"});
+   expect((await enforceRequestGuards(channel,evil,path,getRouteFlags(evil,path)))!.status).toBe(403);
+   expect((await handleRegisteredAddonConfigApiRequest(evil,"imap","config",json))!.status).toBe(500);
+   owned = false;
+   expect((await handleRegisteredAddonConfigApiRequest(get,"imap","config",json))!.status).toBe(500);
+   expect(transactions).toBeGreaterThan(0);
+  } finally { release(); resetExtensionKvStoreForTests(); }
  });
 });

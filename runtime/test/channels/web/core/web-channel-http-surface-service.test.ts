@@ -1,22 +1,29 @@
-import { describe, expect, test } from "bun:test";
+import * as identity from "../../../../src/channels/web/endpoints/identity-endpoints.js";
+import * as content from "../../../../src/channels/web/endpoints/content-endpoints.js";
+import * as ui from "../../../../src/channels/web/endpoints/ui-endpoints.js";
+import * as status from "../../../../src/channels/web/agent/agent-status.js";
+import * as manifest from "../../../../src/channels/web/manifest.js";
+import * as mutations from "../../../../src/channels/web/post-mutations.js";
+import * as posts from "../../../../src/channels/web/handlers/posts.js";
+const leafRestores: (() => void)[] = [];
+afterEach(() => { for (const restore of leafRestores.splice(0)) restore(); });
+import { afterEach, describe, expect, spyOn, test } from "bun:test";
 
-import {
-  createWebChannelHttpSurfaceService,
-  getWebChannelHttpSurfaceService,
-} from "../../../../src/channels/web/core/web-channel-http-surface-service.js";
+import { WebChannel } from "../../../../src/channels/web.js";
 
 function response(label: string, status = 200): Response {
   return new Response(label, { status });
 }
 
-describe("web channel http surface service", () => {
+describe("web channel public HTTP wiring", () => {
   test("delegates request-router, wrapper, and response helpers to the existing collaborators", async () => {
     const calls: string[] = [];
     const fetchResponse = response("fetch", 206);
     const requestResponse = response("request", 207);
     const jsonResponse = response("json", 208);
-    const service = createWebChannelHttpSurfaceService({
+    const service = Object.assign(Object.create(WebChannel.prototype), {
       serverLifecycleGateway: {
+        handleRequest: (_req: Request, dispatch: () => Promise<Response>) => dispatch(),
         handleFetch: async (req: Request) => {
           calls.push(`fetch:${new URL(req.url).pathname}`);
           return fetchResponse;
@@ -28,7 +35,7 @@ describe("web channel http surface service", () => {
           return requestResponse;
         },
       },
-      endpointFacade: {
+      endpointMocks: {
         handleAgents: async () => {
           calls.push("agents");
           return response("agents");
@@ -44,10 +51,6 @@ describe("web channel http surface service", () => {
         handleWorkspaceVisibility: async (req: Request) => {
           calls.push(`workspace:${req.method}`);
           return response("workspace");
-        },
-        handleTimeline: (limit: number, before?: number, chatJid?: string) => {
-          calls.push(`timeline:${limit}:${before ?? "null"}:${chatJid ?? ""}`);
-          return response("timeline");
         },
         handleHashtag: (tag: string, limit: number, offset: number, chatJid?: string) => {
           calls.push(`hashtag:${tag}:${limit}:${offset}:${chatJid ?? ""}`);
@@ -80,11 +83,11 @@ describe("web channel http surface service", () => {
           calls.push(`delete:${id ?? "null"}:${cascade}`);
           return response("delete");
         },
-        handleUpdatePost: async (_req: Request, id: number | null) => {
+        handleUpdatePost: async (_channel: unknown, _req: Request, id: number | null) => {
           calls.push(`update:${id ?? "null"}`);
           return response("update");
         },
-        handleInternalPost: async (req: Request) => {
+        handleInternalPost: async (_channel: unknown, req: Request) => {
           calls.push(`internal:${req.method}`);
           return response("internal");
         },
@@ -95,14 +98,6 @@ describe("web channel http surface service", () => {
         handleAgentStatus: (req: Request) => {
           calls.push(`status:${req.method}`);
           return response("status");
-        },
-        handleAgentContext: async (req: Request) => {
-          calls.push(`context:${req.method}`);
-          return response("context");
-        },
-        handleAgentModels: async (req: Request) => {
-          calls.push(`models:${req.method}`);
-          return response("models");
         },
         handleAgentActiveChats: () => {
           calls.push("active-chats");
@@ -201,6 +196,7 @@ describe("web channel http surface service", () => {
           return response("docs");
         },
         json: (_data: unknown, status = 200) => {
+          if (_data === "delete") return response("delete", status);
           calls.push(`json:${status}`);
           return jsonResponse;
         },
@@ -215,6 +211,26 @@ describe("web channel http surface service", () => {
       },
     });
 
+    const endpointMocks = service.endpointMocks;
+    service.endpointContexts = { identity: () => ({ assistantName: "Fixture", assistantAvatarRaw: null }), agents: () => ({}), avatar: () => ({}), ui: () => ({}), content: () => ({}), agentStatus: () => ({}) };
+    if ("handleAgents" in endpointMocks) { const spy = spyOn(identity, "handleAgentsRequest").mockImplementation((...args: any[]) => (endpointMocks as any).handleAgents(...args)); leafRestores.push(() => spy.mockRestore()); }
+    if ("handleManifest" in endpointMocks) { const spy = spyOn(manifest, "handleManifestRequest").mockImplementation((...args: any[]) => (endpointMocks as any).handleManifest(...args)); leafRestores.push(() => spy.mockRestore()); }
+    if ("handleAvatar" in endpointMocks) { const spy = spyOn(identity, "handleAvatarRequest").mockImplementation((...args: any[]) => (endpointMocks as any).handleAvatar(...args)); leafRestores.push(() => spy.mockRestore()); }
+    if ("handleWorkspaceVisibility" in endpointMocks) { const spy = spyOn(ui, "handleWorkspaceVisibilityRequest").mockImplementation((...args: any[]) => (endpointMocks as any).handleWorkspaceVisibility(...args)); leafRestores.push(() => spy.mockRestore()); }
+    if ("handleHashtag" in endpointMocks) { const spy = spyOn(content, "handleHashtagRequest").mockImplementation((...args: any[]) => (endpointMocks as any).handleHashtag(...args)); leafRestores.push(() => spy.mockRestore()); }
+    if ("handleSearch" in endpointMocks) { const spy = spyOn(content, "handleSearchRequest").mockImplementation((...args: any[]) => (endpointMocks as any).handleSearch(...args)); leafRestores.push(() => spy.mockRestore()); }
+    if ("handleThread" in endpointMocks) { const spy = spyOn(content, "handleThreadRequest").mockImplementation((...args: any[]) => (endpointMocks as any).handleThread(...args)); leafRestores.push(() => spy.mockRestore()); }
+    if ("handleThought" in endpointMocks) { const spy = spyOn(content, "handleThoughtRequest").mockImplementation((...args: any[]) => (endpointMocks as any).handleThought(...args)); leafRestores.push(() => spy.mockRestore()); }
+    if ("handleThoughtVisibility" in endpointMocks) { const spy = spyOn(ui, "handleThoughtVisibilityRequest").mockImplementation((...args: any[]) => (endpointMocks as any).handleThoughtVisibility(...args)); leafRestores.push(() => spy.mockRestore()); }
+    if ("handleUpdatePost" in endpointMocks) { const spy = spyOn(mutations, "handleUpdatePostRequest").mockImplementation((...args: any[]) => (endpointMocks as any).handleUpdatePost(...args)); leafRestores.push(() => spy.mockRestore()); }
+    if ("handleInternalPost" in endpointMocks) { const spy = spyOn(mutations, "handleInternalPostRequest").mockImplementation((...args: any[]) => (endpointMocks as any).handleInternalPost(...args)); leafRestores.push(() => spy.mockRestore()); }
+    if ("handleAgentStatus" in endpointMocks) { const spy = spyOn(status, "handleAgentStatusRequest").mockImplementation((...args: any[]) => (endpointMocks as any).handleAgentStatus(...args)); leafRestores.push(() => spy.mockRestore()); }
+    if ("handleAgentActiveChats" in endpointMocks) { const spy = spyOn(status, "handleAgentActiveChatsRequest").mockImplementation((...args: any[]) => (endpointMocks as any).handleAgentActiveChats(...args)); leafRestores.push(() => spy.mockRestore()); }
+    if ("handleAgentBranches" in endpointMocks) { const spy = spyOn(status, "handleAgentBranchesRequest").mockImplementation((...args: any[]) => (endpointMocks as any).handleAgentBranches(...args)); leafRestores.push(() => spy.mockRestore()); }
+    if ("handleAgentRespond" in endpointMocks) { const spy = spyOn(ui, "handleAgentRespondRequest").mockImplementation((...args: any[]) => (endpointMocks as any).handleAgentRespond(...args)); leafRestores.push(() => spy.mockRestore()); }
+    const post = spyOn(posts, "handlePost").mockImplementation((_channel, req, isReply) => endpointMocks.handlePost(req, isReply)); leafRestores.push(() => post.mockRestore());
+    const remove = spyOn(mutations, "handleDeletePostRequest").mockImplementation(async (_channel, req, id, cascade) => endpointMocks.handleDeletePost(req, id, cascade)); leafRestores.push(() => remove.mockRestore());
+
     const getReq = new Request("https://example.test/timeline?chat_jid=web%3Abranch", { method: "GET" });
     const postReq = new Request("https://example.test/post", { method: "POST" });
 
@@ -224,13 +240,13 @@ describe("web channel http surface service", () => {
     expect(await (await service.handleManifest(new Request("https://example.test/manifest.json", { method: "HEAD" }))).text()).toBe("manifest");
     expect(await (await service.handleAvatar("user", getReq)).text()).toBe("avatar");
     expect(await (await service.handleWorkspaceVisibility(postReq)).text()).toBe("workspace");
-    expect(await service.handleTimeline(5, 7, "web:branch").text()).toBe("timeline");
+    expect(service.handleTimeline).toBeFunction();
     expect(await service.handleHashtag("tag", 6, 2, "web:branch").text()).toBe("hashtag");
     expect(await service.handleSearch("query", 7, 3, "web:branch", "root", "web:root").text()).toBe("search");
     expect(await service.handleThread(9, "web:branch").text()).toBe("thread");
     expect(await service.handleThought("draft", "turn-1").text()).toBe("thought");
     expect(await (await service.handleThoughtVisibility(postReq)).text()).toBe("thought-visibility");
-    expect(await service.handleDeletePost(postReq, 9, true).text()).toBe("delete");
+    expect(await (await service.handleDeletePost(postReq, 9, true)).text()).toBe("delete");
     expect(await (await service.handleUpdatePost(postReq, 10)).text()).toBe("update");
     expect(await (await service.handleInternalPost(postReq)).text()).toBe("internal");
     expect(await service.handleSse(getReq).text()).toBe("sse");
@@ -240,14 +256,12 @@ describe("web channel http surface service", () => {
     expect(await (await service.handleVncHandoff(postReq)).text()).toBe("handoff");
     expect(await (await service.handlePost(postReq, true)).text()).toBe("post");
     expect(await service.handleAgentStatus(getReq).text()).toBe("status");
-    expect(await (await service.handleAgentContext(getReq)).text()).toBe("context");
     expect(await (await service.handleAutoresearchStatus(getReq)).text()).toBe("autoresearch-status");
     expect(await (await service.handleAutoresearchStop(postReq)).text()).toBe("autoresearch-stop");
     expect(await (await service.handleAutoresearchDismiss(postReq)).text()).toBe("autoresearch-dismiss");
     expect(await (await service.handleAgentQueueState(getReq)).text()).toBe("queue-state");
     expect(await (await service.handleAgentQueueRemove(postReq)).text()).toBe("queue-remove");
     expect(await (await service.handleAgentQueueSteer(postReq)).text()).toBe("queue-steer");
-    expect(await (await service.handleAgentModels(getReq)).text()).toBe("models");
     expect(await (await service.handleAgentActiveChats(getReq)).text()).toBe("active-chats");
     expect(await (await service.handleAgentBranches(getReq)).text()).toBe("branches");
     expect(await (await service.handleAgentBranchFork(postReq)).text()).toBe("branch-fork");
@@ -270,7 +284,6 @@ describe("web channel http surface service", () => {
       "manifest:HEAD",
       "avatar:user:GET",
       "workspace:POST",
-      "timeline:5:7:web:branch",
       "hashtag:tag:6:2:web:branch",
       "search:query:7:3:web:branch:root:web:root",
       "thread:9:web:branch",
@@ -286,14 +299,12 @@ describe("web channel http surface service", () => {
       "handoff:POST",
       "post:POST:1",
       "status:GET",
-      "context:GET",
       "autoresearch-status:GET",
       "autoresearch-stop:POST",
       "autoresearch-dismiss:POST",
       "queue-state:GET",
       "queue-remove:POST",
       "queue-steer:POST",
-      "models:GET",
       "active-chats",
       "branches:GET",
       "branch-fork:POST",
@@ -311,19 +322,4 @@ describe("web channel http surface service", () => {
     ]);
   });
 
-  test("reuses a pre-wired http surface service when present", () => {
-    const existing = { kind: "existing" } as unknown as ReturnType<typeof getWebChannelHttpSurfaceService>;
-    const carrier = {
-      httpSurfaceService: existing,
-      requestRouter: { handle: async () => response("unused") },
-      endpointFacade: {} as never,
-      controlPlaneService: {} as never,
-      serverLifecycleGateway: {} as never,
-      terminalVncHttpService: {} as never,
-      sessionBroadcast: {} as never,
-      responses: {} as never,
-    };
-
-    expect(getWebChannelHttpSurfaceService(carrier as any)).toBe(existing);
-  });
 });

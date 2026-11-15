@@ -30,6 +30,7 @@ import {
 } from "./webauthn-challenges.js";
 import { createLogger } from "../../../utils/logger.js";
 import { getDb } from "../../../db/connection.js";
+import { admitSqliteWrite } from "../../../db/sqlite-async-admission.js";
 import { getUser } from "../../../db/users.js";
 import type { AccessMode } from "../../../core/config-access.js";
 import { checkCsrfOrigin } from "../http/security.js";
@@ -171,7 +172,7 @@ export async function handleWebauthnLoginFinish(req: Request, ctx: WebauthnAuthC
   }
 
   const sessionToken = (ctx.randomToken ?? randomSessionToken)();
-  const issued = getDb().transaction(() => {
+  const issued = await admitSqliteWrite(getDb(), () => {
     const currentUser = getUser(getDb(), stored.user_id);
     const currentCredential = getWebauthnCredentialById(stored.credential_id);
     if (!currentUser?.enabled || (multiUser && !currentUser.home_chat_jid)
@@ -181,7 +182,7 @@ export async function handleWebauthnLoginFinish(req: Request, ctx: WebauthnAuthC
     updateWebauthnCredentialCounter(stored.credential_id, result.authenticationInfo.newCounter);
     createWebSession(sessionToken, stored.user_id, getTtlSeconds(), "passkey");
     return true;
-  }).immediate();
+  }, undefined, req.signal);
   if (!issued) return ctx.json({ error: "Passkey verification failed" }, 401);
 
   return okJson({ ok: true }, 200, {
@@ -325,22 +326,28 @@ export async function handleWebauthnRegisterFinish(req: Request, ctx: WebauthnAu
     ctx.logAuthEvent(req, "WebAuthn registration expired or unknown token");
     return ctx.json({ error: "Registration expired" }, 400);
   }
-  const registered = getDb().transaction(() => {
+  const transports = Array.isArray(credential.response.transports)
+    ? JSON.stringify(credential.response.transports)
+    : null;
+  const publicKey = bufferToBase64Url(info.credential.publicKey);
+  const registered = await admitSqliteWrite(getDb(), () => {
+    // Authorization and uniqueness may change while writer acquisition yields.
+    if (multiUser && (!getUser(getDb(), enrollment.user_id)?.enabled || !ctx.authoriseEnrolment?.(req, enrollment.user_id))) return "denied";
+    if (getWebauthnCredentialById(info.credential.id)) return "duplicate";
     const consumedEnrollment = consumeWebauthnEnrollment(token);
     if (!consumedEnrollment || consumedEnrollment.user_id !== enrollment.user_id) return false;
-    const transports = Array.isArray(credential.response.transports)
-      ? JSON.stringify(credential.response.transports)
-      : null;
     storeWebauthnCredential({
       user_id: enrollment.user_id,
       rp_id: pending.rpId,
       credential_id: info.credential.id,
-      public_key: bufferToBase64Url(info.credential.publicKey),
+      public_key: publicKey,
       sign_count: info.credential.counter || 0,
       transports,
     });
     return true;
-  }).immediate();
+  }, undefined, req.signal);
+  if (registered === "denied") return ctx.json({ error: "Enrolment access denied" }, 403);
+  if (registered === "duplicate") return ctx.json({ error: "Credential already registered" }, 409);
   if (!registered) return ctx.json({ error: "Invalid or expired enrol token" }, 400);
 
   return okJson({ ok: true });

@@ -1,0 +1,220 @@
+{
+  "issue": 1835,
+  "epic": 1809,
+  "finding": "F1",
+  "implementationBase": "ed0e58042e99dac27f79bb15f685ff2b351d47d8",
+  "reviewPin": "6eec077c222c1451da0939d2b0edffc119cb18bd",
+  "before": {
+    "files": 710,
+    "physicalLOC": 142634,
+    "nonblankLines": 132294
+  },
+  "after": {
+    "files": 707,
+    "physicalLOC": 142266,
+    "nonblankLines": 131958
+  },
+  "rawReduction": {
+    "physical": 368,
+    "nonblank": 336,
+    "files": 3
+  },
+  "nonCreditCharge": {
+    "physical": 140,
+    "nonblank": 118,
+    "includes": "all non-function/class source plus two barrel export lines; no types/data/import/comment/export credit"
+  },
+  "creditedNetReduction": {
+    "physical": 228,
+    "nonblank": 218
+  },
+  "outsideRootProductionReplacement": 0,
+  "generatedCredit": 0,
+  "sourceSupportBefore": {
+    "files": 32,
+    "physicalLOC": 12910,
+    "nonblankLines": 12388
+  },
+  "sourceSupportAfter": {
+    "files": 30,
+    "physicalLOC": 12551,
+    "nonblankLines": 12043
+  },
+  "removedOwners": [
+    {
+      "name": "dormant observer lifecycle",
+      "before": 1,
+      "after": 0
+    },
+    {
+      "name": "EF-S08 cursor map",
+      "before": 1,
+      "after": 0
+    }
+  ],
+  "activeNativePathChanged": false,
+  "sources": [
+    {
+      "path": "runtime/durable-engine/src/host-projection.ts",
+      "physical": 110,
+      "nonblank": 108,
+      "conservativeImplementationSpans": [
+        {
+          "name": "observeProjection",
+          "kind": "FunctionDeclaration",
+          "first": 28,
+          "last": 110,
+          "physical": 83,
+          "nonblank": 83
+        }
+      ],
+      "codePhysical": 83,
+      "codeNonblank": 83,
+      "nonCreditPhysical": 27,
+      "nonCreditNonblank": 25,
+      "sha256": "001aee076cc54709fb12c7a392b5bdf046a8a26f095fd1f857d296beb3a0d959"
+    },
+    {
+      "path": "runtime/src/service-effects/current-piclaw/agent-projection-sink.ts",
+      "physical": 185,
+      "nonblank": 168,
+      "conservativeImplementationSpans": [
+        {
+          "name": "CurrentPiclawAgentProjectionSink",
+          "kind": "ClassDeclaration",
+          "first": 23,
+          "last": 116,
+          "physical": 94,
+          "nonblank": 84
+        },
+        {
+          "name": "keyOf",
+          "kind": "FunctionDeclaration",
+          "first": 118,
+          "last": 120,
+          "physical": 3,
+          "nonblank": 3
+        },
+        {
+          "name": "traceInput",
+          "kind": "FunctionDeclaration",
+          "first": 122,
+          "last": 124,
+          "physical": 3,
+          "nonblank": 3
+        },
+        {
+          "name": "normaliseProjection",
+          "kind": "FunctionDeclaration",
+          "first": 126,
+          "last": 160,
+          "physical": 35,
+          "nonblank": 35
+        },
+        {
+          "name": "stable",
+          "kind": "FunctionDeclaration",
+          "first": 161,
+          "last": 161,
+          "physical": 1,
+          "nonblank": 1
+        },
+        {
+          "name": "stableStringArray",
+          "kind": "FunctionDeclaration",
+          "first": 162,
+          "last": 167,
+          "physical": 6,
+          "nonblank": 6
+        },
+        {
+          "name": "nonEmpty",
+          "kind": "FunctionDeclaration",
+          "first": 171,
+          "last": 171,
+          "physical": 1,
+          "nonblank": 1
+        },
+        {
+          "name": "nullableString",
+          "kind": "FunctionDeclaration",
+          "first": 172,
+          "last": 172,
+          "physical": 1,
+          "nonblank": 1
+        },
+        {
+          "name": "nonNegativeSafeInteger",
+          "kind": "FunctionDeclaration",
+          "first": 173,
+          "last": 173,
+          "physical": 1,
+          "nonblank": 1
+        }
+      ],
+      "codePhysical": 145,
+      "codeNonblank": 135,
+      "nonCreditPhysical": 40,
+      "nonCreditNonblank": 33,
+      "sha256": "80284c2432997ff2c7d3c8458282b1bdc2379be900e2ced8f0308cdd9404ad74"
+    },
+    {
+      "path": "runtime/src/service-effects/contracts/agent-projection-sink.ts",
+      "physical": 71,
+      "nonblank": 58,
+      "conservativeImplementationSpans": [],
+      "codePhysical": 0,
+      "codeNonblank": 0,
+      "nonCreditPhysical": 71,
+      "nonCreditNonblank": 58,
+      "sha256": "e4ed3b43eac14f1063e2c912f91f87e68465d23b2d34ea06c7f5f520173aec97"
+    }
+  ],
+  "sourceBarrelExportsRemoved": 2,
+  "retiredExclusiveSupport": [
+    "runtime/src/service-effects/testing/contract-suites/agent-projection-sink-contract.ts",
+    "runtime/src/service-effects/testing/fakes/fake-agent-projection-sink.ts",
+    "qualification/pi-durable-130/projection.test.ts"
+  ],
+  "survivingDeliveryContractCatalogueUnchanged": true,
+  "survivingDeliveryCases": 18,
+  "focused": {
+    "cases": 47,
+    "assertions": 624,
+    "green": true
+  },
+  "native": {
+    "eventsAssertions": 182,
+    "cursorAckAssertions": 34,
+    "closeReopenAssertions": 22,
+    "viewProgressCases": 4,
+    "viewProgressAssertions": 17
+  },
+  "browser": {
+    "cases": 8,
+    "assertions": 104,
+    "engines": [
+      "chromium",
+      "webkit"
+    ],
+    "skins": [
+      "classic",
+      "visual"
+    ],
+    "disposable": true
+  },
+  "types": {
+    "normalProjects": 3,
+    "newTestStrict": true,
+    "green": true
+  },
+  "generalImport": {
+    "preExistingFindings": 25,
+    "byteIdenticalSameInvocation": true,
+    "green": false,
+    "rulesChanged": false
+  },
+  "sourceOnly": true,
+  "finalIntegrationVerified": false,
+  "retiredTypeProjectRegistrationRemoved": true
+}

@@ -70,7 +70,7 @@ describe("WebAgentPeerMessageRelayService", () => {
       const request = () => new Request("https://example.com/agent/peer-message", { method: "POST", body: "{}" });
       expect((await withExecutionIdentity(familyIdentity, () => service.handleAgentPeerMessage(request()))).status).toBe(403);
       writeFileSync(configPath, "{");
-      await expect(service.handleAgentPeerMessage(request())).rejects.toThrow("access configuration cannot default safely");
+      expect((await service.handleAgentPeerMessage(request())).status).toBe(403);
       expect(callbacks).toBe(0);
     });
   });

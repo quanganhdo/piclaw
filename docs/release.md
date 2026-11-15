@@ -60,7 +60,7 @@ The Makefile's `bump-*` targets create a final tag locally, and `make push` push
 
 ### Access-mode release constraint
 
-The multi-user backend is incomplete. Passing ordinary CI does not enable `family-shared` or `isolated-containers`: preserve `validateAccessStartup` until [#1133](https://github.com/rcarmo/piclaw/issues/1133) migration, isolation and end-to-end gates pass. Release notes must distinguish code present from user-available functionality. Back up configuration, DB, sessions and key material together; never downgrade an activated store by deleting its access marker. See [Access modes](multi-user/README.md).
+Only single-user startup is supported. Family account and migration APIs have been removed. Preserve existing ownership and migration records; never rewrite store markers to force startup. Back up configuration, databases, sessions and key material together. See [Access modes](access-modes.md).
 
 Build a local source archive when you need to verify the release source payload:
 

@@ -11,11 +11,11 @@ import { getSearchMatchMode } from "./core/config.js";
 import { extractFtsFallbackTerms, isFtsOperatorQuery, prepareFtsQuery } from "./utils/fts-query.js";
 import { createLogger, debugSuppressedError } from "./utils/logger.js";
 import { workspaceIndexAccess,WorkspaceIndexAccessDenied } from './core/workspace-index-access.js';
-import { familyWorkspaceScope,searchFamilyWorkspaceIndex } from './family-workspace-index.js';
 import { workspaceIndexPolicySnapshot, workspaceIndexPathDecision, workspaceIndexSafePath } from './core/workspace-index-policy.js';
 import {
   getWorkspaceIndexStatus,
   markWorkspaceIndexCoreStale,
+  type WorkspaceIndexStaleAdmission,
   normalizeWorkspaceSearchScope,
   refreshWorkspaceIndex,
   type WorkspaceIndexBackgroundRefreshParams,
@@ -92,21 +92,21 @@ export function setBackgroundWorkspaceIndexRefreshRequesterForTests(
   requestBackgroundWorkspaceIndexRefreshImpl = requester ?? defaultBackgroundRefresh;
 }
 
-export function markWorkspaceIndexStale(params?: { scope?: WorkspaceSearchScope | string; paths?: string[] }): void {
-  for (const scope of markWorkspaceIndexCoreStale(params)) {
-    requestBackgroundWorkspaceIndexRefresh({ scope });
-  }
+export function markWorkspaceIndexStale(params?: { scope?: WorkspaceSearchScope | string; paths?: string[] }, admission?: WorkspaceIndexStaleAdmission): Promise<void> {
+  return markWorkspaceIndexCoreStale(params, admission).then(scopes => {
+    for (const scope of scopes) requestBackgroundWorkspaceIndexRefresh({ scope });
+  });
 }
 
 /** Full-text search across indexed workspace files. */
-export async function searchWorkspace(params: WorkspaceSearchParams): Promise<WorkspaceSearchResult> {
+export async function searchWorkspace(params: WorkspaceSearchParams, owner?: { refreshStaleInline: true }): Promise<WorkspaceSearchResult> {
   const access=workspaceIndexAccess();
   const policy=access.mode==='single-user'?workspaceIndexPolicySnapshot():null;
   const query = params.query.trim();
   const limit = clampNumber(params.limit, 10, 1, 50);
   const offset = clampNumber(params.offset, 0, 0, 1_000_000);
   const refresh = params.refresh === true;
-  const scope = access.mode==='family-shared'?familyWorkspaceScope(params.scope):normalizeWorkspaceSearchScope(params.scope);
+  const scope = normalizeWorkspaceSearchScope(params.scope);
 
   if (!query) {
     return { rows: [], limit, offset, error: "Provide a query." };
@@ -117,12 +117,12 @@ export async function searchWorkspace(params: WorkspaceSearchParams): Promise<Wo
   } else {
     const status = getWorkspaceIndexStatus({ scope });
     if (status.state !== "ready") {
-      requestBackgroundWorkspaceIndexRefresh({ scope, max_kb: params.max_kb });
+      if(owner?.refreshStaleInline)await refreshWorkspaceIndex({scope,max_kb:params.max_kb});
+      else requestBackgroundWorkspaceIndexRefresh({ scope, max_kb: params.max_kb });
     }
   }
 
   access.validate();policy?.validate();
-  if(access.mode==='family-shared')return searchFamilyWorkspaceIndex(query,scope,limit,offset);
 
   const operatorQuery = isFtsOperatorQuery(query);
   const ftsQuery = prepareFtsQuery(query, getSearchMatchMode());

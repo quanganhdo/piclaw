@@ -103,7 +103,7 @@ describe("image_process tool", () => {
     expect(result.details.height).toBe(150);
     expect(result.details.action).toBe("resize");
     expect(existsSync(result.details.output) || existsSync(join(ws.workspace, result.details.output))).toBe(true);
-  });
+  }, 30_000); // Cold native/subprocess setup under the bounded CI CPU quota.
 
   test("convert action changes format and preserves transparency", async () => {
     ws = createTempWorkspace("piclaw-imgproc-");
@@ -402,7 +402,7 @@ test("text action overlays text on image", async () => {
   const result = await tool.execute("t-text", { action: "text", input: join(ws2.workspace, "bg.png"), text: "Hello World", text_color: "#FFFFFF", text_size: 20 });
   expect(result.details.action).toBe("text");
   ws2.cleanup();
-});
+}, 30_000); // Cold native/subprocess setup under the bounded CI CPU quota.
 
 test("metadata action returns detailed image metadata", async () => {
   const ws2 = createTempWorkspace("piclaw-imgproc-meta-");

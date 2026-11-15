@@ -322,9 +322,3 @@ export function createDirectChatToolRelayHandler(
     };
   };
 }
-
-export const __chatToolRuntimeInternals = {
-  buildForwardedContent,
-  buildPeerRelayBlock,
-  buildReplyToDescriptor,
-};

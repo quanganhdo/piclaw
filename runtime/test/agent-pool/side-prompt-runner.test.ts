@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 
-import { runSidePrompt } from "../../src/agent-pool/side-prompt-runner.js";
+import { runSidePrompt } from "../helpers/legacy-side-prompt-runner.js";
 import { initDatabase } from "../../src/db.js";
 import { getDb } from "../../src/db/connection.js";
 

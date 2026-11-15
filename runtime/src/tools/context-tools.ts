@@ -24,7 +24,6 @@ import { createToolOutputAccessGuard, ToolOutputAccessDenied } from "../core/too
 import { buildPreview, saveToolOutput, searchToolOutput, getToolOutput, readToolOutputFile } from "../tool-output.js";
 import { createTrackedBashOperations } from "./tracked-bash.js";
 import { createLogger, debugSuppressedError } from "../utils/logger.js";
-import { requireFamilyToolAccess } from '../agent-pool/family-tool-access.js';
 
 const log = createLogger("tools.context-tools");
 
@@ -146,7 +145,6 @@ export function createToolOutputSearchTool() {
       limit: Type.Optional(Type.Number({ description: "Max snippets to return", default: 5 })),
     }),
     execute: async (_toolCallId: string, params: { handle: string; query: string; limit?: number }) => {
-      requireFamilyToolAccess('search_tool_output');
       createToolOutputAccessGuard();
       const handle = params.handle.trim();
       const query = params.query.trim();

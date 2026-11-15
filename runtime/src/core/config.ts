@@ -13,7 +13,6 @@ export {
   DATA_DIR,
   getConfigPath,
   getDataDir,
-  getRuntimeBootstrapPathOverrides,
   getRuntimeConfigPaths,
   getRuntimeRoot,
   getStoreDir,

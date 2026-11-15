@@ -106,7 +106,7 @@ beforeAll(async () => {
           Bun.file(join(import.meta.dir, "../../web", u.pathname)),
         );
       const skin =
-        u.searchParams.get("skin") === "visual" ? "visual" : "classic";
+        "classic";
       return new Response(
         `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/static/${skin}/css/styles.css"><style>body{padding:16px}#app{position:relative;min-height:400px}.compose-model-popup{position:relative!important;bottom:auto!important;top:auto!important}.session-pill__dropdown{position:relative;bottom:auto;top:auto}</style></head><body><div id="errors" role="alert"></div><pre id="state"></pre><div id="app"></div><script type="module" src="/fixture.js"></script></body></html>`,
         { headers: { "Content-Type": "text/html" } },
@@ -176,8 +176,8 @@ for (const engine of ["chromium", "webkit"])
         await pa.waitForFunction(() =>
           (window as any).pinFixture?.state().models.includes("test/legacy"),
         );
-        await pb.goto(server.url + "?skin=visual");
-        await po.goto(server.url + "?skin=visual");
+        await pb.goto(server.url + "?skin=classic");
+        await po.goto(server.url + "?skin=classic");
         await pb.waitForFunction(() =>
           (window as any).pinFixture?.state().sessions.includes("web:legacy"),
         );
@@ -293,14 +293,14 @@ for (const engine of ["chromium", "webkit"])
       );
       try {
         await p.goto(server.url + "?skin=classic");
-        await p.waitForFunction(
-          () => (window as any).pinFixture?.errors.length > 0,
-        );
+        await p.waitForFunction(() => Boolean((window as any).pinFixture));
+        await p.evaluate(() => (window as any).pinFixture.refresh());
+        expect(await p.evaluate(() => (window as any).pinFixture.errors)).toEqual([]);
         await p.evaluate(() =>
           (window as any).pinFixture.model("test/failed-before-load"),
         );
         await p.waitForFunction(
-          () => (window as any).pinFixture.errors.length >= 2,
+          () => (window as any).pinFixture.errors.length === 1,
         );
         expect(
           await p.evaluate(() => (window as any).pinFixture.state()),
@@ -356,3 +356,101 @@ for (const engine of ['chromium','webkit']) browserTest(`${engine}: stopped sync
   expect(await p.evaluate(()=>(window as any).pinFixture.errors)).toEqual([]);
  }finally{await c.close();}
 },10000);
+
+for (const engine of ["chromium", "webkit"])
+  for (const skin of ["classic"])
+    browserTest(`${engine}/${skin}: restart reads stay silent, retain pins and recover on reconnect`, async () => {
+      const owner = `restart-${engine}-${skin}`;
+      const c = await context(engine, owner, true), p = await c.newPage();
+      p.setDefaultTimeout(5000);
+      const pageErrors: string[] = [];
+      p.on("pageerror", e => pageErrors.push(e.message));
+      await c.addInitScript(() => {
+        (window as any).pinErrorEvents = [];
+        window.addEventListener("piclaw:pin-sync-error", e => (window as any).pinErrorEvents.push((e as CustomEvent).detail));
+      });
+      let unavailable = true, failedReads = 0;
+      await p.route("**/agent/picker-pins", route => {
+        if (!unavailable) return route.continue();
+        if (route.request().method() === "GET") failedReads++;
+        return route.fulfill({ status: 503, json: { error: "restarting" } });
+      });
+      try {
+        await p.goto(server.url + `?skin=${skin}`);
+        await p.waitForFunction(() => Boolean((window as any).pinFixture));
+        await p.evaluate(() => (window as any).pinFixture.refresh());
+        expect(failedReads).toBeGreaterThan(0);
+        const legacy = { models: ["test/legacy"], sessions: ["web:legacy"] };
+        expect(await p.evaluate(() => (window as any).pinFixture.state())).toEqual(legacy);
+        expect(await p.evaluate(() => (window as any).pinFixture.errors)).toEqual([]);
+        expect(await p.evaluate(() => (window as any).pinErrorEvents)).toEqual([]);
+        unavailable = false;
+        await p.evaluate(async () => {
+          window.dispatchEvent(new Event("piclaw:sse-connected"));
+          await (window as any).pinFixture.refresh();
+        });
+        expect(readPickerPins(db, owner).models).toEqual(["test/legacy"]);
+        expect(readPickerPins(db, owner).sessions).toEqual(["web:legacy"]);
+        // These lifecycle triggers all read; none represent an explicit edit.
+        unavailable = true;
+        const before = failedReads;
+        await p.evaluate(async () => {
+          window.dispatchEvent(new Event("focus"));
+          window.dispatchEvent(new Event("piclaw:sse-connected"));
+          window.dispatchEvent(new Event("piclaw:picker-pins-changed"));
+          document.dispatchEvent(new Event("visibilitychange"));
+          await (window as any).pinFixture.refresh();
+        });
+        expect(failedReads).toBeGreaterThan(before);
+        expect(await p.evaluate(() => (window as any).pinFixture.state())).toEqual(legacy);
+        expect(await p.evaluate(() => (window as any).pinFixture.errors)).toEqual([]);
+        expect(await p.evaluate(() => (window as any).pinErrorEvents)).toEqual([]);
+        // Do not hide an actual failed user edit; revert only that optimistic edit.
+        await p.evaluate(() => (window as any).pinFixture.model("test/not-saved"));
+        await p.waitForFunction(() => (window as any).pinFixture.errors.length === 1);
+        expect(await p.evaluate(() => (window as any).pinErrorEvents.length)).toBe(1);
+        expect(await p.evaluate(() => (window as any).pinFixture.state())).toEqual(legacy);
+        unavailable = false;
+        await p.evaluate(async () => {
+          window.dispatchEvent(new Event("piclaw:sse-connected"));
+          await (window as any).pinFixture.refresh();
+        });
+        await p.evaluate(() => (window as any).pinFixture.model("test/reconnected"));
+        await p.waitForFunction(() => (window as any).pinFixture.state().models.includes("test/reconnected"));
+        await p.evaluate(() => (window as any).pinFixture.refresh());
+        expect(readPickerPins(db, owner).models).toEqual(["test/legacy", "test/reconnected"]);
+        expect((db.query("SELECT count(*) AS n FROM picker_pin_imports WHERE owner=?").get(owner) as { n: number }).n).toBe(1);
+        expect(pageErrors).toEqual([]);
+      } finally { await c.close(); }
+    }, 20000);
+
+for (const skin of ["classic"])
+  browserTest(`${skin}: passive legacy import failure stays silent and retries without losing pins`, async () => {
+    const owner = `import-restart-${skin}`, c = await context("chromium", owner, true), p = await c.newPage();
+    p.setDefaultTimeout(5000);
+    let failImport = true, imports = 0;
+    await p.route("**/agent/picker-pins", async route => {
+      if (route.request().method() === "POST" && route.request().postDataJSON()?.action === "import") {
+        imports++;
+        if (failImport) return route.fulfill({ status: 503, json: { error: "restarting" } });
+      }
+      return route.continue();
+    });
+    try {
+      await p.goto(server.url + `?skin=${skin}`);
+      await p.waitForFunction(() => Boolean((window as any).pinFixture));
+      await p.evaluate(() => (window as any).pinFixture.refresh());
+      expect(imports).toBeGreaterThan(0);
+      expect(await p.evaluate(() => (window as any).pinFixture.errors)).toEqual([]);
+      expect(await p.evaluate(() => (window as any).pinFixture.state())).toEqual({ models: ["test/legacy"], sessions: ["web:legacy"] });
+      failImport = false;
+      await p.evaluate(async () => {
+        window.dispatchEvent(new Event("piclaw:sse-connected"));
+        await (window as any).pinFixture.refresh();
+      });
+      expect(readPickerPins(db, owner).models).toEqual(["test/legacy"]);
+      expect(readPickerPins(db, owner).sessions).toEqual(["web:legacy"]);
+      expect((db.query("SELECT count(*) AS n FROM picker_pin_imports WHERE owner=?").get(owner) as { n: number }).n).toBe(1);
+      expect(await p.evaluate(() => (window as any).pinFixture.errors)).toEqual([]);
+    } finally { await c.close(); }
+  }, 15000);

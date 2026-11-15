@@ -1,3 +1,4 @@
+import { captureWebRequestAuthority } from "../auth/auth-gateway.js";
 /**
  * web/handlers/media.ts – HTTP handlers for media upload and retrieval.
  *
@@ -17,6 +18,7 @@ const mediaService = new MediaService();
 
 /** Minimal response contract needed by media endpoint handlers. */
 export interface MediaResponseContext {
+  authGateway?: Parameters<typeof captureWebRequestAuthority>[0];
   /** Build JSON responses for media endpoint success/error payloads. */
   json(payload: unknown, status?: number): Response;
 }
@@ -28,6 +30,7 @@ export interface MediaResponseContext {
  * @returns JSON response with created media metadata or validation errors.
  */
 export async function handleMediaUpload(channel: MediaResponseContext, req: Request): Promise<Response> {
+  const authorise = captureWebRequestAuthority(channel.authGateway, req);
   let form: FormData;
   try {
     form = await req.formData();
@@ -38,7 +41,7 @@ export async function handleMediaUpload(channel: MediaResponseContext, req: Requ
   const file = form.get("file");
   if (!(file instanceof File)) return channel.json({ error: "Missing file" }, 400);
 
-  const result = await mediaService.createFromFile(file);
+  const result = await mediaService.createFromFile(file, undefined, undefined, { authorise, signal: req.signal });
   return channel.json(result.body, result.status);
 }
 
@@ -87,11 +90,13 @@ export function handleMedia(channel: MediaResponseContext, id: number, thumbnail
   };
   // Force download for types that are not safe browser media to prevent stored
   // XSS via HTML/SVG uploads. Audio remains inline so the native player can load it.
-  // Include a concrete filename because iOS Safari can ignore the HTML download
-  // attribute for PDFs and will otherwise open the response fullscreen.
-  if (!isInlineSafeType(contentType)) {
-    headers["Content-Disposition"] = buildContentDisposition("attachment", result.filename || `attachment-${id}`);
-  }
+  // Always send the stored filename: native Save As / download controls can
+  // otherwise fall back to the numeric /media/:id URL. Keep safe media inline
+  // for previews and playback; unsafe types must still force an attachment.
+  headers["Content-Disposition"] = buildContentDisposition(
+    isInlineSafeType(contentType) ? "inline" : "attachment",
+    result.filename || `attachment-${id}`,
+  );
   if (req?.method === "HEAD") return new Response(null, { headers });
 
   // Match the PDF source policy: one byte range, ignoring malformed/multipart

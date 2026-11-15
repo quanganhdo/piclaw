@@ -1,0 +1,42 @@
+{
+  "manifest_id": "pele",
+  "package_name": "pele",
+  "package_version": "1.13.0",
+  "package_license": "MIT",
+  "package_repository": "git+https://github.com/obsidianmd/pele.git",
+  "package_versions": {
+    "pele": "1.13.0",
+    "dompurify": "3.4.17"
+  },
+  "package_licenses": {
+    "pele": "MIT",
+    "dompurify": "(MPL-2.0 OR Apache-2.0)"
+  },
+  "package_repositories": {
+    "pele": "git+https://github.com/obsidianmd/pele.git",
+    "dompurify": "git://github.com/cure53/DOMPurify.git"
+  },
+  "source_entry": "web/src/vendor/pele-entry.ts",
+  "output_file": "web/static/common/js/vendor/pele.js",
+  "output_files": [
+    {
+      "package_path": null,
+      "output_file": "web/static/common/js/vendor/pele.js",
+      "sha256": "79036f84fc10c8296145f2e206b079258b8423d885e34d387bf98276b0123fb8",
+      "size_bytes": 753751
+    }
+  ],
+  "metadata_file": "web/static/common/js/vendor/pele.meta.json",
+  "sha256": "79036f84fc10c8296145f2e206b079258b8423d885e34d387bf98276b0123fb8",
+  "size_bytes": 753751,
+  "build_command": [
+    "bun",
+    "build",
+    "web/src/vendor/pele-entry.ts",
+    "--target=browser",
+    "--format=iife",
+    "--minify",
+    "--outfile",
+    "web/static/common/js/vendor/pele.js"
+  ]
+}

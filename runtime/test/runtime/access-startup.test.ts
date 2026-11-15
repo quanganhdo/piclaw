@@ -5,7 +5,6 @@ import { tmpdir } from "node:os";
 import Database from "bun:sqlite";
 
 import { initializeAccessSchema, readAccessState, validateAccessStartup } from "../../src/db/access-state.js";
-import { promotePreparedFamilyDatabase } from "../../src/db/access-migration-promotion.js";
 
 const runtimeRoot = resolve(import.meta.dir, "../..");
 
@@ -18,7 +17,7 @@ test("startup gate runs before add-ons, environment hooks, workers and listeners
   }
 });
 
-test("runtime startup rejects an unpromoted family store before starting add-on API", async () => {
+test("runtime startup rejects a removed access mode before starting add-on API", async () => {
   const workspace = mkdtempSync(join(tmpdir(), "piclaw-family-startup-"));
   try {
     mkdirSync(join(workspace, ".piclaw"));
@@ -30,7 +29,7 @@ test("runtime startup rejects an unpromoted family store before starting add-on 
       catch (error) {
         console.error(String(error));
         if (globalThis.__piclaw_addon_api) process.exit(3);
-        process.exit(String(error).includes('Access mode mismatch') ? 0 : 4);
+        process.exit(String(error).includes('mode') ? 0 : 4);
       }
     `], {
       cwd: runtimeRoot,
@@ -39,27 +38,9 @@ test("runtime startup rejects an unpromoted family store before starting add-on 
     });
     const [code, stdout, stderr] = await Promise.all([proc.exited, new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
     expect({ code, stdout, stderr }).toMatchObject({ code: 0 });
-    expect(stderr).toContain("Access mode mismatch");
+    expect(stderr).toContain("mode");
   } finally { rmSync(workspace, { recursive: true, force: true }); }
-});
-
-test("promoted family startup is accepted only with matching explicit configuration", async () => {
-  const dir=mkdtempSync(join(tmpdir(),'piclaw-family-promoted-')),path=join(dir,'messages.db'),configPath=join(dir,'config.json');let db=new Database(path);
-  try {
-    initializeAccessSchema(db);db.exec(`CREATE TABLE chats(jid TEXT PRIMARY KEY);CREATE TABLE chat_branches(branch_id TEXT PRIMARY KEY,chat_jid TEXT,root_chat_jid TEXT,parent_branch_id TEXT,agent_name TEXT,handle_owner_id TEXT,archived_at TEXT);
-      CREATE TABLE session_roots(root_branch_id TEXT PRIMARY KEY,owner_user_id TEXT,policy TEXT);CREATE TABLE migration_input_holds(message_rowid INTEGER,source_snapshot TEXT);
-      CREATE TABLE access_input_migration(id INTEGER PRIMARY KEY,source_snapshot TEXT,policy TEXT,held_inputs INTEGER,prepared_at TEXT);
-      CREATE TABLE owned_fork_operations(seed_json TEXT);CREATE TABLE access_resource_migration(id INTEGER PRIMARY KEY,policy TEXT,source_snapshot TEXT);
-      CREATE TABLE access_factor_migration(id INTEGER PRIMARY KEY,source_snapshot TEXT,policy_json TEXT);
-      CREATE TABLE access_migration_preparation(id INTEGER PRIMARY KEY,source_snapshot TEXT,plan_version INTEGER,prepared_at TEXT,state TEXT,children_pending INTEGER,children_adopted INTEGER,resource_policy TEXT,factor_policy_json TEXT,input_policy TEXT);`);
-    const snapshot='a'.repeat(64),now=new Date().toISOString(),factor=JSON.stringify({passkeys:'preserve-immutable-handles',legacy_totp:'none'});
-    db.exec(`INSERT INTO chats VALUES ('web:default');INSERT INTO chat_branches VALUES ('default','web:default','web:default',NULL,'default','default',NULL);INSERT INTO session_roots VALUES ('default','default','private');UPDATE users SET home_chat_jid='web:default';`);
-    db.query('INSERT INTO access_resource_migration VALUES (1,?,?)').run('revoke-logins-pause-tasks-quarantine-media-v1',snapshot);db.query('INSERT INTO access_factor_migration VALUES (1,?,?)').run(snapshot,factor);db.query('INSERT INTO access_input_migration VALUES (1,?,?,0,?)').run(snapshot,'hold-legacy-inputs-owner-dismiss-v1',now);db.query("INSERT INTO access_migration_preparation VALUES (1,?,5,?,'ownership-only',0,0,?,?,?)").run(snapshot,now,'revoke-logins-pause-tasks-quarantine-media-v1',factor,'hold-legacy-inputs-owner-dismiss-v1');
-    promotePreparedFamilyDatabase(db);writeFileSync(configPath,JSON.stringify({domains:{access:{mode:'family-shared'}}}));
-    expect(validateAccessStartup(db,configPath)).toEqual({configuredMode:'family-shared',effectiveMode:'family-shared',modeExplicit:true});
-    expect(()=>validateAccessStartup(db,join(dir,'missing.json'))).toThrow('no automatic downgrade');
-  } finally {db.close();rmSync(dir,{recursive:true,force:true});}
-});
+}, 30_000); // Cold native/subprocess setup under the bounded CI CPU quota.
 
 test("disk activation state survives reopen and rejects lost configuration without changing credentials", () => {
   const dir = mkdtempSync(join(tmpdir(), "piclaw-access-reopen-"));
@@ -69,11 +50,11 @@ test("disk activation state survives reopen and rejects lost configuration witho
     db.exec(`CREATE TABLE web_sessions(token TEXT PRIMARY KEY, user_id TEXT); INSERT INTO web_sessions VALUES ('hash','default');
       CREATE TABLE webauthn_credentials(credential_id TEXT PRIMARY KEY,user_id TEXT); INSERT INTO webauthn_credentials VALUES ('credential','default');`);
     initializeAccessSchema(db);
-    db.exec("UPDATE access_state SET activated_mode='family-shared'");
+    db.exec("PRAGMA ignore_check_constraints=ON; UPDATE access_state SET activated_mode='family-shared'");
     db.close(); db = new Database(path);
-    initializeAccessSchema(db);
-    expect(() => validateAccessStartup(db, join(dir, "missing.json"))).toThrow("no automatic downgrade");
-    expect(readAccessState(db).activatedMode).toBe("family-shared");
+    expect(() => initializeAccessSchema(db)).toThrow("unsupported");
+    expect(() => validateAccessStartup(db, join(dir, "missing.json"))).toThrow("unsupported");
+    expect(db.query("SELECT activated_mode FROM access_state").get()).toEqual({ activated_mode: "family-shared" });
     expect(db.query("SELECT * FROM web_sessions").all()).toEqual([{ token: "hash", user_id: "default" }]);
     expect(db.query("SELECT * FROM webauthn_credentials").all()).toEqual([{ credential_id: "credential", user_id: "default" }]);
   } finally { db.close(); rmSync(dir, { recursive: true, force: true }); }

@@ -77,11 +77,11 @@ export async function handleWorkspaceIndexingSettings(
     }
     if (req.method === "POST" && url.pathname === `${BASE_PATH}/save`) {
       const input=await readJson(req);check();
-      return channel.json({ ok: true, ...saveWorkspaceIndexingPolicy(input) }, 200);
+      return channel.json({ ok: true, ...await saveWorkspaceIndexingPolicy(input, { authorise: check, signal: req.signal }) }, 200);
     }
     if (req.method === "POST" && url.pathname === `${BASE_PATH}/refresh`) {
       await requireEmptyBody(req);check();
-      return channel.json({ ok: true, ...refreshWorkspaceIndexing() }, 202);
+      return channel.json({ ok: true, ...await refreshWorkspaceIndexing({ authorise: check, signal: req.signal }) }, 202);
     }
     return channel.json({ error: "Method not allowed." }, 405);
   } catch (error) {

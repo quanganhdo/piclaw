@@ -104,7 +104,7 @@ test("session_control dispatches every supported action name to the runtime hand
 
   const { tools } = makePi();
   const tool = tools.get("session_control");
-  const actions = ["inspect", "assess_stuck", "compact", "abort", "retry_failed", "skip_failed", "wake", "unblock"];
+  const actions = ["inspect", "assess_stuck", "compact", "abort", "wake", "unblock"];
   for (const action of actions) {
     const result = await withChatContext("web:source", "web", () => tool.execute(`call-${action}`, {
       action,
@@ -119,4 +119,16 @@ test("session_control dispatches every supported action name to the runtime hand
   }));
   expect(modelResult.details.ok).toBe(true);
   expect(calls.map((call) => call.action)).toEqual([...actions, "switch_model"]);
+});
+
+
+test("session_control never advertises or dispatches legacy failed-run actions", async () => {
+  let calls=0;setSessionControlHandler(async()=>{calls++;throw Error("Legacy action dispatched");});
+  const {tools}=makePi(),tool=tools.get("session_control");
+  for(const action of ["retry_failed","skip_failed"]){
+    expect(JSON.stringify(tool.parameters)).not.toContain(action);
+    const result=await withChatContext("web:source","web",()=>tool.execute(action,{action,target_chat_jid:"web:target"}));
+    expect(result.details.ok).toBe(false);expect(result.details.error).toContain("Legacy failed-run actions are unavailable");
+  }
+  expect(calls).toBe(0);
 });

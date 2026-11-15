@@ -1,4 +1,5 @@
 import type Database from "bun:sqlite";
+import { applyOwnedMigrations } from "../../db/migrations.js";
 
 const PREFIX = "service_effect_s05_";
 const HASH = "length(%s)=64 AND %s=lower(%s) AND %s NOT GLOB '*[^0-9a-f]*'";
@@ -8,20 +9,9 @@ function constraint(template: string, column: string): string {
   return template.replaceAll("%s", column);
 }
 
-/** Install EF-S05 on an explicitly supplied production or isolated database. */
-export function installServiceOutboxSchema(database: Database): void {
-  database.exec("PRAGMA foreign_keys = ON");
-  const foreignKeys = database.query("PRAGMA foreign_keys").get() as
-    | { foreign_keys?: number }
-    | undefined;
-  if (foreignKeys?.foreign_keys !== 1) {
-    throw new Error("EF-S05 requires SQLite foreign-key enforcement.");
-  }
-
-  const hash = (column: string) => constraint(HASH, column);
-  const instant = (column: string) => constraint(INSTANT, column);
-  const install = () => database.exec(`
-    CREATE TABLE IF NOT EXISTS ${PREFIX}outbox (
+const hash = (column: string) => constraint(HASH, column);
+const instant = (column: string) => constraint(INSTANT, column);
+const HISTORICAL_OUTBOX_SQL = `    CREATE TABLE IF NOT EXISTS ${PREFIX}outbox (
       outbox_id TEXT PRIMARY KEY CHECK(length(outbox_id) BETWEEN 1 AND 512),
       kind TEXT NOT NULL CHECK(kind IN ('wake_chat','timeline_broadcast','channel_delivery','notification','scheduler_run_log','maintenance')),
       state TEXT NOT NULL CHECK(state IN ('pending','started','completed','failed','unknown','cancelled')),
@@ -60,7 +50,112 @@ export function installServiceOutboxSchema(database: Database): void {
         OR (state='unknown' AND certainty='unknown' AND attempt>=1 AND worker_id IS NULL AND claimed_at IS NULL AND lease_token IS NULL AND lease_expires_at IS NULL AND retry_at IS NULL AND receipt_ref IS NULL AND last_error_tag IS NOT NULL AND result_at IS NOT NULL AND state_changed_at=result_at AND reconciliation_ref IS NULL AND reconciled_at IS NULL AND cancellation_reason_tag IS NULL)
         OR (state='cancelled' AND certainty='not_applied' AND attempt>=1 AND worker_id IS NULL AND claimed_at IS NULL AND lease_token IS NULL AND lease_expires_at IS NULL AND retry_at IS NULL AND receipt_ref IS NULL AND last_error_tag IS NULL AND result_at IS NOT NULL AND state_changed_at=result_at AND reconciliation_ref IS NOT NULL AND reconciled_at=result_at AND cancellation_reason_tag IS NOT NULL)
       )
-    ) STRICT;
+    ) STRICT;`;
+const OUTBOX_COLUMNS = ["outbox_id","kind","state","idempotency_key","request_hash","operation_id","source_seq","provenance_ref","redaction_class","payload_ref","destination_ref","available_at","enqueued_at","state_changed_at","repeatability","attempt","worker_id","claimed_at","lease_token","lease_expires_at","certainty","retry_at","receipt_ref","last_error_tag","result_at","reconciliation_ref","reconciled_at","cancellation_reason_tag"];
+const OUTBOX_INDEX_SQL = [
+  `CREATE INDEX IF NOT EXISTS ${PREFIX}pending_claim ON ${PREFIX}outbox(available_at,outbox_id) WHERE state='pending';`,
+  `CREATE INDEX IF NOT EXISTS ${PREFIX}failed_claim ON ${PREFIX}outbox(retry_at,outbox_id) WHERE state='failed' AND retry_at IS NOT NULL;`,
+  `CREATE INDEX IF NOT EXISTS ${PREFIX}expired_started ON ${PREFIX}outbox(lease_expires_at,outbox_id) WHERE state='started';`,
+  `CREATE INDEX IF NOT EXISTS ${PREFIX}unknown_list ON ${PREFIX}outbox(state_changed_at,outbox_id) WHERE state='unknown';`,
+  `CREATE INDEX IF NOT EXISTS ${PREFIX}terminal_cleanup ON ${PREFIX}outbox(state_changed_at,outbox_id) WHERE state='cancelled' OR (state='failed' AND retry_at IS NULL);`,
+  `CREATE INDEX IF NOT EXISTS ${PREFIX}operation_lookup ON ${PREFIX}outbox(operation_id,outbox_id);`,
+];
+const FINAL_OUTBOX_SQL = HISTORICAL_OUTBOX_SQL.replace(
+  "      CHECK(available_at >= enqueued_at),",
+  "      CHECK((state='started' AND certainty IS NULL) OR (state<>'started' AND certainty IS NOT NULL)),\n      CHECK(available_at >= enqueued_at),",
+);
+const CERTAINTY_UPGRADE = {
+  owner: "service_effect_s05", id: "certainty-state-nullability", order: 1,
+  sql: `
+    ${FINAL_OUTBOX_SQL.replace("IF NOT EXISTS ", "").replace(`${PREFIX}outbox (`, `${PREFIX}outbox_upgrade (`)}
+    INSERT INTO ${PREFIX}outbox_upgrade(rowid,${OUTBOX_COLUMNS.join(",")})
+      SELECT rowid,${OUTBOX_COLUMNS.join(",")} FROM ${PREFIX}outbox ORDER BY rowid;
+    DROP TABLE ${PREFIX}outbox;
+    ALTER TABLE ${PREFIX}outbox_upgrade RENAME TO ${PREFIX}outbox;
+    ${OUTBOX_INDEX_SQL.join("\n")}
+  `,
+};
+
+function normaliseOutboxSql(sql: string): string {
+  return sql.replace(`"${PREFIX}outbox"`, `${PREFIX}outbox`)
+    .split(/('(?:''|[^'])*')/).map((part, i) => i % 2 ? part : part.replace(/\bIF NOT EXISTS\b/gi, "").replace(/\s+/g, "").toLowerCase())
+    .join("").replace(/;$/, "");
+}
+function outboxSchemaSql(database: Database, name: string): string | null {
+  return (database.query("SELECT sql FROM main.sqlite_schema WHERE name=? COLLATE NOCASE").get(name) as {sql:string|null}|null)?.sql ?? null;
+}
+function invalidCertaintyUpgrade(): never {
+  throw Error("EF-S05 certainty upgrade requires recognised schema and valid delivery certainty.");
+}
+function assertOutboxIndexes(database: Database, required: boolean): void {
+  for (const expected of OUTBOX_INDEX_SQL) {
+    const name = expected.match(/INDEX IF NOT EXISTS (\w+)/)![1]!;
+    const actual = outboxSchemaSql(database, name);
+    if (actual === null ? required : normaliseOutboxSql(actual) !== normaliseOutboxSql(expected)) invalidCertaintyUpgrade();
+  }
+}
+function hasForeignKeyViolation(database: Database): boolean {
+  // Deferral is connection-wide, including temp/attached databases. Never clear
+  // their outstanding violations while rebuilding only the main outbox.
+  return (database.query("PRAGMA database_list").all() as {name:string}[]).some(({name}) =>
+    !!database.query(`PRAGMA "${name.replaceAll('"', '""')}".foreign_key_check`).get());
+}
+function preflightCertaintyUpgrade(database: Database): void {
+  assertOutboxIndexes(database, false);
+  // Reading sqlite_temp_schema would allocate temp on an otherwise main-only root.
+  const hasTemp = (database.query("PRAGMA database_list").all() as {name:string}[]).some(row => row.name === "temp");
+  if (hasTemp && database.query(`SELECT 1 FROM sqlite_temp_schema WHERE lower(name) LIKE 'service_effect_s05_%' OR name='piclaw_schema_migrations' COLLATE NOCASE LIMIT 1`).get()) invalidCertaintyUpgrade();
+  const sql = outboxSchemaSql(database, `${PREFIX}outbox`);
+  if (sql !== null && ![HISTORICAL_OUTBOX_SQL, FINAL_OUTBOX_SQL].some(expected => normaliseOutboxSql(sql) === normaliseOutboxSql(expected))) invalidCertaintyUpgrade();
+  if (database.query("SELECT 1 FROM main.sqlite_schema WHERE name=? COLLATE NOCASE").get(`${PREFIX}outbox_upgrade`)) invalidCertaintyUpgrade();
+  if (sql === null) return;
+  const objects = database.query("SELECT type,name,sql FROM main.sqlite_schema WHERE tbl_name=? COLLATE NOCASE AND sql IS NOT NULL").all(`${PREFIX}outbox`) as {type:string;name:string;sql:string}[];
+  for (const object of objects) {
+    if (object.type === "table") continue;
+    if (object.type !== "index" || !OUTBOX_INDEX_SQL.some(expected => normaliseOutboxSql(object.sql) === normaliseOutboxSql(expected))) invalidCertaintyUpgrade();
+  }
+  if (hasTemp && database.query("SELECT 1 FROM sqlite_temp_schema WHERE type='trigger' AND tbl_name=? COLLATE NOCASE LIMIT 1").get(`${PREFIX}outbox`)) invalidCertaintyUpgrade();
+  // DROP's implicit delete must never execute CASCADE/SET NULL/RESTRICT actions.
+  // NO ACTION children stay byte-identical while the same-name parent is rebuilt.
+  if (database.query(`SELECT 1 FROM main.sqlite_schema AS s, pragma_foreign_key_list(s.name,'main') AS f
+      WHERE s.type='table' AND f."table"=? COLLATE NOCASE AND (f.on_delete<>'NO ACTION' OR f.on_update<>'NO ACTION') LIMIT 1`).get(`${PREFIX}outbox`)
+    || hasTemp && database.query(`SELECT 1 FROM sqlite_temp_schema AS s, pragma_foreign_key_list(s.name,'temp') AS f
+      WHERE s.type='table' AND f."table"=? COLLATE NOCASE LIMIT 1`).get(`${PREFIX}outbox`)) invalidCertaintyUpgrade();
+  if (database.query(`SELECT 1 FROM ${PREFIX}outbox WHERE
+      state NOT IN ('pending','started','completed','failed','unknown','cancelled')
+      OR (state='started' AND certainty IS NOT NULL)
+      OR (state IN ('pending','failed','cancelled') AND certainty IS NOT 'not_applied')
+      OR (state='completed' AND certainty IS NOT 'applied')
+      OR (state='unknown' AND certainty IS NOT 'unknown') LIMIT 1`).get()) invalidCertaintyUpgrade();
+}
+function hasCertaintyReceipt(database: Database): boolean {
+  return !!database.query("SELECT 1 FROM main.sqlite_schema WHERE type='table' AND name='piclaw_schema_migrations' COLLATE NOCASE").get() &&
+    !!database.query("SELECT 1 FROM main.piclaw_schema_migrations WHERE owner=? AND id=?").get(CERTAINTY_UPGRADE.owner, CERTAINTY_UPGRADE.id);
+}
+
+/** Install EF-S05 on an explicitly supplied production or isolated database. */
+export function installServiceOutboxSchema(database: Database): void {
+  database.exec("PRAGMA foreign_keys = ON");
+  const foreignKeys = database.query("PRAGMA foreign_keys").get() as
+    | { foreign_keys?: number }
+    | undefined;
+  if (foreignKeys?.foreign_keys !== 1) {
+    throw new Error("EF-S05 requires SQLite foreign-key enforcement.");
+  }
+
+  let priorDeferral: number | undefined;
+  const install = () => {
+    preflightCertaintyUpgrade(database);
+    const needsStep = !hasCertaintyReceipt(database);
+    if (needsStep) {
+      // Never clear a caller's outstanding deferred violations. This setup step
+      // requires valid databases before changing the temporary deferral policy.
+      if (hasForeignKeyViolation(database)) invalidCertaintyUpgrade();
+      priorDeferral = (database.query("PRAGMA defer_foreign_keys").get() as {defer_foreign_keys:number}).defer_foreign_keys;
+      database.exec("PRAGMA defer_foreign_keys=ON");
+    }
+    database.exec(`
+    ${HISTORICAL_OUTBOX_SQL}
 
     CREATE TABLE IF NOT EXISTS ${PREFIX}leases (
       token_hash TEXT PRIMARY KEY CHECK(${hash("token_hash")}),
@@ -129,6 +224,20 @@ export function installServiceOutboxSchema(database: Database): void {
     CREATE INDEX IF NOT EXISTS ${PREFIX}decision_outbox ON ${PREFIX}decisions(outbox_id);
     CREATE INDEX IF NOT EXISTS ${PREFIX}lease_outbox ON ${PREFIX}leases(outbox_id,attempt);
   `);
-  if (database.inTransaction) install();
-  else database.transaction(install).immediate();
+    applyOwnedMigrations(database, [CERTAINTY_UPGRADE]);
+    if (normaliseOutboxSql(outboxSchemaSql(database, `${PREFIX}outbox`) ?? "") !== normaliseOutboxSql(FINAL_OUTBOX_SQL)) invalidCertaintyUpgrade();
+    assertOutboxIndexes(database, true);
+    if (needsStep) {
+      if (hasForeignKeyViolation(database)) invalidCertaintyUpgrade();
+      // DROP records deferred violations even after the same-name parent has
+      // returned. Clear that counter only after validating ALL root FKs, then
+      // restore the caller's flag after the savepoint/transaction completes.
+      database.exec("PRAGMA defer_foreign_keys=OFF");
+    }
+  };
+  try { database.transaction(install).immediate(); }
+  finally {
+    if (priorDeferral !== undefined && database.inTransaction)
+      database.exec(`PRAGMA defer_foreign_keys=${priorDeferral}`);
+  }
 }

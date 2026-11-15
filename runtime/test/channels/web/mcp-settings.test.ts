@@ -128,7 +128,7 @@ test("MCP mode and role revocation while reading the body prevents disclosure", 
     const pending = handleMcpSettings(channel(() => principal), req, new URL(req.url));
     if (revoke === "mode") writeFileSync(path, JSON.stringify({ domains: { access: { mode: "family-shared" } } }));
     else principal = { ...owner, role: "member" };
-    release(); expect((await pending).status).toBe(403);
+    release(); expect((await pending).status).toBe(revoke === "mode" ? 503 : 403);
   }
 }));
 

@@ -14,7 +14,7 @@ beforeAll(() => {
   globalThis.fetch = Object.assign(deny, { preconnect: deny }) as typeof fetch;
 });
 afterAll(() => { globalThis.fetch = originalFetch; expect(networkRequests).toBe(0); });
-const receipt = JSON.parse(readFileSync(resolve(import.meta.dir, "fixtures/provider-auth-inventory-120.json"), "utf8"));
+const receipt = JSON.parse(readFileSync(resolve(import.meta.dir, "fixtures/provider-auth-inventory-152.json"), "utf8"));
 const inventory = () => builtinProviders().map(provider => ({
   id: provider.id, name: provider.name,
   apiKeyLogin: typeof provider.auth.apiKey?.login === "function",
@@ -24,17 +24,17 @@ const inventory = () => builtinProviders().map(provider => ({
   oauthToAuth: typeof provider.auth.oauth?.toAuth === "function",
 })).sort((a, b) => a.id.localeCompare(b.id));
 
-test("exact1.2.0 provider-owned method inventory matches public runtime and UI definitions", async () => {
-  expect(JSON.parse(readFileSync(new URL("../../../node_modules/@earendil-works/pi-ai/package.json", import.meta.url), "utf8")).version).toBe("1.2.0");
-  expect(JSON.parse(readFileSync(new URL("../../../node_modules/@earendil-works/pi-coding-agent/package.json", import.meta.url), "utf8")).version).toBe("1.2.0");
-  expect(receipt.version).toBe("1.2.0");
+test("exact1.5.2 provider-owned method inventory matches public runtime and UI definitions", async () => {
+  expect(JSON.parse(readFileSync(new URL("../package.json", import.meta.resolve("@earendil-works/pi-ai")), "utf8")).version).toBe("1.5.2");
+  expect(JSON.parse(readFileSync(new URL("../package.json", import.meta.resolve("@earendil-works/pi-coding-agent")), "utf8")).version).toBe("1.5.2");
+  expect(receipt.version).toBe("1.5.2");
   expect(receipt.methodsExecuted).toBe(false);
   expect(receipt.networkRequests).toBe(0);
   const allBytes = readFileSync(new URL("providers/all.js", import.meta.resolve("@earendil-works/pi-ai")));
   expect(createHash("sha256").update(allBytes).digest("hex")).toBe(receipt.sdkFileSha256["providers/all.js"]);
-  expect(receipt.gitHead).toBe("06a466935536f8c9bcacb2d5efc0fc021be1bdff");
+  expect(receipt.gitHead).toBe("b4afdddf44e059c67ccf5097e5317d913521b470");
   expect(inventory()).toEqual(receipt.providers);
-  expect(receipt.providers).toHaveLength(42);
+  expect(receipt.providers).toHaveLength(43);
   const runtime = await ModelRuntime.create({ credentials: createTestCredentialStore(), modelsPath: null, refreshOnCreate: false, allowModelNetwork: false });
   const defs = getProviderDefs(new ModelRegistry(runtime), runtime);
   for (const provider of receipt.providers) {
@@ -84,7 +84,7 @@ test.skipIf(!hasIsolatedNetworkNamespace)("packaged public OpenAI/Codex modules 
     expect(exit).toBe(0);
     const executed = JSON.parse(stdout);
     expect(executed.results).toEqual(["openai", "openai-codex"].flatMap(provider => ["success", "bad_state", "cancel"].map(mode => ({ provider, mode, status: "pass", mockedTokenRequests: mode === "success" ? 2 : mode === "cancel" ? 1 : 0, cancellationObserved: mode === "cancel" }))));
-    expect(executed.version).toBe("1.2.0");
+    expect(executed.version).toBe("1.5.2");
     expect(executed.networkGuard).toBe("isolated_loopback_namespace_exact_token_fetch_interception");
     expect(executed.bootstrapRequests).toBe(0);
     expect(executed.credentialPersistence).toBe("none");
@@ -95,7 +95,7 @@ test.skipIf(!hasIsolatedNetworkNamespace)("packaged public OpenAI/Codex modules 
 }, 40_000);
 
 
-test("1.2.0 manual PKCE fixture refuses the parent namespace before provider imports", async () => {
+test("1.5.2 manual PKCE fixture refuses the parent namespace before provider imports", async () => {
   const child = Bun.spawn([process.execPath, "--no-env-file", resolve(import.meta.dir, "fixtures/packaged-openai-login-120.mjs")], {
     env: { PATH: "/usr/bin:/bin", HOME: "/nonexistent", SYNTHETIC_PARENT_NETNS: readlinkSync("/proc/self/ns/net"), SYNTHETIC_EXPECT_UID: String(process.getuid?.()) }, stdin: "ignore", stdout: "pipe", stderr: "pipe",
   });

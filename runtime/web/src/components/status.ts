@@ -1,4 +1,6 @@
+import { resolveDelegateProgressRows } from '../ui/delegate-progress.js';
 import { html, useCallback, useEffect, useMemo, useRef, useState } from '../vendor/preact-htm.js';
+import { renderToolIcon } from '../ui/tool-icon.js';
 import { useTranslation } from '../utils/i18n.js';
 import { addToWhitelist, getWorkspaceBranch, respondToAgentRequest } from '../api.js';
 import { renderThinkingMarkdown } from '../markdown.js';
@@ -24,6 +26,9 @@ const GIT_BRANCH_ICON_SVG = html`
         <path d="M18 9a9 9 0 0 1-9 9"></path>
     </svg>
 `;
+
+// Reuse the Tools/settings wrench glyph for retained tool activity.
+const TOOL_ICON_SVG = renderToolIcon();
 
 const CLOCK_ICON_SVG = html`
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
@@ -215,7 +220,7 @@ export function resolveAgentStatusContent(status, options = {}) {
     }
     if (!isLastActivity) return content;
     if (content && content !== 'Thinking...') {
-        return `Recent activity: ${content}`;
+        return content;
     }
     return 'Last activity';
 }
@@ -276,7 +281,7 @@ function getStatusToolTitleArgumentCandidates(payload) {
         if (normalized && !candidates.includes(normalized)) candidates.push(normalized);
     };
 
-    add(args.command);
+    add(args.command || args.cmd);
 
     if (Array.isArray(args.commands)) {
         add(args.commands.filter((item) => typeof item === 'string').join(' && '));
@@ -408,8 +413,9 @@ function formatElapsed(isoString, nowMs = Date.now()) {
     return `${s}s`;
 }
 
-export function AgentStatus({ status, draft, plan, thought, pendingRequest, intent, extensionPanels = [], pendingPanelActions = new Set(), onExtensionPanelAction, turnId, steerQueued, onPanelToggle, showCorePanels = true, showExtensionPanels = true, loadWorkspaceBranch = getWorkspaceBranch }) {
+export function AgentStatus({ status, draft, plan, thought, pendingRequest, intent, extensionPanels = [], pendingPanelActions = new Set(), onExtensionPanelAction, turnId, steerQueued, onPanelToggle, showCorePanels = true, showExtensionPanels = true, showLivePanels = true, loadWorkspaceBranch = getWorkspaceBranch }) {
     const { t } = useTranslation();
+    const delegates = resolveDelegateProgressRows(status?.delegate_progress);
     const THOUGHT_MAX_LINES = 9;
     const DRAFT_MAX_LINES = 9;
     const TOOL_OUTPUT_MAX_LINES = 6;
@@ -435,13 +441,14 @@ export function AgentStatus({ status, draft, plan, thought, pendingRequest, inte
     const planInfo = normalizePreview(plan);
     const thoughtInfo = normalizePreview(thought);
     const draftInfo = normalizePreview(draft);
-    const toolOutputInfo = normalizePreview({
+    const toolOutputInfo = normalizePreview(delegates.length ? null : {
         text: status?.output_preview || status?.outputPreview || '',
         fullText: status?.output_preview || status?.outputPreview || '',
         totalLines: status?.output_total_lines || status?.outputTotalLines,
     });
     const hasPlan = Boolean(planInfo.text) || planInfo.totalLines > 0;
-    const hasThought = Boolean(thoughtInfo.text) || thoughtInfo.totalLines > 0;
+    // A line count or encrypted-only provider block is not visible thought text.
+    const hasThought = Boolean(stripInternalTags(thoughtInfo.fullText || thoughtInfo.text).trim());
     const hasDraft = Boolean(draftInfo.fullText?.trim() || draftInfo.text?.trim());
     const hasToolOutput = Boolean(toolOutputInfo.fullText?.trim() || toolOutputInfo.text?.trim());
 
@@ -666,17 +673,7 @@ export function AgentStatus({ status, draft, plan, thought, pendingRequest, inte
         const estimatedOverflow = isCollapsible && truncated.omitted > 0;
         const measuredOverflow = Boolean(panelKey && overflowingPanels[panelKey]);
         const hasOverflow = estimatedOverflow || measuredOverflow;
-        const showCollapsedTruncation = !isExpanded && hasOverflow;
-        const truncationToggleButton = (showCollapsedTruncation || (isExpanded && hasOverflow)) && html`
-            <button
-                class="agent-thinking-truncation"
-                onClick=${() => toggleExpand(panelKey)}
-                title=${isExpanded ? `Show fewer ${panelTitle} lines` : `Show more ${panelTitle}`}
-            >
-                <span class="agent-thinking-truncation-arrow" aria-hidden="true">${renderDisclosureTriangle(isExpanded ? 'up' : 'down')}</span>
-                <span>${isExpanded ? 'less' : 'more…'}</span>
-            </button>
-        `;
+
         return html`
             <div
                 class="agent-thinking"
@@ -685,10 +682,20 @@ export function AgentStatus({ status, draft, plan, thought, pendingRequest, inte
                 data-panel-key=${panelKey || ''}
                 style=${turnColor ? `--turn-color: ${turnColor};` : ''}
             >
-                <div class="agent-thinking-title ${titleClass || ''}">
+                <div class=${`agent-thinking-title ${titleClass || ''}`}>
                     ${turnColor && html`<span class=${dotClass} aria-hidden="true"></span>`}
-                    ${panelTitle}
-                    ${truncationToggleButton}
+                    <span class="agent-thinking-title-text">${panelTitle}</span>
+                    ${isCollapsible && (hasOverflow || isExpanded) && html`
+                        <button
+                            type="button"
+                            class="agent-thinking-truncation"
+                            aria-label=${`${isExpanded ? 'Collapse' : 'Expand'} ${panelTitle}`}
+                            aria-expanded=${String(isExpanded)}
+                            onClick=${() => toggleExpand(panelKey)}
+                        >
+                            ${isExpanded ? 'less' : 'more…'}
+                        </button>
+                    `}
                 </div>
                 <div
                     class=${bodyClass}
@@ -1041,7 +1048,7 @@ export function AgentStatus({ status, draft, plan, thought, pendingRequest, inte
     };
 
     return html`
-        <div class="agent-status-panel">
+        <div class=${`agent-status-panel${showCorePanels ? ' agent-status-panel-core' : ''}`}>
             ${showCorePanels && intent && renderIntentPanel(intent, intentColor)}
             ${showExtensionPanels && Array.isArray(extensionPanels) && extensionPanels.map((panel) => renderExtensionPanel(panel))}
             ${showCorePanels && status?.type === 'intent' && renderIntentPanel(status, statusIntentColor, statusIntentElapsedLabel)}
@@ -1059,7 +1066,7 @@ export function AgentStatus({ status, draft, plan, thought, pendingRequest, inte
                 totalLines: planInfo.totalLines,
                 panelKey: 'plan',
             })}
-            ${showCorePanels && hasDraft && renderThinkingPanel({
+            ${showCorePanels && showLivePanels && hasDraft && renderThinkingPanel({
                 panelTitle: panelTitle('Draft'),
                 text: draftInfo.text,
                 fullText: draftInfo.fullText,
@@ -1068,7 +1075,7 @@ export function AgentStatus({ status, draft, plan, thought, pendingRequest, inte
                 titleClass: 'thought',
                 panelKey: 'draft',
             })}
-            ${showCorePanels && hasThought && renderThinkingPanel({
+            ${showCorePanels && showLivePanels && hasThought && renderThinkingPanel({
                 panelTitle: panelTitle('Thoughts'),
                 text: thoughtInfo.text,
                 fullText: thoughtInfo.fullText,
@@ -1077,7 +1084,7 @@ export function AgentStatus({ status, draft, plan, thought, pendingRequest, inte
                 titleClass: 'thought',
                 panelKey: 'thought',
             })}
-            ${showCorePanels && hasToolOutput && renderThinkingPanel({
+            ${showCorePanels && showLivePanels && hasToolOutput && renderThinkingPanel({
                 panelTitle: panelTitle('Output'),
                 text: toolOutputInfo.text,
                 fullText: toolOutputInfo.fullText,
@@ -1087,13 +1094,21 @@ export function AgentStatus({ status, draft, plan, thought, pendingRequest, inte
                 panelKey: 'tool-output',
             })}
             ${showCorePanels && status && status?.type !== 'intent' && html`
-                <div class=${`agent-status${isLastActivity ? ' agent-status-last-activity' : ''}${status?.type === 'error' ? ' agent-status-error' : ''}${toolRepoLabel || statusHints.length > 0 || statusActivityAgeLabel || toolElapsedLabel ? ' agent-status-multiline' : ''}`} aria-live="polite" style=${turnColor ? `--turn-color: ${turnColor};` : ''}>
+                <div class=${`agent-status${isLastActivity ? ' agent-status-last-activity' : ''}${status?.type === 'error' ? ' agent-status-error' : ''}${toolRepoLabel || statusHints.length > 0 || statusActivityAgeLabel || toolElapsedLabel || delegates.length ? ' agent-status-multiline' : ''}`} aria-live="polite" style=${turnColor ? `--turn-color: ${turnColor};` : ''}>
                     ${turnColor && showRunningStatusDot && html`<span class=${dotClass} aria-hidden="true"></span>`}
                     ${status?.type === 'error'
                         ? html`<span class="agent-status-error-icon" aria-hidden="true">⚠</span>`
-                        : (runningIndicatorMode === 'spinner' && html`<div class="agent-status-spinner"></div>`)}
+                        : isLastActivity
+                            ? html`<span class="agent-status-activity-icon" title="Last activity" aria-hidden="true">${TOOL_ICON_SVG}</span>`
+                            : (runningIndicatorMode === 'spinner' && html`<div class="agent-status-spinner"></div>`)}
                     <div class="agent-status-copy">
                         <span class="agent-status-text">${renderToolArgumentInText(content, status)}</span>
+                        ${delegates.length > 0 && html`<div class="agent-delegate-progress" role="list" aria-label="Delegate progress" tabIndex="0">
+                            ${delegates.map((child) => html`<div key=${child.id} class="agent-delegate-progress-item" role="listitem" data-delegate-id=${child.id} data-delegate-phase=${child.phase}>
+                                <span class="agent-delegate-progress-label">${child.label} · ${child.model}</span>
+                                <span class="agent-delegate-progress-detail">${child.detail}</span>
+                            </div>`)}
+                        </div>`}
                         ${(toolRepoLabel || orderedStatusHints.length > 0 || statusActivityAgeLabel || toolElapsedLabel) && html`
                             <span class="agent-status-meta-row">
                                 ${leadingStatusHints.map((hint) => html`

@@ -33,14 +33,6 @@ export function initializeSessionOwnershipSchema(database: Database): void {
       created_at TEXT NOT NULL
     ) STRICT;
     CREATE INDEX IF NOT EXISTS idx_session_roots_owner ON session_roots(owner_user_id);
-    CREATE TABLE IF NOT EXISTS account_home_events (
-      id TEXT PRIMARY KEY,
-      actor_user_id TEXT NOT NULL REFERENCES users(id),
-      target_user_id TEXT NOT NULL REFERENCES users(id),
-      previous_home_chat_jid TEXT,
-      target_branch_id TEXT NOT NULL,
-      created_at TEXT NOT NULL
-    ) STRICT;
     CREATE TRIGGER IF NOT EXISTS session_root_owner_immutable
       BEFORE UPDATE OF root_branch_id, owner_user_id ON session_roots
       WHEN NEW.root_branch_id != OLD.root_branch_id OR NEW.owner_user_id != OLD.owner_user_id

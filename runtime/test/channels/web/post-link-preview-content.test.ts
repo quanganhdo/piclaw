@@ -80,3 +80,32 @@ test("formatTimeoutChipTooltip describes the last timed-out tool action", () => 
   expect(formatTimeoutChipTooltip({ tool_action_summary: "Timed out while running bash" })).toBe("Turn timed out — Timed out while running bash");
   expect(formatTimeoutChipTooltip({})).toBe("Turn timed out before the model finished responding");
 });
+
+for (const reason of ["Continue goal", "Goal updated", "Goal budget reached", "Finalize goal"]) {
+  test(`Goal display hides only validated lifecycle metadata: ${reason}`, () => {
+    const visible = `🎯 ${reason}: Keep the objective <unchanged> & intact`;
+    const input = visible + '\n\n<piclaw_goal_input>{"goalId":"goal-1","generation":7}</piclaw_goal_input>';
+    expect(getDisplayContent(input, [])).toBe(visible);
+    expect(input).toContain('"generation":7');
+    for (const metadata of ['bad-json', '{"goalId":"goal-1","generation":0}', '{"goalId":"goal-1","generation":1,"extra":true}'])
+      expect(getDisplayContent(visible + '\n\n<piclaw_goal_input>' + metadata + '</piclaw_goal_input>', []))
+        .toBe(visible + '\n\n<piclaw_goal_input>' + metadata + '</piclaw_goal_input>');
+    const ordinary = input.replace(visible, "Ordinary input");
+    expect(getDisplayContent(ordinary, [])).toBe(ordinary);
+  });
+}
+
+for (const [prefix, reason, tag] of [
+  ["Continue working toward the active thread goal.", "Continue goal", "objective"],
+  ["The active thread goal objective was edited by the user.", "Goal updated", "untrusted_objective"],
+  ["The active thread goal has reached its token budget.", "Goal budget reached", "objective"],
+  ["The current Plan Sidebar checklist has no pending or in-progress items.", "Finalize goal", "objective"],
+]) {
+  test(`Historical expanded Goal input projects without rewriting history: ${reason}`, () => {
+    const input = `${prefix}\n\n<${tag}>\nKeep &lt;scope&gt; &amp; literal &amp;lt; intact\n</${tag}>\n\nFull model instructions.\n\n<piclaw_goal_input>{"goalId":"goal-1","generation":7}</piclaw_goal_input>`;
+    expect(getDisplayContent(input, [])).toBe(`🎯 ${reason}: Keep <scope> & literal &lt; intact`);
+    expect(input).toContain("Full model instructions.");
+    expect(getDisplayContent(input.replace('"generation":7', '"generation":0'), [])).toContain("Full model instructions.");
+    expect(getDisplayContent(input.replace(`<${tag}>`, "missing-objective"), [])).toBe(input.replace(`<${tag}>`, "missing-objective"));
+  });
+}

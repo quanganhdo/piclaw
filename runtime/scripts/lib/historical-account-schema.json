@@ -1,0 +1,2069 @@
+{
+  "version": 1,
+  "source": "cdc214fcc06349dc9d315c2d17c866764e4557d5",
+  "names": [
+    "user_avatars",
+    "user_model_defaults",
+    "user_preferences",
+    "user_totp_factors",
+    "user_totp_enrolments",
+    "user_auth_invitations",
+    "user_passkey_registrations",
+    "user_totp_registrations",
+    "account_recovery_events",
+    "account_security_events",
+    "user_auth_attempts",
+    "operator_recovery_events",
+    "family_execution_admissions",
+    "family_media_uploads",
+    "family_memory_publications",
+    "family_memory_withdrawals",
+    "family_scheduled_cancellations",
+    "family_scheduled_dispatches",
+    "family_scheduled_executions",
+    "family_scheduled_results",
+    "family_scheduled_execution_events",
+    "family_scheduled_expiries",
+    "family_scheduled_grants",
+    "family_scheduled_grant_revocations",
+    "family_scheduled_interruptions",
+    "family_scheduled_occurrences",
+    "family_scheduled_occurrence_events",
+    "family_scheduled_publications",
+    "family_task_admissions",
+    "user_tool_restrictions",
+    "user_tool_restriction_events",
+    "family_workspace_files",
+    "family_workspace_fts",
+    "family_workspace_index_status",
+    "family_workspace_index_generation",
+    "family_turn_queue",
+    "account_home_events"
+  ],
+  "objects": [
+    {
+      "kind": "index",
+      "name": "family_memory_newest",
+      "table": "family_memory_publications",
+      "fingerprint": "c79591a60d318083bc99e7f549a16af0f41bbe1a555e7ecf5676ac09c210f503",
+      "references": [
+        "family_memory_publications"
+      ]
+    },
+    {
+      "kind": "index",
+      "name": "family_memory_owner",
+      "table": "family_memory_publications",
+      "fingerprint": "2519e8d0bb0b755b9b18d8f23d7589de650711813e5b1a0c0fd9791724840401",
+      "references": [
+        "family_memory_publications"
+      ]
+    },
+    {
+      "kind": "index",
+      "name": "family_scheduled_executions_owner_recent",
+      "table": "family_scheduled_executions",
+      "fingerprint": "9dc6ea701cbef9ce52bdd365626e40db82b836b87b7fd72ddbe73ae114486111",
+      "references": [
+        "family_scheduled_executions"
+      ]
+    },
+    {
+      "kind": "index",
+      "name": "family_scheduled_grants_owner_recent",
+      "table": "family_scheduled_grants",
+      "fingerprint": "668c6b46e92cd89c140445e96a75b5f8e4ccd548f0fb9d6c6377cb637917e22a",
+      "references": [
+        "family_scheduled_grants"
+      ]
+    },
+    {
+      "kind": "index",
+      "name": "idx_family_media_uploads_owner_created",
+      "table": "family_media_uploads",
+      "fingerprint": "e8d9658079b986c98d56336d923f2f9cab7bbb688e45e242adcbc21c255bee4b",
+      "references": [
+        "family_media_uploads"
+      ]
+    },
+    {
+      "kind": "index",
+      "name": "idx_family_turn_queue_chat_state_position",
+      "table": "family_turn_queue",
+      "fingerprint": "76536949d3f9ba259685de635d8acf9cf1a9a5d58c12c45df0d0cddd58754188",
+      "references": [
+        "family_turn_queue"
+      ]
+    },
+    {
+      "kind": "index",
+      "name": "idx_family_turn_queue_one_ready",
+      "table": "family_turn_queue",
+      "fingerprint": "4b9381a0b4513992920a9034d45fa35534448310d4934b04d7854a56f2fe05d8",
+      "references": [
+        "family_turn_queue"
+      ]
+    },
+    {
+      "kind": "index",
+      "name": "idx_user_auth_invitation_expiry",
+      "table": "user_auth_invitations",
+      "fingerprint": "f16641dc0314ee4b5e05b92d0010a60b210a4d8eb20684359449b2e37a6a4a77",
+      "references": [
+        "user_auth_invitations"
+      ]
+    },
+    {
+      "kind": "index",
+      "name": "idx_user_passkey_registration_expiry",
+      "table": "user_passkey_registrations",
+      "fingerprint": "088b4ba8f536213de9c4dfc3c839199e8ad1e4547eb9b8c810d6bdefe6d8b732",
+      "references": [
+        "user_passkey_registrations"
+      ]
+    },
+    {
+      "kind": "index",
+      "name": "idx_user_totp_enrolment_expiry",
+      "table": "user_totp_enrolments",
+      "fingerprint": "6163aff31e41c8968800003ff0eb9e7e2fd4702ce0dc3abd1ce9d60fa8e9f746",
+      "references": [
+        "user_totp_enrolments"
+      ]
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_account_home_events_1",
+      "table": "account_home_events",
+      "fingerprint": "1c4aa95d10237d1ffcb34e05fff7c1e284910accf8aecc1a9275fa8c443fa295",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_account_recovery_events_1",
+      "table": "account_recovery_events",
+      "fingerprint": "1c4aa95d10237d1ffcb34e05fff7c1e284910accf8aecc1a9275fa8c443fa295",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_account_security_events_1",
+      "table": "account_security_events",
+      "fingerprint": "1c4aa95d10237d1ffcb34e05fff7c1e284910accf8aecc1a9275fa8c443fa295",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_family_execution_admissions_1",
+      "table": "family_execution_admissions",
+      "fingerprint": "4ac60da065a1d0600ad1516557980537fba4902bc63fb359457e10e11f62b834",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_family_execution_admissions_2",
+      "table": "family_execution_admissions",
+      "fingerprint": "ec9f98784adcc27a0d3fd8e8ca69f902f63670e92beacf1221c5419af85c92e2",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_family_execution_admissions_3",
+      "table": "family_execution_admissions",
+      "fingerprint": "288fd414b5ee592d2ea9710e2559c540eb00e32d8e5fdd1025bddfdde78d3281",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_family_memory_publications_1",
+      "table": "family_memory_publications",
+      "fingerprint": "1f5d2b26e9608d2b894dd3001da98663616fbef6b158c41d87f5b0bb008560dd",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_family_memory_publications_2",
+      "table": "family_memory_publications",
+      "fingerprint": "b90ec234dbe7afe7df0063fce46c1f5d4520b7177c53eafe5bab3aa38857561c",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_family_memory_withdrawals_1",
+      "table": "family_memory_withdrawals",
+      "fingerprint": "1f5d2b26e9608d2b894dd3001da98663616fbef6b158c41d87f5b0bb008560dd",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_family_scheduled_cancellations_1",
+      "table": "family_scheduled_cancellations",
+      "fingerprint": "d7a7852c17701cb09feaca2d13e11a8547a2f91b3703161b8c7cdd6d45993b06",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_family_scheduled_dispatches_1",
+      "table": "family_scheduled_dispatches",
+      "fingerprint": "d7a7852c17701cb09feaca2d13e11a8547a2f91b3703161b8c7cdd6d45993b06",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_family_scheduled_execution_events_1",
+      "table": "family_scheduled_execution_events",
+      "fingerprint": "fe513df03574491120c3485c7fe656833a0ac4f453cca0babaa72a3775fd3627",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_family_scheduled_executions_1",
+      "table": "family_scheduled_executions",
+      "fingerprint": "1c4aa95d10237d1ffcb34e05fff7c1e284910accf8aecc1a9275fa8c443fa295",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_family_scheduled_executions_2",
+      "table": "family_scheduled_executions",
+      "fingerprint": "97594e88500263023ac4e80f9a07318fdcd44e03298854aec805c6f362b0b877",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_family_scheduled_expiries_1",
+      "table": "family_scheduled_expiries",
+      "fingerprint": "d7a7852c17701cb09feaca2d13e11a8547a2f91b3703161b8c7cdd6d45993b06",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_family_scheduled_grant_revocations_1",
+      "table": "family_scheduled_grant_revocations",
+      "fingerprint": "286a842d345850f16b3c200804be3fe18b9578c6d6fdc5d5e62469acd1d107cd",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_family_scheduled_grants_1",
+      "table": "family_scheduled_grants",
+      "fingerprint": "1c4aa95d10237d1ffcb34e05fff7c1e284910accf8aecc1a9275fa8c443fa295",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_family_scheduled_grants_2",
+      "table": "family_scheduled_grants",
+      "fingerprint": "f3d0e28f1fcab901fd11000b27e3d79e447d544b48d788474f54f518c9a7e373",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_family_scheduled_interruptions_1",
+      "table": "family_scheduled_interruptions",
+      "fingerprint": "d7a7852c17701cb09feaca2d13e11a8547a2f91b3703161b8c7cdd6d45993b06",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_family_scheduled_occurrence_events_1",
+      "table": "family_scheduled_occurrence_events",
+      "fingerprint": "20e096753eb13639160daab6341dec589cbfcd56f10c197edf6c91276e944041",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_family_scheduled_occurrences_1",
+      "table": "family_scheduled_occurrences",
+      "fingerprint": "1c4aa95d10237d1ffcb34e05fff7c1e284910accf8aecc1a9275fa8c443fa295",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_family_scheduled_occurrences_2",
+      "table": "family_scheduled_occurrences",
+      "fingerprint": "4ac60da065a1d0600ad1516557980537fba4902bc63fb359457e10e11f62b834",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_family_scheduled_publications_1",
+      "table": "family_scheduled_publications",
+      "fingerprint": "d7a7852c17701cb09feaca2d13e11a8547a2f91b3703161b8c7cdd6d45993b06",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_family_scheduled_publications_2",
+      "table": "family_scheduled_publications",
+      "fingerprint": "a71438e9809dfcf3de0099e20dfd96f65d3ad5ea1e8653f6c1dbfc41765a5866",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_family_scheduled_results_1",
+      "table": "family_scheduled_results",
+      "fingerprint": "d7a7852c17701cb09feaca2d13e11a8547a2f91b3703161b8c7cdd6d45993b06",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_family_task_admissions_1",
+      "table": "family_task_admissions",
+      "fingerprint": "4ac60da065a1d0600ad1516557980537fba4902bc63fb359457e10e11f62b834",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_family_task_admissions_2",
+      "table": "family_task_admissions",
+      "fingerprint": "288fd414b5ee592d2ea9710e2559c540eb00e32d8e5fdd1025bddfdde78d3281",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_family_workspace_files_1",
+      "table": "family_workspace_files",
+      "fingerprint": "f45aa6af981b43e911f04ed11a742254bd8b3bfe781b4d2697b5ed20511be01e",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_family_workspace_index_status_1",
+      "table": "family_workspace_index_status",
+      "fingerprint": "c85517b5c5d270ce4af5f1c27f04fb5dcde50653c32006f22e51e0d5a14c5d6d",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_operator_recovery_events_1",
+      "table": "operator_recovery_events",
+      "fingerprint": "1c4aa95d10237d1ffcb34e05fff7c1e284910accf8aecc1a9275fa8c443fa295",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_user_auth_attempts_1",
+      "table": "user_auth_attempts",
+      "fingerprint": "b15cd6a0fad107c1bdd1f316f6ae1c8541dd25669c0b0a272f3f3ec3ded54c73",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_user_auth_invitations_1",
+      "table": "user_auth_invitations",
+      "fingerprint": "899f8219ae71c660b52be3dd382e23a61685550fe7b451486899464bed872f3f",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_user_auth_invitations_2",
+      "table": "user_auth_invitations",
+      "fingerprint": "f53341d87a4c8eb7576b9d0350fd8885ab26d6eb13416b0f36a8743472aea564",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_user_avatars_1",
+      "table": "user_avatars",
+      "fingerprint": "9d2ed7d0c7620a9135d8c28abcea0e56c625cee33582e0464adcadee943dd55c",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_user_model_defaults_1",
+      "table": "user_model_defaults",
+      "fingerprint": "9d2ed7d0c7620a9135d8c28abcea0e56c625cee33582e0464adcadee943dd55c",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_user_passkey_registrations_1",
+      "table": "user_passkey_registrations",
+      "fingerprint": "899f8219ae71c660b52be3dd382e23a61685550fe7b451486899464bed872f3f",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_user_preferences_1",
+      "table": "user_preferences",
+      "fingerprint": "9d2ed7d0c7620a9135d8c28abcea0e56c625cee33582e0464adcadee943dd55c",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_user_tool_restriction_events_1",
+      "table": "user_tool_restriction_events",
+      "fingerprint": "1c4aa95d10237d1ffcb34e05fff7c1e284910accf8aecc1a9275fa8c443fa295",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_user_tool_restrictions_1",
+      "table": "user_tool_restrictions",
+      "fingerprint": "9d2ed7d0c7620a9135d8c28abcea0e56c625cee33582e0464adcadee943dd55c",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_user_totp_enrolments_1",
+      "table": "user_totp_enrolments",
+      "fingerprint": "899f8219ae71c660b52be3dd382e23a61685550fe7b451486899464bed872f3f",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_user_totp_enrolments_2",
+      "table": "user_totp_enrolments",
+      "fingerprint": "f53341d87a4c8eb7576b9d0350fd8885ab26d6eb13416b0f36a8743472aea564",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_user_totp_factors_1",
+      "table": "user_totp_factors",
+      "fingerprint": "9d2ed7d0c7620a9135d8c28abcea0e56c625cee33582e0464adcadee943dd55c",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "index",
+      "name": "sqlite_autoindex_user_totp_registrations_1",
+      "table": "user_totp_registrations",
+      "fingerprint": "9d2ed7d0c7620a9135d8c28abcea0e56c625cee33582e0464adcadee943dd55c",
+      "derived": true,
+      "references": []
+    },
+    {
+      "kind": "table",
+      "name": "account_home_events",
+      "table": "account_home_events",
+      "fingerprint": "990a4820a320e292b6bb14b15e81ec7e8c0eb30f3d09e40941b44d9fcc148306",
+      "storageKind": "table",
+      "references": [
+        "account_home_events"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "account_recovery_events",
+      "table": "account_recovery_events",
+      "fingerprint": "32b64577439d1c70fef50244e44c3723296fda98b50c0f10010893d4784d19c3",
+      "storageKind": "table",
+      "references": [
+        "account_recovery_events"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "account_security_events",
+      "table": "account_security_events",
+      "fingerprint": "fb41e461362383376f647ee439367a4cc9ffbc41ee830d1faeb66945d7ff8ccc",
+      "storageKind": "table",
+      "references": [
+        "account_security_events"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "family_execution_admissions",
+      "table": "family_execution_admissions",
+      "fingerprint": "7d1b9437fbcdfa2352546d9b752edd7fd3cd44e086f59314b56407f9b84db185",
+      "storageKind": "table",
+      "references": [
+        "family_execution_admissions",
+        "family_scheduled_executions",
+        "family_scheduled_grants"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "family_media_uploads",
+      "table": "family_media_uploads",
+      "fingerprint": "f950bb32ece0622851159f05cf4fc0453793f2110d3b94538e2d4d7c67e2988a",
+      "storageKind": "table",
+      "references": [
+        "family_media_uploads"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "family_memory_publications",
+      "table": "family_memory_publications",
+      "fingerprint": "c89c25d626dc60f824d68e1076ec3cb731956ee92e35b10fe7dc843a1e00b4e3",
+      "storageKind": "table",
+      "references": [
+        "family_memory_publications"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "family_memory_withdrawals",
+      "table": "family_memory_withdrawals",
+      "fingerprint": "3644a3dd8a75e8a7e5f1bff0eedbe2d1de8c1e7b5d0ebb6c102200721196c477",
+      "storageKind": "table",
+      "references": [
+        "family_memory_publications",
+        "family_memory_withdrawals"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "family_scheduled_cancellations",
+      "table": "family_scheduled_cancellations",
+      "fingerprint": "05e60aadd1042668e330b24e7c8e9e0cbf8211ce9f2f6723410f8341ffff4655",
+      "storageKind": "table",
+      "references": [
+        "family_scheduled_cancellations",
+        "family_scheduled_executions"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "family_scheduled_dispatches",
+      "table": "family_scheduled_dispatches",
+      "fingerprint": "8db9ae432d0a0d18e3508b8ac9d1eb9b4b52e8d75e98dcd544d68bd14f01082d",
+      "storageKind": "table",
+      "references": [
+        "family_scheduled_dispatches",
+        "family_scheduled_executions"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "family_scheduled_execution_events",
+      "table": "family_scheduled_execution_events",
+      "fingerprint": "b91619abcb779574af45ef757009f9d4d241bf9080c9db686deab65b9b3da78e",
+      "storageKind": "table",
+      "references": [
+        "family_scheduled_executions",
+        "family_scheduled_execution_events"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "family_scheduled_executions",
+      "table": "family_scheduled_executions",
+      "fingerprint": "81f8b06fa179a254d83847c1121ac27d14a066de4a75ebd9d7c53de73963429d",
+      "storageKind": "table",
+      "references": [
+        "family_scheduled_executions",
+        "family_scheduled_grants",
+        "family_scheduled_occurrences"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "family_scheduled_expiries",
+      "table": "family_scheduled_expiries",
+      "fingerprint": "7fab4806be5e38b850636e42593488133fa7d27d69633c8f31e5cde7581009b7",
+      "storageKind": "table",
+      "references": [
+        "family_scheduled_executions",
+        "family_scheduled_expiries"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "family_scheduled_grant_revocations",
+      "table": "family_scheduled_grant_revocations",
+      "fingerprint": "ff0939a0b4cd71c911e468e7e8fef80a8ddbb48a2c67a128c1ff716ff55e8ead",
+      "storageKind": "table",
+      "references": [
+        "family_scheduled_grants",
+        "family_scheduled_grant_revocations"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "family_scheduled_grants",
+      "table": "family_scheduled_grants",
+      "fingerprint": "ce0bfb17b68024b3ef6b5354f521a9c7cba8899654bb7a0d267ac514a0380a54",
+      "storageKind": "table",
+      "references": [
+        "family_scheduled_grants"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "family_scheduled_interruptions",
+      "table": "family_scheduled_interruptions",
+      "fingerprint": "cd6e696fddac81f339efa7a76c69ab138181761ffc6919fc2600a2ac8fccb729",
+      "storageKind": "table",
+      "references": [
+        "family_scheduled_executions",
+        "family_scheduled_interruptions"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "family_scheduled_occurrence_events",
+      "table": "family_scheduled_occurrence_events",
+      "fingerprint": "23f0200bfa1be907c1f6893fd4a8387549a206badcd6f997197c01938ec125f9",
+      "storageKind": "table",
+      "references": [
+        "family_scheduled_occurrences",
+        "family_scheduled_occurrence_events"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "family_scheduled_occurrences",
+      "table": "family_scheduled_occurrences",
+      "fingerprint": "7d18701ac2930b5e711f19ae79e4b512766e51543d49f23292b87525515b0231",
+      "storageKind": "table",
+      "references": [
+        "family_scheduled_grants",
+        "family_scheduled_occurrences"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "family_scheduled_publications",
+      "table": "family_scheduled_publications",
+      "fingerprint": "a696f745b12a2bfeaa402d83a56b151026d12e900470dc48468527328da4f546",
+      "storageKind": "table",
+      "references": [
+        "family_scheduled_results",
+        "family_scheduled_publications"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "family_scheduled_results",
+      "table": "family_scheduled_results",
+      "fingerprint": "8cf580348838dc693403e3102eaff123c840be17240e4cac59f359c592a8a57c",
+      "storageKind": "table",
+      "references": [
+        "family_scheduled_executions",
+        "family_scheduled_results"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "family_task_admissions",
+      "table": "family_task_admissions",
+      "fingerprint": "a33c9fc5784a7954335d999c57873353dcfcdd1ee20c2f8f8f32f07c633881dc",
+      "storageKind": "table",
+      "references": [
+        "family_scheduled_grants",
+        "family_task_admissions"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "family_turn_queue",
+      "table": "family_turn_queue",
+      "fingerprint": "be15ac40f316485ac7ca51520ef2f017b57657e1b3508166c8284b3ce1140dd9",
+      "storageKind": "table",
+      "references": [
+        "family_turn_queue"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "family_workspace_files",
+      "table": "family_workspace_files",
+      "fingerprint": "4b20cf3cc8786dcc0bd517ecee7256b0138d485e00a7a09605523bbc6ab6c708",
+      "storageKind": "table",
+      "references": [
+        "family_workspace_files"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "family_workspace_fts",
+      "table": "family_workspace_fts",
+      "fingerprint": "d2b49ab84d3900e5948024d21798e9bc2a844341f6e5ed57518510d536f8044c",
+      "storageKind": "virtual",
+      "references": [
+        "family_workspace_fts"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "family_workspace_fts_config",
+      "table": "family_workspace_fts_config",
+      "fingerprint": "a1843263c259604cea05cf119b178b947eddf76878d467a35943181682ffc91a",
+      "storageKind": "shadow",
+      "references": []
+    },
+    {
+      "kind": "table",
+      "name": "family_workspace_fts_content",
+      "table": "family_workspace_fts_content",
+      "fingerprint": "fecdb807195b20aa2a277f61a8846dcdffa1d6a264c57c3aaf77e029438ea2d7",
+      "storageKind": "shadow",
+      "references": []
+    },
+    {
+      "kind": "table",
+      "name": "family_workspace_fts_data",
+      "table": "family_workspace_fts_data",
+      "fingerprint": "ebff76d36cca24980a1562e4ead188907c811a9cca9f69b21d713c80a68708ed",
+      "storageKind": "shadow",
+      "references": []
+    },
+    {
+      "kind": "table",
+      "name": "family_workspace_fts_docsize",
+      "table": "family_workspace_fts_docsize",
+      "fingerprint": "c13ee2a7b1aa08092f4a45602b0ab5485b80eb326d34de73acb35eb2a79ca5a7",
+      "storageKind": "shadow",
+      "references": []
+    },
+    {
+      "kind": "table",
+      "name": "family_workspace_fts_idx",
+      "table": "family_workspace_fts_idx",
+      "fingerprint": "2840937aa91c6a94a19ae27871d29be86a594ea5c06ccb1be992fb3fbae75e59",
+      "storageKind": "shadow",
+      "references": []
+    },
+    {
+      "kind": "table",
+      "name": "family_workspace_index_generation",
+      "table": "family_workspace_index_generation",
+      "fingerprint": "a1324a5e3c3927f3d1709944cc25d3324510a4d01915b8f4a733a0d59930a69f",
+      "storageKind": "table",
+      "references": [
+        "family_workspace_index_generation"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "family_workspace_index_status",
+      "table": "family_workspace_index_status",
+      "fingerprint": "4292e302df4e3f0f54646c81faa671929edf3ace5668b0425ee005ea0031c8dc",
+      "storageKind": "table",
+      "references": [
+        "family_workspace_index_status"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "operator_recovery_events",
+      "table": "operator_recovery_events",
+      "fingerprint": "0225b8d70f9e2e5ee81457e9451b61820a6bf5415b3a00eb89d024d2327c43fa",
+      "storageKind": "table",
+      "references": [
+        "operator_recovery_events"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "user_auth_attempts",
+      "table": "user_auth_attempts",
+      "fingerprint": "c62335105acc69040376a13243ba3b4374ab60f4185cae51edcaced9ef50701c",
+      "storageKind": "table",
+      "references": [
+        "user_auth_attempts"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "user_auth_invitations",
+      "table": "user_auth_invitations",
+      "fingerprint": "5bb1ee01f6b96bc08dea6eb4833b8a4cb96e2ae8b73c681818e99dbabb6448d7",
+      "storageKind": "table",
+      "references": [
+        "user_auth_invitations"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "user_avatars",
+      "table": "user_avatars",
+      "fingerprint": "1be3b2c6dff23eeffd000a89a8765ef06947251eb39b20e2fc5a69ec9adf65c4",
+      "storageKind": "table",
+      "references": [
+        "user_avatars"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "user_model_defaults",
+      "table": "user_model_defaults",
+      "fingerprint": "90a7c1167aeb556cb15056783ef3fb6b061d1e6caaae0baaf65ba0a448e6de7e",
+      "storageKind": "table",
+      "references": [
+        "user_model_defaults"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "user_passkey_registrations",
+      "table": "user_passkey_registrations",
+      "fingerprint": "ab8b398dd5d69485d34ed1058a48b651a3d87e5eb9190be932a4a32d3accc29a",
+      "storageKind": "table",
+      "references": [
+        "user_passkey_registrations"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "user_preferences",
+      "table": "user_preferences",
+      "fingerprint": "cb4cd10817495c98b33b52a8ab6bb257d10ac5995ea3c83d8d738d3a93378dca",
+      "storageKind": "table",
+      "references": [
+        "user_preferences"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "user_tool_restriction_events",
+      "table": "user_tool_restriction_events",
+      "fingerprint": "5e225fcb77e7d12e9d4960878d192484c904e65ad8ef70e5abe502dc0d17fd57",
+      "storageKind": "table",
+      "references": [
+        "user_tool_restriction_events"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "user_tool_restrictions",
+      "table": "user_tool_restrictions",
+      "fingerprint": "4a9891725f812afe493bad1aa9ca3c153f371b61e1e856ef8eeb03ae4c812f89",
+      "storageKind": "table",
+      "references": [
+        "user_tool_restrictions"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "user_totp_enrolments",
+      "table": "user_totp_enrolments",
+      "fingerprint": "9039444297cc690bfe4198dc5735122e20c4f35f38bbd0ecb763248d6ff32c9b",
+      "storageKind": "table",
+      "references": [
+        "user_totp_enrolments"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "user_totp_factors",
+      "table": "user_totp_factors",
+      "fingerprint": "3d8a3e3349f4c9b17ad68d03d4efb5e485ca4299be219305858356dc5102d866",
+      "storageKind": "table",
+      "references": [
+        "user_totp_factors"
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "user_totp_registrations",
+      "table": "user_totp_registrations",
+      "fingerprint": "0c66f01f4f8ca798f34306f5357759cc7af53d432d5b7697305a5dafc0ddb52b",
+      "storageKind": "table",
+      "references": [
+        "user_totp_registrations"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_execution_admission_immutable",
+      "table": "family_execution_admissions",
+      "fingerprint": "a807bc3e56d92d3a48b52ae04c9cfa7a8f6b220f9057d08284352c86c53947e0",
+      "references": [
+        "family_execution_admissions"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_execution_admission_no_delete",
+      "table": "family_execution_admissions",
+      "fingerprint": "3847fa75e77dd061fe76b3f3d0bbd236898ae9f2ae178f93f65aed703a08424f",
+      "references": [
+        "family_execution_admissions"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_execution_admission_valid",
+      "table": "family_execution_admissions",
+      "fingerprint": "72053f3cfc9c23c880cc4c2ffd9af3db8c085db48776ef42f05a98f2a1ba2b55",
+      "references": [
+        "family_execution_admissions",
+        "family_scheduled_executions",
+        "family_scheduled_execution_events",
+        "family_scheduled_grants",
+        "family_scheduled_occurrences"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_media_upload_identity_immutable",
+      "table": "family_media_uploads",
+      "fingerprint": "134500c2c3dadfa7e08155c4c5d6bb5f808683be098eea0965e121b5367ef43e",
+      "references": [
+        "family_media_uploads"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_memory_publication_immutable",
+      "table": "family_memory_publications",
+      "fingerprint": "c75e417d6a478a3e6895db01d7326934005f60cc2bdc94b46d24d2432e538848",
+      "references": [
+        "family_memory_publications"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_memory_publication_no_delete",
+      "table": "family_memory_publications",
+      "fingerprint": "2971d0a10867b958af5cff3ac39d2a4c4b73cefc9fe8ec421e288b158418f8e2",
+      "references": [
+        "family_memory_publications"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_memory_withdrawal_immutable",
+      "table": "family_memory_withdrawals",
+      "fingerprint": "ebd65981c0f312453ef05c5576bf722bb78fd640409c7ac19f800ec715606c47",
+      "references": [
+        "family_memory_withdrawals"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_memory_withdrawal_no_delete",
+      "table": "family_memory_withdrawals",
+      "fingerprint": "068c55ceb668accc689848043ee93b18412cc4e5284b432755735561550ff6f4",
+      "references": [
+        "family_memory_withdrawals"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_memory_withdrawal_owner",
+      "table": "family_memory_withdrawals",
+      "fingerprint": "7108fff56f4519b1ec0744c13e4a76dc635e165a4b645293b558b365710616dc",
+      "references": [
+        "family_memory_publications",
+        "family_memory_withdrawals"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_account_revoked",
+      "table": "users",
+      "fingerprint": "64bcf5d3700f980737bc3fb1cd8b0151044b6ff99d477da440262b71067f64de",
+      "references": [
+        "family_scheduled_grants",
+        "family_scheduled_grant_revocations"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_cancellation_immutable",
+      "table": "family_scheduled_cancellations",
+      "fingerprint": "b8dd03f8b03d4c8779b876cdd26d2cccc63c8323bf3626068bdb77bcc17bfe07",
+      "references": [
+        "family_scheduled_cancellations"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_cancellation_no_delete",
+      "table": "family_scheduled_cancellations",
+      "fingerprint": "680a1a0576cd0ffb6a928eab305343a0251c2e51bdf8d07dd3af1daea24894fb",
+      "references": [
+        "family_scheduled_cancellations"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_cancellation_valid",
+      "table": "family_scheduled_cancellations",
+      "fingerprint": "f8c2c90bfcbd3cb3ec4c30e01b483d02632938846fe09142bb92cc102a529bc8",
+      "references": [
+        "family_scheduled_cancellations",
+        "family_scheduled_executions",
+        "family_scheduled_results",
+        "family_scheduled_execution_events",
+        "family_scheduled_expiries",
+        "family_scheduled_interruptions"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_dispatch_immutable",
+      "table": "family_scheduled_dispatches",
+      "fingerprint": "af2d351f0490682b85110d5b17034a6448fbd0ea96083ec7fd6caf6f6b7838d8",
+      "references": [
+        "family_scheduled_dispatches"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_dispatch_no_delete",
+      "table": "family_scheduled_dispatches",
+      "fingerprint": "20eed0c1965c1689ade06434d45d3847d7c8943a6b6984c6ce72cb8e060e0cf9",
+      "references": [
+        "family_scheduled_dispatches"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_dispatch_not_expired",
+      "table": "family_scheduled_dispatches",
+      "fingerprint": "d772a1f9374609134ff586d8ad370985a6538af3da07f10c80389baa362419e7",
+      "references": [
+        "family_scheduled_dispatches",
+        "family_scheduled_expiries"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_dispatch_not_interrupted",
+      "table": "family_scheduled_dispatches",
+      "fingerprint": "5173e510c7c2e6eb11fe5a89f12a3dc676b9b6b918abadb36d3c528b139cf420",
+      "references": [
+        "family_scheduled_dispatches",
+        "family_scheduled_interruptions"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_execution_event_immutable",
+      "table": "family_scheduled_execution_events",
+      "fingerprint": "51c7b2b17aa9b7aa8374c14d34710937b8f57e95bc4a849d862f72c92e02e716",
+      "references": [
+        "family_scheduled_execution_events"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_execution_event_no_delete",
+      "table": "family_scheduled_execution_events",
+      "fingerprint": "49f56c5507e014653b414cc249366864d43cd580582042205d1ca70e4c9d2542",
+      "references": [
+        "family_scheduled_execution_events"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_execution_immutable",
+      "table": "family_scheduled_executions",
+      "fingerprint": "54d7df6b2616a7aa3ad75b9fcb47565ea9f1c4fd787c35b72b35ce8f06ca117f",
+      "references": [
+        "family_scheduled_executions"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_execution_no_delete",
+      "table": "family_scheduled_executions",
+      "fingerprint": "128ba69e32f9c20ea205fc80c8dc250da942253448997edd73ddff4652a1bf74",
+      "references": [
+        "family_scheduled_executions"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_expiry_immutable",
+      "table": "family_scheduled_expiries",
+      "fingerprint": "a0bbdda3ad754dacf2b87b62513f081ec9f27f587aae18d6958a74e86bda8731",
+      "references": [
+        "family_scheduled_expiries"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_expiry_no_delete",
+      "table": "family_scheduled_expiries",
+      "fingerprint": "d12de34d42eefc7496d71a2802336e99badd95c7f012bfb594ecf66a37cb0f9d",
+      "references": [
+        "family_scheduled_expiries"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_expiry_not_interrupted",
+      "table": "family_scheduled_expiries",
+      "fingerprint": "cd8665b4d8eb249518d7a2c9afd0c2c1d6519a2cea81aac79fe4d4fde2f2c6a5",
+      "references": [
+        "family_scheduled_expiries",
+        "family_scheduled_interruptions"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_expiry_valid",
+      "table": "family_scheduled_expiries",
+      "fingerprint": "3a2d0810963eba46bc3cdeaea5d72cfbef695e37e4e9fab24e734a75e763331f",
+      "references": [
+        "family_scheduled_executions",
+        "family_scheduled_results",
+        "family_scheduled_execution_events",
+        "family_scheduled_expiries"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_grant_immutable",
+      "table": "family_scheduled_grants",
+      "fingerprint": "8e15529c56d3ba9d3db0046b3cbb6d9f35366fedc700bec4079033a2f14be848",
+      "references": [
+        "family_scheduled_grants"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_grant_no_delete",
+      "table": "family_scheduled_grants",
+      "fingerprint": "2d8dd594a1b09d0ed6c89423e804a99bd8b4fbc5ec65c134368880c5a64f62ad",
+      "references": [
+        "family_scheduled_grants"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_head_changed",
+      "table": "service_effect_s07_tasks",
+      "fingerprint": "2701819672ba54548148674d564ca97c0ccdf1a1169d57a48a039f58ed27cf57",
+      "references": [
+        "family_scheduled_grants",
+        "family_scheduled_grant_revocations"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_head_deleted",
+      "table": "service_effect_s07_tasks",
+      "fingerprint": "e268fca1a661742addbcaf3d0db9bdfe98534d37d054962d4b481c536236e188",
+      "references": [
+        "family_scheduled_grants",
+        "family_scheduled_grant_revocations"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_head_no_activate",
+      "table": "service_effect_s07_tasks",
+      "fingerprint": "87986a8f995fb2fd45afba02fb750eed5fabd49a9ce497cfaf1a6f861223b47c",
+      "references": [
+        "family_scheduled_grants"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_interruption_immutable",
+      "table": "family_scheduled_interruptions",
+      "fingerprint": "c4e9a1b36b839c2ab89192df63d54acd5e727834c5b156112050a54fdd76cb79",
+      "references": [
+        "family_scheduled_interruptions"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_interruption_no_delete",
+      "table": "family_scheduled_interruptions",
+      "fingerprint": "85ca4ee710e75ae023d75f14b1bfc3eb498479d62e04cf891fcdf631ab8aed62",
+      "references": [
+        "family_scheduled_interruptions"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_interruption_valid",
+      "table": "family_scheduled_interruptions",
+      "fingerprint": "b5e8c6073629c1eff5c06ab907885a56500bee75a37146a7da54922f55f4f6ec",
+      "references": [
+        "family_scheduled_dispatches",
+        "family_scheduled_executions",
+        "family_scheduled_results",
+        "family_scheduled_execution_events",
+        "family_scheduled_expiries",
+        "family_scheduled_interruptions"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_occurrence_event_immutable",
+      "table": "family_scheduled_occurrence_events",
+      "fingerprint": "a06c475891d69857bbd2035c448ea1a0ac0c07205768100fb6ca753d6b1cc446",
+      "references": [
+        "family_scheduled_occurrence_events"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_occurrence_event_no_delete",
+      "table": "family_scheduled_occurrence_events",
+      "fingerprint": "1340b94e5a23044f99d42b4b3d946494708079747a162d97a91d8e188cf0f137",
+      "references": [
+        "family_scheduled_occurrence_events"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_occurrence_identity_immutable",
+      "table": "family_scheduled_occurrences",
+      "fingerprint": "8890413ac10cc9ad6ca88602d0035a7ef9d21a19148f5e5e3da28783e2fc42af",
+      "references": [
+        "family_scheduled_occurrences"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_occurrence_no_delete",
+      "table": "family_scheduled_occurrences",
+      "fingerprint": "46247ea11ce7ef7de5aac4be21d6661f21006e0b9de4b7f58c7d223038601b77",
+      "references": [
+        "family_scheduled_occurrences"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_occurrence_terminal",
+      "table": "family_scheduled_occurrences",
+      "fingerprint": "b3ab3acec6f9e5e22d800bb119ffd6d0541f55dd34d49627b91bc272b9cd98f2",
+      "references": [
+        "family_scheduled_occurrences"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_occurrence_tools_narrow",
+      "table": "family_scheduled_occurrences",
+      "fingerprint": "4248ec44d4fe5e8642d22b27fdfc144b54f1d76449de600d5bbadb72db93eb45",
+      "references": [
+        "family_scheduled_occurrences"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_occurrence_transition",
+      "table": "family_scheduled_occurrences",
+      "fingerprint": "be2cbc96ac6d6cc7762ab399e41c8a722cff50cf64eb677cac6efc9443d60c4e",
+      "references": [
+        "family_scheduled_occurrences"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_publication_immutable",
+      "table": "family_scheduled_publications",
+      "fingerprint": "afbad74e0a1a600f9231cfd44ca5f0ec14ee7e1fa6d3a923e21368c739700085",
+      "references": [
+        "family_scheduled_publications"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_publication_no_delete",
+      "table": "family_scheduled_publications",
+      "fingerprint": "d8fa7f164fde3ba38e344c3b2b1285aa0708cb71af6e4046290aaeaa4cf3187a",
+      "references": [
+        "family_scheduled_publications"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_result_immutable",
+      "table": "family_scheduled_results",
+      "fingerprint": "0ec8b6810368189ef5a423d7995dd024f4a9b4823a6b06e10de52951c7ffa66c",
+      "references": [
+        "family_scheduled_results"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_result_no_delete",
+      "table": "family_scheduled_results",
+      "fingerprint": "177bf053deea26adbb205316a0537d27e218944406a48f8d9d12943af1c8fcfc",
+      "references": [
+        "family_scheduled_results"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_result_not_expired",
+      "table": "family_scheduled_results",
+      "fingerprint": "c143cdf7f74334ed6feabc7b556beffd5d81695e52963f0b836b593616cdbeb1",
+      "references": [
+        "family_scheduled_results",
+        "family_scheduled_expiries"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_result_not_interrupted",
+      "table": "family_scheduled_results",
+      "fingerprint": "015138822350fa461a6cf1a1eddd4bb7d6b338dc137f8274e433ec8e1888bc0f",
+      "references": [
+        "family_scheduled_results",
+        "family_scheduled_interruptions"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_revision_changed",
+      "table": "service_effect_s07_task_revisions",
+      "fingerprint": "81b247b5c48bb2d6856ed414c5238441d62ca8f170ac601e7c775dfcbf5d8676",
+      "references": [
+        "family_scheduled_grants",
+        "family_scheduled_grant_revocations"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_revision_deleted",
+      "table": "service_effect_s07_task_revisions",
+      "fingerprint": "f67b38f30c4739b94612de17a7dc2e8b7918d24c1eaf9d7351cbc050819ec704",
+      "references": [
+        "family_scheduled_grants",
+        "family_scheduled_grant_revocations"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_revision_inserted",
+      "table": "service_effect_s07_task_revisions",
+      "fingerprint": "93d98ff8288f8a2da859e077ea565199d5c753b5a4a8a937ef56251de65426da",
+      "references": [
+        "family_scheduled_grants",
+        "family_scheduled_grant_revocations"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_revocation_immutable",
+      "table": "family_scheduled_grant_revocations",
+      "fingerprint": "ddded575c8bf5a7c6615cc96ce6ff6662b40d14d7936e03b6eac4f0adcdc571b",
+      "references": [
+        "family_scheduled_grant_revocations"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_revocation_no_delete",
+      "table": "family_scheduled_grant_revocations",
+      "fingerprint": "47afaef1770d470b94a02024c09e52ddb64fe43ab6de9549c954d7ef62ed4a10",
+      "references": [
+        "family_scheduled_grant_revocations"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_settle_event_not_cancelled",
+      "table": "family_scheduled_execution_events",
+      "fingerprint": "b5e0e8774a1af64cf8f833237cef2bd69fdab56bbe992d14a17cca785b64a5a2",
+      "references": [
+        "family_scheduled_cancellations",
+        "family_scheduled_execution_events"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_settle_event_not_interrupted",
+      "table": "family_scheduled_execution_events",
+      "fingerprint": "f6a819ca5fcb18bbd66f133fc7c15e057f42f579c5ae7c4a262c02273d64aca8",
+      "references": [
+        "family_scheduled_execution_events",
+        "family_scheduled_interruptions"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_task_changed",
+      "table": "scheduled_tasks",
+      "fingerprint": "94a58011339c085f39c7bb167fd5d3d08b67dfe94faaa141285e1d6d3ce7fd3e",
+      "references": [
+        "family_scheduled_grants",
+        "family_scheduled_grant_revocations"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_task_deleted",
+      "table": "scheduled_tasks",
+      "fingerprint": "54ea5592777c3ed991b61f754344d286c8e9de42e8ee20e9a7c8bc71ed1b18f4",
+      "references": [
+        "family_scheduled_grants",
+        "family_scheduled_grant_revocations"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_scheduled_task_no_activate",
+      "table": "scheduled_tasks",
+      "fingerprint": "0766e42afcfb380b62636ee233ae3b47fb1e1ae7e61f1b067623d4d38cf88cfa",
+      "references": [
+        "family_scheduled_grants"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_task_admission_immutable",
+      "table": "family_task_admissions",
+      "fingerprint": "854e97e83045abf8c7590fd104eae9102d49b36d70d6e1a68cd66f86c23bc22f",
+      "references": [
+        "family_task_admissions"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_task_admission_no_delete",
+      "table": "family_task_admissions",
+      "fingerprint": "3979d27e7cbb722196769b118dac6e6f8f0bc8a4ac80f629112b81e5cc65ed94",
+      "references": [
+        "family_task_admissions"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_turn_queue_identity_immutable",
+      "table": "family_turn_queue",
+      "fingerprint": "4ad7aa3ba848f14831c4fcc2542fccbd14ecf5e787f199bbef7470aec42361b9",
+      "references": [
+        "family_turn_queue"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "family_turn_queue_terminal_immutable",
+      "table": "family_turn_queue",
+      "fingerprint": "191849d744932597fea5a0206458a56e0abb8b22e5f3ebac80e7389d30513b65",
+      "references": [
+        "family_turn_queue"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "user_totp_registration_cleanup",
+      "table": "user_totp_registrations",
+      "fingerprint": "eb2a47a67af177efc9c91560102b78168c541d60a328636a9bf5f7a3c1842733",
+      "references": [
+        "user_totp_enrolments",
+        "user_totp_registrations"
+      ]
+    },
+    {
+      "kind": "trigger",
+      "name": "user_totp_registration_logout",
+      "table": "web_sessions",
+      "fingerprint": "13dcbfb49086ce14d4faafaae1eda3558d7b26a0d9b093fc2216a8dbee8f4e82",
+      "references": [
+        "user_totp_registrations"
+      ]
+    }
+  ],
+  "dependencies": {
+    "user_avatars": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "users",
+        "from": "user_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "user_model_defaults": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "users",
+        "from": "user_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "user_preferences": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "users",
+        "from": "user_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "user_totp_factors": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "users",
+        "from": "user_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "user_totp_enrolments": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "users",
+        "from": "user_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "user_auth_invitations": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "users",
+        "from": "issuer_user_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      },
+      {
+        "id": 1,
+        "seq": 0,
+        "table": "users",
+        "from": "user_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "user_passkey_registrations": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "users",
+        "from": "user_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "user_totp_registrations": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "users",
+        "from": "user_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "account_recovery_events": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "users",
+        "from": "target_user_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      },
+      {
+        "id": 1,
+        "seq": 0,
+        "table": "users",
+        "from": "actor_user_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "account_security_events": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "users",
+        "from": "target_user_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      },
+      {
+        "id": 1,
+        "seq": 0,
+        "table": "users",
+        "from": "actor_user_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "user_auth_attempts": [],
+    "operator_recovery_events": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "users",
+        "from": "target_user_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "family_execution_admissions": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "family_scheduled_executions",
+        "from": "execution_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      },
+      {
+        "id": 1,
+        "seq": 0,
+        "table": "family_scheduled_grants",
+        "from": "grant_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      },
+      {
+        "id": 2,
+        "seq": 0,
+        "table": "users",
+        "from": "owner_user_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "family_media_uploads": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "users",
+        "from": "owner_user_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      },
+      {
+        "id": 1,
+        "seq": 0,
+        "table": "media",
+        "from": "media_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "family_memory_publications": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "users",
+        "from": "owner_user_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "family_memory_withdrawals": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "users",
+        "from": "owner_user_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      },
+      {
+        "id": 1,
+        "seq": 0,
+        "table": "family_memory_publications",
+        "from": "publication_id",
+        "to": "publication_id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "family_scheduled_cancellations": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "users",
+        "from": "owner_user_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      },
+      {
+        "id": 1,
+        "seq": 0,
+        "table": "family_scheduled_executions",
+        "from": "execution_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "family_scheduled_dispatches": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "family_scheduled_executions",
+        "from": "execution_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "family_scheduled_executions": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "users",
+        "from": "initiated_by_user_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      },
+      {
+        "id": 1,
+        "seq": 0,
+        "table": "users",
+        "from": "owner_user_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      },
+      {
+        "id": 2,
+        "seq": 0,
+        "table": "family_scheduled_grants",
+        "from": "grant_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      },
+      {
+        "id": 3,
+        "seq": 0,
+        "table": "family_scheduled_occurrences",
+        "from": "occurrence_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "family_scheduled_results": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "family_scheduled_executions",
+        "from": "execution_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "family_scheduled_execution_events": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "family_scheduled_executions",
+        "from": "execution_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "family_scheduled_expiries": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "family_scheduled_executions",
+        "from": "execution_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "family_scheduled_grants": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "users",
+        "from": "initiated_by_user_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      },
+      {
+        "id": 1,
+        "seq": 0,
+        "table": "users",
+        "from": "owner_user_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "family_scheduled_grant_revocations": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "family_scheduled_grants",
+        "from": "grant_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "family_scheduled_interruptions": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "family_scheduled_executions",
+        "from": "execution_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "family_scheduled_occurrences": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "family_scheduled_grants",
+        "from": "grant_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "family_scheduled_occurrence_events": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "family_scheduled_occurrences",
+        "from": "occurrence_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "family_scheduled_publications": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "users",
+        "from": "owner_user_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      },
+      {
+        "id": 1,
+        "seq": 0,
+        "table": "family_scheduled_results",
+        "from": "execution_id",
+        "to": "execution_id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "family_task_admissions": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "family_scheduled_grants",
+        "from": "grant_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      },
+      {
+        "id": 1,
+        "seq": 0,
+        "table": "users",
+        "from": "owner_user_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "user_tool_restrictions": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "users",
+        "from": "user_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "user_tool_restriction_events": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "users",
+        "from": "target_user_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      },
+      {
+        "id": 1,
+        "seq": 0,
+        "table": "users",
+        "from": "actor_user_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "family_workspace_files": [],
+    "family_workspace_index_status": [],
+    "family_workspace_index_generation": [],
+    "family_turn_queue": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "users",
+        "from": "owner_user_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      },
+      {
+        "id": 1,
+        "seq": 0,
+        "table": "message_execution_authorities",
+        "from": "message_rowid",
+        "to": "message_rowid",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "account_home_events": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "users",
+        "from": "target_user_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      },
+      {
+        "id": 1,
+        "seq": 0,
+        "table": "users",
+        "from": "actor_user_id",
+        "to": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ]
+  },
+  "emptyFtsRows": {
+    "family_workspace_fts_data": [
+      "[\"integer:31\",\"integer:31\",\"blob:\"]",
+      "[\"integer:3130\",\"integer:3130\",\"blob:00000000000000\"]"
+    ],
+    "family_workspace_fts_idx": [],
+    "family_workspace_fts_content": [],
+    "family_workspace_fts_docsize": [],
+    "family_workspace_fts_config": [
+      "[\"text:76657273696F6E\",\"integer:34\"]"
+    ]
+  }
+}

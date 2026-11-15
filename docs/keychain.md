@@ -192,7 +192,7 @@ This is intended to steer the agent toward the `ssh` tool and addon-provided `pr
 ## Notes
 
 - Entry names can be hierarchical (`github/foo/bar`).
-- The keychain uses the current master key for all entries; rotating keys requires re-encrypting entries (not yet automated). The same bootstrap material also encrypts the separate user TOTP store. The [offline factor helper](multi-user/README.md#authentication-maintenance) rotates only confirmed TOTP ciphertext; it does not update generic keychain entries or configuration. Coordinate every dependent store and key backup before changing the key.
+- The keychain uses the current master key for all entries; rotating keys requires re-encrypting entries (not yet automated). Preserve existing key material and historical authentication records in backups.
 - Family-shared mode intentionally shares tool/provider credentials and workspace access. Per-user factors are separate to avoid accidental exposure, not to confine hostile users with shell/filesystem access. Family mode remains startup-disabled.
 - Avoid logging secrets. The tool runner resolves keychain values only at execution time.
 

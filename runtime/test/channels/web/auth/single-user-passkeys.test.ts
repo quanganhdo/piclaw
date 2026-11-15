@@ -13,6 +13,7 @@ import { handleWebauthnRegisterStart, handleWebauthnRegisterFinish } from '../..
 import { handlePasskey } from '../../../../src/agent-control/handlers/passkey';
 import { handleAgentRoutes } from '../../../../src/channels/web/http/dispatch-agent';
 import { WEB_RUNTIME_CONFIG } from '../../../../src/core/config-web';
+import { addLogSink, removeLogSink, type LogRecord } from '../../../../src/utils/logger';
 const savedConfig = { passkeyMode: WEB_RUNTIME_CONFIG.passkeyMode, totpSecret: WEB_RUNTIME_CONFIG.totpSecret, trustProxy: WEB_RUNTIME_CONFIG.trustProxy };
 
 let restore: () => void, ws: ReturnType<typeof createTempWorkspace>;
@@ -26,11 +27,11 @@ function request(path = '/agent/passkeys', body?: any, token = 'owner', origin =
   return new Request(`https://piclaw.test${path}`, { method: body === undefined ? 'GET' : 'POST', headers: { cookie: `piclaw_session=${token}`, Origin: origin, 'content-type': 'application/json' }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
 }
 const validRegistration = () => ({ verified: true, registrationInfo: { credential: { id: 'new-key', publicKey: new Uint8Array([1, 2, 3]), counter: 0, transports: ['internal'] } } });
-beforeEach(() => {
+beforeEach(async () => {
   ws = createTempWorkspace('passkey-settings-');
   restore = setEnv({ PICLAW_WORKSPACE: ws.workspace, PICLAW_STORE: ws.store, PICLAW_DATA: ws.data, PICLAW_DB_IN_MEMORY: '1', PICLAW_WEB_PASSKEY_MODE: 'passkey-only', PICLAW_WEB_TOTP_SECRET: '', PICLAW_TOTP_SECRET: '', PICLAW_WEB_TRUST_PROXY: 'false', PICLAW_ACCESS_MODE: 'single-user' });
   WEB_RUNTIME_CONFIG.passkeyMode = 'passkey-only'; WEB_RUNTIME_CONFIG.totpSecret = ''; WEB_RUNTIME_CONFIG.trustProxy = false;
-  closeDatabase(); initDatabase(); now = Date.now(); resetRateLimiterStateForTests();
+  await closeDatabase(); initDatabase(); now = Date.now(); resetRateLimiterStateForTests();
   createWebSession('owner', 'default', 3600, 'passkey');
   createWebSession('second', 'default', 3600, 'passkey'); now = Date.now();
   verify = async () => validRegistration();
@@ -39,7 +40,7 @@ beforeEach(() => {
     verifyRegistrationResponse: async (value: any) => verify(value),
   } });
 });
-afterEach(() => { closeDatabase(); restore(); Object.assign(WEB_RUNTIME_CONFIG, savedConfig); ws.cleanup(); resetRateLimiterStateForTests(); });
+afterEach(async () => { await closeDatabase(); restore(); Object.assign(WEB_RUNTIME_CONFIG, savedConfig); ws.cleanup(); resetRateLimiterStateForTests(); });
 
 test('lists only owner credentials with names/dates and current-RP availability', async () => {
   key('laptop'); key('backup'); key('wrong-rp', 'old.piclaw.test'); key('other-user', 'piclaw.test', 'other');
@@ -167,6 +168,23 @@ test('missing Origin, auth-disabled access, oversized bodies and family mode fai
   expect((await handler(request())).status).toBe(404);
 });
 
+test('invalid access configuration fails closed without exposing configuration contents', async () => {
+  key('laptop');
+  const records: LogRecord[] = [], sink = (record: LogRecord) => { records.push(record); };
+  mkdirSync(dirname(getConfigPath()), { recursive: true });
+  writeFileSync(getConfigPath(), '{"private-config-marker":');
+  addLogSink(sink);
+  try {
+    const response = await handler(request());
+    expect(response.status).toBe(404);
+    expect(await response.text()).not.toContain('private-config-marker');
+    const record = records.find(record => record.operation === 'passkey_settings.invalid_access_config');
+    expect(record).toBeDefined();
+    expect(JSON.stringify(record)).not.toContain('private-config-marker');
+    expect(getDb().query('SELECT credential_id FROM webauthn_credentials').all()).toEqual([{ credential_id: 'laptop' }]);
+  } finally { removeLogSink(sink); }
+});
+
 test('legacy links and slash commands cannot enrol or remove credentials outside Settings', async () => {
   key('laptop'); const enrolment = createWebauthnEnrollment();
   const ctx = { accessMode: 'single-user', json: Response.json, isPasskeyEnabled: () => true } as any;
@@ -186,14 +204,14 @@ test('first enrolment from accepted TOTP and wrong-origin finish', async () => {
 });
 
 test('file-backed store reopening preserves credentials and labels', async () => {
-  closeDatabase();
+  await closeDatabase();
   // Only this owned disposable store; restore the runner memory mode afterward.
   process.env.PICLAW_DB_IN_MEMORY = '0';
   try {
     initDatabase(); createWebSession('owner', 'default', 3600, 'passkey'); now = Date.now(); key('persisted');
     expect((await handler(request('/agent/passkeys', { action: 'rename', id: 'persisted', name: 'Tablet' }))).status).toBe(200);
-    closeDatabase(); initDatabase();
+    await closeDatabase(); initDatabase();
     const data = await (await handler(request())).json();
     expect(data.passkeys).toHaveLength(1); expect(data.passkeys[0]).toMatchObject({ name: 'Tablet', id: 'persisted', lastUsedAt: null });
-  } finally { closeDatabase(); process.env.PICLAW_DB_IN_MEMORY = '1'; }
+  } finally { await closeDatabase(); process.env.PICLAW_DB_IN_MEMORY = '1'; }
 }, 20_000);

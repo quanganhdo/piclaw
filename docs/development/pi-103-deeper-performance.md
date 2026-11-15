@@ -1,5 +1,7 @@
 # Pi 1.0.3 deeper workload audit
 
+Current source uses [acquisition-only SQLite write admission](sqlite-write-admission.md). The Pi 1.0.3 measurements and receipts in this audit retain their original source bindings.
+
 Family HTTP admission now yields while SQLite waits for another writer. The correction uses the existing bounded async-admission helper and retains atomic message/authority/media/queue writes. Additional fixtures measure real scheduler claiming, family mutations and natural session-history reclamation. These scoped results do not complete whole-system performance or production acceptance.
 
 Base: `6ceaeaed19c3ca0f5589cc616774c529b631c689`, Pi 1.0.3 / Bun 1.4.2 on Smith LXC. All data, accounts and agents are synthetic; databases and files are owned temporary state. No live credentials, inference, installation, restart or driver activity. The [machine receipt](receipts/pi-103-deeper-performance.json) records hashes, source bindings, spreads and limitations.

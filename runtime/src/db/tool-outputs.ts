@@ -24,6 +24,16 @@ import { prepareFtsQuery } from "../utils/fts-query.js";
 import { getSearchMatchMode } from "../core/config.js";
 import type { ToolOutputScope } from '../core/tool-output-access.js';
 
+export class NativeToolOutputRetentionHeld extends Error {
+  constructor(){super("Native tool-output retention requires a complete history/reference retirement proof");}
+}
+/** Existing unowned file handles can survive native import/compaction. Presence
+ * of the native owner is enough to retain them; age is not reference proof. */
+export function nativeToolOutputRetentionHeld(database=getDb()):boolean {
+  return !!database.query("SELECT 1 FROM main.sqlite_schema WHERE type='table' AND name='piclaw_durable_bindings_v1'").get();
+}
+function assertRetentionOwner(){if(nativeToolOutputRetentionHeld())throw new NativeToolOutputRetentionHeld();}
+
 function scopeWhere(scope:ToolOutputScope|null):{sql:string;params:string[]} {
   return scope?{sql:'owner_user_id=? AND root_branch_id=? AND source_branch_id=? AND execution_kind=?',params:[scope.ownerUserId,scope.rootBranchId,scope.sourceBranchId,scope.executionKind]}
     :{sql:'owner_user_id IS NULL AND root_branch_id IS NULL AND source_branch_id IS NULL AND chat_jid IS NULL AND execution_kind IS NULL',params:[]};
@@ -82,8 +92,9 @@ export function deleteToolOutputById(id: string,scope:ToolOutputScope|null=null)
  */
 export function deleteToolOutputsBefore(cutoffIso: string,scope:ToolOutputScope|null=null,validate?:()=>void,validateRecord?:(record:ToolOutputRecord)=>void): ToolOutputRecord[] {
   const db = getDb(), where = scopeWhere(scope);
+  assertRetentionOwner();
   return db.transaction(() => {
-    validate?.();
+    validate?.();assertRetentionOwner();
     const rows = db.prepare(`SELECT * FROM tool_outputs WHERE created_at<? AND ${where.sql}`)
       .all(cutoffIso, ...where.params) as ToolOutputRecord[];
     // Validate every selected path before deleting anything. Return only rows
@@ -104,7 +115,7 @@ export function deleteToolOutputsBefore(cutoffIso: string,scope:ToolOutputScope|
       const ids = removed.slice(offset, offset + 100).map(row => row.id);
       db.prepare(`DELETE FROM tool_outputs_fts WHERE output_id IN (${ids.map(() => "?").join(",")})`).run(...ids);
     }
-    validate?.();
+    validate?.();assertRetentionOwner();
     return removed;
   }).immediate();
 }

@@ -294,8 +294,18 @@ export function normaliseBind(candidate: unknown): BindScheduledSourceRequest | 
 
 export function normaliseComplete(candidate: unknown): CompleteScheduledRunRequest | null {
   const fields = [...FENCE, "effect", "status", "durationMs", "resultRef", "errorCode", "completedAt", "outboxIntents"];
-  const input = ClosedInput.capture(candidate, fields);
+  const original = ClosedInput.capture(candidate, fields);
+  const input = original ?? ClosedInput.capture(candidate, [...fields, "resultPayload"]);
   if (!input) return null;
+  let resultPayload: CompleteScheduledRunRequest["resultPayload"];
+  if (!original) {
+    const body = ClosedInput.capture(input.value("resultPayload"), ["version", "result", "error"]);
+    if (!body || body.value("version") !== 1) return null;
+    const result = body.value("result"), error = body.value("error");
+    if ((result !== null && typeof result !== "string") || (error !== null && typeof error !== "string")) return null;
+    resultPayload = Object.freeze({ version: 1, result: result as string | null, error: error as string | null });
+    if (input.value("status") === "success" && input.value("resultRef") !== `task_run_result:${input.value("runId")}`) return null;
+  }
   const fence = fenceFrom(input), effect = parseEffect(input.value("effect")), status = input.value("status"), durationMs = input.value("durationMs");
   const resultRef = input.value("resultRef"), errorCode = input.value("errorCode"), completedAt = canonicalInstant(input.value("completedAt"));
   const intents = arrayOf(input.value("outboxIntents"), 100, parseOutbox);
@@ -303,7 +313,7 @@ export function normaliseComplete(candidate: unknown): CompleteScheduledRunReque
     || (resultRef !== null && !text.opaque(resultRef)) || (errorCode !== null && !text.code(errorCode))
     || (status === "success" ? resultRef === null || errorCode !== null : resultRef !== null || errorCode === null)
     || new Set(intents.map((entry) => entry.outboxId)).size !== intents.length) return null;
-  return hashMatches({ ...fence, effect, status: status as CompleteScheduledRunRequest["status"], durationMs, resultRef: resultRef as string | null,
+  return hashMatches({ ...fence, effect, ...(original ? {} : { resultPayload }), status: status as CompleteScheduledRunRequest["status"], durationMs, resultRef: resultRef as string | null,
     errorCode: errorCode as string | null, completedAt, outboxIntents: intents });
 }
 

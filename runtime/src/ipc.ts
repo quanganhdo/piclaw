@@ -1,3 +1,5 @@
+import { admitSqliteWrite } from "./db/sqlite-async-admission.js";
+import { getDb } from "./db/connection.js";
 /**
  * ipc.ts – Inter-Process Communication watcher for file-based task commands.
  *
@@ -25,6 +27,7 @@ import { CronExpressionParser } from "cron-parser";
 import { DATA_DIR, getRuntimeTimingConfig } from "./core/config.js";
 import { MediaService } from "./channels/web/media/media-service.js";
 import { createTask, deleteTask, getTaskById, updateTask } from "./db.js";
+import { canonicalScheduledTasksSql } from "./db/scheduled-task-definitions.js";
 import type { ScheduledTask } from "./types.js";
 import { createUuid } from "./utils/ids.js";
 import { createLogger, debugSuppressedError } from "./utils/logger.js";
@@ -377,6 +380,7 @@ export async function processMessageCommand(data: JsonRecord, deps: IpcDeps): Pr
  * which operation is performed (schedule, pause, resume, cancel, etc.).
  */
 export async function processTaskCommand(data: JsonRecord, deps: IpcDeps): Promise<void> {
+  data = structuredClone(data);
   const commandType = getStringField(data, "type");
 
   switch (commandType) {
@@ -409,12 +413,12 @@ export async function processTaskCommand(data: JsonRecord, deps: IpcDeps): Promi
           return;
         }
 
-        createTask({
+        const record = {
           id: createUuid("task"),
           chat_jid: chatJid,
           prompt: validated.command || "",
           model: null,
-          task_kind: "shell",
+          task_kind: "shell" as const,
           command: validated.command || null,
           cwd: cwdResult.cwd,
           timeout_sec: getFiniteNumberField(data, "timeout_sec") ?? null,
@@ -422,9 +426,11 @@ export async function processTaskCommand(data: JsonRecord, deps: IpcDeps): Promi
           schedule_type: scheduleTypeValue,
           schedule_value: String(scheduleValue),
           next_run: nextRun,
-          status: "active",
+          status: "active" as const,
           created_at: new Date().toISOString(),
-        });
+        };
+        const database = getDb();
+        await admitSqliteWrite(database, () => { if (getDb() !== database) throw Error("IPC database changed"); createTask(record); });
         break;
       }
 
@@ -449,12 +455,12 @@ export async function processTaskCommand(data: JsonRecord, deps: IpcDeps): Promi
         model = resolved.model;
       }
 
-      createTask({
+      const record = {
         id: createUuid("task"),
         chat_jid: chatJid,
         prompt,
         model,
-        task_kind: "agent",
+        task_kind: "agent" as const,
         command: null,
         cwd: null,
         timeout_sec: null,
@@ -462,9 +468,11 @@ export async function processTaskCommand(data: JsonRecord, deps: IpcDeps): Promi
         schedule_type: scheduleTypeValue,
         schedule_value: String(scheduleValue),
         next_run: nextRun,
-        status: "active",
+        status: "active" as const,
         created_at: new Date().toISOString(),
-      });
+      };
+      const database = getDb();
+      await admitSqliteWrite(database, () => { if (getDb() !== database) throw Error("IPC database changed"); createTask(record); });
       break;
     }
 
@@ -472,8 +480,11 @@ export async function processTaskCommand(data: JsonRecord, deps: IpcDeps): Promi
     case "pause_task": {
       const taskId = getStringField(data, "taskId");
       if (!taskId) return;
-      const t = getTaskById(taskId);
-      if (t) updateTask(taskId, { status: "paused" });
+      const database = getDb();
+      await admitSqliteWrite(database, () => {
+        if (getDb() !== database) throw Error("IPC database changed");
+        if (getTaskById(taskId)) updateTask(taskId, { status: "paused" });
+      });
       break;
     }
 
@@ -481,8 +492,11 @@ export async function processTaskCommand(data: JsonRecord, deps: IpcDeps): Promi
     case "resume_task": {
       const taskId = getStringField(data, "taskId");
       if (!taskId) return;
-      const t = getTaskById(taskId);
-      if (t) updateTask(taskId, { status: "active" });
+      const database = getDb();
+      await admitSqliteWrite(database, () => {
+        if (getDb() !== database) throw Error("IPC database changed");
+        if (getTaskById(taskId)) updateTask(taskId, { status: "active" });
+      });
       break;
     }
 
@@ -491,8 +505,11 @@ export async function processTaskCommand(data: JsonRecord, deps: IpcDeps): Promi
     case "unmute_task": {
       const taskId = getStringField(data, "taskId");
       if (!taskId) return;
-      const t = getTaskById(taskId);
-      if (t) updateTask(taskId, { notify_on_complete: commandType !== "mute_task" });
+      const database = getDb();
+      await admitSqliteWrite(database, () => {
+        if (getDb() !== database) throw Error("IPC database changed");
+        if (getTaskById(taskId)) updateTask(taskId, { notify_on_complete: commandType !== "mute_task" });
+      });
       break;
     }
 
@@ -500,8 +517,11 @@ export async function processTaskCommand(data: JsonRecord, deps: IpcDeps): Promi
     case "cancel_task": {
       const taskId = getStringField(data, "taskId");
       if (!taskId) return;
-      const t = getTaskById(taskId);
-      if (t) deleteTask(taskId);
+      const database = getDb();
+      await admitSqliteWrite(database, () => {
+        if (getDb() !== database) throw Error("IPC database changed");
+        if (getTaskById(taskId)) deleteTask(taskId);
+      });
       break;
     }
 
@@ -619,23 +639,26 @@ export async function processTaskCommand(data: JsonRecord, deps: IpcDeps): Promi
         }
       }
 
-      if (Object.keys(updates).length > 0) updateTask(taskId, updates);
+      if (Object.keys(updates).length > 0) {
+        const database = getDb(), expected = JSON.stringify(t);
+        await admitSqliteWrite(database, () => {
+          if (getDb() !== database || JSON.stringify(getTaskById(taskId)) !== expected) throw Error("IPC task changed before update");
+          updateTask(taskId, updates);
+        });
+      }
       break;
     }
 
     // --- Bulk-delete all completed tasks ---
     case "cleanup_tasks": {
       const chatJid = getStringField(data, "chatJid");
-      const db = (await import("./db/connection.js")).getDb();
-      const completed = db.prepare("SELECT id FROM scheduled_tasks WHERE status = 'completed'").all() as { id: string }[];
-
-      for (const { id } of completed) {
-        db.prepare("DELETE FROM task_run_logs WHERE task_id = ?").run(id);
-      }
-
-      const result = db.prepare("DELETE FROM scheduled_tasks WHERE status = 'completed'").run();
-      const countValue = (result as { changes?: unknown }).changes;
-      const count = typeof countValue === "number" ? countValue : 0;
+      const db = getDb();
+      const count = await admitSqliteWrite(db, () => {
+        if (getDb() !== db) throw Error("IPC database changed");
+        const completed = db.prepare(`WITH tasks AS (${canonicalScheduledTasksSql}) SELECT id FROM tasks WHERE status='completed'`).all() as { id: string }[];
+        for (const { id } of completed) deleteTask(id);
+        return completed.length;
+      });
       if (chatJid) {
         try {
           await deps.sendMessage(chatJid, `Cleaned up ${count} completed task(s).`);

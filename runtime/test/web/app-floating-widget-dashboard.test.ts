@@ -82,3 +82,13 @@ test('buildFloatingWidgetDashboardSnapshot falls back to in-memory state and cla
     { key: 'posts', label: 'Timeline load', value: 100 },
   ]);
 });
+
+
+test('authoritative unknown dashboard snapshots cannot revive captured counts or turn unknown into zero', () => {
+  const snapshot = buildFloatingWidgetDashboardSnapshot({ generatedAt: 'test', request: {}, currentChatJid: 'chat:1', currentRootChatJid: null,
+    contextUsage: { tokens: 777, contextWindow: 10000, percent: 7.77, sessionGeneration: 'stable' },
+    contextPayload: { tokens: null, contextWindow: null, percent: null, sessionGeneration: 'stable', contextUpdate: 'replace' },
+  });
+  expect(snapshot.context).toEqual({ tokens: null, contextWindow: null, percent: null });
+  expect((snapshot.bars as any[])[0].value).toBeNull();
+});

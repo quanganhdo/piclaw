@@ -324,27 +324,17 @@ Relevant files:
 
 ### Recovery and resilience
 
-Blank-turn detection, compaction stall bounding, the recovery chip, and the held-failed-run retry/skip model are documented in [architecture.md](architecture.md) under "Per-chat turn lifecycle and failure model", "Recovery chip", "Blank turn detection", and "Compaction stall guard".
+Native SDK tasks/submissions, host accepted-source records and terminal settlement own recovery. Manual compaction/reset, model/auth controls and read-only history use captured native ports. Legacy prompt loops, compact-then-retry, session-idle waiting, JSONL rotation and control/slash prompt dispatch are retired.
 
-Relevant files:
-- `runtime/src/agent-pool/blank-turn-detection.ts`
-- `runtime/src/agent-pool/prompt-utils.ts` — `waitForSessionIdle`, session idle defaults
-- `runtime/src/agent-pool/automatic-recovery.ts` — auto-recovery classification / retry policy
-- `runtime/src/channels/web/handlers/agent.ts` — web turn finalization, held-failure behavior, retry/skip resolution points
-- `runtime/src/channels/web/runtime/chat-run-control.ts` — explicit retry/skip cursor helpers
-- `runtime/src/db/chat-cursors.ts` — `beginChatRun`, inflight rollback, failed-run storage, rollback-with-error
-- `runtime/src/extensions/smart-compaction.ts` — working-indicator UI hooks
+Contracts and focused evidence:
+- [Native prompt-owner retirement](development/native-prompt-retirement.md)
+- [Native web execution](development/native-web-execution.md)
+- [Native background operations](development/native-background-operations.md)
+- `runtime/test/agent-pool/manual-control-retirement.test.ts`
+- `runtime/test/agent-pool/startup-session-import-boundary.test.ts`
+- `qualification/pi-durable-130/compact.test.ts` and `idle-model.test.ts`
 
-Focused regression tests:
-
-```bash
-bun test \
-  runtime/test/db/chat-cursors.test.ts \
-  runtime/test/channels/web/runtime/chat-run-control.test.ts \
-  runtime/test/channels/web/recovery.test.ts \
-  runtime/test/channels/web/web-channel-recovery-state.test.ts \
-  runtime/test/channels/web/web-channel.test.ts
-```
+Run explicitly selected files through `runtime/scripts/local-test-priority.ts`; use disposable stores and synthetic providers. Old cursor markers, JSONL records and receipts remain historical data, never native execution authority.
 
 ## Layout
 
@@ -370,16 +360,15 @@ Use the `mermaid-fixup.js` helper for any artifact that renders Mermaid diagrams
 
 ## Adding new HTTP endpoints
 
-New `GET /agent/*` or `POST /agent/*` endpoints follow this chain:
+New `GET /agent/*` or `POST /agent/*` endpoints use explicit public wiring:
 
-1. `runtime/src/channels/web/http/dispatch-agent.ts` — register the route
-2. `runtime/src/channels/web/endpoints/channel-endpoint-facade-service.ts` — add handler method
-3. `runtime/src/channels/web/core/web-channel-http-surface-service.ts` — delegate from surface
-4. `runtime/src/channels/web/core/web-channel-contracts.ts` — declare the interface
-5. `runtime/src/channels/web/core/web-channel-prototype.ts` — bind the prototype method
+1. `runtime/src/channels/web/http/dispatch-agent.ts` — register the route.
+2. `runtime/src/channels/web.ts` — implement the public method using the existing focused handler or control/lifecycle service.
+3. `runtime/src/channels/web/core/web-channel-contracts.ts` — declare its public contract.
 
-See `runtime/src/channels/web/agent/agent-commands.ts` (`GET /agent/commands`)
-as the canonical simple example.
+Public endpoint methods call the existing focused handlers with `endpointContexts`; identity reads stay live and native activity/branch projections live in `agent/agent-status.ts`. The endpoint facade, prototype installer, lifecycle namespace and per-message entry adapter are retired. Public HTTP, runtime and lifecycle methods remain on `WebChannel`. Message target parsing remains inside the server gateway's admitted callback, and host input still enters `runInternalDispatch`. The retained runtime bridge owns input authority and extension working-state snapshots. Queue and storage methods call their existing owners directly. Activity comes from current native status and known chat identities, never the legacy AgentSession pool.
+
+Keep authentication/CSRF/security headers in the request router and admission/drain/resource ownership in the server lifecycle gateway. Public URLs, response shapes and control/SSE/terminal arguments remain stable across the web UI.
 
 ## Documentation updates
 

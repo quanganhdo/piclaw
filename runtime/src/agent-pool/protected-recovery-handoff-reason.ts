@@ -41,23 +41,6 @@ export interface ProtectedRecoveryHandoffPresentation {
   nextAction: string;
 }
 
-export interface ProtectedRecoveryHandoffContentBlockFields {
-  reason: ProtectedRecoveryHandoffReason;
-  compaction: ProtectedRecoveryCompactionOutcome;
-  tools_required: boolean;
-  retryable: boolean;
-  recovery_attempts: number;
-  primary_failure_category?: ProtectedRecoveryPrimaryFailureCategory;
-  primary_failure_detail?: string;
-  primary_failure_elapsed_ms?: number;
-  primary_failure_execution_tools?: boolean;
-  primary_failure_had_partial_output?: boolean;
-  primary_failure_had_tool_activity?: boolean;
-  primary_failure_tool_executions?: number;
-  recovery_source_id?: string;
-  recovery_generation?: number;
-}
-
 const MAX_PRIMARY_FAILURE_DETAIL_CHARS = 500;
 const MAX_PRIMARY_FAILURE_ELAPSED_MS = 30 * 24 * 60 * 60 * 1000;
 const MAX_PRIMARY_FAILURE_TOOL_EXECUTIONS = 1_000_000;
@@ -185,29 +168,5 @@ export function formatProtectedRecoveryHandoff(
     nextAction: metadata.retryable
       ? "Send “continue” to resume from the preserved session state."
       : "Start a new session or repair the provider configuration before retrying.",
-  };
-}
-
-export function protectedRecoveryHandoffContentBlockFields(
-  metadata: ProtectedRecoveryHandoffMetadata,
-): ProtectedRecoveryHandoffContentBlockFields {
-  const primaryFailure = normalizePrimaryFailure(metadata.primaryFailure);
-  return {
-    reason: metadata.reason,
-    compaction: metadata.compaction,
-    tools_required: metadata.toolsRequired,
-    retryable: metadata.retryable,
-    recovery_attempts: metadata.recoveryAttempts,
-    ...(primaryFailure ? {
-      primary_failure_category: primaryFailure.category,
-      primary_failure_detail: primaryFailure.detail,
-      primary_failure_elapsed_ms: primaryFailure.elapsedMs,
-      primary_failure_execution_tools: primaryFailure.executionToolsEnabled,
-      primary_failure_had_partial_output: primaryFailure.hadPartialOutput,
-      primary_failure_had_tool_activity: primaryFailure.hadToolActivity,
-      primary_failure_tool_executions: primaryFailure.toolExecutionCount,
-    } : {}),
-    ...(metadata.recoverySourceId ? { recovery_source_id: metadata.recoverySourceId } : {}),
-    ...(Number.isInteger(metadata.recoveryGeneration) ? { recovery_generation: metadata.recoveryGeneration } : {}),
   };
 }

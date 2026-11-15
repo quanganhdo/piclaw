@@ -1,0 +1,168 @@
+import "./src/test-guard.js";
+import {expect, test} from "bun:test";
+import {estimateContextTokens, type Message} from "../../runtime/durable-engine/qualification/ai.ts";
+import {assertModelContextFits} from "../../runtime/durable-engine/src/host-model-context.ts";
+import {outputPreview} from './src/output-preview.ts';
+
+const message = {role: "user", content: "PRIVATE_PROMPT_MUST_NOT_BE_LOGGED", timestamp: 0} as const;
+const registry = {sections: () => [], tools: () => []} as any;
+const target = {contextWindow: 100000, maxTokens: 10000};
+
+test("context-fit refusal explains the actual producer allowance without prompt contents", async () => {
+  expect(() => assertModelContextFits([message], target)).not.toThrow();
+  const small = { ...target, contextWindow: 100 };
+  const output = await outputPreview([message], small);
+  let error: Error | undefined;
+  try { assertModelContextFits([message], small, output); } catch(e) { error=e as Error; }
+  expect(error).toBeInstanceOf(Error);
+  const bytes=Buffer.byteLength(JSON.stringify([message]));
+  expect(error!.message).toBe(`Candidate context estimate exceeded; compact first (serialized input bytes=${bytes}, reported tokens=0, estimated context tokens=${estimateContextTokens([message]).tokens}, input token estimate=${estimateContextTokens([message]).tokens}, producer output reserve=${output.status === 'bounded' ? output.reserveTokens : 'unknown'}, context window=100)`);
+  expect(error!.message).not.toContain(message.content);
+});
+
+test("producer safety room cannot hide transport framing that overflows the actual output cap", async () => {
+  const messages: Message[] = [{role:'toolResult',toolCallId:'id'.repeat(170000),toolName:'lookup',content:[{type:'text',text:'ok'}],isError:false,timestamp:1}];
+  expect(estimateContextTokens(messages).tokens).toBeLessThan(100);
+  expect(() => assertModelContextFits(messages,target)).not.toThrow();
+  const output = await outputPreview(messages,target);
+  expect(output.status).toBe('bounded');
+  expect(() => assertModelContextFits(messages,target,output)).toThrow('Candidate context estimate exceeded');
+});
+
+test("context guard still refuses oversized input", () => {
+  expect(() => assertModelContextFits([{...message, content: "x".repeat(600000)}], target)).toThrow("compact first");
+});
+
+// Image history must not make model switching impossible. Reported usage after an
+// image already includes its provider cost; unmeasured images reserve a ceiling.
+const image = (data = "fixture") => ({ type: "image", mimeType: "image/png", data }) as const;
+const imageUser = (count: number, timestamp = 2, data?: string) =>
+  ({ role: "user", content: [{ type: "text", text: "screenshot" }, ...Array.from({ length: count }, () => image(data))], timestamp }) as Message;
+const imageTool = (timestamp = 2) => ({ role: "toolResult", toolCallId: "view", toolName: "view_image",
+  content: [{ type: "text", text: "(see attached image)" }, image()], isError: false, timestamp }) as Message;
+const visionTarget = { ...target, input: ["text", "image"] as const };
+
+test("measured image history no longer blocks switching", () => {
+  const measured = { ...measuredAssistant(50000), timestamp: 3 };
+  expect(() => assertModelContextFits([imageUser(10, 1), imageTool(2), measured], visionTarget)).not.toThrow();
+  expect(() => assertModelContextFits([imageUser(10, 1), measured], target)).not.toThrow();
+});
+
+test("encoded image bytes are not counted as text tokens", () => {
+  expect(() => assertModelContextFits([imageUser(1, 1, "A".repeat(4000000))], visionTarget)).not.toThrow();
+});
+
+test("unmeasured images reserve a conservative ceiling and still refuse overflow", () => {
+  const measured = measuredAssistant(50000);
+  expect(() => assertModelContextFits([measured, imageUser(1), imageTool(3)], visionTarget)).not.toThrow();
+  let error: Error | undefined;
+  try { assertModelContextFits([measured, imageUser(7)], visionTarget); } catch (e) { error = e as Error; }
+  expect(error?.message).toStartWith("Candidate context estimate exceeded; compact first");
+  expect(error?.message).toContain("unmeasured images=7");
+  expect(() => assertModelContextFits([imageUser(13, 1)], visionTarget)).toThrow("Candidate context estimate exceeded");
+});
+
+test("text-only targets receive SDK image placeholders, not image ceilings", () => {
+  const textTarget = { ...target, input: ["text"] as const };
+  expect(() => assertModelContextFits([measuredAssistant(50000), imageUser(20)], textTarget)).not.toThrow();
+});
+
+function measuredAssistant(tokens: number, signature = "") {
+  return { role: "assistant", api: "qualification", provider: "openai-codex", model: "gpt-6.1-sol", timestamp: 1,
+    content: [{ type: "thinking", thinking: "", thinkingSignature: signature }], stopReason: "stop",
+    usage: { input: tokens, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: tokens,
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } } } as any;
+}
+
+test("reported model-switch rejection follows producer clamping, not a full-output veto or measured metadata bytes", async () => {
+  const measured = measuredAssistant(459016);
+  const agent = {}, tools: any[] = [];
+  const targetBytes = 3430762;
+  measured.content[0].thinkingSignature = "x".repeat(targetBytes - new TextEncoder().encode(JSON.stringify([[measured], agent, tools])).length);
+  expect(new TextEncoder().encode(JSON.stringify([[measured], agent, tools])).length).toBe(targetBytes);
+  const messages = [measured, { role: 'system', content: '', toolsAdded: tools, timestamp: 2 }] as Message[];
+  const large = { contextWindow: 1050000, maxTokens: 128000 }, small = { contextWindow: 500000, maxTokens: 128000 };
+  const largeOutput = await outputPreview(messages, large), smallOutput = await outputPreview(messages, small);
+  expect(() => assertModelContextFits(messages, large, largeOutput)).not.toThrow();
+  expect(() => assertModelContextFits(messages, small, smallOutput)).not.toThrow();
+  // An actual sampling override can defeat clamping; that producer-bound case must still refuse.
+  const fixedOutput = await outputPreview(messages, small, 'openai-completions', { samplingParams: { max_completion_tokens: 128000 } });
+  expect(() => assertModelContextFits(messages, small, fixedOutput)).toThrow('Candidate context estimate exceeded');
+});
+
+test("unmeasured suffix uses the SDK allowance without a second margin and still refuses true overflow", async () => {
+  const measured = measuredAssistant(459016);
+  const trailing = { role: "user", content: "x".repeat(1600000), timestamp: 2 } as const;
+  const target = { contextWindow: 1050000, maxTokens: 128000 };
+  const output = await outputPreview([measured, trailing], target);
+  expect(() => assertModelContextFits([measured, trailing], target, output)).not.toThrow();
+  expect(() => assertModelContextFits([measured, { ...trailing, content: 'x'.repeat(2400000) }], target)).toThrow('Candidate context estimate exceeded');
+});
+
+test("latest applicable usage replaces older historical high-water marks", () => {
+  const old = measuredAssistant(900000);
+  const latest = { ...measuredAssistant(100000), timestamp: 2 };
+  expect(() => assertModelContextFits([old, latest], { contextWindow: 500000, maxTokens: 128000 })).not.toThrow();
+});
+
+test("a replaced prefix cannot reuse older reported usage to hide unmeasured input", () => {
+  const measured = measuredAssistant(1000, "x".repeat(600000));
+  const newerPrefix = { role: "user", content: "x".repeat(600000), timestamp: 2 } as const;
+  expect(() => assertModelContextFits([newerPrefix, measured], target)).toThrow("Candidate context estimate exceeded");
+});
+
+test("unmeasured schemas and invalid usage remain fail closed", () => {
+  const measured = measuredAssistant(1000);
+  const tools = [{ name: "fixture", description: "x".repeat(600000), parameters: {} }] as any;
+  expect(() => assertModelContextFits([...[measured], { role: "system", content: "", toolsAdded: tools, timestamp: 2 }] as any, target)).toThrow("Candidate context estimate exceeded");
+  for (const invalid of [NaN, Infinity, -1]) {
+    const malformed = measuredAssistant(1000); malformed.usage.input = invalid;
+    expect(() => assertModelContextFits([malformed], target)).toThrow("Model context usage unavailable");
+  }
+});
+
+function unmeasuredMetadataFixture(): Message[] {
+  const messages: Message[] = [
+    { role: "user", content: "u".repeat(216289), timestamp: 1 },
+    { role: "toolResult", toolCallId: "call", toolName: "lookup", content: [{ type: "text", text: "result" }],
+      isError: false, details: { raw: "" }, timestamp: 2 },
+  ];
+  const bytes = new TextEncoder().encode(JSON.stringify([messages, {}, []])).length;
+  (messages[1] as any).details.raw = "z".repeat(693468 - bytes);
+  return messages;
+}
+test("zero-usage mid-turn metadata does not turn 693468 serialized bytes into tokens", async () => {
+  const messages = unmeasuredMetadataFixture(), before = JSON.stringify(messages);
+  expect(new TextEncoder().encode(JSON.stringify([messages, {}, []])).length).toBe(693468);
+  expect(estimateContextTokens(messages)).toMatchObject({ tokens: 61799, usageTokens: 0, lastUsageIndex: null });
+  expect(() => assertModelContextFits(messages, { contextWindow: 500000, maxTokens: 128000 })).not.toThrow();
+  expect(JSON.stringify(messages)).toBe(before);
+  const extended = [...messages, { role: 'system', content: 'x'.repeat(115395), timestamp: 3 }] as Message[];
+  const small = { contextWindow: 230000, maxTokens: 128000 };
+  const output = await outputPreview(extended, small);
+  expect(() => assertModelContextFits(extended, small, output)).not.toThrow();
+  const fixedOutput = await outputPreview(extended, small, 'openai-completions', { samplingParams: { max_completion_tokens: 132000 } });
+  expect(() => assertModelContextFits(extended, small, fixedOutput)).toThrow('Candidate context estimate exceeded');
+});
+test("unmeasured metadata after a measured prefix is not model text", () => {
+  const tool = unmeasuredMetadataFixture()[1]!;
+  (tool as any).nestedCalls = [{ raw: "n".repeat(200000) }];
+  const messages = [measuredAssistant(1000), tool];
+  expect(() => assertModelContextFits(messages, target)).not.toThrow();
+  (tool as any).content = [{ type: "text", text: "z".repeat(600000) }];
+  expect(() => assertModelContextFits(messages, target)).toThrow("Candidate context estimate exceeded");
+});
+test("metadata-shaped arguments are text but opaque reasoning signatures are metadata", () => {
+  for (const key of ["details", "signature", "usage", "diagnostics"]) {
+    const call = measuredAssistant(0);
+    call.content = [{ type: "toolCall", id: "call", name: "fixture", arguments: { [key]: "x".repeat(600000) } }];
+    expect(() => assertModelContextFits([call], target)).toThrow("Candidate context estimate exceeded");
+  }
+  expect(() => assertModelContextFits([measuredAssistant(0, "s".repeat(200000))], target)).not.toThrow();
+});
+test("system section and schema payloads remain counted without measurements", () => {
+  for (const message of [
+    { role: "system", content: "", sections: { context: "x".repeat(600000) }, timestamp: 1 },
+    { role: "system", content: "", toolsAdded: [{ name: "fixture", description: "x".repeat(600000), parameters: {} }], timestamp: 1 },
+  ] as Message[]) expect(() => assertModelContextFits([message], target)).toThrow("Candidate context estimate exceeded");
+});

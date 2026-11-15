@@ -12,9 +12,9 @@ function createEventTarget() {
     removeEventListener(type: string, listener: (...args: any[]) => void) {
       listeners.get(type)?.delete(listener);
     },
-    dispatch(type: string) {
+    dispatch(type: string, payload: Record<string, unknown> = {}) {
       for (const listener of listeners.get(type) || []) {
-        listener({ type });
+        listener({ type, ...payload });
       }
     },
     count(type: string) {
@@ -56,6 +56,44 @@ test('bindSseWakeLifecycle reconnects on focus but does not wake on visible-only
   expect(win.count('focus')).toBe(0);
   expect(win.count('pageshow')).toBe(0);
   expect(doc.count('visibilitychange')).toBe(0);
+  expect(win.count('online')).toBe(0);
+});
+
+test('persisted pageshow and online recover without a recorded hidden event, coalescing wake signals', () => {
+  const win = createEventTarget() as any, doc = createEventTarget() as any;
+  doc.visibilityState = 'visible';
+  let now = 1000, wakes = 0;
+  const reconnects: unknown[] = [];
+  const dispose = bindSseWakeLifecycle({ sse: {
+    forceReconnect: options => reconnects.push(options), reconnectIfNeeded: () => false,
+  }, onWake: () => { wakes++; } }, { window: win, document: doc, now: () => now });
+  win.dispatch('pageshow', { persisted: true });
+  win.dispatch('online');
+  win.dispatch('focus');
+  expect(reconnects).toEqual([{ immediate: true }]);
+  expect(wakes).toBe(1);
+  now += 600;
+  win.dispatch('online');
+  expect(reconnects).toHaveLength(2);
+  expect(wakes).toBe(2);
+  dispose();
+  expect(win.count('online')).toBe(0);
+});
+
+test('focus performs stale-aware recovery even without a visibility event and refreshes only when reconnecting', () => {
+  const win = createEventTarget() as any, doc = createEventTarget() as any;
+  doc.visibilityState = 'visible';
+  let stale = false, wakes = 0;
+  const options: unknown[] = [];
+  const dispose = bindSseWakeLifecycle({ sse: { reconnectIfNeeded: option => { options.push(option); return stale; } },
+    onWake: () => { wakes++; } }, { window: win, document: doc });
+  win.dispatch('focus');
+  expect(wakes).toBe(0);
+  stale = true;
+  win.dispatch('focus');
+  expect(wakes).toBe(1);
+  expect(options).toEqual([{ immediate: true }, { immediate: true }]);
+  dispose();
 });
 
 test('bindSseWakeLifecycle reconnects and wakes once after a real return without raw focus reconnect on iOS-style paths', () => {
@@ -83,8 +121,6 @@ test('bindSseWakeLifecycle reconnects and wakes once after a real return without
     window: win,
     document: doc,
     now: () => now,
-    minHiddenMs: 150,
-    dedupeMs: 1000,
     useFocusReconnect: false,
   });
 

@@ -6,7 +6,6 @@ import { describe, expect, test } from "bun:test";
 import "../helpers.js";
 import {
   resolveThinkingAlias,
-  isEffortProvider,
   formatThinkingLevelForDisplay,
   usesLegacyMaxThinkingAlias,
 } from "../../src/agent-control/agent-control-helpers.js";
@@ -26,15 +25,6 @@ describe("thinking level alias helpers", () => {
     expect(resolveThinkingAlias("high", legacyMax)).toBe("high");
     expect(resolveThinkingAlias("unknown", legacyMax)).toBe("unknown");
     expect(resolveThinkingAlias("max", null)).toBe("max");
-  });
-
-  test("isEffortProvider identifies Anthropic as effort-terminology provider", () => {
-    expect(isEffortProvider("anthropic")).toBe(true);
-    expect(isEffortProvider("Anthropic")).toBe(true);
-    expect(isEffortProvider("ANTHROPIC")).toBe(true);
-    expect(isEffortProvider("openai")).toBe(false);
-    expect(isEffortProvider(null)).toBe(false);
-    expect(isEffortProvider(undefined)).toBe(false);
   });
 
   test("formatThinkingLevelForDisplay preserves native xhigh and max", () => {

@@ -1,3 +1,4 @@
+import { admitSqliteWrite } from '../../db/sqlite-async-admission.js';
 import { Result, type Result as ResultValue } from "../contracts/result.js";
 import type Database from "bun:sqlite";
 
@@ -72,7 +73,7 @@ export class CurrentPiclawOperationMediaStore implements OperationMediaStore {
         return this.failure("create", request, "unsupported_media");
       }
 
-      const outcome = this.database.transaction((): MediaCreateOutcome => {
+      const outcome = await admitSqliteWrite(this.database, (): MediaCreateOutcome => {
         const byKey = this.findUploadByKey(request.effect.idempotencyKey);
         if (byKey) return byKey.request_hash === request.effect.requestHash
           ? { ok: true, ref: { mediaId: byKey.media_id, sha256: byKey.sha256 }, duplicate: true }
@@ -105,7 +106,7 @@ export class CurrentPiclawOperationMediaStore implements OperationMediaStore {
           );
         }
         return { ok: true, ref: Object.freeze({ mediaId, sha256: request.sha256 }), duplicate: false };
-      }).immediate();
+      });
 
       if (!outcome.ok) return this.failure("create", request, outcome.tag);
       if (outcome.duplicate) return this.success("create", request, outcome.ref, "duplicate");
@@ -128,7 +129,7 @@ export class CurrentPiclawOperationMediaStore implements OperationMediaStore {
     }
 
     try {
-      const outcome = this.database.transaction((): MediaBindingOutcome => {
+      const outcome = await admitSqliteWrite(this.database, (): MediaBindingOutcome => {
         const byKey = this.database.prepare(
           "SELECT * FROM service_effect_operation_media WHERE idempotency_key = ?",
         ).get(request.effect.idempotencyKey) as BindingRow | undefined;
@@ -159,7 +160,7 @@ export class CurrentPiclawOperationMediaStore implements OperationMediaStore {
           request.mediaId, request.role, request.boundAt,
         );
         return { ok: true, binding, duplicate: false };
-      }).immediate();
+      });
 
       if (!outcome.ok) return this.failure("bindToOperation", request, outcome.tag);
       if (outcome.duplicate) return this.success("bindToOperation", request, outcome.binding, "duplicate");
@@ -220,7 +221,7 @@ export class CurrentPiclawOperationMediaStore implements OperationMediaStore {
     }
     try {
       this.runtime.hitFault("before_delete_transaction");
-      const outcome = this.database.transaction((): MediaDeleteOutcome => {
+      const outcome = await admitSqliteWrite(this.database, (): MediaDeleteOutcome => {
         const prior = this.database.prepare(
           "SELECT request_hash, deleted FROM service_effect_media_deletions WHERE idempotency_key = ?",
         ).get(request.effect.idempotencyKey) as { request_hash: string; deleted: number } | undefined;
@@ -249,7 +250,7 @@ export class CurrentPiclawOperationMediaStore implements OperationMediaStore {
           VALUES (?, ?, ?, ?, ?)
         `).run(request.effect.idempotencyKey, request.effect.requestHash, request.mediaId, request.expectedSha256, deleted ? 1 : 0);
         return { ok: true, deleted, duplicate: false };
-      }).immediate();
+      });
 
       if (!outcome.ok) return this.failure("deleteIfUnreferenced", request, outcome.tag);
       if (outcome.duplicate) return this.success("deleteIfUnreferenced", request, outcome.deleted, "duplicate");

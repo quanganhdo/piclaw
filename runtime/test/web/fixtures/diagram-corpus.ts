@@ -1,0 +1,21 @@
+/** Small semantic fixtures: old renderer types first, then representative Pele additions. */
+export const DIAGRAM_CORPUS = [
+  { name: 'flowchart', type: 'flowchart', source: 'flowchart LR\nA[Input] --> B[Output]', labels: ['Input', 'Output'] },
+  { name: 'semicolon', type: 'flowchart', source: 'graph LR; A[Input]-->B[Output]', labels: ['Input', 'Output'] },
+  { name: 'shapes-and-edges', type: 'flowchart', source: 'flowchart TD\nA([Start]) -->|ready| B{Choice}\nB -.-> C[(Store)]\nB ==> D((End))\nC --> D', labels: ['Start', 'Choice', 'Store', 'End', 'ready'] },
+  { name: 'subgraph', type: 'flowchart', source: 'flowchart LR\nsubgraph S[Group]\ndirection TB\nA[First] --> B[Second]\nend\nB --> C[Third]', labels: ['Group', 'First', 'Second', 'Third'] },
+  { name: 'cycle', type: 'flowchart', source: 'graph LR\nA[First] --> B[Second]\nB --> C[Third]\nC --> A', labels: ['First', 'Second', 'Third'] },
+  { name: 'sequence', type: 'sequence', source: 'sequenceDiagram\nparticipant Alice\nparticipant Bob\nAlice->>Bob: Hello\nactivate Bob\nBob-->>Alice: Reply\ndeactivate Bob', labels: ['Alice', 'Bob', 'Hello', 'Reply'] },
+  { name: 'class', type: 'class', source: 'classDiagram\nAnimal <|-- Dog\nAnimal : +String name', labels: ['Animal', 'Dog', 'name'] },
+  { name: 'state', type: 'state', source: 'stateDiagram-v2\n[*] --> Idle\nIdle --> Busy\nBusy --> [*]', labels: ['Idle', 'Busy'] },
+  { name: 'er', type: 'er', source: 'erDiagram\nCUSTOMER ||--o{ ORDER : places', labels: ['CUSTOMER', 'ORDER', 'places'] },
+  { name: 'xychart', type: 'xychart', source: 'xychart-beta\nx-axis [Jan, Feb, Mar]\ny-axis "Count" 0 --> 10\nbar [2, 5, 8]', labels: ['Jan', 'Feb', 'Mar', 'Count'] },
+  { name: 'gantt', type: 'gantt', source: 'gantt\ndateFormat YYYY-MM-DD\nsection Work\nTask :a1, 2026-10-18, 2d', labels: ['Task', 'Work'] },
+  { name: 'pie', type: 'pie', source: 'pie title Counts\n"One" : 4\n"Two" : 6', labels: ['Counts', 'One', 'Two'] },
+  { name: 'mindmap', type: 'mindmap', source: 'mindmap\n  root((Root))\n    One\n    Two', labels: ['Root', 'One', 'Two'] },
+  { name: 'timeline', type: 'timeline', source: 'timeline\ntitle Releases\n2025 : One\n2026 : Two', labels: ['Releases', 'One', 'Two'] },
+  { name: 'frontmatter', type: 'flowchart', source: '---\ntitle: Pipeline\n---\nflowchart LR\nA[Input] --> B[Output]', labels: ['Pipeline', 'Input', 'Output'] },
+  { name: 'directives', type: 'flowchart', source: '%%{init: {"theme": "dark"}}%%\nflowchart LR\n%% comment\nA[Input] --> B[Output]', labels: ['Input', 'Output'] },
+  { name: 'unicode-and-breaks', type: 'flowchart', source: 'flowchart LR\naccTitle: Pipeline\naccDescr: First to second\nA["Café 日本語<br/>Line two"] --> B["A & B"]', labels: ['Café', '日本語', 'Line two', 'A & B'] },
+  { name: 'authored-style', type: 'flowchart', source: 'flowchart LR\nA[Draft] --> B[Done]\nstyle B fill:#879a39,stroke:#66800b,color:#fffcf0', labels: ['Draft', 'Done'] },
+] as const;

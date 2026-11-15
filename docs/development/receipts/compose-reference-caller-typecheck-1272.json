@@ -1,0 +1,57 @@
+{
+  "issue": 1272,
+  "parent": 1270,
+  "unmodifiedSourceRevision": "b26e64b2ebe9da122c8b7aa4a24dd770545dad4f",
+  "oldCount": 90,
+  "oldSemanticIdentitiesRetained": 90,
+  "newExpandedCoverage": 299,
+  "newlyCheckedOutOfSeamDiagnostics": 209,
+  "oldSemanticIdentityWaivers": 0,
+  "sourceChanges": 0,
+  "strictFunctionTypes": true,
+  "mainAppIncluded": true,
+  "rawCompilerGreen": false,
+  "newCoverageWithoutVariance": 291,
+  "newVarianceDiagnostics": 8,
+  "backendPhysicalDelta": 0,
+  "backendNonblankDelta": 0,
+  "forwardingStageCredit": 0,
+  "lifecycleOwnerCredit": 0,
+  "productionSourceChanges": 0,
+  "compilerGuardRulesChanged": false,
+  "oldSourceSuppressionsAdded": 0,
+  "counterfactuals": [
+    {
+      "name": "non-callable-ref",
+      "exitCode": 1,
+      "actualCaller": "web/src/app.ts:370",
+      "expectedCode": "TS2322"
+    },
+    {
+      "name": "misspelled-ref-member",
+      "exitCode": 1,
+      "actualCaller": "web/src/app.ts:370",
+      "expectedCode": "TS2561"
+    },
+    {
+      "name": "wrong-callback-parameter",
+      "exitCode": 1,
+      "actualCaller": "web/src/app.ts:370",
+      "expectedCode": "TS2322"
+    }
+  ],
+  "focused": {
+    "cases": 11,
+    "assertions": 48,
+    "files": 4,
+    "green": true
+  },
+  "browser": {
+    "kind": "disposable Chromium with own Bun server",
+    "cases": 1,
+    "assertions": 3,
+    "green": true
+  },
+  "hookTdzGreen": true,
+  "expandedScopedCommandGreen": true
+}

@@ -2,6 +2,7 @@ import type Database from "bun:sqlite";
 import type { AuthenticatedPrincipal } from "../core/access-types.js";
 import { createUuid } from "../utils/ids.js";
 import { ChatAccessDenied, resolveAuthorisedChat } from "./session-ownership.js";
+import { requireLegacyRoutingMutation } from "./native-routing-policy.js";
 
 export interface OwnedForkRecord {
   branch_id: string;
@@ -59,6 +60,7 @@ export function commitOwnedFork(database: Database, principal: AuthenticatedPrin
   JSON.parse(seedJson);
   return database.transaction(() => {
     const existing = findOwnedFork(database, principal, sourceChatJid, requestId);
+    requireLegacyRoutingMutation(database, "owned legacy child fork");
     if (existing) return existing;
     const source = ownedBranch(database, principal, sourceChatJid, "session.fork");
     const branchId = createUuid("branch");
@@ -85,7 +87,7 @@ export function readOwnedForkSeed(database: Database, principal: AuthenticatedPr
   const row = database.query(`SELECT o.owner_user_id,o.seed_json,s.chat_jid AS source_chat_jid FROM owned_fork_operations o
     JOIN chat_branches s ON s.branch_id=o.source_branch_id WHERE o.target_branch_id=?`).get(target.branch_id) as { owner_user_id: string; seed_json: string | null; source_chat_jid: string } | null;
   if (!row) {
-    // A family child without an atomic fork operation cannot fall back to a legacy file seed.
+    // An owned child without an atomic fork operation cannot fall back to a legacy file seed.
     if (target.parent_branch_id) throw new ChatAccessDenied();
     return null;
   }

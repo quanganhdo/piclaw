@@ -1,6 +1,10 @@
-# Delegate provider host foundations
+# Delegate provider host foundations — retired prototype
 
-The injected host modules exercise a parent-executed Delegate request lifecycle against the merged budget ledger. They make no provider requests and install no runtime API. Production integration needs an authoritative provider/authentication settlement contract that Pi 1.0.1 does not expose through its public streams.
+The unregistered parent-provider-proxy prototype described below is removed from executable Core under #1575. It never installed a production runtime API or provider. Shipping native Delegate uses `runtime/durable-engine/src/host-delegate-tool.ts` and captured native request/accounting owners; the shared budget ledger, `model-request-accounting.ts`, pricing and active provider/MCP services remain.
+
+This document preserves the original design, qualification limits and synthetic measurements. Original source and profile fixtures remain in immutable [fc587de57 history](https://github.com/rcarmo/piclaw/tree/fc587de57babb118b5f0fd2ace406548bd04bbfa/runtime/src/addons). The removed scope/executor/HTTP/delivery/stream-installer state machines have no compatibility replacement. Old profile numbers are not current production evidence or a removal-speedup claim.
+
+The injected host modules exercised a parent-executed Delegate request lifecycle against the merged budget ledger. They make no provider requests and install no runtime API. Production integration needs an authoritative provider/authentication settlement contract that Pi 1.0.1 does not expose through its public streams.
 
 ## Implemented
 

@@ -103,15 +103,16 @@ describe("attachHeaderAnchor", () => {
     scrollTop?: number;
   } = {}) {
     const listeners = { add: 0, remove: 0 };
+    const scrollHandlers = new Set<() => void>();
     return {
       _overflowAnchor: opts.overflowAnchor ?? "auto",
       _flexDirection: opts.flexDirection ?? "column-reverse",
       scrollHeight: opts.scrollHeight ?? 5000,
       clientWidth: opts.clientWidth ?? 300,
       scrollTop: opts.scrollTop ?? 1000,
-      listeners,
-      addEventListener() { listeners.add++; },
-      removeEventListener() { listeners.remove++; },
+      listeners, scrollHandlers,
+      addEventListener(_event: string, handler: () => void) { listeners.add++; scrollHandlers.add(handler); },
+      removeEventListener(_event: string, handler: () => void) { listeners.remove++; scrollHandlers.delete(handler); },
     };
   }
   const asEl = (s: unknown) => s as unknown as HTMLElement;
@@ -191,6 +192,21 @@ describe("attachHeaderAnchor", () => {
     s.scrollHeight = 5200;
     roCallbacks[0]();
     expect(s.scrollTop).toBe(1000); // stale target not applied
+  });
+
+  it("multiple anchors share user-scroll cancellation and one disposal lifecycle", () => {
+    const s = makeScroller();
+    const a = attachHeaderAnchor(asEl(s), asEl({}));
+    const b = attachHeaderAnchor(asEl(s), asEl({}));
+    expect(s.listeners.add).toBe(1);
+    a.mark(); b.mark();
+    for (const handler of s.scrollHandlers) handler();
+    s.scrollHeight = 5300;
+    for (const callback of roCallbacks) callback();
+    expect(s.scrollTop).toBe(1000); // A user scroll abandons both anchors.
+    a.dispose(); expect(s.listeners.remove).toBe(0);
+    b.dispose(); expect(s.listeners.remove).toBe(1);
+    expect(s.scrollHandlers.size).toBe(0);
   });
 
   it("shares one scroll listener across pills and removes it only on last dispose", () => {

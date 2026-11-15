@@ -1,0 +1,33 @@
+{
+  "name": "@piclaw/durable-engine",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./default-application-runtime": "./src/default-application-runtime.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "rehearse": "bun src/rehearse.ts"
+  },
+  "dependencies": {
+    "@earendil-works/chord": "1.5.2",
+    "@earendil-works/pi-ai": "1.5.2",
+    "@earendil-works/pi-codemode": "1.5.2",
+    "@earendil-works/pi-durable": "1.5.2",
+    "@earendil-works/pi-telemetry": "1.5.2",
+    "typebox": "1.4.3"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.4",
+    "typescript": "7.0.2"
+  },
+  "overrides": {
+    "@earendil-works/chord": "1.5.2",
+    "@earendil-works/pi-ai": "1.5.2",
+    "@earendil-works/pi-codemode": "1.5.2",
+    "@earendil-works/pi-durable": "1.5.2",
+    "@earendil-works/pi-telemetry": "1.5.2"
+  }
+}

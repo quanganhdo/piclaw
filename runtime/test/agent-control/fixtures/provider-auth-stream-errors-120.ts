@@ -6,14 +6,14 @@ import { fileURLToPath } from "node:url";
 import type { Model, Provider } from "@earendil-works/pi-ai";
 import { createRuntimeModelServices } from "../../../src/agent-pool/model-services.js";
 import { FileCredentialStore } from "../../../src/agent-pool/credential-store.js";
-import { classifyOpaqueAgentFailure } from "../../../src/agent-pool/automatic-recovery.js";
+import { classifyOpaqueAgentFailure } from "../../helpers/recovery-classification.js";
 import { addLogSink, removeLogSink, type LogRecord } from "../../../src/utils/logger.js";
 
 const mode = process.argv[2];
 assert.ok(["refresh-permanent", "refresh-transient", "malformed-storage", "storage-eacces", "storage-elocked", "unknown-resolution", "missing-config", "refresh-retry-success"].includes(mode));
 const packageRoot = dirname(dirname(fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"))));
-assert.equal(JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8")).version, "1.2.0");
-assert.equal(JSON.parse(readFileSync(fileURLToPath(new URL("../package.json", import.meta.resolve("@earendil-works/pi-ai"))), "utf8")).version, "1.2.0");
+assert.equal(JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8")).version, "1.5.2");
+assert.equal(JSON.parse(readFileSync(fileURLToPath(new URL("../package.json", import.meta.resolve("@earendil-works/pi-ai"))), "utf8")).version, "1.5.2");
 const root = mkdtempSync(join(tmpdir(), "piclaw-auth-stream-"));
 const sentinel = "PRIVATE-STREAM-CREDENTIAL-SENTINEL";
 let requests = 0, inference = 0, refreshes = 0;
@@ -88,7 +88,7 @@ try {
     results.push({ method, status: "pass", failureCategory: category, refreshAttempts: refreshes - before });
   }
   assert.ok(!JSON.stringify(logs).includes(sentinel)); assert.equal(requests, 0); assert.equal(inference, 0);
-  console.log(JSON.stringify({ version: "1.2.0", mode, results, networkRequests: requests, inference, logsRedacted: true }));
+  console.log(JSON.stringify({ version: "1.5.2", mode, results, networkRequests: requests, inference, logsRedacted: true }));
 } finally { globalThis.fetch = originalFetch; removeLogSink(sink); rmSync(root, { recursive: true, force: true }); }
 // This owned fixture has no public runtime disposal API. Explicitly terminate
 // after assertions and filesystem cleanup; natural runtime teardown is outside

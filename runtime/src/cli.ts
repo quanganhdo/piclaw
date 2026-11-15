@@ -28,7 +28,6 @@ Usage:
   piclaw [options]
   piclaw --post <chat_jid> <message>
   piclaw keychain <command> [args]
-  piclaw account-recovery preview|issue|serve [args]
   piclaw access-migration preview|prepare-copy|promote-copy [args]
 
 Options:
@@ -46,22 +45,6 @@ Keychain commands:
   piclaw keychain list
   piclaw keychain delete <name>
 
-Offline family administrator recovery (no activation or restart):
-  piclaw account-recovery preview --user-id <id> --username <name> --method totp|passkey --origin https://host
-  piclaw account-recovery issue --user-id <id> --username <name> --method totp|passkey --origin https://host
-    --backup <new.sqlite> --output <new.json> --writers-stopped --key-backup-confirmed --confirm "RECOVER <name>"
-  piclaw account-recovery serve --recovery-id <id> --origin https://host --writers-stopped
-    --confirm "SERVE RECOVERY <id>" [--host <addr>] [--port <number>] [--tls-cert <path>] [--tls-key <path>]
-  Backup/output parents must exist with permissions 0700. Stop all writers first; retain the original bootstrap key.
-
-Offline family migration and promotion (source/prepared copies unchanged):
-  piclaw access-migration preview --output <new-inventory.json>
-  piclaw access-migration prepare-copy --plan <reviewed-version-five-plan.json> --destination <new-prepared.sqlite>
-    --writers-stopped --backup-set-confirmed --confirm "PREPARE OWNERSHIP COPY"
-  piclaw access-migration promote-copy --prepared <new-prepared.sqlite> --destination <new-promoted.sqlite>
-    --source-snapshot <sha256> --writers-stopped --backup-set-confirmed --confirm "PROMOTE FAMILY COPY"
-  Review inventory.plan and fill every owner ID explicitly. Only complete version-five prepared copies can promote.
-  Version-four/five import-default TOTP plans also require --legacy-totp-file <private-secret-and-code.json>.
 `;
 
 /** Read the version string from package.json. */
@@ -83,7 +66,7 @@ function getFlagValue(args: string[], flag: string): string | undefined {
   return value;
 }
 
-const CLI_SUBCOMMANDS = new Set(["keychain", "account-recovery", "access-migration"]);
+const CLI_SUBCOMMANDS = new Set(["keychain"]);
 const RUNTIME_FLAGS_WITH_VALUES = new Set([
   "-w",
   "--workspace",
@@ -235,7 +218,7 @@ async function handleKeychainCommand(args: string[]): Promise<void> {
     }
     case "delete": {
       if (!name) throw new Error("Keychain name is required.");
-      const removed = deleteKeychainEntry(name);
+      const removed = await deleteKeychainEntry(name);
       if (!removed) {
         console.log(`Keychain entry not found: ${name}`);
       } else {
@@ -261,16 +244,8 @@ export async function handleCliOptions(args = process.argv.slice(2)): Promise<bo
   }
 
   const commandArgs = consumeLeadingGlobalOptions(args);
-  if (commandArgs[0] === 'access-migration') {
-    try { const { handleAccessMigration } = await import('./cli-access-migration.js'); await handleAccessMigration(commandArgs.slice(1)); }
-    catch { console.error('Migration copy preparation failed. Check offline locking, source topology, reviewed snapshot/mappings and new private destination. Source is unchanged; no activation was attempted.'); process.exitCode = 1; }
-    return true;
-  }
-  if (commandArgs[0] === 'account-recovery') {
-    try { const { handleOperatorRecovery } = await import('./cli-operator-recovery.js'); await handleOperatorRecovery(commandArgs.slice(1)); }
-    catch { console.error('Offline recovery failed. Check the stopped runtime, migrated family store, exact target, factor policy, protected output paths and confirmations. No grant is printed; inspect the protected outputs before retrying.'); process.exitCode = 1; }
-    return true;
-  }
+
+
   if (commandArgs[0] === "--post") {
     try {
       await handlePostCommand(commandArgs.slice(1));

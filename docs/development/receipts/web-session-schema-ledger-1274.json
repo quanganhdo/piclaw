@@ -1,0 +1,171 @@
+{
+  "version": 1,
+  "issue": 1274,
+  "epic": 1270,
+  "implementationBase": "93ce455ced4e0a4f43f98c6e9f5f99293d6cc3d3",
+  "metric": "Same stable #1270 tracked handwritten runtime/src + runtime/durable-engine/src TS/JS rules and exact exclusions; physical includes comments/blanks.",
+  "before": {
+    "files": 716,
+    "physicalLOC": 146065,
+    "nonblankLines": 135578
+  },
+  "after": {
+    "files": 716,
+    "physicalLOC": 146054,
+    "nonblankLines": 135569
+  },
+  "delta": {
+    "files": 0,
+    "physicalLOC": -11,
+    "nonblankLines": -9
+  },
+  "productionDiff": {
+    "additions": 17,
+    "deletions": 28,
+    "files": 2
+  },
+  "outsideRootProductionAdditions": 0,
+  "relocatedProductionImplementation": 0,
+  "migration": {
+    "owner": "host.web-sessions",
+    "id": "session-identity-index-v1",
+    "order": 1,
+    "sql": "CREATE UNIQUE INDEX IF NOT EXISTS idx_web_sessions_session_id ON web_sessions(session_id) WHERE session_id IS NOT NULL",
+    "sha256": "a897363051c4d0ba030a53e4300de051bc82d67dca917fb5d8a4791a913c2ad8",
+    "historicalIntroduction": "19c2377b7",
+    "existingLedger": "piclaw_schema_migrations",
+    "newFrameworkOrSchemaTable": false
+  },
+  "removed": {
+    "bespokeEnsureHelpers": {
+      "before": [
+        "ensureWebSessionColumns",
+        "ensureWebSessionIdentity"
+      ],
+      "after": []
+    },
+    "selectedAlreadyUpgradedColumnProbes": {
+      "before": 2,
+      "after": 1,
+      "independentAuthLabelProbeUnchanged": true
+    },
+    "selectedIndexDdlReplay": {
+      "before": 1,
+      "after": 0
+    },
+    "redundantStandaloneLedgerEnsure": {
+      "before": 1,
+      "after": 0
+    }
+  },
+  "retained": [
+    "outer IMMEDIATE initialization transaction and nested owned savepoints",
+    "column shape/failed-ALTER verifier",
+    "owner/id/order/checksum/receipt timestamp checks",
+    "actual canonical index postcondition; no automatic repair",
+    "root/SDK/scheduler SQL roles, pragmas and checkpoint ownership",
+    "caller FK policy restoration",
+    "legacy/SDK ledgers, FTS/media markers, maintenance/VACUUM",
+    "independent session/passkey label schema owner"
+  ],
+  "historicalStates": [
+    "neither selected column",
+    "auth_method only",
+    "session_id only",
+    "both columns without index",
+    "canonical existing index",
+    "fully upgraded populated login/bearer/label rows"
+  ],
+  "safetyChanges": [
+    "missing/incompatible selected web-session columns now fail closed through existing bounded verifier",
+    "unknown index declarations cannot receive a receipt",
+    "missing already-owned index is refused without repair"
+  ],
+  "validation": {
+    "definingOriginal": {
+      "pass": 0,
+      "fail": 13,
+      "assertions": 14
+    },
+    "definingFinal": {
+      "pass": 17,
+      "assertions": 73
+    },
+    "focused": {
+      "pass": 50,
+      "assertions": 160,
+      "files": 5
+    },
+    "diskStartup": {
+      "pass": 6,
+      "assertions": 12,
+      "modes": [
+        "fresh",
+        "empty-file",
+        "existing",
+        "rollback",
+        "late-rollback",
+        "existing-rollback"
+      ]
+    },
+    "selectedBackupAndLedger": {
+      "pass": 4,
+      "assertions": 14
+    },
+    "actualNativeFactory": {
+      "scenario": "native-events",
+      "pass": 1,
+      "assertions": 182
+    },
+    "typeProjects": [
+      "runtime/tsconfig.json",
+      "runtime/durable-engine/tsconfig.json",
+      "qualification/pi-durable-130/tsconfig.json"
+    ],
+    "strictNewTestTypes": true,
+    "circular": {
+      "reachableFiles": 546,
+      "cycles": 0
+    },
+    "envObservationFresh": true,
+    "importBoundaries": {
+      "baselineFindings": 25,
+      "candidateFindings": 25,
+      "byteIdentical": true,
+      "green": false
+    },
+    "packageDryRun": {
+      "ignoreScripts": true,
+      "currentSourceOwnersPresent": 4,
+      "testFixtureAbsent": true
+    },
+    "approvedAddonInternalConsumers": 0
+  },
+  "correctedFixture": {
+    "retainedFailureLog": "1274-focused-first.log",
+    "cause": "full-row already-upgraded fixture omitted existing independent auth-label column",
+    "fix": "include full historical label column; retain full-row comparison and strengthen duplicate-ID failure to exact UNIQUE constraint",
+    "assertionsOrTimeoutsWeakened": false
+  },
+  "creditNote": "Actual redundant ensure/control/probe deletion; no type/comment/doc/test or prior1699/1700/1701 credit, no moved implementation, no global query/performance claim. Source-only; no live schema/backup/restore/install/restart operation. Final merged-head acceptance still required.",
+  "hostedCacheFixtureCorrection": {
+    "failedCI": 40779132244,
+    "hostPassesBeforeFailure": 7145,
+    "failedCase": "cached auth statements rebind, observe revocation and expire across disk database lifecycles",
+    "localReproduction": {
+      "pass": 0,
+      "fail": 1,
+      "assertions": 1
+    },
+    "cause": "replacement-table fixture dropped its already-owned canonical index; new startup postcondition correctly refused inconsistent schema",
+    "fix": "fixture rebuilds canonical index with replacement table",
+    "productionChanges": 0,
+    "assertionsAndTimeoutsUnchanged": true,
+    "missingOwnedIndexGuardStillRejects": true,
+    "after": {
+      "pass": 18,
+      "assertions": 75,
+      "files": 2
+    }
+  }
+}

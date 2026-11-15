@@ -1,0 +1,121 @@
+{
+  "version": 1,
+  "issue": 1279,
+  "epic": 1270,
+  "partial": true,
+  "safetyRepairNotReduction": true,
+  "implementationBase": "bb0a5012ad53317ad79df750c87f6eec14863555",
+  "metric": "Same stable #1270 tracked handwritten runtime/src + runtime/durable-engine/src rules/exclusions; physical includes comments/blanks.",
+  "before": {
+    "files": 711,
+    "physicalLOC": 144438,
+    "nonblankLines": 134047
+  },
+  "after": {
+    "files": 711,
+    "physicalLOC": 144442,
+    "nonblankLines": 134052
+  },
+  "delta": {
+    "files": 0,
+    "physicalLOC": 4,
+    "nonblankLines": 5
+  },
+  "productionDiff": {
+    "files": 4,
+    "additions": 41,
+    "deletions": 37
+  },
+  "reductionCredit": 0,
+  "outsideRootProductionAdditions": 0,
+  "relocatedProductionImplementation": 0,
+  "ownership": {
+    "registration": "existingSet with per-call identity entry and idempotent unregister",
+    "reusedCallbackOldNewFenced": true,
+    "startedCleanupNotCancelledOrReplayed": true,
+    "stateDispose": "confirmed local timer cleanup then unregister/mark disposed",
+    "failedCleanupDoesNotCertifyRelease": true,
+    "lateStatusAndWakeSealed": true,
+    "gateway": "exact constructed owner passed to existing drain/stop sequence"
+  },
+  "supportingCleanup": {
+    "policyFreeResumeContextFactories": {
+      "before": 2,
+      "after": 0
+    },
+    "unusedCursorCallbackRegistration": {
+      "before": 1,
+      "after": 0
+    },
+    "receiverAndNullThreadSemanticsPreserved": true
+  },
+  "validation": {
+    "originalCases": {
+      "pass": 0,
+      "fail": 4,
+      "assertions": 4
+    },
+    "ownedFixtureFinalCases": [
+      "registration",
+      "started",
+      "service",
+      "gateway",
+      "failure"
+    ],
+    "focused": {
+      "pass": 47,
+      "assertions": 320,
+      "files": 6
+    },
+    "shutdownOrder": {
+      "pass": 3,
+      "assertions": 13
+    },
+    "authMaintenance": {
+      "pass": 2,
+      "assertions": 9
+    },
+    "typeProjects": [
+      "runtime/tsconfig.json",
+      "runtime/durable-engine/tsconfig.json",
+      "qualification/pi-durable-130/tsconfig.json"
+    ],
+    "strictNewFixtureTypes": true,
+    "actualNativeFactory": [
+      {
+        "scenario": "native-events",
+        "pass": 1,
+        "assertions": 182
+      },
+      {
+        "scenario": "native-shutdown-close-recover",
+        "pass": 1,
+        "assertions": 22
+      }
+    ],
+    "circular": {
+      "reachableFiles": 545,
+      "cycles": 0
+    },
+    "envObservationFresh": true,
+    "importBoundaries": {
+      "baselineFindings": 25,
+      "candidateFindings": 25,
+      "byteIdentical": true,
+      "green": false
+    },
+    "packageDryRun": {
+      "ignoreScripts": true,
+      "retainedOwners": 3,
+      "testFixtureAbsent": true
+    }
+  },
+  "remaining": [
+    "AgentPool model/SSH interop ownership teardown",
+    "provider usage listener disposal/fencing"
+  ],
+  "creditNote": "Necessary net-positive safety repair: charge4physical/5nonblankgrowth; zero deletion credit. Parent timestamp/control deletions counted separately, no priorproducer/timercredit. No newregistryframework, native-effectretry or liveoperation.",
+  "originalImplementationBase": "6486b230d16f85ce0efa88dd11e00ee33f647ada",
+  "parentMirrorMerged": true,
+  "retargetedToMain": true
+}

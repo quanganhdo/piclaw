@@ -10,7 +10,6 @@ import {
   formatOpenRouterKeyUsageTitle,
   getComposeHistoryStorageKey,
   readStoredComposeHeight,
-  getModelPickerContextLimit,
   getModelPickerOptionSearchLabel,
   normalizeModelPickerOptions,
   resolveComposeCacheHitMeta,
@@ -147,7 +146,7 @@ test('resolveComposeRunUsageMeta formats latest usage with cache and provider-co
       },
     },
   }, 'openrouter/auto')).toMatchObject({
-    label: 'Last • 5K • CH60.0% • $0.0012',
+    label: 'Last • 5K • CH60.0% • 0.0012 (currency unknown)',
     cacheHitRate: 60,
     costTotal: 0.00123,
     costProvenance: 'provider_reported',
@@ -180,7 +179,7 @@ test('resolveComposeRunUsageMeta preserves explicit 0.0% and unavailable cache s
       costProvenance: 'provider_reported',
     } },
   });
-  expect(explicitZero?.label).toBe('Last • 1K • CH0.0% • $0.0000');
+  expect(explicitZero?.label).toBe('Last • 1K • CH0.0% • 0.0000 (currency unknown)');
   expect(explicitZero?.cacheHitRate).toBe(0);
 
   const unavailable = resolveComposeRunUsageMeta({
@@ -317,10 +316,8 @@ test('slash autocomplete includes all canonical control commands', () => {
   expect(missing).toEqual([]);
 });
 
-test('slash autocomplete exposes the local /meters HUD command with a description', () => {
-  const meters = SLASH_COMMANDS.find((item) => item.name === '/meters');
-  expect(meters).toBeTruthy();
-  expect(meters?.description).toContain('CPU/RAM HUD');
+test('slash autocomplete no longer offers /meters; the meters are always shown', () => {
+  expect(SLASH_COMMANDS.some((item) => item.name === '/meters')).toBe(false);
 });
 
 test('slash autocomplete exposes the local /help keyboard shortcut pane command', () => {
@@ -485,71 +482,40 @@ test('buildReturnedQueuedDraft restores refs and preserves attachment markers in
   });
 });
 
-test('returnQueuedFollowupToEditor restores compose state before removing the queue item', () => {
-  const calls: string[] = [];
-  const textarea = {
-    value: '',
-    selectionStart: 0,
-    selectionEnd: 0,
-    focus: () => { calls.push('focus'); },
-  };
-  const timeoutCallbacks: Array<() => void> = [];
-
-  const result = returnQueuedFollowupToEditor({
-    queuedItem: {
-      row_id: 7,
-      content: [
-        'Channel: web',
-        '',
-        'Rui Carmo @ 2026-04-13T08:40:35.008Z:',
-        '  Please check this later.',
-        '  ',
-        '  Files:',
-        '  - notes/todo.md',
-        '  ',
-        '  Folders:',
-        '  - runtime/web/src/components',
-      ].join('\n'),
-    },
-    setSubmitError: (value: string | null) => { calls.push(`error:${String(value)}`); },
-    setSubmitNotice: (value: string | null) => { calls.push(`notice:${String(value)}`); },
-    setMediaFiles: (value: unknown[]) => { calls.push(`media:${Array.isArray(value) ? value.length : 'x'}`); },
-    onSetFileRefs: (value: string[]) => { calls.push(`files:${value.join(',')}`); },
-    onSetFolderRefs: (value: string[]) => { calls.push(`folders:${value.join(',')}`); },
-    onSetMessageRefs: (value: string[]) => { calls.push(`messages:${value.join(',')}`); },
-    setContent: (value: string) => { calls.push(`content:${value}`); },
-    textareaRef: { current: textarea },
-    resizeTextarea: () => { calls.push('resize'); },
-    scheduleRaf: (callback: () => void) => { calls.push('raf'); callback(); },
-    scheduleTimeout: (callback: () => void) => { calls.push('timeout'); timeoutCallbacks.push(callback); return 0 as any; },
-    onRemoveQueuedFollowup: () => { calls.push('remove'); },
-    logger: { info: () => undefined, warn: () => undefined },
-  });
-
-  expect(result).toBe(true);
-  expect(calls).toEqual([
-    'error:null',
-    'notice:null',
-    'media:0',
-    'files:notes/todo.md',
-    'folders:runtime/web/src/components',
-    'messages:',
-    'content:Please check this later.',
-    'raf',
-    'resize',
-    'focus',
-    'timeout',
-  ]);
-  expect(textarea.value).toBe('Please check this later.');
-  expect(textarea.selectionStart).toBe('Please check this later.'.length);
-  expect(textarea.selectionEnd).toBe('Please check this later.'.length);
-
-  timeoutCallbacks[0]?.();
-  expect(calls).toContain('remove');
-  expect(calls.indexOf('content:Please check this later.')).toBeLessThan(calls.indexOf('remove'));
+test('returnQueuedFollowupToEditor waits for confirmed removal before restoring text, refs and focus', async () => {
+  const calls:string[]=[]; const ack=Promise.withResolvers<boolean>();
+  const textarea={value:'existing draft',selectionStart:0,selectionEnd:0,focus(){calls.push('focus');}};
+  const pending=returnQueuedFollowupToEditor({queuedItem:{row_id:7,content:'Please check this later.\n\nFiles:\n- notes/todo.md\n\nFolders:\n- runtime/web/src/components'},
+    onRemoveQueuedFollowup(){calls.push('remove');return ack.promise;},
+    setSubmitError:v=>calls.push('error:'+v),setSubmitNotice:v=>calls.push('notice:'+v),setMediaFiles:v=>calls.push('media:'+v.length),
+    onSetFileRefs:v=>calls.push('files:'+v.join(',')),onSetFolderRefs:v=>calls.push('folders:'+v.join(',')),onSetMessageRefs:v=>calls.push('messages:'+v.join(',')),
+    setContent:v=>calls.push('content:'+v),textareaRef:{current:textarea},resizeTextarea:()=>calls.push('resize'),scheduleRaf:cb=>cb(),logger:{info(){},warn(){}}});
+  expect(calls).toEqual(['remove']);expect(textarea.value).toBe('existing draft');
+  ack.resolve(true);expect(await pending).toBe(true);
+  expect(calls).toEqual(['remove','error:null','notice:null','media:0','files:notes/todo.md','folders:runtime/web/src/components','messages:','content:Please check this later.','resize','focus']);
+  expect(textarea.value).toBe('Please check this later.');expect(textarea.selectionStart).toBe(textarea.value.length);expect(textarea.selectionEnd).toBe(textarea.value.length);
 });
 
-test('model picker helpers expose searchable names, formatted context windows, and context-fit guards', () => {
+for(const result of [false,undefined,{removed:true},'reject'] as const)test(`failed/unconfirmed queue Return preserves the complete draft: ${String(result)}`,async()=>{
+  const writes:unknown[]=[];const textarea={value:'draft must survive',focus(){throw Error('Rejected Return must not focus');}};
+  const update=(value:unknown)=>writes.push(value);
+  const returned=await returnQueuedFollowupToEditor({queuedItem:{row_id:7,content:'Queued text'},onRemoveQueuedFollowup:async()=>{if(result==='reject')throw Error('Rejected removal');return result;},
+    setContent:update,setSubmitError:update,setSubmitNotice:update,setMediaFiles:update,onSetFileRefs:update,onSetFolderRefs:update,onSetMessageRefs:update,
+    textareaRef:{current:textarea},scheduleRaf:cb=>cb(),logger:{info(){},warn(){}}});
+  expect(returned).toBe(false);expect(writes).toEqual([]);expect(textarea.value).toBe('draft must survive');
+});
+
+for(const changed of ['chat','draft'] as const)test(`late successful Return cannot overwrite a changed ${changed}`,async()=>{
+  const ack=Promise.withResolvers<boolean>(),writes:unknown[]=[],notices:unknown[]=[];let current=true,draftUnchanged=true;
+  const pending=returnQueuedFollowupToEditor({queuedItem:{row_id:7,content:'Queued text'},onRemoveQueuedFollowup:()=>ack.promise,
+    isCurrent:()=>current,canRestoreDraft:()=>draftUnchanged,setContent:v=>writes.push(v),setMediaFiles:v=>writes.push(v),onSetFileRefs:v=>writes.push(v),
+    setSubmitNotice:v=>notices.push(v),scheduleRaf:()=>{throw Error('Changed scope must not focus');},logger:{info(){},warn(){}}});
+  if(changed==='chat')current=false;else draftUnchanged=false;
+  ack.resolve(true);expect(await pending).toBe(false);expect(writes).toEqual([]);
+  expect(notices).toEqual(changed==='draft'?['Queued message removed; existing draft preserved.']:[]);
+});
+
+test('model picker helpers expose searchable names, formatted context windows, without browser capacity guards', () => {
   const option = {
     label: 'anthropic/claude-sonnet-4',
     provider: 'anthropic',
@@ -565,35 +531,7 @@ test('model picker helpers expose searchable names, formatted context windows, a
   expect(getModelPickerOptionSearchLabel(option)).toContain('Claude Sonnet 4');
   expect(getModelPickerOptionSearchLabel(option)).toContain('200K ctx');
 
-  expect(getModelPickerContextLimit(option, { tokens: 150000 })).toEqual({
-    blocked: false,
-    note: '',
-    title: '',
-    tokens: 150000,
-    safetyAdjustedTokens: 165000,
-    contextWindow: 200000,
-    effectiveContextWindow: 196000,
-  });
 
-  expect(getModelPickerContextLimit({ ...option, contextWindow: 128000 }, { tokens: 150000 })).toEqual({
-    blocked: true,
-    note: 'Compact context first',
-    title: 'Current context uses 150K tokens (~165K with estimator safety) plus app/tool overhead, but this model effectively fits about 124K (128K raw). Compact context first, then switch.',
-    tokens: 150000,
-    safetyAdjustedTokens: 165000,
-    contextWindow: 128000,
-    effectiveContextWindow: 124000,
-  });
-
-  expect(getModelPickerContextLimit({ ...option, contextWindow: 4096 }, { tokens: 100 })).toEqual({
-    blocked: true,
-    note: 'Compact context first',
-    title: 'Current context uses 100 tokens (~110 with estimator safety) plus app/tool overhead, but this model effectively fits about 96 (4K raw). Compact context first, then switch.',
-    tokens: 100,
-    safetyAdjustedTokens: 110,
-    contextWindow: 4096,
-    effectiveContextWindow: 96,
-  });
 });
 
 test('resolveComposeRoutedModelStatus shows latest routed model when it differs from the requested model', () => {
@@ -815,3 +753,9 @@ test('resolveUiOnlyCommandNotice surfaces only read-only thinking queries and le
 test('compact snapshot model count keeps the picker accessible without a selected model',()=>{
  expect(resolveComposeModelPickerState(null,{current:null,model_options:[],available_model_count:5})).toEqual({showPicker:true,label:'Select model',hasAvailableModels:true});
 });
+
+for(const [currency,label]of [['USD','$0.0000'],['EUR','EUR 0.0000'],[null,'0.0000 (currency unknown)']]as const)test(`latest usage preserves ${currency??'unknown'} provider units`,()=>{
+ const meta=resolveComposeRunUsageMeta({cacheUsage:{latest:{totalTokens:0,providerCostCurrency:currency,costTotal:0,costProvenance:'provider_reported'}}});expect(meta?.title).toContain(label);if(currency!=='USD')expect(meta?.title).not.toContain('$');
+});
+
+test('model picker always indicates absent catalogue price without claiming free service',()=>{expect(formatModelPickerPricing(null)).toBe('Price unknown');expect(formatModelPickerPricing({})).toBe('Price unknown');});

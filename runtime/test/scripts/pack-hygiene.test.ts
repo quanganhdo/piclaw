@@ -39,6 +39,14 @@ describe("pack-hygiene", () => {
     ]);
   });
 
+  test("archive tooling is packaged without the retired AgentPool backend path", () => {
+    expect(findBlockedPackEntries(["runtime/src/agent-pool/sqlite-session-store.ts"]))
+      .toEqual(["runtime/src/agent-pool/sqlite-session-store.ts"]);
+    for (const path of ["runtime/scripts/lib/sqlite-session-archive.ts", "runtime/scripts/import-jsonl-sessions.ts",
+      "runtime/scripts/benchmark-sqlite-session-layouts.ts", "runtime/durable-engine/src/legacy-import-schema.ts"])
+      expect(REQUIRED_PACK_ENTRIES).toContain(path);
+  });
+
   test("findBlockedPackEntries allows runtime files", () => {
     const files = ["src/index.ts", "web/static/classic/index.html", "docs/architecture.md"];
     expect(findBlockedPackEntries(files)).toEqual([]);

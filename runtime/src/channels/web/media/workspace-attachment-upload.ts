@@ -1,7 +1,7 @@
 import { existsSync, lstatSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { DATA_DIR, getWebRuntimeConfig, getWorkspaceDir } from '../../../core/config.js';
-import { readAccessConfig } from '../../../core/config-access.js';
+import { isSingleUserAccess } from '../../../core/config-access.js';
 import { DATABASE_ATTACHMENT_MAX_BYTES, UPLOAD_CHUNK_BYTES, UPLOAD_CHUNK_TIMEOUT_MS, isSafeUploadFilename } from '../../../core/upload-limits.js';
 import { WorkspaceFileService } from '../workspace/file-service.js';
 import { isRealWorkspacePath } from '../workspace/paths.js';
@@ -42,7 +42,7 @@ export async function readAttachmentChunk(req: Request, expected: number, timeou
 /** The client cannot select a destination or overwrite a previous attachment.
  * Its opaque id creates a collision-isolated directory under workspace/uploads. */
 export async function handleWorkspaceAttachmentChunk(channel: MediaResponseContext, req: Request): Promise<Response> {
-  if (readAccessConfig().mode !== 'single-user') return channel.json({ error: 'Workspace attachments are unavailable in this access mode.' }, 403);
+  if (!isSingleUserAccess()) return channel.json({ error: 'Workspace attachments are unavailable in this access mode.' }, 403);
   const key = req.headers.get('X-Upload-Id') || '';
   if (!UPLOAD_ID.test(key)) return channel.json({error:'Invalid upload ID'},400);
   if (activeUploads.has(key)) return channel.json({error:'An upload chunk is already in progress'},409);

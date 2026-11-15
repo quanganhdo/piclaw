@@ -15,6 +15,6 @@ export function loginOptionsResponse(req: Request, mode: AccessMode, gateway: Lo
   const totp = enabled && gateway.createTotpContext().isTotpEnabled();
   const passkey = enabled && gateway.createWebauthnContext().isPasskeyEnabled();
   return new Response(req.method === "HEAD" ? null : JSON.stringify({
-    mode, auth_enabled: enabled, totp, passkey, username_required: mode === "family-shared" && totp,
+    mode, auth_enabled: enabled, totp, passkey, username_required: false,
   }), { headers });
 }

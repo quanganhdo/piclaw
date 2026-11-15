@@ -11,7 +11,7 @@ beforeAll(() => {
   if (!enabled) return;
   server = Bun.serve({ hostname: "127.0.0.1", port: 0, async fetch(req) {
     const url = new URL(req.url);
-    if (url.pathname === "/") return new Response(Bun.file(join(webRoot, `static/${url.searchParams.get("skin") === "visual" ? "visual" : "classic"}/index.html`)), { headers: { "content-type": "text/html" } });
+    if (url.pathname === "/") return new Response(Bun.file(join(webRoot, `static/${"classic"}/index.html`)), { headers: { "content-type": "text/html" } });
     if (url.pathname === "/editor-vendor/codemirror.js") return new Response(Bun.file(resolve(webRoot, "../extensions/viewers/editor/vendor/codemirror.js")), { headers: { "content-type": "text/javascript" } });
     if (url.pathname.startsWith("/static/")) {
       const path = resolve(webRoot, url.pathname.slice(1));
@@ -23,7 +23,7 @@ beforeAll(() => {
 afterAll(() => server?.stop(true));
 
 for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
-  for (const skin of ["classic", "visual"]) browserTest(`${engineName}: ${skin} shipped Authentication Settings lists and renames passkeys`, async () => {
+  for (const skin of ["classic"]) browserTest(`${engineName}: ${skin} shipped Authentication Settings lists and renames passkeys`, async () => {
     const browser = await engine.launch({ headless: true });
     const context = await browser.newContext({ viewport: { width: 1024, height: 768 }, reducedMotion: "reduce", serviceWorkers: "block" });
     const page = await context.newPage();
@@ -76,6 +76,8 @@ for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
       else if (url.pathname === "/timeline") body = { posts: [], has_more: false, chat_jid: chatJid, user: { name: "Fixture User" }, agent: { name: "Fixture" } };
       else if (url.pathname === "/agent/addons/web-entries") body = { entries: [] };
       else if (url.pathname === "/agent/roster") body = { agents: [], default_agent: "fixture" };
+      // System meters are always on and poll this endpoint.
+      else if (url.pathname === "/agent/system-metrics") body = { cpu_percent: 2, ram_percent: 12, cpu_series: [2], ram_series: [12], swap_series: [] };
       else if (url.pathname === "/agent/branches") body = { branches: [{ chat_jid: chatJid, root_chat_jid: "web:default", branch_id: "cold-start", agent_name: "fixture" }] };
       else if (url.pathname === "/agent/active-chats") body = { chats: [{ chat_jid: chatJid, root_chat_jid: "web:default", agent_name: "fixture", is_active: false }] };
       else if (["/agent/queue", "/agent/queue-state"].includes(url.pathname)) body = { items: [], queue: [], queued: [] };

@@ -22,6 +22,8 @@ test('scoped image rewriting covers HTML and SVG indirect resource surfaces', ()
   expect(source).toContain("(tag === 'img' || tag === 'image')");
   expect(source).toContain("SVG_TAGS.has(tag)");
   expect(source).toContain("hasExternalReference");
-  expect(source).toContain("renderMermaidDiagrams(container, options");
-  expect(source).toContain("sanitizeHtml(svg, options)");
+  expect(source).toContain("renderDiagrams(container");
+  const diagrams = readFileSync(join(WEB_SRC, "ui/mermaid-render.ts"), "utf8");
+  expect(diagrams).toContain("el.innerHTML = sanitize(svg)");
+  expect(diagrams).toContain("Diagram sanitizer is unavailable");
 });

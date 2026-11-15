@@ -1,10 +1,12 @@
+import { admitSqliteWrite, isSqliteContention as isPinStoreBusy } from "../../../db/sqlite-async-admission.js";
+import { captureWebRequestAuthority } from "../auth/auth-gateway.js";
 import { getDb } from "../../../db/connection.js";
 import {
   readPickerPins,
   changePickerPins,
   parsePinChange,
 } from "../../../db/picker-pins.js";
-import { requireAccountActor } from "../../../db/account-administration.js";
+import { requireAccountActor } from "../../../db/account-actor.js";
 import { resolveAuthorisedChat } from "../../../db/session-ownership.js";
 import { getChatBranchByChatJid } from "../../../db/chat-branches.js";
 import type { AuthenticatedPrincipal } from "../../../core/access-types.js";
@@ -14,24 +16,6 @@ import { checkCsrfOrigin } from "../http/security.js";
 import { isRateLimitedForClient } from "../http/rate-limit.js";
 import { createLogger } from "../../../utils/logger.js";
 const log = createLogger("web.picker-pins");
-
-/** A synchronous lock wait stalls every HTTP request on Bun's event loop.
- * Keep this scope synchronous and restore the connection policy before yielding.
- * Contention is returned as 503 for bounded asynchronous client retry. */
-function withoutPinLockWait<T>(operation: () => T): T {
-  const db = getDb();
-  const previous = (db.query("PRAGMA busy_timeout").get() as { timeout: number }).timeout;
-  db.exec("PRAGMA busy_timeout = 0");
-  try { return operation(); }
-  finally { db.exec(`PRAGMA busy_timeout = ${previous}`); }
-}
-
-function isPinStoreBusy(error: unknown): boolean {
-  if (!error || typeof error !== "object") return false;
-  const { code, errno } = error as { code?: unknown; errno?: unknown };
-  return (typeof code === "string" && /^SQLITE_(?:BUSY|LOCKED)(?:_[A-Z]+)*$/.test(code)) ||
-    [code, errno].some(value => typeof value === "number" && Number.isSafeInteger(value) && value >= 0 && ((value & 0xff) === 5 || (value & 0xff) === 6));
-}
 
 function pinStoreBusyResponse(): Response {
   return Response.json({ error: "Pin storage is busy. Retry shortly." }, {
@@ -93,6 +77,8 @@ export async function handlePickerPins(
   if (url.search || !["GET", "POST"].includes(req.method))
     return reply({ error: "Invalid pin request." }, 400);
   const db = getDb();
+  const requestAuthority = captureWebRequestAuthority(channel.authGateway, req);
+  const authorise = () => { requestAuthority(); if (actor) requireAccountActor(db, actor); };
   if (
     actor &&
     (!req.headers.get("x-piclaw-account-id") ||
@@ -103,7 +89,7 @@ export async function handlePickerPins(
     const denied = enforceBrowserBinding(req, actor);
     if (denied) return denied;
     try {
-      withoutPinLockWait(() => requireAccountActor(db, actor));
+      requireAccountActor(db, actor);
     } catch (error) {
       if (isPinStoreBusy(error)) return pinStoreBusyResponse();
       return reply({ error: "Account access denied." }, 403);
@@ -128,7 +114,10 @@ export async function handlePickerPins(
   };
   if (req.method === "GET") {
     try {
-      return reply(withoutPinLockWait(() => readPickerPins(db, owner, canRead)));
+      const existing = db.query("SELECT 1 FROM picker_pin_scopes WHERE owner=?").get(owner);
+      const state = existing ? readPickerPins(db, owner, canRead)
+        : await admitSqliteWrite(db, () => readPickerPins(db, owner, canRead), authorise, req.signal, 0);
+      return reply(state);
     } catch (error) {
       if (isPinStoreBusy(error)) return pinStoreBusyResponse();
       throw error;
@@ -144,10 +133,10 @@ export async function handlePickerPins(
   }
   try {
     // Body reading is asynchronous; revalidate identity before the transaction.
-    const state = withoutPinLockWait(() => {
+    const state = await admitSqliteWrite(db, () => {
       if (actor) requireAccountActor(db, actor);
       return changePickerPins(db, owner, change, canRead);
-    });
+    }, authorise, req.signal, 0);
     // Invalidation only: no session/model identifiers or account data on SSE.
     channel.broadcastEvent(
       "picker_pins_changed",

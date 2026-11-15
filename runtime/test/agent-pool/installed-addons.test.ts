@@ -4,7 +4,8 @@ import { join } from 'node:path';
 import { SettingsManager, getAgentDir } from '@earendil-works/pi-coding-agent';
 import '../helpers.js';
 import { withTempWorkspaceEnv } from '../helpers.js';
-import { createSessionInDir, getInstalledAddonExtensionPaths } from '../../src/agent-pool/session.ts';
+import { createSessionInDir } from '../../src/agent-pool/session.ts';
+import { getInstalledAddonExtensionPaths } from '../../src/addons/package-entries.js';
 import { createRealTestModelServices } from "../model-services-fixture.js";
 import { clearExtensionRoutes, getRegisteredRoutes, handleExtensionRoutes, isExtensionRouteRegistryFrozen } from '../../src/channels/web/http/extension-routes.js';
 

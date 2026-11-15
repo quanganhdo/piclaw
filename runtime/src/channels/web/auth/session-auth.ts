@@ -2,7 +2,7 @@
  * channels/web/session-auth.ts – Web session cookie/auth helper functions.
  */
 
-import { deleteExpiredWebSessions, getWebSession } from "../../../db.js";
+import { getWebSession } from "../../../db.js";
 import { isSecureWebRequest } from '../../../utils/request-client.js';
 
 function parseCookies(req: Request): Record<string, string> {
@@ -51,7 +51,6 @@ export function buildSessionCookieHeader(
 /** Check if request has any valid auth session. */
 export function isRequestAuthenticated(req: Request, authEnabled: boolean): boolean {
   if (!authEnabled) return true;
-  deleteExpiredWebSessions();
   const token = getSessionTokenFromRequest(req);
   if (!token) return false;
   return Boolean(getWebSession(token));
@@ -60,7 +59,6 @@ export function isRequestAuthenticated(req: Request, authEnabled: boolean): bool
 /** Check if request has a valid TOTP-authenticated session. */
 export function isRequestTotpSession(req: Request, totpEnabled: boolean): boolean {
   if (!totpEnabled) return false;
-  deleteExpiredWebSessions();
   const token = getSessionTokenFromRequest(req);
   if (!token) return false;
   const session = getWebSession(token);

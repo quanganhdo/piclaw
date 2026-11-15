@@ -1,3 +1,4 @@
+import {runAdmittedScheduledTask,waitForAdmittedScheduledTask} from '../helpers/admitted-scheduled-task.js';
 /**
  * test/runtime/scheduler.test.ts – Tests for the task scheduler.
  *
@@ -103,7 +104,7 @@ test("runScheduledTask logs run and updates task", async () => {
   const deps = {
     queue: { enqueueTask: (_id: string, fn: () => Promise<void>) => fn() } as any,
     agentPool: {
-      runAgent: async () => ({ status: "success", result: "Hello" }),
+      isDurableRuntime:()=>true,dispatchScheduledAgent: async () => ({ status: "success", result: "Hello" }),
       saveSessionPosition: async () => "leaf-123",
       restoreSessionPosition: async () => {},
       getCurrentModelLabel: async () => null,
@@ -118,7 +119,7 @@ test("runScheduledTask logs run and updates task", async () => {
   };
 
   const task = db.getTaskById(taskId)!;
-  await scheduler.runScheduledTask(task, deps as any);
+  await runAdmittedScheduledTask(task, deps as any);
 
   const updated = db.getTaskById(taskId)!;
   expect(updated.last_run).not.toBeNull();
@@ -164,7 +165,7 @@ test("runScheduledTask can post task output without sending Pushover nudges", as
   const deps = {
     queue: { enqueueTask: (_id: string, fn: () => Promise<void>) => fn() } as any,
     agentPool: {
-      runAgent: async () => ({ status: "success", result: "Hello" }),
+      isDurableRuntime:()=>true,dispatchScheduledAgent: async () => ({ status: "success", result: "Hello" }),
       saveSessionPosition: async () => "leaf-muted",
       restoreSessionPosition: async () => {},
       getCurrentModelLabel: async () => null,
@@ -179,7 +180,7 @@ test("runScheduledTask can post task output without sending Pushover nudges", as
   };
 
   const task = db.getTaskById(taskId)!;
-  await scheduler.runScheduledTask(task, deps as any);
+  await runAdmittedScheduledTask(task, deps as any);
 
   expect(sent).toEqual(["Hello"]);
   expect(nudges).toEqual([]);
@@ -214,7 +215,7 @@ test("runScheduledTask records recovery summaries in task logs without polluting
   const deps = {
     queue: { enqueueTask: (_id: string, fn: () => Promise<void>) => fn() } as any,
     agentPool: {
-      runAgent: async () => ({
+      isDurableRuntime:()=>true,dispatchScheduledAgent: async () => ({
         status: "success",
         result: "Hello",
         recovery: {
@@ -237,7 +238,7 @@ test("runScheduledTask records recovery summaries in task logs without polluting
   };
 
   const task = db.getTaskById(taskId)!;
-  await scheduler.runScheduledTask(task, deps as any);
+  await runAdmittedScheduledTask(task, deps as any);
 
   expect(sent).toEqual(["Hello"]);
 
@@ -276,10 +277,8 @@ test("runScheduledTask still logs and advances the task after an early execution
   const deps = {
     queue: { enqueueTask: (_id: string, fn: () => Promise<void>) => fn() } as any,
     agentPool: {
-      runAgent: async () => ({ status: "success", result: "Hello" }),
-      saveSessionPosition: async () => {
-        throw new Error("save failed");
-      },
+      isDurableRuntime:()=>true,dispatchScheduledAgent: async () => { throw Error("dispatch failed"); },
+      saveSessionPosition: async () => { throw Error("Legacy position lookup forbidden"); },
       restoreSessionPosition: async () => {},
       getCurrentModelLabel: async () => null,
       applyControlCommand: async () => ({ status: "success", message: "" }),
@@ -288,17 +287,17 @@ test("runScheduledTask still logs and advances the task after an early execution
   };
 
   const task = db.getTaskById(taskId)!;
-  await scheduler.runScheduledTask(task, deps as any);
+  await runAdmittedScheduledTask(task, deps as any);
 
   const updated = db.getTaskById(taskId)!;
   expect(updated.last_run).not.toBeNull();
-  expect(updated.last_result).toContain("save failed");
+  expect(updated.last_result).toContain("dispatch failed");
   expect(updated.next_run).not.toBe(task.next_run);
 
   const logs = db.getTaskRunLogs(taskId);
   expect(logs.length).toBe(1);
   expect(logs[0].status).toBe("error");
-  expect(logs[0].error).toContain("save failed");
+  expect(logs[0].error).toContain("dispatch failed");
 
   const metrics = scheduler.getSchedulerMetrics();
   expect(metrics.taskRunsStarted).toBe(1);
@@ -336,7 +335,7 @@ test("runScheduledTask computes the next cron run from the task next_run anchor"
   const deps = {
     queue: { enqueueTask: (_id: string, fn: () => Promise<void>) => fn() } as any,
     agentPool: {
-      runAgent: async () => ({ status: "success", result: "Hello" }),
+      isDurableRuntime:()=>true,dispatchScheduledAgent: async () => ({ status: "success", result: "Hello" }),
       saveSessionPosition: async () => "leaf-123",
       restoreSessionPosition: async () => {},
       getCurrentModelLabel: async () => null,
@@ -346,181 +345,13 @@ test("runScheduledTask computes the next cron run from the task next_run anchor"
   };
 
   const task = db.getTaskById(taskId)!;
-  await scheduler.runScheduledTask(task, deps as any);
+  await runAdmittedScheduledTask(task, deps as any);
 
   const updated = db.getTaskById(taskId)!;
   expect(updated.next_run).toBe("2024-01-01T00:05:00.000Z");
 });
 
-test("runScheduledTask switches and restores models", async () => {
-  const ws = getTestWorkspace();
-  restoreEnv = setEnv({ PICLAW_WORKSPACE: ws.workspace, PICLAW_STORE: ws.store, PICLAW_DATA: ws.data });
-
-  const db = await import("../../src/db.js");
-  db.initDatabase();
-
-  const scheduler = await import("../../src/task-scheduler.js");
-
-  const taskId = `task-model-${Date.now()}`;
-  db.createTask({
-    id: taskId,
-    chat_jid: "web:default",
-    prompt: "say hi",
-    model: "openai/gpt-4",
-    schedule_type: "interval",
-    schedule_value: "60000",
-    next_run: new Date(Date.now() - 1000).toISOString(),
-    status: "active",
-    created_at: new Date().toISOString(),
-  });
-
-  const modelCalls: any[] = [];
-  const deps = {
-    queue: { enqueueTask: (_id: string, fn: () => Promise<void>) => fn() } as any,
-    agentPool: {
-      runAgent: async () => ({ status: "success", result: "Hello" }),
-      saveSessionPosition: async () => "leaf-456",
-      restoreSessionPosition: async () => {},
-      getCurrentModelLabel: async () => "openai/gpt-3.5",
-      applyControlCommand: async (_jid: string, payload: any) => {
-        modelCalls.push(payload);
-        return { status: "success", message: "" };
-      },
-    } as any,
-    sendMessage: async () => {},
-  };
-
-  const task = db.getTaskById(taskId)!;
-  await scheduler.runScheduledTask(task, deps as any);
-
-  expect(modelCalls.length).toBe(2);
-  expect(modelCalls[0].raw).toBe("/model openai/gpt-4");
-  expect(modelCalls[1].raw).toBe("/model openai/gpt-3.5");
-});
-
-test("runScheduledTask stops when model switch fails", async () => {
-  const ws = getTestWorkspace();
-  restoreEnv = setEnv({ PICLAW_WORKSPACE: ws.workspace, PICLAW_STORE: ws.store, PICLAW_DATA: ws.data });
-
-  const db = await import("../../src/db.js");
-  db.initDatabase();
-
-  const scheduler = await import("../../src/task-scheduler.js");
-  scheduler.resetSchedulerMetricsForTests();
-
-  const taskId = `task-model-error-${Date.now()}`;
-  db.createTask({
-    id: taskId,
-    chat_jid: "web:default",
-    prompt: "say hi",
-    model: "openai/gpt-4",
-    schedule_type: "interval",
-    schedule_value: "60000",
-    next_run: new Date(Date.now() - 1000).toISOString(),
-    status: "active",
-    created_at: new Date().toISOString(),
-  });
-
-  const modelCalls: any[] = [];
-  let runCount = 0;
-  const deps = {
-    queue: { enqueueTask: (_id: string, fn: () => Promise<void>) => fn() } as any,
-    agentPool: {
-      runAgent: async () => {
-        runCount += 1;
-        return { status: "success", result: "Hello" };
-      },
-      saveSessionPosition: async () => "leaf-789",
-      restoreSessionPosition: async () => {},
-      getCurrentModelLabel: async () => "openai/gpt-3.5",
-      applyControlCommand: async (_jid: string, payload: any) => {
-        modelCalls.push(payload);
-        if (modelCalls.length === 1) {
-          return { status: "error", message: "boom" };
-        }
-        return { status: "success", message: "" };
-      },
-    } as any,
-    sendMessage: async () => {},
-  };
-
-  const task = db.getTaskById(taskId)!;
-  await scheduler.runScheduledTask(task, deps as any);
-
-  expect(runCount).toBe(0);
-  expect(modelCalls.length).toBe(2);
-  expect(modelCalls[1].raw).toBe("/model openai/gpt-3.5");
-
-  const metrics = scheduler.getSchedulerMetrics();
-  expect(metrics.taskRunsStarted).toBe(1);
-  expect(metrics.taskRunsSucceeded).toBe(0);
-  expect(metrics.taskRunsFailed).toBe(1);
-});
-
-test("runScheduledTask logs restore-model failures", async () => {
-  const ws = getTestWorkspace();
-  restoreEnv = setEnv({ PICLAW_WORKSPACE: ws.workspace, PICLAW_STORE: ws.store, PICLAW_DATA: ws.data });
-
-  const db = await import("../../src/db.js");
-  db.initDatabase();
-
-  const scheduler = await import("../../src/task-scheduler.js");
-
-  const taskId = `task-model-restore-${Date.now()}`;
-  db.createTask({
-    id: taskId,
-    chat_jid: "web:default",
-    prompt: "say hi",
-    model: "openai/gpt-4",
-    schedule_type: "interval",
-    schedule_value: "60000",
-    next_run: new Date(Date.now() - 1000).toISOString(),
-    status: "active",
-    created_at: new Date().toISOString(),
-  });
-
-  const modelCalls: any[] = [];
-  const errors: string[] = [];
-  const originalWrite = process.stderr.write.bind(process.stderr);
-  process.stderr.write = ((chunk: any, encodingOrCb?: any, cb?: any) => {
-    errors.push(String(chunk));
-    if (typeof encodingOrCb === "function") encodingOrCb();
-    else if (typeof cb === "function") cb();
-    return true;
-  }) as typeof process.stderr.write;
-
-  const deps = {
-    queue: { enqueueTask: (_id: string, fn: () => Promise<void>) => fn() } as any,
-    agentPool: {
-      runAgent: async () => ({ status: "success", result: "Hello" }),
-      saveSessionPosition: async () => "leaf-restore",
-      restoreSessionPosition: async () => {},
-      getCurrentModelLabel: async () => "openai/gpt-3.5",
-      applyControlCommand: async (_jid: string, payload: any) => {
-        modelCalls.push(payload);
-        if (modelCalls.length === 2) {
-          return { status: "error", message: "restore failed" };
-        }
-        return { status: "success", message: "" };
-      },
-    } as any,
-    sendMessage: async () => {},
-  };
-
-  const task = db.getTaskById(taskId)!;
-  await scheduler.runScheduledTask(task, deps as any);
-
-  process.stderr.write = originalWrite;
-
-  expect(modelCalls.length).toBe(2);
-  expect(errors.some((line) => line.includes("Failed to restore model"))).toBe(true);
-
-  const logs = db.getTaskRunLogs(taskId);
-  expect(logs.length).toBe(1);
-  expect(logs[0].status).toBe("success");
-});
-
-test("durable polling queues one runId and binds scheduled-agent source before delivery", async () => {
+test("durable polling dispatches one SDK run without a host queue and binds source before delivery", async () => {
   const ws = getTestWorkspace();
   restoreEnv = setEnv({ PICLAW_WORKSPACE: ws.workspace, PICLAW_STORE: ws.store, PICLAW_DATA: ws.data });
 
@@ -550,7 +381,8 @@ test("durable polling queues one runId and binds scheduled-agent source before d
   });
 
   const queued: Array<{ id: string; run: () => Promise<void>; lane?: string }> = [];
-  let observedSourceBound = false;
+  let observedSourceBound = false, dispatched=0;
+  const delivered:Array<{source_id:string;run_id:string;state:string}>=[];
   const deps = {
     queue: {
       enqueueTask: (id: string, run: () => Promise<void>, lane?: string) => queued.push({ id, run, lane }),
@@ -560,20 +392,22 @@ test("durable polling queues one runId and binds scheduled-agent source before d
       restoreSessionPosition: async () => undefined,
       getCurrentModelLabel: async () => null,
       applyControlCommand: async () => ({ status: "success", message: "" }),
-      runAgent: async () => {
+      isDurableRuntime:()=>true,dispatchScheduledAgent: async (lease:any) => {
+        if(lease.record.taskId!==taskId)return {status:'success',result:'other fixture task'};
+        dispatched++;
         const row = db.getDb().query("SELECT state FROM service_effect_s07_occurrences WHERE task_id=?").get(taskId) as { state: string };
         observedSourceBound = row.state === "source_bound";
         return { status: "success", result: "durable result" };
       },
     },
-    sendMessage: async () => {
+    sendMessage: async (chat:string) => {
+      if(chat!=='web:durable')return;
       const source = db.getDb().query(
         `SELECT s.source_id,r.run_id,r.state FROM service_effect_s01_sources s
          JOIN service_effect_s07_occurrences r ON r.run_id=s.source_id
          WHERE r.task_id=?`,
       ).get(taskId) as { source_id: string; run_id: string; state: string };
-      expect(source.source_id).toBe(source.run_id);
-      expect(source.state).toBe("source_bound");
+      delivered.push(source);
     },
   };
 
@@ -582,13 +416,12 @@ test("durable polling queues one runId and binds scheduled-agent source before d
   const durableRun = db.getDb().query(
     "SELECT run_id FROM service_effect_s07_occurrences WHERE task_id=?",
   ).get(taskId) as { run_id: string };
-  const durableQueued = queued.filter((item) => item.id === durableRun.run_id);
-  expect(durableQueued).toHaveLength(1);
-  expect(durableQueued[0].id).toMatch(/^scheduled_run:[0-9a-f]{64}$/);
-  expect(durableQueued[0].id).not.toContain(taskId);
-  expect(durableQueued[0].lane).toBe("chat:web:durable");
-
-  await durableQueued[0].run();
+  await waitForAdmittedScheduledTask(taskId);
+  expect(queued.filter((item) => item.id === durableRun.run_id)).toHaveLength(0);
+  expect(dispatched).toBe(1);
+  expect(durableRun.run_id).toMatch(/^scheduled_run:[0-9a-f]{64}$/);
+  expect(durableRun.run_id).not.toContain(taskId);
+  expect(delivered).toEqual([{source_id:durableRun.run_id,run_id:durableRun.run_id,state:'completed'}]);
   expect(observedSourceBound).toBe(true);
   const occurrence = db.getDb().query(
     "SELECT state,attempt,task_revision FROM service_effect_s07_occurrences WHERE task_id=?",
@@ -597,9 +430,9 @@ test("durable polling queues one runId and binds scheduled-agent source before d
   expect(db.getTaskById(taskId)?.next_run).not.toBe(scheduledFor);
   const source = db.getDb().query(
     "SELECT s.state,o.phase FROM service_effect_s01_sources s JOIN service_effect_s01_operations o ON o.chat_jid=s.chat_jid AND o.primary_source_seq=s.source_seq WHERE s.source_id=?",
-  ).get(durableQueued[0].id) as { state: string; phase: string };
+  ).get(durableRun.run_id) as { state: string; phase: string };
   expect(source).toEqual({ state: "consumed", phase: "terminal" });
-  scheduler.stopSchedulerLoop();
+  await scheduler.stopSchedulerLoop();
 });
 
 test("expired scheduled-agent claim is reclaimed only after stable source absence reconciliation", async () => {
@@ -641,7 +474,7 @@ test("expired scheduled-agent claim is reclaimed only after stable source absenc
   ).get(taskId) as { run_id: string; attempt: number };
   expect(first.attempt).toBe(1);
   expect(db.getDb().query("SELECT 1 FROM service_effect_s01_sources WHERE source_id=?").get(first.run_id)).toBeNull();
-  scheduler.stopSchedulerLoop();
+  await scheduler.stopSchedulerLoop();
 
   const claimedAt = new Date(Date.now() - 2000).toISOString();
   const expiredAt = new Date(Date.now() - 1000).toISOString();
@@ -659,7 +492,7 @@ test("expired scheduled-agent claim is reclaimed only after stable source absenc
   ).get(first.run_id) as { authority_kind: string; reconciliation_ref: string };
   expect(authority.authority_kind).toBe("agent_reconciled_absent");
   expect(authority.reconciliation_ref).toContain(first.run_id);
-  scheduler.stopSchedulerLoop();
+  await scheduler.stopSchedulerLoop();
 });
 
 test("startSchedulerLoop returns stop function and stop is idempotent", async () => {
@@ -700,6 +533,52 @@ test("startSchedulerLoop returns stop function and stop is idempotent", async ()
   expect(metrics.polls).toBeGreaterThanOrEqual(1);
   expect(metrics.tasksEnqueued).toBeGreaterThanOrEqual(1);
 
-  stop();
-  scheduler.stopSchedulerLoop();
+  await stop();
+  await scheduler.stopSchedulerLoop();
+});
+
+
+for (const attached of [false, true]) test(`poll reconciles an expired disposed scheduled source once without dispatching missed agent runs; SDK-attached=${attached}`,async()=>{
+  const ws=getTestWorkspace();restoreEnv=setEnv({PICLAW_WORKSPACE:ws.workspace,PICLAW_STORE:ws.store,PICLAW_DATA:ws.data});
+  const db=await import('../../src/db.js');db.initDatabase();const database=db.getDb();
+  const fk=(database.query('PRAGMA foreign_keys').get() as {foreign_keys:number}).foreign_keys;database.exec('PRAGMA foreign_keys=ON');restoreForeignKeys=()=>database.exec(`PRAGMA foreign_keys=${fk?'ON':'OFF'}`);
+  const {createCurrentPiclawScheduledRunStore}=await import('../../src/service-effects/current-piclaw/scheduled-run-store.js');
+  const {hashCanonicalRequest}=await import('../../src/service-effects/contracts/common.js');
+  const scheduler=await import('../../src/task-scheduler.js');
+  let captures=0;
+  const built=createCurrentPiclawScheduledRunStore(database,{hitFault:()=>false,recordTrace(){},async prepareInterruptedHarness(identity){captures++;expect(identity.sessionId).toBe('sdk-fixture');expect(identity.submissionId).toBe('42');return()=>{};}});if(!built.ok)throw Error(built.error._tag);const store=built.value;
+  const taskId='task:terminal-poll:'+crypto.randomUUID(),chat='web:terminal-poll:'+crypto.randomUUID(),operation='scheduled-operation:'+crypto.randomUUID();
+  const old=Date.now()-3*86400000,claimedAt=new Date(old).toISOString(),boundAt=new Date(old+1).toISOString(),terminalAt=new Date(old+2000).toISOString();
+  // Capture the versioned host body through the production task authority.
+  // A bare S07 snapshot no longer authorises a runnable host task.
+  db.createTask({id:taskId,chat_jid:chat,prompt:'Synthetic terminal-poll task',task_kind:'agent',schedule_type:'cron',schedule_value:'0 1 * * *',next_run:claimedAt,status:'active',created_at:claimedAt});
+  const claimed=await store.claimDue({now:claimedAt,limit:100,workerId:'worker:terminal-poll',leaseTokenPrefix:'terminal-poll:'+taskId,leaseDurationMs:1000,reclaimAuthorities:[]});if(!claimed.ok)throw Error(claimed.error._tag);const lease=claimed.value.find(x=>x.task.taskId===taskId)!;expect(lease).toBeDefined();
+  // Exact synthetic historical input; no model submission or fabricated SDK receipt.
+  database.transaction(()=>{
+    database.query('INSERT INTO service_effect_s01_chats(chat_jid,next_source_seq,consumed_through_source_seq,active_operation_id) VALUES(?,2,0,NULL)').run(chat);
+    database.query("INSERT INTO service_effect_s01_sources(chat_jid,source_seq,source_id,source_hash,kind,state,payload_ref,accepted_at,provenance_ref,create_wake_intent) VALUES(?,1,?,?,'scheduled_agent','claimed',?,?,?,0)").run(chat,lease.record.runId,'a'.repeat(64),lease.task.payloadRef,boundAt,lease.record.runId);
+    database.query("INSERT INTO service_effect_s01_operations(operation_id,chat_jid,version,phase,primary_source_seq) VALUES(?,?,1,'claimed',1)").run(operation,chat);
+    database.query('INSERT INTO service_effect_s01_operation_sources(chat_jid,operation_id,source_seq) VALUES(?,?,1)').run(chat,operation);
+  }).immediate();
+  const bind={effect:{idempotencyKey:'bind:'+taskId,requestHash:'',operationId:operation,sourceSeq:1,provenanceRef:lease.record.runId,redactionClass:'private' as const},runId:lease.record.runId,workerId:lease.record.workerId,expectedAttempt:1,expectedTaskRevision:1,leaseToken:lease.leaseToken,now:boundAt,boundAt,sourceSeq:1,operationId:operation};bind.effect.requestHash=hashCanonicalRequest(bind as any);expect((await store.bindAcceptedSource(bind)).ok).toBe(true);
+  database.transaction(()=>{
+    database.query("UPDATE service_effect_s01_operations SET version=2,phase='terminal',terminal_disposition='failed',terminal_error_code='scheduled_run_interrupted',terminal_committed_at=? WHERE operation_id=?").run(terminalAt,operation);
+    database.query("UPDATE service_effect_s01_sources SET state='disposed',disposition_reason='scheduled_run_interrupted' WHERE source_id=?").run(lease.record.runId);
+    database.query('UPDATE service_effect_s01_chats SET consumed_through_source_seq=1 WHERE chat_jid=?').run(chat);
+    if(attached)database.query("UPDATE service_effect_s01_operations SET harness_session_id='sdk-fixture',harness_operation_id='42' WHERE operation_id=?").run(operation);
+  }).immediate();
+  const sourceBefore=database.query('SELECT * FROM service_effect_s01_sources WHERE chat_jid=?').all(chat),operationBefore=database.query('SELECT * FROM service_effect_s01_operations WHERE operation_id=?').all(operation),leasesBefore=database.query('SELECT * FROM service_effect_s07_leases WHERE run_id=?').all(lease.record.runId);
+  let dispatched=0;const deps={queue:{enqueueTask(id:string){if(id===`chat:${chat}`)dispatched++;}},agentPool:{} as any,sendMessage:async()=>{throw Error('Unexpected publication');}};
+  await scheduler.pollScheduledRunsOnce(deps as any,store);await scheduler.pollScheduledRunsOnce(deps as any,store);
+  const result=await store.get(lease.record.runId);expect(result.ok).toBe(true);expect(result.value).toMatchObject({state:'completed',status:'error',errorCode:'scheduled_run_interrupted',attempt:1,headDisposition:'advanced'});
+  expect(result.value!.nextRunAt!>new Date().toISOString()).toBe(true);expect(dispatched).toBe(0);expect(captures).toBe(attached?1:0);
+  expect(database.query('SELECT * FROM service_effect_s01_sources WHERE chat_jid=?').all(chat)).toEqual(sourceBefore);expect(database.query('SELECT * FROM service_effect_s01_operations WHERE operation_id=?').all(operation)).toEqual(operationBefore);expect(database.query('SELECT * FROM service_effect_s07_leases WHERE run_id=?').all(lease.record.runId)).toEqual(leasesBefore);
+  expect(database.query('SELECT COUNT(*) n FROM service_effect_s07_run_logs WHERE run_id=?').get(lease.record.runId)).toEqual({n:1});expect(database.query('SELECT COUNT(*) n FROM service_effect_s07_next_decisions WHERE run_id=?').get(lease.record.runId)).toEqual({n:1});
+});
+
+test('scheduler exposes no raw execution entry or parallel direct history/recurrence mode',async()=>{
+  const api=await import('../../src/task-scheduler.js');
+  expect(api).not.toHaveProperty('runScheduledTask');
+  const source=await Bun.file(new URL('../../src/task-scheduler.ts',import.meta.url)).text();
+  for(const name of ['advanceTask','deferHistory','taskRunLogId','logTaskRun(','updateTaskAfterRun('])expect(source).not.toContain(name);
 });

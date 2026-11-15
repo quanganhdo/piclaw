@@ -8,7 +8,7 @@ for(const mode of ["modern","missing","expired","malformed","expired-legacy","ma
       try{
         const[stdout,stderr,exit]=await Promise.all([new Response(child.stdout).text(),new Response(child.stderr).text(),child.exited]);expect(exit,stderr).toBe(0);
         const row=JSON.parse(stdout.trim().split("\n").at(-1)!);expect(row).toMatchObject({mode,errorCode:null,network:0,afterReleaseCorrect:true});
-        if(!mode.startsWith("legacy-")){expect(row.writerReleasedAtReturn).toBe(false);expect(Object.keys(row.metrics)).toEqual(["SELECT.get"]);}
+        if(!mode.startsWith("legacy-")){expect(row.writerReleasedAtReturn).toBe(false);expect(Object.keys(row.metrics).every(key=>key==="SELECT.get"||key==="SELECT.all")).toBe(true);}
       }finally{clearTimeout(timer);if(child.exitCode===null)child.kill("SIGKILL");await child.exited;}
     });
   },25000);

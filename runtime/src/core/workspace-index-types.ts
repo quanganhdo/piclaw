@@ -1,4 +1,4 @@
-/** Shared type-only contracts for legacy and family workspace indexes. */
+/** Shared type-only contracts for workspace indexes. */
 export type WorkspaceSearchScope = 'notes' | 'skills' | 'all';
 export type WorkspaceIndexState = 'never_indexed' | 'indexing' | 'ready' | 'stale' | 'failed';
 export type WorkspaceIndexStatus = {

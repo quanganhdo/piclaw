@@ -1,3 +1,5 @@
+import { admitWebSession } from "../../../db/web-sessions.js";
+import { readAccessConfig } from "../../../core/config-access.js";
 /**
  * channels/web/auth-gateway.ts – cohesive auth/session/passkey gateway for WebChannel.
  */
@@ -23,7 +25,6 @@ import { createLogger } from "../../../utils/logger.js";
 
 import { getDb, getWebSession } from "../../../db.js";
 import { getUser } from "../../../db/users.js";
-import { UserAuthFactors } from "../../../secure/user-auth-factors.js";
 import { checkCsrfOrigin } from "../http/security.js";
 import { getSessionTokenFromRequest } from "./session-auth.js";
 import { getIdentityConfig } from "../../../core/config.js";
@@ -38,6 +39,25 @@ export interface WebAuthGatewayDeps {
   failureTracker: TotpFailureTrackerLike;
   logAuthWarning?(message: string): void;
   principalResolver?: PrincipalResolverDeps;
+}
+
+/** Snapshot the verified request, then refresh it at actual SQL mutation boundaries. */
+export function captureWebRequestAuthority(gateway: Partial<Pick<WebAuthGateway, "isAuthEnabled" | "isInternalSecretEnabled" | "verifyInternalSecret" | "getPrincipal">> | undefined, req: Request): () => void {
+  const authEnabled = gateway?.isAuthEnabled?.() === true;
+  const principal = gateway?.getPrincipal?.(req) ?? null;
+  const mode = readAccessConfig().mode;
+  const key = (value: typeof principal) => JSON.stringify(value && [value.kind, value.userId, value.mode, value.role, value.authentication]);
+  const principalKey = key(principal);
+  const internal = !principal && gateway?.isInternalSecretEnabled?.() === true && gateway.verifyInternalSecret?.(req) === true;
+  if (authEnabled && !principal && !internal) throw Error("Incoming request has no verified authority.");
+  const check = () => {
+    req.signal.throwIfAborted();
+    if (readAccessConfig().mode !== mode || (gateway?.isAuthEnabled?.() === true) !== authEnabled) throw Error("Incoming request authority changed.");
+    if (internal) {
+      if (!gateway?.isInternalSecretEnabled?.() || !gateway.verifyInternalSecret?.(req)) throw Error("Internal request authority changed.");
+    } else if (key(gateway?.getPrincipal?.(req, true) ?? null) !== principalKey) throw Error("Incoming request principal changed.");
+  };
+  check(); return check;
 }
 
 /** Central auth capability gateway for web request guards and endpoint contexts. */
@@ -83,12 +103,20 @@ export class WebAuthGateway {
       mode: this.config.accessMode ?? "single-user",
       authEnabled: this.isAuthEnabled(),
     }, this.deps.principalResolver ?? {
-      getSession: getWebSession,
+      getSession: token => getWebSession(token, false),
       getUser: (id) => getUser(getDb(), id),
       getLocalDisplayName: () => getIdentityConfig().userName || "User",
     });
     this.principals.set(req, principal);
     return principal;
+  }
+
+  async preparePrincipal(req: Request): Promise<void> {
+    if (!this.deps.principalResolver) {
+      const token = getSessionTokenFromRequest(req);
+      if (token) await admitWebSession(token, req.signal);
+    }
+    this.principals.delete(req);
   }
 
   isAuthenticated(req: Request): boolean {
@@ -102,10 +130,6 @@ export class WebAuthGateway {
       logAuthEvent: (req, event) => this.logAuthEvent(req, event),
       failureTracker: this.deps.failureTracker,
     });
-    if (this.config.accessMode && this.config.accessMode !== "single-user") {
-      context.isTotpEnabled = () => !this.isPasskeyOnly();
-      context.verifyUserTotp = (username, code) => new UserAuthFactors(getDb()).verifyLogin(username, code);
-    }
     return context;
   }
 

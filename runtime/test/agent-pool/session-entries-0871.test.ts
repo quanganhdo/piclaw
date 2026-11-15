@@ -1,8 +1,6 @@
-import { createHash } from 'node:crypto';
 import { expect, test } from 'bun:test';
 import { buildSessionContext, type SessionEntry } from '@earendil-works/pi-coding-agent';
 import { adoptedJsonl } from './adopted-session-fixture.js';
-import { inspectAdoptedSession } from '../../src/agent-pool/adopted-session.js';
 import { computePromptCacheWaste } from '../../src/agent-pool/cache-stats.js';
 import { createSessionManagerPersistencePort } from '../../src/agent-pool/session-persistence.js';
 import { seedSessionManagerFromDeferredBranchSeed, type DeferredBranchSeed } from '../../src/agent-pool/branch-seeding.js';
@@ -17,57 +15,6 @@ const append = (rows: any[], entries: any[]) => {
   }
   return JSON.stringify(copy[0]) + '\n' + copy.slice(1).map((entry) => JSON.stringify(entry)).join('\n') + '\n';
 };
-const inspect = (jsonl: string) => inspectAdoptedSession(jsonl, createHash('sha256').update(jsonl).digest('hex'));
-
-test('adoption projects omitted and replaced context while accepting separate usage and null compaction', () => {
-  const { rows } = adoptedJsonl('/tmp/adoption', '/tmp/parent.jsonl');
-  const jsonl = append(rows, [
-    { type: 'usage', id: 'usage', kind: 'cache_warm', provider: 'test', model: 'fixture', usage: rows[4].message.usage },
-    { type: 'context_edit', id: 'omit', targetId: 'user', replacement: null },
-    { type: 'context_edit', id: 'replace', targetId: 'assistant', replacement: { content: [{ type: 'text', text: 'REPLACED' }] } },
-  ]);
-  const result = inspect(jsonl);
-  expect(result.context.messages.some((message: any) => message.role === 'user')).toBe(false);
-  expect(result.context.messages.at(-1)?.content).toEqual([{ type: 'text', text: 'REPLACED' }]);
-  expect(result.entryCount).toBe(10);
-  const stringReplacement = append(rows, [{ type: 'context_edit', id: 'replace', targetId: 'assistant', replacement: { content: 'plain text' } }]);
-  expect(inspect(stringReplacement).context.messages.at(-1)?.content).toEqual([{ type: 'text', text: 'plain text' }]);
-  const compacted = append(rows, [
-    { type: 'compaction', id: 'compact', summary: 'summary', firstKeptEntryId: null, tokensBefore: 12 },
-    { type: 'message', id: 'after-compact', message: rows[4].message },
-  ]);
-  expect(inspect(compacted).context.messages.length).toBeGreaterThan(0);
-});
-
-test('adoption rejects invalid, orphan, non-ancestral and non-editable targets and malformed replacement', () => {
-  const { rows } = adoptedJsonl('/tmp/adoption', '/tmp/parent.jsonl');
-  for (const entry of [
-    { type: 'context_edit', id: 'bad', targetId: 'missing', replacement: null },
-    { type: 'context_edit', id: 'bad', targetId: 'model', replacement: null },
-    { type: 'context_edit', id: 'bad', targetId: 'user', replacement: { content: [{ type: 'text', text: 9 }] } },
-    { type: 'usage', id: 'bad', kind: 'cache_warm', provider: 'test', model: 'fixture', usage: { input: -1 } },
-  ]) expect(() => inspect(append(rows, [entry]))).toThrow();
-  const fork = [...rows, { type: 'message', id: 'sibling', parentId: 'model', timestamp: stamp, message: rows[3].message },
-    { type: 'context_edit', id: 'bad', parentId: 'name', timestamp: stamp, targetId: 'sibling', replacement: null }];
-  const jsonl = fork.map((row) => JSON.stringify(row)).join('\n') + '\n';
-  expect(() => inspect(jsonl)).toThrow('Context edit target is not on this branch');
-});
-
-test('adoption rejects assistant tool-call content and stop-reason mismatches', () => {
-  const { rows } = adoptedJsonl('/tmp/adoption', '/tmp/parent.jsonl');
-  const call = { type: 'toolCall', id: 'call-1', name: 'read', arguments: {} };
-  const toolResult = { type: 'message', id: 'tool-result', message: {
-    role: 'toolResult', toolCallId: 'call-1', toolName: 'read', content: [{ type: 'text', text: 'done' }], isError: false, timestamp: 2,
-  } };
-  const final = { type: 'message', id: 'final', message: { ...rows[4].message, content: [{ type: 'text', text: 'complete' }] } };
-  const wrongStop = rows.map((row) => structuredClone(row));
-  wrongStop[4].message.content = [call];
-  expect(() => inspect(append(wrongStop, [toolResult, final]))).toThrow('stop reason does not match tool calls');
-  const missingCall = rows.map((row) => structuredClone(row));
-  missingCall[4].message.stopReason = 'toolUse';
-  expect(() => inspect(append(missingCall, []))).toThrow('stop reason does not match tool calls');
-});
-
 test('deferred fork omits usage, maps surviving edits and preserves null compaction', async () => {
   const calls: string[] = [];
   let serial = 0;
@@ -110,11 +57,10 @@ test('nullable compaction is forwarded; managers without context-edit support fa
 test('0.87.1 canonical projection omits context-edited content on reopen', () => {
   const { rows } = adoptedJsonl('/tmp/adoption', '/tmp/parent.jsonl');
   const jsonl = append(rows, [{ type: 'context_edit', id: 'omit', targetId: 'user', replacement: null }]);
-  const inspected = inspect(jsonl);
-  expect(inspected.context.messages.some((message: any) => message.role === 'user')).toBe(false);
+  const entries = jsonl.trim().split("\n").slice(1).map(line => JSON.parse(line));
   // The upgraded SDK applies the edit; 0.85.1 would ignore this same JSONL.
   // Rollback must restore the pre-upgrade snapshot instead of reopening it.
-  expect(buildSessionContext(inspected.entries).messages.some((message) => message.role === 'user')).toBe(false);
+  expect(buildSessionContext(entries).messages.some((message) => message.role === 'user')).toBe(false);
 });
 
 test('usage entries do not add a prompt-cache request and edits reset the comparison', () => {

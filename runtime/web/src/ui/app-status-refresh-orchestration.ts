@@ -8,17 +8,15 @@ import {
   type FollowupQueueItemLike,
 } from './app-followup-queue.js';
 import { isMainTimelineView } from './app-realtime-timeline.js';
-import { getLocalStorageJSON, setLocalStorageItem } from '../utils/storage.js';
 
 type StateSetter<T> = (next: T | ((prev: T) => T)) => void;
 
-// Keep the existing per-chat key for storage compatibility, but only restore
-// payloads carrying the currently verified Pi session generation. Legacy
-// generation-less values are ignored rather than migrated as current usage.
-const CONTEXT_STORAGE_PREFIX = 'piclaw:ctx:';
-const contextSessionGenerations = new Map<string, string>();
-const contextUsageRevisions = new Map<string, number>();
-export function getContextUsageRevision(chatJid: string): number { return contextUsageRevisions.get(chatJid) ?? 0; }
+// SDK observations live only in this bounded page-local revision cache.
+const CONTEXT_CACHE_LIMIT = 128;
+let contextRevision = 0;
+const CONTEXT_REPLACE = 'replace';
+const contextUsageStates = new Map<string, [generation: string | null, revision: number, usage: Record<string, unknown> | null]>();
+export function getContextUsageRevision(chatJid: string): number { return contextUsageStates.get(chatJid)?.[1] ?? contextRevision; }
 
 function finiteOrNull(value: unknown): number | null {
   if (value == null) return null;
@@ -59,6 +57,8 @@ function normalizeTokenUsageRecord(payload: unknown): Record<string, unknown> | 
     cacheWriteReported: booleanOrNull(data.cacheWriteReported),
     totalTokens: finiteOrNull(data.totalTokens),
     costTotal: finiteOrNull(data.costTotal),
+    costCurrency: stringOrNull(data.costCurrency),
+    providerCostCurrency: stringOrNull(data.providerCostCurrency),
     providerCostTotal: finiteOrNull(data.providerCostTotal),
     catalogueCostTotal: finiteOrNull(data.catalogueCostTotal),
     costProvenance: stringOrNull(data.costProvenance),
@@ -96,20 +96,22 @@ export function normalizeContextUsage(payload: unknown): Record<string, unknown>
     percent,
     cacheUsage,
     ...(sessionGeneration ? { sessionGeneration } : {}),
+    ...(data.contextUpdate === CONTEXT_REPLACE ? { contextUpdate: CONTEXT_REPLACE } : {}),
   };
 }
 
-export function mergeContextUsage(previous: unknown, incoming: unknown): Record<string, unknown> | null {
+export function mergeContextUsage(previous: unknown, incoming: unknown, reset = false): Record<string, unknown> | null {
   const next = normalizeContextUsage(incoming);
   if (!next) return normalizeContextUsage(previous);
   const prev = normalizeContextUsage(previous);
   const previousGeneration = stringOrNull(prev?.sessionGeneration);
   const nextGeneration = stringOrNull(next.sessionGeneration);
   const generationChanged = Boolean(nextGeneration && previousGeneration !== nextGeneration);
+  const replace = reset || generationChanged || next.contextUpdate === CONTEXT_REPLACE;
   return {
-    tokens: generationChanged ? next.tokens ?? null : next.tokens ?? prev?.tokens ?? null,
-    contextWindow: generationChanged ? next.contextWindow ?? null : next.contextWindow ?? prev?.contextWindow ?? null,
-    percent: generationChanged ? next.percent ?? null : next.percent ?? prev?.percent ?? null,
+    tokens: replace ? next.tokens : next.tokens ?? prev?.tokens ?? null,
+    contextWindow: replace ? next.contextWindow : next.contextWindow ?? prev?.contextWindow ?? null,
+    percent: replace ? next.percent : next.percent ?? prev?.percent ?? null,
     // Cache telemetry is aggregated independently from Pi session context, so
     // retain it across a generation reset while clearing session-scoped meters.
     cacheUsage: next.cacheUsage ?? prev?.cacheUsage ?? null,
@@ -118,7 +120,7 @@ export function mergeContextUsage(previous: unknown, incoming: unknown): Record<
 }
 
 export function getContextSessionGeneration(chatJid: string): string | null {
-  return contextSessionGenerations.get(chatJid) ?? null;
+  return contextUsageStates.get(chatJid)?.[0] ?? null;
 }
 
 export function reconcileContextUsageForChat(
@@ -136,15 +138,21 @@ export function reconcileContextUsageForChat(
   const next = normalizeContextUsage(incoming);
   if (!chatJid || !next) return normalizeContextUsage(previous);
   if (options.expectedRevision !== undefined && options.expectedRevision !== getContextUsageRevision(chatJid)) return normalizeContextUsage(previous);
-  const merge = () => {
-    const result = mergeContextUsage(previous, next);
-    if (!haveSameContextUsage(previous, result)) contextUsageRevisions.set(chatJid, getContextUsageRevision(chatJid) + 1);
-    return result;
-  };
   const incomingGeneration = stringOrNull(next.sessionGeneration);
   const knownGeneration = getContextSessionGeneration(chatJid);
+  const merge = () => {
+    const replace = options.reset === true || next.contextUpdate === CONTEXT_REPLACE;
+    const result = mergeContextUsage(previous, next, replace);
+    // Even an unchanged unknown snapshot is a new boundary: an older in-flight
+    // poll must not restore counts, and persisted same-session data must clear.
+    rememberContext(chatJid, incomingGeneration ?? knownGeneration,
+      replace || !haveSameContextUsage(previous, result) ? ++contextRevision : getContextUsageRevision(chatJid), result);
+    return result;
+  };
   if (!incomingGeneration) {
-    return knownGeneration || options.requireKnown
+    // The current endpoint can report an unbound session. Clear its meters;
+    // unscoped legacy/SSE updates still cannot replace a known SDK observation.
+    return options.requireKnown || (knownGeneration && !(options.authoritative && next.contextUpdate === CONTEXT_REPLACE))
       ? normalizeContextUsage(previous)
       : merge();
   }
@@ -156,15 +164,12 @@ export function reconcileContextUsageForChat(
   if (knownGeneration && knownGeneration !== incomingGeneration && !options.authoritative && !options.reset) {
     return normalizeContextUsage(previous);
   }
-  if (!knownGeneration || options.authoritative || options.reset) {
-    contextSessionGenerations.set(chatJid, incomingGeneration);
-  }
   return merge();
 }
 
 export function resetContextSessionGenerationsForTests(): void {
-  contextSessionGenerations.clear();
-  contextUsageRevisions.clear();
+  contextUsageStates.clear();
+  contextRevision = 0;
 }
 
 export function haveSameContextUsage(a: unknown, b: unknown): boolean {
@@ -184,25 +189,23 @@ export function hasRenderableContextUsage(payload: unknown): boolean {
   return Boolean(normalized && (normalized.percent != null || normalized.cacheUsage != null));
 }
 
-export function persistContextUsage(chatJid: string, payload: unknown): void {
-  if (!chatJid || !payload || typeof payload !== 'object') return;
-  const data = normalizeContextUsage(payload);
-  if (!data?.sessionGeneration) return;
-  try {
-    setLocalStorageItem(CONTEXT_STORAGE_PREFIX + chatJid, JSON.stringify(data));
-  } catch (error) {
-    console.debug('[app-status-refresh] Ignoring best-effort context usage persistence failure.', error, {
-      chatJid,
-    });
-  }
+function rememberContext(chat: string, generation: string | null, revision: number, usage: Record<string, unknown> | null): void {
+  contextUsageStates.delete(chat);
+  contextUsageStates.set(chat,[generation,revision,usage]);
+  while(contextUsageStates.size>CONTEXT_CACHE_LIMIT)contextUsageStates.delete(contextUsageStates.keys().next().value!);
 }
 
+/** A connection boundary invalidates outstanding reads even with a stable SDK session ID. */
+export function invalidateContextUsageForChat(chat: string): Record<string, unknown> | null {
+  const generation=getContextSessionGeneration(chat),previous=contextUsageStates.get(chat)?.[2];
+  const cleared=generation?mergeContextUsage(previous,{tokens:null,contextWindow:null,percent:null,sessionGeneration:generation,contextUpdate:'replace'}):null;
+  rememberContext(chat,generation,++contextRevision,cleared);
+  return cleared;
+}
+
+/** Restore only a value accepted by this page's current revision; never browser storage. */
 export function restoreContextUsage(chatJid: string): Record<string, unknown> | null {
-  if (!chatJid) return null;
-  const knownGeneration = getContextSessionGeneration(chatJid);
-  if (!knownGeneration) return null;
-  const stored = normalizeContextUsage(getLocalStorageJSON<Record<string, unknown>>(CONTEXT_STORAGE_PREFIX + chatJid));
-  return stored?.sessionGeneration === knownGeneration ? stored : null;
+  return getContextSessionGeneration(chatJid) ? contextUsageStates.get(chatJid)?.[2] ?? null : null;
 }
 
 
@@ -295,7 +298,6 @@ export async function refreshContextUsageForChat(options: RefreshContextUsageFor
         expectedRevision,
       });
       if (haveSameContextUsage(prev, merged)) return prev;
-      persistContextUsage(targetChatJid, merged);
       return merged;
     });
   } catch (error) {

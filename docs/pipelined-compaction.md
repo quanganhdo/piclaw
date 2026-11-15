@@ -1,6 +1,10 @@
-# Pipelined smart compaction
+# Pipelined smart compaction — historical Core design
 
-Pipelined is Piclaw's exact-once source-accounting smart-compaction method. It deterministically classifies every discarded source-message event into a provenance-bearing ledger before asking a model to rewrite the validated projection into the continuity summary. Auxiliary compaction inputs—such as the previous summary, retained context, trusted operator instructions, and deterministic file facts—are carried separately outside the source-event ledger.
+> Historical source audit. Visual was removed in #1990; paths and counts below describe the inspected revision, not the current UI.
+
+This document preserves the retired Core compaction design, diagnostics and historical evidence. Supported production execution uses the native SDK policy and admitted maintenance described in [native compaction settings](native-slash-controls.md) and [Core prompt-owner retirement](development/native-prompt-retirement.md). Old settings, metrics and fallback descriptions below are not current operator instructions. Current [UI observations](development/native-ui-projections.md) clear unavailable context counts and never restore persisted estimates.
+
+Pipelined was Piclaw's exact-once source-accounting smart-compaction method. It deterministically classifies every discarded source-message event into a provenance-bearing ledger before asking a model to rewrite the validated projection into the continuity summary. Auxiliary compaction inputs—such as the previous summary, retained context, trusted operator instructions, and deterministic file facts—are carried separately outside the source-event ledger.
 
 Its central design rule is:
 
@@ -567,7 +571,7 @@ The model-visible projection still contains the evidence required by the selecte
 | `smart_compaction.context_prune_sanitize` | Context-pruned history normalized before planning |
 | `smart_compaction.boundary_selection` | Retained-boundary decision evidence |
 
-The web UI also publishes `smart_compaction` status and `context_usage` updates during the lifecycle. Manual `/compact` publishes a fresh context update immediately after completion: Piclaw prefers the rebuilt-session estimate and falls back to the report's safety-adjusted estimate when rebuilt-session tokens are unavailable. Null-token updates are not persisted or broadcast. The context endpoint also falls back to validated persisted usage after session eviction or lookup failure, so the indicator does not require a new model turn to refresh. If provider-native compaction succeeds first, expect `remote_compaction.attempt` and `remote_compaction.completed` instead of `smart_compaction.pipeline_planned` and local Pipelined completion metrics.
+The retired web lifecycle published `smart_compaction` status and `context_usage` updates. Its manual `/compact` path preferred a rebuilt-session estimate, then fell back to the report's safety-adjusted estimate, and omitted null-token updates. Its context endpoint could restore validated persisted usage after eviction or lookup failure. Those fallback/restoration paths are removed; current native snapshots explicitly clear unavailable counts, including for an unchanged session identity. If provider-native compaction succeeds first, expect `remote_compaction.attempt` and `remote_compaction.completed` instead of `smart_compaction.pipeline_planned` and local Pipelined completion metrics.
 
 ## 15. Troubleshoot Pipelined compaction
 

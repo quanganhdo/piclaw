@@ -201,8 +201,8 @@ export async function withAddonLocalAgent<T>(chatJid: string, incarnation: strin
 }
 export function withoutAddonLocalContext<T>(run: () => Promise<T>): Promise<T> { return scopes.run(null, run); }
 
-export function withVerifiedAddonMessage<T>(chatJid: string, message: { id?: string; content?: string; content_blocks?: unknown[] }, run: () => Promise<T>): Promise<T> {
-  const authority = verifyAddonLocalMessage(chatJid, message);
+export async function withVerifiedAddonMessage<T>(chatJid: string, message: { id?: string; content?: string; content_blocks?: unknown[] }, run: () => Promise<T>): Promise<T> {
+  const authority = await verifyAddonLocalMessage(chatJid, message);
   if (!authority) return promptAdmissions.run(null, () => withoutAddonLocalContext(run));
   return promptAdmissions.run({ chatJid, incarnation: authority.incarnation, ...(authority.reference ? { reference: authority.reference } : {}), consumed: false }, () => withoutAddonLocalContext(run));
 }

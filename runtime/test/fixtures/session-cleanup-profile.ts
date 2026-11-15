@@ -1,7 +1,7 @@
 import '../setup-filesystem-isolation.js';
 import { AgentPool } from '../../src/agent-pool.js';
 import { initDatabase, getDb, closeDatabase } from '../../src/db.js';
-import { createAgentPoolModelOptions } from '../model-services-fixture.js';
+import { createLegacyCapturePoolOptions } from '../model-services-fixture.js';
 import { withTempWorkspaceEnv } from '../helpers.js';
 const disk = process.argv[2] === 'disk';
 const protect = process.argv[3] === 'busy';
@@ -15,7 +15,7 @@ await withTempWorkspaceEnv('cleanup-profile-', { PICLAW_MAIN_SESSION_PRESSURE_RS
   const journal = db.query('PRAGMA journal_mode').get();
   const synchronous = db.query('PRAGMA synchronous').get();
   if (disk && !(database as any[]).some(row => typeof row.file === 'string' && row.file.length > 0)) throw Error('Disk fixture was not opened');
-  const pool = new AgentPool({ ...createAgentPoolModelOptions(), createSession: async () => { throw Error('Unused'); } });
+  const pool = new AgentPool({ ...createLegacyCapturePoolOptions(), createSession: async () => { throw Error('Unused'); } });
   const held = Array.from({length:20000},(_,i)=>({i,text:`Synthetic retained object ${i}`.repeat(100)}));
   const before = process.memoryUsage(), cpu = process.cpuUsage(), calls:number[]=[];
   const originalGc = Bun.gc;

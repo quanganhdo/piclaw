@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -89,7 +89,9 @@ describe("EF-S02 concurrency crash and corruption hardening", () => {
       owner.seedOperation(terminalOperation());
       contender.database.exec("PRAGMA busy_timeout=0");
       owner.database.exec("BEGIN IMMEDIATE");
-      const blocked = await contender.store.commitTerminal(terminalRequest());
+      const clock = spyOn(performance, "now").mockReturnValueOnce(0).mockReturnValue(5001);
+      let blocked: Awaited<ReturnType<typeof contender.store.commitTerminal>>;
+      try { blocked = await contender.store.commitTerminal(terminalRequest()); } finally { clock.mockRestore(); }
       expect(blocked.ok).toBeFalse();
       if (!blocked.ok) {
         expect(blocked.error._tag).toBe("storage_unavailable");
@@ -132,9 +134,8 @@ describe("EF-S02 concurrency crash and corruption hardening", () => {
           .prepare(
             `INSERT INTO service_effect_s01_operations(
                operation_id,chat_jid,version,phase,primary_source_seq,
-               harness_session_id,harness_lane,harness_operation_id,harness_state,
-               harness_watch_generation
-             ) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+               harness_session_id,harness_operation_id
+             ) VALUES (?,?,?,?,?,?,?)`,
           )
           .run(
             "operation-2",
@@ -143,10 +144,7 @@ describe("EF-S02 concurrency crash and corruption hardening", () => {
             "settling",
             2,
             TERMINAL_HARNESS.sessionId,
-            TERMINAL_HARNESS.lane,
             TERMINAL_HARNESS.harnessOperationId,
-            TERMINAL_HARNESS.state,
-            TERMINAL_HARNESS.watchGeneration,
           );
         subject.database
           .prepare(
@@ -244,13 +242,7 @@ describe("EF-S02 concurrency crash and corruption hardening", () => {
       "UPDATE service_effect_s05_outbox SET enqueued_at='2026-08-14T11:00:00.000Z'",
       "UPDATE service_effect_s05_decisions SET outcome='empty'",
       "UPDATE service_effect_s05_decisions SET outbox_id='other'",
-      "UPDATE messages SET chat_jid='web:other' WHERE is_terminal_agent_reply=1",
-      "UPDATE messages SET is_terminal_agent_reply=0 WHERE is_terminal_agent_reply=1",
-      "DELETE FROM message_media WHERE message_rowid=(SELECT message_row_id FROM service_effect_s02_commits)",
       "UPDATE service_effect_operation_media SET role='draft'",
-      `INSERT INTO messages_fts(messages_fts,rowid,content,chat_jid,sender,sender_name,timestamp,is_bot_message)
-       SELECT 'delete',rowid,content,chat_jid,sender,sender_name,timestamp,is_bot_message
-       FROM messages WHERE is_terminal_agent_reply=1`,
       "UPDATE service_effect_s01_operations SET version=99",
       "UPDATE service_effect_s01_operations SET terminal_disposition='failed'",
       "UPDATE service_effect_s01_operations SET terminal_message_row_id=NULL",
@@ -350,8 +342,6 @@ describe("EF-S02 concurrency crash and corruption hardening", () => {
         Reflect.set(snapshot.operations[0]!.harness!, "watchGeneration", "bad"),
       (snapshot) => Reflect.set(snapshot.sources[0]!, "sourceSeq", 2),
       (snapshot) => Reflect.set(snapshot.sources[0]!, "queuedState", "accepted"),
-      (snapshot) => Reflect.set(snapshot.messages[0]!, "terminal", false),
-      (snapshot) => snapshot.messages[0]!.mediaIds.splice(0, 1),
       (snapshot) => Reflect.set(snapshot.media[0]!, "role", "draft"),
       (snapshot) => Reflect.set(snapshot.outbox[0]!, "operationId", "other"),
       (snapshot) => snapshot.decisions[0]!.linkedOutboxIds.reverse(),

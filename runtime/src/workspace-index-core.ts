@@ -1,3 +1,4 @@
+import { admitSqliteWrite } from "./db/sqlite-async-admission.js";
 /**
  * workspace-index-core.ts – Shared workspace index contracts and refresh logic.
  *
@@ -16,7 +17,6 @@ import { getDb } from "./db.js";
 import { getWorkspaceDir, getWorkspaceSearchConfig } from "./core/config.js";
 import { createLogger, debugSuppressedError } from "./utils/logger.js";
 import { workspaceIndexAccess,WorkspaceIndexAccessDenied } from './core/workspace-index-access.js';
-import { familyWorkspaceIndexStatus,familyWorkspaceScope,refreshFamilyWorkspaceIndex,staleFamilyWorkspaceIndex } from './family-workspace-index.js';
 
 import { markNoteIndexDirty } from "./note-retrieval/coordinator.js";
 
@@ -163,7 +163,6 @@ async function walkFiles(root: string, validate: () => void, allowMissingRoot = 
 
 export function normalizeWorkspaceIndexRoots(scope: string | undefined): string[] {
   const access=workspaceIndexAccess();
-  if(access.mode==='family-shared'){const selected=familyWorkspaceScope(scope);return (selected==='notes'?['notes/family']:selected==='skills'?['.pi/skills']:['notes/family','.pi/skills']).map(root=>path.resolve(access.workspace,root));}
   return workspaceIndexPolicyRoots(scope).map(root => path.join(getWorkspaceRoot(), root));
 }
 
@@ -263,11 +262,11 @@ async function indexWorkspace(roots: string[], maxBytes: number,validate:()=>voi
     const existing = indexedRows.get(row.path);
     indexedRows.set(row.path, { rowid: row.rowid, count: (existing?.count ?? 0) + 1 });
   }
-  const removeFile = db.transaction((relativePath: string) => {
+  const removeFile = (relativePath: string) => admitSqliteWrite(db, () => {
     validate();
     db.prepare("DELETE FROM workspace_fts WHERE path = ?").run(relativePath);
     db.prepare("DELETE FROM workspace_files WHERE path = ?").run(relativePath);
-  });
+  }, validate);
   let processedFileCount = 0;
 
   for (const root of roots) {
@@ -278,10 +277,10 @@ async function indexWorkspace(roots: string[], maxBytes: number,validate:()=>voi
       const rel = toRelative(file);
       try {
         validate();
-        if (!workspaceIndexPathDecision(rel).included || !workspaceIndexSafePath(getWorkspaceRoot(), rel)) { removeFile(rel); continue; }
+        if (!workspaceIndexPathDecision(rel).included || !workspaceIndexSafePath(getWorkspaceRoot(), rel)) { await removeFile(rel); continue; }
         const stat = await fs.lstat(file);validate();
         if (stat.size > maxBytes) {
-          removeFile(rel);
+          await removeFile(rel);
           continue;
         }
 
@@ -318,7 +317,7 @@ async function indexWorkspace(roots: string[], maxBytes: number,validate:()=>voi
           const indexed = row?.count !== 1 ? undefined : db.prepare("SELECT content FROM workspace_fts WHERE rowid = ?").get(row.rowid) as { content: string } | undefined;
           if (indexed?.content === content) continue;
         }
-        db.transaction(() => {
+        await admitSqliteWrite(db, () => {
           validate();
           if (!workspaceIndexPathDecision(rel).included || !workspaceIndexSafePath(getWorkspaceRoot(), rel)) throw new WorkspaceIndexPolicyChanged();
           db.prepare("DELETE FROM workspace_fts WHERE path = ?").run(rel);
@@ -326,7 +325,7 @@ async function indexWorkspace(roots: string[], maxBytes: number,validate:()=>voi
           db.prepare(
             "INSERT INTO workspace_files (path, mtime_ms, size_bytes, indexed_at) VALUES (?, ?, ?, ?) ON CONFLICT(path) DO UPDATE SET mtime_ms = excluded.mtime_ms, size_bytes = excluded.size_bytes, indexed_at = excluded.indexed_at",
           ).run(rel, mtimeMs, stat.size, now);
-        })();
+        }, validate);
         content = "";
         processedFileCount += 1;
         if (processedFileCount % AGGRESSIVE_WORKSPACE_INDEX_GC_EVERY_FILES === 0) {
@@ -346,11 +345,11 @@ async function indexWorkspace(roots: string[], maxBytes: number,validate:()=>voi
 
   validate();const existingPaths = db.prepare("SELECT path FROM workspace_files UNION SELECT path FROM workspace_fts").all() as Array<{ path: string }>;
   for (const row of existingPaths) {
-    if (!workspaceIndexPathDecision(row.path).included || !workspaceIndexSafePath(getWorkspaceRoot(), row.path)) { removeFile(row.path); continue; }
+    if (!workspaceIndexPathDecision(row.path).included || !workspaceIndexSafePath(getWorkspaceRoot(), row.path)) { await removeFile(row.path); continue; }
     const inScope = rootPrefixes.some((prefix) => prefix === "" || row.path.startsWith(prefix));
     if (!inScope) continue;
     if (!seen.has(row.path)) {
-      removeFile(row.path);
+      await removeFile(row.path);
     }
   }
 
@@ -374,36 +373,42 @@ export function getAffectedWorkspaceIndexScopes(paths: string[]): WorkspaceSearc
 }
 
 export function getWorkspaceIndexStatus(params?: { scope?: WorkspaceSearchScope | string }): WorkspaceIndexStatus {
-  const access=workspaceIndexAccess();if(access.mode==='family-shared')return familyWorkspaceIndexStatus(params?.scope);
+  const access=workspaceIndexAccess();
   const scope = normalizeWorkspaceSearchScope(params?.scope);
   const roots = normalizeWorkspaceIndexRoots(scope);
   return buildStatusSnapshot(scope, roots, getStatusRow(scope));
 }
 
-export function markWorkspaceIndexCoreStale(params?: { scope?: WorkspaceSearchScope | string; paths?: string[] }): WorkspaceSearchScope[] {
-  const access=workspaceIndexAccess();if(access.mode==='family-shared')return staleFamilyWorkspaceIndex(params);
-  const databaseFile=(getDb().query('PRAGMA database_list').get() as {file?:string})?.file;
-  if(databaseFile&&params?.scope !== 'skills') markNoteIndexDirty(params?.paths?.map(p => path.relative(getWorkspaceRoot(), path.resolve(getWorkspaceRoot(),p)).split(path.sep).join('/')));
-  const explicitScope = params?.paths?.length ? null : normalizeWorkspaceSearchScope(params?.scope);
-  const scopes = explicitScope ? [explicitScope] : getAffectedWorkspaceIndexScopes(params?.paths || []);
+export type WorkspaceIndexStaleAdmission = { authorise?: () => void; signal?: AbortSignal };
 
-  for (const scope of scopes) {
-    const roots = normalizeWorkspaceIndexRoots(scope);
-    const row = getStatusRow(scope);
-    if (row) {
-      if (row.state === "failed") continue;
-      upsertStatus(scope, "stale", roots, {
-        lastIndexedAt: row.last_indexed_at,
-        lastError: row.last_error,
-        indexedFileCount: row.indexed_file_count,
-      });
+export function markWorkspaceIndexCoreStale(
+  params?: { scope?: WorkspaceSearchScope | string; paths?: string[] },
+  admission: WorkspaceIndexStaleAdmission = {},
+): Promise<WorkspaceSearchScope[]> {
+  const access = workspaceIndexAccess(), database = getDb(), policy = workspaceIndexPolicySnapshot();
+  const captured = structuredClone(params);
+  const explicitScope = captured?.paths?.length ? null : normalizeWorkspaceSearchScope(captured?.scope);
+  const scopes = explicitScope ? [explicitScope] : getAffectedWorkspaceIndexScopes(captured?.paths || []);
+  const rootsByScope = scopes.map(scope => ({ scope, roots: normalizeWorkspaceIndexRoots(scope) }));
+  const notePaths = captured?.paths?.map(p => path.relative(getWorkspaceRoot(), path.resolve(getWorkspaceRoot(), p)).split(path.sep).join('/'));
+  const validate = () => { access.validate(); policy.validate(); admission.authorise?.(); };
+  return admitSqliteWrite(database, () => {
+    const databaseFile = (database.query('PRAGMA database_list').get() as { file?: string })?.file;
+    if (databaseFile && captured?.scope !== 'skills') markNoteIndexDirty(notePaths);
+    for (const { scope, roots } of rootsByScope) {
+      const row = getStatusRow(scope);
+      if (row && row.state !== "failed") {
+        upsertStatus(scope, "stale", roots, {
+          lastIndexedAt: row.last_indexed_at, lastError: row.last_error, indexedFileCount: row.indexed_file_count,
+        });
+      }
     }
-  }
-  return scopes;
+    return scopes;
+  }, validate, admission.signal, undefined, () => { if (getDb() !== database) throw new WorkspaceIndexAccessDenied(); });
 }
 
 export async function refreshWorkspaceIndex(params?: { scope?: WorkspaceSearchScope | string; max_kb?: number }): Promise<WorkspaceIndexStatus> {
-  const access=workspaceIndexAccess();if(access.mode==='family-shared')return refreshFamilyWorkspaceIndex(params);
+  const access=workspaceIndexAccess();
   const database=getDb(), policy=workspaceIndexPolicySnapshot();let denied=false;
   const validate=()=>{access.validate();policy.validate();if(denied||getDb()!==database){denied=true;throw new WorkspaceIndexAccessDenied();}};
   const scope = normalizeWorkspaceSearchScope(params?.scope);
@@ -426,27 +431,28 @@ export async function refreshWorkspaceIndex(params?: { scope?: WorkspaceSearchSc
   }
   activeIndexScopes.set(scope, roots);
   try {
-    upsertStatus(scope, "indexing", roots, {
+    await admitSqliteWrite(database, () => upsertStatus(scope, "indexing", roots, {
       lastIndexedAt: previous?.last_indexed_at ?? null,
       lastError: null,
       indexedFileCount: previous?.indexed_file_count ?? 0,
-    });
+    }), validate);
     await indexWorkspace(roots, maxBytes,validate);validate();
     const indexedAt = new Date().toISOString();
-    upsertStatus(scope, "ready", roots, {
+    const indexedFileCount = countIndexedFilesForRoots(roots);
+    await admitSqliteWrite(database, () => upsertStatus(scope, "ready", roots, {
       lastIndexedAt: indexedAt,
       lastError: null,
-      indexedFileCount: countIndexedFilesForRoots(roots),
-    });
+      indexedFileCount,
+    }), validate);
     activeIndexScopes.delete(scope);
     return buildStatusSnapshot(scope, roots, getStatusRow(scope));
   } catch (error) {
     access.validate();if(error instanceof WorkspaceIndexAccessDenied)throw error;
-    upsertStatus(scope, "failed", roots, {
+    await admitSqliteWrite(database, () => upsertStatus(scope, "failed", roots, {
       lastIndexedAt: previous?.last_indexed_at ?? null,
       lastError: error instanceof Error ? error.message : String(error),
       indexedFileCount: previous?.indexed_file_count ?? 0,
-    });
+    }), access.validate);
     throw error;
   } finally {
     activeIndexScopes.delete(scope);

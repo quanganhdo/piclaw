@@ -203,11 +203,11 @@ test("uploadFile, attachFile, and downloadZip return expected outcomes", async (
     const missingDir = await service.uploadFile(`${prefix}/missing-dir`, new File(["x"], "a.txt"));
     expect(missingDir.status).toBe(404);
 
-    const attached = service.attachFile(`${prefix}/attach.txt`);
+    const attached = await service.attachFile(`${prefix}/attach.txt`);
     expect(attached.status).toBe(200);
     expect((attached.body as any).media_id).toBeGreaterThan(0);
 
-    const attachDir = service.attachFile(`${prefix}/uploads`);
+    const attachDir = await service.attachFile(`${prefix}/uploads`);
     expect(attachDir.status).toBe(400);
 
     const zipDir = await service.downloadZip(`${prefix}/uploads`);
@@ -261,7 +261,7 @@ test("workspace file APIs reject symlinks escaping the workspace root", async ()
 
     expect(service.getFile(`${prefix}/secret-link.txt`).status).toBe(400);
     expect(service.getRaw(`${prefix}/secret-link.txt`).status).toBe(400);
-    expect(service.attachFile(`${prefix}/secret-link.txt`).status).toBe(400);
+    expect((await service.attachFile(`${prefix}/secret-link.txt`)).status).toBe(400);
     expect(service.updateFile(`${prefix}/secret-link.txt`, "changed").status).toBe(400);
     expect(service.deleteFile(`${prefix}/secret-link.txt`).status).toBe(400);
     expect(service.renameFile(`${prefix}/secret-link.txt`, "renamed.txt").status).toBe(400);

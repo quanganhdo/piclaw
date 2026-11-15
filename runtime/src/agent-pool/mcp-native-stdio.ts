@@ -2,7 +2,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import type { JsonRpcMessage, McpTransport } from '@earendil-works/pi-mcp';
 
 /** Host-owned stdio: no ambient credentials, and cleanup awaits pipes plus process-group exit. */
-export function createNativeStdio(options: { command: string; args?: string[]; cwd?: string; env?: Record<string, string> }): McpTransport {
+export function createNativeStdio(options: { command: string; args?: string[]; cwd?: string; env?: Record<string, string>; assertStart?: () => void; assertSend?: (message: JsonRpcMessage) => void }): McpTransport {
   if (process.platform === 'win32') throw Error('Experimental Native stdio requires POSIX process-group cleanup.');
   const messages = new Set<(message: JsonRpcMessage) => void>();
   const errors = new Set<(error: Error) => void>();
@@ -17,6 +17,7 @@ export function createNativeStdio(options: { command: string; args?: string[]; c
   let resolveEnded!: () => void;
   let closePromise: Promise<void> | undefined;
   let buffer = '';
+  let inputFailed = false;
   const pipeFailures: Error[] = [];
   const env: NodeJS.ProcessEnv = {};
   for (const name of ['PATH', 'HOME', 'TMPDIR', 'TMP', 'TEMP', 'LANG', 'LC_ALL', 'TZ']) if (process.env[name] !== undefined) env[name] = process.env[name];
@@ -33,6 +34,7 @@ export function createNativeStdio(options: { command: string; args?: string[]; c
     async start() {
       if (child || closePromise) throw Error('Native stdio transport cannot restart.');
       ended = new Promise<void>(resolve => resolveEnded = resolve);
+      options.assertStart?.();
       child = spawn(options.command, options.args ?? [], { cwd: options.cwd, env, detached: true, stdio: 'pipe' });
       child.once('close', () => { resolveEnded(); events.emitClose(); });
       child.on('error', error => { pipeFailures.push(error); events.emitError(error); });
@@ -41,23 +43,27 @@ export function createNativeStdio(options: { command: string; args?: string[]; c
       child.stderr.on('data', () => {});
       child.stdout.setEncoding('utf8');
       child.stdout.on('data', chunk => {
+        if (inputFailed) return;
         buffer += chunk;
-        if (Buffer.byteLength(buffer) > 1024 * 1024) { events.emitError(Error('Native MCP message exceeds 1 MiB.')); kill('SIGKILL'); return; }
+        if (Buffer.byteLength(buffer) > 1024 * 1024) { inputFailed = true; buffer = ''; events.emitError(Error('Native MCP message exceeds 1 MiB.')); kill('SIGKILL'); return; }
         let index: number;
         while ((index = buffer.indexOf('\n')) >= 0) {
           const line = buffer.slice(0, index); buffer = buffer.slice(index + 1);
           if (!line.trim()) continue;
           try { events.emitMessage(JSON.parse(line) as JsonRpcMessage); }
-          catch { events.emitError(Error('Native MCP server returned malformed JSON.')); kill('SIGKILL'); }
+          catch { inputFailed = true; buffer = ''; events.emitError(Error('Native MCP server returned malformed JSON.')); kill('SIGKILL'); return; }
         }
       });
       await new Promise<void>((resolve, reject) => { child!.once('spawn', resolve); child!.once('error', reject); });
     },
     async send(message) {
-      if (!child || closePromise || child.exitCode !== null || child.signalCode !== null) throw Error('Native stdio is closed.');
+      if (!child || closePromise || inputFailed || child.exitCode !== null || child.signalCode !== null) throw Error('Native stdio is closed.');
       const data = JSON.stringify(message) + '\n';
       if (Buffer.byteLength(data) > 1024 * 1024) throw Error('Native MCP message exceeds 1 MiB.');
-      await new Promise<void>((resolve, reject) => child!.stdin.write(data, error => error ? reject(error) : resolve()));
+      await new Promise<void>((resolve, reject) => {
+        options.assertSend?.(message);
+        child!.stdin.write(data, error => error ? reject(error) : resolve());
+      });
     },
     close() {
       if (!closePromise) closePromise = (async () => {

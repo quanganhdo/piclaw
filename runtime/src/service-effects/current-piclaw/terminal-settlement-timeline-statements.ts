@@ -86,11 +86,12 @@ export function insertTerminalTimeline(
   const inserted = database
     .prepare(
       `INSERT INTO messages(
-         id,chat_jid,sender,sender_name,content,content_blocks,thread_id,timestamp,
+         rowid,id,chat_jid,sender,sender_name,content,content_blocks,thread_id,timestamp,
          is_from_me,is_bot_message,is_terminal_agent_reply,is_steering_message
-       ) VALUES (?,?,?,?,?,?,?,?,0,1,1,0) RETURNING rowid`,
+       ) VALUES (?,?,?,?,?,?,?,?,?,0,1,1,0) RETURNING rowid`,
     )
     .get(
+      null,
       messageId,
       timeline.chatJid,
       "web-agent",
@@ -211,7 +212,7 @@ function validateThreadRoot(
   const root = database
     .prepare(
       `SELECT 1 present FROM messages
-       WHERE rowid=? AND chat_jid=? AND thread_id IS NULL`,
+       WHERE rowid=? AND chat_jid=? AND (thread_id IS NULL OR thread_id=rowid)`,
     )
     .get(threadId, chatJid) as { present?: unknown } | undefined;
   if (root?.present !== 1) {
@@ -239,7 +240,7 @@ function linkTerminalMedia(
   appendMediaTextToFts(database, messageRowId, mediaIds, afterStatement);
 }
 
-function normaliseExistingMediaFts(
+export function normaliseExistingMediaFts(
   database: Database,
   messageRowId: number,
   afterStatement: (statement: TerminalTimelineStatement) => void,
@@ -271,7 +272,7 @@ function normaliseExistingMediaFts(
   return mediaIds.length;
 }
 
-function appendMediaTextToFts(
+export function appendMediaTextToFts(
   database: Database,
   messageRowId: number,
   mediaIds: readonly number[],
@@ -288,55 +289,6 @@ function appendMediaTextToFts(
     `${base.content}\n\n${textParts.join("\n")}`,
     afterStatement,
   );
-}
-
-export function terminalTimelineSnapshotIsValid(
-  database: Database,
-  operationId: string,
-  messageRowId: number,
-  expectedMediaCount: number,
-): boolean {
-  try {
-    const message = database
-      .prepare("SELECT content FROM messages WHERE rowid=?")
-      .get(messageRowId) as { content?: unknown } | undefined;
-    if (!message || typeof message.content !== "string") return false;
-    const owned = database
-      .prepare(
-        `SELECT mm.media_id
-         FROM message_media mm
-         JOIN service_effect_operation_media m
-           ON m.media_id=mm.media_id AND m.operation_id=? AND m.role='terminal'
-         JOIN media stored ON stored.id=mm.media_id
-         WHERE mm.message_rowid=? ORDER BY mm.media_id`,
-      )
-      .all(operationId, messageRowId) as Array<{ media_id?: unknown }>;
-    const total = database
-      .prepare("SELECT count(*) n FROM message_media WHERE message_rowid=?")
-      .get(messageRowId) as { n?: unknown } | undefined;
-    const mediaIds = owned.map((entry) => requiredCount(entry.media_id));
-    if (
-      requiredCount(total?.n) !== expectedMediaCount ||
-      mediaIds.length !== expectedMediaCount
-    ) {
-      return false;
-    }
-    const indexed = (text: string): boolean => {
-      if (text.length === 0) return true;
-      const phrase = `"${text.replaceAll('"', '""')}"`;
-      const found = database
-        .prepare(
-          "SELECT count(*) n FROM messages_fts WHERE rowid=? AND messages_fts MATCH ?",
-        )
-        .get(messageRowId, phrase) as { n?: unknown } | undefined;
-      return requiredCount(found?.n) === 1;
-    };
-    if (!indexed(message.content)) return false;
-    return collectMediaText(database, mediaIds).every(indexed);
-  } catch (error) {
-    void error;
-    return false;
-  }
 }
 
 function requiredCount(value: unknown): number {
@@ -511,7 +463,7 @@ function changedExactlyOne(changes: number): boolean {
 
 // Bun reports FTS5 virtual-table maintenance work in this statement result.
 // The rowid and delete command still target one logical index row; durable FTS
-// cardinality/content is checked by terminalTimelineSnapshotIsValid.
+// FTS content is restored after media changes.
 function changedFtsIndex(changes: number): boolean {
   return Number.isSafeInteger(changes) && changes >= 1;
 }

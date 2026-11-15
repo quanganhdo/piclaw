@@ -326,11 +326,8 @@ export class FakeServiceWorkStore implements ServiceWorkStore {
           });
         if (existing.harness)
           return existing.harness.sessionId === request.sessionId &&
-            existing.harness.lane === request.lane &&
             existing.harness.harnessOperationId ===
-              request.harnessOperationId &&
-            existing.harness.state === request.state &&
-            existing.harness.watchGeneration === request.watchGeneration
+              request.harnessOperationId
             ? this.apply(existing, true)
             : this.reject("owner_conflict", {
                 conflictingOperationId: existing.operationId,
@@ -343,22 +340,10 @@ export class FakeServiceWorkStore implements ServiceWorkStore {
         return this.apply(
           this.update(op.value, {
             version: op.value.version + 1,
-            phase:
-              request.state === "running"
-                ? "executing"
-                : request.state === "suspended"
-                  ? "suspended"
-                  : request.state === "aborting"
-                    ? "cancelling"
-                    : request.state === "finished"
-                      ? "settling"
-                      : "starting_harness",
+            phase: op.value.cancellation ? "cancelling" : "executing",
             harness: Object.freeze({
               sessionId: request.sessionId,
-              lane: request.lane,
               harnessOperationId: request.harnessOperationId,
-              state: request.state,
-              watchGeneration: request.watchGeneration,
             }),
           }),
         );

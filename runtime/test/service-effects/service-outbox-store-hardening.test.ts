@@ -1,5 +1,5 @@
 import { Database } from "bun:sqlite";
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -1344,7 +1344,11 @@ describe("EF-S05 held immediate lock is bounded", () => {
         run: () => Promise<ResultValue<T, OutboxStoreError>>,
       ): Promise<ResultValue<T, OutboxStoreError>> => {
         left.database.exec("BEGIN IMMEDIATE");
-        const blocked = await run();
+        // Exhaust the unchanged five-second admission budget without making
+        // five deliberately-held locks consume the entire test deadline.
+        const clock = spyOn(performance, "now").mockReturnValueOnce(0).mockReturnValue(5001);
+        let blocked: ResultValue<T, OutboxStoreError>;
+        try { blocked = await run(); } finally { clock.mockRestore(); }
         typed(blocked, "storage_unavailable");
         if (!blocked.ok) expect(blocked.error.certainty).toBe("not_applied");
         left.database.exec("ROLLBACK");
@@ -1866,4 +1870,15 @@ describe("EF-S05 hostile input and redaction", () => {
       f.database.close();
     }
   });
+});
+
+test('outbox construction preserves caller busy timeout', () => {
+  const f = open();
+  try {
+    for (const timeout of [0, 71]) {
+      f.database.exec(`PRAGMA busy_timeout=${timeout}`);
+      expect(createCurrentPiclawServiceOutboxStore(f.database, f.runtime).ok).toBeTrue();
+      expect(f.database.query('PRAGMA busy_timeout').get()).toEqual({timeout});
+    }
+  } finally { f.database.close(); }
 });

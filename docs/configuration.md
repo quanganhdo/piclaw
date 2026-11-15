@@ -19,10 +19,6 @@ This page lists Piclaw's environment variables, config files, secrets, authentic
 [External workspace](#using-an-external-workspace) ·
 [Cross-instance interop](#remote-peer-add-on)
 
-## External add-on operations
-
-`domains.operations` controls generic principal-scoped background work for runtime add-ons. It defaults to disabled with no grants. The [operation API and configuration guide](addon-operations.md) describes explicit principal/target grants, text-only defaults, budget lineage, cancellation, persistence and tool authority. This does not enable A2A or expose a network endpoint.
-
 ## Configuration surface policy
 
 Piclaw keeps `PICLAW_*` environment variables for immutable deployment bootstrap, secrets, and compatibility aliases. Runtime code should read ordinary settings through typed config helpers instead of open-coded `process.env.PICLAW_*` expressions.
@@ -343,6 +339,12 @@ Piclaw's `/login` provider picker uses Earendil's runtime provider catalog plus 
 
 Use `/login <provider-id>` to configure one of these providers directly. Provider composition details are available in the `/agent/models` payload under `provider_diagnostics`; the payload includes non-secret auth source/label and composition flags.
 
+### Custom-endpoint error diagnostics
+
+OpenAI-compatible endpoints can report exhausted billing quota with `error.code` or `error.type` set to `insufficient_quota`. Piclaw's web error formatter treats that explicit identifier as a quota error even when the response is HTTP 429 or asks the client to retry. An ordinary 429 remains a transient rate-limit warning.
+
+Request IDs remain available in the diagnostic details. The formatter keeps bounded text and omits HTML error bodies, embedded data and unrelated JSON payload fields. Compatibility can be checked with synthetic formatter fixtures; no provider key, new transport or provider-listing endorsement is required.
+
 ### OpenRouter output budget
 
 Piclaw bounds OpenRouter output reservations to avoid HTTP 402 failures caused by a model's advertised maximum output. The filter applies only to `openrouter` requests, preserves a lower explicit `max_tokens` or `max_completion_tokens` value, and defaults absent, malformed, or excessive limits to 32,768 tokens. It does not change the model's context window.
@@ -386,12 +388,7 @@ For the packaged Azure managed-identity/static-key path and its additional token
 | `PICLAW_USER_NAME` | _(empty)_ | Display name for the human user in the web UI |
 | `PICLAW_USER_AVATAR` | _(empty)_ | Avatar URL for the human user |
 | `PICLAW_USER_AVATAR_BACKGROUND` | _(empty)_ | CSS background colour for the user avatar circle |
-| `PICLAW_SESSION_MAX_SIZE_MB` | `32` | Session file size threshold (MB) for auto-rotation warnings and pre-prompt rotation |
-| `PICLAW_SESSION_AUTO_ROTATE` | `1` | Automatically rotate oversized session files before the next prompt |
 | `PICLAW_TURN_MAX_TOOL_EXECUTIONS` | `64` | Authoritative per-turn completed tool-execution budget. Settings persists `domains.agent.toolUseMessageBudget`; values are clamped to `8..512`. Legacy `PICLAW_TURN_MAX_TOOL_USE_MESSAGES` and `PICLAW_MID_TURN_TOOL_EXECUTION_HARD_CEILING` are lower-priority compatibility aliases. |
-| `PICLAW_SMART_COMPACTION_METHOD` | `selective` | Smart-compaction local processing method: `selective` or `pipelined` |
-| `domains.compaction.remoteCompactionEnabled` | `false` | Opt in to provider-native compaction before the selected local method (JSON config) |
-| `domains.compaction.remoteCompactionTimeoutMs` | `300000` | Provider-native compaction request deadline before deterministic local fallback (JSON config) |
 | `PICLAW_WHATSAPP_PHONE` | _(empty)_ | Alias for `WHATSAPP_PHONE` |
 | `PICLAW_TOOL_OUTPUT_RETENTION_MS` | `2592000000` (30 days) | Milliseconds to retain stored tool outputs (preferred; overrides `_DAYS`; values are capped at 30 days) |
 | `PICLAW_TOOL_OUTPUT_RETENTION_DAYS` | _(legacy)_ | Days to retain stored tool outputs (deprecated; use `_MS`) |
@@ -407,8 +404,6 @@ For the packaged Azure managed-identity/static-key path and its additional token
 | `PICLAW_TOOL_RESULT_SEMANTIC_SUMMARY_MAX_INPUT_CHARS` | `12000` | Max sampled tool-output characters sent to semantic summarizer |
 | `PICLAW_TOOL_RESULT_SEMANTIC_SUMMARY_MAX_TOKENS` | `320` | Max generated semantic summary tokens |
 | `PICLAW_TOOL_RESULT_SEMANTIC_SUMMARY_TIMEOUT_MS` | `12000` | Timeout for semantic summary generation before preview fallback |
-| `PICLAW_SESSION_IDLE_MAX_WAIT_MS` | `10000` | Max ms to wait for session idle before sending a turn response |
-| `PICLAW_SESSION_IDLE_COMPACTION_MAX_WAIT_MS` | `300000` | Max ms to wait for idle when a compaction is in progress |
 | `PICLAW_MAIN_SESSION_IDLE_TTL_MS` | `180000` (3 min) | Idle TTL for the main interactive session; `PICLAW_SESSION_IDLE_TTL_MS` overrides the fallback when set |
 | `PICLAW_SIDE_SESSION_IDLE_TTL_MS` | `60000` (1 min) | Idle TTL for side/background sessions; `PICLAW_SESSION_IDLE_TTL_MS` overrides the fallback when set |
 | `PICLAW_SESSION_IDLE_TTL_MS` | _(empty)_ | Shared idle TTL override for main and side sessions when their specific variables are unset |
@@ -423,10 +418,9 @@ Notes:
 - Tool output retention defaults to **30 days** and is capped at 30 days. `PICLAW_TOOL_OUTPUT_RETENTION_MS` overrides the legacy `PICLAW_TOOL_OUTPUT_RETENTION_DAYS`.
 - Tool-result compaction supports both a global gate (`PICLAW_TOOL_RESULT_COMPACTION_ENABLED`) and per-tool allowlisting (`PICLAW_TOOL_RESULT_COMPACTION_TOOLS`).
 - Semantic summaries are enabled by default for compacted tool results; if generation fails or times out (`PICLAW_TOOL_RESULT_SEMANTIC_SUMMARY_TIMEOUT_MS`), Piclaw falls back to preview-based summaries.
-- Session idle timeouts are configurable: `PICLAW_SESSION_IDLE_MAX_WAIT_MS` controls interactive turn flushing; `PICLAW_SESSION_IDLE_COMPACTION_MAX_WAIT_MS` (default 5 min) allows extra wait time during compaction so the agent does not cut off mid-summarisation.
 - Background and scheduled turns use `PICLAW_BACKGROUND_AGENT_TIMEOUT` when set; otherwise they fall back to `PICLAW_AGENT_TIMEOUT`.
 - On `systemd --user` installs, keep `PICLAW_WORKSPACE`, `PICLAW_STORE`, and `PICLAW_DATA` stable across restarts. Startup recovery relies on the persisted SQLite state plus writable IPC files under `PICLAW_DATA/ipc/tasks`.
-- Session auto-rotation defaults to `32 MB`. Persisted sessions can hydrate to much larger in-memory footprints than their on-disk JSONL size suggests.
+- Native sessions use SQLite context maintenance. Legacy JSONL rotation and session idle-wait settings have no native execution effect; retained historical file settings do not enable rotation.
 - Warm-session pressure mode defaults to **384 MB RSS** before clamping the main-session cache. Set `PICLAW_MAIN_SESSION_PRESSURE_RSS_BYTES` to override the threshold.
 - In pressure mode, the main-session pool clamps to `PICLAW_MAIN_SESSION_PRESSURE_POOL_MAX_SIZE` (default `1`) and uses the shorter `PICLAW_MAIN_SESSION_PRESSURE_IDLE_TTL_MS` (default `60000`).
 - Oversized persisted `toolResult` payloads are sanitized before session resume and at append-time so inline image/blob payloads do not keep re-accumulating inside session files.
@@ -435,67 +429,11 @@ Notes:
 - Timeout recovery exhaustion is reported separately from provider retry exhaustion, preserving timeout as the primary cause in protected handoff metadata.
 - A first tool-dependent timeout or context-pressure failure may compact and run one tools-enabled continuation automatically. This one-use path requires explicitly resolved tool state, no tool failure, no terminal side-effect mix, no exhausted tool budget, available tool control, a successful non-skipped compaction, remaining recovery time/attempts, and an available source generation. It resumes the persisted session with a neutral continuation prompt; it never replays the original instruction.
 
-### Smart-compaction processing method
+### Native compaction
 
-Smart compaction has two processing methods:
+Both settings skins expose one host-wide automatic-compaction toggle, persisted as `domains.compaction.autoCompactionEnabled`. Native Harness decisions read it dynamically; `/auto-compact on|off` uses the same policy. A valid `PICLAW_AUTO_COMPACTION_ENABLED` compatibility override has higher precedence; conflicting saves fail without writing settings.
 
-- **Selective** (`selective`, the default) prioritizes high-value continuity and uses provenance-bearing progressive chunks when the source is too large for one request.
-- **Pipelined** (`pipelined`) processes the complete discarded message-event stream through chronological grouping, normalization, classification, deterministic reduction, and bounded semantic reduction. Previous summaries, retained context, trusted operator notes, and deterministic file facts remain separate auxiliary prompt inputs rather than source-ledger entries.
-
-The Pipelined coverage ledger assigns every discarded-source group a deterministic disposition and representation mode. Required human intent, orphan results, and unresolved tool state remain lossless; successful canonical tool batches use token-minimized bounded facts; assistant/context narratives use bounded evidence; and only allowlisted empty content may use `drop_safe`. Compact group headers retain source-index ranges with header codes `R` (required), `C` (canonical), `S` (bounded evidence), and `X` (duplicate-reference representation); `X` is not a separate disposition. Delayed tool results remain at their observed chronological position and carry explicit origin/result relationships. Compatible exact-duplicate non-required groups may render as provenance-bearing references rather than silent drops; this is not a general semantic-equivalence pass. Per-record SHA-256 integrity evidence and per-disposition character and estimated-token reduction metrics are emitted in structured debug telemetry as `auditLedger` and `pipelineCompression`; raw tool arguments and outcome text are excluded from that telemetry.
-
-Classification, reason assignment, canonical fact rendering, duplicate handling, integrity checks, and prompt construction are deterministic. The model only receives the validated ordered projection through a zero-call no-op, one complete request, or ordered progressive chunk and merge slots. See [Pipelined smart compaction](pipelined-compaction.md) for the architecture, ledger contract, model-call flow, invariants, telemetry, failure behavior, and troubleshooting guide.
-
-When local compaction runs, both methods share the same lifecycle, provider/auth resolution, output validation, progressive source-unit executor, exact partial-boundary handling, and post-compaction pruning. A web/runtime settings change affects the **next** compaction without requiring a restart; an active compaction keeps the method it captured when it started. Manual `.piclaw/config.json` or environment changes require a restart unless the running process is updated separately. The optional provider-native pre-pass described below is orthogonal: shared source preparation and tool analysis run first; remote success then completes before local ledger/prompt construction and model execution, while a safe remote failure continues into the captured Selective or Pipelined method.
-
-Set the method with the web **Compaction → Processing method** control, the environment variable, or `.piclaw/config.json`:
-
-```bash
-PICLAW_SMART_COMPACTION_METHOD=pipelined
-```
-
-```json
-{
-  "compaction": {
-    "smartCompactionMethod": "pipelined"
-  }
-}
-```
-
-The legacy aliases `traditional_pipelined`, `traditional-pipelined`, and `traditional pipelined` are accepted and normalized to `pipelined`. Unknown values fall back to the current/default method.
-
-### Provider-native remote compaction
-
-Provider-native compaction is an **opt-in pre-pass** after shared source preparation, tool analysis, and file-operation reconciliation. When enabled, Piclaw attempts it before the configured Selective or Pipelined method's ledger or prompt construction and model execution. If the provider is disabled, unsupported, unverified, unauthenticated, timed out, malformed, or in remote-backoff suppression, Piclaw runs the captured local method instead. A remote failure does not partially mutate the session or skip local compaction.
-
-Support is capability-gated by exact provider, API, and endpoint metadata. Piclaw does not infer support from a model name or from generic `openai-responses` compatibility. The initial supported matrix is:
-
-| Provider | API | Endpoint | Status |
-|----------|-----|----------|--------|
-| OpenAI API | `openai-responses` | `https://api.openai.com/v1/responses/compact` | Supported with API-key bearer authentication |
-| OpenAI Codex subscription | `openai-codex-responses` | `https://chatgpt.com/backend-api/codex/responses/compact` | Supported with Codex OAuth and `chatgpt-account-id` |
-| GitHub Copilot | any | any | Unsupported (verified compaction routes returned HTTP 404) |
-| OpenAI-compatible proxies and other providers | any | any | Unsupported until explicitly verified and registered |
-
-Enable the feature in either web settings frontend under **Compaction → Provider-native compaction**, by environment variable, or in `.piclaw/config.json`:
-
-```bash
-# In .piclaw/config.json:
-# { "domains": { "compaction": { "remoteCompactionEnabled": true, "remoteCompactionTimeoutMs": 300000 } } }
-```
-
-```json
-{
-  "compaction": {
-    "remoteCompactionEnabled": true,
-    "remoteCompactionTimeoutMs": 300000
-  }
-}
-```
-
-On success, Piclaw persists the provider's opaque canonical compaction window in the normal Pi `CompactionEntry.details` field, alongside compatibility metadata and deterministic file-operation facts. On resume, a provider-request hook restores that window verbatim in place of Piclaw's marker summary. Provider, model ID, API, and base URL compatibility metadata is checked against the explicit capability registry before replay. If a later remote attempt fails, the same opaque window is prepended to the local fallback request; inherited file facts remain canonicalized separately. Incompatible, malformed, or unverified state is blocked rather than reduced to local summary text or sent to another model. The opaque payload and credentials are never written to bounded diagnostic logs; logs contain only outcome codes, provider/model identifiers, counts, usage totals, and durations.
-
-Manual `/compact` attaches a Markdown report. For provider-native success, that report never prints encrypted state or arbitrary provider output. If the canonical window carries Piclaw's explicitly marked local continuity checkpoint, the report shows it as **Readable continuity checkpoint**; otherwise it explains under **Provider-native context** that continuity is preserved in encrypted state and intentionally omitted. The command also publishes post-compaction context usage immediately, preferring a rebuilt-session estimate and falling back to the report's safety-adjusted estimate when rebuilt-session tokens are unavailable.
+Compaction uses the active conversation model and SDK token thresholds. Selective/Pipelined methods, separate compaction models, remote pre-passes, legacy percentage thresholds, wall-clock deadlines and per-chat backoffs are unavailable in the native UI/API. Historical values and receipts remain intact. Manual `/compact`, accepted maintenance, recovery and accounting retain their native ownership checks. See [Native compaction policy](compaction-models-and-deadlines.md) for the field mapping and HTTP retirement contract.
 
 Deprecated env names (still supported): `ASSISTANT_NAME`, `ASSISTANT_AVATAR`, `AGENT_TIMEOUT`, `AGENT_TIMEOUT_BACKGROUND`.
 
@@ -674,7 +612,7 @@ Add more always-active tools in `.piclaw/config.json` under `tools.additionalDef
   "tools": {
     "additionalDefaultTools": [
       "search_workspace",
-      "introspect_sql"
+      "list_models"
     ]
   }
 }
@@ -685,7 +623,7 @@ A comma-separated string is also accepted:
 ```json
 {
   "tools": {
-    "additionalDefaultTools": "search_workspace, introspect_sql"
+    "additionalDefaultTools": "search_workspace, list_models"
   }
 }
 ```
@@ -766,7 +704,7 @@ Dream runtime settings are persisted under `domains.dream` in `.piclaw/config.js
 | Typed setting | Compatibility variable | Default | Purpose |
 |---------------|------------------------|---------|---------|
 | `domains.dream.cron` | `PICLAW_DREAM_CRON` | `0 1 * * *` | Cron schedule for AutoDream. Evaluated in the runtime timezone (`TZ` / runtime timing config), so the default is 01:00 local runtime time. |
-| `domains.dream.model` | `PICLAW_DREAM_MODEL` | _(unset — inherits session model)_ | Pin Dream / AutoDream to a specific model label (e.g. `anthropic/claude-sonnet-4-20250514`). The Dream pass applies it to the temporary Dream chat, so it also covers manual `/dream` runs. |
+| `domains.dream.model` | `PICLAW_DREAM_MODEL` | _(unset — inherits session model)_ | Pin Dream / AutoDream to a specific model label (e.g. `anthropic/claude-sonnet-4-20250514`). The Dream pass applies it to its private SDK conversation, including manual `/dream` runs. |
 | `domains.dream.backupKeep` | `PICLAW_DREAM_BACKUP_KEEP` | `10` | Number of pre-Dream note backups to retain. |
 | `domains.dream.agentTimeoutMs` | `PICLAW_DREAM_AGENT_TIMEOUT_MS` | background-agent timeout, or `360000` | Positive timeout for the out-of-band Dream model turn. |
 
@@ -803,21 +741,13 @@ See [runtime/docs/dream-memory.md](../runtime/docs/dream-memory.md) for the deta
 
 ## Access mode
 
-`domains.access.mode` defaults to `single-user` on fresh or legacy single-user stores. Only this mode can start. Account, ownership, authentication and fork APIs exist for development, but `family-shared` and `isolated-containers` are rejected by startup until their integration gates pass.
-
-```json
-{ "domains": { "access": { "mode": "single-user" } } }
-```
-
-Access configuration is read directly from `.piclaw/config.json`, outside the ordinary environment override precedence above: there is no access-mode environment variable or top-level `access` alias. Unknown keys, malformed values, incompatible isolation settings and a configuration/store mode mismatch fail closed. Creating accounts, assigning roots or migrating handle namespaces does not activate a mode. Do not edit `access_state` to bypass the gate.
-
-The planned family profile shares workspace files, tools, skills, add-ons and provider credentials. It offers application-level ownership, not filesystem isolation from other tool-capable users. The per-user container gateway is not implemented. See [Access modes and implementation status](multi-user/README.md) for backend APIs, remaining work, coordinated backup and downgrade constraints.
+Only `single-user` can start. Set `domains.access.mode` in `.piclaw/config.json`; the default is `single-user`. Invalid configuration and incompatible store markers fail closed. Family features are removed. See [Access modes](access-modes.md).
 
 ## Authentication (TOTP + passkeys)
 
 The setup below applies to supported **single-user deployments**. A 6-digit TOTP challenge can gate the UI, with optional WebAuthn passkeys. The manifest, service worker, agent avatar/icons, fonts, login bundles and static images have explicit public exceptions; arbitrary `/static/*` assets and app bundles are not all public. See `runtime/src/channels/web/http/route-flags.ts` for the classification.
 
-The login shell discovers enabled methods through public `/auth/options`, displays a username field only when family TOTP requires it, and offers an explicit passkey action. A failed policy fetch leaves credential entry disabled until retry. The gated family backend uses per-account TOTP, multiple independent passkeys, restricted invitations, device revocation and administrator-assisted reset. It does not use the shared `/totp` seed or legacy `/passkey enrol` flow as a multi-user setup procedure. Its account/passkey mutations require a matching Origin and recent authentication; its public asset exceptions are narrower. The restricted invitation page uses `/auth/invitation#token=<grant>` (fragment only) and a Secure HttpOnly enrolment cookie; use HTTPS and deliver grants privately. It is an implemented development UI, not a way to bypass family startup validation. The [family API inventory](../runtime/docs/web-api-endpoint-inventory.md#family-development-routes) describes the implemented endpoints, not an available deployment option.
+The login shell discovers enabled methods through public `/auth/options`. Code login sends only a six-digit code. A failed policy fetch leaves credential entry disabled until retry. Passkey management requires a recent owner login and matching Origin.
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
@@ -862,7 +792,7 @@ You can either preconfigure `PICLAW_WEB_TOTP_SECRET` yourself or initialize it f
 ### Passkey enrolment
 
 1. Sign in with an enabled method: TOTP for the first passkey, or an existing passkey for additional keys.
-2. Open **Settings → Authentication → Passkeys** in Classic or Visual.
+2. Open **Settings → Authentication → Passkeys**.
 3. Choose **Add passkey**, give it a name and complete the browser's native prompt. The key appears after server verification.
 4. If your login is older than five minutes, use **Sign in again**, then return and select **Refresh**. Adding another key in passkey-only mode does not require TOTP.
 
@@ -881,7 +811,7 @@ In single-user mode, internal automation can use `/internal/post` with the confi
 
 ## Keychain secrets
 
-See [keychain.md](keychain.md) for full details. The same bootstrap key material also encrypts the separate user TOTP-factor store. Back up both stores and the key together; changing the key alone makes existing ciphertext unreadable. [Offline factor re-encryption](multi-user/README.md#authentication-maintenance) does not rotate generic keychain entries or change configuration.
+See [keychain.md](keychain.md) for full details. Preserve existing key material and historical authentication records in coordinated backups.
 
 The keychain is disabled unless you provide a master key:
 
@@ -997,3 +927,9 @@ Notes:
 ## Remote Peer add-on
 
 Cross-instance identity, pairing, messaging, and mediated work are configured by the installable [Remote Peer add-on](https://rcarmo.github.io/piclaw-addons/addons/remote-peer/). Core has no peer-specific settings or peer-owned state.
+
+### Retired Core execution settings
+
+Native SDK task/submission maintenance owns compaction and recovery. The former Core automatic-recovery attempt/budget/loop-guard controls, session JSONL rotation limits, and foreground/idle/scoped trigger thresholds are no longer active settings. Sessions panes retain the independent tool-use budget and session-isolation controls. Native auto-compaction remains on the Compaction pane; accepted maintenance is not cancelled or replayed by a policy edit.
+
+Old JSON configuration and historical receipts remain untouched. Declared retired domain keys are preserved but never resolved or accepted in a new patch; unrelated unknown keys still fail validation. Stale general-setting saves containing retired execution fields reject before any change. Root SDK summary/model/watchdog utilities with real consumers retain their own settings; they do not enable a second native recovery loop. See [prompt-owner retirement](development/native-prompt-retirement.md).

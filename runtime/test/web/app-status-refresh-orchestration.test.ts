@@ -11,7 +11,6 @@ import {
   refreshQueueStateForChat,
   resetContextSessionGenerationsForTests,
   reconcileContextUsageForChat,
-  persistContextUsage,
   restoreContextUsage,
 } from '../../web/src/ui/app-status-refresh-orchestration.js';
 
@@ -72,6 +71,8 @@ test('normalizeContextUsage preserves prompt cache-hit telemetry', () => {
         costTotal: 0.012,
         providerCostTotal: 0.012,
         catalogueCostTotal: 0.02,
+        costCurrency: null,
+        providerCostCurrency: null,
         costProvenance: 'provider_reported',
         runs: 1,
         cacheHitRate: 60,
@@ -94,6 +95,8 @@ test('normalizeContextUsage preserves prompt cache-hit telemetry', () => {
         costTotal: 0.012,
         providerCostTotal: null,
         catalogueCostTotal: null,
+        costCurrency: null,
+        providerCostCurrency: null,
         costProvenance: null,
         runs: 1,
         cacheHitRate: null,
@@ -288,12 +291,7 @@ test('restoreContextUsage rejects local storage from a replaced session generati
       percent: 95,
       sessionGeneration: 'session-old',
     }, { authoritative: true });
-    persistContextUsage('chat:alpha', {
-      tokens: 95000,
-      contextWindow: 100000,
-      percent: 95,
-      sessionGeneration: 'session-old',
-    });
+    storage.set('piclaw:ctx:chat:alpha',JSON.stringify({tokens:95000,sessionGeneration:'session-old'}));
     reconcileContextUsageForChat('chat:alpha', null, {
       tokens: null,
       contextWindow: 100000,
@@ -301,7 +299,9 @@ test('restoreContextUsage rejects local storage from a replaced session generati
       sessionGeneration: 'session-new',
     }, { authoritative: true });
 
-    expect(restoreContextUsage('chat:alpha')).toBeNull();
+    expect(restoreContextUsage('chat:alpha')).toMatchObject({
+      tokens: null, percent: null, sessionGeneration: 'session-new',
+    });
   } finally {
     (globalThis as any).window = previousWindow;
   }

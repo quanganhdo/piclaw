@@ -23,9 +23,10 @@ function makeChannel(overrides: Partial<any> = {}): any {
           has_side_session: false,
         },
       ]),
-      getContextUsageForChat: async () => ({ tokens: 123, contextWindow: 1000, percent: 12.3 }),
+      getContextUsageForChat: async () => ({ tokens: 123, contextWindow: 1000, percent: 12.3, sessionGeneration: "session-1" }),
+      getSessionGenerationForChat: () => "session-1",
     },
-    getQueuedFollowupCount: () => 1,
+    readNativeQueue: async () => [{ row_id: 7, content: 'SDK queued input' }],
     getAgentStatus: () => ({ type: "thinking", title: "Thinking" }),
     getContextUsage: () => ({ tokens: 50, contextWindow: 1000, percent: 5 }),
     json: (payload: unknown, status = 200) => new Response(JSON.stringify(payload), {
@@ -47,6 +48,39 @@ describe("widget state API", () => {
     expect(snapshot.chats[0]?.status?.type).toBe("thinking");
     expect(snapshot.chats[0]?.context?.tokens).toBe(123);
     expect(snapshot.chats[0]?.queued_followups).toBe(1);
+  });
+
+  test("state JSON projects only current SDK context without stored estimates or private hints", async () => {
+    const previous = WEB_RUNTIME_CONFIG.widgetToken;
+    WEB_RUNTIME_CONFIG.widgetToken = "widget-test-token";
+    try {
+      for (const stored of [false, true]) {
+        for (const context of [
+          { tokens: null, contextWindow: 200000, percent: null, sessionGeneration: "session-1", tokensAreAuthoritative: true, futurePrivateField: "private" },
+          { tokens: 123, contextWindow: 1000, percent: 12.3 },
+          { tokens: undefined, contextWindow: 1000, percent: undefined },
+          null,
+        ]) {
+          const channel = makeChannel();
+          channel.agentPool.getContextUsageForChat = async () => stored || !context ? null : {...context,sessionGeneration:"session-1"};
+          channel.getContextUsage = () => stored ? context : null;
+          const response = await handleWidgetStateRoutes(channel,
+            new Request("https://example.test/api/state", { headers: { Authorization: "Bearer widget-test-token" } }), "/api/state");
+          expect(response?.status).toBe(200);
+          const body = await response!.json();
+          // Actual facade snapshots carry their bound identity. Stored estimates are never read.
+          const accepted = context && !stored;
+          const expected = accepted ? JSON.parse(JSON.stringify({
+            tokens: context.tokens, contextWindow: context.contextWindow, percent: context.percent, sessionGeneration: "session-1",
+            ...("tokensAreAuthoritative" in context && context.tokensAreAuthoritative === true ? { contextUpdate: "replace" } : {}),
+          })) : { tokens: null, contextWindow: null, percent: null, sessionGeneration: "session-1",contextUpdate:"replace" };
+          expect(body.chats[0].context).toEqual(expected);
+          expect(JSON.stringify(body)).not.toMatch(/tokensAreAuthoritative|futurePrivateField/);
+        }
+      }
+    } finally {
+      WEB_RUNTIME_CONFIG.widgetToken = previous;
+    }
   });
 
   test("requires bearer token auth", async () => {
@@ -95,4 +129,13 @@ describe("widget state API", () => {
       WEB_RUNTIME_CONFIG.widgetToken = previous;
     }
   });
+});
+
+
+test("state context does not revive same-generation stored tokens after ownership failure", async () => {
+  const channel = makeChannel();
+  channel.agentPool.getContextUsageForChat = async () => { throw Error("Stale owner"); };
+  channel.getContextUsage = () => { throw Error("stored context must not be consulted"); };
+  const state = await buildPiclawStateSnapshot(channel);
+  expect(state.chats[0]?.context).toEqual({ tokens: null, contextWindow: null, percent: null, sessionGeneration: "session-1",contextUpdate:"replace" });
 });

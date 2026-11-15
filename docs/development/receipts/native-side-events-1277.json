@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "issue": 1277,
+  "epic": 1270,
+  "supportingTypingOnly": true,
+  "implementationBase": "e7b1339c1237c455458a9f82b4d731c0d69a9f4e",
+  "before": {
+    "files": 712,
+    "physicalLOC": 144549,
+    "nonblankLines": 134143
+  },
+  "after": {
+    "files": 712,
+    "physicalLOC": 144549,
+    "nonblankLines": 134143
+  },
+  "delta": {
+    "files": 0,
+    "physicalLOC": 0,
+    "nonblankLines": 0
+  },
+  "additionalReductionCredit": 0,
+  "newProductionImplementationOutsideRoots": 0,
+  "boundary": {
+    "actualProducer": "host-models.ts policy.onEvent(AssistantMessageEvent)",
+    "captureAndClone": "default-application-runtime.ts current captured request/source guard + structuredClone",
+    "consumer": "application-bootstrap.ts side observer and delta callbacks",
+    "obsoleteAgentSessionFamilyRemoved": true,
+    "uncheckedCloneCallbackCast": {
+      "before": 1,
+      "after": 0
+    },
+    "nativeSdkPayloadTypeRetained": true,
+    "newEventBusOrWrapper": false
+  },
+  "consumerInventory": {
+    "currentRootRunSidePrompt": "native dispatcher only; no resident/session fallback",
+    "builtinCards": "text/thinking delta callbacks",
+    "approvedAddonsRevision": "ad7ad0a4b63ee37090b6bee4309fa5c458ec6510",
+    "approvedAddonRunSidePromptOrOptionsConsumers": 0
+  },
+  "validation": {
+    "compileOnlyFixture": "qualification/pi-durable-130/side-prompt-event-types.ts",
+    "existingQualificationTypeProjectExtended": true,
+    "negativeCases": [
+      "AgentSession agent_start",
+      "AgentSession compaction_start",
+      "native delta missing contentIndex/partial",
+      "native delta numeric text"
+    ],
+    "positiveCase": "SDK AssistantMessageEvent",
+    "beforeDiagnostics": [
+      "TS2578 unused @ts-expect-error for agent_start",
+      "TS2578 unused @ts-expect-error for compaction_start"
+    ],
+    "typeProjects": [
+      "runtime/tsconfig.json",
+      "runtime/durable-engine/tsconfig.json",
+      "qualification/pi-durable-130/tsconfig.json"
+    ],
+    "actualNativeFactory": {
+      "scenario": "native-compaction-accounting-side-dispatch",
+      "pass": 1,
+      "assertions": 123
+    }
+  },
+  "unchanged": [
+    "observer capture/current-source and cancellation checks",
+    "cloned accounting evidence isolation",
+    "callback failure detach and finally unobserve",
+    "model/provider/budget/accounting/maintenance/SDK execution policy",
+    "wire formats and existing native callback values"
+  ],
+  "creditNote": "Supporting types/compile-negative coverage only. No added deletion credit, no replacement implementation or event framework. Substantive1277reduction remains PR1799 after its57/51relocation charge."
+}

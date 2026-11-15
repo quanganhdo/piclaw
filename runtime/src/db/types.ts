@@ -41,6 +41,8 @@ export interface InteractionData {
   /** Server-derived role. Untagged assistant rows are unknown, never disposable. */
   agent_message_role?: "final" | "intermediate" | "unknown";
   is_terminal_agent_reply?: boolean;
+  /** Durable agent reply whose committed turn activity can be read on demand. */
+  turn_activity?: boolean;
   /** ID of the pi-agent that produced this interaction (agent responses). */
   agent_id?: string;
   /** Web-channel thread id this interaction belongs to. */
@@ -119,15 +121,15 @@ export interface ToolOutputRecord {
   summary?: string | null;
   /** Filesystem path associated with the tool call (if applicable). */
   path?: string | null;
-  /** Null for legacy single-user rows; immutable account owner for family rows. */
+  /** Null for legacy single-user rows; immutable account owner for owned execution rows. */
   owner_user_id?: string | null;
-  /** Stable root branch ID for family rows. */
+  /** Stable root branch ID for owned execution rows. */
   root_branch_id?: string | null;
-  /** Stable source branch ID for family rows. */
+  /** Stable source branch ID for owned execution rows. */
   source_branch_id?: string | null;
-  /** Exact source chat at creation time for family rows. */
+  /** Exact source chat at creation time for owned execution rows. */
   chat_jid?: string | null;
-  /** Server-owned execution kind for family rows. */
+  /** Server-owned execution kind for owned execution rows. */
   execution_kind?: string | null;
   /** The full output content (may be null if only summary is stored). */
   content?: string | null;

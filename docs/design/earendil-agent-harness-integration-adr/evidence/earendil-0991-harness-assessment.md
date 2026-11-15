@@ -1,5 +1,7 @@
 # Earendil 0.99.1 inactive Harness assessment (#1452)
 
+Historical as-of assessment: version/installed labels, commands and results below describe the original environment. The full frozen object now lives in an [inert schema-6 receipt](receipts/earendil-harness-compatibility-schema6.json) with [source/conversion provenance](receipts/earendil-harness-compatibility-schema6.provenance.json), outside executable Core. Current SDK1.4.0 selection and native qualification are separate; no old installation or activation permission is extended.
+
 Piclaw retains its service-effect authority and does not activate the upstream Harness. This assessment targets published `0.99.1`, gitHead `d86654abb8862e201933517d6f1fce9f88dd117f`, admitted by [the eight-package publication gate](earendil-0991-package-admission.md).
 
 ## Versioned evidence

@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import type { Model, Provider } from "@earendil-works/pi-ai";
 import { createRuntimeModelServices } from "../../../src/agent-pool/model-services.js";
 import { FileCredentialStore } from "../../../src/agent-pool/credential-store.js";
-import { classifyOpaqueAgentFailure } from "../../../src/agent-pool/automatic-recovery.js";
+import { classifyOpaqueAgentFailure } from "../../helpers/recovery-classification.js";
 import { addLogSink, removeLogSink, type LogRecord } from "../../../src/utils/logger.js";
 
 const mode = process.argv[2];

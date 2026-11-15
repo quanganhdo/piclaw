@@ -1,3 +1,5 @@
+import { captureHostDatabaseBinding } from "../../../db/connection.js";
+import { captureWebRequestAuthority } from "../auth/auth-gateway.js";
 /**
  * channels/web/agent-control-plane-service.ts – WebChannel control-plane wrapper seam.
  *
@@ -9,20 +11,12 @@
 
 import type { AgentPool } from "../../../agent-pool.js";
 import {
-  clearInflightMarker,
+  getDeferredQueuedFollowups,
   exportArchivedBranchDownloadData,
-  getInflightMessageId,
-  getInflightRuns,
-  getMessageThreadRootIdById,
-  getPreflightRuns,
-  type InteractionRow,
 } from "../../../db.js";
 import { createLogger } from "../../../utils/logger.js";
-import type { AgentControlCommand, AgentControlResult } from "../../../agent-control/agent-control-types.js";
-import type { QueuedFollowupItem } from "../runtime/followup-placeholders.js";
 import { parseJsonObjectRequest } from "../json-body.js";
-import type { QueuedFollowupLifecycleService } from "../runtime/queued-followup-lifecycle-service.js";
-import { completeOobeForInstance, isProviderReadyOobeCompletedForInstance } from "../oobe-instance-state.js";
+import { completeOobeForInstance } from "../oobe-instance-state.js";
 import {
   getAddonStatusPanelPayload,
   runAddonStatusPanelAction,
@@ -69,79 +63,35 @@ interface AgentQueueLike {
   enqueue(task: () => unknown, key: string, laneKey?: string): unknown;
 }
 
-type StoreMessageOptions = {
-  contentBlocks?: unknown[];
-  linkPreviews?: unknown[];
-  threadId?: number;
-  screenHint?: string | null;
-  isSteeringMessage?: boolean;
-};
-
-type ControlPlaneAgentPool = AgentPool & {
-  removeQueuedFollowupMessage?: (chatJid: string, queuedContent?: string) => Promise<boolean> | boolean;
-  isStreaming?: (chatJid: string) => boolean;
-  queueStreamingMessage?: (chatJid: string, content: string, mode: "steer") => Promise<{ queued: boolean }>;
-  createForkedChatBranch?: (chatJid: string, options?: { agentName?: string | null }) => Promise<unknown>;
-  createRootChatSession?: (agentName: string) => Promise<unknown>;
-  renameChatBranch?: (chatJid: string, options?: { agentName?: string | null }) => Promise<unknown>;
-  renameChatJid?: (oldJid: string, newJid: string) => Promise<unknown>;
-  mergeChatBranchIntoParent?: (chatJid: string) => Promise<unknown>;
-  pruneChatBranch?: (chatJid: string) => Promise<unknown>;
-  permanentPurgeChatBranch?: (chatJid: string) => Promise<unknown>;
-  restoreChatBranch?: (chatJid: string, options?: { agentName?: string | null }) => Promise<unknown>;
-  applySlashCommand?: (chatJid: string, rawText: string) => Promise<{ status: string; message?: string }>;
-  applyControlCommand?: (chatJid: string, command: AgentControlCommand) => Promise<AgentControlResult>;
-  listActiveChats?: () => unknown[];
-};
-
-type ControlPlaneQueuedLifecycle = Pick<
-  QueuedFollowupLifecycleService,
-  "getQueuedFollowupCount" | "listQueuedStateItems" | "prependQueuedFollowupItem" | "removeQueuedFollowupForAction" | "reorderQueuedFollowupItems"
->;
+type ControlPlaneAgentPool = AgentPool;
 
 export interface WebAgentControlPlaneServiceOptions {
+  captureWriteAuthority?(req: Request): () => void;
+  readNativeQueue?: import("../core/web-channel-contracts.js").WebChannelLike["readNativeQueue"];
+  controlNativeQueue?: import("../core/web-channel-contracts.js").WebChannelLike["controlNativeQueue"];
+  reorderNativeQueue?: import("../core/web-channel-contracts.js").WebChannelLike["reorderNativeQueue"];
   defaultChatJid: string;
   defaultAgentId: string;
   json(payload: unknown, status?: number): Response;
   broadcastEvent(eventType: string, data: unknown): void;
   queue: AgentQueueLike;
   agentPool: ControlPlaneAgentPool;
-  queuedFollowupLifecycle: ControlPlaneQueuedLifecycle;
-  queuePendingSteering(chatJid: string, timestamp: string | undefined): void;
-  storeMessage(
-    chatJid: string,
-    content: string,
-    isBot: boolean,
-    mediaIds: number[],
-    options?: StoreMessageOptions,
-  ): InteractionRow | null;
-  processChat(chatJid: string, agentId: string, threadRootId?: number | null): Promise<void> | void;
   getAgentStatus?: (chatJid: string) => Record<string, unknown> | null;
-  updateAgentStatus?: (chatJid: string, status: Record<string, unknown>) => void;
-  getInflightMessageId?: typeof getInflightMessageId;
-  getMessageThreadRootIdById?: typeof getMessageThreadRootIdById;
   getAutoresearchWidgetPayload?: (chatJid: string) => unknown;
   stopAutoresearchFromWeb?: (input: { chat_jid: string; generate_report: boolean }) => Promise<unknown>;
   dismissAutoresearchWidget?: (chatJid: string) => boolean;
 }
 
 export interface WebAgentControlPlaneChannelLike {
+  authGateway?: Parameters<typeof captureWebRequestAuthority>[0];
+  readNativeQueue?: WebAgentControlPlaneServiceOptions["readNativeQueue"];
+  controlNativeQueue?: WebAgentControlPlaneServiceOptions["controlNativeQueue"];
+  reorderNativeQueue?: WebAgentControlPlaneServiceOptions["reorderNativeQueue"];
   json(payload: unknown, status?: number): Response;
   broadcastEvent(eventType: string, data: unknown): void;
   queue: AgentQueueLike;
   agentPool: ControlPlaneAgentPool;
-  queuedFollowupLifecycle: ControlPlaneQueuedLifecycle;
-  queuePendingSteering(chatJid: string, timestamp: string | undefined): void;
-  storeMessage(
-    chatJid: string,
-    content: string,
-    isBot: boolean,
-    mediaIds: number[],
-    options?: StoreMessageOptions,
-  ): InteractionRow | null;
-  processChat(chatJid: string, agentId: string, threadRootId?: number | null): Promise<void> | void;
   getAgentStatus?(chatJid: string): Record<string, unknown> | null;
-  updateAgentStatus?(chatJid: string, status: Record<string, unknown>): void;
 }
 
 export function createWebAgentControlPlaneService(
@@ -151,17 +101,18 @@ export function createWebAgentControlPlaneService(
   return new WebAgentControlPlaneService({
     defaultChatJid: defaults.defaultChatJid,
     defaultAgentId: defaults.defaultAgentId,
+    captureWriteAuthority: req => {
+      const binding = captureHostDatabaseBinding(), gateway = channel.authGateway, request = captureWebRequestAuthority(gateway, req);
+      return () => { binding(); if (channel.authGateway !== gateway) throw Error('Control request gateway changed.'); request(); };
+    },
     json: (payload, status = 200) => channel.json(payload, status),
     broadcastEvent: (eventType, data) => channel.broadcastEvent(eventType, data),
     queue: channel.queue,
     agentPool: channel.agentPool,
-    queuedFollowupLifecycle: channel.queuedFollowupLifecycle,
-    queuePendingSteering: (chatJid, timestamp) => channel.queuePendingSteering(chatJid, timestamp),
-    storeMessage: (chatJid, content, isBot, mediaIds, options) =>
-      channel.storeMessage(chatJid, content, isBot, mediaIds, options),
-    processChat: (chatJid, agentId, threadRootId) => channel.processChat(chatJid, agentId, threadRootId),
+    get readNativeQueue(){return channel.readNativeQueue?.bind(channel);},
+    get controlNativeQueue(){return channel.controlNativeQueue?.bind(channel);},
+    get reorderNativeQueue(){return channel.reorderNativeQueue?.bind(channel);},
     getAgentStatus: (chatJid) => channel.getAgentStatus?.(chatJid) ?? null,
-    updateAgentStatus: (chatJid, status) => channel.updateAgentStatus?.(chatJid, status),
   });
 }
 
@@ -235,6 +186,7 @@ export class WebAgentControlPlaneService {
   }
 
   async handleAgentOobeComplete(req: Request): Promise<Response> {
+    const authorise = this.options.captureWriteAuthority?.(req);
     const parsed = await parseJsonObjectRequest(req);
     if (!parsed.ok) return this.options.json({ error: parsed.error }, 400);
 
@@ -244,18 +196,19 @@ export class WebAgentControlPlaneService {
       return this.options.json({ error: "Unsupported OOBE completion kind." }, 400);
     }
 
-    completeOobeForInstance("provider-ready");
+    const completed = await completeOobeForInstance("provider-ready", authorise, req.signal);
     return this.options.json({
       status: "ok",
       kind,
-      provider_ready_completed_instance: isProviderReadyOobeCompletedForInstance(),
+      provider_ready_completed_instance: completed,
     });
   }
 
   async handleAgentQueueState(req: Request): Promise<Response> {
     const url = new URL(req.url);
     const chatJid = this.resolveChatJid(url.searchParams.get("chat_jid"));
-    const items = this.options.queuedFollowupLifecycle.listQueuedStateItems(chatJid);
+    if (!this.options.readNativeQueue) return this.options.json({ error: "Native queue observation is unavailable." }, 503);
+    const items = await this.options.readNativeQueue(chatJid);
 
     return this.options.json({
       count: items.length,
@@ -264,6 +217,7 @@ export class WebAgentControlPlaneService {
   }
 
   async handleAgentQueueRemove(req: Request): Promise<Response> {
+    const authorise = this.options.captureWriteAuthority?.(req);
     const parsed = await parseJsonObjectRequest(req);
     if (!parsed.ok) return this.options.json({ error: parsed.error }, 400);
 
@@ -275,48 +229,89 @@ export class WebAgentControlPlaneService {
         return this.options.json({ error: "Missing or invalid row_id" }, 400);
       }
 
-      const { removed } = await this.removeQueuedFollowupForAction(chatJid, rowId);
-      if (!removed) {
-        return this.options.json({ status: "ok", removed: false, count: this.options.queuedFollowupLifecycle.getQueuedFollowupCount(chatJid) }, 200);
+      if(this.options.readNativeQueue){
+        if(!this.options.controlNativeQueue)throw Error('Native queue control unavailable');
+        const native=await this.options.readNativeQueue(chatJid);
+        const legacy=getDeferredQueuedFollowups(chatJid).some(item=>item.rowId===rowId);
+        if(native.some(item=>item.row_id===rowId)){
+          if(legacy)return this.options.json({error:"Ambiguous queued input; no item changed."},409);
+          const removed=await this.options.controlNativeQueue(chatJid,rowId,"remove",authorise);
+          if(removed)this.options.broadcastEvent("agent_followup_removed",{chat_jid:chatJid,row_id:rowId});
+          return this.options.json({status:"ok",removed,row_id:rowId,count:(await this.options.readNativeQueue(chatJid)).length});
+        }
+        if(legacy)return this.options.json({error:"This preserved legacy queue item has no SDK submission; it was not changed."},409);
+        return this.options.json({status:"ok",removed:false,count:native.length});
       }
-
-      this.options.broadcastEvent("agent_followup_removed", {
-        chat_jid: chatJid,
-        row_id: removed.rowId,
-        thread_id: removed.threadId ?? null,
-      });
-
-      return this.options.json({
-        status: "ok",
-        removed: true,
-        row_id: removed.rowId,
-        count: this.options.queuedFollowupLifecycle.getQueuedFollowupCount(chatJid),
-      });
+      return this.options.json({ error: "Native queue control is unavailable." }, 503);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      return this.options.json({ error: message }, 500);
+      // Host selectors/callbacks can carry private engine or source details.
+      return this.options.json({ error: "Unable to remove queued follow-up" }, 500);
     }
   }
 
+  /**
+   * Body: `{ chat_jid, order: [row_id, ...] }`, the whole queue in its new order,
+   * or `{ chat_jid, from_index, to_index }` to move one item in the current queue.
+   * An order that no longer matches the queue changes nothing and answers 409.
+   */
   async handleAgentQueueReorder(req: Request): Promise<Response> {
+    const authorise = this.options.captureWriteAuthority?.(req);
     const parsed = await parseJsonObjectRequest(req);
     if (!parsed.ok) return this.options.json({ error: parsed.error }, 400);
-
     try {
-      const payload = parsed.payload as { chat_jid?: string; from_index?: number; to_index?: number };
+      const payload = parsed.payload as { chat_jid?: string; order?: unknown; from_index?: unknown; to_index?: unknown };
       const chatJid = this.resolveChatJid(payload.chat_jid);
-      const fromIndex = typeof payload.from_index === "number" ? payload.from_index : -1;
-      const toIndex = typeof payload.to_index === "number" ? payload.to_index : -1;
+      if (!this.options.readNativeQueue || !this.options.reorderNativeQueue) {
+        return this.options.json({ error: "Native queue control is unavailable." }, 503);
+      }
+      let ids: number[] | null = null;
+      if (Array.isArray(payload.order)) {
+        const order = payload.order.map((value) => this.parseRowId(value as number | string));
+        if (order.length > 0 && order.every((value) => value !== null)) ids = order as number[];
+      } else if (Number.isSafeInteger(payload.from_index) && Number.isSafeInteger(payload.to_index)) {
+        const current = (await this.options.readNativeQueue(chatJid)).map((item) => item.row_id);
+        const from = payload.from_index as number, to = payload.to_index as number;
+        if (from >= 0 && to >= 0 && from < current.length && to < current.length) {
+          const [moved] = current.splice(from, 1);
+          current.splice(to, 0, moved!);
+          ids = current;
+        }
+      }
+      if (!ids) return this.options.json({ error: "Missing or invalid order" }, 400);
+      if (getDeferredQueuedFollowups(chatJid).some((item) => ids!.includes(item.rowId))) {
+        return this.options.json({ error: "Ambiguous queued input; no item changed." }, 409);
+      }
+      const reordered = await this.options.reorderNativeQueue(chatJid, ids, authorise);
+      const items = await this.options.readNativeQueue(chatJid);
+      if (!reordered) return this.options.json({ error: "The queue changed; nothing was reordered.", reordered, items, count: items.length }, 409);
+      this.options.broadcastEvent("agent_followup_reordered", { chat_jid: chatJid, order: items.map((item) => item.row_id) });
+      return this.options.json({ status: "ok", reordered, items, count: items.length });
+    } catch {
+      return this.options.json({ error: "Unable to reorder queued follow-ups" }, 500);
+    }
+  }
 
-      const reordered = this.options.queuedFollowupLifecycle.reorderQueuedFollowupItems(chatJid, fromIndex, toIndex);
-      return this.options.json({ status: "ok", reordered });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      return this.options.json({ error: message }, 500);
+  /** Body: `{ chat_jid, call_id, note? }`. Stops one running tool; the agent continues. */
+  async handleAgentToolAbort(req: Request): Promise<Response> {
+    const authorise = this.options.captureWriteAuthority?.(req);
+    const parsed = await parseJsonObjectRequest(req);
+    if (!parsed.ok) return this.options.json({ error: parsed.error }, 400);
+    const payload = parsed.payload as { chat_jid?: string; call_id?: unknown; note?: unknown };
+    const callId = typeof payload.call_id === "string" ? payload.call_id.trim() : "";
+    if (!callId || callId.length > 512) return this.options.json({ error: "Missing or invalid call_id" }, 400);
+    const note = typeof payload.note === "string" ? payload.note.slice(0, 2000) : undefined;
+    try {
+      const chatJid = this.resolveChatJid(payload.chat_jid);
+      authorise?.();
+      const aborted = await this.options.agentPool.abortToolCallForChat(chatJid, callId, note);
+      return this.options.json({ status: "ok", call_id: callId, aborted });
+    } catch {
+      return this.options.json({ error: "Unable to stop the tool." }, 500);
     }
   }
 
   async handleAgentQueueSteer(req: Request): Promise<Response> {
+    const authorise = this.options.captureWriteAuthority?.(req);
     const parsed = await parseJsonObjectRequest(req);
     if (!parsed.ok) return this.options.json({ error: parsed.error }, 400);
 
@@ -328,97 +323,22 @@ export class WebAgentControlPlaneService {
         return this.options.json({ error: "Missing or invalid row_id" }, 400);
       }
 
-      const { removed } = await this.removeQueuedFollowupForAction(chatJid, rowId);
-      if (!removed) {
-        return this.options.json({ status: "ok", removed: false, count: this.options.queuedFollowupLifecycle.getQueuedFollowupCount(chatJid) }, 200);
-      }
-
-      this.options.broadcastEvent("agent_followup_removed", {
-        chat_jid: chatJid,
-        row_id: removed.rowId,
-        thread_id: removed.threadId ?? null,
-      });
-
-      const steerContent = typeof removed.queuedContent === "string" ? removed.queuedContent.trim() : "";
-      if (!steerContent) {
-        return this.options.json({ status: "ok", removed: true, queued: false, count: this.options.queuedFollowupLifecycle.getQueuedFollowupCount(chatJid) }, 200);
-      }
-
-      const isStreaming = typeof this.options.agentPool.isStreaming === "function"
-        ? this.options.agentPool.isStreaming(chatJid)
-        : false;
-      const inflightMessageId = (this.options.getInflightMessageId ?? getInflightMessageId)(chatJid);
-      const activeThreadRootId = inflightMessageId
-        ? (this.options.getMessageThreadRootIdById ?? getMessageThreadRootIdById)(chatJid, inflightMessageId)
-        : null;
-      const steerThreadId = removed.threadId ?? activeThreadRootId ?? null;
-
-      const interaction = this.options.storeMessage(
-        chatJid,
-        steerContent,
-        false,
-        removed.mediaIds ?? [],
-        {
-          contentBlocks: Array.isArray(removed.contentBlocks) ? removed.contentBlocks : undefined,
-          linkPreviews: Array.isArray(removed.linkPreviews) ? removed.linkPreviews : undefined,
-          threadId: steerThreadId ?? undefined,
-          screenHint: removed.screenHint,
-          isSteeringMessage: isStreaming,
+      if(this.options.readNativeQueue){
+        if(!this.options.controlNativeQueue)throw Error('Native queue control unavailable');
+        const native=await this.options.readNativeQueue(chatJid);
+        const legacy=getDeferredQueuedFollowups(chatJid).some(item=>item.rowId===rowId);
+        if(native.some(item=>item.row_id===rowId)){
+          if(legacy)return this.options.json({error:"Ambiguous queued input; no item changed."},409);
+          const changed=await this.options.controlNativeQueue(chatJid,rowId,"steer",authorise);
+          if(changed)this.options.broadcastEvent("agent_steer_queued",{chat_jid:chatJid,source:"queued-item"});
+          return this.options.json({status:"ok",removed:false,row_id:rowId,queued:changed?"steer":undefined,count:(await this.options.readNativeQueue(chatJid)).length},changed?201:200);
         }
-      );
-      if (!interaction) {
-        this.options.queuedFollowupLifecycle.prependQueuedFollowupItem(chatJid, removed);
-        this.options.broadcastEvent("agent_followup_queued", {
-          chat_jid: chatJid,
-          thread_id: removed.threadId ?? null,
-          row_id: removed.rowId,
-          content: removed.queuedContent,
-          timestamp: removed.queuedAt,
-        });
-        return this.options.json({ error: "Failed to store message" }, 500);
+        if(legacy)return this.options.json({error:"This preserved legacy queue item has no SDK submission; it was not changed."},409);
+        return this.options.json({status:"ok",removed:false,count:native.length});
       }
-
-      this.options.broadcastEvent("new_post", interaction);
-
-      if (isStreaming && typeof this.options.agentPool.queueStreamingMessage === "function") {
-        const steerResult = await this.options.agentPool.queueStreamingMessage(chatJid, steerContent, "steer");
-        if (steerResult.queued) {
-          this.options.queuePendingSteering(chatJid, interaction.timestamp);
-          const queuedAt = new Date().toISOString();
-          this.options.broadcastEvent("agent_steer_queued", {
-            chat_jid: chatJid,
-            thread_id: interaction.data?.thread_id ?? steerThreadId ?? null,
-            source: "queued-item",
-            timestamp: queuedAt,
-            content: steerContent,
-          });
-          return this.options.json({
-            status: "ok",
-            removed: true,
-            row_id: removed.rowId,
-            user_message: interaction,
-            thread_id: interaction.data?.thread_id ?? steerThreadId ?? null,
-            queued: "steer",
-            count: this.options.queuedFollowupLifecycle.getQueuedFollowupCount(chatJid),
-          }, 201);
-        }
-      }
-
-      this.options.queue.enqueue(async () => {
-        await this.options.processChat(chatJid, this.options.defaultAgentId, interaction.data?.thread_id ?? interaction.id);
-      }, `chat:${chatJid}:${interaction.id}`, `chat:${chatJid}`);
-
-      return this.options.json({
-        status: "ok",
-        removed: true,
-        row_id: removed.rowId,
-        user_message: interaction,
-        thread_id: interaction.data?.thread_id ?? interaction.id ?? null,
-        count: this.options.queuedFollowupLifecycle.getQueuedFollowupCount(chatJid),
-      }, 201);
+      return this.options.json({ error: "Native queue control is unavailable." }, 503);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      return this.options.json({ error: message }, 500);
+      return this.options.json({ error: 'Accepted steering is unavailable.' }, 500);
     }
   }
 
@@ -430,40 +350,36 @@ export class WebAgentControlPlaneService {
     const activeChats = typeof this.options.agentPool.listActiveChats === "function"
       ? this.options.agentPool.listActiveChats()
       : [];
-    const inflightRuns = getInflightRuns();
-    const preflightRuns = getPreflightRuns();
+    const knownChats = this.options.agentPool.listKnownChats?.() ?? activeChats;
     const progressByChat = new Map(getTrackedPhasesSnapshot().map((entry) => [entry.chatJid, entry]));
     const chatJids = new Set<string>();
-    for (const chat of activeChats as Array<{ chat_jid?: unknown }>) {
+    for (const chat of knownChats as Array<{ chat_jid?: unknown }>) {
       if (typeof chat.chat_jid === "string") chatJids.add(chat.chat_jid);
     }
-    for (const run of inflightRuns) chatJids.add(run.chatJid);
-    for (const run of preflightRuns) chatJids.add(run.chatJid);
     if (requestedChatJid) chatJids.add(requestedChatJid);
 
-    const runs = [...chatJids]
+    const runs = await Promise.all([...chatJids]
       .filter((chatJid) => !requestedChatJid || chatJid === requestedChatJid)
-      .map((chatJid) => {
+      .map(async (chatJid) => {
         const active = (activeChats as unknown as Array<Record<string, unknown>>).find((chat) => chat.chat_jid === chatJid) ?? null;
         const status = this.options.getAgentStatus?.(chatJid) ?? null;
-        const inflight = inflightRuns.find((run) => run.chatJid === chatJid) ?? null;
-        const preflight = preflightRuns.find((run) => run.chatJid === chatJid) ?? null;
         const progress = progressByChat.get(chatJid) ?? null;
-        const queued = this.options.queuedFollowupLifecycle.listQueuedStateItems(chatJid);
+        if (!this.options.readNativeQueue) throw Error("Native queue observation unavailable");
+        const queued = await this.options.readNativeQueue(chatJid);
         return {
           chat_jid: chatJid,
           active,
-          is_active: Boolean((active as { is_active?: unknown } | null)?.is_active || status || progress),
+          is_active: Boolean(status && status.type !== "done" && status.type !== "error"),
           status,
-          inflight,
-          preflight,
+          inflight: null, // Historical response keys; never execution authority.
+          preflight: null,
           progress,
           queue_count: queued.length,
           stalled_work: buildStalledWorkDiagnostic(progress),
         };
-      });
+      }));
 
-    return this.options.json({ runs, inflight: inflightRuns, preflight: preflightRuns }, 200);
+    return this.options.json({ runs, inflight: [], preflight: [] }, 200);
   }
 
   async handleAgentRunAbort(req: Request): Promise<Response> {
@@ -505,58 +421,13 @@ export class WebAgentControlPlaneService {
     }
   }
 
-  async handleAgentRunClearStale(req: Request): Promise<Response> {
-    const parsed = await parseJsonObjectRequest(req);
-    if (!parsed.ok) return this.options.json({ error: parsed.error }, 400);
-    const payload = parsed.payload as { chat_jid?: string };
-    const chatJid = this.resolveRequiredChatJid(payload.chat_jid);
-    if (!chatJid) return this.options.json({ error: "Missing chat_jid" }, 400);
-    const hadInflight = getInflightRuns().some((run) => run.chatJid === chatJid);
-    const hadPreflight = getPreflightRuns().some((run) => run.chatJid === chatJid);
-    const hadStatus = Boolean(this.options.getAgentStatus?.(chatJid));
-    clearInflightMarker(chatJid);
-    if (hadStatus) {
-      this.options.updateAgentStatus?.(chatJid, { type: "done", title: "Idle", source: "operator_clear_stale" });
-    }
-    log.warn("Operator cleared stale run markers", {
-      operation: "operator_run.clear_stale",
-      chatJid,
-      hadInflight,
-      hadPreflight,
-      hadStatus,
-    });
-    return this.options.json({
-      status: "ok",
-      chat_jid: chatJid,
-      cleared: hadInflight || hadPreflight || hadStatus,
-      had_inflight: hadInflight,
-      had_preflight: hadPreflight,
-      had_status: hadStatus,
-    }, 200);
+  async handleAgentRunClearStale(_req: Request): Promise<Response> {
+    return this.options.json({ error: "Native execution status is supplied by the SDK and cannot be cleared by a host control." }, 409);
   }
 
-  async handleAgentRunDrainQueue(req: Request): Promise<Response> {
-    const parsed = await parseJsonObjectRequest(req);
-    if (!parsed.ok) return this.options.json({ error: parsed.error }, 400);
-    const payload = parsed.payload as { chat_jid?: string };
-    const chatJid = this.resolveRequiredChatJid(payload.chat_jid);
-    if (!chatJid) return this.options.json({ error: "Missing chat_jid" }, 400);
-    const items = this.options.queuedFollowupLifecycle.listQueuedStateItems(chatJid) as Array<{ rowId?: unknown; row_id?: unknown }>;
-    let removedCount = 0;
-    for (const item of items) {
-      const rowId = this.parseRowId((item.rowId ?? item.row_id) as number | string | undefined);
-      if (rowId === null) continue;
-      const { removed } = await this.removeQueuedFollowupForAction(chatJid, rowId);
-      if (removed) removedCount += 1;
-    }
-    log.warn("Operator drained queued follow-ups", {
-      operation: "operator_run.drain_queue",
-      chatJid,
-      queuedCount: items.length,
-      removedCount,
-    });
-    this.options.broadcastEvent("agent_followup_drained", { chat_jid: chatJid, removed_count: removedCount });
-    return this.options.json({ status: "ok", chat_jid: chatJid, removed_count: removedCount }, 200);
+  async handleAgentRunDrainQueue(_req: Request): Promise<Response> {
+    // No bulk deletion of historical rows or inferred cancellation of SDK inputs.
+    return this.options.json({ error: "Bulk drain is unavailable; remove individual native queued submissions." }, 409);
   }
 
   async handleAgentBranchFork(req: Request): Promise<Response> {
@@ -582,6 +453,8 @@ export class WebAgentControlPlaneService {
   }
 
   async handleAgentRootSessionCreate(req: Request): Promise<Response> {
+    const authorise = this.options.captureWriteAuthority?.(req);
+    const context = { signal: req.signal, authorise };
     const parsed = await parseJsonObjectRequest(req);
     if (!parsed.ok) return this.options.json({ error: parsed.error }, 400);
 
@@ -592,7 +465,7 @@ export class WebAgentControlPlaneService {
     if (!agentName) return this.options.json({ error: "Missing agent_name" }, 400);
 
     try {
-      const branch = await this.options.agentPool.createRootChatSession?.(agentName);
+      const branch = await this.options.agentPool.createRootChatSession?.(agentName, context);
       if (!branch) {
         return this.options.json({ error: "Root session creation is not available." }, 501);
       }
@@ -604,6 +477,8 @@ export class WebAgentControlPlaneService {
   }
 
   async handleAgentBranchRename(req: Request): Promise<Response> {
+    const authorise = this.options.captureWriteAuthority?.(req);
+    const context = { signal: req.signal, authorise };
     const parsed = await parseJsonObjectRequest(req);
     if (!parsed.ok) return this.options.json({ error: parsed.error }, 400);
 
@@ -616,6 +491,7 @@ export class WebAgentControlPlaneService {
 
     try {
       const branch = await this.options.agentPool.renameChatBranch?.(chatJid, {
+        ...context,
         agentName: payload.agent_name ?? null,
       });
       if (!branch) {
@@ -635,6 +511,8 @@ export class WebAgentControlPlaneService {
   }
 
   async handleAgentRenameJid(req: Request): Promise<Response> {
+    const authorise = this.options.captureWriteAuthority?.(req);
+    const context = { signal: req.signal, authorise };
     const parsed = await parseJsonObjectRequest(req);
     if (!parsed.ok) return this.options.json({ error: parsed.error }, 400);
 
@@ -645,7 +523,7 @@ export class WebAgentControlPlaneService {
     if (!newJid) return this.options.json({ error: "Missing new_jid" }, 400);
 
     try {
-      const result = await this.options.agentPool.renameChatJid?.(oldJid, newJid);
+      const result = await this.options.agentPool.renameChatJid?.(oldJid, newJid, context);
       if (!result) {
         return this.options.json({ error: "JID renaming is not available." }, 501);
       }
@@ -662,6 +540,8 @@ export class WebAgentControlPlaneService {
   }
 
   async handleAgentBranchMergeParent(req: Request): Promise<Response> {
+    const authorise = this.options.captureWriteAuthority?.(req);
+    const context = { signal: req.signal, authorise };
     const parsed = await parseJsonObjectRequest(req);
     if (!parsed.ok) return this.options.json({ error: parsed.error }, 400);
 
@@ -672,7 +552,7 @@ export class WebAgentControlPlaneService {
     }
 
     try {
-      const result = await this.options.agentPool.mergeChatBranchIntoParent?.(chatJid);
+      const result = await this.options.agentPool.mergeChatBranchIntoParent?.(chatJid, context);
       if (!result) {
         return this.options.json({ error: "Branch merge is not available." }, 501);
       }
@@ -684,6 +564,8 @@ export class WebAgentControlPlaneService {
   }
 
   async handleAgentBranchPrune(req: Request): Promise<Response> {
+    const authorise = this.options.captureWriteAuthority?.(req);
+    const context = { signal: req.signal, authorise };
     const parsed = await parseJsonObjectRequest(req);
     if (!parsed.ok) return this.options.json({ error: parsed.error }, 400);
 
@@ -694,7 +576,7 @@ export class WebAgentControlPlaneService {
     }
 
     try {
-      const branch = await this.options.agentPool.pruneChatBranch?.(chatJid);
+      const branch = await this.options.agentPool.pruneChatBranch?.(chatJid, context);
       if (!branch) {
         return this.options.json({ error: "Branch pruning is not available." }, 501);
       }
@@ -733,6 +615,8 @@ export class WebAgentControlPlaneService {
   }
 
   async handleAgentBranchPurge(req: Request): Promise<Response> {
+    const authorise = this.options.captureWriteAuthority?.(req);
+    const context = { signal: req.signal, authorise };
     const parsed = await parseJsonObjectRequest(req);
     if (!parsed.ok) return this.options.json({ error: parsed.error }, 400);
 
@@ -743,7 +627,7 @@ export class WebAgentControlPlaneService {
     }
 
     try {
-      const result = await this.options.agentPool.permanentPurgeChatBranch?.(chatJid);
+      const result = await this.options.agentPool.permanentPurgeChatBranch?.(chatJid, context);
       if (!result) {
         return this.options.json({ error: "Archived-branch purge is not available." }, 501);
       }
@@ -755,6 +639,8 @@ export class WebAgentControlPlaneService {
   }
 
   async handleAgentBranchRestore(req: Request): Promise<Response> {
+    const authorise = this.options.captureWriteAuthority?.(req);
+    const context = { signal: req.signal, authorise };
     const parsed = await parseJsonObjectRequest(req);
     if (!parsed.ok) return this.options.json({ error: parsed.error }, 400);
 
@@ -766,6 +652,7 @@ export class WebAgentControlPlaneService {
 
     try {
       const branch = await this.options.agentPool.restoreChatBranch?.(chatJid, {
+        ...context,
         ...(typeof payload.agent_name === "string" ? { agentName: payload.agent_name } : {}),
       });
       if (!branch) {
@@ -794,13 +681,4 @@ export class WebAgentControlPlaneService {
     return Number(rowId);
   }
 
-  private async removeQueuedFollowupForAction(
-    chatJid: string,
-    rowId: number,
-  ): Promise<{ removed: QueuedFollowupItem | null; source: "deferred" | "placeholder" | null }> {
-    return await this.options.queuedFollowupLifecycle.removeQueuedFollowupForAction(chatJid, rowId, {
-      removeQueuedFollowupMessage: (queuedChatJid, queuedContent) =>
-        this.options.agentPool.removeQueuedFollowupMessage?.(queuedChatJid, queuedContent) ?? false,
-    });
-  }
 }

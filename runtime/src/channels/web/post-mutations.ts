@@ -2,8 +2,14 @@
  * channels/web/post-mutations.ts – Post update/internal-post endpoint orchestration.
  */
 
-import type { InteractionRow } from "../../db.js";
-import { updateMessageAnnotations } from "../../db/messages.js";
+import { captureWebRequestAuthority } from "./auth/auth-gateway.js";
+import type { WebChannelLike } from "./core/web-channel-contracts.js";
+import { createLogger } from "../../utils/logger.js";
+import { getDb, captureHostDatabaseBinding } from "../../db/connection.js";
+import { admitSqliteWrite } from "../../db/sqlite-async-admission.js";
+import { getMessageByRowIdFromDatabase, replaceMessageContentInDatabase, updateMessageAnnotationsInDatabase, deleteMessageByRowId, deleteThreadByRowId } from "../../db/messages.js";
+
+const log = createLogger("web.post-mutations");
 
 function resolveChatJid(req: Request, defaultChatJid: string, bodyChatJid?: unknown): string {
   const urlChatJid = new URL(req.url).searchParams.get("chat_jid");
@@ -15,118 +21,148 @@ function resolveChatJid(req: Request, defaultChatJid: string, bodyChatJid?: unkn
   return candidate.trim() || defaultChatJid;
 }
 
-/** Context contract consumed by post update/internal-post mutation handlers. */
-export interface PostMutationsContext {
-  defaultChatJid: string;
-  lastCommandInteractionId: number | null;
-  json(payload: unknown, status?: number): Response;
-  replaceMessageContent(chatJid: string, id: number, content: string): InteractionRow | null;
-  setThreadId(messageId: number, threadId: number): void;
-  broadcastInteractionUpdated(interaction: InteractionRow): void;
-  storeMessage(
-    chatJid: string,
-    content: string,
-    isBot: boolean,
-    mediaIds: number[],
-    options?: { threadId?: number }
-  ): InteractionRow | null;
-  broadcastAgentResponse(interaction: InteractionRow): void;
+/** Request-scoped fencing only: the existing SQLite primitive owns acquisition.
+ * Row identity excludes editable fields; stable archived/branchless history stays editable. */
+function capturePostAuthority(channel: WebChannelLike, req: Request, database: ReturnType<typeof getDb>, id?: number, deleting = false) {
+  const gateway = channel.authGateway, requestAuthority = captureWebRequestAuthority(gateway, req);
+  const assertBinding = captureHostDatabaseBinding(database);
+  const rowKey = () => JSON.stringify(database.query(`SELECT m.id,m.chat_jid,b.branch_id,b.archived_at FROM messages m
+    LEFT JOIN chat_branches b ON b.chat_jid=m.chat_jid WHERE m.rowid=?`).get(id!) ?? null);
+  let originalRow: string | null = null;
+  const check = (phase?: 'before' | 'after') => {
+    assertBinding();
+    if (phase === undefined && database.inTransaction) throw Error('Post mutation requires its own transaction.');
+    if (channel.authGateway !== gateway) throw Error('Post request gateway changed.');
+    requestAuthority();
+    const actual = originalRow === null ? null : rowKey();
+    if (originalRow !== null && actual !== originalRow && !(deleting && phase === 'after' && actual === 'null')) throw Error('Post mutation identity changed.');
+  };
+  check();
+  if (id !== undefined) originalRow = rowKey();
+  return check;
+}
+
+/** DELETE /post/:id: SQL-only deletion followed by optional committed publication. */
+export async function handleDeletePostRequest(channel: WebChannelLike, req: Request, id: number | null, cascade: boolean, defaultChatJid: string): Promise<Response> {
+  if (!id) return channel.json({ error: "Post not found" }, 404);
+  const database = getDb(), check = capturePostAuthority(channel, req, database, id, true), chatJid = resolveChatJid(req, defaultChatJid);
+  const ids = await admitSqliteWrite(database, () => {
+    if (!getMessageByRowIdFromDatabase(database, chatJid, id)) return [];
+    return cascade ? deleteThreadByRowId(chatJid, id) : deleteMessageByRowId(chatJid, id) ? [id] : [];
+  }, check, req.signal, undefined, check);
+  const response = channel.json({ deleted: ids.length, ids }, 200);
+  if (ids.length) try { channel.broadcastEvent("interaction_deleted", { chat_jid: chatJid, ids }); }
+  catch (error) { try { log.warn("Post deletion publication deferred after commit", { error, chatJid, rowId: id }); } catch { return response; } }
+  return response;
 }
 
 /** PATCH /post/:id orchestration. */
 export async function handleUpdatePostRequest(
-  req: Request,
-  id: number | null,
-  ctx: PostMutationsContext
+  channel: WebChannelLike, req: Request, id: number | null, defaultChatJid: string,
 ): Promise<Response> {
-  if (!id || id < 1) return ctx.json({ error: "Missing or invalid post id" }, 400);
+  if (!id || id < 1) return channel.json({ error: "Missing or invalid post id" }, 400);
+  const database = getDb(), check = capturePostAuthority(channel, req, database, id);
 
   let body: { content?: string; thread_id?: number; chat_jid?: string };
   try {
     body = await req.json();
   } catch {
-    return ctx.json({ error: "Invalid JSON" }, 400);
+    return channel.json({ error: "Invalid JSON" }, 400);
   }
 
-  if (!body.content && body.content !== "") {
-    return ctx.json({ error: "Missing content" }, 400);
+  if (!body || typeof body.content !== "string") {
+    return channel.json({ error: "Missing content" }, 400);
   }
   if (typeof body.content === "string" && body.content.length > 100 * 1024) {
-    return ctx.json({ error: "Content too large (max 100 KB)" }, 400);
+    return channel.json({ error: "Content too large (max 100 KB)" }, 400);
   }
 
-  const chatJid = resolveChatJid(req, ctx.defaultChatJid, body.chat_jid);
-  const updated = ctx.replaceMessageContent(chatJid, id, body.content!);
-  if (!updated) return ctx.json({ error: "Post not found" }, 404);
-
-  if (body.thread_id) {
-    if (typeof body.thread_id !== "number" || !Number.isInteger(body.thread_id) || body.thread_id < 1) {
-      return ctx.json({ error: "Invalid thread_id" }, 400);
-    }
-    ctx.setThreadId(id, body.thread_id);
-    (updated.data as unknown as Record<string, unknown>).thread_id = body.thread_id;
+  if (body.thread_id !== undefined && (!Number.isSafeInteger(body.thread_id) || body.thread_id < 1)) {
+    return channel.json({ error: "Invalid thread_id" }, 400);
   }
+  const chatJid = resolveChatJid(req, defaultChatJid, body.chat_jid);
+  const content = body.content, threadId = body.thread_id;
+  const updated = await admitSqliteWrite(database, () => {
+    if (!replaceMessageContentInDatabase(database, chatJid, id, content)) return null;
+    if (threadId !== undefined) database.query("UPDATE messages SET thread_id=? WHERE chat_jid=? AND rowid=?").run(threadId, chatJid, id);
+    const row = getMessageByRowIdFromDatabase(database, chatJid, id);
+    if (!row) throw Error('Post mutation readback is unavailable.');
+    return row;
+  }, check, req.signal, undefined, check);
+  if (!updated) return channel.json({ error: "Post not found" }, 404);
 
-  ctx.broadcastInteractionUpdated(updated);
-  return ctx.json({ status: "ok", ok: true, id: updated.id });
+  const response = channel.json({ status: "ok", ok: true, id: updated.id });
+  try { channel.interactionBroadcaster.broadcastInteractionUpdated(updated); }
+  catch (error) { try { log.warn('Post update publication deferred after commit', { error, chatJid, rowId: id }); } catch { return response; } }
+  return response;
 }
 
 /** POST /internal/post orchestration. */
-export async function handleInternalPostRequest(req: Request, ctx: PostMutationsContext): Promise<Response> {
+export async function handleInternalPostRequest(channel: WebChannelLike, req: Request, defaultChatJid: string): Promise<Response> {
+  const lastCommand = channel.lastCommandInteractionId, admit = channel.admitMessage?.bind(channel);
+  if (!admit) return channel.json({ error: "Message admission is unavailable." }, 503);
+  const authorise = capturePostAuthority(channel, req, getDb());
   let body: { content?: string; thread_id?: number; chat_jid?: string };
   try {
     body = await req.json();
   } catch {
-    return ctx.json({ error: "Invalid JSON" }, 400);
+    return channel.json({ error: "Invalid JSON" }, 400);
   }
 
-  if (!body.content) return ctx.json({ error: "Missing content" }, 400);
+  if (!body || typeof body.content !== "string" || !body.content) return channel.json({ error: "Missing content" }, 400);
   if (body.content.length > 100 * 1024) {
-    return ctx.json({ error: "Content too large (max 100 KB)" }, 400);
+    return channel.json({ error: "Content too large (max 100 KB)" }, 400);
   }
 
-  const chatJid = resolveChatJid(req, ctx.defaultChatJid, body.chat_jid);
-  const threadId = body.thread_id || ctx.lastCommandInteractionId || undefined;
-  const interaction = ctx.storeMessage(
+  const chatJid = resolveChatJid(req, defaultChatJid, body.chat_jid);
+  const threadId = body.thread_id || lastCommand || undefined;
+  const interaction = await admit(
     chatJid,
     body.content,
     true,
     [],
-    threadId ? { threadId } : undefined
+    threadId ? { threadId } : {}, authorise, req.signal
   );
-  if (!interaction) return ctx.json({ error: "Failed to store" }, 500);
+  if (!interaction) return channel.json({ error: "Failed to store" }, 500);
 
-  ctx.broadcastAgentResponse(interaction);
-  return ctx.json({ status: "ok", ok: true, id: interaction.id }, 201);
+  const response = channel.json({ status: "ok", ok: true, id: interaction.id }, 201);
+  try { channel.interactionBroadcaster.broadcastAgentResponse(interaction); }
+  catch (error) { try { log.warn("Internal post publication deferred after commit", { error, chatJid, rowId: interaction.id }); } catch { return response; } }
+  return response;
 }
 
 /** PATCH /post/:id/annotations orchestration. */
 export async function handleUpdatePostAnnotationsRequest(
-  req: Request,
-  id: number,
-  ctx: PostMutationsContext,
+  channel: WebChannelLike, req: Request, id: number, defaultChatJid: string,
 ): Promise<Response> {
-  if (!id || id < 1) return ctx.json({ error: "Missing or invalid post id" }, 400);
+  if (!id || id < 1) return channel.json({ error: "Missing or invalid post id" }, 400);
+  const database = getDb(), check = capturePostAuthority(channel, req, database, id);
 
   let body: { annotations?: unknown[]; chat_jid?: string };
   try {
     body = await req.json();
   } catch {
-    return ctx.json({ error: "Invalid JSON" }, 400);
+    return channel.json({ error: "Invalid JSON" }, 400);
   }
 
-  if (!Array.isArray(body.annotations)) {
-    return ctx.json({ error: "Missing or invalid annotations array" }, 400);
+  if (!body || !Array.isArray(body.annotations)) {
+    return channel.json({ error: "Missing or invalid annotations array" }, 400);
   }
 
   // Cap annotation count to prevent abuse
   if (body.annotations.length > 200) {
-    return ctx.json({ error: "Too many annotations (max 200)" }, 400);
+    return channel.json({ error: "Too many annotations (max 200)" }, 400);
   }
 
-  const chatJid = resolveChatJid(req, ctx.defaultChatJid, body.chat_jid);
-  const ok = updateMessageAnnotations(chatJid, id, body.annotations.length > 0 ? body.annotations : null);
-  if (!ok) return ctx.json({ error: "Post not found" }, 404);
+  const chatJid = resolveChatJid(req, defaultChatJid, body.chat_jid);
+  const annotations = structuredClone(body.annotations);
+  const updated = await admitSqliteWrite(database, () => {
+    if (!updateMessageAnnotationsInDatabase(database, chatJid, id, annotations.length ? annotations : null)) return null;
+    const row = getMessageByRowIdFromDatabase(database, chatJid, id);
+    if (!row) throw Error('Post mutation readback is unavailable.');
+    return row;
+  }, check, req.signal, undefined, check);
+  if (!updated) return channel.json({ error: "Post not found" }, 404);
 
-  return ctx.json({ status: "ok", ok: true, id, annotations: body.annotations });
+  return channel.json({ status: "ok", ok: true, id, annotations: updated.data.annotations ?? [] });
 }

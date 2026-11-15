@@ -102,9 +102,11 @@ export interface ScheduledTask {
  * Stored by db/tasks.ts and surfaced in agent-control info commands.
  */
 export interface TaskRunLog {
+  /** Explicit native occurrence linkage; historical/direct rows remain unlinked. */
+  occurrence_id?: string | null;
   /** ID of the parent ScheduledTask. */
   task_id: string;
-  /** ISO-8601 timestamp of when this run started. */
+  /** Recorded run timestamp; admitted occurrences use canonical completion time. */
   run_at: string;
   /** Wall-clock duration of the run in milliseconds. */
   duration_ms: number;

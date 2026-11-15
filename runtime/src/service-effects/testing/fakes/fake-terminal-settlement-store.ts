@@ -19,6 +19,7 @@ import type {
 import type {
   CommitTerminalRequest,
   TerminalCommit,
+  TerminalDatabaseEffect,
   TerminalSettlementError,
   TerminalSettlementErrorTag,
   TerminalSettlementStore,
@@ -461,7 +462,10 @@ export class FakeTerminalSettlementStore implements TerminalSettlementStore {
 
   async commitTerminal(
     input: CommitTerminalRequest,
+    applyEffect?: TerminalDatabaseEffect,
   ): Promise<ResultValue<TerminalCommit, TerminalSettlementError>> {
+    // This independent in-memory model cannot compose shared SQLite writes.
+    if (applyEffect !== undefined) return Result.err(fakeError("invalid_request"));
     const request = decodeFakeTerminalRequest(input);
     const effectId = request?.effect.idempotencyKey ?? "invalid";
     const operationId = request?.effect.operationId ?? null;
@@ -1194,35 +1198,7 @@ function materialiseDecision(
   ) {
     throw new FakeCorruption();
   }
-  if (commit.messageRowId !== null) {
-    const message = state.messages.find(
-      (entry) => entry.rowId === commit.messageRowId,
-    );
-    if (
-      !message ||
-      !message.terminal ||
-      message.operationId !== operation.operationId ||
-      message.chatJid !== operation.chatJid ||
-      typeof message.content !== "string" ||
-      (message.contentBlocks !== null &&
-        validateFakeContentBlocks(message.contentBlocks) === null) ||
-      new Set(message.mediaIds).size !== message.mediaIds.length ||
-      message.mediaIds.length !== decision.mediaCount ||
-      message.mediaIds.some(
-        (mediaId) =>
-          !state.media.some(
-            (media) =>
-              media.operationId === operation.operationId &&
-              media.mediaId === mediaId &&
-              media.role === "terminal",
-          ),
-      )
-    ) {
-      throw new FakeCorruption();
-    }
-  } else if (decision.mediaCount !== 0) {
-    throw new FakeCorruption();
-  }
+  if (state.media.filter(media => media.operationId === operation.operationId && media.role === "terminal").length !== decision.mediaCount) throw new FakeCorruption();
   const prefix = state.sources
     .filter(
       (source) =>
@@ -1345,8 +1321,7 @@ function authorise(
         !cancelled &&
         (operation.phase === "claimed" || operation.phase === "starting_harness") &&
         (operation.harness === null ||
-          (operation.harness.state === "not_started" &&
-            operation.harness.harnessOperationId === null));
+          operation.harness.harnessOperationId === null);
       break;
     case "superseded":
       allowed =
@@ -1383,18 +1358,12 @@ function authoriseOutbox(
 function validFakeHarness(value: HarnessCorrelation | null): boolean {
   if (value === null) return true;
   return (
+    Object.keys(value).sort().join(',') === 'harnessOperationId,sessionId' &&
     typeof value.sessionId === "string" &&
     value.sessionId.length > 0 &&
-    typeof value.lane === "string" &&
-    value.lane.length > 0 &&
     (value.harnessOperationId === null ||
       (typeof value.harnessOperationId === "string" &&
-        value.harnessOperationId.length > 0)) &&
-    ["not_started", "running", "suspended", "aborting", "finished"].includes(
-      value.state,
-    ) &&
-    Number.isSafeInteger(value.watchGeneration) &&
-    value.watchGeneration >= 0
+        value.harnessOperationId.length > 0))
   );
 }
 
@@ -1405,10 +1374,7 @@ function sameHarness(
   if (left === null || right === null) return left === right;
   return (
     left.sessionId === right.sessionId &&
-    left.lane === right.lane &&
-    left.harnessOperationId === right.harnessOperationId &&
-    left.state === right.state &&
-    left.watchGeneration === right.watchGeneration
+    left.harnessOperationId === right.harnessOperationId
   );
 }
 

@@ -13,22 +13,16 @@
  *   - agent-pool.ts for model label resolution.
  */
 
-import type { AgentSession, AgentSessionEvent } from "@earendil-works/pi-coding-agent";
+import type { ModelRegistry } from "@earendil-works/pi-coding-agent";
 import { getSupportedThinkingLevels, type Api, type Model } from "@earendil-works/pi-ai";
+import { MODEL_THINKING_LEVELS } from "@earendil-works/pi-ai/providers/model-schema";
 import { existsSync } from "fs";
 import { getConfigPath, WORKSPACE_DIR } from "../core/config.js";
 import { readJsonConfig, writeJsonConfig } from "../core/config-store.js";
-import { getChatJid } from "../core/chat-context.js";
-import { isContextPressureFailure } from "../agent-pool/automatic-recovery.js";
-import { finalizeRecoveryCompactionOutcome, runCompactionWithTimeout } from "../agent-pool/compaction.js";
-import {
-  didPromptAdvanceSession,
-  getSessionLeafId,
-  RECOVERY_CONTINUATION_PROMPT,
-} from "../agent-pool/context-pressure-retry.js";
+import type { AgentControlCommand, AgentControlResult } from "./agent-control-types.js";
 
 /** Ordered list of supported thinking levels from off to max. */
-export const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"] as const;
+const THINKING_LEVELS = MODEL_THINKING_LEVELS;
 
 type ThinkingLevelMapWithFutureLevels = Record<string, string | null | undefined>;
 type ThinkingModelDescriptor = Pick<Model<Api>, "provider" | "reasoning" | "thinkingLevelMap">;
@@ -45,11 +39,6 @@ export function usesLegacyMaxThinkingAlias(model: ThinkingModelDescriptor | null
 /** Resolve the legacy `max` alias without collapsing native 0.80.6 `max`. */
 export function resolveThinkingAlias(level: string, model: ThinkingModelDescriptor | null | undefined): string {
   return level === "max" && usesLegacyMaxThinkingAlias(model) ? "xhigh" : level;
-}
-
-/** Check if a provider uses "effort" terminology (e.g. Anthropic). */
-export function isEffortProvider(provider: string | undefined | null): boolean {
-  return provider?.toLowerCase() === "anthropic";
 }
 
 /** Display legacy `xhigh: max` metadata as max while preserving native xhigh. */
@@ -91,47 +80,6 @@ export function getAvailableThinkingLevelsForModel(
   }
 
   return levels.length > 0 ? levels : ["off"];
-}
-
-/** Set a thinking level, bypassing old Pi clamping when model metadata supports a newer slot. */
-export function setSessionThinkingLevelCompat(session: AgentSession, level: string): string | null | undefined {
-  const model = session.model as ThinkingModelDescriptor | null | undefined;
-  const sessionAvailable = typeof session.getAvailableThinkingLevels === "function"
-    ? session.getAvailableThinkingLevels() as readonly string[]
-    : [];
-  const piclawAvailable = getAvailableThinkingLevelsForModel(model, sessionAvailable);
-  const needsCompatForce = level === "max" && Boolean(model?.reasoning) && piclawAvailable.includes(level) && !sessionAvailable.includes(level);
-
-  if (!needsCompatForce) {
-    session.setThinkingLevel(level as never);
-    return session.thinkingLevel ?? null;
-  }
-
-  const forcedLevel = String(level);
-  const previousLevel = (session.thinkingLevel ?? null) as string | null;
-  const anySession = session as unknown as {
-    agent?: { state?: { thinkingLevel?: string } };
-    thinkingLevel?: string;
-    sessionManager?: { appendThinkingLevelChange?: (thinkingLevel: string) => unknown };
-    supportsThinking?: () => boolean;
-    _emit?: (event: { type: string; level: string }) => unknown;
-    _extensionRunner?: { emit?: (event: { type: string; level: string; previousLevel: string | null }) => unknown };
-  };
-
-  if (anySession.agent?.state) {
-    anySession.agent.state.thinkingLevel = forcedLevel;
-  }
-  // Some AgentSession builds expose thinkingLevel through a getter only; Reflect.set
-  // returns false instead of throwing for that fallback path.
-  Reflect.set(anySession, "thinkingLevel", forcedLevel);
-
-  if (previousLevel !== forcedLevel) {
-    anySession.sessionManager?.appendThinkingLevelChange?.(forcedLevel);
-    anySession._emit?.({ type: "thinking_level_changed", level: forcedLevel });
-    void anySession._extensionRunner?.emit?.({ type: "thinking_level_select", level: forcedLevel, previousLevel });
-  }
-
-  return session.thinkingLevel ?? anySession.agent?.state?.thinkingLevel ?? anySession.thinkingLevel ?? null;
 }
 
 /** Return the preferred working directory for shell commands (configured workspace or cwd). */
@@ -343,88 +291,6 @@ export function updateUserConfig(patch: {
   };
 }
 
-/** Inject a prompt into the session and capture the streamed response text. */
-export async function runPromptAndCapture(
-  session: AgentSession,
-  text: string,
-  options?: { streamingBehavior?: "steer" | "followUp" }
-): Promise<string> {
-  let assistantBuffer = "";
-  const customBuffers: string[] = [];
-  let providerError: string | null;
-  let compacted = false;
-  let attemptText = text;
-
-  const resetCapturedOutput = () => {
-    assistantBuffer = "";
-    customBuffers.length = 0;
-  };
-
-  const onEvent = (event: AgentSessionEvent) => {
-    if (event.type === "message_update") {
-      const messageUpdate = event.assistantMessageEvent;
-      if (messageUpdate?.type === "text_delta") {
-        assistantBuffer += messageUpdate.delta || "";
-      }
-      return;
-    }
-
-    if (event.type !== "message_end") return;
-
-    const message = event.message as { role?: unknown; content?: unknown; stopReason?: unknown; errorMessage?: unknown };
-    if (message.role === "assistant" && message.stopReason === "error" && typeof message.errorMessage === "string" && message.errorMessage.trim()) {
-      providerError = message.errorMessage.trim();
-    }
-    const text = extractTextFromContent(message.content);
-    if (message.role === "assistant") {
-      assistantBuffer = text || assistantBuffer;
-    } else if (text) {
-      customBuffers.push(text);
-    }
-  };
-
-  const unsub = session.subscribe(onEvent);
-  try {
-    for (let attempt = 0; attempt < 2; attempt += 1) {
-      providerError = null;
-      const baselineLeafId = getSessionLeafId(session);
-      try {
-        await session.prompt(attemptText, options);
-      } catch (error) {
-        providerError = error instanceof Error ? error.message : String(error);
-      }
-      if (providerError && isContextPressureFailure(providerError) && !compacted) {
-        const promptWasPersisted = didPromptAdvanceSession(session, baselineLeafId);
-        const chatJid = getChatJid("control:prompt_capture");
-        const compaction = await runCompactionWithTimeout(
-          session,
-          chatJid,
-          {},
-          async () => await session.compact(),
-          "recovery",
-          { trigger: "recovery", willRetry: true, source: "prompt_capture_context_pressure", attempt: attempt + 1 },
-        );
-        finalizeRecoveryCompactionOutcome(session, chatJid, compaction);
-        if (!compaction.ok) throw new Error(compaction.errorMessage);
-        compacted = true;
-        attemptText = promptWasPersisted ? RECOVERY_CONTINUATION_PROMPT : attemptText;
-        resetCapturedOutput();
-        continue;
-      }
-      if (providerError) throw new Error(providerError);
-      break;
-    }
-  } finally {
-    unsub();
-  }
-
-  const finalText = (assistantBuffer && assistantBuffer.trim())
-    ? assistantBuffer.trim()
-    : customBuffers.join("\n\n").trim();
-
-  return finalText || "(no output)";
-}
-
 /** Fuzzy-match a model input string against available models. */
 export function normalizeModelMatch(
   models: Model<Api>[],
@@ -434,4 +300,39 @@ export function normalizeModelMatch(
   const providerLower = provider.toLowerCase();
   const modelLower = modelId.toLowerCase();
   return models.find((model) => model.provider.toLowerCase() === providerLower && model.id.toLowerCase() === modelLower);
+}
+
+/** Resolve a native model command against the shared cached catalogue. */
+type ModelCommand = Extract<AgentControlCommand, { type: "model" }>;
+export function resolveControlModelSelection(registry: Pick<ModelRegistry, "getAll">, command: ModelCommand): Model<Api> | AgentControlResult {
+  if (!command.modelId) return { status: "error", message: "Select one exact available model." };
+  const models = registry.getAll();
+  let selected: Model<Api> | undefined;
+  if (command.provider) {
+    selected = normalizeModelMatch(models, command.provider, command.modelId!);
+    if (!selected) {
+      return {
+        status: "error",
+        message: `Model not found: ${command.provider}/${command.modelId}.`,
+      };
+    }
+  } else {
+    const matches = models.filter((model) => model.id.toLowerCase() === command.modelId!.toLowerCase());
+    if (matches.length === 0) {
+      return {
+        status: "error",
+        message: `Model not found: ${command.modelId}.`,
+      };
+    }
+    if (matches.length > 1) {
+      const providers = matches.map((model) => `${model.provider}/${model.id}`).join(", ");
+      return {
+        status: "error",
+        message: `Model "${command.modelId}" matches multiple providers: ${providers}. Use /model <provider>/<modelId>.`,
+      };
+    }
+    selected = matches[0];
+  }
+
+  return selected!;
 }

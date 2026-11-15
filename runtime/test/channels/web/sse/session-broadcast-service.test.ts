@@ -3,19 +3,18 @@ import { expect, test } from "bun:test";
 import type { AgentPool } from "../../../../src/agent-pool.js";
 import { WebSessionBroadcastService } from "../../../../src/channels/web/sse/session-broadcast-service.js";
 
-test("session broadcast service delegates SSE fanout and binds sessions through the shared ui bridge", async () => {
-  let installedBinder: ((session: unknown, chatJid: string) => Promise<void> | void) | undefined;
+test("native broadcast retains SSE/UI/provider events without legacy session binding", async () => {
+  let legacyAccesses = 0;
   let providerUsageListener: ((event: unknown) => void) | undefined;
   const handledRequests: Request[] = [];
   const broadcastCalls: Array<{ eventType: string; data: unknown }> = [];
-  const bindCalls: Array<{ session: unknown; chatJid: string }> = [];
   const response = new Response("sse");
 
   const service = new WebSessionBroadcastService(
     {
-      setSessionBinder: (binder?: (session: unknown, chatJid: string) => Promise<void> | void) => {
-        installedBinder = binder;
-      },
+      get setSessionBinder() { legacyAccesses++; throw Error("Legacy binder must not be accessed"); },
+      get getOrCreateRuntime() { legacyAccesses++; throw Error("Legacy runtime must not be accessed"); },
+      get getOrCreateSession() { legacyAccesses++; throw Error("Legacy session must not be accessed"); },
       setProviderUsageRefreshListener: (listener: (event: unknown) => void) => {
         providerUsageListener = listener;
       },
@@ -32,12 +31,6 @@ test("session broadcast service delegates SSE fanout and binds sessions through 
         },
         closeAll: () => {},
       } as any,
-      uiBridge: {
-        bindSession: async (session: unknown, chatJid: string) => {
-          bindCalls.push({ session, chatJid });
-        },
-        stop: () => {},
-      } as any,
     }
   );
 
@@ -49,10 +42,14 @@ test("session broadcast service delegates SSE fanout and binds sessions through 
     { eventType: "agent_status", data: { chat_jid: "web:branch-a", type: "thinking" } },
   ]);
 
-  expect(installedBinder).toBeDefined();
-  const session = { id: "session-1" };
-  await installedBinder?.(session, "web:branch-a");
-  expect(bindCalls).toEqual([{ session, chatJid: "web:branch-a" }]);
+  expect(legacyAccesses).toBe(0);
+  expect("bindSession" in service.uiBridge).toBe(false);
+  const opened = service.uiBridge.openWorkspaceFile("web:branch-a", "notes/index.md", "Notes");
+  const request = broadcastCalls.at(-1)!;
+  expect(request.eventType).toBe("extension_ui_request");
+  const requestId = (request.data as { request_id: string }).request_id;
+  expect(service.uiBridge.handleUiResponse(requestId, { ok: true, opened: true }, "web:branch-a")).toEqual({ status: "ok" });
+  expect(await opened).toEqual({ ok: true, opened: true });
   providerUsageListener?.({
     chat_jid: "web:branch-a",
     current: "zai/glm-4",

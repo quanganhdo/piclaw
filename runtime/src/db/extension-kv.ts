@@ -1,5 +1,5 @@
 /**
- * db/extension-kv.ts — Scoped key-value store for extensions.
+ * db/extension-kv.ts — Root KV readers and transaction-local SQL mutation bodies.
  *
  * Each extension is isolated by extension_id (runtime-assigned).
  * Values are JSON-serialized. Supports chat-scoped and global entries.
@@ -78,8 +78,9 @@ export function extensionKvSet(
   scopeKey?: string,
 ): void {
   const { scope: s, scopeKey: sk } = resolveScope(scope, scopeKey);
-  const json = serializeValue(value);
   const db = getDb();
+  if (!db.inTransaction) throw Error("Extension KV mutation requires a transaction-local SQL scope");
+  const json = serializeValue(value);
 
   // Enforce key count limit
   const count = db
@@ -108,6 +109,7 @@ export function extensionKvDelete(
 ): boolean {
   const { scope: s, scopeKey: sk } = resolveScope(scope, scopeKey);
   const db = getDb();
+  if (!db.inTransaction) throw Error("Extension KV mutation requires a transaction-local SQL scope");
   const result = db
     .prepare("DELETE FROM extension_kv WHERE extension_id = ? AND scope = ? AND scope_key = ? AND key = ?")
     .run(extensionId, s, sk, key);
@@ -181,6 +183,7 @@ export function extensionKvClear(
   scopeKey?: string,
 ): number {
   const db = getDb();
+  if (!db.inTransaction) throw Error("Extension KV mutation requires a transaction-local SQL scope");
   if (scope && scopeKey) {
     const result = db
       .prepare("DELETE FROM extension_kv WHERE extension_id = ? AND scope = ? AND scope_key = ?")
@@ -197,77 +200,4 @@ export function extensionKvClear(
     .prepare("DELETE FROM extension_kv WHERE extension_id = ?")
     .run(extensionId);
   return result.changes;
-}
-
-/** Delete all chat-scoped entries for a specific chat JID (used by branch cleanup). */
-export function extensionKvDeleteByChatJid(chatJid: string): number {
-  const db = getDb();
-  const result = db
-    .prepare("DELETE FROM extension_kv WHERE scope = 'chat' AND scope_key = ?")
-    .run(chatJid);
-  return result.changes;
-}
-
-/** Prune entries older than the given number of days. */
-export function extensionKvPrune(staleDays = 30): number {
-  const db = getDb();
-  const result = db
-    .prepare("DELETE FROM extension_kv WHERE scope = 'chat' AND updated_at < datetime('now', ?)")
-    .run(`-${staleDays} days`);
-  return result.changes;
-}
-
-/** Migrate legacy proxmox_configs and portainer_configs into extension_kv. */
-export function migrateProxmoxPortainerToKv(): { proxmox: number; portainer: number } {
-  const db = getDb();
-  let proxmox = 0;
-  let portainer = 0;
-
-  try {
-    const pxRows = db.prepare(`
-      SELECT chat_jid, base_url, api_token_keychain, allow_insecure_tls, created_at, updated_at
-      FROM proxmox_configs
-    `).all() as Array<{ chat_jid: string; base_url: string; api_token_keychain: string; allow_insecure_tls: number; created_at: string; updated_at: string }>;
-
-    for (const row of pxRows) {
-      const value = JSON.stringify({
-        base_url: row.base_url,
-        api_token_keychain: row.api_token_keychain,
-        allow_insecure_tls: row.allow_insecure_tls === 1,
-      });
-      const result = db.prepare(`
-        INSERT OR IGNORE INTO extension_kv (extension_id, scope, scope_key, key, value, created_at, updated_at)
-        VALUES ('proxmox', 'chat', ?, 'config', ?, ?, ?)
-      `).run(row.chat_jid, value, row.created_at, row.updated_at);
-      proxmox += result.changes;
-    }
-  } catch (e) {
-    // Table may not exist
-    void e;
-  }
-
-  try {
-    const ptRows = db.prepare(`
-      SELECT chat_jid, base_url, api_token_keychain, allow_insecure_tls, created_at, updated_at
-      FROM portainer_configs
-    `).all() as Array<{ chat_jid: string; base_url: string; api_token_keychain: string; allow_insecure_tls: number; created_at: string; updated_at: string }>;
-
-    for (const row of ptRows) {
-      const value = JSON.stringify({
-        base_url: row.base_url,
-        api_token_keychain: row.api_token_keychain,
-        allow_insecure_tls: row.allow_insecure_tls === 1,
-      });
-      const result = db.prepare(`
-        INSERT OR IGNORE INTO extension_kv (extension_id, scope, scope_key, key, value, created_at, updated_at)
-        VALUES ('portainer', 'chat', ?, 'config', ?, ?, ?)
-      `).run(row.chat_jid, value, row.created_at, row.updated_at);
-      portainer += result.changes;
-    }
-  } catch (e) {
-    // Table may not exist
-    void e;
-  }
-
-  return { proxmox, portainer };
 }

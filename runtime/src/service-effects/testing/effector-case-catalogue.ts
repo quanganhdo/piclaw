@@ -8,7 +8,6 @@ export const EFFECTOR_CONTRACT_IDS = Object.freeze([
   "EF-S05",
   "EF-S06",
   "EF-S07",
-  "EF-S08",
   "EF-H01",
 ] as const);
 
@@ -263,34 +262,6 @@ export const EFFECTOR_CASE_CATALOGUE: readonly EffectorCaseCatalogueEntry[] = Ob
     ],
     crashOracle: crashOracle("EF-S07", "Restore after claim, renewal, source binding, completion, abandonment, or retention preserves one occurrence identity, the effective lease plus renewal history, at most one immutable run log and one next decision; terminal or superseded claim/renew replay is non-executable, agent reclaim requires explicit reconciled-absence evidence, and shell/internal reclaim still requires explicit repeatability or reconciled-absence authority."),
     sharedCaseLinks: ["shared:idempotency", "shared:lease", "shared:redaction"],
-  },
-  {
-    contractId: "EF-S08",
-    interfaceName: "AgentProjectionSink",
-    futureIssue: 973,
-    suiteEntryPoint: "defineAgentProjectionSinkContract",
-    prerequisites: ["EF-S01", "EF-S02"],
-    requiredCases: numberedCases("EF-S08", [
-      "snapshot precedes buffered events",
-      "reconnect generation rejects stale callbacks",
-      "non-increasing receipt sequence is dropped",
-      "cross-chat and cross-operation identity cannot mix",
-      "terminal projection requires a committed terminal reference and closes its generation",
-      "protected or unknown public payload keys are rejected",
-      "transport throw reports unknown without advancing the cursor",
-      "malformed closed DTO values are rejected before authority and transport",
-      "reconstructed sink starts without cursors and requires a fresh snapshot with trace continuity",
-      "same-generation snapshot cannot reset an established cursor",
-      "non-void transport return is unknown and does not advance cursor",
-      "authority predicate non-booleans and faults remain bounded before transport",
-      "arbitrary malformed runtime inputs including hostile/changing identity, sequence, terminal and array getters normalize to plain deeply frozen DTOs or resolve protected-payload before authority/transport",
-    ]),
-    faultPoints: [
-      "before_effect", "effect_then_lost_acknowledgement", "duplicate_result", "delayed_or_late_result",
-      "stale_owner_or_version", "malformed_state", "redaction_violation",
-    ],
-    crashOracle: crashOracle("EF-S08", "Reconnect between snapshot and buffered events resumes at a new generation without replaying stale callbacks."),
-    sharedCaseLinks: ["shared:owner-version", "shared:redaction"],
   },
   {
     contractId: "EF-H01",

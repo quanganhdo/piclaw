@@ -1,5 +1,7 @@
 # Earendil 0.85.1 candidate readiness
 
+Historical as-of assessment: version/installed labels, commands and results below describe the original environment. The full frozen object now lives in an [inert schema-6 receipt](receipts/earendil-harness-compatibility-schema6.json) with [source/conversion provenance](receipts/earendil-harness-compatibility-schema6.provenance.json), outside executable Core. Current SDK1.4.0 selection and native qualification are separate; no old installation or activation permission is extended.
+
 The current-runtime migration was merged and the running Piclaw service now uses exact 0.85.1. Rui accepted public SessionRepo coverage for B; the authorised piclaw-test upgrade/rollback and targeted browser canary passed, and the separately tracked baseline abort-endpoint defect was fixed in #1339. Production Harness activation, complete HC promotion and non-Linux execution remain separate.
 
 ## Scope and coordinates

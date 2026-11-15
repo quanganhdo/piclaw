@@ -15,8 +15,6 @@ function element<T extends HTMLElement>(id: string): T {
 }
 const form = element<HTMLFormElement>("login-form");
 const codeInput = element<HTMLInputElement>("code");
-const usernameInput = element<HTMLInputElement>("username");
-const usernameField = element<HTMLDivElement>("username-field");
 const errorEl = element<HTMLDivElement>("error");
 const description = element<HTMLParagraphElement>("login-description");
 const passkeyButton = element<HTMLButtonElement>("passkey-button");

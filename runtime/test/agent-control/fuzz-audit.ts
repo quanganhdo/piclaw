@@ -60,9 +60,9 @@ const ROUTING_SAMPLES: Record<string, string> = {
   "/exit": "/exit",
   "/login": "/login",
   "/settings": "/settings",
+  "/theme": "/theme",
   "/logout": "/logout",
   "/commands": "/commands",
-  "/meters": "/meters on",
 };
 
 const MALFORMED_CASES = [
@@ -211,6 +211,7 @@ export async function runAgentControlFuzzAudit(options: AuditRunOptions = {}): P
   const restoreEnv = setEnv({ PICLAW_WORKSPACE: workspace.workspace, PICLAW_STORE: workspace.store, PICLAW_DATA: workspace.data });
   (globalThis as { __PICLAW_EXIT_SCHEDULER__?: () => void }).__PICLAW_EXIT_SCHEDULER__ = () => {};
 
+  const controls: Array<{ dispose(): void }> = [];
   try {
     const db = await importFromHere<any>("../../src/db.ts");
     db.initDatabase();
@@ -231,11 +232,21 @@ export async function runAgentControlFuzzAudit(options: AuditRunOptions = {}): P
       model: "gpt-test",
     });
 
-    const { parseControlCommand, applyControlCommand } = await importFromHere<any>("../../src/agent-control/index.ts");
+    const { parseControlCommand } = await importFromHere<any>("../../src/agent-control/index.ts");
     const { CONTROL_COMMAND_DEFINITIONS, normalizeControlCommandName } = await importFromHere<any>("../../src/agent-control/command-registry.ts");
     const { COMMAND_PARSERS } = await importFromHere<any>("../../src/agent-control/command-parsers.ts");
     const { withChatContext } = await importFromHere<any>("../../src/core/chat-context.ts");
 
+    const { createNativeControlFixture } = await import('./native-control-fixture.js');
+    const byRuntime = new WeakMap<object, ReturnType<typeof createNativeControlFixture>>();
+    const applyControlCommand = (runtime: any, registry: any, command: any) => {
+      let control = byRuntime.get(runtime);
+      if (!control) {
+        control = createNativeControlFixture(runtime.session, registry, DEFAULT_CHAT_JID);
+        byRuntime.set(runtime, control); controls.push(control);
+      }
+      return control.facade.applyControlCommand(DEFAULT_CHAT_JID, command);
+    };
     const authStorage = createTestAuthStorage();
     const registry = createTestModelRegistry([DEFAULT_TEST_MODEL], authStorage);
 
@@ -452,6 +463,7 @@ export async function runAgentControlFuzzAudit(options: AuditRunOptions = {}): P
 
     return await writeArtifacts(artifactDir, summary);
   } finally {
+    for (const control of controls) control.dispose();
     delete (globalThis as { __PICLAW_EXIT_SCHEDULER__?: () => void }).__PICLAW_EXIT_SCHEDULER__;
     cleanupRotatedSessionArtifacts(workspace.workspace);
     restoreEnv();

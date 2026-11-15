@@ -179,7 +179,7 @@ export function openSqliteSubject(
 ): SqliteSubject {
   const database = new Database(path, { strict: true });
   database.exec(
-    "PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000",
+    "PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=0",
   );
   installTerminalSettlementCompositionSchema(database);
   const runtime = new Runtime(trace);
@@ -401,11 +401,10 @@ export function seedSqliteOperation(
         `INSERT INTO service_effect_s01_operations(
            operation_id,chat_jid,version,phase,primary_source_seq,
            cancellation_source_id,cancellation_source_seq,cancellation_cause,
-           cancellation_requested_at,harness_session_id,harness_lane,
-           harness_operation_id,harness_state,harness_watch_generation,
+           cancellation_requested_at,harness_session_id,harness_operation_id,
            terminal_disposition,terminal_message_row_id,terminal_error_code,
            terminal_committed_at
-         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       )
       .run(
         seed.operationId,
@@ -420,10 +419,7 @@ export function seedSqliteOperation(
           ? null
           : seed.cancellationRequestedAt ?? "2026-08-14T09:30:00.000Z",
         harness?.sessionId ?? null,
-        harness?.lane ?? null,
         harness?.harnessOperationId ?? null,
-        harness?.state ?? null,
-        harness?.watchGeneration ?? null,
         null,
         null,
         null,

@@ -1,13 +1,16 @@
 import { html } from '../vendor/preact-htm.js';
 import { OobePanel } from '../components/oobe-panel.js';
-import { SettingsDialogLoader } from '../components/settings-dialog-loader.js';
+import { SettingsTabBridge } from '../components/settings-tab-bridge.js';
 import { ChatSurface } from '../components/chat-surface.js';
 import { TimelineQuickActions } from '../components/timeline-quick-actions.js';
 import { TimelineMenu } from '../components/timeline-menu.js';
 import { WorkspaceExplorer } from '../components/workspace-explorer.js';
 import { TabStrip } from '../components/tab-strip.js';
 import { MarkdownPreview } from '../components/markdown-preview.js';
-import { SystemMetersHud } from '../components/system-meters-hud.js';
+import { WorkbenchSidebar } from '../components/workbench-sidebar.js';
+import { WorkbenchStatusBar } from '../components/workbench-statusbar.js';
+import { requestOpenSettingsDialog } from '../components/settings-dialog-events.js';
+import { setEditorPaneCollapsed } from './use-splitters.js';
 
 export interface MainShellRenderOptions {
   [key: string]: any;
@@ -16,11 +19,10 @@ export interface MainShellRenderOptions {
 export function buildMainShellClassName(options: {
   workspaceOpen: boolean;
   editorOpen: boolean;
-  chatOnlyMode: boolean;
   zenMode: boolean;
 }): string {
-  const { workspaceOpen, editorOpen, chatOnlyMode, zenMode } = options;
-  return `app-shell${workspaceOpen ? '' : ' workspace-collapsed'}${editorOpen ? ' editor-open' : ''}${chatOnlyMode ? ' chat-only' : ''}${zenMode ? ' zen-mode' : ''}`;
+  const { workspaceOpen, editorOpen, zenMode } = options;
+  return `app-shell${workspaceOpen ? '' : ' workspace-collapsed'}${editorOpen ? ' editor-open' : ''}${zenMode ? ' zen-mode' : ''}`;
 }
 
 export function extractPostedUserMessageId(response: unknown): number | null {
@@ -60,6 +62,9 @@ export function scrollToPostedTimelineMessage(options: {
   };
 
   const tryScroll = (attemptsRemaining: number) => {
+    // The acknowledgement can precede the post render. Retry the reveal too:
+    // a DOM-only retry cannot mount a row outside the virtual history window.
+    requestReveal(id);
     const element = getElementById(`post-${id}`);
     if (element) {
       highlight(element);
@@ -74,7 +79,6 @@ export function scrollToPostedTimelineMessage(options: {
     });
   };
 
-  requestReveal(id);
   tryScroll(maxAttempts);
 }
 
@@ -108,7 +112,6 @@ export function renderMainShell(options: MainShellRenderOptions): any {
     appShellRef,
     workspaceOpen,
     editorOpen,
-    chatOnlyMode,
     zenMode,
     isRenameBranchFormOpen,
     closeRenameCurrentBranchForm,
@@ -124,11 +127,10 @@ export function renderMainShell(options: MainShellRenderOptions): any {
     openTerminalTab,
     openVncTab,
     openCdpTab,
+    openPlanTab,
     hasDockPanes,
     toggleDock,
     dockVisible,
-    handleSplitterMouseDown,
-    handleSplitterTouchStart,
     showEditorPaneContainer,
     tabStripTabs,
     tabStripActiveId,
@@ -158,6 +160,8 @@ export function renderMainShell(options: MainShellRenderOptions): any {
     dockContainerRef,
     handleEditorSplitterMouseDown,
     handleEditorSplitterTouchStart,
+    handleEditorSplitterKeyDown,
+    handleEditorSplitterDoubleClick,
     searchQuery,
     isIOSDevice,
     currentBranchRecord,
@@ -252,6 +256,8 @@ export function renderMainShell(options: MainShellRenderOptions): any {
     handleComposeSubmitError,
     isComposeBoxAgentActive,
     activeChatAgents,
+    refreshActiveChatAgents,
+    setWorkspaceVisible,
     connectionStatus,
     stateAccessFailed,
     activeModel,
@@ -277,8 +283,7 @@ export function renderMainShell(options: MainShellRenderOptions): any {
   };
 
   return html`
-    <div class=${buildMainShellClassName({ workspaceOpen, editorOpen, chatOnlyMode, zenMode })} ref=${appShellRef}>
-      <${SystemMetersHud} mode="overlay" />
+    <div class=${buildMainShellClassName({ workspaceOpen, editorOpen, zenMode })} ref=${appShellRef}>
       ${isRenameBranchFormOpen && html`
         <div class="rename-branch-overlay" onPointerDown=${(event: any) => {
           if (event.target === event.currentTarget) {
@@ -328,38 +333,187 @@ export function renderMainShell(options: MainShellRenderOptions): any {
           </form>
         </div>
       `}
-      ${!chatOnlyMode && html`
-        <${WorkspaceExplorer}
-          onFileSelect=${addFileRef}
-          onFolderSelect=${addFolderRef}
-          visible=${workspaceOpen}
-          active=${workspaceOpen || editorOpen}
-          onOpenEditor=${openEditor}
-          onOpenTerminalTab=${openTerminalTab}
-          onOpenCdpTab=${openCdpTab}
-          onOpenVncTab=${openVncTab}
+      ${!zenMode && html`
+        <${WorkbenchSidebar}
+          activeChatAgents=${activeChatAgents}
+          currentChatJid=${currentChatJid}
+          onSwitchChat=${handleBranchPickerChange}
+          appShellRef=${appShellRef}
+          onRefreshSessions=${refreshActiveChatAgents}
+          workspaceOpen=${workspaceOpen}
+          setWorkspaceVisible=${setWorkspaceVisible}
+          onOpenSettings=${requestOpenSettingsDialog}
+          onOpenPlan=${openPlanTab}
+          sessionActions=${{
+            createRoot: handleCreateRootSessionFromCompose,
+            fork: handleCreateSessionFromCompose,
+            rename: openRenameCurrentBranchForm,
+            archive: handlePruneCurrentBranch,
+            restore: handleRestoreBranch,
+            purge: handlePurgeArchivedBranch,
+          }}
+          explorer=${html`
+            <${WorkspaceExplorer}
+              onFileSelect=${addFileRef}
+              onFolderSelect=${addFolderRef}
+              visible=${workspaceOpen}
+              active=${workspaceOpen || editorOpen}
+              onOpenEditor=${openEditor}
+              onOpenTerminalTab=${openTerminalTab}
+              onOpenCdpTab=${openCdpTab}
+              onOpenVncTab=${openVncTab}
+            />
+          `}
         />
-        ${workspaceOpen && !zenMode && html`
-          <div
-            class="workspace-drawer-backdrop"
-            onClick=${toggleWorkspace}
-            aria-hidden="true"
-          ></div>
-        `}
-        <button
-          class=${`workspace-toggle-tab${workspaceOpen ? ' open' : ' closed'}`}
-          onClick=${toggleWorkspace}
-          title=${workspaceOpen ? 'Hide workspace' : 'Show workspace'}
-          aria-label=${workspaceOpen ? 'Hide workspace' : 'Show workspace'}
-          aria-expanded=${workspaceOpen ? 'true' : 'false'}
-        >
-          <svg class="workspace-toggle-tab-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <polyline points="6 3 11 8 6 13" />
-          </svg>
-        </button>
-        <div class="workspace-splitter" onMouseDown=${handleSplitterMouseDown} onTouchStart=${handleSplitterTouchStart}></div>
       `}
+      <${TimelineMenu}
+        workspaceOpen=${workspaceOpen}
+        toggleWorkspace=${toggleWorkspace}
+        openEditor=${openEditor}
+        onOpenTerminalTab=${openTerminalTab}
+        onOpenCdpTab=${openCdpTab}
+          onOpenVncTab=${openVncTab}
+      />
+      <${TimelineQuickActions}
+        activeChatAgents=${activeChatAgents}
+        currentChatJid=${currentChatJid}
+        workspaceOpen=${workspaceOpen}
+        onSwitchChat=${handleBranchPickerChange}
+        onToggleWorkspace=${toggleWorkspace}
+        onOpenTerminalTab=${openTerminalTab}
+        onOpenCdpTab=${openCdpTab}
+          onOpenVncTab=${openVncTab}
+        onPrefillCompose=${requestComposePrefill}
+      />
+      <div class="container">
+        ${searchQuery && isIOSDevice() && html`<div class="search-results-spacer"></div>`}
+        ${(currentHashtag || searchQuery) && html`
+          <div class="hashtag-header">
+            <button class="back-btn" onClick=${handleBackToTimeline}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            </button>
+            <span>${currentHashtag ? `#${currentHashtag}` : `Search: ${searchQuery} · ${activeSearchScopeLabel}`}</span>
+          </div>
+        `}
+        ${oobePanelState?.kind && oobePanelState.kind !== 'hidden' && html`
+          <${OobePanel}
+            kind=${oobePanelState.kind}
+            onSetupProvider=${handleOobeSetupProvider}
+            onShowModelPicker=${handleOobeShowModelPicker}
+            onOpenWorkspace=${handleOobeOpenWorkspace}
+            onDismiss=${oobePanelState.kind === 'provider-missing' ? handleDismissProviderMissingOobe : handleCompleteProviderReadyOobe}
+          />
+        `}
+        <${SettingsTabBridge} openEditor=${openEditor} />
+        <${ChatSurface}
+          currentChatJid=${currentChatJid}
+          posts=${posts}
+          hasMore=${isMainTimelineView ? hasMore : false}
+          onLoadMore=${isMainTimelineView ? loadMore : undefined}
+          timelineRef=${timelineRef}
+          onHashtagClick=${handleHashtagClick}
+          onMessageRef=${addMessageRef}
+          onScrollToMessage=${scrollToMessage}
+          onFileRef=${openTimelineFileFromPill || openFileFromPill}
+          onDeletePost=${handleDeletePost}
+          onOpenWidget=${handleOpenFloatingWidget}
+          onOpenAttachmentPreview=${setAttachmentPreview}
+          emptyMessage=${currentHashtag ? `No posts with #${currentHashtag}` : searchQuery ? `No results for "${searchQuery}"` : undefined}
+          agents=${agents}
+          user=${userProfile}
+          reverse=${isMainTimelineView}
+          removingPostIds=${removingPostIds}
+          searchQuery=${searchQuery}
+          agentStatus=${agentStatus}
+          isCompactionStatus=${isCompactionStatus}
+          agentDraft=${agentDraft}
+          agentPlan=${agentPlan}
+          agentThought=${agentThought}
+          pendingRequest=${pendingRequest}
+          intent=${intentToast}
+          currentTurnId=${currentTurnId}
+          steerQueued=${steerQueued}
+          onPanelToggle=${handlePanelToggle}
+          extensionPanels=${extensionStatusPanels.values()}
+          pendingExtensionPanelActions=${pendingExtensionPanelActions}
+          onExtensionPanelAction=${handleExtensionPanelAction}
+          btwSession=${btwSession}
+          onCloseBtw=${closeBtwPanel}
+          onRetryBtw=${handleBtwRetry}
+          onInjectBtw=${handleBtwInject}
+          floatingWidget=${floatingWidget}
+          onCloseWidget=${handleCloseFloatingWidget}
+          onWidgetEvent=${handleFloatingWidgetEvent}
+          attachmentPreview=${attachmentPreview}
+          onCloseAttachmentPreview=${() => setAttachmentPreview(null)}
+          composeProps=${{
+            onPost: (response) => handleComposePost({ response, viewStateRef, scrollToBottom }),
+            onFocus: handleComposeFocus,
+            searchMode: searchOpen,
+            searchScope,
+            onSearch: handleSearch,
+            onSearchScopeChange: handleSearchScopeChange || setSearchScope,
+            onEnterSearch: enterSearchMode,
+            onExitSearch: exitSearchMode,
+            fileRefs,
+            onRemoveFileRef: removeFileRef,
+            onClearFileRefs: clearFileRefs,
+            onSetFileRefs: setFileRefsFromCompose,
+            folderRefs,
+            onRemoveFolderRef: removeFolderRef,
+            onClearFolderRefs: clearFolderRefs,
+            onSetFolderRefs: setFolderRefsFromCompose,
+            messageRefs,
+            onRemoveMessageRef: removeMessageRef,
+            onClearMessageRefs: clearMessageRefs,
+            onSetMessageRefs: setMessageRefsFromCompose,
+            onSwitchChat: handleBranchPickerChange,
+            onRenameSession: handleRenameCurrentBranch,
+            isRenameSessionInProgress: isRenamingBranch,
+            onCreateSession: handleCreateSessionFromCompose,
+            onCreateRootSession: handleCreateRootSessionFromCompose,
+            onDeleteSession: handlePruneCurrentBranch,
+            onPurgeArchivedSession: handlePurgeArchivedBranch,
+            onRestoreSession: handleRestoreBranch,
+            activeEditorPath: tabStripActiveId,
+            onAttachEditorFile: attachActiveEditorFile,
+            onOpenFilePill: openFileFromPill,
+            followupQueueCount,
+            followupQueueItems,
+            onInjectQueuedFollowup: handleInjectQueuedFollowup,
+            onRemoveQueuedFollowup: handleRemoveQueuedFollowup,
+            onMoveQueuedFollowup: handleMoveQueuedFollowup,
+            onSubmitIntercept: handleBtwIntercept,
+            onMessageResponse: handleMessageResponse,
+            onSubmitError: handleComposeSubmitError,
+            isAgentActive: isComposeBoxAgentActive,
+            activeChatAgents,
+            currentChatJid,
+            connectionStatus,
+            stateAccessFailed,
+            activeModel,
+            agentModelsPayload,
+            modelUsage: activeModelUsage,
+            thinkingLevel: activeThinkingLevel,
+            supportsThinking,
+            contextUsage,
+            notificationsEnabled,
+            notificationPermission,
+            onToggleNotifications: handleToggleNotifications,
+            onModelChange: setActiveModel,
+            onModelStateChange: applyModelState,
+            statusNotice: isCompactionStatus(agentStatus) ? agentStatus : null,
+            extensionWorkingState,
+            prefillRequest: composePrefillRequest,
+          }}
+          onPendingRequestRespond=${() => {
+            setPendingRequest(null);
+            pendingRequestRef.current = null;
+          }}
+        />
+      </div>
       ${showEditorPaneContainer && html`
+        <div class="editor-splitter" onMouseDown=${handleEditorSplitterMouseDown} onTouchStart=${handleEditorSplitterTouchStart} onKeyDown=${handleEditorSplitterKeyDown} onDblClick=${handleEditorSplitterDoubleClick} role="separator" aria-orientation="vertical" aria-label="Resize editor" tabIndex="0"></div>
         <div class="editor-pane-container">
           ${zenMode && html`<div class="zen-hover-zone"></div>`}
           ${editorOpen && html`
@@ -452,156 +606,18 @@ export function renderMainShell(options: MainShellRenderOptions): any {
               : html`<div class="dock-panel-body" ref=${dockContainerRef}></div>`}
           </div>`}
         </div>
-        <div class="editor-splitter" onMouseDown=${handleEditorSplitterMouseDown} onTouchStart=${handleEditorSplitterTouchStart}></div>
+        ${editorOpen && html`
+          <button type="button" class="editor-pane-back" onClick=${() => setEditorPaneCollapsed(appShellRef.current, true)} title="Back to chat" aria-label="Back to chat">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="10 3 5 8 10 13" /></svg>
+            <span>Chat</span>
+          </button>
+          <button type="button" class="editor-pane-restore" onClick=${() => setEditorPaneCollapsed(appShellRef.current, false)} title="Show editor" aria-label="Show editor">
+            <span>Editor</span>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 3 11 8 6 13" /></svg>
+          </button>
+        `}
       `}
-      <${TimelineMenu}
-        workspaceOpen=${workspaceOpen}
-        toggleWorkspace=${toggleWorkspace}
-        chatOnlyMode=${chatOnlyMode}
-        openEditor=${openEditor}
-        onOpenTerminalTab=${openTerminalTab}
-        onOpenCdpTab=${openCdpTab}
-          onOpenVncTab=${openVncTab}
-      />
-      <${TimelineQuickActions}
-        activeChatAgents=${activeChatAgents}
-        currentChatJid=${currentChatJid}
-        workspaceOpen=${workspaceOpen}
-        chatOnlyMode=${chatOnlyMode}
-        onSwitchChat=${handleBranchPickerChange}
-        onToggleWorkspace=${toggleWorkspace}
-        onOpenTerminalTab=${openTerminalTab}
-        onOpenCdpTab=${openCdpTab}
-          onOpenVncTab=${openVncTab}
-        onPrefillCompose=${requestComposePrefill}
-      />
-      <div class="container">
-        ${searchQuery && isIOSDevice() && html`<div class="search-results-spacer"></div>`}
-        ${(currentHashtag || searchQuery) && html`
-          <div class="hashtag-header">
-            <button class="back-btn" onClick=${handleBackToTimeline}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-            </button>
-            <span>${currentHashtag ? `#${currentHashtag}` : `Search: ${searchQuery} · ${activeSearchScopeLabel}`}</span>
-          </div>
-        `}
-        ${oobePanelState?.kind && oobePanelState.kind !== 'hidden' && html`
-          <${OobePanel}
-            kind=${oobePanelState.kind}
-            onSetupProvider=${handleOobeSetupProvider}
-            onShowModelPicker=${handleOobeShowModelPicker}
-            onOpenWorkspace=${handleOobeOpenWorkspace}
-            onDismiss=${oobePanelState.kind === 'provider-missing' ? handleDismissProviderMissingOobe : handleCompleteProviderReadyOobe}
-          />
-        `}
-        <${SettingsDialogLoader} />
-        <${ChatSurface}
-          currentChatJid=${currentChatJid}
-          posts=${posts}
-          hasMore=${isMainTimelineView ? hasMore : false}
-          onLoadMore=${isMainTimelineView ? loadMore : undefined}
-          timelineRef=${timelineRef}
-          onHashtagClick=${handleHashtagClick}
-          onMessageRef=${addMessageRef}
-          onScrollToMessage=${scrollToMessage}
-          onFileRef=${openTimelineFileFromPill || openFileFromPill}
-          onDeletePost=${handleDeletePost}
-          onOpenWidget=${handleOpenFloatingWidget}
-          onOpenAttachmentPreview=${setAttachmentPreview}
-          emptyMessage=${currentHashtag ? `No posts with #${currentHashtag}` : searchQuery ? `No results for "${searchQuery}"` : undefined}
-          agents=${agents}
-          user=${userProfile}
-          reverse=${isMainTimelineView}
-          removingPostIds=${removingPostIds}
-          searchQuery=${searchQuery}
-          agentStatus=${agentStatus}
-          isCompactionStatus=${isCompactionStatus}
-          agentDraft=${agentDraft}
-          agentPlan=${agentPlan}
-          agentThought=${agentThought}
-          pendingRequest=${pendingRequest}
-          intent=${intentToast}
-          currentTurnId=${currentTurnId}
-          steerQueued=${steerQueued}
-          onPanelToggle=${handlePanelToggle}
-          extensionPanels=${extensionStatusPanels.values()}
-          pendingExtensionPanelActions=${pendingExtensionPanelActions}
-          onExtensionPanelAction=${handleExtensionPanelAction}
-          btwSession=${btwSession}
-          onCloseBtw=${closeBtwPanel}
-          onRetryBtw=${handleBtwRetry}
-          onInjectBtw=${handleBtwInject}
-          floatingWidget=${floatingWidget}
-          onCloseWidget=${handleCloseFloatingWidget}
-          onWidgetEvent=${handleFloatingWidgetEvent}
-          attachmentPreview=${attachmentPreview}
-          onCloseAttachmentPreview=${() => setAttachmentPreview(null)}
-          composeProps=${{
-            onPost: (response) => handleComposePost({ response, viewStateRef, scrollToBottom }),
-            onFocus: handleComposeFocus,
-            searchMode: searchOpen,
-            searchScope,
-            onSearch: handleSearch,
-            onSearchScopeChange: handleSearchScopeChange || setSearchScope,
-            onEnterSearch: enterSearchMode,
-            onExitSearch: exitSearchMode,
-            fileRefs,
-            onRemoveFileRef: removeFileRef,
-            onClearFileRefs: clearFileRefs,
-            onSetFileRefs: setFileRefsFromCompose,
-            folderRefs,
-            onRemoveFolderRef: removeFolderRef,
-            onClearFolderRefs: clearFolderRefs,
-            onSetFolderRefs: setFolderRefsFromCompose,
-            messageRefs,
-            onRemoveMessageRef: removeMessageRef,
-            onClearMessageRefs: clearMessageRefs,
-            onSetMessageRefs: setMessageRefsFromCompose,
-            onSwitchChat: handleBranchPickerChange,
-            onRenameSession: handleRenameCurrentBranch,
-            isRenameSessionInProgress: isRenamingBranch,
-            onCreateSession: handleCreateSessionFromCompose,
-            onCreateRootSession: handleCreateRootSessionFromCompose,
-            onDeleteSession: handlePruneCurrentBranch,
-            onPurgeArchivedSession: handlePurgeArchivedBranch,
-            onRestoreSession: handleRestoreBranch,
-            activeEditorPath: chatOnlyMode ? null : tabStripActiveId,
-            onAttachEditorFile: chatOnlyMode ? undefined : attachActiveEditorFile,
-            onOpenFilePill: openFileFromPill,
-            followupQueueCount,
-            followupQueueItems,
-            onInjectQueuedFollowup: handleInjectQueuedFollowup,
-            onRemoveQueuedFollowup: handleRemoveQueuedFollowup,
-            onMoveQueuedFollowup: handleMoveQueuedFollowup,
-            onSubmitIntercept: handleBtwIntercept,
-            onMessageResponse: handleMessageResponse,
-            onSubmitError: handleComposeSubmitError,
-            isAgentActive: isComposeBoxAgentActive,
-            activeChatAgents,
-            currentChatJid,
-            connectionStatus,
-            stateAccessFailed,
-            activeModel,
-            agentModelsPayload,
-            modelUsage: activeModelUsage,
-            thinkingLevel: activeThinkingLevel,
-            supportsThinking,
-            contextUsage,
-            notificationsEnabled,
-            notificationPermission,
-            onToggleNotifications: handleToggleNotifications,
-            onModelChange: setActiveModel,
-            onModelStateChange: applyModelState,
-            statusNotice: isCompactionStatus(agentStatus) ? agentStatus : null,
-            extensionWorkingState,
-            prefillRequest: composePrefillRequest,
-          }}
-          onPendingRequestRespond=${() => {
-            setPendingRequest(null);
-            pendingRequestRef.current = null;
-          }}
-        />
-      </div>
+      ${!zenMode && html`<${WorkbenchStatusBar} />`}
     </div>
   `;
 }

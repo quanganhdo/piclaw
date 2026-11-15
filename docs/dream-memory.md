@@ -10,7 +10,7 @@ that is cleaned up after the run, so Dream work does not appear in normal chat h
 
 ## Access-mode scope
 
-This guide describes the existing single-user Dream pipeline. Gated family model execution selects `notes/users/<immutable-user-id>/MEMORY.md`, `preferences.md` and explicit `notes/family/MEMORY.md`; it does not substitute global personal memory. Dream/AutoDream collection, queue provenance and shared/personal writes still need owner-aware integration. Shared filesystem access is not restricted by prompt selection. See [Access modes](multi-user/README.md#model-identity-foundation).
+This guide describes the single-user Dream pipeline and workspace note hierarchy.
 
 ## Flow
 

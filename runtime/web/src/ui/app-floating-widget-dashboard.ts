@@ -1,3 +1,5 @@
+import { mergeContextUsage } from './app-status-refresh-orchestration.js';
+
 export interface FloatingWidgetDashboardBuildInput {
   generatedAt: string;
   request: unknown;
@@ -45,9 +47,10 @@ export function buildFloatingWidgetDashboardSnapshot(input: FloatingWidgetDashbo
     ? input.branchesPayload.chats.length
     : (Array.isArray(input.currentChatBranches) ? input.currentChatBranches.length : 0);
 
-  const contextPercent = Number(input.contextPayload?.percent ?? input.contextUsage?.percent ?? 0) || 0;
-  const contextTokens = Number(input.contextPayload?.tokens ?? input.contextUsage?.tokens ?? 0) || 0;
-  const contextWindow = Number(input.contextPayload?.contextWindow ?? input.contextUsage?.contextWindow ?? 0) || 0;
+  const context = mergeContextUsage(input.contextUsage, input.contextPayload);
+  const contextPercent = context?.percent as number | null ?? null;
+  const contextTokens = context?.tokens ?? null;
+  const contextWindow = context?.contextWindow ?? null;
 
   const modelName = input.modelsPayload?.current ?? input.activeModel ?? null;
   const thinkingLevel = input.modelsPayload?.thinking_level ?? input.activeThinkingLevel ?? null;
@@ -90,7 +93,7 @@ export function buildFloatingWidgetDashboardSnapshot(input: FloatingWidgetDashbo
       latestTimestamp: latestPost?.timestamp ?? null,
     },
     bars: [
-      { key: 'context', label: 'Context', value: clampPercent(Math.round(contextPercent)) },
+      { key: 'context', label: 'Context', value: contextPercent === null ? null : clampPercent(Math.round(contextPercent)) },
       { key: 'queue', label: 'Queue', value: clampPercent(queueCount * 18) },
       { key: 'activeChats', label: 'Active chats', value: clampPercent(activeChatsCount * 12) },
       { key: 'posts', label: 'Timeline load', value: clampPercent(posts.length * 5) },

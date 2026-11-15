@@ -1,7 +1,7 @@
 import Database from "bun:sqlite";
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterEach, expect, test } from "bun:test";
 
 import { createVerifiedSqliteBackup, verifySqliteBackup } from "../../src/db/backup.js";
@@ -48,10 +48,30 @@ test("verified SQLite backup never overwrites destinations and removes failed sn
   source.close();
 });
 
+test("backup verification releases its read transaction before an immediate writer reopen", () => {
+  const paths = tempDbPaths();
+  const source = new Database(paths.source);
+  let writer: Database | undefined;
+  try {
+    source.exec("CREATE TABLE t(value TEXT);INSERT INTO t VALUES('preserved source')");
+    createVerifiedSqliteBackup(source, paths.source, paths.backup);
+    expect(verifySqliteBackup(paths.backup).integrityCheck).toBe("ok");
+    writer = new Database(paths.backup);
+    writer.exec("PRAGMA busy_timeout=50;BEGIN IMMEDIATE;UPDATE t SET value='updated backup';COMMIT");
+    expect(writer.query("SELECT value FROM t").get()).toEqual({value:"updated backup"});
+    expect(source.query("SELECT value FROM t").get()).toEqual({value:"preserved source"});
+  } finally {
+    if (writer?.inTransaction) writer.exec("ROLLBACK");
+    writer?.close(); source.close();
+  }
+});
+
 test("backup verifier rejects corrupt files", () => {
   const paths = tempDbPaths();
-  Bun.write(paths.backup, "not sqlite");
-  expect(() => verifySqliteBackup(paths.backup)).toThrow();
+  mkdirSync(dirname(paths.backup), { recursive: true });
+  writeFileSync(paths.backup, "not sqlite");
+  expect(existsSync(paths.backup)).toBe(true);
+  expect(() => verifySqliteBackup(paths.backup)).toThrow("file is not a database");
 });
 
 test("owner-scoped migrations are transactional, idempotent, and checksum guarded", () => {

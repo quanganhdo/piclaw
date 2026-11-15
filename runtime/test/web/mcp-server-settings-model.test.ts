@@ -15,3 +15,27 @@ test('form patch omits blank fields, parses bounded types, and preserves local n
 test('an ok response with blocked runtime is never an applied confirmation',async()=>{
  const states:McpServerSettingsState[]=[],controller=createMcpServerSettingsController(value=>states.push(value),async url=>Response.json(String(url).endsWith('/apply')?{...body(),phase:'blocked',applyAvailable:false}:body({name:'demo',action:'update',applicable:true})));controller.edit({name:'demo',action:'update',patch:{disabled:true}});await controller.preview();await controller.apply(true);expect(states.at(-1)?.applied).toBe(false);expect(states.at(-1)?.payload).toBeNull();controller.dispose();
 });
+
+test('Parallel preset is an explicit fresh draft and never replaces saved or disabled choices', async () => {
+ const {createParallelSearchDraft}=await import('../../web/src/ui/mcp-server-settings-model.js');
+ expect(createParallelSearchDraft([{name:'parallel-search'}])).toBeNull();
+ const first=createParallelSearchDraft([{name:'other'}])!;
+ expect(first).toMatchObject({name:'parallel-search',action:'create',patch:{url:'https://search.parallel.ai/mcp',auth:false,httpTransport:'streamable-http',directTools:false,includeTools:['web_search','web_fetch']}});
+ expect(first.patch).not.toHaveProperty('bearerTokenEnv');
+ (first.patch.headers as Record<string,string>)['User-Agent']='changed';
+ expect(createParallelSearchDraft([])!.patch.headers).toEqual({'User-Agent':'PiClaw (+https://github.com/rcarmo/piclaw)'});
+ const requests:any[]=[],controller=createMcpServerSettingsController(()=>{},async(url,options)=>{requests.push({url,options});return Response.json(body({name:'parallel-search',action:'create',applicable:true}));});
+ controller.edit(createParallelSearchDraft([])!);controller.edit({...createParallelSearchDraft([])!,action:'update'});expect(requests).toHaveLength(0);
+ await controller.preview();expect(JSON.parse(requests[0].options.body)).toEqual(createParallelSearchDraft([]));
+ expect(requests[0].url).toEndWith('/preview');controller.dispose();
+});
+
+
+test('new-server intent survives renaming and field edits until an existing row is selected',async()=>{
+ const {createParallelSearchDraft}=await import('../../web/src/ui/mcp-server-settings-model.js');
+ const requests:any[]=[],controller=createMcpServerSettingsController(()=>{},async(_url,options)=>{const draft=JSON.parse(options!.body as string);requests.push(draft);return Response.json(body({name:draft.name,action:draft.action,applicable:true}));});
+ controller.edit(createParallelSearchDraft([])!);
+ controller.edit({name:'saved',action:'update',patch:{url:'https://search.parallel.ai/mcp'}});await controller.preview();expect(requests.at(-1).action).toBe('create');
+ controller.edit({name:'parallel-search',action:'update',patch:{requestTimeoutMs:5000}});await controller.preview();expect(requests.at(-1).action).toBe('create');
+ controller.edit({name:'saved',action:'update',patch:{disabled:true}},{selectExisting:true});await controller.preview();expect(requests.at(-1).action).toBe('update');controller.dispose();
+});

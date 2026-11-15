@@ -34,8 +34,8 @@ test("explicit malformed access configuration never silently defaults", () => {
   expect(() => readAccessConfig(file)).toThrow("Invalid JSON");
 });
 
-test("family mode parses without enabling execution", () => {
-  expect(readAccessConfig(config({ domains: { access: { mode: "family-shared" } } })).mode).toBe("family-shared");
+test("removed access mode is rejected instead of defaulting", () => {
+  expect(() => readAccessConfig(config({ domains: { access: { mode: "family-shared" } } }))).toThrow();
 });
 
 test("isolated mode validates component-specific registry and trust references", () => {

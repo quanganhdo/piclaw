@@ -122,10 +122,7 @@ function assert(value: unknown, message: string): asserts value {
 
 export const TERMINAL_HARNESS = Object.freeze({
   sessionId: "harness-session-1",
-  lane: "main",
   harnessOperationId: "harness-run-1",
-  state: "finished",
-  watchGeneration: 2,
 }) satisfies HarnessCorrelation;
 
 export function terminalOperation(
@@ -377,7 +374,7 @@ const cases: readonly ParameterisedContractCase<TerminalSettlementContractSubjec
           terminalRequest({ key: "stale-chat", chatJid: "web:other" }),
           terminalRequest({
             key: "stale-harness",
-            expectedHarness: { ...TERMINAL_HARNESS, watchGeneration: 1 },
+            expectedHarness: { ...TERMINAL_HARNESS, harnessOperationId: "foreign-run" },
           }),
         ]) {
           const result = await subject.store.commitTerminal(invalid);

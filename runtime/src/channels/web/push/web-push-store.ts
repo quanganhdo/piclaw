@@ -35,7 +35,7 @@ export interface WebPushSubscriptionScope {
   deviceId?: string;
 }
 
-const FAMILY_SUBSCRIPTION_CAP_PER_OWNER = 8;
+const SUBSCRIPTION_CAP_PER_OWNER = 8;
 const mutationTails = new Map<string, Promise<void>>();
 
 function serialiseMutation<T>(baseDir: string, mutate: () => T): Promise<T> {
@@ -308,7 +308,7 @@ function capStoredWebPushSubscriptionsByOwner(entries: StoredWebPushSubscription
   const sameOwner = entries.filter(entry => entry.ownerUserId === ownerUserId).sort((left, right) => {
     const difference = (Date.parse(right.updatedAt) || 0) - (Date.parse(left.updatedAt) || 0);
     return difference || left.endpoint.localeCompare(right.endpoint);
-  }).slice(0, FAMILY_SUBSCRIPTION_CAP_PER_OWNER);
+  }).slice(0, SUBSCRIPTION_CAP_PER_OWNER);
   return capStoredWebPushSubscriptions([...entries.filter(entry => entry.ownerUserId !== ownerUserId), ...sameOwner]);
 }
 

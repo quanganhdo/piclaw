@@ -1,4 +1,13 @@
-import { describe, expect, test } from "bun:test";
+import * as identity from "../../../src/channels/web/endpoints/identity-endpoints.js";
+import * as content from "../../../src/channels/web/endpoints/content-endpoints.js";
+import * as ui from "../../../src/channels/web/endpoints/ui-endpoints.js";
+import * as status from "../../../src/channels/web/agent/agent-status.js";
+import * as manifest from "../../../src/channels/web/manifest.js";
+import * as mutations from "../../../src/channels/web/post-mutations.js";
+import * as posts from "../../../src/channels/web/handlers/posts.js";
+const leafRestores: (() => void)[] = [];
+afterEach(() => { for (const restore of leafRestores.splice(0)) restore(); });
+import { afterEach, describe, expect, spyOn, test } from "bun:test";
 
 import { WebChannel } from "../../../src/channels/web.ts";
 
@@ -7,10 +16,11 @@ function response(label: string, status = 200): Response {
 }
 
 describe("web channel http surface delegation", () => {
-  test("prototype HTTP wrapper methods stay compatible with bare stubs", async () => {
+  test("remaining prototype HTTP wrapper methods stay compatible with bare stubs", async () => {
     const calls: string[] = [];
     const stub = {
       serverLifecycleGateway: {
+        handleRequest: (_req: Request, dispatch: () => Promise<Response>) => dispatch(),
         handleFetch: async (req: Request) => {
           calls.push(`fetch:${new URL(req.url).pathname}`);
           return response("fetch");
@@ -22,14 +32,10 @@ describe("web channel http surface delegation", () => {
           return response("request");
         },
       },
-      endpointFacade: {
+      endpointMocks: {
         handleAgents: async () => {
           calls.push("agents");
           return response("agents");
-        },
-        handleTimeline: (limit: number, before?: number, chatJid?: string) => {
-          calls.push(`timeline:${limit}:${before ?? "null"}:${chatJid ?? ""}`);
-          return response("timeline");
         },
         handleDeletePost: (_req: Request, id: number | null, cascade: boolean) => {
           calls.push(`delete:${id ?? "null"}:${cascade}`);
@@ -96,6 +102,7 @@ describe("web channel http surface delegation", () => {
           return response("docs");
         },
         json: (_data: unknown, status = 200) => {
+          if (_data === "delete") return response("delete", status);
           calls.push(`json:${status}`);
           return response("json", status);
         },
@@ -110,14 +117,34 @@ describe("web channel http surface delegation", () => {
       },
     } as any;
 
+    stub.json = WebChannel.prototype.json.bind(stub);
+    const endpointMocks = stub.endpointMocks;
+    stub.endpointContexts = { identity: () => ({ assistantName: "Fixture", assistantAvatarRaw: null }), agents: () => ({}), avatar: () => ({}), ui: () => ({}), content: () => ({}), agentStatus: () => ({}) };
+    if ("handleAgents" in endpointMocks) { const spy = spyOn(identity, "handleAgentsRequest").mockImplementation((...args: any[]) => (endpointMocks as any).handleAgents(...args)); leafRestores.push(() => spy.mockRestore()); }
+    if ("handleManifest" in endpointMocks) { const spy = spyOn(manifest, "handleManifestRequest").mockImplementation((...args: any[]) => (endpointMocks as any).handleManifest(...args)); leafRestores.push(() => spy.mockRestore()); }
+    if ("handleAvatar" in endpointMocks) { const spy = spyOn(identity, "handleAvatarRequest").mockImplementation((...args: any[]) => (endpointMocks as any).handleAvatar(...args)); leafRestores.push(() => spy.mockRestore()); }
+    if ("handleWorkspaceVisibility" in endpointMocks) { const spy = spyOn(ui, "handleWorkspaceVisibilityRequest").mockImplementation((...args: any[]) => (endpointMocks as any).handleWorkspaceVisibility(...args)); leafRestores.push(() => spy.mockRestore()); }
+    if ("handleHashtag" in endpointMocks) { const spy = spyOn(content, "handleHashtagRequest").mockImplementation((...args: any[]) => (endpointMocks as any).handleHashtag(...args)); leafRestores.push(() => spy.mockRestore()); }
+    if ("handleSearch" in endpointMocks) { const spy = spyOn(content, "handleSearchRequest").mockImplementation((...args: any[]) => (endpointMocks as any).handleSearch(...args)); leafRestores.push(() => spy.mockRestore()); }
+    if ("handleThread" in endpointMocks) { const spy = spyOn(content, "handleThreadRequest").mockImplementation((...args: any[]) => (endpointMocks as any).handleThread(...args)); leafRestores.push(() => spy.mockRestore()); }
+    if ("handleThought" in endpointMocks) { const spy = spyOn(content, "handleThoughtRequest").mockImplementation((...args: any[]) => (endpointMocks as any).handleThought(...args)); leafRestores.push(() => spy.mockRestore()); }
+    if ("handleThoughtVisibility" in endpointMocks) { const spy = spyOn(ui, "handleThoughtVisibilityRequest").mockImplementation((...args: any[]) => (endpointMocks as any).handleThoughtVisibility(...args)); leafRestores.push(() => spy.mockRestore()); }
+    if ("handleUpdatePost" in endpointMocks) { const spy = spyOn(mutations, "handleUpdatePostRequest").mockImplementation((...args: any[]) => (endpointMocks as any).handleUpdatePost(...args)); leafRestores.push(() => spy.mockRestore()); }
+    if ("handleInternalPost" in endpointMocks) { const spy = spyOn(mutations, "handleInternalPostRequest").mockImplementation((...args: any[]) => (endpointMocks as any).handleInternalPost(...args)); leafRestores.push(() => spy.mockRestore()); }
+    if ("handleAgentStatus" in endpointMocks) { const spy = spyOn(status, "handleAgentStatusRequest").mockImplementation((...args: any[]) => (endpointMocks as any).handleAgentStatus(...args)); leafRestores.push(() => spy.mockRestore()); }
+    if ("handleAgentActiveChats" in endpointMocks) { const spy = spyOn(status, "handleAgentActiveChatsRequest").mockImplementation((...args: any[]) => (endpointMocks as any).handleAgentActiveChats(...args)); leafRestores.push(() => spy.mockRestore()); }
+    if ("handleAgentBranches" in endpointMocks) { const spy = spyOn(status, "handleAgentBranchesRequest").mockImplementation((...args: any[]) => (endpointMocks as any).handleAgentBranches(...args)); leafRestores.push(() => spy.mockRestore()); }
+    if ("handleAgentRespond" in endpointMocks) { const spy = spyOn(ui, "handleAgentRespondRequest").mockImplementation((...args: any[]) => (endpointMocks as any).handleAgentRespond(...args)); leafRestores.push(() => spy.mockRestore()); }
+    const post = spyOn(posts, "handlePost").mockImplementation((_channel, req, isReply) => endpointMocks.handlePost(req, isReply)); leafRestores.push(() => post.mockRestore());
+    const remove = spyOn(mutations, "handleDeletePostRequest").mockImplementation(async (_channel, req, id, cascade) => endpointMocks.handleDeletePost(req, id, cascade)); leafRestores.push(() => remove.mockRestore());
+
     const getReq = new Request("https://example.test/timeline?chat_jid=web%3Abranch", { method: "GET" });
     const postReq = new Request("https://example.test/post", { method: "POST" });
 
     expect(await (await WebChannel.prototype.handleFetch.call(stub, getReq)).text()).toBe("fetch");
     expect(await (await WebChannel.prototype.handleRequest.call(stub, getReq)).text()).toBe("request");
     expect(await (await WebChannel.prototype.handleAgents.call(stub)).text()).toBe("agents");
-    expect(await WebChannel.prototype.handleTimeline.call(stub, 5, 8, "web:branch").text()).toBe("timeline");
-    expect(await WebChannel.prototype.handleDeletePost.call(stub, postReq, 9, true).text()).toBe("delete");
+    expect(await (await WebChannel.prototype.handleDeletePost.call(stub, postReq, 9, true)).text()).toBe("delete");
     expect(await (await WebChannel.prototype.handlePost.call(stub, postReq, true)).text()).toBe("post");
     expect(await WebChannel.prototype.handleAgentStatus.call(stub, getReq).text()).toBe("status");
     expect(await (await WebChannel.prototype.handleAutoresearchStatus.call(stub, getReq)).text()).toBe("autoresearch-status");
@@ -139,7 +166,6 @@ describe("web channel http surface delegation", () => {
       "fetch:/timeline",
       "request:/timeline",
       "agents",
-      "timeline:5:8:web:branch",
       "delete:9:true",
       "post:1",
       "status",

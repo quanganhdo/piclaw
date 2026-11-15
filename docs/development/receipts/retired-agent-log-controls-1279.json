@@ -1,0 +1,131 @@
+{
+  "version": 1,
+  "issue": 1279,
+  "epic": 1270,
+  "partial": true,
+  "implementationBase": "36610b74f1b5e3244325130270b290ab4eb437a8",
+  "metric": "Same stable #1270 tracked handwritten runtime/src + runtime/durable-engine/src rules/exclusions; physical includes comments/blanks.",
+  "before": {
+    "files": 712,
+    "physicalLOC": 144538,
+    "nonblankLines": 134134
+  },
+  "after": {
+    "files": 712,
+    "physicalLOC": 144517,
+    "nonblankLines": 134115
+  },
+  "delta": {
+    "files": 0,
+    "physicalLOC": -21,
+    "nonblankLines": -19
+  },
+  "productionDiff": {
+    "files": 2,
+    "additions": 5,
+    "deletions": 26
+  },
+  "relocatedProductionImplementation": 0,
+  "outsideRootProductionAdditions": 0,
+  "removed": {
+    "runtimeGetterAndExclusiveParser": {
+      "before": 2,
+      "after": 0
+    },
+    "unusedAgentLogProjection": {
+      "before": 1,
+      "after": 0
+    },
+    "redundantLogLevelProjection": {
+      "before": 1,
+      "after": 0
+    },
+    "envRegistrations": {
+      "before": 3,
+      "after": 0
+    },
+    "dotenvAdmission": {
+      "before": 3,
+      "after": 0
+    }
+  },
+  "retiredEnvAliases": [
+    "PICLAW_AGENT_LOG_RETENTION_MS",
+    "PICLAW_AGENT_LOG_RETENTION_DAYS",
+    "PICLAW_AGENT_LOG_CLEANUP_INTERVAL_MS"
+  ],
+  "retainedCompatibility": {
+    "existingMechanism": "DomainConfigSchema.retiredKeys",
+    "domain": "logging",
+    "keys": [
+      "retentionMs",
+      "cleanupIntervalMs"
+    ],
+    "consumer": "strict persisted-domain read; inactive values neither resolved nor newly writable",
+    "configBytesUnchanged": true,
+    "activeWritesPreserveHistoricalValues": true,
+    "unrelatedUnknownKeysStillReject": true,
+    "deletionTrigger": "explicit configuration migration ending historical format"
+  },
+  "kept": [
+    "getLoggingConfig and real configured logger fallback/precedence",
+    "Pushover settings",
+    "tool-output retention and actual cleanup owner",
+    "historical log files and raw configuration bytes",
+    "domain config validation/retirement/write rules"
+  ],
+  "approvedAddonsRevision": "ad7ad0a4b63ee37090b6bee4309fa5c458ec6510",
+  "approvedAddonGetterOrEnvConsumers": 0,
+  "priorLogProducerTimerRetirementCredit": 0,
+  "validation": {
+    "definingOriginal": {
+      "pass": 0,
+      "fail": 1,
+      "assertions": 1
+    },
+    "retirementAndConfigModules": {
+      "pass": 13,
+      "assertions": 60,
+      "files": 2
+    },
+    "coreRestartAndRetention": {
+      "pass": 2,
+      "assertions": 22
+    },
+    "toolOutputConfig": {
+      "pass": 2,
+      "assertions": 10
+    },
+    "loggingLevel": {
+      "pass": 2,
+      "assertions": 12
+    },
+    "typeProjects": [
+      "runtime/tsconfig.json",
+      "runtime/durable-engine/tsconfig.json",
+      "qualification/pi-durable-130/tsconfig.json"
+    ],
+    "strictNewFixtureTypes": true,
+    "actualNativeFactory": {
+      "scenario": "native-events",
+      "pass": 1,
+      "assertions": 182
+    },
+    "circular": {
+      "reachableFiles": 546,
+      "cycles": 0
+    },
+    "envScannerRulesAndBaselineUnchanged": true,
+    "importBoundaries": {
+      "baselineFindings": 25,
+      "candidateFindings": 25,
+      "byteIdentical": true,
+      "green": false
+    }
+  },
+  "preservedFixtureFailures": [
+    "unknown-key expectation omitted persisted; corrected to exact existing error",
+    "error log-level fixture suppressed compatibility warnings; debug selection preserves exact warnings"
+  ],
+  "creditNote": "Actual getter/parser/env-registration/projection deletion; no type/doc/test/generated or prior1673credit, no moved implementation. Pre-shutdown/interop/provider lifetime work remains; net-positive safety repairs must be separately recorded. No live cleanup/install/restart/config migration."
+}

@@ -26,6 +26,7 @@ const SECTION_LABELS: Record<SessionPickerSectionKey, string> = {
 function clean(value: unknown): string { return typeof value === "string" ? value.trim() : ""; }
 
 function finiteNonNegative(value: unknown): number | null {
+  if (value == null) return null;
   const numeric = Number(value);
   return Number.isFinite(numeric) && numeric >= 0 ? numeric : null;
 }
@@ -44,9 +45,7 @@ export function formatSessionPickerMetrics(chat: any): string {
   const tokens = finiteNonNegative(chat?.context_tokens ?? chat?.contextTokens ?? chat?.context_usage?.tokens);
   const contextWindow = finiteNonNegative(chat?.context_window ?? chat?.contextWindow ?? chat?.context_usage?.contextWindow);
   const rawPercent = finiteNonNegative(chat?.context_percent ?? chat?.contextPercent ?? chat?.context_usage?.percent);
-  const percent = rawPercent == null
-    ? tokens != null && contextWindow != null && contextWindow > 0 ? (tokens / contextWindow) * 100 : null
-    : Math.min(100, rawPercent);
+  const percent = rawPercent == null ? null : Math.min(100, rawPercent);
   const context = tokens != null && contextWindow != null && contextWindow > 0
     ? `${formatCompactTokens(tokens)} / ${formatCompactTokens(contextWindow)}${percent == null ? '' : ` (${Math.round(percent)}% context)`}`
     : percent == null ? '' : `${Math.round(percent)}% context`;
@@ -142,15 +141,16 @@ export function groupSessionPickerChats<T extends Record<string, any>>(
   for (const chat of chats) {
     const jid = clean(chat.chat_jid);
     const archived = Boolean(chat.archived_at);
+    // Running sessions come straight after the current one, pinned or not.
     const section: SessionPickerSectionKey = archived ? "archived"
       : jid === current ? "current"
-        : pinned.has(jid) ? "pinned"
-          : Boolean(chat.is_active) ? "active"
+        : Boolean(chat.is_active) ? "active"
+          : pinned.has(jid) ? "pinned"
             : (clean(chat.root_chat_jid) || jid) === currentRoot ? "tree"
               : "other";
     buckets.get(section)!.push(chat);
   }
-  return (["current", "pinned", "active", "tree", "other", "archived"] as SessionPickerSectionKey[])
+  return (["current", "active", "pinned", "tree", "other", "archived"] as SessionPickerSectionKey[])
     .map(key => ({ key, label: SECTION_LABELS[key], items: buckets.get(key)! }))
     .filter(section => section.items.length > 0);
 }

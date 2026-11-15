@@ -1348,10 +1348,10 @@ When these gates pass, Piclaw calls the selected contracts directly. EF-S01–EF
 
 Piclaw's existing coding-agent loop selects tagged `v0.84.4` at `b79e4cc834970cca69daebffab7df1da7d1e52c4` as a coherent current runtime family. That release retains the released-v2 Harness scaffold and remains rejected/evidence-only for Harness v3. Tagged `v0.84.1` at `53fa77ccd8a279eb87e92294ef3687b03ff80112` remains the historical Harness baseline.
 
-`runtime/src/service-effects/earendil-harness-v3-compatibility/` contains two files with no production importer or barrel:
+The original `runtime/src/service-effects/earendil-harness-v3-compatibility/` contained two provisional files, both now retired from production. The complete materialised schema-6 evidence is an [inert JSON receipt](receipts/earendil-harness-compatibility-schema6.json) with [source/conversion provenance](receipts/earendil-harness-compatibility-schema6.provenance.json). Current package selection remains separate from these dated observations.
 
-- `manifest.ts` holds exact release coordinates, package integrities, declaration/runtime fingerprints, EB/HC outcomes and future promotion criteria. Descriptor-safe normalisation accepts only the closed evidence, rejects accessors, symbols, cycles, corruption and drift, and returns deeply frozen data.
-- `direct-assignments.ts` uses package-root public types to compile direct assignments for models, credentials, execution environment, contextual tool factories, resources, lanes, sessions, hooks, events, telemetry and results. It emits no runtime code.
+- `manifest.ts` held exact release coordinates, package integrities, declaration/runtime fingerprints, EB/HC outcomes and promotion criteria. Its bespoke descriptor-safe normaliser and import-time self-validation are deleted under #1575; the historical data/hashes/statuses remain unchanged outside executable Core.
+- `direct-assignments.ts` used package-root public types for provisional model, credential, environment, tool, resource, lane, session, event, telemetry and result checks. Its earlier retirement is separate and receives no new deletion credit.
 
 The compatibility matrix is provisional:
 

@@ -32,6 +32,23 @@ function createContext(overrides: Partial<AgentStatusContext> = {}): AgentStatus
 }
 
 describe("web agent status helpers", () => {
+  test("explicit context tree request awaits summary without changing a newer active status", async () => {
+    let release!: (value: { leafId: string; total: number }) => void;
+    const pendingTree = new Promise<{ leafId: string; total: number }>(resolve => { release = resolve; });
+    let status = { turn_id: "older", title: "Working" };
+    let recoveries = 0;
+    const ctx = createContext({
+      getAgentStatus: () => status,
+      recoverStaleInflightRun: () => { recoveries++; return false; },
+      getSessionTreeSummaryForChat: async chat => { expect(chat).toBe("web:default"); return pendingTree; },
+    });
+    const response = handleAgentContextRequest(new Request("https://example.com/agent/context?include_tree=1"), ctx);
+    status = { turn_id: "newer", title: "Compacting context" };
+    release({ leafId: "exact-hidden-head", total: 2 });
+    expect((await (await response).json()).sessionTree).toEqual({ leafId: "exact-hidden-head", total: 2 });
+    expect(ctx.getAgentStatus("web:default")).toEqual({ turn_id: "newer", title: "Compacting context" });
+    expect(recoveries).toBe(0);
+  });
   test("handleAgentStatusRequest returns idle status when no active agent", async () => {
     const req = new Request("https://example.com/agent/status");
     const res = handleAgentStatusRequest(req, createContext());
@@ -65,7 +82,7 @@ describe("web agent status helpers", () => {
     });
   });
 
-  test("handleAgentStatusRequest triggers stale inflight recovery when no active status exists", async () => {
+  test("handleAgentStatusRequest stays read-only when no active status exists", async () => {
     const req = new Request("https://example.com/agent/status?chat_jid=web:ux");
     const calls: Array<{ chatJid: string; hasActiveStatus?: boolean }> = [];
     const res = handleAgentStatusRequest(req, createContext({
@@ -77,7 +94,7 @@ describe("web agent status helpers", () => {
     }));
 
     expect(res.status).toBe(200);
-    expect(calls).toEqual([{ chatJid: "web:ux", hasActiveStatus: false }]);
+    expect(calls).toEqual([]);
     expect(await res.json()).toEqual({
       status: "idle",
       state: "idle",
@@ -192,7 +209,7 @@ describe("web agent status helpers", () => {
 
     expect(res.status).toBe(200);
     expect(res.headers.get("Server-Timing")).toContain("agent_context;dur=");
-    expect(await res.json()).toEqual({ tokens: null, contextWindow: null, percent: null, sessionGeneration: null, cacheUsage: null });
+    expect(await res.json()).toEqual({ tokens: null, contextWindow: null, percent: null, sessionGeneration: null, contextUpdate: "replace", cacheUsage: null });
   });
 
   test("handleAgentContextRequest includes prompt cache-hit telemetry", async () => {
@@ -238,6 +255,7 @@ describe("web agent status helpers", () => {
       contextWindow: 100000,
       percent: 5,
       sessionGeneration: "session-current",
+      contextUpdate: "replace",
       cacheUsage: {
         latest: {
           inputTokens: 1000,
@@ -249,6 +267,7 @@ describe("web agent status helpers", () => {
           cacheWriteReported: false,
           totalTokens: 5300,
           costTotal: 0.012,
+          costCurrency: null, providerCostCurrency: null,
           providerCostTotal: 0.012,
           catalogueCostTotal: 0.02,
           costProvenance: "provider_reported",
@@ -269,6 +288,7 @@ describe("web agent status helpers", () => {
           cacheWriteTokens: 2000,
           totalTokens: 10600,
           costTotal: 0.024,
+          costCurrency:null,providerCostCurrency:null,providerCostTotal:null,catalogueCostTotal:null,
           runs: 2,
           cacheHitRate: 60,
           costCoverage: {

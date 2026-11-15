@@ -15,11 +15,11 @@
     overflow: hidden;
 }
 
-.app-shell.chat-only {
+.app-shell.branch-loader-shell {
     justify-content: center;
 }
 
-.app-shell.chat-only .container {
+.app-shell.branch-loader-shell .container {
     width: 100%;
     max-width: min(100%, 980px);
     margin: 0 auto;
@@ -206,13 +206,15 @@
     line-height: 1;
 }
 
-.system-meters-compact-gpu {
+.system-meters-compact-gpu,
+.system-meters-compact-io {
     display: inline-flex;
     align-items: center;
     gap: 4px;
 }
 
-.system-meters-compact-gpu .system-meters-spark {
+.system-meters-compact-gpu .system-meters-spark,
+.system-meters-compact-io .system-meters-spark {
     width: 40px;
     height: 14px;
     flex: 0 0 40px;

@@ -28,6 +28,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
 
       - name: Resolve Bun version
         id: bun-version
@@ -44,10 +45,13 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Prepare pinned native qualification
+        uses: ./.github/actions/native-qualification-setup
+
       - name: Install fd
         run: |
           sudo apt-get update
-          sudo apt-get install -y fd-find
+          sudo apt-get install -y fd-find ripgrep
           sudo ln -sf "$(command -v fdfind)" /usr/local/bin/fd
           fd --version
 

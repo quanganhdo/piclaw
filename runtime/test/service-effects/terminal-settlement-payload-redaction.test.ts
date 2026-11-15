@@ -225,7 +225,7 @@ describe("EF-S02 payload observer and redaction hardening", () => {
       const content = subject.payloads.values.get("payload:terminal-content");
       if (!content) throw new Error("missing test payload");
       content.bytes.fill(120);
-      Reflect.set(mutable.expectedHarness!, "watchGeneration", 999);
+      Reflect.set(mutable.expectedHarness!, "harnessOperationId", "mutated-run");
       Reflect.set(mutable.sourceDispositions[0]!, "reason", "mutated");
       Reflect.set(mutable.outboxIntents[0]!, "outboxId", "mutated-outbox");
       barrier.release();
@@ -262,7 +262,7 @@ describe("EF-S02 payload observer and redaction hardening", () => {
         setup: (subject: SqliteSubject) => {
           subject.database
             .prepare(
-              "UPDATE service_effect_s01_operations SET harness_watch_generation=9 WHERE operation_id='operation-1'",
+              "UPDATE service_effect_s01_operations SET harness_operation_id='foreign-run' WHERE operation_id='operation-1'",
             )
             .run();
         },

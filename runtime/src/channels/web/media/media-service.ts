@@ -11,9 +11,12 @@
 import { readFileSync, statSync } from "fs";
 import { resolveAudioContentType } from "../../../utils/audio-media.js";
 import { basename, extname } from "path";
-import { createMedia, createMediaInDatabase, getMediaById, getMediaInfoById } from "../../../db/media.js";
+import { createMediaInDatabase, getMediaById, getMediaInfoById } from "../../../db/media.js";
 import type Database from "bun:sqlite";
 import { DATABASE_ATTACHMENT_MAX_BYTES } from "../../../core/upload-limits.js";
+import { getDb, getDatabaseBinding } from "../../../db/connection.js";
+import { admitSqliteWrite } from "../../../db/sqlite-async-admission.js";
+import { getWorkspaceDir, getStoreDir, getConfigPath } from "../../../core/config.js";
 import { getWebRuntimeConfig } from "../../../core/config.js";
 import { createLogger, debugSuppressedError } from "../../../utils/logger.js";
 
@@ -94,6 +97,27 @@ function maybePromoteUnknownTextType(pathLike: string, contentType: string, data
   return isProbablyTextData(data) ? "text/plain" : normalized;
 }
 
+/** Synchronous SQL-only authority checks; the HTTP caller supplies request authority. */
+export interface MediaWriteAdmissionOptions {
+  authorise?: (phase: 'before' | 'after') => void;
+  signal?: AbortSignal;
+}
+
+function captureMediaBinding(database: Database, singleton: boolean): () => void {
+  const binding = getDatabaseBinding();
+  const paths = JSON.stringify([getWorkspaceDir(), getStoreDir(), getConfigPath()]);
+  const file = (database.query('PRAGMA database_list').all() as { name: string; file: string }[]).find(row => row.name === 'main')?.file;
+  const identity = () => { const stat = statSync(file!); return `${stat.dev}:${stat.ino}`; };
+  const original = file ? identity() : undefined;
+  return () => {
+    if (singleton && (getDb() !== database || JSON.stringify(getDatabaseBinding()) !== JSON.stringify(binding)
+      || JSON.stringify([getWorkspaceDir(), getStoreDir(), getConfigPath()]) !== paths)) {
+      throw Error('Media database binding changed.');
+    }
+    if (file && identity() !== original) throw Error('Media database file changed.');
+  };
+}
+
 /**
  * Service for validating and persisting uploaded media blobs.
  *
@@ -105,7 +129,7 @@ export class MediaService {
    * Validate and store an uploaded file.
    * Returns 413 if file exceeds the configured compose/media upload limit.
    */
-  async createFromFile(file: File, database?: Database, onCreated?: (mediaId: number) => void): Promise<{ status: number; body: unknown }> {
+  async createFromFile(file: File, database?: Database, onCreated?: (mediaId: number) => void, admission: MediaWriteAdmissionOptions = {}): Promise<{ status: number; body: unknown }> {
     // Size check — reject before reading the full body into memory
     const maxMediaUploadBytes = getMaxMediaUploadBytes();
     if (file.size > maxMediaUploadBytes) {
@@ -115,6 +139,10 @@ export class MediaService {
       };
     }
 
+    const target = database ?? getDb();
+    const assertBinding = captureMediaBinding(target, !database);
+    admission.signal?.throwIfAborted();
+    const check = (phase: 'before' | 'after') => { assertBinding(); admission.authorise?.(phase); };
     const detectedContentType = resolveAudioContentType(file.type, file.name)
       || normalizeContentType(file.type, inferContentTypeFromPath(file.name || "upload"));
 
@@ -134,25 +162,15 @@ export class MediaService {
       }
     }
 
-    let mediaId = 0;
-    const persist = () => {
-      mediaId = database ? createMediaInDatabase(
-        database,
-        file.name || "upload",
-        contentType,
-        data,
-        thumbnail,
-        { size: file.size }
-      ) : createMedia(
-        file.name || "upload",
-        contentType,
-        data,
-        thumbnail,
-        { size: file.size }
-      );
-      onCreated?.(mediaId);
-    };
-    if (database) database.transaction(persist).immediate(); else persist();
+    const mediaId = await admitSqliteWrite(target, () => {
+      const id = createMediaInDatabase(target, file.name || "upload", contentType, data, thumbnail, { size: file.size });
+      const result: unknown = onCreated?.(id);
+      if (result && typeof (result as { then?: unknown }).then === 'function') {
+        void Promise.resolve(result).then(() => undefined, () => undefined);
+        throw Error('Media ownership callback must be synchronous.');
+      }
+      return id;
+    }, check, admission.signal, 5000, assertBinding);
 
     return { status: 200, body: { id: mediaId, filename: file.name, size: file.size, contentType } };
   }
@@ -162,7 +180,11 @@ export class MediaService {
    * Returns 413 if file exceeds the configured compose/media upload limit.
    * Returns 404 if the file does not exist.
    */
-  async createFromPath(filePath: string, contentTypeOverride?: string, filenameOverride?: string): Promise<{ status: number; body: unknown }> {
+  async createFromPath(filePath: string, contentTypeOverride?: string, filenameOverride?: string, admission: MediaWriteAdmissionOptions = {}): Promise<{ status: number; body: unknown }> {
+    const database = getDb();
+    const assertBinding = captureMediaBinding(database, true);
+    admission.signal?.throwIfAborted();
+    const check = (phase: 'before' | 'after') => { assertBinding(); admission.authorise?.(phase); };
     let stats: ReturnType<typeof statSync>;
     try {
       stats = statSync(filePath);
@@ -206,13 +228,14 @@ export class MediaService {
       }
     }
 
-    const mediaId = createMedia(
+    const mediaId = await admitSqliteWrite(database, () => createMediaInDatabase(
+      database,
       filenameOverride || basename(filePath),
       contentType,
       data,
       thumbnail,
       { size: stats.size }
-    );
+    ), check, admission.signal, 5000, assertBinding);
 
     return {
       status: 200,

@@ -1,5 +1,5 @@
 import { Database } from "bun:sqlite";
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -132,6 +132,11 @@ function expectTypedFailure(
   }
 }
 
+async function exhaustedAdmission<T>(run: () => Promise<T>): Promise<T> {
+  const clock = spyOn(performance, "now").mockReturnValueOnce(0).mockReturnValue(5001);
+  try { return await run(); } finally { clock.mockRestore(); }
+}
+
 describe("EF-S01 schema and two-connection concurrency", () => {
   test("bounded construction hides setup and SQLite messages", async () => {
     const database = new Database(":memory:", { strict: true });
@@ -180,7 +185,7 @@ describe("EF-S01 schema and two-connection concurrency", () => {
       right.database.exec("PRAGMA busy_timeout = 0");
       left.database.exec("BEGIN IMMEDIATE");
       const request = source("busy-source");
-      const blocked = await right.store.acceptSource(request);
+      const blocked = await exhaustedAdmission(() => right.store.acceptSource(request));
       expectTypedFailure(blocked, "storage_unavailable");
       if (!blocked.ok) expect(blocked.error.certainty).toBe("not_applied");
       left.database.exec("ROLLBACK");
@@ -192,7 +197,7 @@ describe("EF-S01 schema and two-connection concurrency", () => {
         "busy-claim",
       );
       left.database.exec("BEGIN IMMEDIATE");
-      const claimBlocked = await right.store.claimNext(claimRequest);
+      const claimBlocked = await exhaustedAdmission(() => right.store.claimNext(claimRequest));
       expectTypedFailure(claimBlocked, "storage_unavailable");
       if (!claimBlocked.ok)
         expect(claimBlocked.error.certainty).toBe("not_applied");
@@ -231,7 +236,7 @@ describe("EF-S01 schema and two-connection concurrency", () => {
         "queued",
         "busy-entry",
       );
-      const casBlocked = await right.store.recordQueuedInput(cas);
+      const casBlocked = await exhaustedAdmission(() => right.store.recordQueuedInput(cas));
       expectTypedFailure(casBlocked, "storage_unavailable");
       if (!casBlocked.ok)
         expect(casBlocked.error.certainty).toBe("not_applied");
@@ -412,7 +417,7 @@ describe("EF-S01 hostile boundaries and identity", () => {
     }
   });
 
-  test("harness binding is immutable across every correlation component", async () => {
+  test("binding identity is immutable and retired SDK observations reject before mutation", async () => {
     const fixture = open();
     try {
       const operation = await seedOperation(
@@ -424,10 +429,7 @@ describe("EF-S01 hostile boundaries and identity", () => {
         effect: { ...effect("bind:first"), operationId: operation.operationId },
         expectedVersion: operation.version,
         sessionId: "session-1",
-        lane: "main",
         harnessOperationId: "run-1",
-        state: "running" as const,
-        watchGeneration: 7,
       };
       const request = hashed(base);
       expect((await fixture.store.bindHarness(request)).ok).toBeTrue();
@@ -445,7 +447,7 @@ describe("EF-S01 hostile boundaries and identity", () => {
         });
         expectTypedFailure(
           await fixture.store.bindHarness(changed),
-          "owner_conflict",
+          key === 'session' || key === 'run' ? 'owner_conflict' : 'invalid_transition',
         );
       }
     } finally {
@@ -830,10 +832,7 @@ describe("EF-S01 corruption, redaction and callback faults", () => {
           },
           expectedVersion: operation.version,
           sessionId: "secret-session",
-          lane: "secret-lane",
           harnessOperationId: "secret-run",
-          state: "running" as const,
-          watchGeneration: 9,
         }),
       );
       expect(harness.ok).toBeTrue();

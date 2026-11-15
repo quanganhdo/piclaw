@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from '../vendor/preact-htm.js';
 import {
+  invalidateContextUsageForChat,
   refreshAutoresearchStatusForChat,
   refreshContextUsageForChat,
   refreshQueueStateForChat,
@@ -156,7 +157,8 @@ export function useAgentStatusLifecycle(options: UseAgentStatusLifecycleOptions)
 
   const refreshContextUsage = useCallback(async () => {
     await runCoalescedAppRefresh({
-      kind: 'context-usage',
+      // Do not join the pre-disconnect request whose revision is now invalid.
+      kind: `context-usage:${connectionStateRef.current.generation}`,
       chatJid: currentChatJid,
       run: async () => {
         await refreshContextUsageForChat({
@@ -266,6 +268,7 @@ export function useAgentStatusLifecycle(options: UseAgentStatusLifecycleOptions)
   }, [serverVersionContext]);
 
   const handleConnectionStatusChange = useCallback((status: string) => {
+    setContextUsage(invalidateContextUsageForChat(currentChatJid));
     if (status === 'connected') setStateAccessFailed(false);
     handleConnectionStatusChangeEvent({
       currentChatJid,
@@ -286,7 +289,7 @@ export function useAgentStatusLifecycle(options: UseAgentStatusLifecycleOptions)
       refreshQueueState,
       refreshContextUsage,
     });
-  }, [clearAgentRunState, currentChatJid, hasConnectedOnceRef, pendingRequestRef, refreshAgentStatus, refreshContextUsage, refreshQueueState, refreshTimeline, setAgentDraft, setAgentPlan, setAgentStatus, setAgentThought, setConnectionStatus, setPendingRequestForConnection, setStateAccessFailed, viewStateRef]);
+  }, [clearAgentRunState, currentChatJid, hasConnectedOnceRef, pendingRequestRef, refreshAgentStatus, refreshContextUsage, refreshQueueState, refreshTimeline, setAgentDraft, setAgentPlan, setAgentStatus, setAgentThought, setConnectionStatus, setPendingRequestForConnection, setStateAccessFailed, setContextUsage, viewStateRef]);
 
   return {
     refreshQueueState,

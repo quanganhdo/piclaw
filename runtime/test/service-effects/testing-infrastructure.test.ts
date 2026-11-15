@@ -654,8 +654,10 @@ describe("typed effector case catalogue", () => {
     ).toBeTrue();
   });
 
-  test("covers EF-S01 through EF-S08 and EF-H01 exactly once", () => {
+  test("covers retained EF-S01 through EF-S07 and EF-H01 exactly once", () => {
     expect(() => assertCompleteEffectorCaseCatalogue()).not.toThrow();
+    expect(EFFECTOR_CONTRACT_IDS).toEqual(["EF-S01", "EF-S02", "EF-S03", "EF-S04", "EF-S05", "EF-S06", "EF-S07", "EF-H01"]);
+    expect(EFFECTOR_CONTRACT_IDS).not.toContain("EF-S08");
     expect(EFFECTOR_CASE_CATALOGUE.map((entry) => entry.contractId)).toEqual(
       EFFECTOR_CONTRACT_IDS,
     );

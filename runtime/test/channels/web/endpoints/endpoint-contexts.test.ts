@@ -1,123 +1,55 @@
 import { describe, expect, test } from "bun:test";
-import {
-  createAgentStatusContext,
-  createAgentsEndpointContext,
-  createAvatarEndpointContext,
-  createContentEndpointsContext,
-  createPostMutationsContext,
-  createUiEndpointsContext,
-} from "../../../../src/channels/web/endpoints/endpoint-contexts.js";
+import { createWebChannelEndpointContexts } from "../../../../src/channels/web/endpoints/channel-endpoint-context-factory.js";
 
-describe("web endpoint context builders", () => {
-  test("createPostMutationsContext captures current command interaction id and delegates calls", () => {
-    let storedThreadId: { messageId: number; threadId: number } | null = null;
-    let broadcastedId: number | null = null;
+function fixture(extra: Record<string, unknown> = {}) {
+  const channel = {
+    lastCommandInteractionId: 42,
+    workspaceVisible: false,
+    workspaceShowHidden: false,
+    json: (payload: unknown, status = 200) => new Response(JSON.stringify(payload), { status }),
+    ...extra,
+  };
+  const options = {
+    defaultChatJid: "web:default", defaultAgentId: "default",
+    getIdentitySnapshot: () => ({ assistantName: "Pi", assistantAvatarRaw: "assistant.png", agentAvatarUrl: "/avatars/agent", userName: "User", userAvatarRaw: "user.png", userAvatarUrl: "/avatars/user", userAvatarBackground: "#fff" }),
+  };
+  return { channel, contexts: createWebChannelEndpointContexts(channel as unknown as Parameters<typeof createWebChannelEndpointContexts>[0], options) };
+}
 
-    const postCtx = createPostMutationsContext({
-      defaultChatJid: "web:default",
-      getLastCommandInteractionId: () => 42,
-      json: (payload, status = 200) => new Response(JSON.stringify(payload), { status }),
-      replaceMessageContent: (_chatJid, id, content) => ({
-        id,
-        timestamp: new Date().toISOString(),
-        data: { type: "agent_response", content },
-      }),
-      setThreadId: (messageId, threadId) => {
-        storedThreadId = { messageId, threadId };
-      },
-      broadcastInteractionUpdated: (interaction) => {
-        broadcastedId = interaction.id;
-      },
-      storeMessage: () => null,
-      broadcastAgentResponse: () => {},
-    });
-
-    expect(postCtx.defaultChatJid).toBe("web:default");
-    expect(postCtx.lastCommandInteractionId).toBe(42);
-
-    const replaced = postCtx.replaceMessageContent("web:default", 9, "updated")!;
-    postCtx.setThreadId(9, 100);
-    postCtx.broadcastInteractionUpdated(replaced);
-
-    expect(storedThreadId).toEqual({ messageId: 9, threadId: 100 });
-    expect(broadcastedId).toBe(9);
+describe("web endpoint contexts through the surviving channel factory", () => {
+  test("post mutations no longer allocate a forwarding context", () => {
+    expect(fixture().contexts).not.toHaveProperty('postMutations');
   });
 
-  test("createAgentStatusContext and createContentEndpointsContext preserve shared buffer access", async () => {
+  test("agent status and content preserve shared buffer access", async () => {
     const expectedBuffer = { text: "draft", totalLines: 3 };
-
-    const agentStatusCtx = createAgentStatusContext({
-      defaultChatJid: "web:default",
-      json: (payload, status = 200) => new Response(JSON.stringify(payload), { status }),
+    const { contexts } = fixture({
       getAgentStatus: () => ({ status: "active" }),
       getExtensionWorkingState: () => ({ message: "Working", indicator: null }),
-      recoverStaleInflightRun: () => false,
       getBuffer: () => expectedBuffer,
-      getContextUsageForChat: async () => ({ tokens: 10, contextWindow: 100, percent: 10 }),
-      getAvailableModels: async () => ({ models: [] }),
-      getProviderReadyCompletedForInstance: () => true,
+      agentPool: {
+        getContextUsageForChat: async () => ({ tokens: 10, contextWindow: 100, percent: 10 }),
+        getAvailableModels: async () => ({ models: [] }),
+      },
     });
-
-    const contentCtx = createContentEndpointsContext({
-      defaultChatJid: "web:default",
-      json: (payload, status = 200) => new Response(JSON.stringify(payload), { status }),
-      getBuffer: () => expectedBuffer,
-    });
-
+    const agentStatusCtx = contexts.agentStatus(), contentCtx = contexts.content();
     expect(agentStatusCtx.getExtensionWorkingState("web:default")).toEqual({ message: "Working", indicator: null });
     expect(agentStatusCtx.getBuffer("turn", "draft")).toEqual(expectedBuffer);
     expect(contentCtx.getBuffer("turn", "thought")).toEqual(expectedBuffer);
-    await expect(agentStatusCtx.getContextUsageForChat("web:default")).resolves.toEqual({
-      tokens: 10,
-      contextWindow: 100,
-      percent: 10,
-    });
+    await expect(agentStatusCtx.getContextUsageForChat("web:default")).resolves.toEqual({ tokens: 10, contextWindow: 100, percent: 10 });
   });
 
-  test("createUiEndpointsContext, createAgentsEndpointContext, and createAvatarEndpointContext expose configured state", () => {
-    let visible = false;
-    let showHidden = false;
-
-    const uiCtx = createUiEndpointsContext({
-      json: (payload, status = 200) => new Response(JSON.stringify(payload), { status }),
-      getWorkspaceVisible: () => visible,
-      setWorkspaceVisible: (value) => {
-        visible = value;
-      },
-      getWorkspaceShowHidden: () => showHidden,
-      setWorkspaceShowHidden: (value) => {
-        showHidden = value;
-      },
-      setPanelExpanded: () => {},
-      handleUiResponse: () => ({ status: "ok" }),
-    });
-
+  test("UI, agents and avatar contexts expose configured state", () => {
+    const { contexts } = fixture({ setPanelExpanded: () => {}, uiBridge: { handleUiResponse: () => ({ status: "ok" }) }, agentPool: {} });
+    const uiCtx = contexts.ui();
     uiCtx.setWorkspaceVisible(true);
     uiCtx.setWorkspaceShowHidden(true);
     expect(uiCtx.getWorkspaceVisible()).toBe(true);
     expect(uiCtx.getWorkspaceShowHidden()).toBe(true);
-
-    const agentsCtx = createAgentsEndpointContext({
-      agentPool: {} as unknown as import("../../../../src/agent-pool.js").AgentPool,
-      defaultChatJid: "web:default",
-      defaultAgentId: "default",
-      agentName: "Pi",
-      agentAvatar: "/avatars/agent",
-      userName: "User",
-      userAvatar: "/avatars/user",
-      userAvatarBackground: "#fff",
-      json: (payload, status = 200) => new Response(JSON.stringify(payload), { status }),
-    });
-
+    const agentsCtx = contexts.agents();
     expect(agentsCtx.defaultAgentId).toBe("default");
     expect(agentsCtx.agentName).toBe("Pi");
-
-    const avatarCtx = createAvatarEndpointContext({
-      assistantAvatar: "assistant.png",
-      userAvatar: "user.png",
-      json: (payload, status = 200) => new Response(JSON.stringify(payload), { status }),
-    });
-
+    const avatarCtx = contexts.avatar();
     expect(avatarCtx.assistantAvatar).toBe("assistant.png");
     expect(avatarCtx.userAvatar).toBe("user.png");
   });

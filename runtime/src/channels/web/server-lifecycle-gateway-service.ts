@@ -1,7 +1,8 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { CdpViewConnection, closeCdpViewConnections } from './cdp-view.js';
 import { initTheme } from "@earendil-works/pi-coding-agent";
 import type { ServerWebSocket } from "bun";
-import { readAccessConfig } from "../../core/config-access.js";
+import { isSingleUserAccess } from "../../core/config-access.js";
 
 import { purgeExpiredLinkPreviewImageCache } from "../../db.js";
 import { createLogger } from "../../utils/logger.js";
@@ -76,7 +77,6 @@ export interface WebServerLifecycleGatewayDeps extends JsonResponder {
   webRuntimeConfig: {
     terminalEnabled: boolean;
   };
-  loadState(): void;
   initTheme(): void;
   handleRequest(req: Request): Promise<Response>;
   startWorkspaceWatcher(): WatcherLike;
@@ -88,9 +88,11 @@ export interface WebServerLifecycleGatewayDeps extends JsonResponder {
   vncService: VncServiceLike;
   uiBridge: UiBridgeLike;
   sse: SseHubLike;
+  runtimeState?: { dispose(): void };
+  sessionBroadcast?: { dispose(): void };
   serve?: typeof Bun.serve;
   readTextFile?: (path: string) => Promise<string>;
-  sleep?: (ms: number) => Promise<unknown>;
+  sleep?: (ms: number, signal?: AbortSignal) => Promise<unknown>;
   setInterval?: typeof setInterval;
   clearInterval?: typeof clearInterval;
   log?: LoggerLike;
@@ -98,13 +100,14 @@ export interface WebServerLifecycleGatewayDeps extends JsonResponder {
 
 export interface WebServerLifecycleGatewayChannel extends JsonResponder, WorkspaceWatcherChannel {
   syncWorkspaceWatcher?(): void;
-  loadState(): void;
   handleRequest(req: Request): Promise<Response>;
   authGateway: AuthGatewayLike;
   terminalService: TerminalServiceLike;
   vncService: VncServiceLike;
   uiBridge: UiBridgeLike;
   sse: SseHubLike;
+  runtimeState?: { dispose(): void };
+  sessionBroadcast?: { dispose(): void };
 }
 
 export function createWebServerLifecycleGateway(
@@ -114,7 +117,6 @@ export function createWebServerLifecycleGateway(
   return new WebServerLifecycleGatewayService({
     ...configs,
     json: (payload, status = 200) => channel.json(payload, status),
-    loadState: () => channel.loadState(),
     initTheme: () => initTheme(),
     handleRequest: (req) => channel.handleRequest(req),
     startWorkspaceWatcher: () => startWorkspaceWatcher(channel),
@@ -126,6 +128,8 @@ export function createWebServerLifecycleGateway(
     vncService: channel.vncService,
     uiBridge: channel.uiBridge,
     sse: channel.sse,
+    runtimeState: channel.runtimeState,
+    sessionBroadcast: channel.sessionBroadcast,
   });
 }
 
@@ -133,13 +137,35 @@ export class WebServerLifecycleGatewayService {
   server: Bun.Server<WebSocketSessionData> | null = null;
   workspaceWatcher: WatcherLike | null = null;
   linkPreviewCachePurgeTimer: unknown | null = null;
+  private accepting = true;
+  private readonly entered = new Set<Promise<unknown>>();
+  private readonly admissionContext = new AsyncLocalStorage<{ active: boolean }>();
+  private drainPromise: Promise<void> | null = null;
+  private stopPromise: Promise<void> | null = null;
+  private startPromise: Promise<void> | null = null;
+  private startupWork: Promise<void> | null = null;
+  private readonly startupAbort = new AbortController();
   private workspaceWatcherShowHidden: boolean | null = null;
   private workspaceWatcherSyncPromise: Promise<void> = Promise.resolve();
 
   constructor(private readonly deps: WebServerLifecycleGatewayDeps) {}
 
-  async start(): Promise<void> {
-    this.deps.loadState();
+  start(): Promise<void> {
+    if (!this.accepting) return Promise.reject(new Error("Web admission is sealed; this instance cannot restart."));
+    if (this.startPromise) return this.startPromise;
+    // Install the join before invoking dependencies (which may synchronously stop us).
+    this.startupWork = Promise.resolve().then(() => this.startResources());
+    this.startPromise = this.startupWork.catch(async error => {
+      // stop joins startupWork, not this cleanup wrapper: never wait on ourselves.
+      try { await this.stop(); }
+      catch (cleanupError) { throw new AggregateError([error, cleanupError], "Web startup and cleanup failed."); }
+      throw error;
+    });
+    return this.startPromise;
+  }
+
+  private async startResources(): Promise<void> {
+    if (!this.accepting) return;
     try {
       this.deps.initTheme();
     } catch (err) {
@@ -149,10 +175,12 @@ export class WebServerLifecycleGatewayService {
       });
     }
     const tls = await this.loadTlsOptions();
+    if (!this.accepting) return;
 
     let lastBindError: Error | null = null;
 
     for (let attempt = 1; attempt <= MAX_BIND_ATTEMPTS; attempt++) {
+      if (!this.accepting) return;
       try {
         this.server = this.serve<WebSocketSessionData>({
           hostname: this.deps.webServerConfig.host,
@@ -164,14 +192,15 @@ export class WebServerLifecycleGatewayService {
           websocket: {
             maxPayloadLength: 1024 * 1024,
             open: (ws) => {
+              if (!this.accepting) { ws.close(1012, 'Web channel is stopping.'); return; }
               if (ws.data?.kind === 'authenticated-addon') {
                 const data = ws.data;
-                void data.session.open(data.principal, data.scope, {
+                void this.joinEntered(() => data.session.open(data.principal, data.scope, {
                   send: async message => {
                     if (ws.readyState !== 1 || ws.getBufferedAmount() + (typeof message === 'string' ? Buffer.byteLength(message) : message.byteLength) > data.session.registration.maxQueuedBytes) throw Error('Socket output is closed or overloaded.');
                     if (ws.send(message) <= 0) throw Error('Socket output backpressure.');
                   }, close: (code, reason) => ws.close(code, reason),
-                }).catch(() => { ws.close(1011, 'Add-on socket failed.'); });
+                })).catch(() => { ws.close(1011, 'Add-on socket failed.'); });
                 return;
               }
               if (ws.data?.kind === "cdp-view") {
@@ -185,8 +214,10 @@ export class WebServerLifecycleGatewayService {
               this.deps.terminalService.attachClient(ws as ServerWebSocket<TerminalSocketData>);
             },
             message: (ws, message) => {
+              if (!this.accepting) { ws.close(1012, 'Web channel is stopping.'); return; }
               if (ws.data?.kind === 'authenticated-addon') {
-                void ws.data.session.message(message as string | Uint8Array).catch(() => { ws.close(1008, 'Add-on socket rejected message.'); });
+                const data = ws.data;
+                void this.joinEntered(() => data.session.message(message as string | Uint8Array)).catch(() => { ws.close(1008, 'Add-on socket rejected message.'); });
                 return;
               }
               if (ws.data?.kind === "cdp-view") { ws.data.connection?.message(message); return; }
@@ -224,6 +255,7 @@ export class WebServerLifecycleGatewayService {
             retryMs: BIND_RETRY_MS,
           });
           await this.sleep(BIND_RETRY_MS);
+          if (!this.accepting) return;
           continue;
         }
         throw err;
@@ -232,7 +264,9 @@ export class WebServerLifecycleGatewayService {
 
     if (lastBindError) throw lastBindError;
 
+    if (!this.accepting) return;
     await this.syncWorkspaceWatcher();
+    if (!this.accepting) return;
     const purgeNow = () => {
       const result = this.deps.purgeExpiredLinkPreviewImageCache(new Date().toISOString(), 256);
       if (result.purgedEntries > 0) {
@@ -254,26 +288,88 @@ export class WebServerLifecycleGatewayService {
     });
   }
 
-  async stop(): Promise<void> {
+  /** Revoke new HTTP/control admission synchronously; keep broadcasts alive. */
+  sealAdmissions(): Promise<void> {
+    this.accepting = false;
+    this.startupAbort.abort();
+    return this.drainPromise ??= this.drainEntered();
+  }
+
+  private async drainEntered(): Promise<void> {
+    // An accepted request may enter a nested in-process dispatch while unwinding.
+    while (this.entered.size) await Promise.allSettled([...this.entered]);
+  }
+
+  /** Same permanent fence for trusted in-process input/control, not output. */
+  runInternalDispatch<T>(dispatch: () => T | Promise<T>): Promise<T> {
+    if (!this.accepting && !this.admissionContext.getStore()?.active)
+      return Promise.reject(new Error("Web admission is sealed; internal dispatch is unavailable."));
+    return this.joinEntered(dispatch);
+  }
+
+  private joinEntered<T>(run: () => T | Promise<T>): Promise<T> {
+    // Register before invoking user code, including callbacks that throw.
+    const completion = Promise.withResolvers<void>();
+    this.entered.add(completion.promise);
+    const context = { active: true };
+    return this.admissionContext.run(context, async () => {
+      try { return await run(); }
+      finally {
+        context.active = false;
+        this.entered.delete(completion.promise); completion.resolve();
+      }
+    });
+  }
+
+  handleRequest(req: Request, dispatch: () => Promise<Response>): Promise<Response> {
+    if (!this.accepting && !this.admissionContext.getStore()?.active)
+      return Promise.resolve(this.deps.json({ error: 'Web channel is stopping.' }, 503));
+    return this.joinEntered(dispatch);
+  }
+
+  stop(): Promise<void> {
+    const drained = this.sealAdmissions();
+    return this.stopPromise ??= this.finishStop(drained);
+  }
+
+  private async finishStop(drained: Promise<void>): Promise<void> {
+    // TLS may be uninterruptible. Do not certify stop until startup has settled.
+    await this.startupWork?.catch((error) => {
+      log.debug("Web startup failed before shutdown cleanup", { err: error });
+    });
+    await drained;
     const sockets=shutdownAuthenticatedAddonSockets().then(()=>true,()=>false);
-    await closeCdpViewConnections();
-    this.deps.sse.closeAll();
-    this.deps.uiBridge.stop();
-    this.deps.terminalService.shutdown();
-    this.deps.vncService.shutdown();
-    if (this.linkPreviewCachePurgeTimer) {
-      this.clearInterval(this.linkPreviewCachePurgeTimer);
-      this.linkPreviewCachePurgeTimer = null;
+    const failures: unknown[] = [];
+    for (const cleanup of [
+      () => closeCdpViewConnections(),
+      () => this.deps.sessionBroadcast?.dispose(),
+      () => this.deps.sse.closeAll(),
+      () => this.deps.uiBridge.stop(),
+      () => this.deps.runtimeState?.dispose(),
+      () => this.deps.terminalService.shutdown(),
+      () => this.deps.vncService.shutdown(),
+      () => {
+        if (this.linkPreviewCachePurgeTimer) {
+          this.clearInterval(this.linkPreviewCachePurgeTimer);
+          this.linkPreviewCachePurgeTimer = null;
+        }
+      },
+      async () => { await this.server?.stop(true); this.server = null; },
+      async () => { await this.workspaceWatcherSyncPromise; },
+      async () => {
+        if (this.workspaceWatcher) {
+          await this.workspaceWatcher.close();
+          this.workspaceWatcher = null;
+          this.workspaceWatcherShowHidden = null;
+        }
+      },
+      async () => { if (!(await sockets)) throw Error('Authenticated socket shutdown failed.'); },
+    ]) {
+      try { await cleanup(); }
+      catch (error) { failures.push(error); }
     }
-    this.server?.stop(true);
-    this.server = null;
-    await this.workspaceWatcherSyncPromise;
-    if (this.workspaceWatcher) {
-      await this.workspaceWatcher.close();
-      this.workspaceWatcher = null;
-      this.workspaceWatcherShowHidden = null;
-    }
-    if(!(await sockets))throw Error('Authenticated socket shutdown failed.');
+    if (failures.length === 1) throw failures[0];
+    if (failures.length) throw new AggregateError(failures, "Web cleanup failed.");
   }
 
   private denyMultiUserUpgrade(): Response {
@@ -282,7 +378,12 @@ export class WebServerLifecycleGatewayService {
     });
   }
 
-  async handleFetch(req: Request, server?: Bun.Server<WebSocketSessionData>): Promise<Response | undefined> {
+  handleFetch(req: Request, server?: Bun.Server<WebSocketSessionData>): Promise<Response | undefined> {
+    if (!this.accepting) return Promise.resolve(this.deps.json({ error: 'Web channel is stopping.' }, 503));
+    return this.joinEntered(() => this.dispatchFetch(req, server));
+  }
+
+  private async dispatchFetch(req: Request, server?: Bun.Server<WebSocketSessionData>): Promise<Response | undefined> {
     const pathname = new URL(req.url).pathname;
     if (hasAuthenticatedAddonSocket(pathname)) {
       try {
@@ -294,7 +395,7 @@ export class WebServerLifecycleGatewayService {
       } catch { return this.deps.json({ error: 'Authenticated add-on socket access denied.' }, 403); }
     }
     if (pathname === "/cdp-view/ws") {
-      if (readAccessConfig().mode !== "single-user") return this.denyMultiUserUpgrade();
+      if (!isSingleUserAccess()) return this.denyMultiUserUpgrade();
       if (!this.deps.authGateway.isAuthEnabled() || !this.deps.authGateway.isAuthenticated(req)) return Response.json({ error: "Authentication required." }, { status: 401 });
       if (!checkCsrfOrigin(req)) return Response.json({ error: "Invalid origin." }, { status: 403 });
       return server?.upgrade(req, { data: { kind: "cdp-view" } }) ? undefined : Response.json({ error: "WebSocket upgrade failed." }, { status: 400 });
@@ -309,7 +410,7 @@ export class WebServerLifecycleGatewayService {
   }
 
   handleTerminalWebSocketUpgrade(req: Request, server?: Bun.Server<WebSocketSessionData>): Response | undefined {
-    if (readAccessConfig().mode !== "single-user") return this.denyMultiUserUpgrade();
+    if (!isSingleUserAccess()) return this.denyMultiUserUpgrade();
     if (!this.deps.webRuntimeConfig.terminalEnabled) {
       return this.deps.json({ error: "Web terminal is disabled." }, 404);
     }
@@ -336,6 +437,7 @@ export class WebServerLifecycleGatewayService {
   async syncWorkspaceWatcher(): Promise<void> {
     this.workspaceWatcherSyncPromise = this.workspaceWatcherSyncPromise
       .then(async () => {
+        if (!this.accepting) return;
         const visible = this.deps.getWorkspaceVisible();
         const showHidden = this.deps.getWorkspaceShowHidden();
         if (!visible) {
@@ -369,6 +471,7 @@ export class WebServerLifecycleGatewayService {
           });
         }
 
+        if (!this.accepting) return;
         this.workspaceWatcher = this.deps.startWorkspaceWatcher();
         this.workspaceWatcherShowHidden = showHidden;
       })
@@ -382,7 +485,7 @@ export class WebServerLifecycleGatewayService {
   }
 
   async handleVncWebSocketUpgrade(req: Request, server?: Bun.Server<WebSocketSessionData>): Promise<Response | undefined> {
-    if (readAccessConfig().mode !== "single-user") return this.denyMultiUserUpgrade();
+    if (!isSingleUserAccess()) return this.denyMultiUserUpgrade();
     const url = new URL(req.url);
     const targetId = url.searchParams.get("target")?.trim() || "";
     const handoffToken = url.searchParams.get("handoff")?.trim() || "";
@@ -448,7 +551,23 @@ export class WebServerLifecycleGatewayService {
   }
 
   private async sleep(ms: number): Promise<void> {
-    await (this.deps.sleep ? this.deps.sleep(ms) : Bun.sleep(ms));
+    const signal = this.startupAbort.signal;
+    if (signal.aborted) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let onAbort!: () => void;
+    const aborted = new Promise<void>(resolve => {
+      onAbort = resolve;
+      signal.addEventListener("abort", onAbort, { once: true });
+    });
+    try {
+      const sleeping = this.deps.sleep
+        ? this.deps.sleep(ms, signal)
+        : new Promise<void>(resolve => { timer = setTimeout(resolve, ms); });
+      await Promise.race([sleeping, aborted]);
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+      signal.removeEventListener("abort", onAbort);
+    }
   }
 
   private setInterval(handler: TimerHandler, timeout?: number): unknown {

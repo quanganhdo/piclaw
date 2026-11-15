@@ -1,7 +1,7 @@
 import { spawn, type ChildProcess, type SpawnOptions } from "node:child_process";
 import { resolve } from "node:path";
 
-import { closeDatabase, initDatabase, getDb } from "./db.js";
+import { closeDatabase, openWorkspaceIndexDatabase, getDb } from "./db/connection.js";
 import {
   AGGRESSIVE_WORKSPACE_INDEX_MEMORY_ENV,
   getWorkspaceIndexStatus,
@@ -29,8 +29,9 @@ type WorkspaceIndexSpawn = (command: string, args: string[], options: SpawnOptio
 let spawnWorkspaceIndexProcessImpl: WorkspaceIndexSpawn = (command, args, options) => spawn(command, args, options);
 let activeWorkspaceIndexChild: ChildProcess | null = null;
 let activeWorkspaceIndexCompletion: Promise<void> | null = null;
-let finalizeWorkspaceIndexProcessImpl: () => void | Promise<void> = () => {
-  closeDatabase({ shrinkMemory: true });
+let finalizeWorkspaceIndexProcessImpl: () => void | Promise<void> = finalizeWorkspaceIndexProcess;
+async function finalizeWorkspaceIndexProcess(): Promise<void> {
+  await closeDatabase();
 
   try {
     const gc = (globalThis as typeof globalThis & { gc?: () => void }).gc;
@@ -49,7 +50,7 @@ let finalizeWorkspaceIndexProcessImpl: () => void | Promise<void> = () => {
       operation: "workspace_index_process.finalize.bun_gc",
     });
   }
-};
+}
 
 function isIndexStateFresh(updatedAt: string | null | undefined): boolean {
   if (!updatedAt) return false;
@@ -193,7 +194,7 @@ export async function runWorkspaceIndexProcessFromArgs(args = process.argv.slice
     }
     access.validate();
   }
-  initDatabase();
+  openWorkspaceIndexDatabase(undefined, access.validate);
   try {
     access.validate();
     await refreshWorkspaceIndex({ scope: params.scope, max_kb: params.max_kb });
@@ -225,27 +226,7 @@ export function setWorkspaceIndexSpawnForTests(factory: WorkspaceIndexSpawn | nu
 }
 
 export function setWorkspaceIndexProcessFinalizeForTests(finalizer: (() => void | Promise<void>) | null): void {
-  finalizeWorkspaceIndexProcessImpl = finalizer ?? (() => {
-    closeDatabase({ shrinkMemory: true });
-
-    try {
-      const gc = (globalThis as typeof globalThis & { gc?: () => void }).gc;
-      if (typeof gc === "function") gc();
-    } catch (error) {
-      debugSuppressedError(log, "Failed to trigger runtime GC during workspace-index cleanup.", error, {
-        operation: "workspace_index_process.finalize.gc",
-      });
-    }
-
-    try {
-      const bunGc = (globalThis as typeof globalThis & { Bun?: { gc?: (force?: boolean) => void } }).Bun?.gc;
-      if (typeof bunGc === "function") bunGc(true);
-    } catch (error) {
-      debugSuppressedError(log, "Failed to trigger Bun GC during workspace-index cleanup.", error, {
-        operation: "workspace_index_process.finalize.bun_gc",
-      });
-    }
-  });
+  finalizeWorkspaceIndexProcessImpl = finalizer ?? finalizeWorkspaceIndexProcess;
 }
 
 export function resetWorkspaceIndexLauncherForTests(): void {

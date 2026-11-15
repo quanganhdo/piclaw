@@ -62,7 +62,7 @@ Add `tools.additionalDefaultTools` to `.piclaw/config.json` for more persistent 
   "tools": {
     "additionalDefaultTools": [
       "search_workspace",
-      "introspect_sql"
+      "list_models"
     ]
   }
 }
@@ -71,6 +71,29 @@ Add `tools.additionalDefaultTools` to `.piclaw/config.json` for more persistent 
 A comma-separated string is also accepted, and env var `PICLAW_ADDITIONAL_DEFAULT_TOOLS` is equivalent.
 
 `reset_active_tools` restores this configured default set (not just the fixed baseline). Unknown tool names are ignored. New activations are session-scoped and reset on restart/session rotation.
+
+### Built-in Delegate
+
+Core registers `delegate` without an installed package. Settings → Delegate keeps
+provider approvals and model exclusions in their existing current-native config.
+No provider is approved by default. The approved catalogue comes from the current
+native model runtime, with the same ordered classification and exclusion rules;
+refreshing it does not launch a child CLI or make a provider request.
+
+The child is an SDK-owned foreground conversation with no parent history. Native
+automatic selection inherits the approved parent model. An explicit exact
+`provider/model` can override the parent tier, but never approval, classification,
+exclusions, availability or image support. Omitted `tools` stays `read_only`;
+`standard` and explicit guarded host-builtin subsets are supported. `full`, child
+MCP, recursive delegation and `task_category: judge` remain explicitly unsupported.
+The public schema is unchanged; these are the current native execution limits.
+
+Deadline values must be integers from 10 to 300 seconds (default 120), before SDK
+argument coercion. Cancellation joins the owned child through the SDK; it is not a
+hard-kill guarantee for an uncooperative provider. Native progress and inline
+results use the existing timeline surfaces. Old Delegate packages are excluded
+before backend/config/web import; their published bytes remain available for older
+hosts and no live configuration rewrite occurs at startup.
 
 ### Cross-session chat delivery
 
@@ -272,8 +295,7 @@ You can extend that baseline with `.piclaw/config.json`:
 - `env` — get, set, or clear persistent workspace-scoped environment variables (managed block in `/workspace/.env.sh`, with immediate `process.env` updates for later tool calls; `set` also accepts `$NAME`/`${NAME}` copies)
 - `schedule_task` — schedule agent prompts or shell commands (cron, interval, or one-shot)
 - `scheduled_tasks` — inspect scheduled-task records via a shared query surface (`list` / `get`, optional latest-run summaries)
-- `budget_status` — inspect opt-in budget caps, current work state and blockers; read-only and unable to approve spending
-- `introspect_sql` — run read-only SQL queries against the messages database
+The legacy `introspect_sql` executor is retired. Native conversations do not register arbitrary SQL execution; use the existing authorised `messages` query surface.
 - `list_tools` — list available tools with compact summaries, active-state markers, toolset membership, capability metadata, and intent-based recommendations via `intent`
 - `list_scripts` — discover packaged skill scripts plus workspace skill/note scripts with compact summaries, role markers (`entrypoint` vs `module`), Bun invocation hints, and the same kind of query/intent shortlisting used for tool discovery
 - `activate_tools` — activate one or more available tools for the current session
@@ -288,9 +310,14 @@ You can extend that baseline with `.piclaw/config.json`:
 - `exec_batch` — run multiple shell commands and return concise summaries for each
 - `powershell` — Windows-only replacement for the default shell tool; active instead of `bash` on Windows hosts
 - `bun_run` — run a workspace Bun script directly; kept in the default active baseline on Windows so there is still a first-party script runner alongside PowerShell
-- `exit_process` — gracefully terminate piclaw so Supervisor restarts it; kept always active because lifecycle control should not depend on same-turn lazy activation
+- `session_status` — inspect native task/submission ownership and restart safety without changing execution state
+- `exit_process` — request graceful termination after committed native completion and confirmed cleanup; the configured service manager owns restart
 - `ssh` — get, set, or clear the session-scoped SSH profile used by remote-backed core tools (`read`, `write`, `edit`, `bash`); live redirection is turn-scoped and is cleared automatically at the end of each agent turn
 - `mcp` — token-efficient proxy for external MCP servers via the bundled `pi-mcp-adapter`; supports search, describe, connect, tool calls, and MCP UI message retrieval using shared `.mcp.json` plus optional Pi-owned override config
+
+For native execution, `exit_process` accepts only the bounded non-empty `reason`; do not supply `resume_message`, even as an empty string. Call it alone and make it the last action of the turn. Its conditional notice records a request; it does not prove that shutdown occurred. Another operation, queued input, uncertain cleanup or lost ownership can still refuse the request. A refused request never schedules an automatic retry or replays work.
+
+When an authorised `session_status` inspection reports `safe_to_restart: false`, its optional `blocker` is a fixed code such as `queue_active`, `host_source` or `scheduled_execution`. A final refusal logs `native_exit.refused` with `phase` (`inspection`, `before_cleanup`, `cleanup`, `after_cleanup` or `shutdown_request`) and a bounded `blocker`. Unknown exceptions use `unclassified`; diagnostic fields exclude exception text and stacks. These fields do not change the safety checks. Verify the actual shutdown record and subsequent service start before accepting a reload.
 
 > **Note:** `proxmox` and `portainer` tools have been moved to the [piclaw-addons](https://github.com/rcarmo/piclaw-addons) repository. When the addons package is installed, these tools are registered automatically. They use the same session-scoped profile + `discover` → `capabilities` → `workflow` pattern as `ssh`.
 
@@ -596,7 +623,7 @@ See [extension-ui-contract.md](extension-ui-contract.md) and [web-pane-extension
 
 ## Access-mode scope
 
-The commands/tools below describe supported single-user operation. Gated family account APIs use separate principal-bound routes; legacy `/totp` and `/passkey` commands explicitly reject multi-user mode. Family `chat` supports owner-local discovery only (no sends or remote directory callbacks), and `session_control` supports only owner-local read-only inspection/assessment. Family `messages` allows SQL-scoped reads of active owned conversations only; writes and its direct post helper deny. Raw SQL introspection and scheduling tools/commands also deny until scoped implementations exist. `session_status` omits foreign activity and tool arguments and cannot certify instance restart safety. Other tool calls are not substitutes for account-bound APIs; write/delivery integration is unfinished. Owner propagation across all tool/transport entry points is unfinished, so family startup remains disabled. Multiple passkeys are supported per account in the [family backend](multi-user/README.md#multiple-passkeys-per-account).
+The commands and tools below describe single-user operation. Family account APIs are removed.
 
 ## Slash commands
 
@@ -654,10 +681,8 @@ Direct commands (no LLM round-trip):
 | `/exit` | Exit the current piclaw process immediately so the service manager restarts it |
 | `/commands` | List available commands (shows sourceInfo provenance: scope, source, and origin for extension commands, templates, and skills) |
 | `/btw <question>` | Open a side-conversation panel in the web UI and stream an answer without interrupting the main chat |
-| `/meters on\|off\|toggle` | Toggle system meters, including optional [Intel GPU activity/memory](intel-gpu-meters.md) |
 | `/tasks [filter]` | List scheduled tasks (via extension) |
 | `/scheduled [filter]` | Alias for `/tasks` |
-| `/budget [status\|cap\|allow\|warnings-only\|resume\|cancel]` | Inspect or manage [opt-in budget limits](budget-limits.md) |
 | `/dream [days]` | Queue an out-of-band Dream cycle on a temporary `dream:` channel; runtime backs up notes, seeds daily notes from DB, the model follows Orient / Signal / Consolidate / Prune and Index, and runtime refreshes FTS at the end |
 | `/mcp [status\|tools\|reconnect [server]\|setup]` | Open the MCP management panel in the web UI (or text status elsewhere), list MCP tools, reconnect bundled `pi-mcp-adapter` servers, or launch guided MCP setup |
 | `/mcp-auth <server>` | Show OAuth token-setup guidance for an MCP server managed by `pi-mcp-adapter` |
@@ -692,7 +717,7 @@ Adaptive Card and side-conversation helpers are intentionally explicit web-facin
 - card submissions are persisted as structured `adaptive_card_submission` blocks, so the timeline can render compact receipt UI and finished cards can display their submitted values read-only.
 - `/btw` is currently a thin consumer of the side-prompt substrate: it streams a side answer in the web panel, reseeds from current main-chat context, and only injects back into the main chat when explicitly requested.
 - `/btw` currently reuses the chat's model/thinking context but is still prompt-only rather than a full side tool-using agent loop.
-- `/theme`, `/tint`, and `/meters` are web-local UI commands handled without an LLM round-trip.
+- `/theme` and `/tint` are web-local UI commands handled without an LLM round-trip. System meters, including optional [Intel GPU activity/memory](intel-gpu-meters.md), are always shown; there is no command to hide them.
 - `/context` reports current context-window usage; the compose-footer indicator is refreshed on reconnect, when returning to the tab, and immediately after successful `/compact`. If the post-compaction rebuilt-session estimate is temporarily unavailable, Piclaw uses the report's safety-adjusted estimate and retains it as the endpoint fallback until live usage is available.
 - `/compact` attaches a full Markdown report. Provider-native reports show only Piclaw's explicitly marked readable continuity checkpoint when one exists; encrypted canonical state and arbitrary provider output are never included.
 
@@ -770,3 +795,9 @@ flowchart LR
   Tree --> Pool[AgentPool]
   Pool --> Channel[Web UI / WhatsApp]
 ```
+
+### Optional Parallel Search MCP
+
+Use the [Parallel Search preset](mcp.md#optional-parallel-search-preset) in MCP
+settings for free keyless search and page fetching through the `mcp` proxy. The
+existing web-search skills and configured servers remain available.

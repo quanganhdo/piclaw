@@ -67,8 +67,8 @@ export const CONTROL_COMMAND_DEFINITIONS: ControlCommandDefinition[] = [
   { name: "/login", description: "Login to an AI model provider (OAuth or API key)" },
   { name: "/logout", description: "Logout from an AI model provider" },
   { name: "/settings", description: "Open the settings dialog" },
+  { name: "/theme", description: "Show or change the web UI theme" },
   { name: "/commands", description: "List available commands" },
-  { name: "/meters", description: "Show or hide CPU/RAM meters HUD" },
 ];
 
 const ALIAS_MAP = new Map<string, string>();

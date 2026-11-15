@@ -34,9 +34,21 @@ describe("check-unused-exports", () => {
     expect(findUnexpectedUnusedExports(entries)).toEqual(["src/something.ts:1 - badExport"]);
   });
 
+  test("host SDK exports retain a closed cross-project boundary, not an entire-file exemption", () => {
+    expect(getAllowedUnusedExportReason("src/durable-legacy-sdk.ts:5 - DefaultResourceLoader")).toContain("native engine");
+    expect(findUnexpectedUnusedExports(["src/durable-legacy-sdk.ts:99 - unusedFutureExport"])).toEqual(["src/durable-legacy-sdk.ts:99 - unusedFutureExport"]);
+  });
+
+  test("historical decoder retention is a closed data-only surface, not a legacy execution exemption", () => {
+    expect(getAllowedUnusedExportReason("src/extensions/smart-compaction/remote-compaction.ts:164 - getLatestRemoteCompactionDetails")).toContain("data-only");
+    expect(getAllowedUnusedExportReason("src/extensions/smart-compaction/remote-compaction.ts:171 - extractRemoteCompactionReadableCheckpoint")).toContain("data-only");
+    expect(findUnexpectedUnusedExports(["src/extensions/smart-compaction/remote-compaction.ts:999 - attemptRemoteCompaction"])).toEqual(["src/extensions/smart-compaction/remote-compaction.ts:999 - attemptRemoteCompaction"]);
+  });
+
   test("allowlist is line-number independent and records a reason", () => {
     expect(getAllowedUnusedExportReason("src/runtime/progress-watchdog.ts:126 - setProgressWatchdogTimeoutForTests")).toContain("test");
     expect(getAllowedUnusedExportReason("src/runtime/progress-watchdog.ts:999 - setProgressWatchdogTimeoutForTests")).toContain("test");
-    expect(getAllowedUnusedExportReason("src/extensions/smart-compaction.ts:999 - buildTrimmedCompactionRetryPrompt")).toContain("smart-compaction");
+    expect(getAllowedUnusedExportReason("src/extensions/smart-compaction.ts:999 - buildTrimmedCompactionRetryPrompt")).toBeUndefined();
+    expect(findUnexpectedUnusedExports(["src/extensions/smart-compaction.ts:999 - buildTrimmedCompactionRetryPrompt"])).toEqual(["src/extensions/smart-compaction.ts:999 - buildTrimmedCompactionRetryPrompt"]);
   });
 });

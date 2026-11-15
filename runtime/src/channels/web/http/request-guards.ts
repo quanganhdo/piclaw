@@ -39,6 +39,7 @@ export interface RequestGuardsChannel {
     /** Validate whether the request has an authenticated user session. */
     isAuthenticated(req: Request): boolean;
     getPrincipal?(req: Request, refresh?: boolean): WebPrincipal | null;
+    preparePrincipal?(req: Request): Promise<void>;
   };
   /** Endpoint contexts used by auth verify/login route helpers. */
   endpointContexts: {
@@ -116,6 +117,7 @@ export async function enforceRequestGuards(
     }
   }
 
+  await channel.authGateway.preparePrincipal?.(req);
   const skipAuthCheck = shouldSkipAuthCheck(flags, hasInternalAccess);
 
   if (authEnabled) {

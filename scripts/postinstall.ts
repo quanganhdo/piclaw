@@ -6,6 +6,7 @@
  */
 
 import { resolve, dirname } from "node:path";
+import { installDurableEngineDependencies } from "./install-durable-engine.js";
 
 const ROOT = dirname(import.meta.dir);
 const LOG = "[postinstall]";
@@ -93,4 +94,5 @@ if (repairedTypeScriptCompilers > 0) {
   console.log(`${LOG} Restored executable mode on ${repairedTypeScriptCompilers} TypeScript compiler binary`);
 }
 
+installDurableEngineDependencies(ROOT);
 console.log(`${LOG} Done`);

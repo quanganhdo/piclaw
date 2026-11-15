@@ -5,9 +5,6 @@ import type { ExecutionProvenance, ExecutionIdentity } from "../core/execution-c
 import type { AuthenticatedPrincipal } from "../core/access-types.js";
 import { getUser } from "../db/users.js";
 import { resolveAuthorisedChat, ChatAccessDenied } from "../db/session-ownership.js";
-import { readFamilyToolPolicy } from '../db/family-tool-restrictions.js';
-import { readAccountPreferences } from '../db/account-preferences.js';
-import { readAccountModelDefaults } from '../db/account-model-defaults.js';
 import { authoriseScheduledDispatch, hasScheduledDispatch } from './scheduled-dispatch-context.js';
 
 const KINDS = ["interactive", "scheduled", "followup", "side-prompt", "dream", "delegate"];
@@ -20,13 +17,13 @@ export function authoriseExecutionIdentity(
   provenance: ExecutionProvenance | undefined,
 ): ExecutionIdentity | null {
   if(hasScheduledDispatch()) {
-    return authoriseScheduledDispatch(chatJid,mode==="family-shared"?provenance:undefined);
+    return authoriseScheduledDispatch(chatJid,undefined);
   }
   if (mode === "single-user" && provenance === undefined) return null;
   // A durable ID alone is not admission. Scheduled work requires the active
   // one-shot dispatcher scope above; ordinary callers need a live login.
-  if (mode !== "single-user" && (mode !== "family-shared" || provenance?.kind !== "interactive")) throw new ChatAccessDenied();
-  if (!provenance || provenance.chatJid !== chatJid || provenance.actorUserId !== provenance.ownerUserId || !KINDS.includes(provenance.kind)) throw new ChatAccessDenied();
+  if (mode !== "single-user") throw new ChatAccessDenied();
+  if (!provenance || provenance.kind !== "interactive" || provenance.chatJid !== chatJid || provenance.actorUserId !== provenance.ownerUserId || !KINDS.includes(provenance.kind)) throw new ChatAccessDenied();
   if (mode === "single-user" && provenance.ownerUserId !== "default") throw new ChatAccessDenied();
   const user = getUser(database, provenance.ownerUserId);
   if (!user?.enabled) throw new ChatAccessDenied();
@@ -45,7 +42,6 @@ export function authoriseExecutionIdentity(
     actorUserId:user.id,ownerUserId:user.id,chatJid,kind:provenance.kind,
     ...(provenance.authenticationSessionId ? {authenticationSessionId:provenance.authenticationSessionId} : {}),
   });
-  return Object.freeze({provenance:snapshot,username:user.username,displayName:user.display_name,role:user.role,rootChatJid:target.rootChatJid,mode,
-    ...(mode === 'family-shared' ? { toolPolicy: readFamilyToolPolicy(database, user.id), preferences: readAccountPreferences(database, user.id), modelDefaults: readAccountModelDefaults(database, user.id) } : {}),
+  return Object.freeze({provenance:snapshot,username:user.username,displayName:user.display_name,role:user.role,rootChatJid:target.rootChatJid,mode
   });
 }

@@ -1,0 +1,28 @@
+{
+  "asOf": "2026-10-19",
+  "units": "USD per million tokens",
+  "rates": [
+    {
+      "provider": "inception",
+      "id": "mercury-3",
+      "name": "Mercury 3",
+      "pricingBasis": "Regular undiscounted native API prices; 50% launch discount excluded",
+      "input": 0.2,
+      "cr": 0.02,
+      "cw": null,
+      "output": 0.7,
+      "contextWindowLabel": "1M",
+      "maximumOutputTokens": 131072,
+      "endpoint": "v1/chat/completions",
+      "reasoningEfforts": ["instant", "low", "medium", "high"],
+      "source": "https://docs.inceptionlabs.ai/get-started/models.md",
+      "announcement": "https://www.inceptionlabs.ai/blog/introducing-mercury-3",
+      "retrievedDate": "2026-10-19",
+      "evidence": "public-first-party",
+      "cacheTerms": "Cached input is priced at 10% of regular input. No separate cache-write tariff, TTL or cache-storage charge was found in these captures.",
+      "contextPricing": "One published rate schedule for Mercury 3; no separate long-context uplift found in the captured pricing section.",
+      "routeBoundary": "Native Inception API quote only. Availability announcements for OpenRouter, Baseten and Vercel do not establish those routes' prices or account entitlement.",
+      "notes": "Documentation only. Unpublished cache-write pricing remains null, never a free-write claim. Launch, volume, negotiated and other discounts are excluded. Equal-token tariffs do not establish equal task costs, quality or actual invoices. No runtime resolver or configured model change."
+    }
+  ]
+}

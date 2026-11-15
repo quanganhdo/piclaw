@@ -140,7 +140,8 @@ test("audio upload and path MIME agree with preview and inline serving", async (
           const info = service.getInfo(body.id).body as { content_type: string; filename: string };
           expect(info.content_type).toBe(type); expect(getAttachmentPreviewKind(info.content_type, info.filename)).toBe("audio");
           const response = handleMedia(channel, body.id, false);
-          expect(response.headers.get("content-type")).toBe(type); expect(response.headers.get("content-disposition")).toBeNull();
+          expect(response.headers.get("content-type")).toBe(type);
+          expect(response.headers.get("content-disposition")).toBe(`inline; filename="${filename}"; filename*=UTF-8''${filename}`);
         }
       }
     } finally { unlinkSync(mediaPath); }

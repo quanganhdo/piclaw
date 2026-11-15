@@ -1,8 +1,12 @@
-# Web SSE event inventory
+# Web SSE event inventory — July 2026 audit
 
-_Last updated: 2026-07-22_
+_Historical snapshot: 2026-07-22. Native ownership note added 2026-10-28._
 
-This document inventories the Server-Sent Events used by the PiClaw web client, based on the TypeScript server sources and the web client listener registrations.
+The tables below preserve the July audit and its source names. The old AgentSession SSE adapter, display scheduler and response publisher are retired under #1277 after their production callers were deleted under #1673/#1674. Their presence in these historical tables does not describe installed runtime wiring.
+
+Current native execution uses `runtime/durable-engine/src/default-application-runtime.ts` → `src/channels/web/agent/native-turn-view.ts` for existing thought/draft/status frames. Committed native terminal messages publish `new_post` from the default factory; active extension/interaction paths can still emit `agent_response`. No browser event is renamed or removed by the adapter retirement. See [retirement evidence](../../docs/development/obsolete-web-run-events.md).
+
+This snapshot inventories the Server-Sent Events then used by the PiClaw web client, based on the TypeScript server sources and web client listener registrations.
 
 ## Conventions observed
 

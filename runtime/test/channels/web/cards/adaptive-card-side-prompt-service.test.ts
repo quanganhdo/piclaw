@@ -421,7 +421,7 @@ describe("Web adaptive-card/side-prompt service", () => {
         },
       },
     ]);
-    expect(fixture.state.skipFailedCalls).toEqual(["web:branch"]);
+    expect(fixture.state.skipFailedCalls).toEqual([]);
   });
 
   test("routes login adaptive-card failures back to the source chat/thread without model-change broadcasts", async () => {

@@ -2,7 +2,6 @@ import { Type } from 'typebox';
 import { StringEnum } from '@earendil-works/pi-ai';
 import type { ExtensionAPI, ExtensionFactory } from '@earendil-works/pi-coding-agent';
 import { getChatJid } from '../core/chat-context.js';
-import { requireFamilyToolAccess } from '../agent-pool/family-tool-access.js';
 import { getChatProject, updateChatProject } from '../db/chat-project.js';
 
 /** Deliberately current-chat-only: no user-supplied target or remote authority. */
@@ -17,7 +16,6 @@ export const chatProjectTool: ExtensionFactory = (pi: ExtensionAPI) => {
       repository_url: Type.Optional(Type.String({ description: 'Repository web URL for set, e.g. https://github.com/owner/repo or https://gitea.example/owner/repo.' })),
     }),
     async execute(_id, params: { action: string; repository_url?: string }) {
-      requireFamilyToolAccess('chat_project');
       const chatJid = getChatJid('').trim();
       if (!chatJid) throw new Error('chat_project requires an active chat context.');
       if (!['get', 'set', 'clear', 'inherit'].includes(params.action)) throw new Error('Unknown chat_project action.');

@@ -20,9 +20,8 @@ export interface TerminalSettlementInstallObserver {
 }
 
 /**
- * Install the complete latent EF-S02 composition on a caller-owned isolated
- * database. This function is test/setup infrastructure and is never registered
- * with Piclaw startup or production migrations.
+ * Explicit EF-S02 installation on the caller-owned database. The application
+ * must hold exclusive ownership and validate existing state before calling.
  */
 export function installTerminalSettlementCompositionSchema(
   database: Database,

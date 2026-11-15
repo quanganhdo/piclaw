@@ -4,6 +4,7 @@
 
 import { recordAppPerfRequest } from './ui/app-perf-tracing.js';
 import { resolveScreenSizeHint } from './ui/screen-size-hint.js';
+import { isCommittedComposeInput } from './ui/compose-submission.js';
 import { getAgentUiSnapshot, currentUiChatJid } from './ui/agent-ui-snapshot.js';
 
 export { uploadMedia, uploadWorkspaceFile } from './ui/upload-transfers.js';
@@ -75,7 +76,7 @@ async function request(url, options: RequestInit & ApiOptions = {}) {
     
     if (!response.ok) {
         const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(error.error || `HTTP ${response.status}`);
+        throw Object.assign(new Error(error.error || `HTTP ${response.status}`), { status: response.status, payload: error });
     }
     
     return response.json();
@@ -158,6 +159,38 @@ export async function searchPosts(query, limit = 50, offset = 0, chatJid = null,
     return request(`/search?q=${encodeURIComponent(query)}&limit=${limit}&offset=${offset}${chatQuery}${scopeQuery}${rootQuery}${imagesQuery}${attachmentsQuery}`);
 }
 
+/** Stop one running tool call; the agent continues with an aborted result. */
+export async function abortAgentTool(chatJid, callId, note = '') {
+    return request('/agent/tool-abort', {
+        method: 'POST',
+        body: JSON.stringify({ chat_jid: chatJid || undefined, call_id: callId, ...(note.trim() ? { note: note.trim() } : {}) }),
+    });
+}
+
+/**
+ * Committed "Worked for …" log of one durable agent reply, or one paged step of
+ * it. A null messageId reads the running turn instead.
+ */
+/** URL of a stored thumbnail for the n-th image a tool step returned to the model. */
+export function turnActivityImageUrl(chatJid, messageId, step, index) {
+    const params = new URLSearchParams({ chat_jid: String(chatJid || '') });
+    if (messageId === null || messageId === undefined) params.set('live', '1');
+    else params.set('message_id', String(messageId));
+    params.set('step', step);
+    params.set('image', String(index));
+    return `/agent/turn-activity?${params}`;
+}
+
+export async function getTurnActivity(chatJid, messageId, step = null, offset = 0, emittedOffset = 0) {
+    const params = new URLSearchParams({ chat_jid: String(chatJid || '') });
+    if (messageId === null || messageId === undefined) params.set('live', '1');
+    else params.set('message_id', String(messageId));
+    if (step) params.set('step', step);
+    if (offset > 0) params.set('offset', String(offset));
+    if (emittedOffset > 0) params.set('emitted_offset', String(emittedOffset));
+    return request(`/agent/turn-activity?${params}`);
+}
+
 /**
  * Get a thread by ID
  */
@@ -170,19 +203,6 @@ export async function getSystemMetrics() {
     // Only visible/enabled meters renew GPU sampling. General UI status polling
     // must not keep the collector alive while the HUD is disabled.
     return deduplicatedGet('/agent/system-metrics');
-}
-
-export async function getBudgetSettings(chatJid = null) {
-    const query = chatJid ? `?chat_jid=${encodeURIComponent(chatJid)}` : '';
-    return request(`/agent/settings/budget${query}`);
-}
-
-export async function updateBudgetSettings(action, chatJid = null) {
-    const query = chatJid ? `?chat_jid=${encodeURIComponent(chatJid)}` : '';
-    return request(`/agent/settings/budget/action${query}`, {
-        method: 'POST',
-        body: JSON.stringify(action || {}),
-    });
 }
 
 export async function getScheduledTasks(options: ApiOptions = {}) {
@@ -204,10 +224,6 @@ export async function updateScheduledTask(action, id, options: ApiOptions = {}) 
             action,
             id,
             allow_internal: options?.allowInternal === true,
-            ...(options?.budgetUsd !== undefined ? { budget_usd: options.budgetUsd } : {}),
-            ...(options?.enabled !== undefined ? { enabled: options.enabled } : {}),
-            ...(options?.confirmRevision !== undefined ? { confirm_revision: options.confirmRevision } : {}),
-            ...(options?.confirmZeroBudget === true ? { confirm_zero_budget: true } : {}),
         }),
     });
 }
@@ -304,12 +320,19 @@ export async function sendAgentMessage(agentId, content, threadId = null, mediaI
     };
     if (mode === 'auto' || mode === 'queue' || mode === 'steer') {
         payload.mode = mode;
-        if (mode === 'steer') payload.persist_steer = true;
     }
-    return request(`/agent/${agentId}/message${query}`, {
-        method: 'POST',
-        body: JSON.stringify(payload),
-    });
+    try {
+        return await request(`/agent/${agentId}/message${query}`, {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        });
+    } catch (error) {
+        const receipt = (error as ApiError)?.payload;
+        // A saved source must not be restored as an unsent draft. Preserve its
+        // uncertain receipt; no optimistic timeline/queue or automatic retry.
+        if (isCommittedComposeInput(receipt)) return receipt;
+        throw error;
+    }
 }
 
 export async function getAgentCommands(chatJid = 'web:default') {
@@ -629,11 +652,12 @@ export async function steerAgentQueueItem(rowId, chatJid = null) {
     return response.json();
 }
 
-export async function reorderAgentQueueItem(fromIndex, toIndex, chatJid = null) {
+/** Persist the whole queue in a new order (row ids); 409 when the queue changed meanwhile. */
+export async function reorderAgentQueue(order, chatJid = null) {
     const response = await fetch(API_BASE + '/agent/queue-reorder', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ from_index: fromIndex, to_index: toIndex, chat_jid: chatJid || undefined }),
+        body: JSON.stringify({ order, chat_jid: chatJid || undefined }),
     });
 
     if (!response.ok) {
@@ -1023,7 +1047,7 @@ export class SSEClient {
     startStaleMonitor(source: EventSource, generation: number) {
         this.clearStaleMonitor();
         this.staleCheckTimer = setInterval(() => {
-            if (!this.isAuthoritativeConnection(source, generation) || this.status !== 'connected') return;
+            if (!this.isAuthoritativeConnection(source, generation) || (this.status !== 'connected' && !this.connecting)) return;
             if (!this.lastActivityAt) return;
             if (Date.now() - this.lastActivityAt <= this.staleThresholdMs) return;
             console.warn('SSE connection went stale; forcing reconnect');
@@ -1031,7 +1055,7 @@ export class SSEClient {
         }, 15000);
     }
 
-    forceReconnect() {
+    forceReconnect({ immediate = false } = {}) {
         if (this.disposed) return;
         this.connecting = false;
         this.connectionGeneration += 1;
@@ -1041,8 +1065,17 @@ export class SSEClient {
         this.clearStaleMonitor();
         this.status = 'disconnected';
         this.onStatusChange('disconnected');
-        this.reconnectAttempts += 1;
-        this.scheduleReconnect();
+        if (immediate) {
+            // A visible return/online event is a new connectivity opportunity,
+            // not another background failure subject to a suspended cooldown.
+            this.reconnectAttempts = 0;
+            this.reconnectDelay = 1000;
+            this.cooldownUntil = 0;
+            this.connect();
+        } else {
+            this.reconnectAttempts += 1;
+            this.scheduleReconnect();
+        }
     }
     
     connect() {
@@ -1063,6 +1096,8 @@ export class SSEClient {
         const query = this.chatJid ? `?chat_jid=${encodeURIComponent(this.chatJid)}` : '';
         const source = new EventSource(API_BASE + '/sse/stream' + query);
         this.eventSource = source;
+        this.markActivity();
+        this.startStaleMonitor(source, generation);
 
         const bindJsonEvent = (eventType) => {
             source.addEventListener(eventType, (e) => {
@@ -1126,6 +1161,7 @@ export class SSEClient {
         bindJsonEvent('agent_followup_queued');
         bindJsonEvent('agent_followup_consumed');
         bindJsonEvent('agent_followup_removed');
+        bindJsonEvent('agent_followup_reordered');
         bindJsonEvent('workspace_update');
         bindJsonEvent('agent_draft');
         bindJsonEvent('agent_draft_delta');
@@ -1182,21 +1218,27 @@ export class SSEClient {
         this.reconnectDelay = Math.min(this.reconnectDelay * 2, 30000);
     }
 
-    reconnectIfNeeded() {
-        if (this.disposed) return;
+    reconnectIfNeeded({ immediate = false } = {}) {
+        if (this.disposed) return false;
         const now = Date.now();
-        if (this.status === 'connected') {
+        if (this.status === 'connected' || this.connecting) {
             if (this.lastActivityAt && now - this.lastActivityAt > this.staleThresholdMs) {
-                this.forceReconnect();
+                this.forceReconnect({ immediate });
+                return true;
             }
-            return;
+            return false;
         }
-        if (this.cooldownUntil && now < this.cooldownUntil) return;
+        if (immediate) {
+            this.forceReconnect({ immediate: true });
+            return true;
+        }
+        if (this.cooldownUntil && now < this.cooldownUntil) return false;
         if (this.reconnectTimeout) {
             clearTimeout(this.reconnectTimeout);
             this.reconnectTimeout = null;
         }
         this.connect();
+        return true;
     }
     
     disconnect() {

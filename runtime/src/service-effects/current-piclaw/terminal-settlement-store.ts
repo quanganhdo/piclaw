@@ -1,8 +1,10 @@
+import { admitSqliteWrite, isSqliteContention as isBusy } from '../../db/sqlite-async-admission.js';
 import { Result, type Result as ResultValue } from "../contracts/result.js";
 import type Database from "bun:sqlite";
+import { computeClosedSourceFrontier } from "./source-frontier.js";
 
 import { validateServiceEffectContentBlocks } from "../../channels/web/messaging/content-block-safety.js";
-import type { NormalisedTraceInput } from "../contracts/common.js";
+import { type NormalisedTraceInput } from "../contracts/common.js";
 import type { EffectPayloadResolver } from "../contracts/payload-resolver.js";
 import type {
   EnqueueOutboxRequest,
@@ -11,13 +13,13 @@ import type {
 } from "../contracts/service-outbox-store.js";
 import type {
   HarnessCorrelation,
-  HarnessState,
   PiclawDisposition,
   PiclawOperationPhase,
 } from "../contracts/service-work-store.js";
 import type {
   CommitTerminalRequest,
   TerminalCommit,
+  TerminalDatabaseEffect,
   TerminalSettlementError,
   TerminalSettlementErrorTag,
   TerminalSettlementStore,
@@ -34,7 +36,6 @@ import {
 import {
   insertTerminalTimeline,
   replaceTerminalTimeline,
-  terminalTimelineSnapshotIsValid,
   TerminalTimelineStatementError,
   type TerminalTimelineContent,
   type TerminalTimelineStatement,
@@ -50,13 +51,6 @@ const PHASES = new Set<PiclawOperationPhase>([
   "settling",
   "terminal",
 ]);
-const HARNESS_STATES = new Set<HarnessState>([
-  "not_started",
-  "running",
-  "suspended",
-  "aborting",
-  "finished",
-]);
 const DISPOSITIONS = new Set<PiclawDisposition>([
   "completed",
   "cancelled",
@@ -64,10 +58,10 @@ const DISPOSITIONS = new Set<PiclawDisposition>([
   "skipped",
   "superseded",
 ]);
-const CLOSED_SOURCE_STATES = new Set(["consumed", "disposed"]);
 const REQUIRED_SCHEMA = Object.freeze([
   "chats",
   "media",
+  "message_inline_media",
   "message_media",
   "messages",
   "messages_fts",
@@ -127,9 +121,10 @@ const REQUIRED_SCHEMA_PROBES = Object.freeze([
   "SELECT rowid,content,chat_jid,sender,sender_name,timestamp,is_bot_message FROM messages_fts LIMIT 1",
   "SELECT id,filename,content_type,data,metadata FROM media LIMIT 1",
   "SELECT message_rowid,media_id FROM message_media LIMIT 1",
+  "SELECT message_rowid,kind,ref,media_id FROM message_inline_media LIMIT 1",
   "SELECT chat_jid,next_source_seq,consumed_through_source_seq,active_operation_id FROM service_effect_s01_chats LIMIT 1",
   "SELECT chat_jid,source_seq,state,kind,target_operation_id,accepted_at,disposition_reason FROM service_effect_s01_sources LIMIT 1",
-  "SELECT operation_id,chat_jid,primary_source_seq,version,phase,cancellation_source_id,cancellation_source_seq,cancellation_cause,cancellation_requested_at,harness_session_id,harness_lane,harness_operation_id,harness_state,harness_watch_generation,terminal_disposition,terminal_message_row_id,terminal_error_code,terminal_committed_at FROM service_effect_s01_operations LIMIT 1",
+  "SELECT operation_id,chat_jid,primary_source_seq,version,phase,cancellation_source_id,cancellation_source_seq,cancellation_cause,cancellation_requested_at,harness_session_id,harness_operation_id,terminal_disposition,terminal_message_row_id,terminal_error_code,terminal_committed_at FROM service_effect_s01_operations LIMIT 1",
   "SELECT chat_jid,operation_id,source_seq FROM service_effect_s01_operation_sources LIMIT 1",
   "SELECT chat_jid,operation_id,source_seq,state FROM service_effect_s01_queued_inputs LIMIT 1",
   "SELECT operation_id,media_id,role FROM service_effect_operation_media LIMIT 1",
@@ -152,6 +147,19 @@ export type TerminalSettlementStatement =
   | "link_commit_outbox";
 
 export interface TerminalSettlementAdapterRuntime {
+  /**
+   * Optional host ownership check. Must be synchronous and must not await:
+   * read the host's durable owner/incarnation binding on this same database
+   * connection, not a cached entry check. Called inside BEGIN IMMEDIATE before
+   * and after apply; only exact true permits commit. False, nonboolean results
+   * and throws abort with owner_conflict and roll back all settlement effects.
+   * Existing committed replay is observational and does not call this hook.
+   */
+  validateOwnership?: (operationId?: string) => boolean;
+  /** Synchronous shared-database terminal effects. Runs once inside the terminal
+   * transaction, after apply and before the final owner check; replay skips it.
+   * Throwing rolls back ALL writes. No async work or external effects permitted. */
+  applyTerminalEffects?: (commit: Readonly<TerminalCommit>, assertCurrent: (expected: Readonly<TerminalCommit>) => void) => undefined;
   hitFault(
     point: "before_effect" | "effect_then_lost_acknowledgement",
   ): unknown;
@@ -190,10 +198,7 @@ interface OperationRow {
   cancellation_cause: unknown;
   cancellation_requested_at: unknown;
   harness_session_id: unknown;
-  harness_lane: unknown;
   harness_operation_id: unknown;
-  harness_state: unknown;
-  harness_watch_generation: unknown;
   terminal_disposition: unknown;
   terminal_message_row_id: unknown;
   terminal_error_code: unknown;
@@ -279,6 +284,7 @@ class CurrentPiclawTerminalSettlementStore
 
   async commitTerminal(
     input: CommitTerminalRequest,
+    applyEffect?: TerminalDatabaseEffect,
   ): Promise<ResultValue<TerminalCommit, TerminalSettlementError>> {
     const request = normaliseCommitTerminalRequest(input);
     const effectId = request?.effect.idempotencyKey ?? "invalid";
@@ -329,18 +335,31 @@ class CurrentPiclawTerminalSettlementStore
       );
     }
 
-    this.checkpointOccurrence = 0;
     try {
-      const outcome = this.database
-        .transaction(() => {
+      const outcome = await admitSqliteWrite(this.database, () => {
+          this.checkpointOccurrence = 0;
           const reconciled = this.reconcile(request);
           if (reconciled) {
             if (reconciled.kind === "replay") return reconciled.commit;
             throw new SettlementAbort(reconciled.error);
           }
-          return this.apply(request, resolved.value);
-        })
-        .immediate();
+          this.validateOwnership(request.effect.operationId);
+          const commit = this.apply(request, resolved.value);
+          if (this.runtime.applyTerminalEffects || applyEffect) {
+            let active = true;
+            const assertCurrent = (expected: Readonly<TerminalCommit>) => {
+              if (!active || !this.database.inTransaction) throw new Error("Terminal effect scope ended");
+              if (expected !== commit) throw new Error("Exact terminal effect commit required");
+              this.validateOwnership(commit.operationId);
+            };
+            try {
+              if (this.runtime.applyTerminalEffects?.(commit, assertCurrent) !== undefined || applyEffect?.(commit, assertCurrent) !== undefined)
+                throw new SettlementAbort(settlementError("invalid_request", "not_applied", false));
+            } finally { active = false; }
+          }
+          this.validateOwnership(commit.operationId);
+          return commit;
+        });
 
       if (lostAcknowledgement(this.runtime)) {
         return this.failure(
@@ -725,20 +744,9 @@ class CurrentPiclawTerminalSettlementStore
   }
 
   private computeFrontier(operation: ClosedOperation): number {
-    let frontier = operation.consumedThroughSourceSeq;
-    while (frontier + 1 < operation.nextSourceSeq) {
-      const row = this.database
-        .query(
-          "SELECT state FROM service_effect_s01_sources WHERE chat_jid=? AND source_seq=?",
-        )
-        .get(operation.chatJid, frontier + 1) as { state?: unknown } | undefined;
-      if (!row || typeof row.state !== "string") {
-        throw new CorruptSettlementState();
-      }
-      if (!CLOSED_SOURCE_STATES.has(row.state)) break;
-      frontier += 1;
-    }
-    return frontier;
+    try {
+      return computeClosedSourceFrontier(this.database, operation.chatJid, operation.consumedThroughSourceSeq, operation.nextSourceSeq);
+    } catch { throw new CorruptSettlementState(); }
   }
 
   private validateOutboxAuthority(
@@ -1022,6 +1030,8 @@ class CurrentPiclawTerminalSettlementStore
     if (expectedOutboxCount > 100 || expectedMediaCount > 100) {
       throw new CorruptSettlementState();
     }
+    const ownedMedia = this.database.query("SELECT COUNT(*) n FROM service_effect_operation_media WHERE operation_id=? AND role='terminal'").get(operationId) as { n: number };
+    if (ownedMedia.n !== expectedMediaCount) throw new CorruptSettlementState();
     const ledgerCommittedAt = requiredInstant(row.committed_at);
     const outboxIds = (
       this.database
@@ -1121,30 +1131,6 @@ class CurrentPiclawTerminalSettlementStore
     );
     const committedAt = ledgerCommittedAt;
     const messageRowId = nullableInteger(row.message_row_id, 1);
-    if (messageRowId !== null) {
-      const message = this.database
-        .query(
-          "SELECT chat_jid,is_terminal_agent_reply FROM messages WHERE rowid=?",
-        )
-        .get(messageRowId) as
-        | { chat_jid?: unknown; is_terminal_agent_reply?: unknown }
-        | undefined;
-      if (
-        !message ||
-        requiredText(message.chat_jid, 512) !== chatJid ||
-        requiredInteger(message.is_terminal_agent_reply, 0) !== 1 ||
-        !terminalTimelineSnapshotIsValid(
-          this.database,
-          operationId,
-          messageRowId,
-          expectedMediaCount,
-        )
-      ) {
-        throw new CorruptSettlementState();
-      }
-    } else if (expectedMediaCount !== 0) {
-      throw new CorruptSettlementState();
-    }
     const terminal = this.database
       .query(
         `SELECT o.chat_jid,o.version,o.phase,o.terminal_disposition,
@@ -1251,6 +1237,20 @@ class CurrentPiclawTerminalSettlementStore
       outboxIds,
       committedAt,
     });
+  }
+
+  private validateOwnership(operationId?: string): void {
+    try {
+      if (!this.runtime.validateOwnership) return;
+      const observed: unknown = this.runtime.validateOwnership(operationId);
+      if (observed === true) return;
+      // Invalid asynchronous guards must be denied, but their rejections still need an observer.
+      if ((typeof observed === "object" && observed !== null) || typeof observed === "function")
+        void Promise.resolve(observed).then(() => undefined, () => undefined);
+    } catch (error) {
+      void error;
+    }
+    throw new SettlementAbort(settlementError("owner_conflict"));
   }
 
   private afterStatement(statement: TerminalSettlementStatement): void {
@@ -1395,12 +1395,17 @@ function validateConstruction(database: Database): void {
     throw new Error("triggers");
   }
   for (const sql of REQUIRED_SCHEMA_PROBES) database.query(sql).get();
-  const foreignKeyViolations = database.query("PRAGMA foreign_key_check").all();
-  if (foreignKeyViolations.length !== 0) throw new Error("foreign key state");
-  const quickCheck = database.query("PRAGMA quick_check").get() as
-    | { quick_check?: unknown }
-    | undefined;
-  if (quickCheck?.quick_check !== "ok") throw new Error("database state");
+  // Inspect every required table, including FTS shadow tables, without a
+  // database-wide scan of unrelated SDK/history tables. Names are static, not
+  // caller input. Keep FK and structural/CHECK validation fail-closed.
+  for (const table of REQUIRED_SCHEMA) {
+    if (database.query(`PRAGMA foreign_key_check("${table}")`).all().length !== 0)
+      throw new Error("foreign key state");
+    const checks = database.query(`PRAGMA quick_check("${table}")`).all() as
+      { quick_check?: unknown }[];
+    if (checks.length !== 1 || checks[0]?.quick_check !== "ok")
+      throw new Error("database state");
+  }
 }
 
 function closeOperation(row: OperationRow): ClosedOperation {
@@ -1414,18 +1419,12 @@ function closeOperation(row: OperationRow): ClosedOperation {
       ? null
       : Object.freeze({
           sessionId: harnessSessionId,
-          lane: requiredText(row.harness_lane, 512),
           harnessOperationId: nullableText(row.harness_operation_id, 512),
-          state: requiredHarnessState(row.harness_state),
-          watchGeneration: requiredInteger(row.harness_watch_generation, 0),
         });
   if (
     harnessSessionId === null &&
     [
-      row.harness_lane,
       row.harness_operation_id,
-      row.harness_state,
-      row.harness_watch_generation,
     ].some((value) => value !== null)
   ) {
     throw new CorruptSettlementState();
@@ -1506,8 +1505,7 @@ function dispositionAllowed(
         request.terminalAuthorityRef !== null &&
         (operation.phase === "claimed" || operation.phase === "starting_harness") &&
         (operation.harness === null ||
-          (operation.harness.state === "not_started" &&
-            operation.harness.harnessOperationId === null))
+          operation.harness.harnessOperationId === null)
       );
     case "superseded":
       return (
@@ -1526,10 +1524,7 @@ function equalHarness(
   if (left === null || right === null) return left === right;
   return (
     left.sessionId === right.sessionId &&
-    left.lane === right.lane &&
-    left.harnessOperationId === right.harnessOperationId &&
-    left.state === right.state &&
-    left.watchGeneration === right.watchGeneration
+    left.harnessOperationId === right.harnessOperationId
   );
 }
 
@@ -1594,12 +1589,6 @@ function changedExactlyOne(changes: number): boolean {
   return Number.isSafeInteger(changes) && changes === 1;
 }
 
-function isBusy(error: unknown): boolean {
-  if (!error || typeof error !== "object") return false;
-  const code = (error as { code?: unknown }).code;
-  return code === "SQLITE_BUSY" || code === "SQLITE_LOCKED";
-}
-
 function nullableDiagnostic(input: unknown): string | null {
   if (input === null) return null;
   const value = requiredText(input, 128);
@@ -1656,11 +1645,4 @@ function requiredDisposition(input: unknown): PiclawDisposition {
     throw new CorruptSettlementState();
   }
   return input as PiclawDisposition;
-}
-
-function requiredHarnessState(input: unknown): HarnessState {
-  if (typeof input !== "string" || !HARNESS_STATES.has(input as HarnessState)) {
-    throw new CorruptSettlementState();
-  }
-  return input as HarnessState;
 }

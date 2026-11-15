@@ -1,0 +1,29 @@
+{
+  "asOf": "2026-10-19",
+  "sources": [
+    {
+      "file": "announcement.html",
+      "url": "https://www.inceptionlabs.ai/blog/introducing-mercury-3",
+      "finalUrl": "https://www.inceptionlabs.ai/blog/introducing-mercury-3",
+      "status": 200,
+      "retrievedAt": "2026-10-19T21:20:34.005Z",
+      "sha256": "de141360eb172dd596f3ec87db7e011a139de305c195178855f21a95320e82ba"
+    },
+    {
+      "file": "models.md",
+      "url": "https://docs.inceptionlabs.ai/get-started/models.md",
+      "finalUrl": "https://docs.inceptionlabs.ai/get-started/models.md",
+      "status": 200,
+      "retrievedAt": "2026-10-19T21:20:34.887Z",
+      "sha256": "95e8d87aea8d1c4338959f7722c7628dceef5966b5dcd67d2799ea14afecaaa2"
+    },
+    {
+      "file": "models-page.html",
+      "url": "https://www.inceptionlabs.ai/models",
+      "finalUrl": "https://www.inceptionlabs.ai/models",
+      "status": 200,
+      "retrievedAt": "2026-10-19T21:20:33.990Z",
+      "sha256": "4376daa672a532eb1ed4617e8989b54250fb572f5feae4bafdd7f1e7fc7638f6"
+    }
+  ]
+}

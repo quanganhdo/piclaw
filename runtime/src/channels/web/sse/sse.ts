@@ -31,6 +31,7 @@ const CHAT_SCOPED_EVENT_TYPES = new Set([
   "agent_followup_queued",
   "agent_followup_consumed",
   "agent_followup_removed",
+  "agent_followup_reordered",
   "model_changed",
   "extension_ui_timeout",
   "extension_ui_request",
@@ -154,7 +155,7 @@ export function revalidateSseClient(channel: SseClientContainer, client: Pending
 }
 
 /** Encode and send an SSE event to all connected clients. */
-function projectFamilyEvent(authorisation: SseAuthorisation, eventType: string, data: unknown): unknown | null {
+function projectScopedEvent(authorisation: SseAuthorisation, eventType: string, data: unknown): unknown | null {
   if (typeof authorisation.project !== "function") return data;
   try { return authorisation.project(eventType, data); }
   catch { return null; }
@@ -183,13 +184,13 @@ export function broadcastEvent(channel: SseClientContainer, eventType: string, d
       catch { clearInterval(client.heartbeat); channel.clients.delete(client); }
       continue;
     }
-    // Only the allowlisted public instance branding may cross the global family boundary.
+    // Only the allowlisted public instance branding may cross the scoped-client boundary.
     if (client.authorisation && eventType !== 'profile_update' && (!eventChatJid || !requiresChatScopedDelivery(eventType))) continue;
     if (eventChatJid && client.chatJid !== eventChatJid) {
       continue;
     }
     const projected = client.authorisation
-      ? (eventType === 'profile_update' ? projectPublicBranding(data) : projectFamilyEvent(client.authorisation, eventType, data))
+      ? (eventType === 'profile_update' ? projectPublicBranding(data) : projectScopedEvent(client.authorisation, eventType, data))
       : data;
     if (projected === null) continue;
     const bytes = encoder.encode(`event: ${eventType}\ndata: ${JSON.stringify(projected)}\n\n`);

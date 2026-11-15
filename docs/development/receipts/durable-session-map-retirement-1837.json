@@ -1,0 +1,123 @@
+{
+  "issue": 1837,
+  "epic": 1809,
+  "finding": "F2",
+  "implementationBase": "c49cd22e215113be3199f1ab430a7cfaa3550cac",
+  "originalSourceSha256": "8b1fc8ee087b082ea2a34f24011d6b06bba3b68d7e558119bb53d98a32905915",
+  "before": {
+    "files": 707,
+    "physicalLOC": 142266,
+    "nonblankLines": 131958
+  },
+  "after": {
+    "files": 707,
+    "physicalLOC": 142197,
+    "nonblankLines": 131889
+  },
+  "rawReduction": {
+    "physical": 69,
+    "nonblank": 69,
+    "files": 0
+  },
+  "conservativeCharge": {
+    "physical": 7,
+    "nonblank": 7,
+    "scope": "2option/type/comment lines plus entire5line old signal type expression including mixed-code endpoints"
+  },
+  "creditedNetReduction": {
+    "physical": 62,
+    "nonblank": 62
+  },
+  "replacementGrowthIncluded": true,
+  "newProductionFrameworks": 0,
+  "productionRelocation": 0,
+  "generatedCredit": 0,
+  "removedOwner": {
+    "name": "isolated durableSessions snapshot map",
+    "before": 1,
+    "after": 0
+  },
+  "removedFactory": "bindCompatibilityMethod",
+  "liveGuards": {
+    "liveLookupValidationByteIdentical": true,
+    "sha256": "0d88cd352f469aa55038a1010761384462d69ccf76af0ee0439d5725533758ba",
+    "optionsSnapshotRetained": true,
+    "retiredMapNoOpFallback": false
+  },
+  "assertionPreservation": [
+    {
+      "path": "runtime/test/agent-pool/runtime-facade.test.ts",
+      "originalSurvivingAssertions": 234,
+      "candidateAssertions": 238,
+      "allOriginalAssertionsPreserved": true
+    },
+    {
+      "path": "qualification/pi-durable-130/compact.test.ts",
+      "originalSurvivingAssertions": 96,
+      "candidateAssertions": 96,
+      "allOriginalAssertionsPreserved": true
+    },
+    {
+      "path": "qualification/pi-durable-130/db-tree.test.ts",
+      "originalSurvivingAssertions": 71,
+      "candidateAssertions": 71,
+      "allOriginalAssertionsPreserved": true
+    },
+    {
+      "path": "qualification/pi-durable-130/idle-model.test.ts",
+      "originalSurvivingAssertions": 66,
+      "candidateAssertions": 66,
+      "allOriginalAssertionsPreserved": true
+    },
+    {
+      "path": "qualification/pi-durable-130/single-database.test.ts",
+      "originalSurvivingAssertions": 59,
+      "candidateAssertions": 59,
+      "allOriginalAssertionsPreserved": true
+    }
+  ],
+  "retiredExclusiveConstructorCases": 8,
+  "newContract": {
+    "cases": 29,
+    "assertions": 37,
+    "before": {
+      "pass": 24,
+      "fail": 5
+    },
+    "green": true
+  },
+  "hostFocused": {
+    "cases": 96,
+    "assertions": 606,
+    "green": true
+  },
+  "actualNativeControlsHistory": {
+    "cases": 17,
+    "assertions": 415,
+    "green": true
+  },
+  "actualDefaultPublicConversations": {
+    "cases": 1,
+    "assertions": 177,
+    "green": true
+  },
+  "compileContract": {
+    "positiveLookup": true,
+    "negativeInputs": 3,
+    "before": "unused @ts-expect-error for map input",
+    "normalProject": true
+  },
+  "types": {
+    "normalProjects": 3,
+    "newTestStrict": true,
+    "green": true
+  },
+  "generalImports": {
+    "preExisting": 25,
+    "sameInvocationByteIdentical": true,
+    "green": false,
+    "rulesChanged": false
+  },
+  "sourceOnly": true,
+  "receiptPhase": "implementation candidate; final gate/merge evidence is published on the issue"
+}

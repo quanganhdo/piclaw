@@ -146,9 +146,9 @@ afterEach(() => {
 
 test('thought, draft, and live tool-output panels scroll with their configured line limits', () => {
   const css = readFileSync(join(import.meta.dir, '../../web/static/classic/css/agent.css'), 'utf8');
-  expect(css).toContain('.agent-thinking[data-panel-key="thought"] .agent-thinking-body-collapsible');
-  expect(css).toContain('.agent-thinking[data-panel-key="draft"] .agent-thinking-body-collapsible');
-  expect(css).toContain('.agent-thinking[data-panel-key="tool-output"] .agent-thinking-body-collapsible');
+  expect(css).toContain('.agent-thinking[data-panel-key="thought"][data-expanded="false"] .agent-thinking-body-collapsible');
+  expect(css).toContain('.agent-thinking[data-panel-key="draft"][data-expanded="false"] .agent-thinking-body-collapsible');
+  expect(css).toContain('.agent-thinking[data-panel-key="tool-output"][data-expanded="false"] .agent-thinking-body-collapsible');
   expect(css).toContain('overflow: hidden auto;');
   expect(css).not.toContain('max-height: min(52vh, 34rem);');
   expect(css).not.toContain('max-height: min(34vh, 22rem);');
@@ -161,8 +161,10 @@ test('thought, draft, and live tool-output panels scroll with their configured l
   expect(css).toContain('font-size: var(--agent-tool-output-font-size, 0.8em);');
   expect(css).toContain('.agent-thinking-truncation');
   expect(css).toContain('border-radius: 999px;');
-  expect(css).toContain('.agent-thinking-truncation-arrow');
-  expect(css).toContain('min-width: var(--ui-disclosure-triangle-size);');
+  expect(css).toContain('.agent-thinking-truncation:focus-visible');
+  expect(css).toContain('outline-offset: 2px;');
+  expect(css).toContain('min-height: 24px;');
+  expect(css).not.toContain('.agent-thinking-truncation-arrow');
 });
 
 test('thinking and draft panels use 9 lines while tool output uses 6 lines', () => {
@@ -588,10 +590,14 @@ test('AgentStatus truncates long collapsed tool-output lines and places more-lin
 
   expect(title).toBeDefined();
   expect(truncationButton).toBeDefined();
+  expect(title!.localName).toBe('div');
+  expect(findElements(title!, (node) => node.localName === 'button')).toEqual([truncationButton!]);
   expect(getAttr(truncationButton!, 'class')).toContain('agent-thinking-truncation');
-  const triangle = findElements(truncationButton!, (node) => getAttr(node, 'class').includes('ui-disclosure-triangle-down'))[0];
-  expect(triangle).toBeDefined();
-  expect(collectText(truncationButton!)).toContain('more…');
+  expect(getAttr(truncationButton!, 'type')).toBe('button');
+  expect(getAttr(truncationButton!, 'aria-label')).toBe('Expand Output');
+  expect(getAttr(truncationButton!, 'aria-expanded')).toBe('false');
+  expect(findElements(title!, (node) => getAttr(node, 'class').includes('ui-disclosure-triangle'))).toHaveLength(0);
+  expect(collectText(truncationButton!)).toBe('more…');
   expect(bodyIndex).toBeGreaterThan(-1);
   expect(titleIndex).toBeGreaterThan(-1);
   expect(titleIndex).toBeLessThan(bodyIndex);
@@ -620,4 +626,73 @@ test('AgentStatus can toggle between hidden and visible renders without hook-ord
     render(h(AgentStatus, { status: { type: 'thinking', title: 'Working...' } }), host);
     render(h(AgentStatus, { showCorePanels: false, showExtensionPanels: false }), host);
   }).not.toThrow();
+});
+
+for (const flag of ['last_activity', 'lastActivity']) test(`retained status uses an SVG tool icon without a Recent activity prefix (${flag})`, async () => {
+  const fakeDocument = new FakeDocument();
+  installStatusDomStubs(fakeDocument);
+  const { AgentStatus } = await importFresh<typeof import('../../web/src/components/status.ts')>('../web/src/components/status.ts');
+  const { h, render } = await import('../../web/src/vendor/preact-htm.js');
+  const host = fakeDocument.createElement('div'); fakeDocument.body.appendChild(host);
+  render(h(AgentStatus, { status: { type: 'tool_call', title: 'bash', [flag]: true }, turnId: 'retained-tool' }), host);
+  expect(collectText(host)).toContain('Running: bash');
+  expect(collectText(host)).not.toContain('Recent activity:');
+  const icons = findElements(host, node => getAttr(node, 'class').includes('agent-status-activity-icon'));
+  expect(icons).toHaveLength(1);
+  expect(getAttr(icons[0], 'aria-hidden')).toBe('true');
+  expect(findElements(icons[0], node => node.localName === 'svg')).toHaveLength(1);
+  expect(findElements(host, node => getAttr(node, 'class').includes('agent-status-spinner'))).toHaveLength(0);
+  // Returning to active state removes the retained icon and preserves running UI.
+  render(h(AgentStatus, { status: { type: 'active', title: 'Working...' }, turnId: 'active-tool' }), host);
+  expect(findElements(host, node => getAttr(node, 'class').includes('agent-status-activity-icon'))).toHaveLength(0);
+  expect(collectText(host)).toContain('Working...');
+  render(null, host);
+});
+
+for (const thought of [
+  { text: '', totalLines: 40 },
+  { text: '  \n \t', totalLines: 40 },
+  { text: '<internal>\n</internal>', totalLines: 2 },
+  { text: '', fullText: '<internal>  </internal>', totalLines: 1 },
+]) test(`Thoughts stays hidden without visible text: ${JSON.stringify(thought)}`, async () => {
+  const doc = new FakeDocument(); installStatusDomStubs(doc);
+  const { AgentStatus } = await importFresh<typeof import('../../web/src/components/status.ts')>('../web/src/components/status.ts');
+  const { h, render } = await import('../../web/src/vendor/preact-htm.js');
+  const host=doc.createElement('div'); doc.body.appendChild(host);
+  render(h(AgentStatus, {thought}), host);
+  expect(findElements(host,node=>getAttr(node,'data-panel-key')==='thought')).toHaveLength(0);
+  render(null,host);
+});
+for (const lines of [1, 9, 10, 15]) test(`Thoughts shows its sole disclosure pill only for overflow: ${lines} visible lines`, async () => {
+  const doc = new FakeDocument();
+  installStatusDomStubs(doc);
+  const { AgentStatus } = await importFresh<typeof import('../../web/src/components/status.ts')>('../web/src/components/status.ts');
+  const { h, render } = await import('../../web/src/vendor/preact-htm.js');
+  const host = doc.createElement('div');
+  doc.body.appendChild(host);
+  render(h(AgentStatus, {
+    thought: { text: Array.from({ length: lines }, (_, i) => 'line ' + i).join('\n'), totalLines: lines },
+  }), host);
+
+  const panels = findElements(host, node => getAttr(node, 'data-panel-key') === 'thought');
+  expect(panels).toHaveLength(1);
+  const title = findElements(panels[0], node => getAttr(node, 'class').includes('agent-thinking-title'))[0];
+  expect(title.localName).toBe('div');
+  expect(collectText(title)).toContain('Thoughts');
+  expect(getAttr(panels[0], 'data-expanded')).toBe('false');
+  const buttons = findElements(panels[0], node => node.localName === 'button');
+  expect(buttons).toHaveLength(lines > 9 ? 1 : 0);
+  if (lines > 9) {
+    expect(findElements(title, node => node.localName === 'button')).toEqual(buttons);
+    expect(getAttr(buttons[0], 'type')).toBe('button');
+    expect(getAttr(buttons[0], 'class')).toBe('agent-thinking-truncation');
+    expect(getAttr(buttons[0], 'aria-label')).toBe('Expand Thoughts');
+    expect(getAttr(buttons[0], 'aria-expanded')).toBe('false');
+    expect(collectText(buttons[0])).toBe('more…');
+  }
+  expect(findElements(title, node => getAttr(node, 'class').includes('ui-disclosure-triangle'))).toHaveLength(0);
+  const bodyHtml = collectInnerHtml(panels[0]).join('\n');
+  expect(bodyHtml).toContain('line ' + (lines - 1));
+  if (lines > 9) expect(bodyHtml).not.toContain('line ' + (lines - 10));
+  render(null, host);
 });

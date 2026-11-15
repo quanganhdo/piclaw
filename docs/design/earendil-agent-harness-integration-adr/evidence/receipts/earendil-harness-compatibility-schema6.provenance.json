@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "kind": "inert-historical-evidence",
+  "artifactSchemaVersion": 6,
+  "source": {
+    "revision": "f2b1c90bb3c13200def2118499481d6970590de4",
+    "path": "runtime/src/service-effects/earendil-harness-v3-compatibility/manifest.ts",
+    "sha256": "b7874e86bbd03d005bff57655a6308c8efd2c3025699ae815dc061c50948e91f",
+    "bytes": 85898,
+    "physicalLOC": 1840,
+    "nonblankLines": 1789
+  },
+  "archive": {
+    "path": "docs/design/earendil-agent-harness-integration-adr/evidence/receipts/earendil-harness-compatibility-schema6.json",
+    "sha256": "1f6f640cc8ef89163b5d439304792abc735db2fc9251bcbc26bb590f660c932f",
+    "bytes": 93814,
+    "physicalLines": 2253,
+    "canonicalObjectSha256": "eb4d28490de9ea4f9bff77c3a9b06051fae8e835133e0ad3f1d9d734275bea7e",
+    "wholeObjectDeepEqualityVerified": true
+  },
+  "transformation": "Materialize original frozen export then JSON.stringify(value,null,2)+newline. packageRows and CURRENT_RUNTIME capability mapping/HC-024/025 overrides fully expanded; arrays/order/strings/statuses unchanged.",
+  "historicalLabels": "Verbatim as-of assessments:0.84.1/0.84.4/0.87.0/0.87.1/0.99.1; not current installed SDK1.4.0 configuration or activation authority.",
+  "reductionAccounting": {
+    "grossPhysical": 1840,
+    "grossNonblank": 1789,
+    "removedFunctionBodiesPhysical": 181,
+    "removedFunctionBodiesNonblank": 179,
+    "functions": [
+      {
+        "name": "packageRows",
+        "firstLine": 291,
+        "lastLine": 307
+      },
+      {
+        "name": "normalizeEarendilHarnessCompatibilityManifest",
+        "firstLine": 1654,
+        "lastLine": 1667
+      },
+      {
+        "name": "snapshotData",
+        "firstLine": 1676,
+        "lastLine": 1738
+      },
+      {
+        "name": "snapshotArray",
+        "firstLine": 1740,
+        "lastLine": 1763
+      },
+      {
+        "name": "snapshotRecord",
+        "firstLine": 1765,
+        "lastLine": 1783
+      },
+      {
+        "name": "firstDifference",
+        "firstLine": 1787,
+        "lastLine": 1812
+      },
+      {
+        "name": "ownDataValue",
+        "firstLine": 1814,
+        "lastLine": 1817
+      },
+      {
+        "name": "deepFreeze",
+        "firstLine": 1819,
+        "lastLine": 1826
+      },
+      {
+        "name": "failed",
+        "firstLine": 1828,
+        "lastLine": 1830
+      },
+      {
+        "name": "issue",
+        "firstLine": 1832,
+        "lastLine": 1834
+      }
+    ],
+    "noCreditDataTypesAndOtherPhysical": 1659,
+    "noCreditDataTypesAndOtherNonblank": 1610,
+    "newProductionReplacementImplementation": 0,
+    "rule": "Credit only original top-level function declaration spans excluding attached comments; charge every data/type/constant/top-level lifecycle/other line as non-credit relocation/removal. JSON representation expansion is inert data, not production implementation or reduction."
+  }
+}

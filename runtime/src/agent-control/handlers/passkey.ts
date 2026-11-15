@@ -8,7 +8,7 @@
  */
 
 import type { AgentSession } from "@earendil-works/pi-coding-agent";
-import { readAccessConfig } from "../../core/config-access.js";
+import { isSingleUserAccess } from "../../core/config-access.js";
 import type { AgentControlCommand, AgentControlResult } from "../agent-control-types.js";
 import { getWebRuntimeConfig } from "../../core/config.js";
 import {
@@ -28,8 +28,8 @@ const maskCredential = (id: string): string => {
 };
 
 /** Handle `/passkey` subcommands (list/delete/enrol) for agent-control flows. */
-export async function handlePasskey(_session: AgentSession, command: PasskeyCommand): Promise<AgentControlResult> {
-  if (readAccessConfig().mode !== "single-user") return { status: "error", message: "Use the account-bound passkey API in this access mode." };
+export async function handlePasskey(_session: AgentSession | undefined, command: PasskeyCommand): Promise<AgentControlResult> {
+  if (!isSingleUserAccess()) return { status: "error", message: "Single-user authentication is required." };
   if (!isPasskeysEnabled()) {
     return { status: "error", message: "Passkeys are disabled (WEB_PASSKEY_MODE=totp-only)." };
   }

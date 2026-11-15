@@ -54,7 +54,7 @@ export const requestPickerPins = async (
       });
       continue;
     }
-    if (!res.ok) throw Error("Pins could not be saved.");
+    if (!res.ok) throw Error(method === "GET" ? "Pins could not be loaded." : "Pins could not be saved.");
     return res.json();
   }
 };
@@ -178,7 +178,12 @@ export function startPickerPinSync(options: Options = {}) {
         apply();
       }
     })
-      .catch(report)
+      .catch((error) => {
+        // Startup, focus and SSE reconnect reads are passive. A restart must
+        // not claim that the user failed to save a change they never made.
+        // Keep the last snapshot and retry on the next lifecycle event.
+        if (!stopped) console.debug('[picker-pin-sync] Background refresh unavailable; keeping local pins.', error);
+      })
       .finally(() => {
         refreshing = null;
         if (refreshAgain && !stopped) {

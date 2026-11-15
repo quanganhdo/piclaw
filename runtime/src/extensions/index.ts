@@ -12,7 +12,6 @@
  *   - internalTools: list_tools for tool discovery.
  *   - runtimeScripts: list_scripts for packaged/workspace script discovery.
  *   - toolActivation: activate_tools/reset_active_tools for lazy tool activation.
- *   - sqlIntrospect: introspect_sql for read-only DB introspection.
  *   - scheduledTasks: /tasks and /scheduled commands for task listing.
  *   - workspaceSearch: search_workspace tool for FTS over workspace files.
  *   - dreamMaintenance: /dream memory-consolidation slash command.
@@ -44,14 +43,12 @@ import { createProviderQuotaExtension } from "./provider-quota.js";
 import { internalTools } from "./internal-tools.js";
 import { runtimeScripts } from "./runtime-scripts.js";
 import { toolActivation } from "./tool-activation.js";
-import { sqlIntrospect } from "./sql-introspect.js";
 import { scheduledTasks } from "./scheduled-tasks.js";
 import { workspaceSearch } from "./workspace-search.js";
 import { createMemorySearchExtension } from "./memory-search.js";
 import { workspaceMemoryBootstrap } from "./workspace-memory-bootstrap.js";
 import { dreamMaintenance } from "./dream-maintenance.js";
 import { uiThemeExtension } from "./ui-theme.js";
-import { createSmartCompactionExtension, type CompactionStreamFn } from "./smart-compaction.js";
 import { sendAdaptiveCard } from "./send-adaptive-card.js";
 import { sendDashboardWidget } from "./send-dashboard-widget.js";
 import { chatTool } from "./chat-tool.js";
@@ -59,7 +56,6 @@ import { chatProjectTool } from "./chat-project.js";
 import { sessionControl } from "./session-control.js";
 import { openWorkspaceFile } from "./open-workspace-file.js";
 import { envTools } from "./env-tools.js";
-import { exitProcess } from "./exit-process.js";
 import { imageProcessing } from "./image-processing.js";
 import { sessionStatus } from "./session-status.js";
 import { providerResponseDiagnostics } from "./provider-response-diagnostics.js";
@@ -71,12 +67,10 @@ import { createContextPruneExtension } from "./context-prune.js";
 import { mcpTimeoutPatch } from "./mcp-timeout-patch.js";
 import { localLitePromptProfile } from "./local-lite-prompt-profile.js";
 import { createUiPromptWatchdogExtension } from "./ui-prompt-watchdog.js";
-import { createBudgetLimitsExtension } from "./budget-limits.js";
 
 /** Build the built-in extension factory list used for session creation. */
 export function createBuiltinExtensionFactories(options?: {
   attachmentRegistry?: AttachmentRegistry;
-  compactionStreamFn?: CompactionStreamFn;
   modelRuntime?: ModelRuntime;
   chatJid?: string;
 }): ExtensionFactory[] {
@@ -88,14 +82,12 @@ export function createBuiltinExtensionFactories(options?: {
     internalTools,
     runtimeScripts,
     toolActivation,
-    sqlIntrospect,
     scheduledTasks,
     workspaceSearch,
     createMemorySearchExtension(options?.chatJid),
     workspaceMemoryBootstrap,
     dreamMaintenance,
     uiThemeExtension,
-    createSmartCompactionExtension({ streamFn: options?.compactionStreamFn, modelRuntime: options?.modelRuntime }),
     sendAdaptiveCard,
     sendDashboardWidget,
     chatTool,
@@ -103,7 +95,6 @@ export function createBuiltinExtensionFactories(options?: {
     sessionControl,
     openWorkspaceFile,
     envTools,
-    exitProcess,
     imageProcessing,
     sessionStatus,
     providerRequestSanitizer,
@@ -115,7 +106,6 @@ export function createBuiltinExtensionFactories(options?: {
     mcpTimeoutPatch,
     localLitePromptProfile,
     createUiPromptWatchdogExtension(options?.chatJid),
-    createBudgetLimitsExtension({ modelRuntime: options?.modelRuntime, chatJid: options?.chatJid }),
   ];
 }
 

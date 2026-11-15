@@ -1,12 +1,17 @@
 import { describe, expect, test } from "bun:test";
 
-import "../../../helpers.js";
-import { beginChatRun, getDb, getInflightRuns, initDatabase } from "../../../../src/db.js";
+import { withTempWorkspaceEnv } from "../../../helpers.js";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { setChatCursor, closeDatabase, getDb, getDeferredQueuedFollowups, setDeferredQueuedFollowups, getMessageByRowId, storeMessage, storeChatMetadata, getChatCursor, initDatabase } from "../../../../src/db.js";
 import {
   buildStalledWorkDiagnostic,
   WebAgentControlPlaneService,
 } from "../../../../src/channels/web/agent/agent-control-plane-service.js";
-import type { QueuedFollowupLifecycleService } from "../../../../src/channels/web/runtime/queued-followup-lifecycle-service.js";
+
+import { installServiceWorkSchema } from "../../../../src/service-effects/current-piclaw/service-work-schema.js";
+import { createCurrentPiclawServiceWorkStore } from "../../../../src/service-effects/current-piclaw/service-work-store.js";
+import { hashCanonicalRequest, type CanonicalJsonValue } from "../../../../src/service-effects/contracts/common.js";
 
 function abortRequest(payload: unknown): Request {
   return new Request("https://example.com/agent/runs/abort", {
@@ -21,33 +26,188 @@ function jsonResponse(payload: unknown, status = 200): Response {
   });
 }
 
-type QueueLifecycleStub = Pick<
-  QueuedFollowupLifecycleService,
-  "getQueuedFollowupCount" | "listQueuedStateItems" | "prependQueuedFollowupItem" | "removeQueuedFollowupForAction"
->;
-
 function createService(overrides: Partial<ConstructorParameters<typeof WebAgentControlPlaneService>[0]> = {}) {
-  const queueLifecycle: QueueLifecycleStub = {
-    getQueuedFollowupCount: () => 0,
-    listQueuedStateItems: () => [],
-    prependQueuedFollowupItem: () => {},
-    removeQueuedFollowupForAction: async () => ({ removed: null, source: null }),
-  };
-
+  initDatabase();
   return new WebAgentControlPlaneService({
     defaultChatJid: "web:default",
     defaultAgentId: "default",
     json: jsonResponse,
     broadcastEvent: () => {},
     queue: { enqueue: () => {} },
+    readNativeQueue: async () => [],
+    controlNativeQueue: async () => false,
     agentPool: { setSessionBinder: () => {} },
-    queuedFollowupLifecycle: queueLifecycle,
-    queuePendingSteering: () => {},
-    storeMessage: () => null,
-    processChat: () => {},
     ...overrides,
   });
 }
+
+for (const [handler, method, payload, contextIndex] of [
+  ['handleAgentRootSessionCreate', 'createRootChatSession', { agent_name: 'new-root' }, 1],
+  ['handleAgentBranchRename', 'renameChatBranch', { chat_jid: 'web:control', agent_name: 'renamed' }, 1],
+  ['handleAgentRenameJid', 'renameChatJid', { old_jid: 'web:control', new_jid: 'web:renamed' }, 2],
+  ['handleAgentBranchMergeParent', 'mergeChatBranchIntoParent', { chat_jid: 'web:control' }, 1],
+  ['handleAgentBranchPrune', 'pruneChatBranch', { chat_jid: 'web:control' }, 1],
+  ['handleAgentBranchPurge', 'permanentPurgeChatBranch', { chat_jid: 'web:control' }, 1],
+  ['handleAgentBranchRestore', 'restoreChatBranch', { chat_jid: 'web:control', agent_name: 'restored' }, 1],
+] as const) for (const revoked of [false, true]) {
+  test(`branch HTTP captures original authority before JSON and forwards request cancellation: ${method}/${revoked}`, async () => {
+    const events: string[] = [];
+    let current = 1, captures = 0, applied = 0;
+    let release!: () => void;
+    const parsed = new Promise<void>(resolve => { release = resolve; });
+    const req = abortRequest(payload), read = req.json.bind(req);
+    req.json = async () => { events.push('parse'); await parsed; return read(); };
+    let captured!: () => void;
+    const branch = { chat_jid: 'web:control', agent_name: 'fixture' };
+    const service = createService({
+      captureWriteAuthority(request) {
+        expect(request).toBe(req); events.push('capture'); captures++;
+        const version = current;
+        captured = () => { if (current !== version) throw Error('original request revoked'); };
+        return captured;
+      },
+      agentPool: { [method]: async (...args: unknown[]) => {
+        events.push('pool');
+        const context = args[contextIndex] as { signal: AbortSignal; authorise: () => void };
+        expect(context.signal).toBe(req.signal); expect(context.authorise).toBe(captured);
+        context.authorise(); applied++;
+        return method === 'renameChatJid' ? { oldJid: 'web:control', newJid: 'web:renamed', branch }
+          : method === 'mergeChatBranchIntoParent' ? { source: branch, parent: branch, counts: {} }
+            : method === 'permanentPurgeChatBranch' ? { branch, removedSessionArtifacts: [] } : branch;
+      } } as any,
+    });
+    const pending = service[handler](req);
+    try {
+      expect(events).toEqual(['capture', 'parse']);
+      if (revoked) current++;
+      release();
+      const response = await pending;
+      expect(response.status).toBe(revoked ? 400 : method === 'createRootChatSession' ? 201 : 200);
+      if (revoked) expect((await response.json() as { error: string }).error).toContain('original request revoked');
+      expect(captures).toBe(1); expect(applied).toBe(revoked ? 0 : 1);
+      expect(events).toEqual(['capture', 'parse', 'pool']);
+    } finally { release(); await pending; }
+  });
+}
+
+for(const action of ['steer','remove'] as const)for(const revoked of [false,true])test(`native queue ${action} retains original pre-JSON caller authority: revoked=${revoked}`,async()=>{
+  const trace:string[]=[];let generation=1,changes=0,release!:()=>void,original:(()=>void)|undefined;
+  const held=new Promise<void>(resolve=>{release=resolve;});
+  const request=new Request('https://fixture/agent/queue',{method:'POST',headers:{'content-type':'application/json'},body:'{}'});
+  request.json=async()=>{trace.push('parse');await held;return {chat_jid:'web:target',row_id:17};};
+  const service=createService({
+    captureWriteAuthority(received){expect(received).toBe(request);trace.push('capture');const expected=generation;original=()=>{if(generation!==expected)throw Error('original caller revoked');};return original;},
+    readNativeQueue:async chat=>{expect(chat).toBe('web:target');return [{row_id:17,content:'SDK input',timestamp:'2026-01-01',thread_id:null}];},
+    controlNativeQueue:async(chat,id,kind,authorise)=>{trace.push('control');expect([chat,id,kind]).toEqual(['web:target',17,action]);expect(authorise).toBe(original);authorise?.();changes++;return true;},
+  });
+  const pending=action==='steer'?service.handleAgentQueueSteer(request):service.handleAgentQueueRemove(request);
+  expect(trace).toEqual(['capture','parse']);if(revoked)generation++;release();const response=await pending;
+  expect(response.status).toBe(revoked?500:action==='steer'?201:200);expect(changes).toBe(revoked?0:1);expect(trace).toEqual(['capture','parse','control']);
+});
+
+describe('native queue reorder', () => {
+  const reorderRequest = (body: unknown) => new Request('https://fixture/agent/queue-reorder', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  const queue = (ids: number[]) => ids.map((row_id) => ({ row_id, mode: 'followUp' as const, content: `item ${row_id}`, timestamp: '2026-01-01', thread_id: null }));
+  function reorderService(initial: number[], accept = true) {
+    let current = initial; const calls: number[][] = [], events: Array<[string, unknown]> = []; let authorised = 0;
+    const service = createService({
+      captureWriteAuthority: () => () => { authorised++; },
+      readNativeQueue: async (chat) => { expect(chat).toBe('web:target'); return queue(current); },
+      reorderNativeQueue: async (chat, ids, authorise) => { expect(chat).toBe('web:target'); authorise?.(); calls.push([...ids]); if (accept) current = [...ids]; return accept; },
+      broadcastEvent: (type, payload) => { events.push([type, payload]); },
+    });
+    return { service, calls, events, authorised: () => authorised };
+  }
+
+  test('applies a full order with the caller authority and announces it', async () => {
+    const f = reorderService([11, 12, 13]);
+    const response = await f.service.handleAgentQueueReorder(reorderRequest({ chat_jid: 'web:target', order: [13, 11, 12] }));
+    expect(response.status).toBe(200);
+    const body = await response.json() as any;
+    expect(body.reordered).toBe(true);
+    expect(body.items.map((item: any) => item.row_id)).toEqual([13, 11, 12]);
+    expect(f.calls).toEqual([[13, 11, 12]]);
+    expect(f.authorised()).toBe(1);
+    expect(f.events).toEqual([['agent_followup_reordered', { chat_jid: 'web:target', order: [13, 11, 12] }]]);
+  });
+
+  test('moves one item by index against the current queue', async () => {
+    const f = reorderService([11, 12, 13]);
+    const response = await f.service.handleAgentQueueReorder(reorderRequest({ chat_jid: 'web:target', from_index: 2, to_index: 0 }));
+    expect(response.status).toBe(200);
+    expect(f.calls).toEqual([[13, 11, 12]]);
+  });
+
+  test('a stale order changes nothing and answers 409 with the current queue', async () => {
+    const f = reorderService([11, 12, 13], false);
+    const response = await f.service.handleAgentQueueReorder(reorderRequest({ chat_jid: 'web:target', order: [12, 11] }));
+    expect(response.status).toBe(409);
+    const body = await response.json() as any;
+    expect(body.reordered).toBe(false);
+    expect(body.items.map((item: any) => item.row_id)).toEqual([11, 12, 13]);
+    expect(f.events).toEqual([]);
+  });
+
+  test('rejects malformed bodies before touching the queue', async () => {
+    for (const body of [{ chat_jid: 'web:target' }, { chat_jid: 'web:target', order: [] }, { chat_jid: 'web:target', order: ['x'] }, { chat_jid: 'web:target', from_index: 0, to_index: 9 }]) {
+      const f = reorderService([11, 12, 13]);
+      expect((await f.service.handleAgentQueueReorder(reorderRequest(body))).status).toBe(400);
+      expect(f.calls).toEqual([]);
+    }
+  });
+});
+
+describe("single tool cancellation", () => {
+  const abortRequest = (body: unknown) => new Request("https://fixture/agent/tool-abort", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+
+  test("stops one call with the caller's authority and a bounded note", async () => {
+    const calls: unknown[] = []; let authorised = 0;
+    const service = createService({
+      captureWriteAuthority: () => () => { authorised++; },
+      agentPool: { setSessionBinder: () => {}, abortToolCallForChat: async (...args: unknown[]) => { calls.push(args); return true; } } as any,
+    });
+    const response = await service.handleAgentToolAbort(abortRequest({ chat_jid: "web:target", call_id: "call-7", note: "x".repeat(2500) }));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ status: "ok", call_id: "call-7", aborted: true });
+    expect(authorised).toBe(1);
+    expect(calls).toEqual([["web:target", "call-7", "x".repeat(2000)]]);
+  });
+
+  test("reports a call that already finished, rejects bad ids and hides runtime errors", async () => {
+    const finished = createService({ agentPool: { setSessionBinder: () => {}, abortToolCallForChat: async () => false } as any });
+    expect(await (await finished.handleAgentToolAbort(abortRequest({ call_id: "call-1" }))).json()).toMatchObject({ aborted: false });
+    for (const body of [{}, { call_id: "" }, { call_id: 7 }, { call_id: "x".repeat(600) }]) {
+      expect((await finished.handleAgentToolAbort(abortRequest(body))).status).toBe(400);
+    }
+    const failing = createService({ agentPool: { setSessionBinder: () => {}, abortToolCallForChat: async () => { throw new Error("private engine detail"); } } as any });
+    const response = await failing.handleAgentToolAbort(abortRequest({ call_id: "call-1" }));
+    expect(response.status).toBe(500);
+    expect(await response.text()).not.toContain("private engine detail");
+  });
+});
+
+describe("native abort terminal status ownership", () => {
+  for (const scenario of ["idle", "successor", "failure", "compaction"] as const) {
+    test(`${scenario}: only the SDK watch may change its captured status`, async () => {
+      let status: Record<string, unknown> = { type: "intent", turn_id: "captured", source: "startup_recovery" };
+      if (scenario === "compaction") status.intent_key = "compaction";
+      const updates: unknown[] = [], events: unknown[] = [];
+      const service = createService({
+        getAgentStatus: () => ({ ...status }), // recovery getters need not preserve object identity
+        updateAgentStatus: (_jid, next) => { updates.push(next); status = next; },
+        broadcastEvent: (_type, payload) => { events.push(payload); },
+        agentPool: { applyControlCommand: async () => {
+          if (scenario === "successor") status = { type: "intent", turn_id: "newer" };
+          return { status: scenario === "failure" ? "error" : "success", message: scenario === "failure" ? "settlement uncertain" : "No active durable operation." };
+        } } as any,
+      });
+      const response = await service.handleAgentRunAbort(abortRequest({ chat_jid: "web:default", turn_id: "captured" }));
+      expect(response.status).toBe(scenario === "failure" ? 500 : 200);
+      expect(status.type).toBe('intent');
+      expect(updates).toEqual([]); expect(events).toEqual([]);
+    });
+  }
+});
 
 describe("buildStalledWorkDiagnostic", () => {
   const progress = {
@@ -153,151 +313,6 @@ describe("WebAgentControlPlaneService", () => {
     expect(statusChats).toEqual(["web:default"]);
     expect(stopInputs).toEqual([{ chat_jid: "web:default", generate_report: false }]);
     expect(dismissChats).toEqual(["web:branch"]);
-  });
-
-  test("shapes queue state and queue removal responses via queued follow-up lifecycle dependency", async () => {
-    const events: Array<{ type: string; data: unknown }> = [];
-    const queueLifecycle: QueueLifecycleStub = {
-      getQueuedFollowupCount: (chatJid: string) => (chatJid === "web:branch" ? 1 : 0),
-      listQueuedStateItems: () => [{ row_id: 7, content: "queued followup", timestamp: "2024-01-01T00:00:00.000Z", thread_id: 11 }],
-      prependQueuedFollowupItem: () => {},
-      removeQueuedFollowupForAction: async () => ({
-        removed: {
-          rowId: 7,
-          queuedContent: "queued followup",
-          threadId: 11,
-          queuedAt: "2024-01-01T00:00:00.000Z",
-          materializeRetries: 0,
-        },
-        source: "deferred",
-      }),
-    };
-    const service = createService({
-      broadcastEvent: (type, data) => {
-        events.push({ type, data });
-      },
-      queuedFollowupLifecycle: queueLifecycle,
-    });
-
-    const stateResponse = await service.handleAgentQueueState(new Request("https://example.com/agent/queue-state?chat_jid=web%3Abranch"));
-    expect(stateResponse.status).toBe(200);
-    expect(await stateResponse.json()).toEqual({
-      count: 1,
-      items: [{ row_id: 7, content: "queued followup", timestamp: "2024-01-01T00:00:00.000Z", thread_id: 11 }],
-    });
-
-    const removeResponse = await service.handleAgentQueueRemove(new Request("https://example.com/agent/queue-remove", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_jid: "web:branch", row_id: 7 }),
-    }));
-    expect(removeResponse.status).toBe(200);
-    expect(await removeResponse.json()).toEqual({
-      status: "ok",
-      removed: true,
-      row_id: 7,
-      count: 1,
-    });
-    expect(events).toEqual([
-      {
-        type: "agent_followup_removed",
-        data: { chat_jid: "web:branch", row_id: 7, thread_id: 11 },
-      },
-    ]);
-  });
-
-  test("lists active runs and supports targeted abort, stale marker clear, and queue drain", async () => {
-    initDatabase();
-    const events: Array<{ type: string; data: unknown }> = [];
-    const controlCalls: Array<{ chatJid: string; command: unknown }> = [];
-    const removedRows: number[] = [];
-    beginChatRun("web:hung", "2024-01-01T00:00:02.000Z", {
-      prevTs: "2024-01-01T00:00:01.000Z",
-      messageId: "msg-hung",
-      startedAt: "2024-01-01T00:00:03.000Z",
-    });
-    const queueLifecycle: QueueLifecycleStub = {
-      getQueuedFollowupCount: () => 2,
-      listQueuedStateItems: () => [
-        { rowId: 41, content: "first" },
-        { row_id: 42, content: "second" },
-      ],
-      prependQueuedFollowupItem: () => {},
-      removeQueuedFollowupForAction: async (_chatJid, rowId) => {
-        removedRows.push(rowId);
-        return {
-          removed: {
-            rowId,
-            queuedContent: `queued-${rowId}`,
-            queuedAt: "2024-01-01T00:00:00.000Z",
-            materializeRetries: 0,
-          },
-          source: "deferred",
-        };
-      },
-    };
-    const service = createService({
-      broadcastEvent: (type, data) => events.push({ type, data }),
-      queuedFollowupLifecycle: queueLifecycle,
-      getAgentStatus: (chatJid) => chatJid === "web:hung" ? { type: "thinking", turn_id: "turn-hung" } : null,
-      agentPool: {
-        setSessionBinder: () => {},
-        listActiveChats: () => [{ chat_jid: "web:hung", agent_name: "hung", is_active: true }],
-        applyControlCommand: async (chatJid: string, command: unknown) => {
-          controlCalls.push({ chatJid, command });
-          return { status: "success", message: "aborted" };
-        },
-      },
-    });
-
-    const listResponse = await service.handleAgentRuns(new Request("https://example.com/agent/runs?chat_jid=web%3Ahung"));
-    expect(listResponse.status).toBe(200);
-    expect(await listResponse.json()).toEqual(expect.objectContaining({
-      runs: [expect.objectContaining({
-        chat_jid: "web:hung",
-        is_active: true,
-        queue_count: 2,
-        inflight: expect.objectContaining({ messageId: "msg-hung" }),
-        status: expect.objectContaining({ turn_id: "turn-hung" }),
-      })],
-    }));
-
-    const abortResponse = await service.handleAgentRunAbort(new Request("https://example.com/agent/runs/abort", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_jid: "web:hung", turn_id: "turn-hung" }),
-    }));
-    expect(abortResponse.status).toBe(200);
-    expect(await abortResponse.json()).toEqual(expect.objectContaining({ status: "ok", chat_jid: "web:hung", turn_id: "turn-hung" }));
-    expect(controlCalls).toEqual([{ chatJid: "web:hung", command: { type: "abort", raw: "/abort" } }]);
-
-    const drainResponse = await service.handleAgentRunDrainQueue(new Request("https://example.com/agent/runs/drain-queue", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_jid: "web:hung" }),
-    }));
-    expect(drainResponse.status).toBe(200);
-    expect(await drainResponse.json()).toEqual({ status: "ok", chat_jid: "web:hung", removed_count: 2 });
-    expect(removedRows).toEqual([41, 42]);
-
-    const clearResponse = await service.handleAgentRunClearStale(new Request("https://example.com/agent/runs/clear-stale", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_jid: "web:hung" }),
-    }));
-    expect(clearResponse.status).toBe(200);
-    expect(await clearResponse.json()).toEqual({
-      status: "ok",
-      chat_jid: "web:hung",
-      cleared: true,
-      had_inflight: true,
-      had_preflight: false,
-      had_status: true,
-    });
-    expect(getInflightRuns().some((run) => run.chatJid === "web:hung")).toBe(false);
-    expect(events).toEqual(expect.arrayContaining([
-      { type: "agent_followup_drained", data: { chat_jid: "web:hung", removed_count: 2 } },
-    ]));
   });
 
   test("run abort dispatches the parsed control command to the captured chat", async () => {

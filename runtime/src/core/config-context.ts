@@ -1,10 +1,8 @@
 import { createCliArgReader } from "./config-cli.js";
 import {
-  readRuntimeBootstrapPathOverrides,
   resolveConfigPath,
   resolveRuntimeConfigPaths,
   resolveRuntimeRoot,
-  type RuntimeBootstrapPathOverrides,
   type RuntimeConfigPaths,
 } from "./config-paths.js";
 import { loadPiclawEnvConfig, nestedConfig } from "./config-sources.js";
@@ -19,7 +17,7 @@ export const envConfig = loadPiclawEnvConfig();
 
 const RUNTIME_CONFIG_PATHS = resolveRuntimeConfigPaths({ cliWorkspace: CLI_WORKSPACE });
 
-/** Resolve bootstrap paths at call time so test overlays and runtime workspace switches stay live. */
+/** Resolve candidate paths at call time; resource owners bind their own bootstrap snapshot. */
 export function getRuntimeConfigPaths(): RuntimeConfigPaths {
   return resolveRuntimeConfigPaths({ cliWorkspace: CLI_WORKSPACE });
 }
@@ -38,10 +36,6 @@ export function getDataDir(): string {
 
 export function getRuntimeRoot(defaultRoot: string): string {
   return resolveRuntimeRoot(defaultRoot);
-}
-
-export function getRuntimeBootstrapPathOverrides(): RuntimeBootstrapPathOverrides {
-  return readRuntimeBootstrapPathOverrides();
 }
 
 export const WORKSPACE_DIR = RUNTIME_CONFIG_PATHS.workspaceDir;

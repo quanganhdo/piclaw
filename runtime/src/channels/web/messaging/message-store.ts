@@ -1,12 +1,7 @@
-/**
- * web/message-store.ts – Database operations for web-channel messages.
- *
- * Wraps db/messages.ts with web-channel-specific logic: generating message
- * IDs, attaching media, and handling content blocks. Serves as the data
- * access layer for all web-channel message CRUD operations.
- *
- * Consumers: web/posts-service.ts, web/agent-message-service.ts.
- */
+import { getExecutionIdentity } from "../../../core/execution-context.js";
+import { bindAddonLocalMessage } from "../../../addons/local-dispatch.js";
+/** Admitted web timeline writes. Message, media and source attachment
+ * share one synchronous SQL body after asynchronous acquisition. */
 
 import {
   attachMediaToMessage,
@@ -16,23 +11,20 @@ import {
   getDb,
   getMediaInfoById,
   getMessageByRowId,
-  getDeferredQueuedFollowups,
-  removeProtectedRecoveryContinuationForSourceMessageId,
-  setDeferredQueuedFollowups,
   storeChatMetadata,
   storeMessage,
 } from "../../../db.js";
 import { getWebPreviewMaxChars, shouldPreviewWebContent } from "../../../db/web-content.js";
+import { normaliseExistingMediaFts, appendMediaTextToFts } from "../../../service-effects/current-piclaw/terminal-settlement-timeline-statements.js";
 import { scheduleLinkPreviews, type LinkPreviewChannel } from "../media/link-previews.js";
 import type { InteractionRow } from "../../../db.js";
 import type { NewMessage } from "../../../types.js";
+import type { Database } from "bun:sqlite";
 import { readAccessConfig } from "../../../core/config-access.js";
 import { requireOwnedSessionExecution } from "../../../agent-pool/owned-session-access.js";
 import { createUuid } from "../../../utils/ids.js";
-import { getDatabaseBinding } from '../../../db/connection.js';
+import { captureHostDatabaseBinding } from '../../../db/connection.js';
 import { admitSqliteWrite } from '../../../db/sqlite-async-admission.js';
-import { getWorkspaceDir, getStoreDir, getConfigPath } from '../../../core/config.js';
-import { statSync } from 'node:fs';
 import { createLogger, debugSuppressedError } from '../../../utils/logger.js';
 const log = createLogger('web.message-store');
 
@@ -41,18 +33,23 @@ export interface StoreWebMessageOptions {
   contentBlocks?: unknown[];
   linkPreviews?: unknown[];
   threadId?: number | null;
+  /** Resolve a root reply's self-thread inside the row/receipt transaction. */
+  threadToSelf?: boolean;
   screenHint?: string | null;
   isTerminalAgentReply?: boolean;
   isSteeringMessage?: boolean;
-  /** Remove stale protected intent atomically with this terminal row insert. */
-  removeProtectedContinuationForSourceMessageId?: string | null;
-  /** Atomically remove this deferred queue row with the user-message insert. */
-  consumeDeferredFollowupRowId?: number | null;
-  /** Fault-injection seam used to prove transaction rollback before consume. */
-  beforeDeferredFollowupConsume?: () => void;
+  /**
+   * Runs after row/media writes on the SAME owned SQL connection, before commit.
+   * Trusted SQL-only, synchronous, retry-safe callback; return exactly undefined
+   * or throw on failure to roll back everything. Never schedule work after await:
+   * rollback cannot cancel arbitrary SQL in an asynchronous continuation.
+   * The message identity/timestamp are prepared once and stable across retries.
+   * Any receipt captured here is precommit only: do not publish/acknowledge here.
+   */
+  acceptSource?: (stored: Readonly<{ message: Readonly<NewMessage>; rowId: number; database: Database }>) => void;
 }
 
-/** Resolved parameters for storeWebMessage (after defaults applied). */
+/** Resolved timeline message parameters (after defaults applied). */
 export interface StoreWebMessageParams {
   chatJid: string;
   content: string;
@@ -98,6 +95,7 @@ function prepareWebMessage(params: StoreWebMessageParams, options: StoreWebMessa
 /** Caller owns the transaction. All generated media and metadata roll back together. */
 function writePreparedWebMessage(prepared: PreparedWebMessage): CommittedWebMessage {
   const { params, options } = prepared;
+  const messageId = prepared.messageId;
   let contentBlocks = Array.isArray(options.contentBlocks)
     ? [...options.contentBlocks]
     : undefined;
@@ -141,7 +139,7 @@ function writePreparedWebMessage(prepared: PreparedWebMessage): CommittedWebMess
   }
 
   const msg: NewMessage = {
-    id: prepared.messageId,
+    id: messageId,
     chat_jid: params.chatJid,
     sender: params.isBot ? "web-agent" : "web-user",
     sender_name: params.isBot ? params.agentName : (typeof params.userName === "string" && params.userName.trim() ? params.userName.trim() : "You"),
@@ -159,34 +157,19 @@ function writePreparedWebMessage(prepared: PreparedWebMessage): CommittedWebMess
 
   const rowId = storeMessage(msg);
   if (rowId <= 0) throw new Error("Failed to persist web message row");
+  if (!params.isBot) bindAddonLocalMessage(params.chatJid, { id: msg.id, content: msg.content, content_blocks: msg.content_blocks });
 
   if (allMediaIds.length > 0) {
     attachMediaToMessage(rowId, allMediaIds);
   }
 
-  // Ensure user messages are threaded to themselves when no explicit threadId
-  // is provided. This creates a consistent thread root for replies.
-  if (!params.isBot && (options.threadId === null || options.threadId === undefined)) {
-    getDb().prepare("UPDATE messages SET thread_id = ? WHERE rowid = ?").run(rowId, rowId);
-  }
-
-  const sourceMessageId = typeof options.removeProtectedContinuationForSourceMessageId === "string"
-    ? options.removeProtectedContinuationForSourceMessageId.trim()
-    : "";
-  if (params.isBot && options.isTerminalAgentReply && sourceMessageId) {
-    removeProtectedRecoveryContinuationForSourceMessageId(params.chatJid, sourceMessageId);
-  }
-
-  const consumeDeferredRowId = typeof options.consumeDeferredFollowupRowId === "number"
-    ? options.consumeDeferredFollowupRowId
-    : null;
-  if (!params.isBot && consumeDeferredRowId !== null && Number.isFinite(consumeDeferredRowId)) {
-    options.beforeDeferredFollowupConsume?.();
-    const queued = getDeferredQueuedFollowups(params.chatJid);
-    const index = queued.findIndex((item) => item.rowId === consumeDeferredRowId);
-    if (index < 0) throw new Error("Deferred follow-up intent disappeared before materialization");
-    queued.splice(index, 1);
-    setDeferredQueuedFollowups(params.chatJid, queued);
+  // Publish root threading in the original message transaction.
+  if ((!params.isBot && (options.threadId === null || options.threadId === undefined)) || (options.threadToSelf && !options.threadId)) {
+    // A queued source may already exist before its timeline row is published.
+    const database = getDb();
+    if (allMediaIds.length) normaliseExistingMediaFts(database, rowId, () => {});
+    database.prepare("UPDATE messages SET thread_id = ? WHERE rowid = ?").run(rowId, rowId);
+    if (allMediaIds.length) appendMediaTextToFts(database, rowId, allMediaIds, () => {});
   }
 
   if (readAccessConfig().mode === "single-user") {
@@ -197,43 +180,44 @@ function writePreparedWebMessage(prepared: PreparedWebMessage): CommittedWebMess
   }
 
   const committed = { params, options, msg, rowId, contentBlocks, allMediaIds };
-  return { ...committed, interaction: buildWebInteraction(committed) };
+  const interaction = buildWebInteraction(committed);
+  return { ...committed, interaction };
 }
 
-/** Store a web channel message synchronously for existing internal callers. */
-export function storeWebMessage(channel: LinkPreviewChannel, params: StoreWebMessageParams, options: StoreWebMessageOptions = {}): InteractionRow | null {
-  if (readAccessConfig().mode !== "single-user") {
-    if (!params.isBot) return null;
-    try { requireOwnedSessionExecution(params.chatJid); } catch { return null; }
-  }
-  const prepared = prepareWebMessage(params, options);
-  let committed: CommittedWebMessage;
-  try { committed = getDb().transaction(() => writePreparedWebMessage(prepared)).immediate(); }
-  catch { return null; }
-  return finishWebMessage(channel, committed);
-}
-
-/** Single-user incoming messages only; every retry owns a complete atomic write. */
-export async function admitWebUserMessage(channel: LinkPreviewChannel, params: StoreWebMessageParams, options: StoreWebMessageOptions,
-  authorise: (phase?: 'before' | 'after') => void, signal: AbortSignal, deferBeforeInsert?: () => boolean): Promise<InteractionRow | null> {
-  if (params.isBot || readAccessConfig().mode !== 'single-user') throw Error('Incoming web admission requires single-user authority.');
-  const database = getDb(), binding = getDatabaseBinding();
-  const paths = JSON.stringify([getWorkspaceDir(), getStoreDir(), getConfigPath()]);
-  const assertBinding = () => {
-    if (getDb() !== database || JSON.stringify(getDatabaseBinding()) !== JSON.stringify(binding)
-      || JSON.stringify([getWorkspaceDir(), getStoreDir(), getConfigPath()]) !== paths) throw Error('Message database binding changed.');
-    if (binding) { const stat=statSync(binding.path); if(`${stat.dev}:${stat.ino}` !== binding.identity) throw Error('Message database file changed.'); }
-  };
+/** One admitted timeline writer. Source/queue callbacks remain SQL-only and atomic. */
+export async function admitWebMessage(channel: LinkPreviewChannel, params: StoreWebMessageParams, options: StoreWebMessageOptions,
+  authorise?: (phase?: 'before' | 'after') => void, signal?: AbortSignal, deferBeforeInsert?: () => boolean): Promise<InteractionRow | null> {
+  if (readAccessConfig().mode !== 'single-user') throw Error('Web message admission requires single-user authority.');
+  if (params.isBot && (options.acceptSource || deferBeforeInsert)) throw Error('Agent replies cannot admit or defer model input.');
+  const identity = getExecutionIdentity(), chatJid = params.chatJid;
+  const targetKey = () => { const branch = getChatBranchByChatJid(chatJid); return JSON.stringify(branch && [branch.branch_id, branch.chat_jid, branch.archived_at]); };
+  const originalTarget = targetKey();
+  let writtenTarget = originalTarget;
+  const database = getDb();
+  if (database.inTransaction) throw new TypeError('Web message admission requires its own transaction.');
+  const assertBinding = captureHostDatabaseBinding(database);
   const check = (phase: 'before' | 'after') => {
     assertBinding();
-    if (readAccessConfig().mode !== 'single-user') throw Error('Incoming message authority changed.');
-    authorise(phase);
+    if (readAccessConfig().mode !== 'single-user' || getExecutionIdentity() !== identity) throw Error('Message authority changed.');
+    requireOwnedSessionExecution(chatJid);
+    if ((phase === "before" && targetKey() !== originalTarget) || getChatBranchByChatJid(chatJid)?.archived_at) throw Error("Message target lifetime changed.");
+    authorise?.(phase);
+    if (phase === "after" && targetKey() !== writtenTarget) throw Error("Message target lifetime changed.");
   };
   const prepared = prepareWebMessage(params, options);
+  const acceptSource = options.acceptSource;
   const committed = await admitSqliteWrite(database, () => {
     for (const mediaId of prepared.params.mediaIds) if (!getMediaInfoById(mediaId)) throw Error('Incoming media is unavailable.');
-    if (deferBeforeInsert?.()) return null;
-    return writePreparedWebMessage(prepared);
+    if (deferBeforeInsert?.()) { writtenTarget = targetKey(); return null; }
+    const stored = writePreparedWebMessage(prepared);
+    writtenTarget = targetKey();
+    const result: unknown = acceptSource?.({ message: stored.msg, rowId: stored.rowId, database });
+    if (result !== undefined) {
+      // Observe rejected promises/thenables without awaiting or exposing their payloads.
+      void Promise.resolve(result).then(() => undefined, () => undefined);
+      throw new Error('Source admission callback must be synchronous');
+    }
+    return stored;
   }, check, signal, 5000, assertBinding);
   return committed ? finishWebMessage(channel, committed) : null;
 }
@@ -275,7 +259,7 @@ function finishWebMessage(channel: LinkPreviewChannel, committed: CommittedWebMe
   try {
     scheduleLinkPreviews(channel, committed.params.chatJid, committed.rowId, committed.params.content, committed.options.linkPreviews);
   } catch (error) {
-    debugSuppressedError(log, 'Optional preview scheduling failed after message commit.', error, { operation: 'web_message_store.preview_after_commit', rowId: committed.rowId });
+    try { debugSuppressedError(log, 'Optional preview scheduling failed after message commit.', error, { operation: 'web_message_store.preview_after_commit', rowId: committed.rowId }); } catch { return committed.interaction; }
   }
   return committed.interaction;
 }

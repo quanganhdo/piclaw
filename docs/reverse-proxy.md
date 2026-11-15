@@ -117,7 +117,7 @@ If WebAuthn/passkeys are enabled, the browser hostname used during enrolment/log
 
 Only accept forwarded headers from your trusted proxy: restrict direct backend access and have the proxy overwrite client-supplied forwarding headers. Preserve browser Origin and Cookie headers. In the gated family APIs, account mutations/invitation redemption require a matching Origin, and enrolment cookies use Secure/HttpOnly/SameSite=Strict. Use HTTPS for browser ceremonies. Do not strip private/no-store response headers or cache account, invitation or auth responses.
 
-This is not a guide to deploying family mode; [multi-user startup is still disabled](multi-user/README.md).
+Only single-user deployment is supported; see [Access modes](access-modes.md).
 
 ## Caddy example
 

@@ -14,18 +14,18 @@ export PATH="$BUN_INSTALL/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:
 
 cd /home/agent/piclaw
 
-# Skip postinstall during Docker builds — it is only needed for repo-based
-# bun installs from GitHub. The build steps below handle everything.
+# Run the packaged postinstall explicitly after the scripts-disabled global
+# installation, including the private durable engine dependency island.
 bun update --ignore-scripts
 bun install --ignore-scripts
 bun run build
 bun run build:web
-bun run build:web:visual
-find runtime/web/static/classic/dist runtime/web/static/common/dist runtime/web/static/visual/dist -type f -name '*.map' -delete
+find runtime/web/static/classic/dist runtime/web/static/common/dist -type f -name '*.map' -delete
 
 rm -f piclaw-*.tgz
 PACK_DIR="$(mktemp -d)"
-bun pm pack --outdir "$PACK_DIR"
+# Reason: the bundled add-on inventory otherwise exhausts Docker's build log limit.
+bun pm pack --destination "$PACK_DIR" --quiet
 
 TARBALL="$(find "$PACK_DIR" -maxdepth 1 -name 'piclaw-*.tgz' | head -n1)"
 if [ -z "$TARBALL" ] || [ ! -f "$TARBALL" ]; then
@@ -62,6 +62,7 @@ rm -rf "$PACK_DIR" "$INSTALL_STAGE" "$PATCH_STAGE"
 
 printf '[build-piclaw-package] wire-extension-node_modules\n'
 DEST_REAL="$BUN_INSTALL/install/global/node_modules/piclaw"
+sudo BUN_INSTALL="$BUN_INSTALL" BUN_INSTALL_CACHE_DIR="$BUN_INSTALL_CACHE_DIR" "$BUN_INSTALL/bin/bun" "$DEST_REAL/scripts/postinstall.ts"
 if [ -d "$DEST_REAL/runtime/extensions" ] && [ -d "$DEST_REAL/node_modules" ]; then
   sudo ln -sfn "$DEST_REAL/node_modules" "$DEST_REAL/runtime/extensions/node_modules" 2>/dev/null || true
 fi

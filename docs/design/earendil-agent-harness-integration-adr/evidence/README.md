@@ -1,6 +1,12 @@
 # Evidence register
 
-## Selected Pi 1.0.3 integration
+## Current source and frozen compatibility archive
+
+The current repository selects the coherent SDK1.4.0 family ([registry](receipts/earendil-140-registry.json), [package manifest](../../../../package.json)). Version-specific sections below retain their original as-of labels, commands, results and restrictions.
+
+The complete earlier Harness schema-6 object is preserved as an [inert JSON receipt](receipts/earendil-harness-compatibility-schema6.json), with [source hash, full-object equality and conversion/accounting provenance](receipts/earendil-harness-compatibility-schema6.provenance.json). Its package rows and capability mappings are materialised without changing historical hashes, classifications or activation limits. The unused executable manifest/normaliser is retired under #1575; the archive is not runtime configuration or new SDK/feature admission. No installation or activation permission follows.
+
+## Historical selected Pi 1.0.3 integration
 
 Released target: `d78dc83d633229d12f8b79631384c4c2717c399f`. Source retarget authorised after unified timeline/audit PR1557. Retain the shipped MCP wrapper; deployment/live accounts remain separately gated.
 

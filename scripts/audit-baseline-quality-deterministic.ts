@@ -141,7 +141,7 @@ function isAppRenderingPaneTest(relativePath: string): boolean {
     && !isAppRemoteWorkspaceTest(relativePath);
 }
 
-const groupDefinitions: GroupDefinition[] = [
+export const groupDefinitions: GroupDefinition[] = [
   {
     id: "root-misc",
     label: "root misc and shell integration",
@@ -159,6 +159,12 @@ const groupDefinitions: GroupDefinition[] = [
     label: "agent pool",
     notes: "Session lifecycle, branch lifecycle, usage accounting, and tool orchestration.",
     match: (relativePath) => relativePath.startsWith("agent-pool/"),
+  },
+  {
+    id: "archive-tools",
+    label: "archive tools",
+    notes: "Byte-preserving JSONL archive import, search and export tooling.",
+    match: (relativePath) => relativePath.startsWith("archive/"),
   },
   {
     id: "agent-memory",
@@ -183,7 +189,6 @@ const groupDefinitions: GroupDefinition[] = [
         "agent-debug.test.ts",
         "agent-message-handler.test.ts",
         "agent-message-store.test.ts",
-        "agent-pool-binder.test.ts",
         "agents-service.test.ts",
         "message-processing-storage-service.test.ts",
         "message-store-atomic-followup.test.ts",
@@ -263,18 +268,13 @@ const groupDefinitions: GroupDefinition[] = [
         "webauthn-auth.test.ts",
         "webauthn-challenges.test.ts",
         "webauthn-enrol-page.test.ts",
-        "family-api.test.ts",
-        "family-shell.test.ts",
-        "invitation-page.test.ts",
+
         "login-options.test.ts",
         "principal-route.test.ts",
         "principal.test.ts",
         "totp-user-login.test.ts",
         "webauthn-user-login.test.ts",
-        "family-authorisation.test.ts",
-        "family-memory-http.test.ts",
-        "family-message-provenance.test.ts",
-        "family-message-recovery.test.ts",
+
         "legacy-input-holds.test.ts",
       ]),
   },
@@ -419,7 +419,7 @@ const groupDefinitions: GroupDefinition[] = [
   {
     id: "web-ui-model-catalogue",
     label: "web ui model catalogue",
-    notes: "Model catalogue projection/preferences plus classic and visual picker/settings component contracts.",
+    notes: "Model catalogue projection/preferences plus Classic picker/settings component contracts.",
     match: (relativePath) =>
       relativePath.startsWith("web/") && basenameIsOneOf(relativePath, [
         "model-catalogue-preferences.test.ts",
@@ -427,7 +427,6 @@ const groupDefinitions: GroupDefinition[] = [
         "model-picker-components.test.ts",
         "model-settings-catalogue.test.ts",
         "model-settings-components.test.ts",
-        "visual-model-catalogue.test.ts",
       ]),
   },
   {
@@ -462,7 +461,7 @@ const groupDefinitions: GroupDefinition[] = [
           "settings-save-state.test.ts",
           "notification-delivery-coordinator.test.ts",
           "notification-focus.test.ts",
-          "family-notifications.test.ts",
+
           "oobe-state.test.ts",
           "timeline-quick-actions.test.ts",
           "timeline-menu-dropdown.test.ts",
@@ -471,7 +470,6 @@ const groupDefinitions: GroupDefinition[] = [
           "compaction-settings-ui.test.ts",
           "compose-speech.test.ts",
           "post-speech.test.ts",
-          "visual-protected-recovery.test.ts",
           "markdown-surface-security.test.ts",
           "use-splitters.test.ts",
           "optional-api.test.ts",
@@ -582,9 +580,7 @@ const groupDefinitions: GroupDefinition[] = [
           "thinking-cleanup.test.ts",
           "thinking-endpoint.test.ts",
           "timeline-render-boundary.test.ts",
-          "visual-telemetry.test.ts",
-          "visual-agent-status-utils.test.ts",
-          "family-chat-surface-imports.test.ts",
+
         ])
         || isAppRenderingPaneTest(relativePath)
       ),

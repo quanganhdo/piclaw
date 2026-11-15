@@ -1,27 +1,21 @@
+import { captureHostDatabaseBinding } from "../../../db/connection.js";
+import { captureWebRequestAuthority } from "../auth/auth-gateway.js";
 /**
  * channels/web/channel-endpoint-context-factory.ts – Builds endpoint contexts for WebChannel handlers.
  */
 
-import { getDb, getLatestTokenUsage, getTokenUsageTotals, replaceMessageContent } from "../../../db.js";
+import { getLatestTokenUsage, getTokenUsageTotals } from "../../../db.js";
 import { resolveAvatarUrl } from "../media/avatar-service.js";
 import type { WebChannelLike } from "../core/web-channel-contracts.js";
 import type { AuthEndpointsContext } from "../auth/auth-endpoints.js";
-import {
-  createAgentStatusContext,
-  createAgentsEndpointContext,
-  createAvatarEndpointContext,
-  createContentEndpointsContext,
-  createPostMutationsContext,
-  createUiEndpointsContext,
-} from "./endpoint-contexts.js";
 import { isProviderReadyOobeCompletedForInstance } from "../oobe-instance-state.js";
 import type { AgentStatusContext, AgentTokenUsageContext } from "../agent/agent-status.js";
 import type { ContentEndpointsContext } from "./content-endpoints.js";
 import type { AgentsEndpointContext, AvatarEndpointContext } from "./identity-endpoints.js";
-import type { PostMutationsContext } from "../post-mutations.js";
 import type { UiEndpointsContext } from "./ui-endpoints.js";
+import { getChatActivitySummaries } from "../../../db/messages.js";
 
-/** Live identity/avatar snapshot consumed by endpoint facade/context builders. */
+/** Live identity/avatar snapshot consumed by endpoint context builders. */
 export interface WebChannelIdentitySnapshot {
   assistantName: string;
   assistantAvatarRaw: string | null;
@@ -58,39 +52,20 @@ export interface WebChannelEndpointFactoryOptions {
   getIdentitySnapshot(): WebChannelIdentitySnapshot;
 }
 
-/** Lazily built endpoint contexts consumed by WebChannel handlers. */
-function normalizeStoredContextUsage(value: Record<string, unknown> | null): {
-  tokens: number | null;
-  contextWindow: number | null;
-  percent: number | null;
-  sessionGeneration: string;
-} | null {
-  if (!value) return null;
-  const sessionGeneration = typeof value.sessionGeneration === "string" ? value.sessionGeneration.trim() : "";
-  if (!sessionGeneration) return null;
-  const tokens = typeof value.tokens === "number" && Number.isFinite(value.tokens) ? value.tokens : null;
-  const contextWindow = typeof value.contextWindow === "number" && Number.isFinite(value.contextWindow)
-    ? value.contextWindow
-    : null;
-  const percent = typeof value.percent === "number" && Number.isFinite(value.percent) ? value.percent : null;
-  return { tokens, contextWindow, percent, sessionGeneration };
-}
-
 function getTokenUsageForChat(chatJid: string): AgentTokenUsageContext | null {
   try {
     const latest = getLatestTokenUsage(chatJid);
     const totals = getTokenUsageTotals(chatJid);
     return latest || totals.runs > 0 ? { latest, totals } : null;
   } catch (error) {
-    if (error instanceof Error && (error.message === "Database not initialized" || error.message.includes("closed database"))) {
-      return null;
-    }
+    if (error instanceof Error && (error.message === "Database not initialized" || error.message.includes("closed database"))) return null;
     throw error;
   }
 }
 
+/** Lazily built endpoint contexts consumed by WebChannel handlers. */
 export interface WebChannelEndpointContexts {
-  postMutations(): PostMutationsContext;
+  identity(): WebChannelIdentitySnapshot;
   agentStatus(): AgentStatusContext;
   content(): ContentEndpointsContext;
   ui(): UiEndpointsContext;
@@ -110,72 +85,45 @@ export function createWebChannelEndpointContexts(
   let authContext: AuthEndpointsContext | null = null;
 
   return {
-    postMutations: () => createPostMutationsContext({
-      defaultChatJid: options.defaultChatJid,
-      getLastCommandInteractionId: () => channel.lastCommandInteractionId,
-      json: (payload, status = 200) => channel.json(payload, status),
-      replaceMessageContent: (chatJid, id, content) => replaceMessageContent(chatJid, id, content, {}) ?? null,
-      setThreadId: (messageId, threadId) => {
-        getDb().prepare("UPDATE messages SET thread_id = ? WHERE rowid = ?").run(threadId, messageId);
-      },
-      broadcastInteractionUpdated: (interaction) => {
-        channel.interactionBroadcaster.broadcastInteractionUpdated(interaction);
-      },
-      storeMessage: (chatJid, content, isBot, mediaIds, storeOptions = {}) =>
-        channel.storeMessage(chatJid, content, isBot, mediaIds, storeOptions),
-      broadcastAgentResponse: (interaction) => {
-        channel.interactionBroadcaster.broadcastAgentResponse(interaction);
-      },
-    }),
-
+    identity: () => options.getIdentitySnapshot(),
     agentStatus: () => {
       if (!agentStatusContext) {
-        agentStatusContext = createAgentStatusContext({
+        agentStatusContext = {
           defaultChatJid: options.defaultChatJid,
           json: (payload, status = 200) => channel.json(payload, status),
           getAgentStatus: (chatJid) => channel.getAgentStatus(chatJid),
           getExtensionWorkingState: (chatJid) => channel.getExtensionWorkingState?.(chatJid) ?? null,
-          recoverStaleInflightRun: (chatJid, recoveryOptions) => channel.recoverStaleInflightRun(chatJid, recoveryOptions),
           getBuffer: (turnId, panel) => channel.getBuffer(turnId, panel),
           getContextUsageForChat: async (chatJid) => {
-            const runtimeUsage = await channel.agentPool.getContextUsageForChat(chatJid).catch(() => null);
-            const currentGeneration = typeof channel.agentPool.getSessionGenerationForChat === "function"
-              ? channel.agentPool.getSessionGenerationForChat(chatJid)
-              : null;
-            const runtimeGeneration = typeof runtimeUsage?.sessionGeneration === "string"
-              ? runtimeUsage.sessionGeneration.trim()
-              : "";
-            const storedUsage = normalizeStoredContextUsage(
-              typeof channel.getContextUsage === "function" ? channel.getContextUsage(chatJid) : null,
-            );
-            const authoritativeGeneration = currentGeneration || runtimeGeneration || storedUsage?.sessionGeneration || null;
-            const currentRuntimeUsage = runtimeUsage && (!authoritativeGeneration || runtimeGeneration === authoritativeGeneration)
-              ? runtimeUsage
-              : null;
-            const currentStoredUsage = storedUsage && (!authoritativeGeneration || storedUsage.sessionGeneration === authoritativeGeneration)
-              ? storedUsage
-              : null;
-
-            if (currentRuntimeUsage?.tokens !== null && currentRuntimeUsage?.tokens !== undefined) return currentRuntimeUsage;
-            if (currentStoredUsage?.tokens !== null && currentStoredUsage?.tokens !== undefined) return currentStoredUsage;
-            if (currentRuntimeUsage) return currentRuntimeUsage;
-            if (currentStoredUsage) return currentStoredUsage;
-            return authoritativeGeneration
-              ? { tokens: null, contextWindow: null, percent: null, sessionGeneration: authoritativeGeneration }
-              : null;
+            const generation = () => channel.agentPool.getSessionGenerationForChat?.(chatJid) ?? null;
+            const before = generation();
+            let usage;
+            try { usage = await channel.agentPool.getContextUsageForChat(chatJid); }
+            catch { usage = null; }
+            const current = generation();
+            if (before === current && usage && (!current || usage.sessionGeneration === current)) return usage;
+            return current ? {tokens:null,contextWindow:null,percent:null,sessionGeneration:current,tokensAreAuthoritative:true as const} : null;
           },
+          getSessionTreeSummaryForChat: typeof channel.agentPool.getSessionTreeSummaryForChat === "function"
+            ? (chatJid) => channel.agentPool.getSessionTreeSummaryForChat(chatJid)
+            : undefined,
           getTokenUsageForChat,
+          getChatActivitySummaries,
           getAvailableModels: (chatJid, modelOptions) => channel.agentPool.getAvailableModels(chatJid, modelOptions),
-          getProviderReadyCompletedForInstance: () => isProviderReadyOobeCompletedForInstance(),
-        });
+          getProviderReadyCompletedForInstance: req => {
+            const binding = captureHostDatabaseBinding(), gateway = channel.authGateway, request = captureWebRequestAuthority(gateway, req);
+            return isProviderReadyOobeCompletedForInstance(() => { binding(); if (channel.authGateway !== gateway) throw Error("OOBE request gateway changed"); request(); }, req.signal);
+          },
+        };
       }
       return agentStatusContext;
     },
 
     content: () => {
       if (!contentContext) {
-        contentContext = createContentEndpointsContext({
+        contentContext = {
           defaultChatJid: options.defaultChatJid,
+          get hiddenNativeRows(){return channel.filterNativeTimeline?.bind(channel);},
           json: (payload, status = 200) => channel.json(payload, status),
           getBuffer: (turnId, panel) => channel.getBuffer(turnId, panel),
           getIdentity: () => {
@@ -188,14 +136,14 @@ export function createWebChannelEndpointContexts(
               userAvatarBackground: identity.userAvatarBackground,
             };
           },
-        });
+        };
       }
       return contentContext;
     },
 
     ui: () => {
       if (!uiContext) {
-        uiContext = createUiEndpointsContext({
+        uiContext = {
           json: (payload, status = 200) => channel.json(payload, status),
           getWorkspaceVisible: () => channel.workspaceVisible,
           setWorkspaceVisible: (value) => {
@@ -211,14 +159,14 @@ export function createWebChannelEndpointContexts(
             channel.setPanelExpanded(turnId, panel, expanded);
           },
           handleUiResponse: (requestId, outcome, chatJid) => channel.uiBridge.handleUiResponse(requestId, outcome, chatJid),
-        });
+        };
       }
       return uiContext;
     },
 
     agents: () => {
       const identity = options.getIdentitySnapshot();
-      return createAgentsEndpointContext({
+      return {
         agentPool: channel.agentPool,
         defaultChatJid: options.defaultChatJid,
         defaultAgentId: options.defaultAgentId,
@@ -228,16 +176,16 @@ export function createWebChannelEndpointContexts(
         userAvatar: identity.userAvatarUrl,
         userAvatarBackground: identity.userAvatarBackground,
         json: (payload, status = 200) => channel.json(payload, status),
-      });
+      };
     },
 
     avatar: () => {
       const identity = options.getIdentitySnapshot();
-      return createAvatarEndpointContext({
+      return {
         assistantAvatar: identity.assistantAvatarRaw,
         userAvatar: identity.userAvatarRaw,
         json: (payload, status = 200) => channel.json(payload, status),
-      });
+      };
     },
 
     auth: () => {

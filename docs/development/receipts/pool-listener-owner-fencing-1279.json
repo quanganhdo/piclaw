@@ -1,0 +1,136 @@
+{
+  "version": 1,
+  "issue": 1279,
+  "epic": 1270,
+  "safetyRepairNotReduction": true,
+  "implementationBase": "e96285de1f83f2cd5921c1ef6453c9209a14e671",
+  "metric": "Same stable #1270 tracked handwritten runtime/src + runtime/durable-engine/src rules/exclusions; physical includes comments/blanks.",
+  "before": {
+    "files": 711,
+    "physicalLOC": 144442,
+    "nonblankLines": 134052
+  },
+  "after": {
+    "files": 711,
+    "physicalLOC": 144474,
+    "nonblankLines": 134083
+  },
+  "delta": {
+    "files": 0,
+    "physicalLOC": 32,
+    "nonblankLines": 31
+  },
+  "productionDiff": {
+    "files": 6,
+    "additions": 42,
+    "deletions": 10
+  },
+  "reductionCredit": 0,
+  "outsideRootProductionAdditions": 0,
+  "relocatedProductionImplementation": 0,
+  "ownedPoolCallbacks": [
+    "getModelRegistry",
+    "streamSimple",
+    "getSessionId",
+    "getScopedModels"
+  ],
+  "retainedCommonCapabilities": [
+    "chat/channel detection",
+    "logging sinks",
+    "root KV",
+    "keychain",
+    "filesystem model-cost provenance helper"
+  ],
+  "ownership": {
+    "modelKeys": "delete only exact captured functions after confirmed resource shutdown",
+    "ssh": "local generation-fenced returned handle including reused objects",
+    "provider": "facade generation-fenced returned handle including reused callbacks",
+    "broadcast": "disable captured old notification and release selected registration",
+    "gateway": "exact broadcast owner joins existing drained cleanup sequence",
+    "uncertainResourceCloseRetainsRegistrations": true,
+    "newGenericRegistryOrLifecycleAdapter": false
+  },
+  "validation": {
+    "originalDefining": {
+      "pass": 0,
+      "fail": 5,
+      "assertions": 14
+    },
+    "definingAfter": {
+      "pass": 5,
+      "assertions": 30
+    },
+    "focused": {
+      "pass": 17,
+      "assertions": 144,
+      "files": 5
+    },
+    "verifiedSubset": {
+      "pass": 12,
+      "assertions": 132,
+      "files": 4
+    },
+    "standaloneAddonAccess": {
+      "pass": 1,
+      "assertions": 10
+    },
+    "coldProviderRefresh": {
+      "pass": 1,
+      "assertions": 2
+    },
+    "publicBroadcast": {
+      "pass": 2,
+      "assertions": 7
+    },
+    "typeProjects": [
+      "runtime/tsconfig.json",
+      "runtime/durable-engine/tsconfig.json",
+      "qualification/pi-durable-130/tsconfig.json"
+    ],
+    "strictNewFixtureTypes": true,
+    "fixtureTypeCorrections": [
+      "full typed SSH record instead of partial cast",
+      "explicit known non-null fixture model/credential services"
+    ],
+    "actualNativeFactory": [
+      {
+        "scenario": "native-events",
+        "pass": 1,
+        "assertions": 182
+      },
+      {
+        "scenario": "native-shutdown-close-recover",
+        "pass": 1,
+        "assertions": 22
+      }
+    ],
+    "circular": {
+      "reachableFiles": 545,
+      "cycles": 0
+    },
+    "envObservationFresh": true,
+    "importBoundaries": {
+      "baselineFindings": 25,
+      "candidateFindings": 25,
+      "byteIdentical": true,
+      "green": false
+    }
+  },
+  "creditNote": "Necessary+32physical/+31nonblanksafetygrowth;zero reduction credit. Selected registrations only, no whole interop deletion, no effect replay/raw cleanup cancellation. Prior reduction/hook work separate; final combined1279acceptance still required. Source-only,no liveoperations.",
+  "hostedFixtureCleanupCorrection": {
+    "failedCI": 40795204793,
+    "staticFinding": "silent promise catch in new owner-fencing afterEach",
+    "localStaticReproduced": true,
+    "fix": "join every shutdown with allSettled; throw AggregateError on any rejected cleanup; reset SSH fixture",
+    "productionChanges": 0,
+    "scannerOrBaselineChanges": false,
+    "assertionsUnchanged": true,
+    "after": {
+      "silentCatchBlocks": 0,
+      "silentPromiseCatches": 0,
+      "unitCases": 5,
+      "assertions": 30,
+      "strictFixtureTypes": true
+    }
+  }
+}

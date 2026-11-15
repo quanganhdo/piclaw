@@ -1915,7 +1915,7 @@ export const WEB_THEME_PRESETS: ThemePreset[] = [
   },
   {
     id: "petrol",
-    label: "Petrol & Copper",
+    label: "Fallout",
     mode: "dark",
     dark: {
       bgPrimary: "#102b30",
@@ -3021,7 +3021,7 @@ for (const family of ["solarized", "github"]) {
     if (variant) variant[mode] = automatic[mode];
   }
 }
-// Preserve Visual's explicit black Classic bundle, distinct from each skin's adaptive Default.
+// Preserve the explicit black Classic palette, distinct from the adaptive Default.
 WEB_THEME_PRESETS.push({
   id: "piclaw-classic",
   label: "PiClaw Classic",
@@ -3046,6 +3046,7 @@ export const WEB_THEME_ALIASES: Record<string, string> = {
   synthwave: "synthwave-84",
   "synthwave-full": "synthwave-84-full",
   "petrol-copper": "petrol",
+  fallout: "petrol",
   "aubergine-gold": "aubergine",
   "burgundy-rose": "burgundy",
   "ivory-petrol": "petrol-light",

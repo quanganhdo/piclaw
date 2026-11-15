@@ -1,3 +1,4 @@
+import { gzipSync } from "node:zlib";
 /**
  * test/channels/web/web-build.test.ts – Build verification tests.
  *
@@ -56,7 +57,15 @@ test("build:web produces bundle assets", async () => {
   expect(appBundle).toContain('#editor-vendor/codemirror');
   expect(editorBundle).toContain('#editor-vendor/codemirror');
 
-  // Allow the deploy branch's local integrations alongside the upstream bundle.
-    expect(statSync(appBundlePath).size).toBeLessThan(1_550_000);
+  // Compact Delegate rows add 1.7KB raw / 0.7KB gzip over the prior bundle; the
+  // workbench UX pass (timeline status line, global menu, footer, session context) ~6KB raw / 1.9KB gzip.
+  // The MCP management redesign adds 9.8KB raw / 2.5KB gzip against 78d7852f2.
+  // Account for that feature while retaining ~4.9KB raw / 1.8KB gzip headroom.
+  // Settings cleanup (#2021, #2022, label association and shared form rows)
+  // then used that headroom (~6KB raw); keep ~4.7KB raw headroom again.
+  // Local QMD/vault viewers and navigation add ~7KB raw; retain bounded headroom.
+  expect(statSync(appBundlePath).size).toBeLessThan(1_535_000);
+  // The same local additions account for ~2KB gzip over upstream's budget.
+  expect(gzipSync(appBundle).byteLength).toBeLessThan(425_000);
   expect(statSync(editorBundlePath).size).toBeLessThan(500_000);
 }, WEB_BUILD_TEST_TIMEOUT_MS);

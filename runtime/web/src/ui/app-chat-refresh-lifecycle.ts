@@ -12,7 +12,6 @@ import {
   getContextUsageRevision,
   haveSameContextUsage,
   normalizeContextUsage,
-  persistContextUsage,
   reconcileContextUsageForChat,
   restoreContextUsage,
 } from './app-status-refresh-orchestration.js';
@@ -270,7 +269,6 @@ export function useChatRefreshLifecycle(options: UseChatRefreshLifecycleOptions)
               expectedRevision,
             });
             if (haveSameContextUsage(prev, merged)) return prev;
-            persistContextUsage(targetChatJid, merged);
             return merged;
           });
         } catch {
@@ -311,8 +309,7 @@ export function useChatRefreshLifecycle(options: UseChatRefreshLifecycleOptions)
     setAgentModelsPayload(null);
     setExtensionWorkingState({ message: null, indicator: null, visible: true });
 
-    // Restore the last known context usage for this chat from localStorage
-    // so the context indicator shows immediately without waiting for the API.
+    // Reuse only a value accepted in this page lifetime, then refresh from the SDK.
     const stored = restoreContextUsage(currentChatJid);
     if (stored) {
       setContextUsage(stored);

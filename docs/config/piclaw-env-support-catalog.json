@@ -131,24 +131,20 @@
       "bounds": "positive milliseconds",
       "allowedValues": [],
       "secret": false,
-      "persistence": [
-        "env",
-        "dotenv",
-        "json-config"
-      ],
+      "persistence": [],
       "precedence": [
         "process.env",
         ".env",
         "json-config",
         "defaults"
       ],
-      "status": "supported",
-      "compatibilityAliasFor": "domains.logging.cleanupIntervalMs",
-      "deprecation": "compatibility env alias for domains.logging.cleanupIntervalMs",
-      "removalVersion": "3.0.0",
+      "status": "removed",
+      "compatibilityAliasFor": null,
+      "deprecation": "Retired unused agent-log env control under #1279; historical JSON keys remain accepted without a runtime getter or cleanup owner.",
+      "removalVersion": null,
       "bootstrapAllowed": false,
-      "source": "runtime/src/core/config-integrations.ts domain schema (#753A1)",
-      "migrationDisposition": "migrated-to-domain-config"
+      "source": "Former config-integrations.ts domain env alias; agent-log producer retired under #1673, unused control retired under #1279.",
+      "migrationDisposition": "remove"
     },
     {
       "name": "PICLAW_AGENT_LOG_RETENTION_DAYS",
@@ -158,11 +154,7 @@
       "bounds": "positive days, capped by retention max",
       "allowedValues": [],
       "secret": false,
-      "persistence": [
-        "env",
-        "dotenv",
-        "json-config"
-      ],
+      "persistence": [],
       "precedence": [
         "process.env(PICLAW_AGENT_LOG_RETENTION_MS)",
         "process.env",
@@ -170,13 +162,13 @@
         "json-config",
         "defaults"
       ],
-      "status": "supported",
-      "compatibilityAliasFor": "domains.logging.retentionMs",
-      "deprecation": "compatibility env alias for domains.logging.retentionMs",
-      "removalVersion": "3.0.0",
+      "status": "removed",
+      "compatibilityAliasFor": null,
+      "deprecation": "Retired unused agent-log env control under #1279; historical JSON keys remain accepted without a runtime getter or cleanup owner.",
+      "removalVersion": null,
       "bootstrapAllowed": false,
-      "source": "runtime/src/core/config-integrations.ts domain schema (#753A1)",
-      "migrationDisposition": "migrated-to-domain-config"
+      "source": "Former config-integrations.ts domain env alias; agent-log producer retired under #1673, unused control retired under #1279.",
+      "migrationDisposition": "remove"
     },
     {
       "name": "PICLAW_AGENT_LOG_RETENTION_MS",
@@ -186,24 +178,20 @@
       "bounds": "positive milliseconds, capped by retention max",
       "allowedValues": [],
       "secret": false,
-      "persistence": [
-        "env",
-        "dotenv",
-        "json-config"
-      ],
+      "persistence": [],
       "precedence": [
         "process.env",
         ".env",
         "json-config",
         "defaults"
       ],
-      "status": "supported",
-      "compatibilityAliasFor": "domains.logging.retentionMs",
-      "deprecation": "compatibility env alias for domains.logging.retentionMs",
-      "removalVersion": "3.0.0",
+      "status": "removed",
+      "compatibilityAliasFor": null,
+      "deprecation": "Retired unused agent-log env control under #1279; historical JSON keys remain accepted without a runtime getter or cleanup owner.",
+      "removalVersion": null,
       "bootstrapAllowed": false,
-      "source": "runtime/src/core/config-integrations.ts domain schema (#753A1)",
-      "migrationDisposition": "migrated-to-domain-config"
+      "source": "Former config-integrations.ts domain env alias; agent-log producer retired under #1673, unused control retired under #1279.",
+      "migrationDisposition": "remove"
     },
     {
       "name": "PICLAW_AGENT_TIMEOUT",
@@ -374,24 +362,15 @@
         "body_after_prefix"
       ],
       "secret": false,
-      "persistence": [
-        "env",
-        "dotenv",
-        "json-config"
-      ],
-      "precedence": [
-        "process.env",
-        ".env",
-        "json-config",
-        "defaults"
-      ],
-      "status": "supported",
+      "persistence": [],
+      "precedence": [],
+      "status": "removed",
       "compatibilityAliasFor": "domains.compaction.autoCompactionScope",
       "deprecation": "compatibility env alias for domains.compaction.autoCompactionScope",
       "removalVersion": "3.0.0",
       "bootstrapAllowed": false,
-      "source": "runtime/src/core/config-runtime.ts domain schema (#753C1)",
-      "migrationDisposition": "migrated-to-domain-config"
+      "source": "Retired Core retry/rotation/trigger configuration (#1673)",
+      "migrationDisposition": "removed-reference-only"
     },
     {
       "name": "PICLAW_BACKGROUND_AGENT_TIMEOUT",
@@ -499,27 +478,18 @@
       "owner": "core",
       "type": "number",
       "default": 0.5,
-      "bounds": ">0..1",
+      "bounds": null,
       "allowedValues": [],
       "secret": false,
-      "persistence": [
-        "env",
-        "dotenv",
-        "json-config"
-      ],
-      "precedence": [
-        "process.env",
-        ".env",
-        "json-config",
-        "defaults"
-      ],
-      "status": "supported",
+      "persistence": [],
+      "precedence": [],
+      "status": "removed",
       "compatibilityAliasFor": "domains.compaction.backoffDecayFactor",
       "deprecation": "compatibility env alias for domains.compaction.backoffDecayFactor",
       "removalVersion": "3.0.0",
       "bootstrapAllowed": false,
-      "source": "runtime/src/core/config-runtime.ts domain schema (#753C1)",
-      "migrationDisposition": "migrated-to-domain-config"
+      "source": "Retired Core retry/rotation/trigger configuration (#1673)",
+      "migrationDisposition": "removed-reference-only"
     },
     {
       "name": "PICLAW_COMPACTION_BACKOFF_MAX_MS",
@@ -553,54 +523,36 @@
       "owner": "core",
       "type": "number",
       "default": 100,
-      "bounds": ">0..100 percent",
+      "bounds": null,
       "allowedValues": [],
       "secret": false,
-      "persistence": [
-        "env",
-        "dotenv",
-        "json-config"
-      ],
-      "precedence": [
-        "process.env",
-        ".env",
-        "json-config",
-        "defaults"
-      ],
-      "status": "supported",
+      "persistence": [],
+      "precedence": [],
+      "status": "removed",
       "compatibilityAliasFor": "domains.compaction.hardCeilingPercent",
       "deprecation": "compatibility env alias for domains.compaction.hardCeilingPercent",
       "removalVersion": "3.0.0",
       "bootstrapAllowed": false,
-      "source": "runtime/src/core/config-runtime.ts domain schema (#753C1)",
-      "migrationDisposition": "migrated-to-domain-config"
+      "source": "Retired Core retry/rotation/trigger configuration (#1673)",
+      "migrationDisposition": "removed-reference-only"
     },
     {
       "name": "PICLAW_COMPACTION_MAX_THRESHOLD_TOKENS",
       "owner": "core",
       "type": "integer",
       "default": 0,
-      "bounds": "non-negative integer tokens",
+      "bounds": null,
       "allowedValues": [],
       "secret": false,
-      "persistence": [
-        "env",
-        "dotenv",
-        "json-config"
-      ],
-      "precedence": [
-        "process.env",
-        ".env",
-        "json-config",
-        "defaults"
-      ],
-      "status": "supported",
+      "persistence": [],
+      "precedence": [],
+      "status": "removed",
       "compatibilityAliasFor": "domains.compaction.maxThresholdTokens",
       "deprecation": "compatibility env alias for domains.compaction.maxThresholdTokens",
       "removalVersion": "3.0.0",
       "bootstrapAllowed": false,
-      "source": "runtime/src/core/config-runtime.ts domain schema (#753C1)",
-      "migrationDisposition": "migrated-to-domain-config"
+      "source": "Retired Core retry/rotation/trigger configuration (#1673)",
+      "migrationDisposition": "removed-reference-only"
     },
     {
       "name": "PICLAW_COMPACTION_MAX_WORK_UNITS",
@@ -669,27 +621,18 @@
       "owner": "core",
       "type": "number",
       "default": 80,
-      "bounds": ">0..100 percent",
+      "bounds": null,
       "allowedValues": [],
       "secret": false,
-      "persistence": [
-        "env",
-        "dotenv",
-        "json-config"
-      ],
-      "precedence": [
-        "process.env",
-        ".env",
-        "json-config",
-        "defaults"
-      ],
-      "status": "supported",
+      "persistence": [],
+      "precedence": [],
+      "status": "removed",
       "compatibilityAliasFor": "domains.compaction.thresholdPercent",
       "deprecation": "compatibility env alias for domains.compaction.thresholdPercent",
       "removalVersion": "3.0.0",
       "bootstrapAllowed": false,
-      "source": "runtime/src/core/config-runtime.ts domain schema (#753C1)",
-      "migrationDisposition": "migrated-to-domain-config"
+      "source": "Retired Core retry/rotation/trigger configuration (#1673)",
+      "migrationDisposition": "removed-reference-only"
     },
     {
       "name": "PICLAW_COMPACTION_TIMEOUT_MS",
@@ -723,27 +666,18 @@
       "owner": "core",
       "type": "integer",
       "default": 3,
-      "bounds": "non-negative integer",
+      "bounds": null,
       "allowedValues": [],
       "secret": false,
-      "persistence": [
-        "env",
-        "dotenv",
-        "json-config"
-      ],
-      "precedence": [
-        "process.env",
-        ".env",
-        "json-config",
-        "defaults"
-      ],
-      "status": "supported",
+      "persistence": [],
+      "precedence": [],
+      "status": "removed",
       "compatibilityAliasFor": "domains.compaction.warningThreshold",
       "deprecation": "compatibility env alias for domains.compaction.warningThreshold",
       "removalVersion": "3.0.0",
       "bootstrapAllowed": false,
-      "source": "runtime/src/core/config-runtime.ts domain schema (#753C1)",
-      "migrationDisposition": "migrated-to-domain-config"
+      "source": "Retired Core retry/rotation/trigger configuration (#1673)",
+      "migrationDisposition": "removed-reference-only"
     },
     {
       "name": "PICLAW_CONFIG_PATH",
@@ -1196,27 +1130,18 @@
       "owner": "agent-runtime",
       "type": "integer",
       "default": 5000,
-      "bounds": "non-negative integer ms",
+      "bounds": null,
       "allowedValues": [],
       "secret": false,
-      "persistence": [
-        "env",
-        "dotenv",
-        "json-config"
-      ],
-      "precedence": [
-        "process.env",
-        ".env",
-        "json-config",
-        "defaults"
-      ],
-      "status": "supported",
+      "persistence": [],
+      "precedence": [],
+      "status": "removed",
       "compatibilityAliasFor": "domains.compaction.idleAutoCompactionDelayMs",
       "deprecation": "compatibility env alias for domains.compaction.idleAutoCompactionDelayMs",
       "removalVersion": "3.0.0",
       "bootstrapAllowed": false,
-      "source": "runtime/src/core/config-runtime.ts domain schema (#753C2a)",
-      "migrationDisposition": "migrated-to-domain-config"
+      "source": "Retired Core retry/rotation/trigger configuration (#1673)",
+      "migrationDisposition": "removed-reference-only"
     },
     {
       "name": "PICLAW_INTERNAL_SECRET",
@@ -1648,27 +1573,18 @@
       "owner": "web",
       "type": "integer",
       "default": 250,
-      "bounds": "non-negative integer ms",
+      "bounds": null,
       "allowedValues": [],
       "secret": false,
-      "persistence": [
-        "env",
-        "dotenv",
-        "json-config"
-      ],
-      "precedence": [
-        "process.env",
-        ".env",
-        "json-config",
-        "defaults"
-      ],
-      "status": "supported",
+      "persistence": [],
+      "precedence": [],
+      "status": "removed",
       "compatibilityAliasFor": "domains.compaction.prePromptForegroundMs",
       "deprecation": "compatibility env alias for domains.compaction.prePromptForegroundMs",
       "removalVersion": "3.0.0",
       "bootstrapAllowed": false,
-      "source": "runtime/src/core/config-runtime.ts domain schema (#753C2a)",
-      "migrationDisposition": "migrated-to-domain-config"
+      "source": "Retired Core retry/rotation/trigger configuration (#1673)",
+      "migrationDisposition": "removed-reference-only"
     },
     {
       "name": "PICLAW_PROGRESS_WATCHDOG_ENABLED",
@@ -2052,78 +1968,51 @@
         "off"
       ],
       "secret": false,
-      "persistence": [
-        "env",
-        "dotenv",
-        "json-config"
-      ],
-      "precedence": [
-        "process.env",
-        ".env",
-        "json-config",
-        "defaults"
-      ],
-      "status": "supported",
+      "persistence": [],
+      "precedence": [],
+      "status": "removed",
       "compatibilityAliasFor": "domains.recovery.loopGuardEnabled",
       "deprecation": "compatibility env alias for domains.recovery.loopGuardEnabled",
       "removalVersion": "3.0.0",
       "bootstrapAllowed": false,
-      "source": "runtime/src/core/config-runtime.ts domain schema (#753B1)",
-      "migrationDisposition": "migrated-to-domain-config"
+      "source": "Retired Core retry/rotation/trigger configuration (#1673)",
+      "migrationDisposition": "removed-reference-only"
     },
     {
       "name": "PICLAW_RECOVERY_LOOP_GUARD_MAX_FAILURES",
       "owner": "agent-runtime",
       "type": "integer",
       "default": 3,
-      "bounds": "positive integer failures",
+      "bounds": null,
       "allowedValues": [],
       "secret": false,
-      "persistence": [
-        "env",
-        "dotenv",
-        "json-config"
-      ],
-      "precedence": [
-        "process.env",
-        ".env",
-        "json-config",
-        "defaults"
-      ],
-      "status": "supported",
+      "persistence": [],
+      "precedence": [],
+      "status": "removed",
       "compatibilityAliasFor": "domains.recovery.loopGuardMaxFailures",
       "deprecation": "compatibility env alias for domains.recovery.loopGuardMaxFailures",
       "removalVersion": "3.0.0",
       "bootstrapAllowed": false,
-      "source": "runtime/src/core/config-runtime.ts domain schema (#753B1)",
-      "migrationDisposition": "migrated-to-domain-config"
+      "source": "Retired Core retry/rotation/trigger configuration (#1673)",
+      "migrationDisposition": "removed-reference-only"
     },
     {
       "name": "PICLAW_RECOVERY_LOOP_GUARD_WINDOW_MS",
       "owner": "agent-runtime",
       "type": "integer",
       "default": 600000,
-      "bounds": "positive integer ms",
+      "bounds": null,
       "allowedValues": [],
       "secret": false,
-      "persistence": [
-        "env",
-        "dotenv",
-        "json-config"
-      ],
-      "precedence": [
-        "process.env",
-        ".env",
-        "json-config",
-        "defaults"
-      ],
-      "status": "supported",
+      "persistence": [],
+      "precedence": [],
+      "status": "removed",
       "compatibilityAliasFor": "domains.recovery.loopGuardWindowMs",
       "deprecation": "compatibility env alias for domains.recovery.loopGuardWindowMs",
       "removalVersion": "3.0.0",
       "bootstrapAllowed": false,
-      "source": "runtime/src/core/config-runtime.ts domain schema (#753B1)",
-      "migrationDisposition": "migrated-to-domain-config"
+      "source": "Retired Core retry/rotation/trigger configuration (#1673)",
+      "migrationDisposition": "removed-reference-only"
     },
     {
       "name": "PICLAW_RUNTIME_DOCS_DIR",
@@ -2254,24 +2143,15 @@
         "off"
       ],
       "secret": false,
-      "persistence": [
-        "env",
-        "dotenv",
-        "json-config"
-      ],
-      "precedence": [
-        "process.env",
-        ".env",
-        "json-config",
-        "defaults"
-      ],
-      "status": "supported",
+      "persistence": [],
+      "precedence": [],
+      "status": "removed",
       "compatibilityAliasFor": "domains.session.autoRotate",
       "deprecation": "compatibility env alias for domains.session.autoRotate",
       "removalVersion": "3.0.0",
       "bootstrapAllowed": false,
-      "source": "runtime/src/core/config-runtime.ts domain schema (#753A1)",
-      "migrationDisposition": "migrated-to-domain-config"
+      "source": "Retired Core retry/rotation/trigger configuration (#1673)",
+      "migrationDisposition": "removed-reference-only"
     },
     {
       "name": "PICLAW_SESSION_CLEANUP_INTERVAL_MS",
@@ -2332,18 +2212,18 @@
       "owner": "agent-runtime",
       "type": "integer",
       "default": null,
-      "bounds": "implementation-only tuning; source-defined default and bounds",
+      "bounds": null,
       "allowedValues": [],
       "secret": false,
       "persistence": [],
       "precedence": [],
-      "status": "internal",
+      "status": "removed",
       "compatibilityAliasFor": null,
       "deprecation": null,
       "removalVersion": null,
       "bootstrapAllowed": false,
-      "source": "runtime implementation tuning retained outside public config",
-      "migrationDisposition": "internal-runtime-tuning",
+      "source": "Legacy session idle-wait owner retired (#1673)",
+      "migrationDisposition": "removed-reference-only",
       "supportedPersistence": []
     },
     {
@@ -2351,18 +2231,18 @@
       "owner": "agent-runtime",
       "type": "integer",
       "default": null,
-      "bounds": "implementation-only tuning; source-defined default and bounds",
+      "bounds": null,
       "allowedValues": [],
       "secret": false,
       "persistence": [],
       "precedence": [],
-      "status": "internal",
+      "status": "removed",
       "compatibilityAliasFor": null,
       "deprecation": null,
       "removalVersion": null,
       "bootstrapAllowed": false,
-      "source": "runtime implementation tuning retained outside public config",
-      "migrationDisposition": "internal-runtime-tuning",
+      "source": "Legacy session idle-wait owner retired (#1673)",
+      "migrationDisposition": "removed-reference-only",
       "supportedPersistence": []
     },
     {
@@ -2428,81 +2308,54 @@
       "owner": "session",
       "type": "integer",
       "default": 3,
-      "bounds": "1..20 compactions",
+      "bounds": null,
       "allowedValues": [],
       "secret": false,
-      "persistence": [
-        "env",
-        "dotenv",
-        "json-config"
-      ],
-      "precedence": [
-        "process.env",
-        ".env",
-        "json-config",
-        "defaults"
-      ],
-      "status": "supported",
+      "persistence": [],
+      "precedence": [],
+      "status": "removed",
       "compatibilityAliasFor": "domains.session.maxCompactionsBeforeRotation",
       "deprecation": "compatibility env alias for domains.session.maxCompactionsBeforeRotation",
       "removalVersion": "3.0.0",
       "bootstrapAllowed": false,
-      "source": "runtime/src/core/config-runtime.ts domain schema (#753A1)",
-      "migrationDisposition": "migrated-to-domain-config"
+      "source": "Retired Core retry/rotation/trigger configuration (#1673)",
+      "migrationDisposition": "removed-reference-only"
     },
     {
       "name": "PICLAW_SESSION_MAX_LINES",
       "owner": "session",
       "type": "integer",
       "default": 8000,
-      "bounds": "100..50000 lines",
+      "bounds": null,
       "allowedValues": [],
       "secret": false,
-      "persistence": [
-        "env",
-        "dotenv",
-        "json-config"
-      ],
-      "precedence": [
-        "process.env",
-        ".env",
-        "json-config",
-        "defaults"
-      ],
-      "status": "supported",
+      "persistence": [],
+      "precedence": [],
+      "status": "removed",
       "compatibilityAliasFor": "domains.session.maxLines",
       "deprecation": "compatibility env alias for domains.session.maxLines",
       "removalVersion": "3.0.0",
       "bootstrapAllowed": false,
-      "source": "runtime/src/core/config-runtime.ts domain schema (#753A1)",
-      "migrationDisposition": "migrated-to-domain-config"
+      "source": "Retired Core retry/rotation/trigger configuration (#1673)",
+      "migrationDisposition": "removed-reference-only"
     },
     {
       "name": "PICLAW_SESSION_MAX_SIZE_MB",
       "owner": "session",
       "type": "integer",
       "default": 32,
-      "bounds": "1..256 MiB",
+      "bounds": null,
       "allowedValues": [],
       "secret": false,
-      "persistence": [
-        "env",
-        "dotenv",
-        "json-config"
-      ],
-      "precedence": [
-        "process.env",
-        ".env",
-        "json-config",
-        "defaults"
-      ],
-      "status": "supported",
+      "persistence": [],
+      "precedence": [],
+      "status": "removed",
       "compatibilityAliasFor": "domains.session.maxSizeMb",
       "deprecation": "compatibility env alias for domains.session.maxSizeMb",
       "removalVersion": "3.0.0",
       "bootstrapAllowed": false,
-      "source": "runtime/src/core/config-runtime.ts domain schema (#753A1)",
-      "migrationDisposition": "migrated-to-domain-config"
+      "source": "Retired Core retry/rotation/trigger configuration (#1673)",
+      "migrationDisposition": "removed-reference-only"
     },
     {
       "name": "PICLAW_SESSION_POOL_MAX_SIZE",
@@ -2930,77 +2783,54 @@
       "owner": "web",
       "type": "integer",
       "default": 14400000,
-      "bounds": "positive integer ms",
+      "bounds": null,
       "allowedValues": [],
       "secret": false,
-      "persistence": [
-        "env",
-        "dotenv",
-        "json-config"
-      ],
-      "precedence": [
-        "process.env",
-        ".env",
-        "json-config",
-        "defaults"
-      ],
-      "status": "supported",
+      "persistence": [],
+      "precedence": [],
+      "status": "removed",
       "compatibilityAliasFor": "domains.webRecovery.stalePreflightBackoffMs",
       "deprecation": "compatibility env alias for domains.webRecovery.stalePreflightBackoffMs",
       "removalVersion": "3.0.0",
       "bootstrapAllowed": false,
-      "source": "runtime/src/core/config-runtime.ts domain schema (#753B1)",
-      "migrationDisposition": "migrated-to-domain-config"
+      "source": "Retired Core retry/rotation/trigger configuration (#1673)",
+      "migrationDisposition": "removed-reference-only"
     },
     {
       "name": "PICLAW_STALE_PREFLIGHT_RECOVERY_MS",
       "owner": "web",
       "type": "integer",
       "default": 240000,
-      "bounds": "positive integer ms",
+      "bounds": null,
       "allowedValues": [],
       "secret": false,
-      "persistence": [
-        "env",
-        "dotenv",
-        "json-config"
-      ],
-      "precedence": [
-        "process.env",
-        ".env",
-        "json-config",
-        "defaults"
-      ],
-      "status": "supported",
+      "persistence": [],
+      "precedence": [],
+      "status": "removed",
       "compatibilityAliasFor": "domains.webRecovery.stalePreflightRecoveryMs",
       "deprecation": "compatibility env alias for domains.webRecovery.stalePreflightRecoveryMs",
       "removalVersion": "3.0.0",
       "bootstrapAllowed": false,
-      "source": "runtime/src/core/config-runtime.ts domain schema (#753B1)",
-      "migrationDisposition": "migrated-to-domain-config"
+      "source": "Retired Core retry/rotation/trigger configuration (#1673)",
+      "migrationDisposition": "removed-reference-only"
     },
     {
       "name": "PICLAW_STARTUP_WARM_DEFAULT_CHAT",
       "owner": "core",
       "type": "boolean",
       "default": false,
-      "bounds": "startup-only boolean",
+      "bounds": null,
       "allowedValues": [],
       "secret": false,
-      "persistence": [
-        "env"
-      ],
-      "precedence": [
-        "process.env",
-        "default"
-      ],
-      "status": "supported",
+      "persistence": [],
+      "precedence": [],
+      "status": "removed",
       "compatibilityAliasFor": null,
       "deprecation": null,
       "removalVersion": null,
       "bootstrapAllowed": false,
-      "source": "startup session warmup policy",
-      "migrationDisposition": "retain-startup-tuning",
+      "source": "Legacy startup session prewarm retired (#1672)",
+      "migrationDisposition": "removed-reference-only",
       "supportedPersistence": [
         "env"
       ]
@@ -3010,23 +2840,18 @@
       "owner": "core",
       "type": "integer",
       "default": 0,
-      "bounds": "0..8 chats",
+      "bounds": null,
       "allowedValues": [],
       "secret": false,
-      "persistence": [
-        "env"
-      ],
-      "precedence": [
-        "process.env",
-        "default"
-      ],
-      "status": "supported",
+      "persistence": [],
+      "precedence": [],
+      "status": "removed",
       "compatibilityAliasFor": null,
       "deprecation": null,
       "removalVersion": null,
       "bootstrapAllowed": false,
-      "source": "startup session warmup policy",
-      "migrationDisposition": "retain-startup-tuning",
+      "source": "Legacy startup session prewarm retired (#1672)",
+      "migrationDisposition": "removed-reference-only",
       "supportedPersistence": [
         "env"
       ]
@@ -3673,78 +3498,51 @@
         "off"
       ],
       "secret": false,
-      "persistence": [
-        "env",
-        "dotenv",
-        "json-config"
-      ],
-      "precedence": [
-        "process.env",
-        ".env",
-        "json-config",
-        "defaults"
-      ],
-      "status": "supported",
+      "persistence": [],
+      "precedence": [],
+      "status": "removed",
       "compatibilityAliasFor": "domains.recovery.automaticRecoveryEnabled",
       "deprecation": "compatibility env alias for domains.recovery.automaticRecoveryEnabled",
       "removalVersion": "3.0.0",
       "bootstrapAllowed": false,
-      "source": "runtime/src/core/config-runtime.ts domain schema (#753B1)",
-      "migrationDisposition": "migrated-to-domain-config"
+      "source": "Retired Core retry/rotation/trigger configuration (#1673)",
+      "migrationDisposition": "removed-reference-only"
     },
     {
       "name": "PICLAW_TURN_AUTO_RECOVERY_MAX_ATTEMPTS",
       "owner": "agent-runtime",
       "type": "integer",
       "default": 0,
-      "bounds": "positive env override; domain 0 inherits retry max",
+      "bounds": null,
       "allowedValues": [],
       "secret": false,
-      "persistence": [
-        "env",
-        "dotenv",
-        "json-config"
-      ],
-      "precedence": [
-        "process.env",
-        ".env",
-        "json-config",
-        "defaults"
-      ],
-      "status": "supported",
+      "persistence": [],
+      "precedence": [],
+      "status": "removed",
       "compatibilityAliasFor": "domains.recovery.automaticRecoveryMaxAttempts",
       "deprecation": "compatibility env alias for domains.recovery.automaticRecoveryMaxAttempts",
       "removalVersion": "3.0.0",
       "bootstrapAllowed": false,
-      "source": "runtime/src/core/config-runtime.ts domain schema (#753B1)",
-      "migrationDisposition": "migrated-to-domain-config"
+      "source": "Retired Core retry/rotation/trigger configuration (#1673)",
+      "migrationDisposition": "removed-reference-only"
     },
     {
       "name": "PICLAW_TURN_AUTO_RECOVERY_TOTAL_BUDGET_MS",
       "owner": "agent-runtime",
       "type": "integer",
       "default": 30000,
-      "bounds": "positive integer ms",
+      "bounds": null,
       "allowedValues": [],
       "secret": false,
-      "persistence": [
-        "env",
-        "dotenv",
-        "json-config"
-      ],
-      "precedence": [
-        "process.env",
-        ".env",
-        "json-config",
-        "defaults"
-      ],
-      "status": "supported",
+      "persistence": [],
+      "precedence": [],
+      "status": "removed",
       "compatibilityAliasFor": "domains.recovery.automaticRecoveryTotalBudgetMs",
       "deprecation": "compatibility env alias for domains.recovery.automaticRecoveryTotalBudgetMs",
       "removalVersion": "3.0.0",
       "bootstrapAllowed": false,
-      "source": "runtime/src/core/config-runtime.ts domain schema (#753B1)",
-      "migrationDisposition": "migrated-to-domain-config"
+      "source": "Retired Core retry/rotation/trigger configuration (#1673)",
+      "migrationDisposition": "removed-reference-only"
     },
     {
       "name": "PICLAW_TURN_MAX_TOOL_EXECUTIONS",
@@ -3821,24 +3619,15 @@
         "off"
       ],
       "secret": false,
-      "persistence": [
-        "env",
-        "dotenv",
-        "json-config"
-      ],
-      "precedence": [
-        "process.env",
-        ".env",
-        "json-config",
-        "defaults"
-      ],
-      "status": "supported",
+      "persistence": [],
+      "precedence": [],
+      "status": "removed",
       "compatibilityAliasFor": "domains.recovery.transientRecoveryEnabled",
       "deprecation": "compatibility env alias for domains.recovery.transientRecoveryEnabled",
       "removalVersion": "3.0.0",
       "bootstrapAllowed": false,
-      "source": "runtime/src/core/config-runtime.ts domain schema (#753B1)",
-      "migrationDisposition": "migrated-to-domain-config"
+      "source": "Retired Core retry/rotation/trigger configuration (#1673)",
+      "migrationDisposition": "removed-reference-only"
     },
     {
       "name": "PICLAW_TURN_TRANSIENT_RECOVERY_TOOLS_ENABLED",
@@ -3857,24 +3646,15 @@
         "off"
       ],
       "secret": false,
-      "persistence": [
-        "env",
-        "dotenv",
-        "json-config"
-      ],
-      "precedence": [
-        "process.env",
-        ".env",
-        "json-config",
-        "defaults"
-      ],
-      "status": "supported",
+      "persistence": [],
+      "precedence": [],
+      "status": "removed",
       "compatibilityAliasFor": "domains.recovery.transientRecoveryToolsEnabled",
       "deprecation": "compatibility env alias for domains.recovery.transientRecoveryToolsEnabled",
       "removalVersion": "3.0.0",
       "bootstrapAllowed": false,
-      "source": "runtime/src/core/config-runtime.ts domain schema (#753B1)",
-      "migrationDisposition": "migrated-to-domain-config"
+      "source": "Retired Core retry/rotation/trigger configuration (#1673)",
+      "migrationDisposition": "removed-reference-only"
     },
     {
       "name": "PICLAW_UNKNOWN_MODEL_CONTEXT_WINDOW",
@@ -4672,31 +4452,19 @@
       "name": "PICLAW_WEB_UI_MODE",
       "owner": "web",
       "type": "enum",
-      "default": "classic",
+      "default": null,
       "bounds": null,
-      "allowedValues": [
-        "classic",
-        "visual"
-      ],
+      "allowedValues": null,
       "secret": false,
-      "persistence": [
-        "env",
-        "dotenv",
-        "json-config"
-      ],
-      "precedence": [
-        "process.env",
-        ".env",
-        "json-config",
-        "defaults"
-      ],
-      "status": "supported",
-      "compatibilityAliasFor": "domains.web.uiMode",
-      "deprecation": "compatibility env alias for domains.web.uiMode",
+      "persistence": [],
+      "precedence": [],
+      "status": "removed",
+      "compatibilityAliasFor": null,
+      "deprecation": "Visual removed in #1990; selection ignored with a deprecation warning",
       "removalVersion": "3.0.0",
       "bootstrapAllowed": false,
-      "source": "runtime/src/core/config-web.ts domain schema (#752A)",
-      "migrationDisposition": "migrated-to-domain-config"
+      "source": "runtime/src/core/config-web.ts retirement warning (#1990)",
+      "migrationDisposition": "remove"
     },
     {
       "name": "PICLAW_WEB_VNC_ALLOW_DIRECT",

@@ -53,23 +53,27 @@ export function isCompressible(contentType: string): boolean {
  * Compress data if eligible. Returns { data, metadata } with the
  * compressed flag set in metadata when compression was applied.
  */
+export function compressMedia(
+  data: Uint8Array,
+  contentType: string,
+  metadata: Record<string, unknown> | null,
+): { data: Uint8Array; metadata: Record<string, unknown> | null } {
+  if (!isCompressible(contentType) || data.length < MIN_COMPRESS_SIZE) return { data, metadata };
+  const compressed = compress(data);
+  if (compressed.length >= data.length) return { data, metadata };
+  const updatedMeta = { ...(metadata || {}), compressed: "gzip", originalSize: data.length };
+  return { data: compressed, metadata: updatedMeta };
+}
+
+/** Ordinary media writes retain their existing lossless, raw-data fallback.
+ * Migrations use compressMedia so a compressor failure is not a skipped row. */
 export function maybeCompress(
   data: Uint8Array,
   contentType: string,
   metadata: Record<string, unknown> | null,
 ): { data: Uint8Array; metadata: Record<string, unknown> | null } {
-  if (!isCompressible(contentType) || data.length < MIN_COMPRESS_SIZE) {
-    return { data, metadata };
-  }
-  try {
-    const compressed = compress(data);
-    // Only keep compressed version if it's actually smaller
-    if (compressed.length >= data.length) return { data, metadata };
-    const updatedMeta = { ...(metadata || {}), compressed: "gzip", originalSize: data.length };
-    return { data: new Uint8Array(compressed), metadata: updatedMeta };
-  } catch {
-    return { data, metadata };
-  }
+  try { return compressMedia(data, contentType, metadata); }
+  catch { return { data, metadata }; }
 }
 
 /**

@@ -7,7 +7,6 @@ interface UseMainAppOrchestrationCompositionOptions {
   routeState: {
     currentChatJid: string;
     currentRootChatJid: string;
-    chatOnlyMode: boolean;
     navigate: (url: string, options?: Record<string, unknown>) => void;
     branchLoaderMode: boolean;
     branchLoaderSourceChatJid: string;
@@ -109,7 +108,6 @@ export function composeMainAppLifecycleCompositionOptions(options: UseMainAppOrc
     pendingRequestRef: refs.pendingRequestRef,
     thoughtBufferRef: refs.thoughtBufferRef,
     draftBufferRef: refs.draftBufferRef,
-    previewResyncPendingRef: refs.previewResyncPendingRef,
     previewResyncGenerationRef: refs.previewResyncGenerationRef,
     setAgentStatus: setters.setAgentStatus,
     setAgentDraft: setters.setAgentDraft,
@@ -295,7 +293,6 @@ export function useMainAppOrchestrationComposition(options: UseMainAppOrchestrat
     activeThinkingLevel: shellState.activeThinkingLevel,
     supportsThinking: shellState.supportsThinking,
     isAgentTurnActive: services.isAgentTurnActive,
-    chatOnlyMode: routeState.chatOnlyMode,
     navigate: routeState.navigate,
     setWorkspaceOpen: shellState.setWorkspaceOpen,
     currentBranchRecord: shellState.currentBranchRecord,

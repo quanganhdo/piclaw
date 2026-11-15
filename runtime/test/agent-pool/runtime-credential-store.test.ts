@@ -3,7 +3,7 @@ import { addLogSink, removeLogSink, type LogRecord } from "../../src/utils/logge
 
 import type { CredentialStore } from "@earendil-works/pi-ai";
 import { createRuntimeCredentialStore } from "../../src/agent-pool/runtime-credential-store.js";
-import { classifyOpaqueAgentFailure } from "../../src/agent-pool/automatic-recovery.js";
+import { classifyOpaqueAgentFailure } from "../helpers/recovery-classification.js";
 import { FileCredentialStore } from "../../src/agent-pool/credential-store.js";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";

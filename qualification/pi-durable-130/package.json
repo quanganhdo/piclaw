@@ -1,0 +1,24 @@
+{
+  "name": "piclaw-pi-durable-130-qualification",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bun ./scripts/test-isolated.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "test:goal-tools": "bun ../../runtime/scripts/local-test-priority.ts --cwd . -- bun test ./goal-tools.test.ts ./goal-usage.test.ts ./goal-settlement.test.ts ./goal-terminal-race.test.ts ./installed-goal-catalog.test.ts",
+    "test:codex": "bun ../../runtime/scripts/local-test-priority.ts --cwd . -- bun test ./host-codex-model-services.test.ts ./host-codex-output.test.ts ./host-codex-process.test.ts ./host-codex-provider-tools.test.ts"
+  },
+  "devDependencies": {
+    "@azure/monitor-opentelemetry": "1.19.0",
+    "@number0/iroh": "1.1.0",
+    "@opentelemetry/api": "1.9.0",
+    "@opentelemetry/resources": "2.10.0",
+    "@types/bun": "1.4.4",
+    "tree-sitter-bash": "0.25.1",
+    "typescript": "7.0.2",
+    "web-tree-sitter": "0.27.1"
+  },
+  "optionalDependencies": {
+    "@number0/iroh-linux-x64-gnu": "1.1.0"
+  }
+}

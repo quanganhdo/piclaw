@@ -63,22 +63,17 @@ test("general settings keeps unsaved browser-local avatar previews direct", () =
   expect(resolveAvatarPreview("avatar.png", "unknown")).toBe("");
 });
 
-test("Sessions renders automatic or exact recovery budgets in milliseconds", () => {
-  const source = readFileSync(join(runtimeRoot, "web/src/components/settings/sessions.ts"), "utf8");
-  expect(source).toContain("settings.general.agentRecovery");
-  expect(source).toContain("automaticRecoveryEnabled");
-  expect(source).toContain("automaticRecoveryMaxAttempts");
-  expect(source).toContain("automaticRecoveryTotalBudgetMs");
-  expect(source).toContain("settings.general.recoveryTotalBudgetHint");
-  expect(source).toContain("min=${0}");
-  expect(source).toContain("fallback=${0}");
-  expect(source).toContain("automaticRecoveryEffectiveBudgetMs");
-  expect(source).toContain("step=${1000}");
+test('both Sessions panes omit retired policy controls and keep active budget/isolation',()=>{
+  for(const path of ['web/src/components/settings/sessions.ts']){
+    const source=readFileSync(join(runtimeRoot,path),'utf8');
+    for(const key of ["sessionAutoRotate","sessionMaxSizeMb","sessionMaxLines","sessionMaxCompactions","automaticRecoveryEnabled","automaticRecoveryMaxAttempts","automaticRecoveryTotalBudgetMs","automaticRecoveryEffectiveBudgetMs"])expect(source).not.toContain(key);
+    expect(source).toContain('toolUseBudget');expect(source).toContain('sessionIsolation');
+  }
 });
 
 test("general settings passes explicit avatar kinds to both identity fields", () => {
   const source = readFileSync(join(runtimeRoot, "web/src/components/settings/general.ts"), "utf8");
-  expect(source).toContain('<${AvatarField} kind="user" value=${userAvatar}');
-  expect(source).toContain('<${AvatarField} kind="agent" value=${assistantAvatar}');
+  expect(source).toContain('<${AvatarField} kind="user" label=${t(\'settings.general.userLabel\')} value=${userAvatar}');
+  expect(source).toContain('<${AvatarField} kind="agent" label=${t(\'settings.general.agentLabel\')} value=${assistantAvatar}');
   expect(source).not.toContain("/workspace/file?path=");
 });

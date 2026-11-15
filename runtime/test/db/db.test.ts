@@ -397,7 +397,7 @@ test("mergeChatBranchIntoParent moves child chat state into its parent", () => {
   expect(db.getDb().prepare("SELECT COUNT(*) AS count FROM extension_kv WHERE scope = 'chat' AND scope_key = ?").get(rootChatJid)).toEqual({ count: 1 });
 });
 
-test("mergeChatBranchIntoParent materializes queued followups instead of carrying queue state", () => {
+test("mergeChatBranchIntoParent refuses preserved legacy queue bytes without moving or rewriting history", () => {
   const rootChatJid = `web:test-merge-queue-root-${Date.now()}`;
   const branchChatJid = `${rootChatJid}:branch:queued`;
   const now = new Date().toISOString();
@@ -430,16 +430,9 @@ test("mergeChatBranchIntoParent materializes queued followups instead of carryin
     },
   ]);
 
-  const result = db.mergeChatBranchIntoParent(branchChatJid);
-
-  expect(result.counts.messages).toBe(2);
-  expect(db.getDeferredQueuedFollowups(rootChatJid)).toEqual([]);
-  expect(db.getDeferredQueuedFollowups(branchChatJid)).toEqual([]);
-  expect(db.getDb().prepare("SELECT COUNT(*) AS count FROM chat_cursors WHERE chat_jid = ? AND queued_followups_json IS NOT NULL").get(rootChatJid)).toEqual({ count: 0 });
-  expect(db.getChatCursor(rootChatJid)).toBe(later);
-  expect(db.getDb().prepare("SELECT COUNT(*) AS count FROM messages WHERE chat_jid = ? AND content = ?").get(rootChatJid, "already queued")).toEqual({ count: 1 });
-  expect(db.getDb().prepare("SELECT COUNT(*) AS count FROM messages WHERE chat_jid = ? AND content = ?").get(rootChatJid, "deferred queued")).toEqual({ count: 1 });
-  expect(db.getDb().prepare("SELECT COUNT(*) AS count FROM messages WHERE chat_jid = ?").get(branchChatJid)).toEqual({ count: 0 });
+  const before = ['chat_branches','chat_cursors','messages','chats'].map(table=>db.getDb().query(`SELECT * FROM ${table} ORDER BY rowid`).all());
+  expect(()=>db.mergeChatBranchIntoParent(branchChatJid)).toThrow('preserved legacy queue');
+  expect(['chat_branches','chat_cursors','messages','chats'].map(table=>db.getDb().query(`SELECT * FROM ${table} ORDER BY rowid`).all())).toEqual(before);
 });
 
 test("mergeChatBranchIntoParent rejects roots and branches with children", () => {
@@ -676,7 +669,7 @@ test("initDatabase migrates legacy chat branch uniqueness so pruned handles can 
         chat_jid: "web:default:branch:new",
         agent_name: "reusable",
       });
-      console.log(JSON.stringify({
+      console.log("CHAT_BRANCH_MIGRATION_RESULT=" + JSON.stringify({
         agent_name: renamed.agent_name,
         resolved_chat_jid: db.getChatBranchByAgentName("reusable")?.chat_jid || null,
       }));
@@ -694,7 +687,10 @@ test("initDatabase migrates legacy chat branch uniqueness so pruned handles can 
     });
 
     expect(result.status).toBe(0);
-    const output = JSON.parse(result.stdout.trim().split("\n").filter(Boolean).pop() || "{}");
+    const prefix = "CHAT_BRANCH_MIGRATION_RESULT=";
+    const line = result.stdout.split("\n").find(line => line.startsWith(prefix));
+    expect(line).toBeDefined();
+    const output = JSON.parse(line!.slice(prefix.length));
     expect(output.agent_name).toBe("reusable");
     expect(output.resolved_chat_jid).toBe("web:default:branch:new");
   } finally {
@@ -1098,3 +1094,20 @@ test("invalid JSON in content_blocks/link_previews is handled gracefully", () =>
   expect(message?.data.content_blocks).toBeUndefined();
   expect(message?.data.link_previews).toBeUndefined();
 });
+
+test("chat activity summaries return the last message time and latest non-empty assistant reply", async () => {
+  const { getChatActivitySummaries } = await import("../../src/db/messages.js");
+  const chatJid = `web:activity-${Date.now()}`;
+  db.storeMessage(makeMessage(chatJid, "first reply", "2026-11-10T10:00:00.000Z", true));
+  db.storeMessage(makeMessage(chatJid, "latest **reply** " + "x".repeat(600), "2026-11-10T10:01:00.000Z", true));
+  db.storeMessage(makeMessage(chatJid, "   ", "2026-11-10T10:02:00.000Z", true));
+  db.storeMessage(makeMessage(chatJid, "user follow-up", "2026-11-10T10:03:00.000Z"));
+  const summaries = getChatActivitySummaries([chatJid, " ", "web:missing-activity", chatJid]);
+  const summary = summaries.get(chatJid)!;
+  expect(summary.last_activity_at).toBe("2026-11-10T10:03:00.000Z");
+  expect(summary.last_reply!.startsWith("latest **reply** x")).toBe(true);
+  expect(summary.last_reply!.length).toBe(400);
+  expect(summaries.has("web:missing-activity")).toBe(false);
+  expect(getChatActivitySummaries([]).size).toBe(0);
+});
+

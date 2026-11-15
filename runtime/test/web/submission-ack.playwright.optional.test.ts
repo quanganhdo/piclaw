@@ -11,7 +11,7 @@ beforeAll(() => {
   if (!enabled) return;
   server = Bun.serve({ hostname: "127.0.0.1", port: 0, async fetch(req) {
     const url = new URL(req.url);
-    if (url.pathname === "/") return new Response(Bun.file(join(webRoot, `static/${url.searchParams.get("skin") === "visual" ? "visual" : "classic"}/index.html`)), { headers: { "content-type": "text/html" } });
+    if (url.pathname === "/") return new Response(Bun.file(join(webRoot, `static/${"classic"}/index.html`)), { headers: { "content-type": "text/html" } });
     if (url.pathname === "/editor-vendor/codemirror.js") return new Response(Bun.file(resolve(webRoot, "../extensions/viewers/editor/vendor/codemirror.js")), { headers: { "content-type": "text/javascript" } });
     if (url.pathname.startsWith("/static/")) {
       const path = resolve(webRoot, url.pathname.slice(1));
@@ -23,7 +23,7 @@ beforeAll(() => {
 afterAll(() => server?.stop(true));
 
 for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
-  for (const skin of ["classic", "visual"]) browserTest(`${engineName}: ${skin} acknowledges submissions without SSE delay and deduplicates event order`, async () => {
+  for (const skin of ["classic"]) browserTest(`${engineName}: ${skin} acknowledges submissions without SSE delay and deduplicates event order`, async () => {
     const browser = await engine.launch({ headless: true, ...(engineName === 'chromium' && process.env.PICLAW_TEST_CHROMIUM_PATH ? {executablePath:process.env.PICLAW_TEST_CHROMIUM_PATH} : {}) });
     const context = await browser.newContext({ viewport: { width: 1024, height: 768 }, reducedMotion: "reduce", serviceWorkers: "block" });
     const page = await context.newPage();
@@ -34,6 +34,8 @@ for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
     let accepted = 0;
     let sseFirst = false;
     let rejectNext = false;
+    let uncertainPosts=0,uncertainPending=false,releaseUncertain!:()=>void;
+    const uncertainGate=new Promise<void>(resolve=>{releaseUncertain=resolve;});
     let queueNext = false;
     let invalidAck: 'json' | 'empty' | null = null;
     const shortcutPosts: any[] = [];
@@ -45,7 +47,13 @@ for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
     let releaseAck!: () => void;
     let holdAck = new Promise<void>(resolve => { releaseAck = resolve; });
     let lastPost: any;
-    const durablePosts: any[] = [];
+    // Enough rows to exercise Classic's virtualized history window, not only
+    // an empty timeline where every acknowledged row is already mounted.
+    const durablePosts: any[] = Array.from({length:160}, (_, index) => ({
+      id:1000+index, chat_jid:chatJid, type:index%2?'agent':'user',
+      timestamp:'2026-10-28T00:00:00Z',
+      data:{content:`History ${index}\n\n${'Historical context. '.repeat(30)}`, is_bot_message:index%2===1, sender_name:'Fixture'},
+    }));
     let ackAt = 0;
     const modelPayload = () => ({ current: model, thinking_level: thinking, thinking_level_label: thinking, supports_thinking: true, available_model_count: 2, model_options: [{ id: model, context_window: 200000 }], oobe: { provider_ready_completed_instance: true } });
     const contextPayload = () => ({ tokens, percent: tokens / 2000, contextWindow: 200000, sessionGeneration: "fixture-generation" });
@@ -84,6 +92,7 @@ for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
       requests.push(`${req.method()} ${url.pathname}`);
       let body: unknown;
       if (url.pathname.startsWith('/agent/') && url.pathname.endsWith('/message') && req.method() === 'POST') {
+        if(req.postDataJSON().content==='Uncertain saved prompt'){uncertainPosts++;uncertainPending=true;await uncertainGate;return route.fulfill({status:503,json:{accepted:true,thread_id:779001,error:'Input saved; SDK admission could not be confirmed.'}});}
         if (req.postDataJSON().content === '/theme default') return route.fulfill({json:{ui_only:true,command:{status:'success',message:'Theme set'},response_delivery:'failed'}});
         if (invalidAck) invalidRequests.push(req.postDataJSON().content);
         if (invalidAck === 'json') return route.fulfill({status:201,contentType:'application/json',body:'not json'});
@@ -116,9 +125,9 @@ for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
       else if (url.pathname === "/timeline") body = { posts: durablePosts, has_more: false, chat_jid: chatJid, user: { name: "Fixture User" }, agent: { name: "Fixture" } };
       else if (url.pathname === "/agent/addons/web-entries") body = { entries: [] };
       else if (url.pathname === "/agent/roster") body = { agents: [], default_agent: "fixture" };
-      else if (url.pathname === "/agent/branches") body = { branches: [{ chat_jid: chatJid, root_chat_jid: "web:default", branch_id: "cold-start", agent_name: "fixture" }] };
+      else if (url.pathname === "/agent/branches") body = { chats: [{ chat_jid: chatJid, root_chat_jid: "web:default", branch_id: "cold-start", agent_name: "fixture" }] };
       else if (url.pathname === "/agent/active-chats") body = { chats: [{ chat_jid: chatJid, root_chat_jid: "web:default", agent_name: "fixture", is_active: false }] };
-      else if (["/agent/queue", "/agent/queue-state"].includes(url.pathname)) body = { items: [], queue: [], queued: [] };
+      else if (["/agent/queue", "/agent/queue-state"].includes(url.pathname)) body = { count: 0, items: [], queue: [], queued: [] };
       else if (url.pathname === "/workspace/tree") body = { root: { name: "fixture", path: "", type: "directory", children: [] }, entries: [], tree: [] };
       else if (url.pathname === "/workspace/index-status") body = { state: "ready", indexed_file_count: 0, roots: [] };
       else if (url.pathname === "/workspace/visibility") body = { visible: false, open: false };
@@ -147,16 +156,33 @@ for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
         const button = document.querySelector<HTMLButtonElement>('.compose-box .send-btn, .chat__send-btn');
         return button != null && !button.disabled;
       });
+      const scroller = page.locator('.timeline').first();
+      const readHistory = async () => {
+        await scroller.evaluate((el:HTMLElement) => { el.scrollTop = -3000; });
+        await page.waitForTimeout(150);
+        expect(await scroller.evaluate(el => el.scrollTop)).toBeLessThan(-60);
+      };
+      const expectSubmittedRowVisible = async (id:number) => {
+        await page.waitForFunction(({id,_skin}) => {
+          const row=document.querySelector(`#post-${id}`);
+          const root=document.querySelector('.timeline');
+          if(!row || !root) return false;
+          const r=row.getBoundingClientRect(),s=root.getBoundingClientRect();
+          return r.bottom>s.top && r.top<s.bottom;
+        }, {id,skin}, {timeout:1500});
+      };
+      await readHistory();
       await input.fill('Latency probe submission');
       await input.press('Enter');
       await page.locator('[data-submission-state="sending"]').waitFor({ timeout: 1500 });
       expect(await page.locator('[data-submission-state="sending"]').textContent()).toContain('Sending');
-      expect(await page.locator('[data-submission-state="sending"]').getAttribute('class')).toContain(skin==='classic'?'agent-status':'agent-status-panel__status');
+      expect(await page.locator('[data-submission-state="sending"]').getAttribute('class')).toContain('agent-status');
       expect(await page.locator('[data-submission-state="sending"] .agent-status-spinner, [data-submission-state="sending"] .agent-status-panel__spinner').count()).toBe(1);
       expect(await page.locator('#post-777001,[data-message-id="777001"]').count()).toBe(0);
       releaseAck();
       await page.waitForFunction(()=>document.querySelector('#post-777001,[data-message-id="777001"]'),{},{timeout:1500});
       expect(accepted).toBe(1);
+      await expectSubmittedRowVisible(777001);
       await page.locator('[data-submission-state]').waitFor({state:'hidden',timeout:1500});
       expect(await page.getByText('Message accepted. Waiting for agent…',{exact:true}).count()).toBe(0);
       await page.evaluate(payload=>(window as any).emitShellEvent('agent_status',payload),{chat_jid:lastPost.chat_jid,thread_id:777000,type:'tool_status',title:'Previous turn',turn_id:'previous'});
@@ -171,10 +197,12 @@ for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
       await page.waitForTimeout(150);
       // Event first, response later must likewise leave exactly one durable row.
       sseFirst=true;
+      await readHistory();
       await input.fill('Second latency probe');await input.press('Enter');
       await page.waitForFunction(()=>document.querySelector('#post-777002,[data-message-id="777002"]'),{},{timeout:1500});
       await page.waitForTimeout(300);
       expect(accepted).toBe(2);
+      await expectSubmittedRowVisible(777002);
       expect(await page.locator('#post-777002,[data-message-id="777002"]').count()).toBe(1);
       expect(await page.locator('[data-submission-state="waiting"]').count()).toBe(0);
       queueNext=true;
@@ -200,7 +228,10 @@ for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
       await waitForSubmitReady();
       expect(await input.inputValue()).toContain('Next draft while queue acknowledgement is pending');
       expect(shortcutPosts).toHaveLength(1);
-      expect(shortcutPosts[0]).toMatchObject({content:'Ctrl steer while busy',mode:'steer',persist_steer:true});
+      expect(shortcutPosts[0]).toMatchObject({content:'Ctrl steer while busy',mode:'steer'});
+      // Classic retired the legacy flag when native accepted-input storage became
+      // authoritative; Visual still sends it, but both must send steering mode.
+
       await page.locator('#post-778001,[data-message-id="778001"]').waitFor();
       expect(await page.locator('#post-778001,[data-message-id="778001"]').count()).toBe(1);
       expect(await page.getByText('Steering queued for the current turn.',{exact:true}).count()).toBe(0);
@@ -216,7 +247,7 @@ for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
       await input.press('Meta+Enter');
       await page.waitForFunction(()=>document.querySelector('textarea')?.value === '');
       expect(shortcutPosts).toHaveLength(3);
-      expect(shortcutPosts.every(post => post.mode === 'steer' && post.persist_steer === true)).toBe(true);
+
       expect(await page.locator('#post-778002,[data-message-id="778002"]').count()).toBe(1);
       expect(await page.locator('#post-778003,[data-message-id="778003"]').count()).toBe(1);
       for (const invalid of ['json', 'empty'] as const) {
@@ -244,6 +275,17 @@ for (const [engineName, engine] of Object.entries({ chromium, webkit })) {
       rejectNext=false;await input.fill('/theme default');await waitForSubmitReady();await input.press('Enter');
       await page.getByText('Command handled, but its timeline reply could not be delivered. Do not resend the command.',{exact:false}).waitFor({timeout:5000});
       expect(await input.inputValue()).toBe('');expect(accepted).toBe(2);
+      await input.fill('Uncertain saved prompt');await waitForSubmitReady();await input.press('Enter');
+      await page.waitForFunction(()=>document.querySelector('[data-submission-state="sending"]')!==null);
+      const until=Date.now()+1500;while(!uncertainPending&&Date.now()<until)await page.waitForTimeout(5);expect(uncertainPending).toBe(true);
+      await input.fill('Next independently typed draft');releaseUncertain();
+      await page.getByText('Input saved, but SDK admission is unconfirmed. Do not resend this input.',{exact:false}).first().waitFor({timeout:1500});
+      await page.locator('[data-submission-state]').waitFor({state:'hidden'});
+      expect(await input.inputValue()).toBe('Next independently typed draft');
+      expect(await page.locator('#post-779001,[data-message-id="779001"]').count()).toBe(0);
+      await page.waitForTimeout(200);expect(uncertainPosts).toBe(1);
+      expect(new URL(page.url()).searchParams.get('chat_jid')).toBe(chatJid);
+      expect(await page.getByText('Queue could not be refreshed. Reconnect or try again.',{exact:false}).count()).toBe(0);
       expect(errors).toEqual([]);
       expect([...unhandled]).toEqual([]);
     } catch (error) {

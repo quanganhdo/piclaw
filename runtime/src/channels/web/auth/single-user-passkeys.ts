@@ -1,6 +1,7 @@
 import type { RegistrationResponseJSON } from '@simplewebauthn/server';
 import { randomBytes } from 'node:crypto';
 import { getDb } from '../../../db/connection.js';
+import { admitSqliteWrite } from '../../../db/sqlite-async-admission.js';
 import { getWebSession, DEFAULT_WEB_USER_ID } from '../../../db/web-sessions.js';
 import { getUser } from '../../../db/users.js';
 import { getWebRuntimeConfig } from '../../../core/config.js';
@@ -39,7 +40,11 @@ function originInfo(req: Request) {
   return { origin, rpId };
 }
 function requireActor(req: Request, now: number, recent: boolean) {
-  if (readAccessConfig().mode !== 'single-user') throw new PasskeyError('Not found.', 404);
+  let singleUser = false;
+  try { singleUser = readAccessConfig().mode === 'single-user'; } catch {
+    log.warn('Passkey management disabled by invalid access configuration.', { operation: 'passkey_settings.invalid_access_config' });
+  }
+  if (!singleUser) throw new PasskeyError('Not found.', 404);
   if (req.headers.get('sec-fetch-site') === 'cross-site') throw new PasskeyError('Origin not allowed.', 403);
   const supplied = req.headers.get('origin');
   const { origin, rpId } = originInfo(req);
@@ -117,7 +122,7 @@ export function createSingleUserPasskeyHandler(options: { server?: WebauthnServe
         requireKeys(body, action === 'rename' ? ['action', 'id', 'name'] : ['action', 'id']);
         if (typeof body.id !== 'string' || !/^[A-Za-z0-9_-]{1,2048}$/.test(body.id)) throw new PasskeyError('Invalid credential identifier.');
         const name = action === 'rename' ? validateSingleUserPasskeyName(body.name) : '';
-        getDb().transaction(() => {
+        await admitSqliteWrite(getDb(), () => {
           const current = requireActor(req, clock(), true);
           const credential = getDb().query('SELECT rp_id FROM webauthn_credentials WHERE user_id=? AND credential_id=?').get(DEFAULT_WEB_USER_ID, body.id as string) as { rp_id: string } | null;
           if (!credential) throw new PasskeyError('Passkey not found. Refresh the list.', 404);
@@ -127,7 +132,7 @@ export function createSingleUserPasskeyHandler(options: { server?: WebauthnServe
             if (usableCount(current.rpId, current.methods) - Number(selectedUsable) < 1) throw new PasskeyError('Add another usable sign-in method before removing this passkey.', 409, 'last_factor');
             getDb().query('DELETE FROM webauthn_credentials WHERE user_id=? AND credential_id=?').run(DEFAULT_WEB_USER_ID, body.id as string);
           }
-        }).immediate();
+        }, undefined, req.signal);
         return json({ ok: true });
       }
       if (!actor.methods.passkey) throw new PasskeyError('Passkeys are disabled.', 403);
@@ -157,13 +162,15 @@ export function createSingleUserPasskeyHandler(options: { server?: WebauthnServe
       } catch { throw new PasskeyError('Passkey verification failed.', 400); }
       const info = verified.registrationInfo;
       if (!verified.verified || !info) throw new PasskeyError('Passkey verification failed.');
-      getDb().transaction(() => {
+      const publicKey = Buffer.from(info.credential.publicKey).toString('base64url');
+      const transports = info.credential.transports ? JSON.stringify(info.credential.transports) : null;
+      await admitSqliteWrite(getDb(), () => {
         const current = requireActor(req, clock(), true);
         if (current.sessionId !== pending.sessionId || !current.methods.passkey || pending.expiresAt <= clock()) throw new PasskeyError('Registration expired.', 403);
         if (getDb().query('SELECT 1 FROM webauthn_credentials WHERE credential_id=?').get(info.credential.id)) throw new PasskeyError('This passkey is already registered.', 409);
         getDb().query(`INSERT INTO webauthn_credentials(user_id,rp_id,credential_id,public_key,sign_count,transports,created_at,last_used_at,label)
-          VALUES (?,?,?,?,?,?,?,NULL,?)`).run(DEFAULT_WEB_USER_ID, pending.rpId, info.credential.id, Buffer.from(info.credential.publicKey).toString('base64url'), info.credential.counter, info.credential.transports ? JSON.stringify(info.credential.transports) : null, new Date(clock()).toISOString(), pending.name);
-      }).immediate();
+          VALUES (?,?,?,?,?,?,?,NULL,?)`).run(DEFAULT_WEB_USER_ID, pending.rpId, info.credential.id, publicKey, info.credential.counter, transports, new Date(clock()).toISOString(), pending.name);
+      }, undefined, req.signal);
       return json({ ok: true });
     } catch (error) {
       if (error instanceof PasskeyError) return json({ error: error.message, code: error.code }, error.status);

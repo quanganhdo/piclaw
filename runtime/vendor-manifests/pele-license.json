@@ -1,0 +1,11 @@
+{
+  "id": "pele-license",
+  "packageName": "pele",
+  "metadataFile": "web/static/common/js/vendor/pele-license.meta.json",
+  "exportFiles": [
+    {
+      "packagePath": "LICENSE",
+      "outputFile": "web/static/common/js/vendor/pele.LICENSE.txt"
+    }
+  ]
+}

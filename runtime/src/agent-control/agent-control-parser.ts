@@ -40,3 +40,18 @@ export function parseControlCommand(text: string, triggerPattern?: RegExp): Agen
 
   return parser(parserArgs, cleaned);
 }
+
+export function parseSlashCommand(rawText: string): { trimmed: string; rawCommand: string; commandName: string } | null {
+  const trimmed = rawText.trim();
+  if (!trimmed.startsWith("/")) return null;
+
+  const rawCommand = trimmed.slice(1);
+  const argIndex = rawCommand.search(/\s/);
+  const commandName = argIndex === -1 ? rawCommand : rawCommand.slice(0, argIndex);
+  if (!/^[A-Za-z0-9][A-Za-z0-9:_-]*$/.test(commandName)) return null;
+  return { trimmed, rawCommand, commandName };
+}
+
+export function isSlashCommandInvocation(rawText: string): boolean {
+  return parseSlashCommand(rawText) !== null;
+}

@@ -3,6 +3,7 @@
  * scripts/integration-test-suite.ts – Full integration validation gate.
  *
  * Runs every validation layer in sequence:
+ *   0. Required offline native qualification (never skipped or advisory)
  *   1. Lint checks (silent-swallows, structured-logging)
  *   2. Full unit/component test suite (all 485+ test files)
  *   3. Static analysis (import boundaries, unused exports, hook TDZ, pack hygiene)
@@ -89,6 +90,9 @@ async function runStage(name: string, cmd: string[], options: {
   return result;
 }
 
+// Required regardless of Docker/Playwright availability or skip flags.
+await runStage("ci:native", ["bun", "run", "ci:native"]);
+
 // ── Stage 1: Lint checks ──────────────────────────────────────────────
 
 await runStage("check:silent-swallows", ["bun", "run", "check:silent-swallows"]);
@@ -119,7 +123,7 @@ for (const check of staticChecks) {
   const result = await runStage(check.name, check.cmd);
   if (!result.passed) {
     // Downgrade to advisory warning — do not block the gate on pre-existing
-    // static analysis debt.  Tests and build are the hard gates.
+    // static analysis debt.  Native qualification, host tests and build are the hard gates.
     log(`  ⚠ ${check.name} failed but is advisory — not blocking the gate`);
     result.passed = true;
     (result as any).advisory = true;

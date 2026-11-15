@@ -1,6 +1,7 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 
 import { WebChannel } from "../../../src/channels/web.ts";
+import * as handlers from "../../../src/channels/web/handlers/agent.js";
 
 describe("web channel lifecycle/special surface delegation", () => {
   test("prototype lifecycle and special-case wrappers stay compatible with bare stubs", async () => {
@@ -15,6 +16,7 @@ describe("web channel lifecycle/special surface delegation", () => {
         stop: async () => {
           calls.push("stop");
         },
+        handleRequest: async (_req: Request, dispatch: () => Promise<Response>) => dispatch(),
       },
       adaptiveCardSidePromptService: {
         handleAdaptiveCardAction: async (_req: Request) => {
@@ -36,14 +38,13 @@ describe("web channel lifecycle/special surface delegation", () => {
           return new Response("peer", { status: 208 });
         },
       },
-      agentMessageEntryService: {
-        handleAgentMessage: async (_req: Request, pathname: string) => {
-          calls.push(`message:${pathname}`);
-          return new Response(pathname, { status: 209 });
-        },
-      },
     } as any;
 
+    const spy = spyOn(handlers, "handleAgentMessage").mockImplementation(async (_channel, _req, pathname) => {
+      calls.push(`message:${pathname}`);
+      return new Response(pathname, { status: 209 });
+    });
+    try {
     const serverGetter = Object.getOwnPropertyDescriptor(WebChannel.prototype, "server")?.get;
     expect(serverGetter?.call(stub)).toBe(server);
 
@@ -69,5 +70,6 @@ describe("web channel lifecycle/special surface delegation", () => {
       "peer",
       "message:/agent/default/message",
     ]);
+    } finally { spy.mockRestore(); }
   });
 });

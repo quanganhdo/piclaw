@@ -7,19 +7,80 @@
  */
 
 import type { AgentPool } from "../../../agent-pool.js";
-import type { SendMessageOptions } from "../messaging/message-write-flows.js";
+import type { SendMessageOptions } from "../message-write-service.js";
 import type { WorkspaceDispatchChannel } from "../http/dispatch-workspace.js";
 import type { MediaDispatchChannel } from "../http/dispatch-media.js";
 import type { RequestGuardsChannel } from "../http/request-guards.js";
 import type { AuthEndpointsContext } from "../auth/auth-endpoints.js";
 import type { InteractionRow } from "../../../db.js";
 import type { WebAgentBufferEntry } from "../agent/agent-buffers.js";
-import type { QueuedFollowupItem } from "../runtime/followup-placeholders.js";
 import type { UiBridge } from "../theming/ui-bridge.js";
 import type { TotpAuthContext } from "../auth/totp-auth.js";
 import type { WebauthnAuthContext } from "../auth/webauthn-auth.js";
 import type { WebauthnEnrolPageContext } from "../auth/webauthn-enrol-page.js";
-import type { AgentStatusContext } from "../agent/agent-status.js";
+import type { getAddonApiHealthSnapshot } from "../../../addons/addon-api-health.js";
+import type { getMcpStartupDiagnostics } from "../../../secure/mcp-keychain.js";
+import type { StoreWebMessageOptions } from "../messaging/message-store.js";
+
+export interface TokenUsageCounterSummary {
+  input_tokens: number;
+  output_tokens: number;
+  reasoning_tokens?: number;
+  cache_read_tokens: number;
+  cache_write_tokens: number;
+  total_tokens: number;
+  cost_total: number | null;
+  cost_currency?: string | null;
+  provider_cost_total?: number | null;
+  provider_cost_currency?: string | null;
+  catalogue_cost_total?: number | null;
+  runs: number;
+  provider_reported_cost_runs?: number;
+  catalogue_estimate_cost_runs?: number;
+  unavailable_cost_runs?: number;
+  legacy_cost_runs?: number;
+}
+
+export interface LatestTokenUsageCounterSummary extends TokenUsageCounterSummary {
+  cache_read_reported?: number | null;
+  cache_write_reported?: number | null;
+  provider_cost_total?: number | null;
+  provider_cost_currency?: string | null;
+  catalogue_cost_total?: number | null;
+  cost_provenance?: string | null;
+  model?: string | null;
+  response_model?: string | null;
+  provider?: string | null;
+  api?: string | null;
+  turns?: number | null;
+  run_at?: string | null;
+}
+
+export interface AgentTokenUsageContext {
+  latest: LatestTokenUsageCounterSummary | null;
+  totals: TokenUsageCounterSummary | null;
+}
+
+/** Context contract used by web agent status/context/model endpoint handlers. */
+export interface AgentStatusContext {
+  defaultChatJid: string;
+  json(payload: unknown, status?: number): Response;
+  getAgentStatus(chatJid: string): Record<string, unknown> | null;
+  getExtensionWorkingState(chatJid: string): Record<string, unknown> | null;
+  getBuffer(turnId: string, panel: "thought" | "draft"): WebAgentBufferEntry | undefined;
+  getContextUsageForChat(
+    chatJid: string
+  ): Promise<{ tokens: number | null; contextWindow: number | null; percent: number | null; sessionGeneration?: string } | null>;
+  getSessionTreeSummaryForChat?(chatJid: string): Promise<{ leafId: string | null; total: number } | null>;
+  getTokenUsageForChat(chatJid: string): AgentTokenUsageContext | null;
+  /** Last message time and latest reply excerpt per chat, for session lists. */
+  getChatActivitySummaries?(chatJids: readonly string[]): Map<string, { last_activity_at: string | null; last_reply: string | null }>;
+  getAvailableModels(chatJid: string, options?: { includeProviderDiagnostics?: boolean; includeCatalogue?: boolean }): Promise<unknown>;
+  getProviderReadyCompletedForInstance(req: Request): boolean | Promise<boolean>;
+  getAddonApiHealthSnapshot?: typeof getAddonApiHealthSnapshot;
+  getMcpStartupDiagnostics?: typeof getMcpStartupDiagnostics;
+}
+
 
 interface AuthGatewayLike {
   isAuthEnabled(): boolean;
@@ -27,6 +88,7 @@ interface AuthGatewayLike {
   verifyInternalSecret(req: Request): boolean;
   isAuthenticated(req: Request): boolean;
   getPrincipal?(req: Request, refresh?: boolean): import("../auth/principal.js").AuthenticatedPrincipal | null;
+  preparePrincipal?(req: Request): Promise<void>;
   isTotpSession(req: Request): boolean;
   createTotpContext(): TotpAuthContext;
   createWebauthnContext(): WebauthnAuthContext;
@@ -41,6 +103,11 @@ interface InteractionBroadcasterLike {
 interface TaskQueueLike {
   isLaneBusy?(laneKey: string): boolean;
   enqueue(task: () => unknown, key: string, laneKey?: string): unknown;
+}
+
+export interface PreparedInputText {
+  readonly text: string;
+  assertCurrent(): void;
 }
 
 export interface WebChannelLike
@@ -58,83 +125,40 @@ export interface WebChannelLike
 
   /** Runtime dependencies and state services used across web layers. */
   queue: TaskQueueLike;
-  admitUserMessage?(chatJid: string, content: string, mediaIds: number[], options: {
-    contentBlocks?: unknown[]; linkPreviews?: unknown[]; threadId?: number | null; screenHint?: string | null;
-  }, authorise: () => void, signal: AbortSignal, deferBeforeInsert?: () => boolean): Promise<InteractionRow | null>;
-  agentPool: AgentPool & {
-    queueOwnedStreamingMessage?(chatJid: string, text: string, behavior: "steer"): Promise<{ queued: boolean; error?: string }>;
-    abortOwnedRun?(chatJid: string): Promise<unknown>;
-    resolveBudgetProviderAccountRef?(providerId: string): Promise<string | null>;
-  };
+  /** Trusted host-only selection, captured before reading HTTP input; absent by default. */
+  prepareInputSourceAdmission?(chatJid: string): Promise<void>;
+  prepareInputText?(chatJid: string, text: string): PreparedInputText;
+  /** Read-only compatibility check from the active native source policy. */
+  inspectAddonInstall?(name: string, version?: string, directory?: string): { supportedVersion: string; problem?: string } | undefined;
+  /** Trusted SQL-only source acceptance; never selected from request fields. */
+  getInputSourceAdmission?(chatJid: string): StoreWebMessageOptions["acceptSource"];
+  /** Reconcile existing native sources only; never scan/replay historical chat rows. */
+  resumeNativeInputs?(chatJid?: string): void;
+  handlePlanRequest?(request: Request, chatJid: string, assertCurrent: () => void): Promise<Response>;
+  filterNativeTimeline?(chatJid:string,rowIds:readonly number[]):Promise<readonly number[]>;
+  readNativeQueue?(chatJid:string):Promise<import("../agent/native-queue-view.js").NativeQueueItem[]>;
+  controlNativeQueue?(chatJid:string,submissionId:number,action:"remove"|"steer",authorise?:()=>void):Promise<boolean>;
+  /** Reorder the chat's queued inputs; false when `submissionIds` is not exactly the current queue. */
+  reorderNativeQueue?(chatJid:string,submissionIds:readonly number[],authorise?:()=>void):Promise<boolean>;
+  dispatchAcceptedInput?(chatJid: string, messageId: string, rowId: number, whenBusy?: "steer" | "followUp"): Promise<{submission_id: number; queued: boolean}>;
+  admitMessage(chatJid: string, content: string, isBot: boolean, mediaIds: number[], options: StoreWebMessageOptions,
+    authorise?: (phase?: "before" | "after") => void, signal?: AbortSignal, deferBeforeInsert?: () => boolean): Promise<InteractionRow | null>;
+  agentPool: AgentPool;
   uiBridge: UiBridge;
   interactionBroadcaster: InteractionBroadcasterLike;
-
-  /** Message persistence and thread state. */
-  storeMessage(
-    chatJid: string,
-    content: string,
-    isBot: boolean,
-    mediaIds: number[],
-    options?: {
-      contentBlocks?: unknown[];
-      linkPreviews?: unknown[];
-      threadId?: number;
-      screenHint?: string | null;
-      isTerminalAgentReply?: boolean;
-      isSteeringMessage?: boolean;
-      removeProtectedContinuationForSourceMessageId?: string | null;
-      consumeDeferredFollowupRowId?: number | null;
-    }
-  ): InteractionRow | null;
 
   sendMessage(chatJid: string, text: string, options?: SendMessageOptions): Promise<void>;
   postDashboardWidget(chatJid: string, options?: { threadId?: number | null; text?: string; widgetId?: string }): Promise<void>;
   updateAgentStatus(chatJid: string, status: Record<string, unknown>): void;
   getAgentStatus(chatJid: string): Record<string, unknown> | null;
   getExtensionWorkingState?(chatJid: string): Record<string, unknown> | null;
-  setContextUsage(chatJid: string, usage: Record<string, unknown> | null): void;
-  getContextUsage(chatJid: string): Record<string, unknown> | null;
   getBuffer(turnId: string, panel: "thought" | "draft"): WebAgentBufferEntry | undefined;
   getThreadRootId(chatJid: string, messageId: string): number | null;
-  saveState(): void;
-  skipFailedOnModelSwitch(chatJid: string): boolean;
-  retryFailedOnModelSwitch(chatJid: string): boolean;
-  recoverStaleInflightRun(chatJid: string, options?: { hasActiveStatus?: boolean; minAgeMs?: number }): boolean;
 
   setPanelExpanded(turnId: string, panel: "thought" | "draft", expanded: boolean): void;
   isPanelExpanded(turnId: string, panel: "thought" | "draft"): boolean;
   updateThoughtBuffer(turnId: string, text: string, totalLines: number): void;
   updateDraftBuffer(turnId: string, text: string, totalLines: number): void;
-
-  queueFollowupPlaceholder(chatJid: string, text: string, threadId?: number, queuedContent?: string): InteractionRow | null;
-  enqueueQueuedFollowupItem(
-    chatJid: string,
-    rowId: number,
-    queuedContent: string,
-    threadId?: number | null,
-    queuedAt?: string,
-    extras?: { mediaIds?: number[]; contentBlocks?: unknown[]; linkPreviews?: unknown[]; screenHint?: string; source?: string; queuedBy?: QueuedFollowupItem["queuedBy"] }
-  ): number;
-  getQueuedFollowupCount(chatJid: string): number;
-  admitQueuedFollowupItem?(args: Parameters<WebChannelLike['enqueueQueuedFollowupItem']>, authorise: () => void, signal: AbortSignal): Promise<number>;
-  getQueuedFollowupItems(chatJid: string): QueuedFollowupItem[];
-  removeQueuedFollowupItem(chatJid: string, rowId: number): QueuedFollowupItem | null;
-  peekQueuedFollowupItem(chatJid: string): QueuedFollowupItem | null;
-  consumeQueuedFollowupItem(chatJid: string): QueuedFollowupItem | null;
-  prependQueuedFollowupItem(chatJid: string, item: QueuedFollowupItem): void;
-  replaceQueuedFollowupItem(chatJid: string, item: QueuedFollowupItem): boolean;
-  consumeQueuedFollowupPlaceholder(chatJid: string): number | null;
-  replaceQueuedFollowupPlaceholder(
-    chatJid: string,
-    rowId: number,
-    text: string,
-    mediaIds: number[],
-    contentBlocks: Array<Record<string, unknown>> | undefined,
-    threadId?: number,
-    isTerminalAgentReply?: boolean
-  ): InteractionRow | null;
-  queuePendingSteering(chatJid: string, timestamp: string | undefined): void;
-  consumePendingSteering(chatJid: string): string[];
 
   /** UI/runtime state consumed by endpoint contexts. */
   workspaceVisible: boolean;
@@ -161,13 +185,13 @@ export interface WebChannelLike
   handleAgents(): Promise<Response>;
 
   handleWorkspaceVisibility(req: Request): Promise<Response>;
-  handleTimeline(limit: number, before?: number, chatJid?: string): Response;
+  handleTimeline(limit: number, before?: number, chatJid?: string): Response | Promise<Response>;
   handleHashtag(tag: string, limit: number, offset: number, chatJid?: string): Response;
   handleSearch(query: string, limit: number, offset: number, chatJid?: string, searchScope?: "current" | "root" | "all", rootChatJid?: string, filters?: { images?: boolean; attachments?: boolean } | null): Response;
   handleThread(id: number | null, chatJid?: string): Response;
   handleThought(panel: string | null, turnId: string | null): Response;
   handleThoughtVisibility(req: Request): Promise<Response>;
-  handleDeletePost(req: Request, id: number | null, cascade: boolean): Response;
+  handleDeletePost(req: Request, id: number | null, cascade: boolean): Promise<Response>;
   handleUpdatePost(req: Request, id: number | null): Promise<Response>;
   handleUpdatePostAnnotations(req: Request, id: number): Promise<Response>;
   handleInternalPost(req: Request): Promise<Response>;
@@ -188,6 +212,7 @@ export interface WebChannelLike
   handleAgentRunDrainQueue(req: Request): Promise<Response>;
   handleAgentQueueRemove(req: Request): Promise<Response>;
   handleAgentQueueSteer(req: Request): Promise<Response>;
+  handleAgentToolAbort(req: Request): Promise<Response>;
   handleAgentQueueReorder(req: Request): Promise<Response>;
   handleAgentModels(req: Request): Promise<Response>;
   handleSystemMetrics(req: Request): Response;

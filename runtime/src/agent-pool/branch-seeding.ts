@@ -12,10 +12,71 @@ import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import type { ImageContent, Message, TextContent } from "@earendil-works/pi-ai";
 import type { AgentSession, SessionContext, SessionEntry, SessionManager } from "@earendil-works/pi-coding-agent";
 
-import { seedRotatedSession } from "../session-rotation.js";
+import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import { getSessionThinkingPolicy, readThinkingPreference, THINKING_POLICY_ENTRY } from './thinking-policy.js';
-import { ensureSessionDir } from "./session.js";
+import { ensureSessionDir } from "./session-paths.js";
 import { createSessionManagerPersistencePort, getSessionPersistencePort, type ContextEditReplacement, type SessionEntryAppendPort, type SessionManagerLike } from "./session-persistence.js";
+
+type PersistableSessionMessage = Parameters<SessionManager["appendMessage"]>[0];
+
+/** Build a carried-forward summary from compaction and branch-summary messages. */
+function collectCarriedSummary(messages: readonly AgentMessage[]): { summary: string | null; tokensBefore: number } {
+  const parts: string[] = [];
+  let tokensBefore = 0;
+
+  for (const message of messages) {
+    if (message.role === "compactionSummary") {
+      parts.push(message.summary.trim());
+      tokensBefore = Math.max(tokensBefore, message.tokensBefore);
+    } else if (message.role === "branchSummary") {
+      parts.push(`Branch summary:\n${message.summary.trim()}`);
+    }
+  }
+
+  const summary = parts.map((part) => part.trim()).filter(Boolean).join("\n\n");
+  return {
+    summary: summary || null,
+    tokensBefore,
+  };
+}
+
+/** Seed a legacy deferred branch from the current effective session context. */
+async function seedSessionContext(
+  persistence: SessionEntryAppendPort,
+  context: SessionContext,
+  options: {
+    sessionName?: string;
+    model?: { provider: string; modelId: string } | null;
+    thinkingLevel?: ThinkingLevel | null;
+    preferredThinkingLevel?: ThinkingLevel | null;
+  }
+): Promise<void> {
+  if (options.sessionName?.trim()) await persistence.appendSessionInfo(options.sessionName.trim());
+  if (options.model) await persistence.appendModelChange(options.model.provider, options.model.modelId);
+  if (options.thinkingLevel) await persistence.appendThinkingLevelChange(options.thinkingLevel);
+  if (options.preferredThinkingLevel) await persistence.appendCustomEntry(THINKING_POLICY_ENTRY, { preferred: options.preferredThinkingLevel });
+
+  const carried = collectCarriedSummary(context.messages);
+  if (carried.summary) await persistence.appendCompaction(carried.summary, "rotated-context", carried.tokensBefore);
+
+  for (const message of context.messages) {
+    if (message.role === "compactionSummary" || message.role === "branchSummary") {
+      continue;
+    }
+
+    if (message.role === "custom") {
+      await persistence.appendCustomMessageEntry(
+        message.customType,
+        message.content,
+        message.display,
+        message.details
+      );
+      continue;
+    }
+
+    await persistence.appendMessage(message as PersistableSessionMessage);
+  }
+}
 
 type LegacyCustomEntry = {
   type: "custom_entry";
@@ -235,7 +296,7 @@ export async function seedSessionManagerFromDeferredBranchSeed(
     return;
   }
   if (seed.context) {
-    await seedRotatedSession(persistence, seed.context, {
+    await seedSessionContext(persistence, seed.context, {
       sessionName: seed.sessionName || undefined,
       model: seed.model,
       thinkingLevel: seed.thinkingLevel,
@@ -344,10 +405,5 @@ export function restoreClaimedDeferredBranchSeed(chatJid: string): void {
 }
 
 export function finalizeClaimedDeferredBranchSeed(chatJid: string): void {
-  rmSync(getClaimedDeferredBranchSeedPath(chatJid), { force: true });
-}
-
-export function clearDeferredBranchSeed(chatJid: string): void {
-  rmSync(getDeferredBranchSeedPath(chatJid), { force: true });
   rmSync(getClaimedDeferredBranchSeedPath(chatJid), { force: true });
 }

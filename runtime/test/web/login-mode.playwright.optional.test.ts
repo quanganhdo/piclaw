@@ -17,22 +17,6 @@ beforeAll(async () => {
 });
 afterAll(async () => { await browser?.close(); server?.stop(true); });
 
-browserTest("family code login shows username, sends normalised account, survives network failure, and fits mobile", async () => {
-  const page = await browser.newPage({ viewport: { width: 375, height: 720 } });
-  try {
-    await page.route("**/auth/options", route => route.fulfill({ json: { mode: "family-shared", auth_enabled: true, totp: true, passkey: false, username_required: true } }));
-    const posted: unknown[] = [];
-    await page.route("**/auth/verify", async route => { posted.push(route.request().postDataJSON()); await route.abort(); });
-    await page.goto(base + "/login"); await page.locator("#username").waitFor({ state: "visible" });
-    expect(await page.locator("#passkey-button").isVisible()).toBe(false);
-    await page.locator("#username").fill("Alice"); await page.locator("#code").fill("123456"); await page.locator("#verify-button").click();
-    await page.waitForFunction(() => document.getElementById("error")?.textContent?.includes("Could not reach"));
-    expect(posted).toEqual([{ username: "alice", code: "123456" }]);
-    expect(await page.locator("#verify-button").isEnabled()).toBe(true);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  } finally { await page.close(); }
-}, 20000);
-
 browserTest("single-user code login omits username and passkey-only hides the TOTP form", async () => {
   const page = await browser.newPage();
   try {
@@ -41,7 +25,7 @@ browserTest("single-user code login omits username and passkey-only hides the TO
     const payloads: unknown[] = [];
     await page.route("**/auth/verify", route => { payloads.push(route.request().postDataJSON()); return route.fulfill({ status: 401, json: { error: "Invalid code" } }); });
     await page.goto(base + "/login"); await page.locator("#code").waitFor({ state: "visible" });
-    expect(await page.locator("#username").isVisible()).toBe(false);
+    expect(await page.locator("#username").count()).toBe(0);
     await page.locator("#code").fill("123456"); await page.locator("#verify-button").click();
     await page.waitForFunction(() => document.getElementById("error")?.textContent === "Invalid code");
     expect(payloads).toEqual([{ code: "123456" }]);

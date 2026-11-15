@@ -1,3 +1,4 @@
+import { admitSqliteWrite } from '../../db/sqlite-async-admission.js';
 import { createHash } from "node:crypto";
 import type Database from "bun:sqlite";
 import {
@@ -637,7 +638,7 @@ export class CurrentPiclawServiceOutboxStore implements ServiceOutboxStore {
             freeze({
               decision: "replayed" as const,
               record: recordFromOutcome(
-                this.requireIdentityRecord(request.outboxId),
+                this.requireRecord(request.outboxId),
                 known,
               ),
             }),
@@ -757,15 +758,13 @@ export class CurrentPiclawServiceOutboxStore implements ServiceOutboxStore {
       ) {
         throw new BeforeTransactionFault();
       }
-      const outcome = this.database
-        .transaction(() => {
+      const outcome = await admitSqliteWrite(this.database, () => {
           const value = apply(request);
           if (!value.ok) return value;
           if (faultObservation.checkpoint === "in_transaction")
             throw new RollbackFault();
           return value;
-        })
-        .immediate();
+        });
       if (!outcome.ok) return this.finish(context, outcome);
       if (this.exactLostAcknowledgement(method))
         return this.finish(
@@ -873,9 +872,6 @@ export class CurrentPiclawServiceOutboxStore implements ServiceOutboxStore {
     if (!record) throw new CorruptStateFault();
     return record;
   }
-  private requireIdentityRecord(id: string): OutboxRecord {
-    return this.requireRecord(id);
-  }
   private readDecision(key: string): ReturnType<typeof decodeDecision> | null {
     const row = this.database
       .query(`SELECT * FROM ${DECISIONS} WHERE decision_key=?`)
@@ -920,7 +916,7 @@ export class CurrentPiclawServiceOutboxStore implements ServiceOutboxStore {
             freeze({
               decision: "replayed" as const,
               lease: leaseFromAuthority(
-                this.requireIdentityRecord(lease.outboxId),
+                this.requireRecord(lease.outboxId),
                 lease,
                 request.leaseToken,
               ),
@@ -938,7 +934,7 @@ export class CurrentPiclawServiceOutboxStore implements ServiceOutboxStore {
       lease.method !== "claimNext"
     )
       return Result.err(errorOf("corrupt_state"));
-    const identity = this.requireIdentityRecord(lease.outboxId);
+    const identity = this.requireRecord(lease.outboxId);
     return Result.ok(
       freeze({
         decision: "replayed" as const,
@@ -965,7 +961,7 @@ export class CurrentPiclawServiceOutboxStore implements ServiceOutboxStore {
         freeze({
           decision: "replayed" as const,
           record: recordFromLease(
-            this.requireIdentityRecord(lease.outboxId),
+            this.requireRecord(lease.outboxId),
             lease,
             (request as ReclaimOutboxRequest).leaseToken,
           ),
@@ -982,7 +978,7 @@ export class CurrentPiclawServiceOutboxStore implements ServiceOutboxStore {
       freeze({
         decision: "replayed" as const,
         record: recordFromResolution(
-          this.requireIdentityRecord(request.outboxId),
+          this.requireRecord(request.outboxId),
           resolution,
         ),
       }),
@@ -1136,7 +1132,6 @@ function verifyDatabase(database: Database): void {
   if (fk?.foreign_keys !== 1) throw new Error("foreign keys");
   for (const table of [OUTBOX, LEASES, OUTCOMES, RESOLUTIONS, DECISIONS])
     database.query(`SELECT * FROM ${table} LIMIT 1`).get();
-  database.exec("PRAGMA busy_timeout=5000");
 }
 function hashToken(token: string): string {
   return createHash("sha256").update(token, "utf8").digest("hex");

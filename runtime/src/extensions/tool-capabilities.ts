@@ -43,12 +43,6 @@ function rec(profile: ToolRecommendationProfile): ToolRecommendationProfile {
  * Tools not in this map get a sensible default via `getToolCapability()`.
  */
 const TOOL_CAPABILITIES: Record<string, ToolCapability> = {
-  budget_status: {
-    kind: "read-only",
-    weight: "lightweight",
-    summary: "Read configured budget caps, current work state and blockers; cannot grant spending permission.",
-    recommend: rec({ domains: ["budget", "cost", "quota"], verbs: ["inspect", "check", "status"], nouns: ["budget", "cap", "spend", "quota"] }),
-  },
   // core (upstream pi-coding-agent)
   read: {
     kind: "read-only",
@@ -273,15 +267,6 @@ const TOOL_CAPABILITIES: Record<string, ToolCapability> = {
       verbs: ["send", "relay", "route", "message", "contact"],
       nouns: ["session", "agent", "branch", "chat", "message"],
       negativeTerms: ["timeline search", "history", "notes"],
-    }),
-  },
-  introspect_sql: {
-    kind: "read-only",
-    weight: "standard",
-    recommend: rec({
-      domains: ["sql", "database", "data"],
-      verbs: ["inspect", "query", "check", "list"],
-      nouns: ["sql", "database", "table", "schema", "sqlite"],
     }),
   },
   keychain: {

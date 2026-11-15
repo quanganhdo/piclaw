@@ -1,3 +1,5 @@
+import { admitSqliteWrite } from "../../../db/sqlite-async-admission.js";
+import { getDb } from "../../../db/connection.js";
 /**
  * web/workspace/file-service.ts – File read/write operations for the explorer.
  *
@@ -437,7 +439,7 @@ export class WorkspaceFileService {
     }
   }
 
-  attachFile(pathParam: string | null): { status: number; body: unknown } {
+  async attachFile(pathParam: string | null, signal?: AbortSignal): Promise<{ status: number; body: unknown }> {
     const targetPath = resolveWorkspacePath(pathParam);
     if (!targetPath) return { status: 400, body: { error: "Invalid path" } };
     if (isEscapedExistingWorkspacePath(targetPath)) {
@@ -454,11 +456,12 @@ export class WorkspaceFileService {
       const dataBuf = readFileSync(targetPath);
       const filename = path.basename(targetPath);
       const contentType = contentTypeForPath(targetPath);
-      const mediaId = createMedia(filename, contentType, new Uint8Array(dataBuf), null, {
+      const database = getDb();
+      const mediaId = await admitSqliteWrite(database, () => createMedia(filename, contentType, new Uint8Array(dataBuf), null, {
         size: stats.size,
         kind: "file",
         source_path: targetPath,
-      });
+      }), undefined, signal, undefined, () => { if (getDb() !== database) throw Error("Attachment database changed"); });
 
       return {
         status: 200,

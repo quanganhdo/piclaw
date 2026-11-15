@@ -1,0 +1,155 @@
+import "./src/test-guard.js";
+import { expect, test } from "bun:test";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+import { initDatabase, getDb, closeDatabase } from "../../runtime/src/db/connection.js";
+import { registerRootExtensionKvStore } from "../../runtime/src/db/register-extension-kv.js";
+import { extensionKvGet } from "../../runtime/src/db/extension-kv.js";
+import { withExtensionKvAuthority, requireExtensionKvAuthority, resetExtensionKvStoreForTests } from "../../runtime/src/extension-kv-registry.js";
+import { accountCommittedGoalEntry, accountCommittedGoalBatch, isGoalBudgetWrapup } from "../../runtime/durable-engine/src/host-goal-usage.js";
+
+test("committed Goal usage and cursor are atomic, replay safe and lifecycle scoped", async () => {
+  const source = process.env.DURABLE_GOAL_ADDON_ROOT;
+  if (!source) throw Error("DURABLE_GOAL_ADDON_ROOT required");
+  initDatabase(); const db = getDb(); registerRootExtensionKvStore(); requireExtensionKvAuthority();
+  const addon = await import(pathToFileURL(join(source, "addons/goal/index.ts")).href);
+  addon.resetGoalAddonForTests();
+  let allowed = true, failAfterWrite = false;
+  const authority = { extensionId: "goal", chatJid: "web:committed-goal-usage", assertCurrent() { if (!allowed) throw Error("revoked"); },
+    write<T>(body: () => T): T { return db.transaction(() => { this.assertCurrent(); const result = body(); if (failAfterWrite) throw Error("lost before commit"); this.assertCurrent(); return result; }).immediate(); } };
+  const scoped = <T>(body: () => T) => withExtensionKvAuthority(authority, body);
+  const load = () => scoped(() => addon.loadThreadGoal(authority.chatJid));
+  try {
+    scoped(() => addon.createThreadGoal(authority.chatJid, "Account committed usage", 10));
+    const goal = load();
+    const entry = { goalId: goal.goal_id, generation: goal.lifecycle_generation, conversationId: 1, entryId: 12, tokens: 4 };
+    expect(accountCommittedGoalEntry(addon, authority, entry)).toBe(true);
+    expect(load().tokens_used).toBe(4);
+    expect(accountCommittedGoalEntry(addon, authority, entry)).toBe(false);
+    expect(load().tokens_used).toBe(4);
+    expect(() => accountCommittedGoalEntry(addon, authority, { ...entry, tokens: 5 })).toThrow("changed");
+    expect(() => accountCommittedGoalEntry(addon, authority, { ...entry, entryId: 11 })).toThrow("out of order");
+    failAfterWrite = true;
+    expect(() => accountCommittedGoalEntry(addon, authority, { ...entry, entryId: 13, tokens: 6 })).toThrow("lost before commit");
+    expect(load()).toMatchObject({ tokens_used: 4, status: "active", lifecycle_generation: 1 });
+    expect(extensionKvGet("goal", "committed-usage:1", "chat", authority.chatJid)).toMatchObject({ entryId: 12 });
+    failAfterWrite = false;
+    expect(accountCommittedGoalEntry(addon, authority, { ...entry, entryId: 13, tokens: 6 })).toBe(true);
+    expect(load()).toMatchObject({ tokens_used: 10, status: "budget_limited", lifecycle_generation: 2 });
+    expect(() => accountCommittedGoalEntry(addon, authority, { ...entry, entryId: 14 })).toThrow("lifecycle changed");
+    expect(accountCommittedGoalEntry(addon, authority, { ...entry, generation: 2, entryId: 13, tokens: 6 })).toBe(false);
+    allowed = false;
+    expect(() => accountCommittedGoalEntry(addon, authority, { ...entry, generation: 2, entryId: 14 })).toThrow("revoked");
+    allowed = true;
+    scoped(() => { addon.clearThreadGoal(authority.chatJid); addon.createThreadGoal(authority.chatJid, "Replacement"); });
+    expect(() => accountCommittedGoalEntry(addon, authority, { ...entry, generation: 2, entryId: 14 })).toThrow("lifecycle changed");
+    expect(accountCommittedGoalEntry(addon, authority, { ...entry, goalId: load().goal_id, entryId: 20, tokens: 1 })).toBe(true);
+    expect(load().tokens_used).toBe(1);
+    const text = scoped(() => addon.prepareGoalInput("🎯 Continue goal: Replacement", authority.chatJid)).decision.text;
+    const receipts = [{ conversationId: 1, entryId: 20, tokens: 1 }, { conversationId: 1, entryId: 21, tokens: 2 }];
+    expect(accountCommittedGoalBatch(addon, authority, [text], receipts)).toBe(1);
+    expect(load().tokens_used).toBe(3);
+    expect(accountCommittedGoalBatch(addon, authority, [text], receipts)).toBe(0);
+    expect(load().tokens_used).toBe(3);
+    expect(() => accountCommittedGoalBatch(addon, authority, ["ordinary input"], receipts)).toThrow("Explicit accepted");
+    expect(() => accountCommittedGoalBatch(addon, authority, [text], [...receipts, { conversationId: 1, entryId: 22, tokens: 2 }, { conversationId: 1, entryId: 23, tokens: -1 }])).toThrow("Invalid committed");
+    expect(load().tokens_used).toBe(3);
+    expect(extensionKvGet("goal", "committed-usage:1", "chat", authority.chatJid)).toMatchObject({ entryId: 21 });
+    expect(() => accountCommittedGoalBatch(addon, authority, [text], [...receipts].reverse())).toThrow("out of order");
+    const cappedText = scoped(() => {
+      addon.clearThreadGoal(authority.chatJid); addon.createThreadGoal(authority.chatJid, "Capped batch", 5);
+      return addon.prepareGoalInput("🎯 Continue goal: Capped batch", authority.chatJid).decision.text;
+    });
+    const capped = [{ conversationId: 1, entryId: 30, tokens: 3 }, { conversationId: 1, entryId: 31, tokens: 4 }];
+    expect(accountCommittedGoalBatch(addon, authority, [cappedText], capped)).toBe(2);
+    expect(load()).toMatchObject({ tokens_used: 7, status: "budget_limited", lifecycle_generation: 2 });
+    expect(accountCommittedGoalBatch(addon, authority, [cappedText], capped)).toBe(0);
+    expect(load().tokens_used).toBe(7);
+    expect(() => accountCommittedGoalBatch(addon, authority, [cappedText], [...capped, { conversationId: 1, entryId: 32, tokens: 1 }])).toThrow("lifecycle changed");
+    expect(() => accountCommittedGoalBatch(addon, authority, [cappedText], [{ ...capped[1]!, tokens: 5 }])).toThrow("lifecycle changed");
+    expect(load().tokens_used).toBe(7);
+    // Terminal state alone is insufficient: an older/direct cursor has no proof
+    // that this accepted batch caused the budget lifecycle transition.
+    const { getExtensionKvStore } = await import("../../runtime/src/extension-kv-registry.js");
+    scoped(() => getExtensionKvStore().set("goal", "committed-usage:1", { goalId: load().goal_id, entryId: 31, tokens: 4 }, "chat", authority.chatJid));
+    expect(() => accountCommittedGoalBatch(addon, authority, [cappedText], capped)).toThrow("lifecycle changed");
+    const ownedBudgetText = scoped(() => {
+      addon.clearThreadGoal(authority.chatJid); addon.createThreadGoal(authority.chatJid, "Owned budget wrap-up", 5);
+      return addon.prepareGoalInput(addon.buildVisibleGoalPrompt(load(), "continuation"), authority.chatJid).decision.text;
+    });
+    const budgetSource = { conversationId: 8, operationId: "budget-owner" };
+    const budgetReceipts = [{ conversationId: 8, entryId: 30, tokens: 5 }];
+    failAfterWrite = true;
+    expect(() => accountCommittedGoalBatch(addon, authority, [ownedBudgetText], budgetReceipts, undefined, budgetSource)).toThrow("lost before commit");
+    expect(load()).toMatchObject({ status: "active", tokens_used: 0, lifecycle_generation: 1 });
+    expect(extensionKvGet("goal", "committed-usage:8", "chat", authority.chatJid)).toBeNull();
+    failAfterWrite = false;
+    expect(accountCommittedGoalBatch(addon, authority, [ownedBudgetText], budgetReceipts, undefined, budgetSource)).toBe(1);
+    expect(scoped(() => isGoalBudgetWrapup(addon, authority.chatJid, [ownedBudgetText], budgetSource))).toBe(true);
+    const foreignBudgetSource = { ...budgetSource, operationId: "foreign-operation" };
+    expect(scoped(() => isGoalBudgetWrapup(addon, authority.chatJid, [ownedBudgetText], foreignBudgetSource))).toBe(false);
+    const wrappedReceipts = [...budgetReceipts, { conversationId: 8, entryId: 31, tokens: 2 }];
+    expect(() => accountCommittedGoalBatch(addon, authority, [ownedBudgetText], wrappedReceipts, undefined, foreignBudgetSource)).toThrow("lifecycle changed");
+    expect(load().tokens_used).toBe(5);
+    expect(accountCommittedGoalBatch(addon, authority, [ownedBudgetText], wrappedReceipts, undefined, budgetSource)).toBe(1);
+    expect(accountCommittedGoalBatch(addon, authority, [ownedBudgetText], wrappedReceipts, undefined, budgetSource)).toBe(0);
+    expect(load()).toMatchObject({ status: "budget_limited", tokens_used: 7, lifecycle_generation: 2 });
+    const explicitBudgetText = scoped(() => addon.prepareGoalInput(addon.buildVisibleGoalPrompt(load(), "budget_limited"), authority.chatJid)).decision.text;
+    expect(scoped(() => isGoalBudgetWrapup(addon, authority.chatJid, [explicitBudgetText], foreignBudgetSource))).toBe(true);
+    expect(scoped(() => isGoalBudgetWrapup(addon, authority.chatJid, [explicitBudgetText.replaceAll("Owned budget wrap-up", "Wrong objective")], foreignBudgetSource))).toBe(false);
+    expect(scoped(() => isGoalBudgetWrapup(addon, authority.chatJid, [explicitBudgetText, "ordinary input"], foreignBudgetSource))).toBe(false);
+    expect(() => accountCommittedGoalBatch(addon, authority, [explicitBudgetText], [{ conversationId: 8, entryId: 32, tokens: 1 }],
+      undefined, { ...foreignBudgetSource, conversationId: 9 })).toThrow("source conversation changed");
+    expect(load().tokens_used).toBe(7);
+    expect(accountCommittedGoalBatch(addon, authority, [explicitBudgetText], [{ conversationId: 8, entryId: 32, tokens: 1 }], undefined, foreignBudgetSource)).toBe(1);
+    expect(load()).toMatchObject({ status: "budget_limited", tokens_used: 8, lifecycle_generation: 2 });
+    scoped(() => { addon.clearThreadGoal(authority.chatJid); addon.createThreadGoal(authority.chatJid, "Overflow boundary"); });
+    const overflowGoal = load();
+    expect(accountCommittedGoalEntry(addon, authority, { ...entry, goalId: overflowGoal.goal_id, conversationId: 3, entryId: 40, tokens: Number.MAX_SAFE_INTEGER })).toBe(true);
+    expect(() => accountCommittedGoalEntry(addon, authority, { ...entry, goalId: overflowGoal.goal_id, conversationId: 3, entryId: 41, tokens: 1 })).toThrow("Goal usage overflow");
+    expect(load().tokens_used).toBe(Number.MAX_SAFE_INTEGER);
+    expect(extensionKvGet("goal", "committed-usage:3", "chat", authority.chatJid)).toMatchObject({ entryId: 40 });
+    scoped(() => { addon.clearThreadGoal(authority.chatJid); addon.createThreadGoal(authority.chatJid, "Persist Plan progress"); });
+    const planState = { available: true, total: 1, allCompleted: false, fingerprint: "plan-one", plan: [{ step: "Verify result", status: "pending" }] };
+    const progress = () => scoped(() => authority.write(() => addon.applyGoalPlanProgress(load(), planState, false)));
+    expect(progress().decision).toEqual({ action: "continue", noProgressTurns: 1 });
+    expect(progress().decision).toEqual({ action: "continue", noProgressTurns: 2 });
+    expect(() => scoped(() => authority.write(() => { addon.applyGoalPlanProgress(load(), planState, false); throw Error("guard rollback"); }))).toThrow("guard rollback");
+    expect(load()).toMatchObject({ status: "active", no_progress_turns: 2 });
+    const beforeStop = load();
+    expect(progress().decision).toEqual({ action: "stop", reason: "no_progress" });
+    expect(load()).toMatchObject({ status: "stopped", stop_reason: "no_progress", lifecycle_generation: 2 });
+    expect(() => scoped(() => authority.write(() => addon.applyGoalPlanProgress(beforeStop, planState, false)))).toThrow("lifecycle changed");
+    scoped(() => addon.clearThreadGoal(authority.chatJid));
+    expect(scoped(() => addon.applyGoalCommand(authority.chatJid, "help"))).toMatchObject({ help: true, goal: null });
+    expect(scoped(() => addon.applyGoalCommand(authority.chatJid, "Explicit command objective"))).toMatchObject({ action: "create", continuation: "🎯 Continue goal: Explicit command objective" });
+    expect(scoped(() => addon.applyGoalCommand(authority.chatJid, "pause"))).toMatchObject({ action: "pause", goal: { status: "paused" } });
+    expect(scoped(() => addon.applyGoalCommand(authority.chatJid, "resume"))).toMatchObject({ action: "resume", goal: { status: "active" } });
+    expect(() => scoped(() => authority.write(() => { addon.applyGoalCommand(authority.chatJid, "clear"); throw Error("command rollback"); }))).toThrow("command rollback");
+    expect(load()).toMatchObject({ objective: "Explicit command objective", status: "active" });
+    for (const toolName of ["goal_complete", "goal_stop"]) {
+      scoped(() => { addon.clearThreadGoal(authority.chatJid); addon.createThreadGoal(authority.chatJid, "Terminal usage policy", 1); });
+      const tool = addon.createGoalTools(() => authority.chatJid).find((tool: { name: string }) => tool.name === toolName)!;
+      await scoped(() => tool.execute("terminal-policy", { reason: "other", summary: "Verified terminal policy", evidence: ["fixture"] }, undefined, undefined, {}));
+      const terminal = load();
+      const terminalText = `<piclaw_goal_input>${JSON.stringify({ goalId: terminal.goal_id, generation: terminal.lifecycle_generation - 1 })}</piclaw_goal_input>`;
+      const proof = { goalId: terminal.goal_id, generation: terminal.lifecycle_generation, status: terminal.status };
+      const terminalReceipt = [{ conversationId: 2, entryId: 50, tokens: 2 }];
+      expect(() => accountCommittedGoalBatch(addon, authority, [terminalText], terminalReceipt)).toThrow("lifecycle changed");
+      expect(() => accountCommittedGoalBatch(addon, authority, [terminalText], terminalReceipt, { ...proof, goalId: "foreign" })).toThrow("lifecycle changed");
+      expect(accountCommittedGoalBatch(addon, authority, [terminalText], terminalReceipt, proof)).toBe(1);
+      expect(accountCommittedGoalBatch(addon, authority, [terminalText], terminalReceipt, proof)).toBe(0);
+      expect(load()).toMatchObject({ tokens_used: 2, status: terminal.status, lifecycle_generation: terminal.lifecycle_generation });
+      const expected = { goalId: terminal.goal_id, generation: terminal.lifecycle_generation };
+      scoped(() => addon.accountTerminalGoalProgress(authority.chatJid, expected, 7));
+      expect(load()).toMatchObject({ status: terminal.status, lifecycle_generation: terminal.lifecycle_generation, tokens_used: 9,
+        completion_summary: terminal.completion_summary, stop_summary: terminal.stop_summary });
+      expect(() => scoped(() => addon.accountTerminalGoalProgress(authority.chatJid, { ...expected, generation: expected.generation + 1 }, 2))).toThrow("lifecycle changed");
+      expect(() => scoped(() => addon.accountTerminalGoalProgress(authority.chatJid, expected, -1))).toThrow("Invalid terminal");
+      expect(() => scoped(() => authority.write(() => { addon.accountTerminalGoalProgress(authority.chatJid, expected, 2); throw Error("terminal rollback"); }))).toThrow("terminal rollback");
+      expect(load().tokens_used).toBe(9);
+      scoped(() => addon.accountGoalProgress(authority.chatJid, 3));
+      expect(load().tokens_used).toBe(9); // Legacy callers still ignore terminal Goals.
+    }
+  } finally { addon.resetGoalAddonForTests(); resetExtensionKvStoreForTests(); await closeDatabase(); }
+});

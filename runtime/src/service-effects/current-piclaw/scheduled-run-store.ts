@@ -1,4 +1,11 @@
+import type { InterruptedHarnessIdentity } from "../../agent-pool/durable-runtime-adapter.js";
+export type { InterruptedHarnessIdentity } from "../../agent-pool/durable-runtime-adapter.js";
+import { admitSqliteWrite, isSqliteContention as isBusy } from '../../db/sqlite-async-admission.js';
 import type Database from "bun:sqlite";
+import type { ScheduledRunRetentionOwner, ScheduledRetentionPlan, ScheduledRetentionCursor } from "./scheduled-run-retention.js";
+import { writeScheduledTaskHead } from "../../db/scheduled-task-head.js";
+import { projectScheduledTask } from "../../db/scheduled-task-definitions.js";
+import { assertProcessAdmission } from "../../runtime/process-admission.js";
 import { Result, type Result as ResultValue } from "../contracts/result.js";
 
 import type { NormalisedTraceInput } from "../contracts/common.js";
@@ -12,6 +19,8 @@ import type {
   CompleteScheduledRunRequest,
   ListScheduledRunsRequest,
   RenewScheduledRunRequest,
+  ReconcileInterruptedScheduledRunRequest,
+  InterruptedScheduledRunReconciler,
   ScheduledRunHeadDisposition,
   ScheduledRunLease,
   ScheduledRunRecord,
@@ -41,6 +50,7 @@ import {
   normaliseClaim,
   normaliseCleanup,
   normaliseComplete,
+  normaliseInterruptedReconciliation,
   normaliseList,
   normaliseRenew,
   validateScheduledRunId,
@@ -49,6 +59,8 @@ import {
   validRef,
   validScheduledRunId,
 } from "./scheduled-run-values.js";
+
+import { hasScheduledHistoryProjection, projectScheduledHistory, ScheduledHistoryError } from "./scheduled-history-projection.js";
 
 const P = "service_effect_s07_";
 const TASKS = `${P}tasks`, REVISIONS = `${P}task_revisions`, RUNS = `${P}occurrences`;
@@ -62,18 +74,25 @@ type MutationMethod = ScheduledRunMutationMethod;
 export type ScheduledRunStatement =
   | "occurrence_insert" | "occurrence_reclaim_update" | "lease_insert" | "renewal_insert" | "lease_history_update" | "lease_renew"
   | "source_binding_insert" | "source_binding_update"
-  | "next_decision_insert" | "run_log_insert" | "outbox_link_insert"
+  | "next_decision_insert" | "run_log_insert" | "history_projection" | "outbox_link_insert"
   | "task_head_update" | "occurrence_terminal_update" | "abandonment_insert"
   | "decision_insert" | "tombstone_insert" | "retention_delete"
   | ServiceOutboxEnqueueStatement;
 
 export interface ScheduledRunAdapterRuntime {
+  /** Trusted native reader captures immutable failed SDK receipts, never input
+   * admission. The returned synchronous fence is repeated under writer lock. */
+  prepareInterruptedHarness?(identity: InterruptedHarnessIdentity): Promise<(() => void) | undefined>;
   hitFault(point: "before_effect" | "effect_then_lost_acknowledgement", method: MutationMethod): boolean;
   afterStatement?(statement: ScheduledRunStatement): void;
   recordTrace(input: NormalisedTraceInput): void;
+  /** Read-only poll authority check; never gates already accepted work. */
+  assertClaimCurrent?(): void;
+  /** Optional live UTC clock for fresh renewals; durable replay bypasses it. */
+  liveRenewalNow?(): string;
 }
 
-export type ScheduledRunStoreConstructionResult = ResultValue<ScheduledRunStore, ScheduledRunStoreError>;
+export type ScheduledRunStoreConstructionResult = ResultValue<ScheduledRunStore & InterruptedScheduledRunReconciler & ScheduledRunRetentionOwner, ScheduledRunStoreError>;
 
 type RunRow = {
   run_id: string; task_id: string; task_revision: number; scheduled_for: string; state: ScheduledRunRecord["state"];
@@ -90,6 +109,10 @@ class AbortMutation extends Error {
   constructor(readonly error: ScheduledRunStoreError) { super(error._tag); }
 }
 class CorruptState extends Error {}
+function retentionFields(value:unknown,required:readonly string[],optional:readonly string[]=[]):boolean {
+  if(!value||typeof value!=="object"||Array.isArray(value))return false;
+  const keys=Reflect.ownKeys(value);return required.every(key=>Object.hasOwn(value,key))&&keys.every(key=>typeof key==="string"&&[...required,...optional].includes(key)&&"value" in Object.getOwnPropertyDescriptor(value,key)!);
+}
 
 function errorOf(
   tag: ScheduledRunStoreErrorTag,
@@ -121,10 +144,6 @@ function parseDecision(row: DecisionRow): unknown {
   try { return JSON.parse(row.result_json); } catch { throw new CorruptState(); }
 }
 
-function isBusy(error: unknown): boolean {
-  return error instanceof Error && /busy|locked/i.test(error.message);
-}
-
 export function createCurrentPiclawScheduledRunStore(
   database: Database,
   runtime: ScheduledRunAdapterRuntime,
@@ -137,9 +156,8 @@ export function createCurrentPiclawScheduledRunStore(
   }
 }
 
-class CurrentPiclawScheduledRunStore implements ScheduledRunStore {
+class CurrentPiclawScheduledRunStore implements ScheduledRunStore, ScheduledRunRetentionOwner {
   readonly outbox: ServiceOutboxEnqueueInserter;
-  private serial: Promise<void> = Promise.resolve();
 
   private constructor(readonly database: Database, private readonly runtime: ScheduledRunAdapterRuntime) {
     const inserted = createServiceOutboxEnqueueInserter(database, {
@@ -161,12 +179,12 @@ class CurrentPiclawScheduledRunStore implements ScheduledRunStore {
     return this.mutate("claimDue", effectId, null, null, () => this.claim(request));
   }
 
-  async renew(input: RenewScheduledRunRequest): Promise<ResultValue<ScheduledRunLease, ScheduledRunStoreError>> {
+  async renew(input: RenewScheduledRunRequest, context?: { signal?: AbortSignal; assertCurrent?: () => void }): Promise<ResultValue<ScheduledRunLease, ScheduledRunStoreError>> {
     const request = normaliseRenew(input);
     const effectId = request ? `renew:${request.runId}:${request.expectedAttempt}:${request.leaseExpiresAt}` : "invalid";
     this.trace("renew", effectId, null, request?.expectedTaskRevision ?? null, "call", null);
     if (!request) return this.failed("renew", effectId, null, null, errorOf("invalid_request"));
-    return this.mutate("renew", effectId, null, request.expectedTaskRevision, () => this.renewLease(request));
+    return this.mutate("renew", effectId, null, request.expectedTaskRevision, () => this.renewLease(request), null, context);
   }
 
   async bindAcceptedSource(input: BindScheduledSourceRequest): Promise<ResultValue<ScheduledRunRecord, ScheduledRunStoreError>> {
@@ -183,6 +201,27 @@ class CurrentPiclawScheduledRunStore implements ScheduledRunStore {
     this.trace("complete", effectId, request?.effect.operationId ?? null, request?.expectedTaskRevision ?? null, "call", null, request?.effect.sourceSeq ?? null);
     if (!request) return this.failed("complete", effectId, null, null, errorOf("invalid_request"));
     return this.mutate("complete", effectId, request.effect.operationId, request.expectedTaskRevision, () => this.completeRun(request), request.effect.sourceSeq);
+  }
+
+  async reconcileInterruptedAgentSource(input: ReconcileInterruptedScheduledRunRequest): Promise<ResultValue<ScheduledRunRecord, ScheduledRunStoreError>> {
+    const request=normaliseInterruptedReconciliation(input), effectId=request?.effect.idempotencyKey??'invalid';
+    this.trace('complete',effectId,request?.effect.operationId??null,request?.expectedTaskRevision??null,'call',null,request?.effect.sourceSeq??null);
+    if (!request) return this.failed('complete',effectId,null,null,errorOf('invalid_request'));
+    let captured: { identity: InterruptedHarnessIdentity; assertCurrent(): void } | undefined;
+    try {
+      const run = this.readRunRow(request.runId);
+      if (run?.state === 'source_bound') {
+        const proof = this.interruptedSourceProof(run, this.readSnapshot(run.task_id, run.task_revision));
+        if (proof?.harness) {
+          const assertCurrent = await this.runtime.prepareInterruptedHarness?.(proof.harness);
+          if (typeof assertCurrent !== 'function') return this.failed('complete',effectId,request.effect.operationId,request.expectedTaskRevision,errorOf('invalid_transition'),request.effect.sourceSeq);
+          captured = { identity: proof.harness, assertCurrent };
+        }
+      }
+    } catch {
+      return this.failed('complete',effectId,request.effect.operationId,request.expectedTaskRevision,errorOf('invalid_transition'),request.effect.sourceSeq);
+    }
+    return this.mutate('complete',effectId,request.effect.operationId,request.expectedTaskRevision,()=>this.reconcileInterruptedRun(request,captured),request.effect.sourceSeq);
   }
 
   async abandon(input: AbandonScheduledRunRequest): Promise<ResultValue<ScheduledRunRecord, ScheduledRunStoreError>> {
@@ -226,6 +265,76 @@ class CurrentPiclawScheduledRunStore implements ScheduledRunStore {
     return this.mutate("cleanupTerminal", effectId, null, null, () => this.cleanup(request));
   }
 
+  async planRetention(input:{settledBefore:string;limit:number;after?:ScheduledRetentionCursor|null}):Promise<ResultValue<ScheduledRetentionPlan,ScheduledRunStoreError>> {
+    if(!retentionFields(input,["settledBefore","limit"],["after"]))return Result.err(errorOf("invalid_request"));
+    const request=normaliseCleanup({settledBefore:input.settledBefore,limit:input.limit}),rawAfter=input.after??null;
+    if(!request||rawAfter&&(!retentionFields(rawAfter,["settledAt","runId"])||!canonicalInstant(rawAfter.settledAt)||!validScheduledRunId(rawAfter.runId)||rawAfter.settledAt>=request.settledBefore))return Result.err(errorOf("invalid_request"));
+    const after=rawAfter?Object.freeze({...rawAfter}):null;
+    try{return Result.ok(this.database.transaction(()=>{
+      this.assertRetentionSchema();
+      const page=this.database.query(`SELECT * FROM main.${RUNS} WHERE state IN ('completed','abandoned') AND settled_at<?
+        AND (? IS NULL OR settled_at>? OR (settled_at=? AND run_id>?)) ORDER BY settled_at,run_id LIMIT ?`)
+        .all(request.settledBefore,after?.settledAt??null,after?.settledAt??"",after?.settledAt??"",after?.runId??"",request.limit+1) as RunRow[];
+      const inspected=page.slice(0,request.limit),rows:ScheduledRetentionPlan["rows"][number][]=[];
+      for(const row of inspected)if(this.retentionEligible(row)){
+        const record=this.readRecord(row.run_id);if(!record)throw new CorruptState();
+        rows.push(Object.freeze({runId:row.run_id,settledAt:row.settled_at!,sha256:canonicalRequestHash(record),serializedBytes:Buffer.byteLength(JSON.stringify(record))}));
+      }
+      const last=inspected.at(-1),through=last?Object.freeze({settledAt:last.settled_at!,runId:last.run_id}):after;
+      return Object.freeze({version:1 as const,owner:"scheduled-run-history" as const,settledBefore:request.settledBefore,after,through,
+        examined:inspected.length,rows:Object.freeze(rows),nextCursor:page.length>request.limit?through:null});
+    })());}catch(error){return Result.err(errorOf(error instanceof CorruptState?"corrupt_state":"storage_unavailable"));}
+  }
+
+  async applyRetention(input:ScheduledRetentionPlan):Promise<ResultValue<CleanupScheduledRunsResult,ScheduledRunStoreError>> {
+    let plan:ScheduledRetentionPlan;try{plan=structuredClone(input);}catch{return Result.err(errorOf("invalid_request"));}
+    const cursor=(value:ScheduledRetentionCursor|null)=>value===null||retentionFields(value,["settledAt","runId"])&&!!canonicalInstant(value.settledAt)&&validScheduledRunId(value.runId)&&value.settledAt<plan.settledBefore;
+    const compare=(a:ScheduledRetentionCursor,b:ScheduledRetentionCursor)=>a.settledAt<b.settledAt?-1:a.settledAt>b.settledAt?1:a.runId<b.runId?-1:a.runId>b.runId?1:0;
+    if(!retentionFields(plan,["version","owner","settledBefore","after","through","examined","rows","nextCursor"])||plan.version!==1||plan.owner!=="scheduled-run-history"||!canonicalInstant(plan.settledBefore)||!Number.isSafeInteger(plan.examined)||plan.examined<0||plan.examined>100||
+      !Array.isArray(plan.rows)||plan.rows.length>plan.examined||!cursor(plan.after)||!cursor(plan.through)||!cursor(plan.nextCursor)||
+      (plan.examined===0?(plan.after===null?plan.through!==null:!plan.through||compare(plan.through,plan.after)!==0):!plan.through||plan.after!==null&&compare(plan.through,plan.after)<=0)||
+      plan.nextCursor!==null&&(!plan.through||compare(plan.nextCursor,plan.through)!==0))return Result.err(errorOf("invalid_request"));
+    let previous=plan.after;
+    for(const row of plan.rows){if(!retentionFields(row,["runId","settledAt","sha256","serializedBytes"]))return Result.err(errorOf("invalid_request"));const position={settledAt:row.settledAt,runId:row.runId};
+      if(!cursor(position)||typeof row.sha256!=="string"||row.sha256.length!==64||!validHash(row.sha256)||!Number.isSafeInteger(row.serializedBytes)||row.serializedBytes<1||previous&&compare(position,previous)<=0||!plan.through||compare(position,plan.through)>0)return Result.err(errorOf("invalid_request"));previous=position;}
+    if(plan.rows.length===0)return Result.ok(Object.freeze({removed:0,runIds:Object.freeze([])})); // No effect and no receipt growth for held/empty pages.
+    const requestHash=canonicalRequestHash(plan),key=`retention-v1:${requestHash}`;
+    this.trace("cleanupTerminal",key,null,null,"call",null);
+    return this.mutate("cleanupTerminal",key,null,null,()=>{
+      assertProcessAdmission();this.assertRetentionSchema();
+      const replay=this.replay(key,requestHash,"cleanupTerminal",null);
+      if(replay!==undefined){const result=decodeCleanupResult(replay);if(!result)throw new CorruptState();return Result.ok(result);}
+      const selected:RunRow[]=[];
+      for(const expected of plan.rows){const row=this.readRunRow(expected.runId),record=row&&this.readRecord(expected.runId);
+        if(!row||!record||row.settled_at!==expected.settledAt||canonicalRequestHash(record)!==expected.sha256||Buffer.byteLength(JSON.stringify(record))!==expected.serializedBytes||!this.retentionEligible(row))throw new AbortMutation(errorOf("invalid_transition"));
+        selected.push(row);}
+      for(const row of selected)this.retireRun(row);
+      const result=Object.freeze({removed:selected.length,runIds:Object.freeze(selected.map(row=>row.run_id))});
+      this.writeDecision(key,"cleanupTerminal",requestHash,null,result,plan.settledBefore);
+      const saved=this.replay(key,requestHash,"cleanupTerminal",null);if(saved===undefined||canonicalRequestHash(saved)!==canonicalRequestHash(result))throw new CorruptState();
+      return Result.ok(result);
+    });
+  }
+
+  private assertRetentionSchema(){
+    if(this.database.query(`SELECT 1 FROM sqlite_temp_schema WHERE name LIKE 'service_effect_s07_%' OR name IN ('task_run_logs','budget_work','budget_request_reservations','service_effect_s05_outbox')`).get())throw new CorruptState();
+  }
+  private retentionEligible(row:RunRow):boolean {
+    if(!['completed','abandoned'].includes(row.state)||row.operation_id!==null||row.result_ref!==null)return false; // Retain native accepted sources and opaque external result dependencies.
+    if(this.readSnapshot(row.task_id,row.task_revision).executionRepeatability!=="repeatable")return false;
+    if(this.database.query(`SELECT 1 FROM main.${TASKS} WHERE task_id=? AND current_revision=? AND status='paused' AND next_run_at=?`).get(row.task_id,row.task_revision,row.scheduled_for))return false;
+    if(hasScheduledHistoryProjection(this.database)&&this.database.query("SELECT 1 FROM main.task_run_logs WHERE occurrence_id=? OR (task_id=? AND ?='task_run_log:'||id)").get(row.run_id,row.task_id,row.result_ref))return false;
+    if(this.database.query(`SELECT 1 FROM main.${LINKS} l JOIN main.service_effect_s05_outbox o ON o.outbox_id=l.outbox_id WHERE l.run_id=? AND
+      (o.state IN ('pending','started','unknown') OR o.certainty='unknown' OR o.retry_at IS NOT NULL)`).get(row.run_id))return false;
+    return !this.hasHistoricalTaskReference(row.task_id);
+  }
+  private hasHistoricalTaskReference(taskId:string):boolean {
+    // Historical task references are data, not a financial lifecycle. Missing
+    // work mapping with a retained request table cannot prove safe deletion.
+    const history=this.database.query("SELECT name FROM main.sqlite_schema WHERE type='table' AND name IN ('budget_work','budget_request_reservations')").all() as {name:string}[];
+    return history.length>0&&(!history.some(table=>table.name==='budget_work')||!!this.database.query("SELECT 1 FROM main.budget_work WHERE scheduled_task_id=?").get(taskId));
+  }
+
   private async mutate<T>(
     method: MutationMethod,
     effectId: string,
@@ -233,41 +342,47 @@ class CurrentPiclawScheduledRunStore implements ScheduledRunStore {
     version: number | null,
     action: () => ResultValue<T, ScheduledRunStoreError>,
     sourceSeq: number | null = null,
+    context?: { signal?: AbortSignal; assertCurrent?: () => void },
   ): Promise<ResultValue<T, ScheduledRunStoreError>> {
-    let release!: () => void;
-    const previous = this.serial;
-    this.serial = new Promise<void>((resolve) => { release = resolve; });
-    await previous;
+    // Preserve asynchronous entry without waiting behind unrelated mutations.
+    await Promise.resolve();
     try {
       if (this.runtime.hitFault("before_effect", method)) return this.failed(method, effectId, operationId, version, errorOf("storage_unavailable"), sourceSeq);
-      const result = action();
+      const result = await admitSqliteWrite(this.database, action, undefined, context?.signal, undefined,
+        () => { context?.assertCurrent?.(); if (method === "claimDue") this.runtime.assertClaimCurrent?.(); });
       if (!result.ok) return this.failed(method, effectId, operationId, version, result.error, sourceSeq);
-      if (this.runtime.hitFault("effect_then_lost_acknowledgement", method)) {
-        return this.failed(method, effectId, operationId, version, errorOf("storage_unavailable", "unknown", true), sourceSeq);
-      }
+      let lostAcknowledgement: boolean;
+      try { lostAcknowledgement = this.runtime.hitFault("effect_then_lost_acknowledgement", method); }
+      catch { lostAcknowledgement = true; } // A committed hook failure is unknown, never not_applied.
+      if (lostAcknowledgement) return this.failed(method, effectId, operationId, version, errorOf("storage_unavailable", "unknown", true), sourceSeq);
       this.trace(method, effectId, operationId, version, "applied", "applied", sourceSeq);
       return result;
     } catch (error) {
-      const bounded = error instanceof CorruptState ? errorOf("corrupt_state") : error instanceof AbortMutation ? error.error : errorOf("storage_unavailable", "not_applied", isBusy(error));
+      const bounded = error instanceof CorruptState ? errorOf("corrupt_state") : error instanceof ScheduledHistoryError ? errorOf(error.tag) : error instanceof AbortMutation ? error.error : errorOf("storage_unavailable", "not_applied", isBusy(error));
       return this.failed(method, effectId, operationId, version, bounded, sourceSeq);
-    } finally { release(); }
+    }
   }
 
   private claim(request: ClaimDueRunsRequest): ResultValue<readonly ScheduledRunLease[], ScheduledRunStoreError> {
     const prefixHash = hashScheduledLeaseToken(request.leaseTokenPrefix);
     const key = `claim:${prefixHash}`;
     const requestHash = canonicalRequestHash(request);
-    const transaction = this.database.transaction(() => {
+      // Check inside SQLite writer admission, including replay.
+      assertProcessAdmission();
       const replay = this.replay(key, requestHash, "claimDue", null);
       if (replay !== undefined) return Result.ok(this.restoreClaimReplay(request, replay));
 
       type Candidate = { kind: "new" | "expired"; taskId: string; scheduledFor: string; runId: string | null };
       const due = this.database.query(
-        `SELECT task_id AS taskId,next_run_at AS scheduledFor,NULL AS runId FROM ${TASKS} WHERE status='active' AND next_run_at IS NOT NULL AND next_run_at<=? ORDER BY next_run_at,task_id LIMIT 100`,
+        `SELECT t.task_id AS taskId,t.next_run_at AS scheduledFor,NULL AS runId FROM ${TASKS} t WHERE t.status='active' AND t.next_run_at IS NOT NULL AND t.next_run_at<=?
+         AND NOT EXISTS (SELECT 1 FROM ${RUNS} r WHERE r.task_id=t.task_id AND r.task_revision=t.current_revision AND r.scheduled_for=t.next_run_at)
+         AND NOT EXISTS (SELECT 1 FROM ${TOMBSTONES} r WHERE r.task_id=t.task_id AND r.task_revision=t.current_revision AND r.scheduled_for=t.next_run_at) ORDER BY t.next_run_at,t.task_id LIMIT 100`,
       ).all(request.now) as Candidate[];
       const expired = this.database.query(
-        `SELECT task_id AS taskId,scheduled_for AS scheduledFor,run_id AS runId FROM ${RUNS} WHERE state IN ('claimed','source_bound') AND lease_expires_at<=? ORDER BY scheduled_for,task_id LIMIT 100`,
-      ).all(request.now) as Candidate[];
+        `SELECT r.task_id AS taskId,r.scheduled_for AS scheduledFor,r.run_id AS runId FROM json_each(?) a CROSS JOIN ${RUNS} r
+         WHERE r.run_id=json_extract(a.value,'$.runId') AND r.attempt=json_extract(a.value,'$.expectedAttempt')
+         AND r.state IN ('claimed','source_bound') AND r.lease_expires_at<=? ORDER BY r.scheduled_for,r.task_id,r.run_id`,
+      ).all(JSON.stringify(request.reclaimAuthorities), request.now) as Candidate[];
       const candidates = [
         ...due.map((row) => ({ ...row, kind: "new" as const })),
         ...expired.map((row) => ({ ...row, kind: "expired" as const })),
@@ -334,8 +449,6 @@ class CurrentPiclawScheduledRunStore implements ScheduledRunStore {
       }
       this.writeDecision(key, "claimDue", requestHash, null, replayRows, request.now);
       return Result.ok(Object.freeze(leases));
-    });
-    return transaction.immediate();
   }
 
   private restoreClaimReplay(request: ClaimDueRunsRequest, value: unknown): readonly ScheduledRunLease[] {
@@ -361,7 +474,6 @@ class CurrentPiclawScheduledRunStore implements ScheduledRunStore {
     const tokenHash = hashScheduledLeaseToken(request.leaseToken);
     const key = `renew:${request.runId}:${request.expectedAttempt}:${tokenHash}:${request.leaseExpiresAt}`;
     const requestHash = canonicalRequestHash(request);
-    return this.database.transaction(() => {
       const replay = this.replay(key, requestHash, "renew", request.runId);
       if (replay !== undefined) {
         const saved = decodeScheduledRunRecord(replay);
@@ -380,6 +492,7 @@ class CurrentPiclawScheduledRunStore implements ScheduledRunStore {
       }
       const run = this.requireFencedRun(request, tokenHash);
       if (!run.lease_expires_at || request.leaseExpiresAt <= run.lease_expires_at) throw new AbortMutation(errorOf("invalid_request"));
+      if (this.runtime.liveRenewalNow && run.lease_expires_at <= this.runtime.liveRenewalNow()) throw new AbortMutation(errorOf("lease_expired", "not_applied", false, { observedAttempt: run.attempt }));
       const ordinalRow = this.database.query(`SELECT COALESCE(MAX(ordinal),0)+1 AS ordinal FROM ${RENEWALS} WHERE run_id=? AND attempt=?`).get(request.runId, request.expectedAttempt) as { ordinal: number };
       if (!Number.isSafeInteger(ordinalRow.ordinal) || ordinalRow.ordinal < 1) throw new CorruptState();
       this.database.query(`INSERT INTO ${RENEWALS}(run_id,attempt,ordinal,request_hash,previous_expires_at,lease_expires_at,renewed_at) VALUES(?,?,?,?,?,?,?)`).run(request.runId, request.expectedAttempt, ordinalRow.ordinal, requestHash, run.lease_expires_at, request.leaseExpiresAt, request.now);
@@ -395,13 +508,12 @@ class CurrentPiclawScheduledRunStore implements ScheduledRunStore {
       const record = this.requireActiveRecord(this.readRecord(request.runId));
       const lease = this.lease(record, this.readSnapshot(run.task_id, run.task_revision), request.leaseToken);
       this.writeDecision(key, "renew", requestHash, request.runId, lease.record, request.now);
+      if (this.runtime.liveRenewalNow && run.lease_expires_at <= this.runtime.liveRenewalNow()) throw new AbortMutation(errorOf("lease_expired", "not_applied", false, { observedAttempt: run.attempt }));
       return Result.ok(lease);
-    }).immediate();
   }
 
   private bind(request: BindScheduledSourceRequest): ResultValue<ScheduledRunRecord, ScheduledRunStoreError> {
     const key = `effect:${request.effect.idempotencyKey}`;
-    return this.database.transaction(() => {
       const replay = this.replayRecordOrRetained(key, "bindAcceptedSource", request.effect.requestHash, request.runId);
       if (replay) return Result.ok(replay);
       const run = this.requireFencedRun(request, hashScheduledLeaseToken(request.leaseToken));
@@ -426,22 +538,90 @@ class CurrentPiclawScheduledRunStore implements ScheduledRunStore {
       const record = this.readRecord(request.runId)!;
       this.writeDecision(key, "bindAcceptedSource", request.effect.requestHash, request.runId, record, request.boundAt);
       return Result.ok(record);
-    }).immediate();
   }
 
   private completeRun(request: CompleteScheduledRunRequest): ResultValue<ScheduledRunRecord, ScheduledRunStoreError> {
-    const key = `effect:${request.effect.idempotencyKey}`;
-    return this.database.transaction(() => {
-      const replay = this.replayRecordOrRetained(key, "complete", request.effect.requestHash, request.runId);
-      if (replay) return Result.ok(replay);
-      const run = this.requireFencedRun(request, hashScheduledLeaseToken(request.leaseToken));
-      const snapshot = this.readSnapshot(run.task_id, run.task_revision);
-      this.validateCompletionShape(request, run, snapshot);
+    const key=`effect:${request.effect.idempotencyKey}`;
+      const replay=this.replayRecordOrRetained(key,'complete',request.effect.requestHash,request.runId);
+      if(replay){
+        projectScheduledTask(this.database,replay.taskId,replay.runId);
+        if(request.resultPayload && replay.durationMs !== null){
+          projectScheduledHistory(this.database,request.runId,request);
+          this.statement('history_projection');
+          projectScheduledTask(this.database,replay.taskId,replay.runId);
+        }
+        return Result.ok(replay);
+      }
+      const run=this.requireFencedRun(request,hashScheduledLeaseToken(request.leaseToken));
+      const snapshot=this.readSnapshot(run.task_id,run.task_revision);
+      this.validateCompletionShape(request,run,snapshot);
+      const completed = this.finishCompletion(request,run,snapshot);
+      if(completed.ok && request.resultPayload){
+        projectScheduledHistory(this.database,request.runId,request);
+        this.statement('history_projection');
+        projectScheduledTask(this.database,run.task_id,run.run_id);
+      }
+      return completed;
+  }
+
+  private reconcileInterruptedRun(request: ReconcileInterruptedScheduledRunRequest, captured?: { identity: InterruptedHarnessIdentity; assertCurrent(): void }): ResultValue<ScheduledRunRecord, ScheduledRunStoreError> {
+      assertProcessAdmission();
+      const replay=this.replayRecordOrRetained(`effect:${request.effect.idempotencyKey}`,'complete',request.effect.requestHash,request.runId);
+      if(replay)return Result.ok(replay);
+      const run=this.readRunRow(request.runId);
+      if(!run)throw new AbortMutation(errorOf('not_found'));
+      this.recordFromRun(run);
+      if(run.task_revision!==request.expectedTaskRevision)throw new AbortMutation(errorOf('task_revision_mismatch'));
+      if(run.state!=='source_bound'||run.attempt!==request.expectedAttempt||run.lease_expires_at!==request.expectedLeaseExpiresAt||!run.lease_expires_at||run.lease_expires_at>request.now)throw new AbortMutation(errorOf('lease_conflict'));
+      if(run.operation_id!==request.effect.operationId||run.accepted_source_seq!==request.effect.sourceSeq)throw new AbortMutation(errorOf('invalid_request'));
+      const snapshot=this.readSnapshot(run.task_id,run.task_revision), proof=this.interruptedSourceProof(run,snapshot);
+      if(!proof||proof.version!==request.expectedOperationVersion||proof.committedAt>request.now||proof.committedAt<run.claimed_at)throw new AbortMutation(errorOf('invalid_transition'));
+      if (proof.harness) {
+        if (!captured || JSON.stringify(captured.identity) !== JSON.stringify(proof.harness)) throw new AbortMutation(errorOf('invalid_transition'));
+        try {
+          const checked: unknown = captured.assertCurrent();
+          if (checked !== undefined) { void Promise.resolve(checked).catch(() => undefined); throw Error('Synchronous native receipt fence required'); }
+        } catch { throw new AbortMutation(errorOf('invalid_transition')); }
+      }
+      const durationMs=Date.parse(proof.committedAt)-Date.parse(run.claimed_at);
+      if(!Number.isSafeInteger(durationMs)||durationMs<0)throw new CorruptState();
+      return this.finishCompletion({effect:request.effect,status:'error',durationMs,resultRef:null,errorCode:'scheduled_run_interrupted',completedAt:request.now,outboxIntents:[]},run,snapshot,true);
+  }
+
+  /** Immutable host evidence only; never claim, submit or replay the agent source. */
+  private interruptedSourceProof(run: RunRow,snapshot: ScheduledTaskSnapshot): {version:number;committedAt:string;harness:InterruptedHarnessIdentity|null}|null {
+    if(snapshot.kind!=='agent'||snapshot.executionRepeatability!=='agent_source'||!run.operation_id||run.accepted_source_seq===null)return null;
+    const row=this.database.query(`SELECT o.version,o.terminal_committed_at,o.harness_session_id,o.harness_operation_id FROM service_effect_s01_operations o
+      JOIN service_effect_s01_sources s ON s.chat_jid=o.chat_jid AND s.source_seq=o.primary_source_seq
+      JOIN service_effect_s01_chats c ON c.chat_jid=o.chat_jid
+      WHERE o.operation_id=? AND o.chat_jid=? AND o.primary_source_seq=? AND s.source_id=? AND s.kind='scheduled_agent'
+      AND o.phase='terminal' AND o.terminal_disposition='failed' AND o.terminal_error_code='scheduled_run_interrupted'
+      AND s.state='disposed' AND s.disposition_reason='scheduled_run_interrupted'
+      AND ((o.harness_session_id IS NULL AND o.harness_operation_id IS NULL) OR (o.harness_session_id IS NOT NULL AND o.harness_operation_id IS NOT NULL))
+      AND o.cancellation_source_seq IS NULL AND o.terminal_message_row_id IS NULL
+      AND (c.active_operation_id IS NULL OR c.active_operation_id<>o.operation_id)
+      AND (SELECT COUNT(*) FROM service_effect_s01_operation_sources os WHERE os.operation_id=o.operation_id)=1`).get(run.operation_id,snapshot.chatJid,run.accepted_source_seq,run.run_id) as {version:number;terminal_committed_at:string;harness_session_id:string|null;harness_operation_id:string|null}|null;
+    const committedAt=row&&canonicalInstant(row.terminal_committed_at);
+    if (!row || !Number.isSafeInteger(row.version) || row.version<=0 || !committedAt) return null;
+    let sessionId=row.harness_session_id,submissionId=row.harness_operation_id;
+    if(run.operation_id===`native-scheduled:${run.run_id}`){
+      // A native input has no host harness lifecycle. Its immutable routing ACK
+      // still requires actual public SDK terminal proof; missing ACK stays unknown.
+      if(!this.database.query("SELECT 1 FROM main.sqlite_schema WHERE type='table' AND name='piclaw_durable_bindings_v1'").get())return null;
+      const binding=this.database.query("SELECT incarnation,submission_id FROM main.piclaw_durable_bindings_v1 WHERE operation_id=? AND chat_jid=? AND source_seq=? AND source_id=? AND request_id=? AND payload_ref=?").get(run.operation_id,snapshot.chatJid,run.accepted_source_seq,run.run_id,`scheduled:${run.run_id}`,snapshot.payloadRef) as {incarnation:string;submission_id:number|null}|null;
+      if(!binding||!binding.incarnation||!Number.isSafeInteger(binding.submission_id)||(binding.submission_id??0)<=0)return null;
+      sessionId=binding.incarnation;submissionId=String(binding.submission_id);
+    }
+    const harness=sessionId===null?null:Object.freeze({sessionId,submissionId:submissionId!,runId:run.run_id,operationId:run.operation_id,sourceSeq:run.accepted_source_seq,chatJid:snapshot.chatJid});
+    return {version:row.version,committedAt,harness};
+  }
+
+  private finishCompletion(request: Pick<CompleteScheduledRunRequest,'effect'|'status'|'durationMs'|'resultRef'|'errorCode'|'completedAt'|'outboxIntents'>,run: RunRow,snapshot: ScheduledTaskSnapshot,skipMissedOccurrences=false): ResultValue<ScheduledRunRecord,ScheduledRunStoreError> {
       for (const intent of request.outboxIntents) {
         const existing = this.database.query("SELECT outbox_id FROM service_effect_s05_outbox WHERE outbox_id=? OR (kind=? AND idempotency_key=?) LIMIT 1").get(intent.outboxId, intent.kind, intent.effect.idempotencyKey);
         if (existing) throw new AbortMutation(errorOf("idempotency_conflict"));
       }
-      const decision = this.decideHead(run, snapshot, request.completedAt, null);
+      const decision = this.decideHead(run, snapshot, request.completedAt, null, skipMissedOccurrences);
       this.writeNextDecision(run, decision, request.completedAt, request.effect.requestHash);
       this.database.query(
         `INSERT INTO ${LOGS}(run_id,task_id,task_revision,scheduled_for,task_kind,completed_at,duration_ms,status,result_ref,error_code) VALUES(?,?,?,?,?,?,?,?,?,?)`,
@@ -456,20 +636,19 @@ class CurrentPiclawScheduledRunStore implements ScheduledRunStore {
       this.applyHeadDecision(run, decision, request.completedAt);
       const changed = this.database.query(
         `UPDATE ${RUNS} SET state='completed',worker_id=NULL,lease_token_hash=NULL,lease_expires_at=NULL,result_status=?,duration_ms=?,result_ref=?,error_code=?,next_run_at=?,head_disposition=?,settled_at=? WHERE run_id=? AND worker_id=? AND attempt=? AND task_revision=? AND lease_token_hash=? AND state IN ('claimed','source_bound')`,
-      ).run(request.status, request.durationMs, request.resultRef, request.errorCode, decision.recordNext, decision.disposition, request.completedAt, run.run_id, request.workerId, request.expectedAttempt, request.expectedTaskRevision, hashScheduledLeaseToken(request.leaseToken));
+      ).run(request.status, request.durationMs, request.resultRef, request.errorCode, decision.recordNext, decision.disposition, request.completedAt, run.run_id, run.worker_id, run.attempt, run.task_revision, run.lease_token_hash);
       if (changed.changes !== 1) throw new AbortMutation(errorOf("lease_conflict"));
       this.statement("occurrence_terminal_update");
       const record = this.readRecord(run.run_id)!;
-      this.writeDecision(key, "complete", request.effect.requestHash, run.run_id, record, request.completedAt);
+      this.writeDecision(`effect:${request.effect.idempotencyKey}`, "complete", request.effect.requestHash, run.run_id, record, request.completedAt);
+      projectScheduledTask(this.database,run.task_id,run.run_id);
       return Result.ok(record);
-    }).immediate();
   }
 
   private abandonRun(request: AbandonScheduledRunRequest): ResultValue<ScheduledRunRecord, ScheduledRunStoreError> {
     const key = `effect:${request.effect.idempotencyKey}`;
-    return this.database.transaction(() => {
       const replay = this.replayRecordOrRetained(key, "abandon", request.effect.requestHash, request.runId);
-      if (replay) return Result.ok(replay);
+      if (replay) { projectScheduledTask(this.database,replay.taskId,replay.runId); return Result.ok(replay); }
       const run = this.requireFencedRun(request, hashScheduledLeaseToken(request.leaseToken));
       const snapshot = this.readSnapshot(run.task_id, run.task_revision);
       const decision = this.decideHead(run, snapshot, request.abandonedAt, request.retryAt);
@@ -486,46 +665,68 @@ class CurrentPiclawScheduledRunStore implements ScheduledRunStore {
       this.statement("occurrence_terminal_update");
       const record = this.readRecord(run.run_id)!;
       this.writeDecision(key, "abandon", request.effect.requestHash, run.run_id, record, request.abandonedAt);
+      projectScheduledTask(this.database,run.task_id,run.run_id);
       return Result.ok(record);
-    }).immediate();
   }
 
   private cleanup(request: CleanupScheduledRunsRequest): ResultValue<CleanupScheduledRunsResult, ScheduledRunStoreError> {
     const key = `cleanupTerminal:${request.settledBefore}:${request.limit}`;
     const requestHash = canonicalRequestHash(request);
-    return this.database.transaction(() => {
+      assertProcessAdmission();this.assertRetentionSchema();
       const replay = this.replay(key, requestHash, "cleanupTerminal", null);
       if (replay !== undefined) {
         const result = decodeCleanupResult(replay);
         if (!result) throw new CorruptState();
         return Result.ok(result);
       }
+      // Exact existing decisions still replay above. Fresh native retention must
+      // use the explicit dry-run plan; this older selection API has no approval
+      // snapshot or advancing restart cursor and cannot bypass that owner.
+      if(this.database.query("SELECT 1 FROM main.sqlite_schema WHERE type='table' AND name='piclaw_durable_bindings_v1'").get())throw new AbortMutation(errorOf("invalid_transition"));
+      // Retain canonical rebuild/replay authority while an explicitly linked
+      // host payload survives, or the current paused head still references its
+      // successor decision. Legacy unlinked rows are never guessed into it.
+      const protectedHistory = hasScheduledHistoryProjection(this.database)
+        ? `AND NOT EXISTS (SELECT 1 FROM main.task_run_logs h WHERE h.occurrence_id=r.run_id OR (h.task_id=r.task_id AND r.result_ref='task_run_log:' || h.id))` : "";
       const rows = this.database.query(
-        `SELECT * FROM ${RUNS} WHERE state IN ('completed','abandoned') AND settled_at<? ORDER BY settled_at,run_id LIMIT ?`,
+        `SELECT r.* FROM ${RUNS} r WHERE r.state IN ('completed','abandoned') AND r.settled_at<? ${protectedHistory}
+          AND NOT EXISTS (SELECT 1 FROM main.${LINKS} l JOIN main.service_effect_s05_outbox o ON o.outbox_id=l.outbox_id
+            WHERE l.run_id=r.run_id AND (o.state IN ('pending','started','unknown') OR o.certainty='unknown' OR o.retry_at IS NOT NULL))
+          AND NOT EXISTS (SELECT 1 FROM ${TASKS} t WHERE t.task_id=r.task_id AND t.current_revision=r.task_revision
+            AND t.status='paused' AND t.next_run_at=r.scheduled_for)
+          ORDER BY r.settled_at,r.run_id LIMIT ?`,
       ).all(request.settledBefore, request.limit) as RunRow[];
       const runIds: string[] = [];
       for (const row of rows) {
-        const next = this.database.query(`SELECT decision_hash FROM ${NEXT} WHERE run_id=?`).get(row.run_id) as { decision_hash: string } | undefined;
-        if (!next) throw new CorruptState();
-        this.database.query(
-          `INSERT INTO ${TOMBSTONES}(run_id,task_id,task_revision,scheduled_for,state,attempt,status,next_run_at,head_disposition,settled_at,decision_method,decision_hash) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,
-        ).run(row.run_id, row.task_id, row.task_revision, row.scheduled_for, row.state, row.attempt, row.result_status, row.next_run_at, row.head_disposition, row.settled_at, row.state === "completed" ? "complete" : "abandon", next.decision_hash);
-        this.statement("tombstone_insert");
-        this.database.query(`DELETE FROM ${DECISIONS} WHERE run_id=?`).run(row.run_id); this.statement("retention_delete");
-        this.database.query(`DELETE FROM ${LINKS} WHERE run_id=?`).run(row.run_id); this.statement("retention_delete");
-        this.database.query(`DELETE FROM ${BINDINGS} WHERE run_id=?`).run(row.run_id); this.statement("retention_delete");
-        this.database.query(`DELETE FROM ${LOGS} WHERE run_id=?`).run(row.run_id); this.statement("retention_delete");
-        this.database.query(`DELETE FROM ${ABANDONMENTS} WHERE run_id=?`).run(row.run_id); this.statement("retention_delete");
-        this.database.query(`DELETE FROM ${NEXT} WHERE run_id=?`).run(row.run_id); this.statement("retention_delete");
-        this.database.query(`DELETE FROM ${RENEWALS} WHERE run_id=?`).run(row.run_id); this.statement("retention_delete");
-        this.database.query(`DELETE FROM ${LEASES} WHERE run_id=?`).run(row.run_id); this.statement("retention_delete");
-        this.database.query(`DELETE FROM ${RUNS} WHERE run_id=?`).run(row.run_id); this.statement("retention_delete");
+        if(this.hasHistoricalTaskReference(row.task_id))continue;
+        this.retireRun(row);
         runIds.push(row.run_id);
       }
       const result = Object.freeze({ removed: runIds.length, runIds: Object.freeze(runIds) });
       this.writeDecision(key, "cleanupTerminal", requestHash, null, result, request.settledBefore);
       return Result.ok(result);
-    }).immediate();
+  }
+
+  private retireRun(row:RunRow):void {
+    const next = this.database.query(`SELECT decision_hash FROM ${NEXT} WHERE run_id=?`).get(row.run_id) as { decision_hash: string } | undefined;
+    if (!next) throw new CorruptState();
+    this.database.query(
+      `INSERT INTO ${TOMBSTONES}(run_id,task_id,task_revision,scheduled_for,state,attempt,status,next_run_at,head_disposition,settled_at,decision_method,decision_hash) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,
+    ).run(row.run_id, row.task_id, row.task_revision, row.scheduled_for, row.state, row.attempt, row.result_status, row.next_run_at, row.head_disposition, row.settled_at, row.state === "completed" ? "complete" : "abandon", next.decision_hash);
+    this.statement("tombstone_insert");
+    if(!this.readTombstone(row.run_id))throw new CorruptState();
+    this.database.query(`DELETE FROM ${DECISIONS} WHERE run_id=?`).run(row.run_id); this.statement("retention_delete");
+    this.database.query(`DELETE FROM ${LINKS} WHERE run_id=?`).run(row.run_id); this.statement("retention_delete");
+    this.database.query(`DELETE FROM ${BINDINGS} WHERE run_id=?`).run(row.run_id); this.statement("retention_delete");
+    this.database.query(`DELETE FROM ${LOGS} WHERE run_id=?`).run(row.run_id); this.statement("retention_delete");
+    this.database.query(`DELETE FROM ${ABANDONMENTS} WHERE run_id=?`).run(row.run_id); this.statement("retention_delete");
+    this.database.query(`DELETE FROM ${NEXT} WHERE run_id=?`).run(row.run_id); this.statement("retention_delete");
+    this.database.query(`DELETE FROM ${RENEWALS} WHERE run_id=?`).run(row.run_id); this.statement("retention_delete");
+    this.database.query(`DELETE FROM ${LEASES} WHERE run_id=?`).run(row.run_id); this.statement("retention_delete");
+    this.database.query(`DELETE FROM ${RUNS} WHERE run_id=?`).run(row.run_id);
+    const removed=this.database.query("SELECT changes() AS n").get() as {n:number};
+    if(removed.n!==1)throw new CorruptState();
+    this.statement("retention_delete");
   }
 
   private requireFencedRun(
@@ -564,8 +765,8 @@ class CurrentPiclawScheduledRunStore implements ScheduledRunStore {
     }
   }
 
-  private decideHead(run: RunRow, snapshot: ScheduledTaskSnapshot, settledAt: string, retryAt: string | null) {
-    const computed = retryAt ?? computeScheduledSuccessor(snapshot, run.scheduled_for, settledAt);
+  private decideHead(run: RunRow, snapshot: ScheduledTaskSnapshot, settledAt: string, retryAt: string | null, skipMissedOccurrences=false) {
+    const computed = retryAt ?? computeScheduledSuccessor(snapshot, skipMissedOccurrences?settledAt:run.scheduled_for, settledAt);
     if (snapshot.scheduleType !== "once" && !computed) throw new CorruptState();
     const head = this.readHead(run.task_id);
     let disposition: Exclude<ScheduledRunHeadDisposition, "pending">;
@@ -590,10 +791,9 @@ class CurrentPiclawScheduledRunStore implements ScheduledRunStore {
 
   private applyHeadDecision(run: RunRow, decision: ReturnType<CurrentPiclawScheduledRunStore["decideHead"]>, at: string): void {
     if (decision.disposition !== "advanced") return;
-    const changed = this.database.query(
-      `UPDATE ${TASKS} SET next_run_at=?,status=CASE WHEN ? IS NULL THEN 'completed' ELSE 'active' END,updated_at=? WHERE task_id=? AND current_revision=? AND status='active' AND next_run_at=?`,
-    ).run(decision.effectiveNext, decision.effectiveNext, at, run.task_id, run.task_revision, run.scheduled_for);
-    if (changed.changes !== 1) throw new AbortMutation(errorOf("task_revision_mismatch"));
+    const previous = { taskId: run.task_id, revision: run.task_revision, status: "active" as const, nextRunAt: run.scheduled_for };
+    if (!writeScheduledTaskHead(this.database,previous,{ ...previous, nextRunAt: decision.effectiveNext,
+      status: decision.effectiveNext === null ? "completed" : "active" },at)) throw new AbortMutation(errorOf("task_revision_mismatch"));
     this.statement("task_head_update");
   }
 
@@ -741,7 +941,9 @@ class CurrentPiclawScheduledRunStore implements ScheduledRunStore {
         || abandonment.abandoned_at !== record.settledAt || (abandonment.retry_at !== null && !retryAt)) throw new CorruptState();
     }
     const computed = retryAt ?? computeScheduledSuccessor(snapshot, run.scheduled_for, record.settledAt!);
-    if ((snapshot.scheduleType !== "once" && !computed) || next.computed_next_run_at !== computed) throw new CorruptState();
+    const recoveredNext=record.state==='completed'&&record.status==='error'&&record.errorCode==='scheduled_run_interrupted'&&this.interruptedSourceProof(run,snapshot)
+      ?computeScheduledSuccessor(snapshot,record.settledAt!,record.settledAt!):undefined;
+    if ((snapshot.scheduleType !== 'once'&&!computed)||(next.computed_next_run_at!==computed&&next.computed_next_run_at!==recoveredNext))throw new CorruptState();
   }
 
   private requireActiveRecord(record: ScheduledRunRecord | null): ScheduledRunLease["record"] {

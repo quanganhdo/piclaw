@@ -833,6 +833,17 @@
     padding: 1px 6px;
 }
 
+/* A queued item promoted to steering: placed after the current tool round. */
+.compose-queue-stack-mode {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent-color);
+}
+
+.compose-queue-stack-item.is-steering {
+    border-left: 2px solid var(--accent-color);
+}
+
 .compose-queue-stack-actions {
     flex: 0 0 auto;
     display: inline-flex;
@@ -1585,12 +1596,6 @@
     background: color-mix(in srgb, var(--accent-color) 15%, var(--bg-secondary));
 }
 
-.compose-model-catalogue-option.blocked {
-    color: var(--text-secondary);
-    cursor: not-allowed;
-    opacity: 0.78;
-}
-
 .compose-model-catalogue-option:focus-visible {
     outline: 2px solid color-mix(in srgb, var(--accent-color) 55%, transparent);
     outline-offset: -2px;
@@ -1680,13 +1685,6 @@
     content: " · ";
     padding: 0 3px;
     opacity: 0.72;
-}
-
-.compose-model-catalogue-option-note {
-    margin-top: 3px;
-    color: var(--warning-color);
-    font-size: 10px;
-    line-height: 1.35;
 }
 
 .compose-model-catalogue-limit-note {
@@ -2586,6 +2584,6 @@
 }
 .compose-search-match-toggle.active {
     background: var(--accent-color, #4a9eff);
-    color: #fff;
+    color: var(--accent-contrast-text, #fff);
     border-color: transparent;
 }

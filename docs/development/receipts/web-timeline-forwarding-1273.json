@@ -1,0 +1,107 @@
+{
+  "version": 1,
+  "issue": 1273,
+  "epic": 1270,
+  "implementationBase": "fc587de57babb118b5f0fd2ace406548bd04bbfa",
+  "metric": "Tracked handwritten .ts/.tsx/.js/.mts/.cts/.mjs/.cjs in runtime/src and runtime/durable-engine/src; declarations, testing/fixtures/test/qualification and vendor/generated/dist/node_modules excluded. Physical lines include comments/blanks. Nonblank lines are supplementary; neither is semantic SLOC.",
+  "roots": [
+    "runtime/src",
+    "runtime/durable-engine/src"
+  ],
+  "before": {
+    "files": 728,
+    "physicalLOC": 146885,
+    "nonblankLines": 136386
+  },
+  "after": {
+    "files": 728,
+    "physicalLOC": 146874,
+    "nonblankLines": 136376
+  },
+  "delta": {
+    "files": 0,
+    "physicalLOC": -11,
+    "nonblankLines": -10
+  },
+  "excludedSourceTestSupportBefore": {
+    "files": 32,
+    "physicalLOC": 12910,
+    "nonblankLines": 12388
+  },
+  "excludedSourceTestSupportAfter": {
+    "files": 32,
+    "physicalLOC": 12910,
+    "nonblankLines": 12388
+  },
+  "outsideRootProductionAdditions": 0,
+  "relocatedProductionImplementation": 0,
+  "beforePath": [
+    "handleContentPrimaryRoutes",
+    "prototype-installed WebChannel.handleTimeline",
+    "WebChannelHttpSurfaceService.handleTimeline",
+    "WebChannelEndpointFacadeService.handleTimeline",
+    "handleTimelineRequest",
+    "getTimelineResponse"
+  ],
+  "afterPath": [
+    "handleContentPrimaryRoutes",
+    "explicit WebChannel.handleTimeline",
+    "handleTimelineRequest",
+    "getTimelineResponse"
+  ],
+  "removedPolicyFreeStages": 2,
+  "removedTimelineWiring": [
+    "prototype timeline descriptor/withHttpSurface callback",
+    "HTTP surface timeline method/facade dependency member",
+    "endpoint facade timeline method/content-handler import"
+  ],
+  "retained": [
+    "RequestRouterService authentication/security/access-mode guards",
+    "content dispatcher parsing/clamping/chat trimming",
+    "public synchronous WebChannel.handleTimeline signature",
+    "existing typed shared content context/current identity getter",
+    "content handler response identity/serialization/timing",
+    "timeline service/store pagination/filtering/project metadata",
+    "other endpoint families unchanged"
+  ],
+  "validation": {
+    "definingRed": {
+      "cases": 3,
+      "failures": 3,
+      "base": "fc587de57babb118b5f0fd2ace406548bd04bbfa"
+    },
+    "focusedHost": {
+      "cases": 15,
+      "assertions": 230
+    },
+    "securityHeaders": {
+      "cases": 2,
+      "assertions": 11
+    },
+    "typeProjects": [
+      "runtime/tsconfig.json",
+      "runtime/durable-engine/tsconfig.json",
+      "qualification/pi-durable-130/tsconfig.json"
+    ],
+    "nativeFactory": {
+      "scenario": "native-events",
+      "cases": 1,
+      "assertions": 182
+    },
+    "circularDependencies": {
+      "reachableFiles": 546,
+      "cycles": 0
+    },
+    "importBoundaries": {
+      "baselineViolations": 25,
+      "candidateViolations": 25,
+      "byteIdentical": true,
+      "green": false
+    },
+    "newRegressionTypecheck": {
+      "clean": true,
+      "usesExistingAmbientDeclarations": true
+    }
+  },
+  "creditNote": "Tests/docs/generated assets/type-only cleanup and moves do not supply production reduction. No service class or production file is reported deleted. This records the actual small backend delta and two removed route stages, not epic completion."
+}

@@ -1,0 +1,234 @@
+{
+  "version": 1,
+  "issue": 1575,
+  "epic": 1270,
+  "partial": true,
+  "implementationBase": "f2b1c90bb3c13200def2118499481d6970590de4",
+  "metric": "Same stable #1270 tracked handwritten runtime/src + runtime/durable-engine/src rules/exclusions; physical includes comments/blanks.",
+  "before": {
+    "files": 711,
+    "physicalLOC": 144442,
+    "nonblankLines": 134052
+  },
+  "after": {
+    "files": 710,
+    "physicalLOC": 142602,
+    "nonblankLines": 132263
+  },
+  "grossDelta": {
+    "files": -1,
+    "physicalLOC": -1840,
+    "nonblankLines": -1789
+  },
+  "nonCreditRelocationAndOther": {
+    "physicalLOC": 1659,
+    "nonblankLines": 1610,
+    "includes": "all data/types/constants/top-level lifecycle/comments/blanks outside original function declaration spans"
+  },
+  "creditedNetDelta": {
+    "physicalLOC": -181,
+    "nonblankLines": -179
+  },
+  "deletedFunctionSpans": [
+    {
+      "name": "packageRows",
+      "firstLine": 291,
+      "lastLine": 307
+    },
+    {
+      "name": "normalizeEarendilHarnessCompatibilityManifest",
+      "firstLine": 1654,
+      "lastLine": 1667
+    },
+    {
+      "name": "snapshotData",
+      "firstLine": 1676,
+      "lastLine": 1738
+    },
+    {
+      "name": "snapshotArray",
+      "firstLine": 1740,
+      "lastLine": 1763
+    },
+    {
+      "name": "snapshotRecord",
+      "firstLine": 1765,
+      "lastLine": 1783
+    },
+    {
+      "name": "firstDifference",
+      "firstLine": 1787,
+      "lastLine": 1812
+    },
+    {
+      "name": "ownDataValue",
+      "firstLine": 1814,
+      "lastLine": 1817
+    },
+    {
+      "name": "deepFreeze",
+      "firstLine": 1819,
+      "lastLine": 1826
+    },
+    {
+      "name": "failed",
+      "firstLine": 1828,
+      "lastLine": 1830
+    },
+    {
+      "name": "issue",
+      "firstLine": 1832,
+      "lastLine": 1834
+    }
+  ],
+  "originalSource": {
+    "revision": "f2b1c90bb3c13200def2118499481d6970590de4",
+    "path": "runtime/src/service-effects/earendil-harness-v3-compatibility/manifest.ts",
+    "sha256": "b7874e86bbd03d005bff57655a6308c8efd2c3025699ae815dc061c50948e91f",
+    "bytes": 85898,
+    "physicalLOC": 1840,
+    "nonblankLines": 1789
+  },
+  "inertArchive": {
+    "path": "docs/design/earendil-agent-harness-integration-adr/evidence/receipts/earendil-harness-compatibility-schema6.json",
+    "sha256": "1f6f640cc8ef89163b5d439304792abc735db2fc9251bcbc26bb590f660c932f",
+    "bytes": 93814,
+    "physicalLines": 2253,
+    "canonicalObjectSha256": "eb4d28490de9ea4f9bff77c3a9b06051fae8e835133e0ad3f1d9d734275bea7e",
+    "wholeObjectDeepEqualityVerified": true
+  },
+  "outsideRootProductionReplacementImplementation": 0,
+  "archiveProductionDependency": false,
+  "usage": {
+    "candidates": [
+      "runtime/src/service-effects/earendil-harness-v3-compatibility/manifest.ts"
+    ],
+    "externalProductionImports": [],
+    "entryGraphs": [
+      {
+        "entry": "runtime/src/index.ts",
+        "reachable": 545,
+        "candidateMembers": []
+      },
+      {
+        "entry": "runtime/src/agent-pool.ts",
+        "reachable": 324,
+        "candidateMembers": []
+      },
+      {
+        "entry": "runtime/durable-engine/src/default-application-runtime.ts",
+        "reachable": 634,
+        "candidateMembers": []
+      }
+    ],
+    "scope": "Tracked including ignored source and literal static/dynamic imports. Manual registration/package/add-on source audit supplements computed imports; no code was evaluated."
+  },
+  "approvedAddonsRevision": "ad7ad0a4b63ee37090b6bee4309fa5c458ec6510",
+  "approvedAddonConsumers": 0,
+  "removed": {
+    "normalisationApi": {
+      "before": 1,
+      "after": 0
+    },
+    "closedEvidenceValidator": {
+      "before": 1,
+      "after": 0
+    },
+    "importTimeValidationLifecycle": {
+      "before": 1,
+      "after": 0
+    },
+    "topLevelFunctions": {
+      "before": 10,
+      "after": 0
+    },
+    "installedActivationPaths": {
+      "before": 0,
+      "after": 0
+    }
+  },
+  "validation": {
+    "before": {
+      "pass": 6,
+      "fail": 3,
+      "assertions": 209
+    },
+    "focusedAfter": {
+      "pass": 16,
+      "existingHistoricalSkip": 1,
+      "assertions": 299,
+      "files": 4
+    },
+    "oldHistoricalAggregatePinsUnchanged": true,
+    "wholeObjectDeepEquality": true,
+    "reproductionFromImmutableGitByteIdenticalArchiveAndProvenance": true,
+    "privateNativeEngineBoundaryStrengthenedWithoutPiDurableBan": true,
+    "typeProjects": [
+      "runtime/tsconfig.json",
+      "runtime/durable-engine/tsconfig.json",
+      "qualification/pi-durable-130/tsconfig.json"
+    ],
+    "strictArchiveChurnAnd103Tests": true,
+    "broadenedFourTestTypeProject": {
+      "candidateDiagnostics": 13,
+      "baselineDiagnostics": 17,
+      "introduced": 0,
+      "allCandidateErrorsPreexisting": true,
+      "green": false,
+      "noSuppressionOrRulesChanged": true
+    },
+    "actualNativeFactory": [
+      {
+        "scenario": "native-delegate-standard",
+        "pass": 1,
+        "assertions": 47
+      },
+      {
+        "scenario": "native-delegate-files",
+        "pass": 1,
+        "assertions": 44
+      },
+      {
+        "scenario": "native-delegate-timeout",
+        "pass": 1,
+        "assertions": 40
+      },
+      {
+        "scenario": "native-delegate-denied",
+        "pass": 1,
+        "assertions": 29
+      },
+      {
+        "scenario": "native-delegate-accounting",
+        "pass": 1,
+        "assertions": 43
+      }
+    ],
+    "actualSdkWatchProgress": {
+      "pass": 1,
+      "assertions": 11
+    },
+    "circular": {
+      "reachableFiles": 545,
+      "cycles": 0
+    },
+    "envObservationFresh": true,
+    "silentSwallows": {
+      "catchBlocks": 0,
+      "promiseCatches": 0
+    },
+    "importBoundaries": {
+      "baselineFindings": 25,
+      "candidateFindings": 25,
+      "byteIdentical": true,
+      "green": false
+    },
+    "packageDryRun": {
+      "ignoreScripts": true,
+      "retiredExecutableAbsent": true,
+      "inertArchiveNotRuntimePackaged": true,
+      "activeOwnersRetained": 3
+    }
+  },
+  "creditNote": "Never claim1840genuine lines. Only181physical/179nonblank original function spans credited; all1659/1610data/type/otherlines fully charged. JSON expansion is inert historical data, no production replacement. No upstream SDK/active nativeDelegate/MCP/auth/budget/backup/serviceworker deletion, no pin/install/restart/live operation. Final merged-head inventory/acceptance still required."
+}

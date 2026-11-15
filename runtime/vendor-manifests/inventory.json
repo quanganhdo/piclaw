@@ -4,8 +4,8 @@
   "files": [
     {
       "path": "runtime/extensions/viewers/editor/vendor/codemirror.js",
-      "bytes": 1413945,
-      "sha256": "4f8db5d98c9ca84afb6d4a94cf45ae03eb9a1869a8b4533f3bd10e1021d14b94",
+      "bytes": 1413953,
+      "sha256": "815038e99773eb6336e4f0222d97c0e70658bda53728d7ec9ced69ad9beabb8d",
       "manifests": [
         "runtime/vendor-manifests/codemirror-editor.json"
       ],
@@ -300,8 +300,8 @@
     },
     {
       "path": "runtime/web/static/common/js/marked.min.js",
-      "bytes": 45950,
-      "sha256": "5c024edb6e86d06c2768c90f401054a828600fc8fe1e8367825f867a97d76501",
+      "bytes": 49282,
+      "sha256": "d63eacc203659494f551b3eb934bf2f9b75bb6a4548b748071c79e96f747caf7",
       "manifests": [
         "runtime/vendor-manifests/marked-global.json"
       ],
@@ -375,6 +375,20 @@
       "provenance": "unrecorded"
     },
     {
+      "path": "runtime/web/static/common/js/vendor/diagram-sanitizer-license.meta.json",
+      "bytes": 1145,
+      "sha256": "593933c33d8d2a39adc54917c3bb0f6dba301a6f9fef7b2a4fa75d3ae5415c8d",
+      "manifests": [],
+      "provenance": "unrecorded"
+    },
+    {
+      "path": "runtime/web/static/common/js/vendor/diagram-sanitizer.LICENSE.txt",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "manifests": [],
+      "provenance": "unrecorded"
+    },
+    {
       "path": "runtime/web/static/common/js/vendor/echarts/echarts.meta.json",
       "bytes": 324,
       "sha256": "52741864bc54638068f560256d6caa48cad2ed0756a46503d1f7cd27f820a80f",
@@ -398,23 +412,53 @@
     {
       "path": "runtime/web/static/common/js/vendor/katex.meta.json",
       "bytes": 1101,
-      "sha256": "ae8689cdd6b8422620982a31b7f1aa84595d3656b88ea9bfae71295f7a22bce4",
+      "sha256": "03642830aada3a4322f439ac8a31b8fc913ffe41c54218bd37192da84cb6a7c4",
       "manifests": [],
       "provenance": "unrecorded"
     },
     {
       "path": "runtime/web/static/common/js/vendor/katex.min.js",
-      "bytes": 274626,
-      "sha256": "acfa2a4555ec7b94c63346ae74816b9a70722b614a3fb0e18af01be511e3c179",
+      "bytes": 274835,
+      "sha256": "ab7e1221af44bbb4f66e7d698ef8bffafe2e81f854e80c0d3abf4d8454a17208",
       "manifests": [
         "runtime/vendor-manifests/katex-global.json"
       ],
       "provenance": "manifest-linked"
     },
     {
+      "path": "runtime/web/static/common/js/vendor/pele-license.meta.json",
+      "bytes": 1028,
+      "sha256": "c59fc76fac6cb05640f00c39335e31c0aafa41cbe0e1b8483a50148f089e1832",
+      "manifests": [],
+      "provenance": "unrecorded"
+    },
+    {
+      "path": "runtime/web/static/common/js/vendor/pele.LICENSE.txt",
+      "bytes": 1934,
+      "sha256": "311bccc30de6f7b9cbfb64232bb0c911ccb2191abe316550813ae25b2c7925b9",
+      "manifests": [],
+      "provenance": "unrecorded"
+    },
+    {
+      "path": "runtime/web/static/common/js/vendor/pele.js",
+      "bytes": 753751,
+      "sha256": "79036f84fc10c8296145f2e206b079258b8423d885e34d387bf98276b0123fb8",
+      "manifests": [
+        "runtime/vendor-manifests/pele.json"
+      ],
+      "provenance": "manifest-linked"
+    },
+    {
+      "path": "runtime/web/static/common/js/vendor/pele.meta.json",
+      "bytes": 1216,
+      "sha256": "660602faff28764f287e283bb2c649b083753bca39d5c3bb7741b7b4691825d5",
+      "manifests": [],
+      "provenance": "unrecorded"
+    },
+    {
       "path": "runtime/web/static/common/js/vendor/preact-htm.js",
-      "bytes": 16021,
-      "sha256": "263d372b74351afd74e1633debcde5dd4f93750e00f27a3405342fed68370d95",
+      "bytes": 16184,
+      "sha256": "1edda980b63fbaf6e18999ffea40c5116057593e1827335193dbde36cf714514",
       "manifests": [
         "runtime/vendor-manifests/preact-htm.json"
       ],
@@ -423,7 +467,7 @@
     {
       "path": "runtime/web/static/common/js/vendor/preact-htm.meta.json",
       "bytes": 1207,
-      "sha256": "0eb81645a479196c31e5b0bab95ea6974c406a4c25ac7fec5e53e585a3725c53",
+      "sha256": "15f6694e4493612c333993377795c2c1724b4c7ecba44c3d1c57985de77e9725",
       "manifests": [],
       "provenance": "unrecorded"
     },
@@ -763,53 +807,16 @@
       "sha256": "71d517d67827787cfabdf186914cc3358eda539e37931941f2b2fd4a21f68c0b",
       "manifests": [],
       "provenance": "unrecorded"
-    },
-    {
-      "path": "runtime/web/static/visual/dist/JetBrainsMonoNFM-Medium-hh38vnv1.woff2",
-      "bytes": 1022232,
-      "sha256": "e9d33faabc0c688c5b417d5b5e40e874edaf232bfa553fc504f1bce99b872d03",
-      "manifests": [],
-      "provenance": "unrecorded"
-    },
-    {
-      "path": "runtime/web/static/visual/dist/JetBrainsMonoNFM-Regular-rhdb9m6d.woff2",
-      "bytes": 1021580,
-      "sha256": "3154cf51aa75c0aa9f6ed786a539b04624297da2d95ea322d5bf38cbfc82bbb0",
-      "manifests": [],
-      "provenance": "unrecorded"
-    },
-    {
-      "path": "runtime/web/static/visual/dist/firacode-nerd-font-mono-bold-v7nf8tpn.ttf",
-      "bytes": 2677400,
-      "sha256": "bd014a21f3cd64203dd0850437091d716e929a4518b0e5848d6d3ad6af12b21d",
-      "manifests": [],
-      "provenance": "unrecorded"
-    },
-    {
-      "path": "runtime/web/static/visual/dist/firacode-nerd-font-mono-regular-f4sytzp8.ttf",
-      "bytes": 2647492,
-      "sha256": "ad88c69cb6a497db9f2714e4b414817aabbee621484a1560bfdb3fd73abdd564",
-      "manifests": [],
-      "provenance": "unrecorded"
-    },
-    {
-      "path": "runtime/web/static/visual/vendor/fonts/seti.woff",
-      "bytes": 37284,
-      "sha256": "b127762058f89b37b08d76185e3b0558f5c28859e39a3840a27cb28b9739d6e2",
-      "manifests": [],
-      "provenance": "unrecorded"
     }
   ],
   "duplicatePayloads": [
     [
       "runtime/web/static/classic/dist/firacode-nerd-font-mono-bold-v7nf8tpn.ttf",
-      "runtime/web/static/common/fonts/vendor/firacode-nerd-font-mono-bold.ttf",
-      "runtime/web/static/visual/dist/firacode-nerd-font-mono-bold-v7nf8tpn.ttf"
+      "runtime/web/static/common/fonts/vendor/firacode-nerd-font-mono-bold.ttf"
     ],
     [
       "runtime/web/static/classic/dist/firacode-nerd-font-mono-regular-f4sytzp8.ttf",
-      "runtime/web/static/common/fonts/vendor/firacode-nerd-font-mono-regular.ttf",
-      "runtime/web/static/visual/dist/firacode-nerd-font-mono-regular-f4sytzp8.ttf"
+      "runtime/web/static/common/fonts/vendor/firacode-nerd-font-mono-regular.ttf"
     ],
     [
       "runtime/web/static/common/fonts/KaTeX_AMS-Regular.woff2",
@@ -890,14 +897,6 @@
     [
       "runtime/web/static/common/fonts/KaTeX_Typewriter-Regular.woff2",
       "runtime/web/static/fonts/KaTeX_Typewriter-Regular.woff2"
-    ],
-    [
-      "runtime/web/static/common/fonts/jetbrains-mono-nf/JetBrainsMonoNFM-Medium.woff2",
-      "runtime/web/static/visual/dist/JetBrainsMonoNFM-Medium-hh38vnv1.woff2"
-    ],
-    [
-      "runtime/web/static/common/fonts/jetbrains-mono-nf/JetBrainsMonoNFM-Regular.woff2",
-      "runtime/web/static/visual/dist/JetBrainsMonoNFM-Regular-rhdb9m6d.woff2"
     ]
   ],
   "unrecorded": [
@@ -949,10 +948,15 @@
     "runtime/web/static/common/js/vendor/codemirror.js",
     "runtime/web/static/common/js/vendor/d3/d3.meta.json",
     "runtime/web/static/common/js/vendor/d3/d3.min.js",
+    "runtime/web/static/common/js/vendor/diagram-sanitizer-license.meta.json",
+    "runtime/web/static/common/js/vendor/diagram-sanitizer.LICENSE.txt",
     "runtime/web/static/common/js/vendor/echarts/echarts.meta.json",
     "runtime/web/static/common/js/vendor/echarts/echarts.min.js",
     "runtime/web/static/common/js/vendor/editor-profiler.js",
     "runtime/web/static/common/js/vendor/katex.meta.json",
+    "runtime/web/static/common/js/vendor/pele-license.meta.json",
+    "runtime/web/static/common/js/vendor/pele.LICENSE.txt",
+    "runtime/web/static/common/js/vendor/pele.meta.json",
     "runtime/web/static/common/js/vendor/preact-htm.meta.json",
     "runtime/web/static/common/js/vendor/remote-display-decoder.meta.json",
     "runtime/web/static/common/js/vendor/remote-display-decoder.wasm",
@@ -978,11 +982,6 @@
     "runtime/web/static/fonts/KaTeX_Size2-Regular.woff2",
     "runtime/web/static/fonts/KaTeX_Size3-Regular.woff2",
     "runtime/web/static/fonts/KaTeX_Size4-Regular.woff2",
-    "runtime/web/static/fonts/KaTeX_Typewriter-Regular.woff2",
-    "runtime/web/static/visual/dist/JetBrainsMonoNFM-Medium-hh38vnv1.woff2",
-    "runtime/web/static/visual/dist/JetBrainsMonoNFM-Regular-rhdb9m6d.woff2",
-    "runtime/web/static/visual/dist/firacode-nerd-font-mono-bold-v7nf8tpn.ttf",
-    "runtime/web/static/visual/dist/firacode-nerd-font-mono-regular-f4sytzp8.ttf",
-    "runtime/web/static/visual/vendor/fonts/seti.woff"
+    "runtime/web/static/fonts/KaTeX_Typewriter-Regular.woff2"
   ]
 }

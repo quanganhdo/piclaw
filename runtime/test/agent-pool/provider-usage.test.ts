@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { clearProviderUsageCache, getProviderUsage, peekProviderUsage, peekProviderUsageForRuntime, warmProviderUsage } from "../../src/agent-pool/provider-usage.js";
+import { clearProviderUsageCache, getProviderUsage, peekProviderUsage, peekProviderUsageForRuntime, warmProviderUsage, readStoredProviderUsageAccountRef, resolveProviderUsageAccountRef } from "../../src/agent-pool/provider-usage.js";
 
 const roots: string[] = [];
 function createAuthStorage(credentials: Record<string, any>) {
@@ -651,4 +651,40 @@ test('Codex labels follow reported duration independently of window position', a
    if(label==='window')expect(usage?.primary?.window_minutes).toBeNull();
   }
  }finally{globalThis.fetch=original;clearProviderUsageCache();}
+});
+
+for (const provider of ['openai-codex', 'github-copilot'] as const) test(`stored account fingerprint for ${provider} needs no auth resolution`, async () => {
+  const storage = createAuthStorage({ [provider]: { type: 'oauth', access: 'synthetic-access-secret', refresh: 'synthetic-refresh-secret', accountId: 'synthetic-account', expires: Date.now() + 60000 } });
+  let authCalls = 0;
+  const runtime = { async getAuth() { authCalls++; throw Error('Auth forbidden'); } };
+  const stored = readStoredProviderUsageAccountRef(provider, storage.authPath);
+  expect(stored).toMatch(new RegExp(`^${provider}:sha256:[a-f0-9]{64}$`));
+  expect(stored).not.toContain('synthetic');
+  expect(await resolveProviderUsageAccountRef(runtime, provider, storage.authPath)).toBe(stored);
+  expect(authCalls).toBe(0);
+});
+
+test('stored fingerprint denies unsupported or absent identity without auth fallback', () => {
+  const storage = createAuthStorage({ zai: { type: 'api_key', key: 'synthetic-key' }, 'openai-codex': { type: 'oauth', access: 'synthetic-access', refresh: 'synthetic-refresh', expires: Date.now() + 60000 } });
+  expect(readStoredProviderUsageAccountRef('zai', storage.authPath)).toBeNull();
+  expect(readStoredProviderUsageAccountRef('openai-codex', storage.authPath)).toBeNull();
+  expect(readStoredProviderUsageAccountRef('github-copilot', storage.authPath)).toBeNull();
+  expect(readStoredProviderUsageAccountRef('openai-codex', join(storage.authPath, 'absent'))).toBeNull();
+});
+
+for (const provider of ['openai-codex', 'github-copilot'] as const) test(`empty stored ${provider} identity cannot fall back to asynchronous auth`, async () => {
+  const storage = createAuthStorage({ [provider]: { type: 'oauth', access: 'synthetic-access', refresh: '', accountId: '', expires: Date.now() + 60000 } });
+  let calls = 0;
+  const runtime = { async getAuth() { calls++; return { auth: { apiKey: 'synthetic-fallback' } }; } };
+  expect(readStoredProviderUsageAccountRef(provider, storage.authPath)).toBeNull();
+  expect(await resolveProviderUsageAccountRef(runtime, provider, storage.authPath)).toBeNull();
+  expect(calls).toBe(0);
+});
+
+test('absent stored identity retains existing asynchronous auth fallback', async () => {
+  const storage = createAuthStorage({});
+  let calls = 0;
+  const runtime = { async getAuth() { calls++; return { auth: { apiKey: 'synthetic-fallback' } }; } };
+  expect(await resolveProviderUsageAccountRef(runtime, 'openai-codex', storage.authPath + '/not-a-file')).toMatch(/^openai-codex:sha256:/);
+  expect(calls).toBe(1);
 });

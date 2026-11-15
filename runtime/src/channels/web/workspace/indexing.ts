@@ -239,16 +239,16 @@ export function getWorkspaceIndexingData() {
   };
 }
 
-export function saveWorkspaceIndexingPolicy(input: unknown) {
+export async function saveWorkspaceIndexingPolicy(input: unknown, admission?: { authorise?: () => void; signal?: AbortSignal }) {
   const policy = saveWorkspaceIndexPolicy(input);
   // Policy checks are live, so exclusions apply before the asynchronous index
   // reconciliation starts. The stale marker also queues the existing refresh
   // coordinator rather than doing a blocking index rebuild in the HTTP turn.
-  markWorkspaceIndexStale({ scope: "all" });
+  await markWorkspaceIndexStale({ scope: "all" }, admission);
   return { policy, status: getWorkspaceIndexStatus({ scope: "all" }) };
 }
 
-export function refreshWorkspaceIndexing() {
-  markWorkspaceIndexStale({ scope: "all" });
+export async function refreshWorkspaceIndexing(admission?: { authorise?: () => void; signal?: AbortSignal }) {
+  await markWorkspaceIndexStale({ scope: "all" }, admission);
   return { queued: true, status: getWorkspaceIndexStatus({ scope: "all" }) };
 }

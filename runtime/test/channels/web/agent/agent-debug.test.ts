@@ -164,3 +164,32 @@ describe("agent debug endpoint", () => {
     expect(body.promptTemplates[0].sourceInfo).not.toHaveProperty("baseDir");
   });
 });
+
+test("durable debug uses actual native metadata without constructing a legacy session", async () => {
+  const ctx: any = { defaultChatJid: "web:default", agentPool: {
+    async getDurableSessionMetadata(chat: string) { expect(chat).toBe("web:native"); return { backend: "durable", conversationId: 42,
+      extensions: ["app.host-builtins"], tools: [{ name: "read", description: "Read a file" }] }; },
+    async getSessionForIntrospection() { throw Error("Legacy hydration forbidden"); },
+  }, json: (payload: unknown, status = 200) => Response.json(payload, { status }) };
+  const response = await handleAgentDebugRequest(new Request("http://local/agent/debug?chat_jid=web:native"), ctx);
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({ backend: "durable", conversationId: 42, extensions: [{ name: "app.host-builtins", sourceInfo: null }],
+    tools: [{ name: "read", description: "Read a file", sourceInfo: null }], commands: [], unavailable: ["legacy-extension-provenance", "legacy-extension-commands", "prompt-templates", "skills"] });
+});
+
+test("unbound durable debug returns404 without legacy fallback", async () => {
+  const ctx: any = { defaultChatJid: "web:default", agentPool: { getDurableSessionMetadata: async () => null,
+    getSessionForIntrospection: async () => { throw Error("Legacy fallback forbidden"); } },
+    json: (payload: unknown, status = 200) => Response.json(payload, { status }) };
+  expect((await handleAgentDebugRequest(new Request("http://local/agent/debug"), ctx)).status).toBe(404);
+});
+
+test("native debug metadata failure returns a sanitised unavailable response", async () => {
+  const response = await handleAgentDebugRequest(new Request("http://fixture/agent/debug"), {
+    defaultChatJid: "web:default", json: (value: unknown, status = 200) => Response.json(value, { status }),
+    agentPool: { getDurableSessionMetadata: async () => { throw Error("private native storage detail"); },
+      getSessionForIntrospection: async () => { throw Error("Legacy fallback forbidden"); } },
+  } as any);
+  expect(response.status).toBe(503);
+  expect(await response.json()).toEqual({ error: "Native debug metadata unavailable" });
+});

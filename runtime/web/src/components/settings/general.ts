@@ -1,5 +1,4 @@
 import { html, useState, useEffect, useCallback, useMemo, useRef } from '../../vendor/preact-htm.js';
-import { METERS_EVENT_NAME, applyMetersEnabled, readStoredMetersEnabled } from '../../ui/meters.js';
 import { NumberStepper } from './number-stepper.js';
 import { useTranslation } from '../../utils/i18n.js';
 import { AboutVersions } from '../about-dialog.js';
@@ -14,7 +13,7 @@ export function resolveAvatarPreview(value, kind) {
     return kind === 'agent' || kind === 'user' ? `/avatar/${kind}` : '';
 }
 
-function AvatarField({ value, kind, onChange }) {
+function AvatarField({ value, kind, label, onChange }) {
     const { t } = useTranslation();
     const inputRef = useRef(null);
     const [preview, setPreview] = useState(resolveAvatarPreview(value, kind));
@@ -34,12 +33,13 @@ function AvatarField({ value, kind, onChange }) {
     }, [onChange]);
 
     return html`
-        <div class="settings-avatar-inline" onClick=${() => inputRef.current?.click()} title=${t('settings.general.avatarUpload')}>
+        <button type="button" class="settings-avatar-inline" data-settings-button="unstyled" onClick=${() => inputRef.current?.click()}
+            title=${t('settings.general.avatarUpload')} aria-label=${`${t('settings.general.avatarUpload')}: ${label}`}>
             ${preview
-                ? html`<img src=${preview} alt="avatar" />`
-                : html`<span class="settings-avatar-placeholder">+</span>`}
-            <input type="file" accept="image/*" ref=${inputRef} style="display:none" onChange=${handleFileSelect} />
-        </div>
+                ? html`<img src=${preview} alt="" />`
+                : html`<span class="settings-avatar-placeholder" aria-hidden="true">+</span>`}
+        </button>
+        <input type="file" accept="image/*" ref=${inputRef} style="display:none" tabindex="-1" aria-hidden="true" onChange=${handleFileSelect} />
     `;
 }
 
@@ -66,7 +66,6 @@ export function GeneralSection({ settingsData, setStatus, mergeSettingsData }) {
     const [assistantName, setAssistantName] = useState('');
     const [assistantAvatar, setAssistantAvatar] = useState('');
     const [workspaceUploadLimitMb, setWorkspaceUploadLimitMb] = useState(256);
-    const [metersEnabled, setMetersEnabled] = useState(() => readStoredMetersEnabled(false));
     const [appliedHint, setAppliedHint] = useState(false);
     const savedSnapshotRef = useRef('');
     const saveTimerRef = useRef(null);
@@ -90,14 +89,6 @@ export function GeneralSection({ settingsData, setStatus, mergeSettingsData }) {
     useEffect(() => {
         applyIncoming(settingsData || {});
     }, [settingsData, applyIncoming]);
-
-    useEffect(() => {
-        const onMetersChange = (event) => {
-            setMetersEnabled(Boolean(event?.detail?.enabled));
-        };
-        window.addEventListener(METERS_EVENT_NAME, onMetersChange);
-        return () => window.removeEventListener(METERS_EVENT_NAME, onMetersChange);
-    }, []);
 
     const currentSnapshot = useMemo(() => JSON.stringify(normalizeGeneralSettings({
         userName, userAvatar, assistantName, assistantAvatar,
@@ -148,13 +139,17 @@ export function GeneralSection({ settingsData, setStatus, mergeSettingsData }) {
             <h3>${t('settings.general.identity')}</h3>
             <div class="settings-row">
                 <label for=${fieldId('user')}>${t('settings.general.userLabel')}</label>
-                <${AvatarField} kind="user" value=${userAvatar} onChange=${setUserAvatar} />
-                <input id=${fieldId('user')} type="text" value=${userName} onInput=${e => setUserName(e.target.value)} placeholder=${t('settings.general.yourName')} />
+                <div class="settings-identity-field">
+                    <${AvatarField} kind="user" label=${t('settings.general.userLabel')} value=${userAvatar} onChange=${setUserAvatar} />
+                    <input id=${fieldId('user')} type="text" value=${userName} onInput=${e => setUserName(e.target.value)} placeholder=${t('settings.general.yourName')} />
+                </div>
             </div>
             <div class="settings-row">
                 <label for=${fieldId('agent')}>${t('settings.general.agentLabel')}</label>
-                <${AvatarField} kind="agent" value=${assistantAvatar} onChange=${setAssistantAvatar} />
-                <input id=${fieldId('agent')} type="text" value=${assistantName} onInput=${e => setAssistantName(e.target.value)} placeholder=${t('settings.general.agentName')} />
+                <div class="settings-identity-field">
+                    <${AvatarField} kind="agent" label=${t('settings.general.agentLabel')} value=${assistantAvatar} onChange=${setAssistantAvatar} />
+                    <input id=${fieldId('agent')} type="text" value=${assistantName} onInput=${e => setAssistantName(e.target.value)} placeholder=${t('settings.general.agentName')} />
+                </div>
             </div>
 
             <h3 style="margin-top:20px">${t('settings.general.notifications')}</h3>
@@ -177,19 +172,6 @@ export function GeneralSection({ settingsData, setStatus, mergeSettingsData }) {
                     </div>
                 </div>
             `}
-
-            <h3 style="margin-top:20px">${t('settings.general.display')}</h3>
-            <div class="settings-row">
-                <label for=${fieldId('meters')}>${t('settings.general.systemMeters')}</label>
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <input id=${fieldId('meters')} type="checkbox" checked=${metersEnabled}
-                        onChange=${() => {
-                            const next = applyMetersEnabled(!metersEnabled);
-                            setMetersEnabled(next);
-                        }} />
-                    <span class="settings-hint" style="margin:0">${t('settings.general.systemMetersHint')}</span>
-                </div>
-            </div>
 
             <h3 style="margin-top:20px">${t('settings.general.instanceConfig')}</h3>
             <div class="settings-row">

@@ -8,7 +8,7 @@
  * This keeps internal module boundaries hidden from the rest of the codebase.
  */
 
-export { initDatabase, getDb, backupDatabase, closeDatabase, shrinkDatabaseMemory, reclaimFreelistPages } from "./db/connection.js";
+export { initDatabase, openMaintenanceDatabase, getDb, backupDatabase, closeDatabase, shrinkDatabaseMemory, reclaimFreelistPages } from "./db/connection.js";
 export { createVerifiedSqliteBackup, verifySqliteBackup } from "./db/backup.js";
 export type { SqliteBackupManifest } from "./db/backup.js";
 export { applyOwnedMigrations, ensureOwnedMigrationLedger, listAppliedOwnedMigrations } from "./db/migrations.js";
@@ -92,14 +92,8 @@ export {
 export { getRouterState, setRouterState } from "./db/router-state.js";
 export {
   extensionKvGet,
-  extensionKvSet,
-  extensionKvDelete,
   extensionKvList,
   extensionKvQuery,
-  extensionKvClear,
-  extensionKvDeleteByChatJid,
-  extensionKvPrune,
-  migrateProxmoxPortainerToKv,
   type KvScope,
   type KvEntry,
   type KvQueryOptions,
@@ -107,50 +101,12 @@ export {
 export {
   getChatCursor,
   getAllChatCursors,
-  getInflightMessageId,
   setChatCursor,
-  beginChatPreflight,
-  clearChatPreflight,
-  promoteChatPreflightToInflight,
-  beginChatRun,
-  endChatRun,
   removeProtectedRecoveryContinuationForSourceMessageId,
-  endChatRunWithError,
-  rollbackChatRunWithError,
-  getFailedRun,
-  clearFailedRun,
-  getPreflightRuns,
-  quarantinePendingManualCompactCommands,
-  quarantineStalePreflightRun,
-  getInflightRuns,
-  rollbackInflightRun,
-  clearInflightMarker,
-  getAgentReplyStateAfter,
-  hasAgentRepliesAfter,
   getDeferredQueuedFollowups,
   setDeferredQueuedFollowups,
-  getChatCompactionBackoff,
-  getAllChatCompactionBackoffs,
-  setChatCompactionBackoff,
-  clearChatCompactionBackoff,
-  markChatCompactionActive,
-  clearChatCompactionActive,
-  getActiveChatCompactions,
-  getChatAutoCompactionWindow,
-  setChatAutoCompactionWindow,
-  resetChatAutoCompactionWindow,
 } from "./db/chat-cursors.js";
-export type {
-  PreflightRun,
-  InflightRun,
-  DeferredQueuedFollowupRecord,
-  AgentReplyState,
-  ChatCompactionBackoffState,
-  ActiveCompactionState,
-  ChatAutoCompactionWindowState,
-  ManualCompactQuarantineRecord,
-  StalePreflightRecoveryRecord,
-} from "./db/chat-cursors.js";
+export type { DeferredQueuedFollowupRecord } from "./db/chat-cursors.js";
 export {
   storeCompactionTelemetry,
   listCompactionTelemetryAfter,
@@ -170,24 +126,6 @@ export {
   getLatestTokenUsageModel,
   pruneOldTokenUsage,
 } from "./db/token-usage.js";
-export {
-  ensureBudgetWork,
-  getBudgetWork,
-  getActiveBudgetWorkForChat,
-  setBudgetWorkStatus,
-  insertBudgetUsageEvent,
-  saveBudgetCap,
-  getBudgetCap,
-  listBudgetCaps,
-  setBudgetCapEnabled,
-  ensureBudgetCapWindow,
-  persistBudgetDecision,
-  markBudgetDecisionNotified,
-  grantBudgetAllowance,
-  setBudgetWarningsOnly,
-  resumeBudgetWork,
-} from "./db/budget-limits.js";
-export type { BudgetWorkRecord, BudgetUsageEventInput, BudgetCapWindowRecord } from "./db/budget-limits.js";
 export {
   createWebauthnEnrollment,
   getWebauthnEnrollment,

@@ -55,10 +55,10 @@ test("newcomer setup retains loopback, persistence and deployment boundaries", (
   for (const argument of ["--init", "-p 127.0.0.1:8080:8080", "$(pwd)/home:/config", "$(pwd)/workspace:/workspace"]) {
     expect(docker).toContain(argument);
   }
-  expect(readme).toContain("Single-user is the default");
-  expect(readme).toContain("[Experimental family mode](docs/multi-user/README.md)");
-  expect(readme).toContain("trusted multi-user mode for small groups");
-  expect(readme).toContain("Promoted `family-shared` deployments");
+  expect(readme).toContain("Single-user operation");
+  expect(readme).toContain("[Access modes](docs/access-modes.md)");
+  expect(readme).toContain("Family accounts and deployment have been removed");
+  expect(readme).toContain("historical-store preservation");
   expect(readme).toContain("Isolated-container mode is unavailable");
   expect(readme).toContain("messages.db");
   expect(readme).toContain("Cloud models and external tools");
@@ -88,18 +88,10 @@ test("README translations preserve commands, documentation links and credits", (
   const chinese = read("README.zh-CN.md");
   const japanese = read("README.ja.md");
   for (const text of [chinese, japanese]) {
-    expect(text).toContain("`family-shared`");
-    expect(text).toContain("docs/multi-user/README.md");
-    expect(text).toContain("docs/multi-user/user-guide.md");
+    expect(text).toContain("docs/access-modes.md");
   }
-  expect(chinese).toContain("默认采用单用户模式");
-  expect(chinese).toContain("实验性家庭模式");
-  expect(chinese).toContain("可信多用户模式");
   expect(chinese).toContain("隔离容器模式不可用");
   expect(chinese).toContain("PiClaw 的原始 UX 设计");
-  expect(japanese).toContain("デフォルトはシングルユーザーです");
-  expect(japanese).toContain("実験的な家族モード");
-  expect(japanese).toContain("少人数のグループ向け");
-  expect(japanese).toContain("隔離コンテナーモードは利用できません");
+  expect(japanese).toContain("分離コンテナモードは利用できません");
   expect(japanese).toContain("PiClaw のオリジナル UX デザイン");
 });

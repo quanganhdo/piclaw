@@ -8,76 +8,56 @@ function source(path: string): string {
   return readFileSync(join(runtimeRoot, path), "utf8");
 }
 
-test("classic compaction settings expose and persist both canonical processing methods", () => {
-  const component = source("web/src/components/settings/compaction.ts");
-  const i18n = source("web/src/utils/i18n.ts");
-  const bundle = source("web/static/classic/dist/app.bundle.js");
+const classic = source("web/src/components/settings/compaction.ts");
 
-  expect(component).toContain("smartCompactionMethod: normalizeSmartCompactionMethod(data.smartCompactionMethod)");
-  expect(component).toContain("smartCompactionMethod,\n        compactionModel,\n        remoteCompactionEnabled,\n        remoteCompactionTimeoutSec,\n        compactionTimeoutSec");
-  expect(component).toContain('normaliseModelCatalogue(modelPayload || {})');
-  expect(component).toContain('<select id="compactionModel"');
-  expect(component).toContain('<option value="">Use active model');
-  expect(component).toContain('Unavailable: ${compactionModel}');
-  expect(component).toContain("'/agent/settings/compaction/probe'");
-  expect(component).toContain("'Test compaction model'");
-  expect(component).toContain('compactionLatencyEstimate');
-  expect(component).toContain('compaction-latency-estimate');
-  expect(component).toContain('p90DurationMs');
-  expect(component).toContain("body: currentSnapshot");
-  expect(component).toContain("replace(/[\\s-]+/g, '_')");
-  expect(component).toContain("normalized === 'pipelined' || normalized === 'traditional_pipelined' ? 'pipelined' : 'selective'");
-  expect(component).toContain('<option value="selective">');
-  expect(component).toContain('<option value="pipelined">');
-  expect(component).toContain("remoteCompactionEnabled: Boolean(data.remoteCompactionEnabled ?? false)");
-  expect(component).toContain("remoteCompactionTimeoutSec: data.remoteCompactionTimeoutSec ?? 300");
-  expect(component).toContain("t('settings.compaction.remoteNative'");
-  expect(component).toContain("mergeSettingsData?.(payload.settings)");
-  expect(component).toContain("applyIncoming({ ...(settingsData || {}), ...(payload.settings || {}) })");
-  expect(i18n).toContain("'settings.compaction.methodSelective': 'Selective'");
-  expect(i18n).toContain("'settings.compaction.methodPipelined': 'Pipelined'");
-  expect(i18n).toContain("'settings.compaction.remoteNative': 'Provider-native compaction'");
-  expect(bundle).toContain('value="pipelined"');
-  expect(bundle).toContain('remoteCompactionEnabled');
-});
+const retiredFields = [
+  "smartCompactionMethod", "compactionModel", "compactionLatencyEstimate",
+  "remoteCompactionEnabled", "remoteCompactionTimeoutSec", "remoteCompactionSupportedProviders",
+  "compactionThresholdPercent", "compactionTimeoutSec", "compactionBackoffBaseMin",
+  "compactionBackoffMaxMin", "compactionBackoffDecayFactor", "compactionBackoffs",
+];
+const supportedFields = [
+  "autoCompactionEnabled", "localLitePromptProfileEnabled", "toolResultCompactionEnabled",
+  "toolResultSemanticSummaryEnabled", "toolResultSemanticSummaryMaxInputChars",
+  "toolResultSemanticSummaryMaxTokens", "toolResultSemanticSummaryTimeoutSec",
+  "progressWatchdogEnabled", "progressWatchdogTimeoutSec",
+];
 
-test("visual compaction settings use the same canonical processing-method contract", () => {
-  const component = source("web/static/visual/frontend/src/panels/settings/CompactionSection.tsx");
-  const types = source("web/static/visual/frontend/src/panels/settings/types.ts");
-  const bundle = source("web/static/visual/dist/app.bundle.js");
+for (const [skin, component] of [["classic", classic]] as const) {
+  test(`${skin} exposes native compaction without retired controls or writes`, () => {
+    for (const field of retiredFields) expect(component).not.toContain(field);
+    for (const obsolete of [
+      "Pipelined", "Selective", "processingMethod", "compaction-model-picker",
+      "compaction-latency-estimate", "/compaction/probe", "/compaction/reset-backoff",
+      "normaliseModelCatalogue", "getAgentModels", "/agent/models", "probeBusy", "modelPayload",
+    ]) expect(component).not.toContain(obsolete);
+    expect(component).not.toContain("<select");
+    expect(component).not.toContain("compactionPolicy"); // Read-only API metadata, never saved.
+    expect(component).toContain("active conversation model and SDK thresholds");
+    expect(component).toContain("next compaction decision");
+    expect(component).toContain("already accepted maintenance is not cancelled");
+    expect(component).not.toContain("auto-compactor stays suppressed");
+    expect(component).toContain("localLitePromptProfileEnabled ?? false");
+    expect(component).toContain("Local-lite prompt and tools");
+    for (const field of supportedFields) expect(component).toContain(field);
+    expect(component).toContain("progressWatchdogPhases");
+  });
+}
 
-  expect(types).toContain('smartCompactionMethod?: "selective" | "pipelined"');
-  expect(types).toContain('compactionModel?: string');
-  expect(types).toContain('remoteCompactionEnabled?: boolean');
-  expect(types).toContain('remoteCompactionTimeoutSec?: number');
-  expect(component).toContain('replace(/[\\s-]+/g, "_")');
-  expect(component).toContain('normalized === "pipelined" || normalized === "traditional_pipelined" ? "pipelined" : "selective"');
-  expect(component).toContain('<option value="selective">Selective</option>');
-  expect(component).toContain('<option value="pipelined">Pipelined</option>');
-  expect(component).toContain('onSaveCompaction("smartCompactionMethod", value)');
-  expect(component).toContain('normaliseModelCatalogue(modelPayload ?? {})');
-  expect(component).toContain('<select');
-  expect(component).toContain('<option value="">Use active model');
-  expect(component).toContain('Unavailable: {compactionModel.value}');
-  expect(component).toContain('fetch("/agent/settings/compaction/probe"');
-  expect(component).toContain('Test compaction model');
-  expect(component).toContain('data.compactionLatencyEstimate');
-  expect(component).toContain('compaction-latency-estimate');
-  expect(component).toContain('p90DurationMs');
-  expect(component).toContain('onSaveCompaction("compactionModel", value)');
-  expect(component).toContain('onSaveCompaction("remoteCompactionEnabled", value)');
-  expect(component).toContain('onSaveCompaction("remoteCompactionTimeoutSec", v)');
-  expect(component).toContain('saveSetting("compaction", field, value)');
-  expect(bundle).toContain("pipelined");
-  expect(bundle).toContain("Pipelined");
-  expect(bundle).toContain("remoteCompactionEnabled");
-});
-
-test("both settings skins expose default-off local-lite opt-in", () => {
-  const classic = source('web/src/components/settings/compaction.ts');
-  const visual = source('web/static/visual/frontend/src/panels/settings/CompactionSection.tsx');
-  expect(classic).toContain('localLitePromptProfileEnabled ?? false');
-  expect(classic).toContain('Local-lite prompt and tools');
-  expect(visual).toContain('localLitePromptProfileEnabled ?? false');
-  expect(visual).toContain('onSaveCompaction("localLitePromptProfileEnabled"');
+test("classic incoming and outgoing autosave snapshots contain only supported writable fields", () => {
+  // Inspect both explicit object literals, so even unchanged retired fields cannot leak into POSTs.
+  const incoming = classic.match(/savedSnapshotRef\.current = JSON\.stringify\(\{([\s\S]*?)\}\);/);
+  const outgoing = classic.match(/const currentSnapshot = useMemo\(\(\) => JSON\.stringify\(\{([\s\S]*?)\}\),/);
+  expect(incoming).not.toBeNull();
+  expect(outgoing).not.toBeNull();
+  const incomingKeys = incoming![1].split("\n").map(line => line.trim().split(":")[0]).filter(Boolean);
+  const outgoingKeys = outgoing![1].split(",").map(key => key.trim()).filter(Boolean);
+  expect(incomingKeys.sort()).toEqual([...supportedFields].sort());
+  expect(outgoingKeys.sort()).toEqual([...supportedFields].sort());
+  expect(classic).toContain("body: currentSnapshot");
+  expect(classic).toContain("currentSnapshot === savedSnapshotRef.current");
+  expect(classic).toContain("mergeSettingsData?.(payload.settings)");
+  expect(classic).toContain("applyIncoming({ ...(settingsData || {}), ...(payload.settings || {}) })");
+  expect(classic).toContain("}, 800)");
+  expect(classic).toContain('role="status" aria-live="polite"');
 });

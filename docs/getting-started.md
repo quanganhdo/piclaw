@@ -1,6 +1,6 @@
 # Getting started
 
-PiClaw runs one persistent, single-user agent workspace. Docker is the recommended deployment; portable bundles include Bun for Docker-free use. All installation methods have the same [access-mode limits](multi-user/README.md).
+PiClaw runs one persistent single-user agent workspace. Docker and native installations use the same access validation; family accounts are removed.
 
 ## Docker
 
@@ -28,7 +28,7 @@ Then visit `http://localhost:8080` on your computer. This keeps first-run setup 
 
 ### Docker Compose from source
 
-The repository's [Compose file](../docker-compose.yml) builds the local `pibox:latest` image and names the container `pibox`. It sets `init: true`, equivalent to `docker run --init`. Follow the [source-build workflow](development.md#build-from-source) to use it. It does not pull the published GHCR image.
+The repository's [Compose file](../docker-compose.yml) uses the local `pibox:latest` image and names the container `pibox`. Build that image with `make build` before running `make up` or `docker compose up`; Compose does not build it automatically. Without the local image, Compose attempts to pull `pibox:latest` and fails with a pull-access error. It sets `init: true`, equivalent to `docker run --init`. Follow the [source-build workflow](development.md#build-from-source) to use it. It does not pull the published GHCR image.
 
 ## Portable releases
 

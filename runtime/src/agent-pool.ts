@@ -1,28 +1,17 @@
+import { captureHostDatabaseBinding } from "./db/connection.js";
+import { admitSqliteWrite } from "./db/sqlite-async-admission.js";
 /**
- * agent-pool.ts – Manages per-chat pi-agent sessions and orchestrates agent runs.
- *
- * The AgentPool is the central coordinator between inbound messages and the
- * pi-coding-agent SDK. It:
- *   - Maintains a map of chat JID → AgentSession (lazy-initialised).
- *   - Provides runAgent() which prompts the agent, streams events, records
- *     token usage, detects auto-compaction needs, and returns the result.
- *   - Handles slash commands by delegating to agent-pool/slash-command.ts.
- *   - Forwards agent-control commands (model switch, session management, etc.)
- *     to the agent-control module.
- *   - Manages session lifecycle: save/restore position (for scheduled tasks),
- *     clear sessions, reload resources.
- *   - Integrates the attachment registry for file-delivery tools.
- *
- * Consumers:
- *   - runtime.ts / runtime/message-loop.ts creates the AgentPool at startup
- *     and calls runAgent() for each inbound message.
- *   - task-scheduler.ts calls runAgent() for scheduled task execution.
- *   - channels/web.ts uses applyControlCommand() and agent status queries.
- *   - agent-control handlers call methods on AgentPool for session/model ops.
+ * Host facade for admitted native dispatch, models/auth, metadata and resources.
+ * SDK tasks/submissions and host accepted-source/terminal records own execution.
+ * Supported execution requires admitted native operation ports.
+ * Explicit legacy resource composition and migration readers remain
+ * separate until their callers retire; ordinary startup selects native ports.
  */
 
 import { existsSync, mkdirSync, readFileSync, statSync } from "fs";
 import { join } from "path";
+import { createRequire } from "node:module";
+import { hasNativeRouting, requireLegacyRoutingMutation } from "./db/native-routing-policy.js";
 import {
   type AgentSession,
   type AgentSessionRuntime,
@@ -32,89 +21,44 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import type { AssistantMessageEventStream, Context, Model, Provider, SimpleStreamOptions } from "@earendil-works/pi-ai";
 
-import { type AgentControlCommand, type AgentControlResult } from "./agent-control/index.js";
+import type { AgentControlCommand, AgentControlResult } from "./agent-control/index.js";
+import { getNativeCommandCatalogue } from "./agent-control/native-control-capabilities.js";
 import { getPiclawAgentDir } from "./core/agent-dir.js";
-import { SESSIONS_DIR, WORKSPACE_DIR, getAgentLogConfig, getSessionPoolConfig } from "./core/config.js";
+import { SESSIONS_DIR, WORKSPACE_DIR, getSessionPoolConfig } from "./core/config.js";
 import { readAccessConfig } from "./core/config-access.js";
+import { getExecutionIdentity } from "./core/execution-context.js";
 import { getChatChannel, getChatJid } from "./core/chat-context.js";
 import { registerChannelDetector } from "./router.js";
 import { createTrackedBashOperations } from "./tools/tracked-bash.js";
-import { type ActiveChatAgent } from "./agent-pool/branch-manager.js";
+import { type ActiveChatAgent, type BranchMutationContext } from "./agent-pool/branch-manager.js";
 import {
   type AgentOutput,
   type AgentPoolOptions,
-  type RunAgentOptions,
   type SidePromptOptions,
   type SidePromptResult,
 } from "./agent-pool/contracts.js";
-import { runSidePrompt as runSidePromptInternal } from "./agent-pool/side-prompt-runner.js";
-import { runAgentPrompt } from "./agent-pool/run-agent-orchestrator.js";
-import { runWithProtectedRecoveryHandoff } from "./agent-pool/protected-recovery-handoff.js";
-import { clearCompactionFailureBackoff, resetCompactionSuccessCount } from "./agent-pool/compaction.js";
-import { rotateSession, type SessionRotationResult } from "./session-rotation.js";
 import { type AgentRuntimeFacade, type AvailableModelsResult } from "./agent-pool/runtime-facade.js";
 import { createAgentPoolServices, type AgentPoolServices } from "./agent-pool/service-factory.js";
 import { MemoryReclamationGate } from "./agent-pool/memory-reclamation.js";
 import { type AgentSessionManagerInstrumentationSnapshot, type PoolEntry } from "./agent-pool/session-manager.js";
-import { ownAccountModelDefaults } from './agent-pool/family-model-defaults.js';
 import type { PiclawCredentialStore } from "./agent-pool/credential-store.js";
-import { installLegacySessionAffinityCompatibility } from "./agent-pool/session-affinity-compat.js";
-import {
-  type ChatBranchRecord,
-  type MergeChatBranchIntoParentResult,
-  type SshConfig,
-  type SshConfigApplyTiming,
-  type SshConfigClearResult,
-  type SshConfigSetResult,
-  deleteSshConfig,
-  getDb,
-  getSshConfig,
-  ensureBudgetWork,
-  getActiveBudgetWorkForChat,
-  getBudgetWork,
-  setBudgetWorkStatus,
-  listRecentChatJids,
-  pruneOldTokenUsage,
-  reclaimFreelistPages,
-  shrinkDatabaseMemory,
-  upsertSshConfig,
-} from "./db.js";
-import {
-  extensionKvGet,
-  extensionKvSet,
-  extensionKvDelete,
-  extensionKvList,
-  extensionKvQuery,
-  extensionKvClear,
-  migrateProxmoxPortainerToKv,
-} from "./db.js";
-import { registerExtensionKvStore } from "./extension-kv-registry.js";
+import { type ChatBranchRecord, type MergeChatBranchIntoParentResult, type SshConfig, type SshConfigClearResult, type SshConfigSetResult, deleteSshConfig, getDb, getSshConfig, pruneOldTokenUsage, reclaimFreelistPages, restoreChatBranchIdentity, shrinkDatabaseMemory, upsertSshConfig } from "./db.js";
+import { registerRootExtensionKvStore } from "./db/register-extension-kv.js";
 import { setSshToolHandlers } from "./extensions/ssh.js";
-import { applyLiveSshConfig, clearLiveSshConfig, hasLiveChatSshConnection, hasLiveChatSshSession, resolveSshCoreConfigFromChatConfig } from "./extensions/ssh-core.js";
+import { hasLiveChatSshConnection } from "./extensions/ssh-core.js";
 import { getKeychainEntry } from "./secure/keychain.js";
 import { addLogSink, createLogger, debugSuppressedError, removeLogSink } from "./utils/logger.js";
-import { startAgentLogCleanup } from "./agent-pool/logging.js";
-import { createUuid } from "./utils/ids.js";
-import { getBudgetWorkContext, withBudgetWorkContext } from "./budget/context.js";
-import { admitBudgetBoundary } from "./budget/admission.js";
-import { resolveProviderUsageAccountRef } from "./agent-pool/provider-usage.js";
 
 const log = createLogger("agent-pool");
+const requireLegacyCapture = createRequire(import.meta.url);
 
 export type {
   AgentOutput,
   AgentPoolOptions,
-  RunAgentOptions,
   SidePromptOptions,
   SidePromptResult,
   TurnOutput,
 } from "./agent-pool/contracts.js";
-
-export interface AgentPoolRecoveryInstrumentationSnapshot {
-  attemptsTotal: number;
-  recoveredRuns: number;
-  exhaustedRuns: number;
-}
 
 interface RuntimeInteropBridge {
   getChatJid?: (defaultValue?: string) => string;
@@ -152,8 +96,7 @@ export interface AgentPoolMemoryInstrumentationSnapshot {
   activeForkBaseLeaves: number;
   activeChats: number;
   sessionResources?: AgentPoolSessionResourceInstrumentationSnapshot;
-  sessionManager: AgentSessionManagerInstrumentationSnapshot;
-  recovery: AgentPoolRecoveryInstrumentationSnapshot;
+  sessionManager?: AgentSessionManagerInstrumentationSnapshot;
 }
 
 function collectSessionResourceInstrumentation(
@@ -188,10 +131,6 @@ function collectSessionResourceInstrumentation(
   }
   return snapshot;
 }
-
-
-const DEFAULT_PROVIDER_RATE_LIMIT_MAX_RETRIES = 5;
-const DEFAULT_PROVIDER_RATE_LIMIT_BASE_DELAY_MS = 5000;
 
 function stripJsonCommentsAndTrailingCommas(input: string): string {
   let output = "";
@@ -285,7 +224,25 @@ export function createKnownModelCostResolver(agentDir: string): (provider: strin
  * model initialisation). Subsequent calls reuse the live session – no
  * process-spawn overhead, conversation context already loaded.
  */
+function chatHasStoredMessages(database: ReturnType<typeof getDb>, chatJid: string): boolean {
+  return Boolean(database.query("SELECT 1 FROM messages WHERE chat_jid = ? LIMIT 1").get(chatJid));
+}
+
 export class AgentPool {
+  assertLegacyCaptureIdle(): void {
+    if (!this.sessionManager) throw Error("Native host has no resident legacy authority");
+    this.sessionManager.assertLegacyCaptureIdle();
+  }
+  /** Explicit read-only resident capture; never selects or constructs a session. */
+  async captureLegacyUpgradeBindings(options: import("./agent-pool/legacy-authority-capture.js").LegacyCaptureOptions) {
+    const manager=this.sessionManager;
+    if (!manager) throw Error("Native host has no resident legacy authority");
+    // Capture must detach resident authority before its first filesystem await.
+    // Load only at this explicit migration boundary, but without an import await
+    // that would let caller mutations become the new baseline before capture.
+    const { captureResidentLegacyUpgradeBindings } = requireLegacyCapture("./agent-pool/legacy-authority-capture.js") as typeof import("./agent-pool/legacy-authority-capture.js");
+    return captureResidentLegacyUpgradeBindings(options, this.pool, () => manager.assertLegacyCaptureIdle());
+  }
   inspectMcpSettings(policy?: unknown) { return this.mcpSettings.inspect(policy); }
   inspectMcpServers(edit?: unknown) { return this.mcpSettings.inspectServers(edit); }
   applyMcpServers(input: { revision: string; acknowledgeInterruptions: boolean }, authorise: () => void, signal: AbortSignal) {
@@ -296,123 +253,123 @@ export class AgentPool {
   }
   private mcpSettings: AgentPoolServices["mcpSettings"];
   private pool = new Map<string, PoolEntry>();
-  private sidePool = new Map<string, PoolEntry>();
-  private activeForkBaseLeafByChat = new Map<string, string | null>();
   private cleanupTimer: ReturnType<typeof setInterval> | null = null;
   private shuttingDown = false;
   private memoryPressureActive = false;
-  private readonly memoryReclamation = new MemoryReclamationGate();
-  private recoveryStats: AgentPoolRecoveryInstrumentationSnapshot = {
-    attemptsTotal: 0,
-    recoveredRuns: 0,
-    exhaustedRuns: 0,
-  };
-
+  private readonly memoryReclamation?: MemoryReclamationGate;
   // Shared across all sessions (expensive to create, safe to reuse)
   private credentialStore: PiclawCredentialStore;
-  private modelRuntime: ModelRuntime;
+  readonly modelRuntime: ModelRuntime;
   private modelRegistry: ModelRegistry;
   private settingsManager = SettingsManager.create(WORKSPACE_DIR, getPiclawAgentDir());
-  private logsDir = join(WORKSPACE_DIR, "logs");
-  private createSession?: AgentPoolOptions["createSession"];
-  private createSideSession?: AgentPoolOptions["createSideSession"];
-  private bashOperations = createTrackedBashOperations({
-    shellPath: () => this.settingsManager.getShellPath(),
-  });
   private attachments: AgentPoolServices["attachments"];
   private sessionBinder: AgentPoolServices["sessionBinder"];
-  private toolFactory: AgentPoolServices["toolFactory"];
-  private turnCoordinator: AgentPoolServices["turnCoordinator"];
   private sessionManager: AgentPoolServices["sessionManager"];
   private branchManager: AgentPoolServices["branchManager"];
   private runtimeFacade: AgentPoolServices["runtimeFacade"];
-  private sideStreamSimple?: NonNullable<AgentPoolOptions["sideStreamSimple"]>;
+  private readonly releaseModelInterop: () => void;
+  private readonly releaseSshHandlers: () => void;
+  private readonly sidePromptDispatch?: AgentPoolOptions["dispatchSidePrompt"];
+  private readonly dreamDispatch?:AgentPoolOptions['dispatchDreamOperation'];
+  dispatchDreamOperation(request:import('./agent-pool/contracts.js').NativeDreamRequest):Promise<AgentOutput>{
+    if(!this.durableApplication||!this.dreamDispatch)throw Error('Native Dream dispatcher unavailable');
+    return this.dreamDispatch(Object.freeze({...request,assertCurrent:request.assertCurrent.bind(request)}));
+  }
   private readonly config = getSessionPoolConfig();
 
+  private readonly scheduledHarnessProof?: AgentPoolOptions["prepareInterruptedScheduledHarness"];
+  prepareInterruptedScheduledHarness(identity: Parameters<NonNullable<AgentPoolOptions["prepareInterruptedScheduledHarness"]>>[0]) {
+    return this.scheduledHarnessProof?.(Object.freeze({ ...identity })) ?? Promise.resolve(undefined);
+  }
+  private readonly scheduledDispatch: AgentPoolOptions["dispatchScheduledAgent"];
+  private readonly durableApplication: boolean;
+  private readonly durableSessionLookup?: AgentPoolOptions["getDurableSession"];
+  private readonly hostCommandDispatch?: AgentPoolOptions["dispatchHostCommand"];
+  dispatchScheduledAgent(lease: import("./service-effects/contracts/scheduled-run-store.js").ScheduledRunLease, options?: { signal?: AbortSignal }): Promise<AgentOutput> {
+    if (!this.scheduledDispatch) throw new Error("Durable scheduled dispatcher unavailable");
+    return this.scheduledDispatch(lease, options);
+  }
+
   constructor(options: AgentPoolOptions) {
-    this.createSession = options.createSession;
-    this.createSideSession = options.createSideSession;
+    this.dreamDispatch=options.dispatchDreamOperation?.bind(options);
+    this.hostCommandDispatch = options.dispatchHostCommand?.bind(options);
+    this.scheduledHarnessProof = options.prepareInterruptedScheduledHarness?.bind(options);
+    this.scheduledDispatch = options.dispatchScheduledAgent?.bind(options);
+    this.sidePromptDispatch = options.dispatchSidePrompt?.bind(options);
+    if (options.getDurableSession !== undefined && typeof options.getDurableSession !== "function") {
+      throw new Error("Durable session lookup must be callable");
+    }
+    if (options.legacyCapture !== undefined && options.legacyCapture !== true) throw Error("Invalid legacy capture selection");
+    if (options.legacyCapture && options.getDurableSession !== undefined) throw Error("Native host cannot select legacy capture composition");
+    if (!options.legacyCapture && options.getDurableSession === undefined) throw Error("Native host requires a durable session lookup; legacy capture must be explicit");
+    this.durableApplication = options.getDurableSession !== undefined;
+    this.durableSessionLookup = options.getDurableSession?.bind(options);
     if (!options.credentialStore || !options.modelRuntime) {
       throw new Error("AgentPool requires shared credentialStore and modelRuntime services");
     }
     this.credentialStore = options.credentialStore;
     this.modelRuntime = options.modelRuntime;
     this.modelRegistry = options.modelRegistry ?? new ModelRegistry(this.modelRuntime);
-    installLegacySessionAffinityCompatibility(this.modelRegistry, (message, details) => log.warn(message, details));
-    this.applyRateLimitRetryDefaults();
     ({
       attachments: this.attachments,
       sessionBinder: this.sessionBinder,
-      toolFactory: this.toolFactory,
-      turnCoordinator: this.turnCoordinator,
       sessionManager: this.sessionManager,
       mcpSettings: this.mcpSettings,
       runtimeFacade: this.runtimeFacade,
       branchManager: this.branchManager,
     } = createAgentPoolServices({
       pool: this.pool,
-      sidePool: this.sidePool,
-      activeForkBaseLeafByChat: this.activeForkBaseLeafByChat,
       authStorage: this.credentialStore,
       modelRuntime: this.modelRuntime,
       modelRegistry: this.modelRegistry,
       settingsManager: this.settingsManager,
       workspaceDir: WORKSPACE_DIR,
       mainSessionMaxSize: this.config.mainSessionPoolMaxSize,
-      bashOperations: this.bashOperations,
-      createSession: this.createSession,
-      createSideSession: this.createSideSession,
+      getDurableSession: options.getDurableSession,
+      ...(options.legacyCapture ? {legacyCapture:true} : {}),
+      ...(options.getDurableSession === undefined ? {
+        createSession: options.createSession,
+        bashOperations:createTrackedBashOperations({shellPath:()=>this.settingsManager.getShellPath()}),
+      } : {}),
       onInfo: (message, details) => log.info(message, details),
       onWarn: (message, details) => log.warn(message, details),
       onError: (message, details) => log.error(message, details),
     }));
-    this.sideStreamSimple = options.sideStreamSimple;
-    setSshToolHandlers({
+    this.releaseSshHandlers = setSshToolHandlers({
       get: (chatJid) => this.getSshConfig(chatJid),
       isActive: (chatJid) => hasLiveChatSshConnection(chatJid),
-      set: (chatJid, config) => this.setSshConfig(chatJid, config),
-      clear: (chatJid) => this.clearSshConfig(chatJid),
+      set: (chatJid, config, signal) => this.setSshConfig(chatJid, config, signal),
+      clear: (chatJid, signal) => this.clearSshConfig(chatJid, signal),
     });
-    registerExtensionKvStore({
-      get: extensionKvGet,
-      set: extensionKvSet,
-      delete: extensionKvDelete,
-      list: extensionKvList,
-      query: extensionKvQuery,
-      clear: extensionKvClear,
-    });
+    registerRootExtensionKvStore();
     const runtimeInterop = ((globalThis as { __piclawRuntimeInterop?: RuntimeInteropBridge }).__piclawRuntimeInterop ||= {});
     runtimeInterop.getChatJid = getChatJid;
     runtimeInterop.getChatChannel = getChatChannel;
     runtimeInterop.registerChannelDetector = registerChannelDetector;
-    runtimeInterop.getModelRegistry = () => this.modelRegistry;
     runtimeInterop.hasKnownModelCost = createKnownModelCostResolver(getPiclawAgentDir());
-    runtimeInterop.streamSimple = (model, context, options) => this.modelRuntime.streamSimple(model, context, options);
     const getSessionEntry = (chatJid = getChatJid("")): PoolEntry | undefined => {
       const normalizedChatJid = String(chatJid || "").trim();
-      return normalizedChatJid ? this.pool.get(normalizedChatJid) ?? this.sidePool.get(normalizedChatJid) : undefined;
+      return normalizedChatJid ? this.pool.get(normalizedChatJid) : undefined;
     };
-    runtimeInterop.getSessionId = (chatJid) => getSessionEntry(chatJid)?.runtime.session.sessionId ?? null;
-    runtimeInterop.getScopedModels = (chatJid) => getSessionEntry(chatJid)?.runtime.session.scopedModels ?? [];
-    runtimeInterop.getExtensionKvStore = () => ({
-      get: extensionKvGet,
-      set: extensionKvSet,
-      delete: extensionKvDelete,
-      list: extensionKvList,
-      clear: extensionKvClear,
-    });
+    const ownedModelInterop: Pick<RuntimeInteropBridge, "getModelRegistry" | "streamSimple" | "getSessionId" | "getScopedModels"> = {
+      getModelRegistry: () => this.modelRegistry,
+      streamSimple: (model, context, options) => this.modelRuntime.streamSimple(model, context, options),
+      getSessionId: (chatJid) => getSessionEntry(chatJid)?.runtime.session.sessionId ?? null,
+      getScopedModels: (chatJid) => getSessionEntry(chatJid)?.runtime.session.scopedModels ?? [],
+    };
+    Object.assign(runtimeInterop, ownedModelInterop);
+    this.releaseModelInterop = () => {
+      for (const key of ["getModelRegistry", "streamSimple", "getSessionId", "getScopedModels"] as const)
+        if (runtimeInterop[key] === ownedModelInterop[key]) delete runtimeInterop[key];
+    };
     runtimeInterop.addLogSink = addLogSink;
     runtimeInterop.removeLogSink = removeLogSink;
     runtimeInterop.getKeychainEntry = getKeychainEntry;
-    try { migrateProxmoxPortainerToKv(); } catch (e) { void e; /* migration is best-effort */ }
-    mkdirSync(SESSIONS_DIR, { recursive: true });
-    mkdirSync(this.logsDir, { recursive: true });
-    const agentLogConfig = getAgentLogConfig();
-    startAgentLogCleanup(this.logsDir, agentLogConfig.retentionMs, agentLogConfig.cleanupIntervalMs);
-    this.cleanupTimer = setInterval(
-      () => this.evictIdle(),
-      this.config.cleanupIntervalMs,
-    );
+    if (options.getDurableSession === undefined) mkdirSync(SESSIONS_DIR, { recursive: true });
+    if (this.sessionManager) {
+      this.memoryReclamation = new MemoryReclamationGate();
+      this.cleanupTimer = setInterval(() => this.evictIdle(), this.config.cleanupIntervalMs);
+    }
     // B4: Prune old token_usage rows once on startup (90-day retention).
     // D3: Reclaim freelist pages left by the pruning (incremental vacuum).
     try {
@@ -425,113 +382,9 @@ export class AgentPool {
     } catch (e) { void e; }
   }
 
-  private applyRateLimitRetryDefaults(): void {
-    const settingsManager = this.settingsManager as SettingsManager & {
-      getRetrySettings?: () => { enabled: boolean; maxRetries: number; baseDelayMs: number };
-    };
-    if (typeof settingsManager.getRetrySettings !== "function") return;
-    const originalGetRetrySettings = settingsManager.getRetrySettings.bind(settingsManager);
-    settingsManager.getRetrySettings = () => {
-      const settings = originalGetRetrySettings();
-      return {
-        ...settings,
-        maxRetries: Math.max(settings.maxRetries ?? 0, DEFAULT_PROVIDER_RATE_LIMIT_MAX_RETRIES),
-        baseDelayMs: Math.max(settings.baseDelayMs ?? 0, DEFAULT_PROVIDER_RATE_LIMIT_BASE_DELAY_MS),
-      };
-    };
-  }
-
   setSessionBinder(binder?: (runtime: AgentSessionRuntime, chatJid: string) => Promise<void> | void): void {
+    if (!this.sessionBinder) throw Error("Native host does not install a legacy session binder");
     this.sessionBinder.setBinder(binder);
-  }
-
-  /** Run a prompt against the persistent session for `chatJid`. */
-  async runAgent(prompt: string, chatJid: string, options: RunAgentOptions = {}): Promise<AgentOutput> {
-    // Acquire before session lookup: the cleanup timer can run after getOrCreate
-    // returns but before AgentSession flips isStreaming at prompt start.
-    const releaseEvictionProtection = this.sessionManager.acquireEvictionProtection(chatJid);
-    try {
-      const resumedWork = !options.budgetWorkId && !options.executionProvenance?.executionId
-        ? getActiveBudgetWorkForChat(chatJid)
-        : null;
-      const budgetWorkId = options.budgetWorkId?.trim()
-        || options.executionProvenance?.executionId?.trim()
-        || (resumedWork?.last_boundary === "resume_pending" ? resumedWork.id : null)
-        || options.turnId?.trim()
-        || createUuid("work");
-      const budgetExecutionKind = options.budgetExecutionKind
-        ?? (resumedWork?.id === budgetWorkId ? resumedWork.execution_kind : undefined)
-        ?? (options.executionProvenance?.kind === "scheduled" ? "scheduled" : "interactive");
-      const budgetOptions: RunAgentOptions = {
-        ...options,
-        budgetWorkId,
-        budgetExecutionKind,
-        budgetBeforeModelCall: async (boundary, boundaryPrompt, providerId) => {
-          if (options.abortSignal?.aborted) return "Restricted execution cancelled.";
-          if (options.executionAdmissionCheck && !await options.executionAdmissionCheck()) return "Restricted execution grant revoked.";
-          const admitted = await admitBudgetBoundary({
-            workId: budgetWorkId,
-            boundary,
-            prompt: boundaryPrompt,
-            modelRuntime: this.modelRuntime,
-            providerId,
-          });
-          return admitted.message;
-        },
-      };
-      ensureBudgetWork({
-        id: budgetWorkId,
-        chatJid,
-        executionKind: budgetExecutionKind,
-        parentWorkId: budgetOptions.budgetParentWorkId ?? null,
-        scheduledTaskId: budgetOptions.budgetScheduledTaskId ?? null,
-      });
-      if (resumedWork?.id === budgetWorkId) {
-        setBudgetWorkStatus(budgetWorkId, "active", { boundary: "resumed" });
-      }
-      const observedOutputs: AgentOutput[] = [];
-      const runPrompt = (nextPrompt: string, nextOptions: RunAgentOptions) => runAgentPrompt(nextPrompt, chatJid, nextOptions, {
-        getOrCreateRuntime: (nextChatJid) => this.getOrCreateRuntime(nextChatJid),
-        turnCoordinator: this.turnCoordinator,
-        clearAttachments: (nextChatJid) => this.attachments.clear(nextChatJid),
-        takeAttachments: (nextChatJid) => this.attachments.take(nextChatJid),
-        logsDir: this.logsDir,
-        setActiveForkBaseLeaf: (nextChatJid, leafId) => this.activeForkBaseLeafByChat.set(nextChatJid, leafId),
-        clearActiveForkBaseLeaf: (nextChatJid) => {
-          this.activeForkBaseLeafByChat.delete(nextChatJid);
-        },
-        onInfo: (message, details) => log.info(message, details),
-        onWarn: (message, details) => log.warn(message, details),
-        onError: (message, details) => log.error(message, details),
-      });
-
-      const output = await withBudgetWorkContext({
-        workId: budgetWorkId,
-        chatJid,
-        kind: budgetExecutionKind,
-        parentWorkId: budgetOptions.budgetParentWorkId ?? null,
-      }, async () => await runWithProtectedRecoveryHandoff(prompt, budgetOptions, runPrompt, (observed) => {
-        observedOutputs.push(observed);
-      }));
-      const recoveries = observedOutputs.map((observed) => observed.recovery).filter(Boolean);
-      this.recoveryStats.attemptsTotal += recoveries.reduce(
-        (sum, recovery) => sum + Math.max(0, recovery?.attemptsUsed || 0),
-        0,
-      );
-      const handedOff = observedOutputs.some((observed) => observed.requiresToolEnabledContinuation);
-      if ((output.status !== "error" && observedOutputs.some((observed) => observed.recovery?.recovered)) || handedOff) {
-        this.recoveryStats.recoveredRuns += 1;
-      }
-      if (!handedOff && output.status === "error" && output.recovery?.exhausted) {
-        this.recoveryStats.exhaustedRuns += 1;
-      }
-      if (!handedOff && getBudgetWork(budgetWorkId)?.status === "active") {
-        setBudgetWorkStatus(budgetWorkId, "completed");
-      }
-      return output;
-    } finally {
-      releaseEvictionProtection();
-    }
   }
 
   async applyControlCommand(chatJid: string, command: AgentControlCommand): Promise<AgentControlResult> {
@@ -560,58 +413,20 @@ export class AgentPool {
     return this.runtimeFacade.applyControlCommand(chatJid, command);
   }
 
-  async applyOwnedModelControl(chatJid: string, command: Extract<AgentControlCommand, { type: "model" | "thinking" }>): Promise<AgentControlResult> {
-    return this.runtimeFacade.applyOwnedModelControl(chatJid, command);
-  }
-
-  async queueOwnedStreamingMessage(chatJid: string, text: string, behavior: "steer"): Promise<{ queued: boolean; error?: string }> {
-    return this.runtimeFacade.queueOwnedStreamingMessage(chatJid, text, behavior);
-  }
-
-  async abortOwnedRun(chatJid: string): Promise<AgentControlResult> {
-    return this.runtimeFacade.abortOwnedRun(chatJid);
-  }
-
   async getCurrentModelLabel(chatJid: string): Promise<string | null> {
     return this.runtimeFacade.getCurrentModelLabel(chatJid);
   }
 
   async runSidePrompt(chatJid: string, prompt: string, options: SidePromptOptions = {}): Promise<SidePromptResult> {
-    // Preserve the family-mode boundary before budget bookkeeping or session
-    // hydration. Side prompts remain single-user-only regardless of which
-    // admission controls are installed around them.
-    if (readAccessConfig().mode !== "single-user") {
+    // A family-scoped caller cannot acquire single-user side authority from a
+    // later global mode/configuration change.
+    const origin = getExecutionIdentity();
+    if (readAccessConfig().mode !== "single-user" || (origin && origin.mode !== "single-user")) {
       return { status: "error", result: null, thinking: null, error: "Side prompts are unavailable in multi-user mode.", model: null };
     }
-    const parent = getBudgetWorkContext();
-    const budgetWorkId = options.budgetWorkId?.trim() || createUuid("side-prompt");
-    const parentWorkId = options.budgetParentWorkId ?? parent?.workId ?? null;
-    ensureBudgetWork({ id: budgetWorkId, chatJid, executionKind: "side_prompt", parentWorkId });
-    const mainSession = await this.getOrCreate(chatJid);
-    const admission = await admitBudgetBoundary({
-      workId: budgetWorkId,
-      boundary: "side_prompt",
-      prompt,
-      modelRuntime: this.modelRuntime,
-      providerId: mainSession.model?.provider,
-    });
-    if (admission.message) {
-      return { status: "error", result: null, thinking: null, error: admission.message, model: mainSession.model ? `${mainSession.model.provider}/${mainSession.model.id}` : null };
-    }
-    const result = await withBudgetWorkContext({ workId: budgetWorkId, chatJid, kind: "side_prompt", parentWorkId }, () => runSidePromptInternal(chatJid, prompt, options, {
-      getOrCreate: (nextChatJid) => this.getOrCreate(nextChatJid),
-      getOrCreateSideRuntime: (nextChatJid) => this.getOrCreateSideRuntime(nextChatJid),
-      syncSideSessionFromMain: (mainSession, sideRuntime) => this.syncSideSessionFromMain(mainSession, sideRuntime),
-      modelRuntime: this.modelRuntime,
-      sideStreamSimple: this.sideStreamSimple,
-      onWarn: (message, details) => log.warn(message, details),
-    }));
-    if (getBudgetWork(budgetWorkId)?.status === "active") setBudgetWorkStatus(budgetWorkId, "completed");
-    return result;
-  }
-
-  async probeCompactionModel(modelLabel: string) {
-    return await this.runtimeFacade.probeCompactionModel(modelLabel);
+    if (!this.sidePromptDispatch) return { status: "error", result: null, thinking: null, model: null, error: "Durable side prompt dispatcher unavailable" };
+    try { return await this.sidePromptDispatch(chatJid, prompt, options); }
+    catch { return { status: "error", result: null, thinking: null, model: null, error: "Native side prompt unavailable or failed" }; }
   }
 
   /** Return available model labels and current model for a chat session. */
@@ -619,26 +434,19 @@ export class AgentPool {
     return this.runtimeFacade.getAvailableModels(chatJid, options);
   }
 
-  accountModelDefaults(actor: import('./core/access-types.js').AuthenticatedPrincipal, input?: unknown) {
-    return ownAccountModelDefaults(getDb(), actor, this.modelRuntime, this.settingsManager, input);
-  }
-
-  resolveBudgetProviderAccountRef(providerId: string): Promise<string | null> {
-    return resolveProviderUsageAccountRef(this.modelRuntime, providerId);
-  }
-
   setProviderUsageRefreshListener(
     listener: Parameters<AgentRuntimeFacade["setProviderUsageRefreshListener"]>[0],
-  ): void {
-    this.runtimeFacade.setProviderUsageRefreshListener(listener);
+  ): () => void {
+    return this.runtimeFacade.setProviderUsageRefreshListener(listener);
   }
 
   /** Return the current context token usage for a chat session, or null if unknown. */
   async getContextUsageForChat(chatJid: string): Promise<{
     tokens: number | null;
-    contextWindow: number;
+    contextWindow: number | null;
     percent: number | null;
     sessionGeneration?: string;
+    tokensAreAuthoritative?: true;
   } | null> {
     return this.runtimeFacade.getContextUsageForChat(chatJid);
   }
@@ -647,77 +455,19 @@ export class AgentPool {
     return this.runtimeFacade.getSessionGenerationForChat(chatJid);
   }
 
-  scheduleRecentChatWarmup(options: { limit?: number; excludeChatJids?: string[] } = {}): string[] {
-    if (this.shuttingDown) return [];
-    const shouldSkipWarmupChat = (chatJid: string): boolean => (
-      chatJid.startsWith("dream:")
-      || chatJid.startsWith("control:")
-      || chatJid.startsWith("web:ipc-")
-    );
-    const targetCount = Math.max(1, Math.min(8, Math.trunc(options.limit ?? 3) || 3));
-    const excluded = new Set(
-      Array.isArray(options.excludeChatJids)
-        ? options.excludeChatJids.map((jid) => String(jid || "").trim()).filter(Boolean)
-        : [],
-    );
-    const cooldownByChat = ((this as any).__piclawRecentWarmupCooldownByChat ||= new Map<string, number>()) as Map<string, number>;
-    const now = Date.now();
-    for (const [chatJid, lastQueuedAt] of cooldownByChat) {
-      if (now - lastQueuedAt >= 30_000) {
-        cooldownByChat.delete(chatJid);
-      }
-    }
-
-    const scheduled: string[] = [];
-    const seen = new Set<string>();
-    let fetchLimit = Math.min(100, Math.max(targetCount * 4, targetCount));
-
-    while (scheduled.length < targetCount) {
-      const candidates = listRecentChatJids(fetchLimit, {
-        excludeChatJids: [...excluded, ...seen],
-      });
-      for (const chatJid of candidates) {
-        if (seen.has(chatJid)) continue;
-        seen.add(chatJid);
-        if (excluded.has(chatJid)) continue;
-        if (shouldSkipWarmupChat(chatJid)) continue;
-        if (this.pool.has(chatJid)) continue;
-        if (now - (cooldownByChat.get(chatJid) ?? 0) < 30_000) continue;
-        scheduled.push(chatJid);
-        if (scheduled.length >= targetCount) break;
-      }
-
-      if (scheduled.length >= targetCount || fetchLimit >= 100 || candidates.length < fetchLimit) {
-        break;
-      }
-
-      const nextFetchLimit = Math.min(100, fetchLimit * 2);
-      if (nextFetchLimit === fetchLimit) {
-        break;
-      }
-      fetchLimit = nextFetchLimit;
-    }
-
-    // Only record a cooldown / return chats that actually entered the prewarm
-    // queue. prewarm() may reject a candidate (already queued, in flight, or
-    // within its per-chat cooldown) and we must not consume a slot or suppress
-    // backfill for those.
-    const actuallyScheduled: string[] = [];
-    for (const chatJid of scheduled) {
-      if (this.sessionManager.prewarm(chatJid, { mode: "lightweight" })) {
-        cooldownByChat.set(chatJid, now);
-        actuallyScheduled.push(chatJid);
-      }
-    }
-
-    return actuallyScheduled;
+  getSessionTreeForChat(chatJid: string) {
+    return this.runtimeFacade.getSessionTreeForChat(chatJid);
   }
 
-  scheduleChatWarmup(chatJid: string, options: { priority?: boolean } = {}): boolean {
-    return this.sessionManager.prewarm(chatJid, options);
+  abortToolCallForChat(chatJid: string, callId: string, note?: string) {
+    return this.runtimeFacade.abortToolCallForChat(chatJid, callId, note);
   }
 
-  getSessionTreeSummaryForChat(chatJid: string): { leafId: string | null; total: number } | null {
+  getTurnEntriesForChat(chatJid: string, answerEntryId?: number) {
+    return this.runtimeFacade.getTurnEntriesForChat(chatJid, answerEntryId);
+  }
+
+  getSessionTreeSummaryForChat(chatJid: string): Promise<{ leafId: string | null; total: number } | null> {
     return this.runtimeFacade.getSessionTreeSummaryForChat(chatJid);
   }
 
@@ -729,32 +479,9 @@ export class AgentPool {
     return this.runtimeFacade.saveSessionPosition(chatJid);
   }
 
-  /**
-   * Restore the session tree to a previously saved position.
-   * Navigates back to the saved leaf, leaving the task's output in a side branch.
-   */
-  async restoreSessionPosition(chatJid: string, leafId: string | null): Promise<void> {
-    return this.runtimeFacade.restoreSessionPosition(chatJid, leafId);
-  }
-
   async disposeChatSession(chatJid: string): Promise<void> {
+    if (!this.sessionManager) throw Error("Durable application does not construct legacy sessions");
     await this.sessionManager.recreate(chatJid);
-  }
-
-  async emergencyRotateSession(chatJid: string, emergencyReason: string): Promise<SessionRotationResult> {
-    const runtime = await this.getOrCreateRuntime(chatJid);
-    const result = await rotateSession(runtime.session, runtime, {
-      reason: "automatic",
-      skipCompaction: true,
-      emergencyReason,
-      chatJid,
-    });
-    if (result.status === "success") {
-      clearCompactionFailureBackoff(chatJid);
-      resetCompactionSuccessCount(chatJid);
-      await this.sessionManager.refreshRuntime(chatJid, runtime);
-    }
-    return result;
   }
 
   hasProviderModels(provider: string): boolean {
@@ -785,61 +512,88 @@ export class AgentPool {
   }
 
   isActive(chatJid: string): boolean {
-    return this.sessionManager.hasProtectedRun(chatJid) || this.runtimeFacade.isActive(chatJid);
-  }
-
-  private ensureBranchRegistration(chatJid: string, session?: AgentSession | null): ChatBranchRecord {
-    return this.branchManager.ensureBranchRegistration(chatJid, session);
+    return this.sessionManager?.hasProtectedRun(chatJid) || this.runtimeFacade.isActive(chatJid);
   }
 
   async renameChatBranch(
     chatJid: string,
-    options: { agentName?: string | null } = {},
+    options: BranchMutationContext & { agentName?: string | null } = {},
   ): Promise<ChatBranchRecord> {
     return this.branchManager.renameChatBranch(chatJid, options);
   }
 
-  async changeOwnedSessionLifecycle(actor: import("./core/access-types.js").AuthenticatedPrincipal, chatJid: string, action: "archive" | "restore", agentName?: string): Promise<ChatBranchRecord> {
-    return this.branchManager.changeOwnedSessionLifecycle(actor, chatJid, action, agentName);
+  async pruneChatBranch(chatJid: string, context: BranchMutationContext = {}): Promise<ChatBranchRecord> {
+    return this.branchManager.pruneChatBranch(chatJid, context);
   }
 
-  async pruneChatBranch(chatJid: string): Promise<ChatBranchRecord> {
-    return this.branchManager.pruneChatBranch(chatJid);
-  }
-
-  async mergeChatBranchIntoParent(chatJid: string): Promise<MergeChatBranchIntoParentResult> {
-    return this.branchManager.mergeChatBranchIntoParent(chatJid);
+  async mergeChatBranchIntoParent(chatJid: string, context: BranchMutationContext = {}): Promise<MergeChatBranchIntoParentResult> {
+    throw new Error("Durable branch rollup unavailable");
   }
 
   async renameChatJid(
     oldJid: string,
     newJid: string,
+    context: BranchMutationContext = {},
   ): Promise<{ oldJid: string; newJid: string; branch: ChatBranchRecord }> {
-    return this.branchManager.renameChatJid(oldJid, newJid);
+    throw new Error("Durable chat identity rename unavailable");
   }
 
   async restoreChatBranch(
     chatJid: string,
-    options: { agentName?: string | null } = {},
+    options: BranchMutationContext & { agentName?: string | null } = {},
   ): Promise<ChatBranchRecord> {
-    return this.branchManager.restoreChatBranch(chatJid, options);
+    if (!this.durableApplication) throw Error("Legacy branch restore unavailable");
+    if (readAccessConfig().mode !== "single-user") throw Error("Native restore requires single-user policy");
+    const database = getDb(), assertBinding = captureHostDatabaseBinding(database);
+    const agentName = options.agentName, { signal, authorise } = options;
+    const check = () => {
+      assertBinding();
+      if (readAccessConfig().mode !== "single-user") throw Error("Native restore authority changed");
+      authorise?.();
+    };
+    return admitSqliteWrite(database, () => {
+      const restored = restoreChatBranchIdentity({ chat_jid: chatJid,
+        ...(agentName !== undefined ? { agent_name: agentName } : {}) });
+      const position = this.durableSessionLookup?.(restored.chat_jid);
+      // A session that never ran a turn has no durable session and no history to
+      // bind; restoring it returns it to its pre-archive state. Anything with
+      // stored messages must still bind exactly to its current native session.
+      if (!position && !chatHasStoredMessages(database, restored.chat_jid)) return restored;
+      if (!position || position.branchId !== restored.branch_id) throw Error("Exact native restore binding unavailable");
+      if (position.assertCurrent !== undefined && typeof position.assertCurrent !== "function") {
+        throw Error("Exact native restore binding invalid");
+      }
+      position.assertCurrent?.();
+      return restored;
+    }, check, signal, undefined, () => {
+      if (database.inTransaction) throw Error("Native restore requires an outermost transaction");
+      check();
+    });
   }
 
   async permanentPurgeChatBranch(
     chatJid: string,
+    context: BranchMutationContext = {},
   ): Promise<{ branch: ChatBranchRecord; removedSessionArtifacts: string[] }> {
-    return this.branchManager.permanentPurgeChatBranch(chatJid);
+    if (this.durableApplication) {
+      requireLegacyRoutingMutation(getDb(), "legacy purge");
+    }
+    throw new Error("Durable branch purge unavailable");
   }
 
   async createForkedChatBranch(
     sourceChatJid: string,
     options: { agentName?: string | null; requestId?: string } = {},
   ): Promise<ChatBranchRecord> {
-    return this.branchManager.createForkedChatBranch(sourceChatJid, options);
+    if (this.durableApplication) {
+      requireLegacyRoutingMutation(getDb(), "legacy fork");
+    }
+    throw new Error("Durable branch fork unavailable");
   }
 
-  async createRootChatSession(agentName: string): Promise<ChatBranchRecord> {
-    return this.branchManager.createRootChatSession(agentName);
+  async createRootChatSession(agentName: string, context: BranchMutationContext = {}): Promise<ChatBranchRecord> {
+    if (this.durableApplication && !hasNativeRouting(getDb())) throw new Error("Durable root session creation unavailable");
+    return this.branchManager.createRootChatSession(agentName, context);
   }
 
   listActiveChats(): ActiveChatAgent[] {
@@ -856,16 +610,14 @@ export class AgentPool {
   getMemoryInstrumentationSnapshot(): AgentPoolMemoryInstrumentationSnapshot {
     const sessionResources = collectSessionResourceInstrumentation([
       ...this.pool.values(),
-      ...this.sidePool.values(),
     ]);
     return {
       cachedMainSessions: this.pool.size,
-      cachedSideSessions: this.sidePool.size,
-      activeForkBaseLeaves: this.activeForkBaseLeafByChat.size,
+      cachedSideSessions: 0,
+      activeForkBaseLeaves: 0,
       activeChats: this.branchManager.listActiveChats().length,
       sessionResources,
-      sessionManager: this.sessionManager.getInstrumentationSnapshot(),
-      recovery: { ...this.recoveryStats },
+      ...(this.sessionManager ? {sessionManager:this.sessionManager.getInstrumentationSnapshot()} : {}),
     };
   }
 
@@ -881,23 +633,13 @@ export class AgentPool {
     return this.branchManager.getAgentHandleForChat(chatJid);
   }
 
-  async queueStreamingMessage(
-    chatJid: string,
-    text: string,
-    behavior: "steer" | "followUp",
-    admission?: { validate: () => void; signal?: AbortSignal },
-  ): Promise<{ queued: boolean; error?: string }> {
-    return this.runtimeFacade.queueStreamingMessage(chatJid, text, behavior, admission);
-  }
-
-  /** Remove one queued follow-up message (first content match) from an active session queue. */
-  async removeQueuedFollowupMessage(chatJid: string, queuedContent?: string): Promise<boolean> {
-    return this.runtimeFacade.removeQueuedFollowupMessage(chatJid, queuedContent);
-  }
-
-  /** Execute a raw slash command in the AgentSession (extension commands). */
+  /** Dispatch host slash commands through the admitted native command owner. */
   async applySlashCommand(chatJid: string, rawText: string): Promise<AgentControlResult> {
-    return this.runtimeFacade.applySlashCommand(chatJid, rawText);
+    if (this.hostCommandDispatch) {
+      if (readAccessConfig().mode !== "single-user") throw Error("Native slash commands require single-user execution");
+      return this.hostCommandDispatch(chatJid, rawText);
+    }
+    throw Error("Native slash command unavailable");
   }
 
   getSshConfig(chatJid: string): SshConfig | null {
@@ -907,22 +649,21 @@ export class AgentPool {
   async setSshConfig(
     chatJid: string,
     config: Omit<SshConfig, "chat_jid" | "created_at" | "updated_at" | "last_used_at">,
+    signal?: AbortSignal,
   ): Promise<SshConfigSetResult> {
-    const apply_timing: SshConfigApplyTiming = hasLiveChatSshSession(chatJid) ? "immediate" : "next_session";
-    if (apply_timing === "immediate") {
-      await applyLiveSshConfig(chatJid, resolveSshCoreConfigFromChatConfig(config));
-    }
-    const next = upsertSshConfig({ chat_jid: chatJid, ...config });
-    return { config: next, apply_timing };
+    const database = getDb(), binding = captureHostDatabaseBinding(database), captured = structuredClone(config);
+    const check = () => { binding(); if (this.shuttingDown) throw Error("SSH configuration owner is closing"); };
+    const next = await admitSqliteWrite(database, () => upsertSshConfig({ ...captured, chat_jid: chatJid }), check, signal, undefined,
+      () => { check(); if (database.inTransaction) throw Error("SSH configuration requires its own transaction"); });
+    return { config: next, apply_timing: "next_session" };
   }
 
-  async clearSshConfig(chatJid: string): Promise<SshConfigClearResult> {
-    const apply_timing: SshConfigApplyTiming = hasLiveChatSshSession(chatJid) ? "immediate" : "next_session";
-    const deleted = deleteSshConfig(chatJid);
-    if (apply_timing === "immediate") {
-      await clearLiveSshConfig(chatJid);
-    }
-    return { deleted, apply_timing };
+  async clearSshConfig(chatJid: string, signal?: AbortSignal): Promise<SshConfigClearResult> {
+    const database = getDb(), binding = captureHostDatabaseBinding(database);
+    const check = () => { binding(); if (this.shuttingDown) throw Error("SSH configuration owner is closing"); };
+    const deleted = await admitSqliteWrite(database, () => deleteSshConfig(chatJid), check, signal, undefined,
+      () => { check(); if (database.inTransaction) throw Error("SSH configuration requires its own transaction"); });
+    return { deleted, apply_timing: "next_session" };
   }
 
   /** Gracefully shut down all sessions. */
@@ -932,10 +673,26 @@ export class AgentPool {
       clearInterval(this.cleanupTimer);
       this.cleanupTimer = null;
     }
-    await this.sessionManager.shutdown();
+    await this.sessionManager?.shutdown();
+    this.releaseModelInterop();
+    this.releaseSshHandlers();
   }
 
-  /** Return an existing session for read-only introspection, or create one if needed. */
+  /** The native backend owns recovery for the entire application, not legacy sessions. */
+  isDurableRuntime(): boolean { return this.durableApplication; }
+
+  async getDurableSessionMetadata(chatJid: string) {
+    if (!this.durableApplication) return undefined;
+    const position = this.durableSessionLookup?.(chatJid);
+    if (!position) return null;
+    if (position.readMetadata !== undefined && typeof position.readMetadata !== "function") {
+      throw new Error("Durable metadata reader invalid");
+    }
+    if (!position.readMetadata) return null;
+    const metadata = await position.readMetadata();
+    return metadata ? { ...metadata, commandCatalogue: getNativeCommandCatalogue(position) } : null;
+  }
+
   async getSessionForIntrospection(chatJid: string): Promise<AgentSession> {
     return this.getOrCreate(chatJid);
   }
@@ -943,31 +700,23 @@ export class AgentPool {
   // ── internal ────────────────────────────────────────────
 
   private async getOrCreateRuntime(chatJid: string): Promise<AgentSessionRuntime> {
+    if (!this.sessionManager) throw Error("Durable application does not construct legacy sessions");
     const runtime = await this.sessionManager.getOrCreate(chatJid);
     const pressure = this.getMemoryPressureMode();
     if (pressure.active && !this.shuttingDown) {
-      const poolSizeBefore = this.pool.size + this.sidePool.size;
+      const poolSizeBefore = this.pool.size;
       this.sessionManager.evictIdle({
         mainIdleTtlMs: pressure.mainIdleTtlMs,
-        sideIdleTtlMs: this.config.sideIdleTtlMs,
         mainSessionMaxSizeOverride: pressure.mainSessionMaxSizeOverride,
         protectedChatJids: [chatJid],
       });
-      if (this.pool.size + this.sidePool.size < poolSizeBefore) this.memoryReclamation.request();
+      if (this.pool.size < poolSizeBefore) this.memoryReclamation!.request();
     }
     return runtime;
   }
 
   private async getOrCreate(chatJid: string): Promise<AgentSession> {
     return (await this.getOrCreateRuntime(chatJid)).session;
-  }
-
-  private async getOrCreateSideRuntime(chatJid: string): Promise<AgentSessionRuntime> {
-    return this.sessionManager.getOrCreateSide(chatJid);
-  }
-
-  private async syncSideSessionFromMain(mainSession: AgentSession, sideRuntime: AgentSessionRuntime): Promise<void> {
-    return this.sessionManager.syncSideSessionFromMain(mainSession, sideRuntime);
   }
 
   private getMemoryPressureMode(): { active: boolean; mainIdleTtlMs: number; mainSessionMaxSizeOverride: number | undefined } {
@@ -992,17 +741,17 @@ export class AgentPool {
   }
 
   private evictIdle(): void {
+    if (!this.sessionManager) return;
     const pressure = this.getMemoryPressureMode();
-    const poolSizeBefore = this.pool.size + this.sidePool.size;
+    const poolSizeBefore = this.pool.size;
     this.sessionManager.evictIdle({
       mainIdleTtlMs: pressure.mainIdleTtlMs,
-      sideIdleTtlMs: this.config.sideIdleTtlMs,
       mainSessionMaxSizeOverride: pressure.mainSessionMaxSizeOverride,
     });
-    const poolSizeAfter = this.pool.size + this.sidePool.size;
+    const poolSizeAfter = this.pool.size;
     // Coalesce pressure/eviction requests and reclaim only after active runs
     // and asynchronous disposal drain; do not interrupt another chat's work.
-    if (this.memoryReclamation.shouldReclaim({
+    if (this.memoryReclamation!.shouldReclaim({
       pressure: pressure.active,
       evicted: poolSizeAfter < poolSizeBefore,
       busy: this.sessionManager.hasActiveMemoryReclamationWork(),

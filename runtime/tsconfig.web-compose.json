@@ -1,7 +1,14 @@
 {
   "extends": "./tsconfig.web-panes.json",
-  "compilerOptions": { "rootDir": "." },
+  "compilerOptions": {
+    "rootDir": ".",
+    "strictFunctionTypes": true,
+    "jsx": "react",
+    "jsxFactory": "h",
+    "jsxFragmentFactory": "Fragment"
+  },
   "include": [
+    "web/src/app.ts",
     "web/src/ui/app-compose-reference-orchestration.ts",
     "web/src/ui/app-main-interaction-composition.ts",
     "web/src/ui/app-main-pane-composition.ts",

@@ -11,45 +11,43 @@ function deferred<T>() {
 function runtime(id: string, dispose: () => Promise<void> = async () => {}) {
   return { session: { model: { provider: "fixture", id: "model" }, sessionId: id }, dispose } as unknown as AgentSessionRuntime;
 }
-function fixture(options: { createSession?: () => Promise<AgentSessionRuntime>; createSideSession?: () => Promise<AgentSessionRuntime>; bindSession?: () => Promise<void> } = {}) {
+function fixture(options: { createSession?: () => Promise<AgentSessionRuntime>; bindSession?: () => Promise<void> } = {}) {
   const ws = createTempWorkspace("session-mcp-fence-");
   const restore = setEnv({ PICLAW_WORKSPACE: ws.workspace, PICLAW_STORE: ws.store, PICLAW_DATA: ws.data });
-  const pool = new Map<string, PoolEntry>(), sidePool = new Map<string, PoolEntry>();
-  const manager = new AgentSessionManager({ pool, sidePool, modelRuntime: { getAvailableModels: () => [] } as unknown as ModelRuntime,
+  const pool = new Map<string, PoolEntry>();
+  const manager = new AgentSessionManager({ pool, modelRuntime: { getAvailableModels: () => [] } as unknown as ModelRuntime,
     settingsManager: { getDefaultProvider: () => undefined, getDefaultModel: () => undefined } as unknown as SettingsManager,
-    createDefaultTools: () => [], bindSession: options.bindSession ?? (async () => {}), ensureBranchRegistration: () => {},
-    createSession: options.createSession, createSideSession: options.createSideSession });
-  return { manager, pool, sidePool, cleanup: () => { restore(); ws.cleanup(); } };
+    createDefaultTools: () => [], bindSession: options.bindSession ?? (async () => {}),
+    createSession: options.createSession });
+  return { manager, pool, cleanup: () => { restore(); ws.cleanup(); } };
 }
 
-test("manager fence rejects cached/new main and side admissions and prevents prewarm/eviction", async () => {
+test("manager fence rejects cached/new main admissions and prevents prewarm/eviction", async () => {
   const f = fixture();
-  const main = runtime("main"), side = runtime("side");
+  const main = runtime("main");
   try {
     f.pool.set("web:main", { runtime: main, lastUsed: 1 });
-    f.sidePool.set("web:side", { runtime: side, lastUsed: 1 });
     f.manager.blockMcpAdmissions();
     await expect(f.manager.getOrCreate("web:main")).rejects.toThrow("MCP engine transition");
-    await expect(f.manager.getOrCreateSide("web:side")).rejects.toThrow("MCP engine transition");
     await expect(f.manager.getOrCreate("web:new")).rejects.toThrow("MCP engine transition");
     expect(f.manager.prewarm("web:new", { priority: true })).toBe(false);
-    f.manager.evictIdle({ mainIdleTtlMs: 0, sideIdleTtlMs: 0 });
-    expect(f.pool.size).toBe(1); expect(f.sidePool.size).toBe(1);
-    expect(await f.manager.fenceMcpAndSnapshot(new AbortController().signal)).toEqual([main, side]);
+    f.manager.evictIdle({ mainIdleTtlMs: 0 });
+    expect(f.pool.size).toBe(1);
+    expect(await f.manager.fenceMcpAndSnapshot(new AbortController().signal)).toEqual([main]);
     f.manager.resumeMcpAdmissions();
     expect(await f.manager.getOrCreate("web:main")).toBe(main);
   } finally { f.cleanup(); }
 });
 
-for (const kind of ["main", "side"] as const) {
+for (const kind of ["main"] as const) {
   test(`fence drains and discards ${kind} creation begun before selection`, async () => {
     const pending = deferred<AgentSessionRuntime>(), entered = deferred<void>();
     let disposed = 0;
     const late = runtime("late", async () => { disposed++; });
     const create = async () => { entered.resolve(); return pending.promise; };
-    const f = fixture(kind === "main" ? { createSession: create } : { createSideSession: create });
+    const f = fixture({ createSession: create });
     try {
-      const admitted = (kind === "main" ? f.manager.getOrCreate("web:late") : f.manager.getOrCreateSide("web:late")).catch(error => error);
+      const admitted = f.manager.getOrCreate("web:late").catch(error => error);
       await entered.promise;
       let snapshotted = false;
       const snapshot = f.manager.fenceMcpAndSnapshot(new AbortController().signal).then(value => { snapshotted = true; return value; });
@@ -57,16 +55,16 @@ for (const kind of ["main", "side"] as const) {
       pending.resolve(late);
       expect(await admitted).toBeInstanceOf(Error);
       expect(await snapshot).toEqual([]); expect(disposed).toBe(1);
-      expect(f.pool.size + f.sidePool.size).toBe(0);
+      expect(f.pool.size).toBe(0);
       f.manager.resumeMcpAdmissions();
     } finally { f.cleanup(); }
   });
 }
 
-test("fence includes cached main and side runtimes once even when aliases share identity", async () => {
+test("fence includes cached main runtimes once even when aliases share identity", async () => {
   const f = fixture(), shared = runtime("shared");
   try {
-    f.pool.set("web:a", { runtime: shared, lastUsed: 1 }); f.sidePool.set("web:a", { runtime: shared, lastUsed: 1 });
+    f.pool.set("web:a", { runtime: shared, lastUsed: 1 }); f.pool.set("web:alias", { runtime: shared, lastUsed: 1 });
     expect(await f.manager.fenceMcpAndSnapshot(new AbortController().signal)).toEqual([shared]);
   } finally { f.cleanup(); }
 });
@@ -110,24 +108,21 @@ test("quarantine removes only captured runtime generation and deduplicates concu
   const newer = runtime("new");
   const f = fixture();
   try {
-    f.pool.set("web:same", { runtime: newer, lastUsed: 1 }); f.sidePool.set("web:old", { runtime: old, lastUsed: 1 });
+    f.pool.set("web:same", { runtime: newer, lastUsed: 1 }); f.pool.set("web:old", { runtime: old, lastUsed: 1 });
     f.manager.blockMcpAdmissions();
     const first = f.manager.quarantineMcpRuntime(old), second = f.manager.quarantineMcpRuntime(old);
-    expect(f.pool.get("web:same")?.runtime).toBe(newer); expect(f.sidePool.size).toBe(0);
+    expect(f.pool.get("web:same")?.runtime).toBe(newer); expect(f.pool.has("web:old")).toBe(false);
     await entered.promise; expect(disposed).toBe(1);
     release.resolve(); await Promise.all([first, second]);
     expect(disposed).toBe(1);
   } finally { f.cleanup(); }
 });
 
-test("fenced manager rejects side reseeding and runtime recreation before lifecycle work", async () => {
-  const f = fixture(); let replaced = false;
-  const side = { ...runtime("side"), newSession: async () => { replaced = true; return { cancelled: false }; } } as AgentSessionRuntime;
+test("fenced manager rejects runtime recreation before lifecycle work", async () => {
+  const f = fixture();
   try {
     f.manager.blockMcpAdmissions();
-    await expect(f.manager.syncSideSessionFromMain({} as AgentSession, side)).rejects.toThrow("blocked");
     await expect(f.manager.recreate("web:any")).rejects.toThrow("blocked");
-    expect(replaced).toBe(false);
   } finally { f.cleanup(); }
 });
 
@@ -137,8 +132,7 @@ test("lightweight prewarm already in flight is drained by the snapshot", async (
   try {
     // This variant creates no session, but extension-factory discovery must
     // still finish before the fenced owner snapshot is considered stable.
-    const manager = new AgentSessionManager({ pool: f.pool, sidePool: f.sidePool,
-      modelRuntime: {} as ModelRuntime, settingsManager: {} as SettingsManager, createDefaultTools: () => [], bindSession: async () => {}, ensureBranchRegistration: () => {},
+    const manager = new AgentSessionManager({ pool: f.pool, modelRuntime: {} as ModelRuntime, settingsManager: {} as SettingsManager, createDefaultTools: () => [], bindSession: async () => {},
       lightweightPrewarmSession: async () => { entered.resolve(); await release.promise; } });
     expect(manager.prewarm("web:light", { mode: "lightweight" })).toBe(true);
     await entered.promise;
@@ -239,8 +233,8 @@ test("a second snapshot cannot overlap the transition participant enumeration", 
 test("lifecycle binding rejects re-entrant shutdown and snapshot instead of deadlocking", async () => {
   const f = fixture();
   try {
-    const manager = new AgentSessionManager({ pool: f.pool, sidePool: f.sidePool, modelRuntime: {} as ModelRuntime, settingsManager: {} as SettingsManager,
-      createDefaultTools: () => [], ensureBranchRegistration: () => {}, bindSession: async () => {
+    const manager = new AgentSessionManager({ pool: f.pool, modelRuntime: {} as ModelRuntime, settingsManager: {} as SettingsManager,
+      createDefaultTools: () => [], bindSession: async () => {
         await expect(manager.shutdown()).rejects.toThrow("callbacks cannot await");
         await expect(manager.fenceMcpAndSnapshot(new AbortController().signal)).rejects.toThrow("callbacks cannot await");
       } });
@@ -285,35 +279,7 @@ test("complete cached-main admission cleanup stays tracked until its disposal ta
   } finally { f.cleanup(); }
 });
 
-test("cached-side delivery rechecks the old epoch before returning to a caller", async () => {
-  const f = fixture();
-  try {
-    f.sidePool.set("web:side", { runtime: runtime("cached-side"), lastUsed: 1 });
-    const admission = f.manager.getOrCreateSide("web:side").catch(error => error);
-    await Promise.resolve(); f.manager.blockMcpAdmissions();
-    expect(await admission).toBeInstanceOf(Error);
-    expect(await f.manager.fenceMcpAndSnapshot(new AbortController().signal)).toHaveLength(1);
-  } finally { f.cleanup(); }
-});
 
-test("same-chat main and side admissions wait for recreation disposal before replacing either runtime", async () => {
-  const releaseMain = deferred<void>(), releaseSide = deferred<void>();
-  let mainCreates = 0, sideCreates = 0;
-  const newMain = runtime("new-main"), newSide = runtime("new-side");
-  const f = fixture({ createSession: async () => { mainCreates++; return newMain; }, createSideSession: async () => { sideCreates++; return newSide; } });
-  try {
-    f.pool.set("web:recreate", { runtime: runtime("old-main", () => releaseMain.promise), lastUsed: 1 });
-    f.sidePool.set("web:recreate", { runtime: runtime("old-side", () => releaseSide.promise), lastUsed: 1 });
-    const recreating = f.manager.recreate("web:recreate");
-    await Promise.resolve();
-    expect(f.pool.has("web:recreate")).toBe(false); expect(f.sidePool.has("web:recreate")).toBe(false);
-    const main = f.manager.getOrCreate("web:recreate"), side = f.manager.getOrCreateSide("web:recreate");
-    await Bun.sleep(0); expect(mainCreates).toBe(0); expect(sideCreates).toBe(0);
-    releaseMain.resolve(); expect(await main).toBe(newMain); expect(mainCreates).toBe(1); expect(sideCreates).toBe(0);
-    releaseSide.resolve(); expect(await side).toBe(newSide); await recreating;
-    expect(f.pool.get("web:recreate")?.runtime).toBe(newMain); expect(f.sidePool.get("web:recreate")?.runtime).toBe(newSide);
-  } finally { f.cleanup(); }
-});
 
 test("disposal tracking is installed before callbacks and recursive quarantine is rejected", async () => {
   const f = fixture(); let pendingObserved = false, disposed = 0;
@@ -333,11 +299,10 @@ test("disposal tracking is installed before callbacks and recursive quarantine i
 test("creation and binding callbacks cannot re-enter same-manager admission or recreation", async () => {
   const f = fixture(); let guarded = 0;
   try {
-    const manager = new AgentSessionManager({ pool: f.pool, sidePool: f.sidePool, modelRuntime: {} as ModelRuntime,
+    const manager = new AgentSessionManager({ pool: f.pool, modelRuntime: {} as ModelRuntime,
       settingsManager: { getDefaultProvider: () => undefined, getDefaultModel: () => undefined } as unknown as SettingsManager,
-      createDefaultTools: () => [], ensureBranchRegistration: () => {}, createSession: async () => {
+      createDefaultTools: () => [], createSession: async () => {
         await expect(manager.getOrCreate("web:reentrant")).rejects.toThrow("callbacks cannot await");
-        await expect(manager.getOrCreateSide("web:reentrant")).rejects.toThrow("callbacks cannot await");
         guarded += 2; return runtime("reentrant");
       }, bindSession: async current => {
         await expect(manager.recreate("web:reentrant")).rejects.toThrow("callbacks cannot await");
@@ -359,16 +324,15 @@ test("disposal callback cannot wait for admission fenced by its own teardown", a
   } finally { f.cleanup(); }
 });
 
-for (const kind of ["main", "side"] as const) {
+for (const kind of ["main"] as const) {
   test(`failed ${kind} recreation disposal blocks admission/snapshot until explicit quarantine retry`, async () => {
     let fail = true, disposals = 0;
     const captured = runtime(`failed-${kind}`, async () => { disposals++; if (fail) throw new Error("PRIVATE-DISPOSE-SENTINEL"); });
     const f = fixture();
     try {
-      (kind === "main" ? f.pool : f.sidePool).set("web:failure", { runtime: captured, lastUsed: 1 });
+      f.pool.set("web:failure", { runtime: captured, lastUsed: 1 });
       await expect(f.manager.recreate("web:failure")).rejects.toThrow("admissions remain blocked");
       await expect(f.manager.getOrCreate("web:failure")).rejects.toThrow("blocked");
-      await expect(f.manager.getOrCreateSide("web:failure")).rejects.toThrow("blocked");
       await expect(f.manager.fenceMcpAndSnapshot(new AbortController().signal)).rejects.toThrow("unresolved");
       expect(() => f.manager.resumeMcpAdmissions()).toThrow("unresolved");
       fail = false; await f.manager.quarantineMcpRuntime(captured);
@@ -382,7 +346,7 @@ test("failed idle disposal is observed and keeps the instance fenced", async () 
   const f = fixture(); const entered = deferred<void>();
   try {
     f.pool.set("web:idle-failure", { runtime: runtime("idle-failure", async () => { entered.resolve(); throw new Error("failure"); }), lastUsed: 1 });
-    f.manager.evictIdle({ mainIdleTtlMs: 0, sideIdleTtlMs: 0 }); await entered.promise; await Bun.sleep(0);
+    f.manager.evictIdle({ mainIdleTtlMs: 0 }); await entered.promise; await Bun.sleep(0);
     expect(() => f.manager.assertMcpAdmission()).toThrow("blocked");
     await expect(f.manager.fenceMcpAndSnapshot(new AbortController().signal)).rejects.toThrow("unresolved");
   } finally { f.cleanup(); }

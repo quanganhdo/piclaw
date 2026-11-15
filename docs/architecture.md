@@ -90,17 +90,7 @@ flowchart LR
 
 ## Access and ownership boundaries
 
-Only `single-user` can start. The [multi-user implementation guide](multi-user/README.md) describes gated backend work; the diagrams above describe the supported single-user execution paths, not completed multi-user isolation.
-
-- `core/config-access.ts` and `db/access-state.ts` validate the configured/stored mode before add-ons, maintenance and listeners start.
-- `auth/principal.ts` resolves a browser actor; a login session, an agent session and the owning user are distinct identities. Admin role alone grants no foreign transcript access.
-- `db/session-ownership.ts` validates the stored parent chain. `db/session-handles.ts` separates legacy handles from owner-local names; friendly renames preserve durable IDs.
-- `http/family-authorisation.ts` makes a terminal HTTP allow/deny decision before legacy add-on/widget dispatch. It enables scoped reads, SSE and selected fork/account operations; unsupported routes deny.
-- `db/owned-forks.ts` commits child registry and deferred seed together. Session hydration revalidates server execution provenance before reading/replaying the seed. Background family prewarm remains disabled.
-- `secure/` contains account invitations, multiple-passkey registration, recovery and encrypted TOTP factors. `runtime/auth-maintenance.ts` prunes transient auth state every minute after access validation.
-- `core/execution-context.ts` carries immutable actor/owner metadata through AsyncLocalStorage. The memory hook selects personal files plus explicit family memory; this does not confine tools or shared files.
-
-Separate terminal/VNC WebSocket upgrades now reject family/isolated modes before target resolution or socket upgrade. Legacy `/totp`/`/passkey` commands, direct card actions and HTTP side-prompt services also deny multi-user mode before reading or mutating state. These blocked features still need owner-aware replacements. Owner-bound cross-session discovery and metadata inspection now use execution/chat context without global fallback; sends and mutating session controls are denied at both tool and runtime/registry boundaries. Message-tool reads use an owner-bound SQL scope (including row-ID/context and search fallback paths), while message writes, raw SQL introspection and scheduling tools deny multi-user mode. Session status exposes only owned activity without arguments or restart permission. Remaining direct tools/transports, queues, browser storage and notification recipients need end-to-end ownership integration; HTTP route gating alone does not secure those paths. The isolated-container gateway and per-user deployment profile are not implemented; no family-mode release gate has passed.
+Single-user access validation runs before add-ons, maintenance, workers and listeners. Native ownership and accepted-source records remain authoritative for execution and recovery. Scheduled work requires the active server-owned dispatch scope; supplied provenance cannot manufacture admission. Family account APIs are removed. See [Access modes](access-modes.md).
 
 ## Code layout (high level)
 
@@ -169,7 +159,6 @@ These are compiled into the package and registered via `extensionFactories` on t
 | `internalTools` | `list_tools` with capability metadata + intent-based shortlisting |
 | `runtimeScripts` | `list_scripts` for packaged/workspace script discovery and script-JDoc-powered recommendations |
 | `toolActivation` | `activate_tools`, `reset_active_tools` |
-| `sqlIntrospect` | `introspect_sql` (read-only SQLite queries) |
 | `scheduledTasks` | `schedule_task`, `scheduled_tasks`, `/tasks`, `/scheduled` |
 | `workspaceSearch` | `search_workspace`, `refresh_workspace_index` |
 | `workspaceMemoryBootstrap` | startup memory bootstrap hook (`before_agent_start`) |
@@ -266,13 +255,19 @@ The editor extension is lazy-loaded as a separate bundle (`editor.bundle.js`, ~1
 
 ## Web UI loading sequence
 
+Classic loads Pele on first Mermaid fence through the shared
+`web/src/ui/mermaid-render.ts` lifecycle; Family preloads the same local asset.
+The web UI uses the same sanitizer, limits and live theme-token mapping.
+The separate Beautiful Mermaid asset retains its public API for legacy
+widgets and artifacts; it is not a timeline fallback.
+
 ```
 Page load
   ├── index.html loads:
   │   ├── app.bundle.css (~517 KB) ── all styles
   │   ├── marked.min.js ───────────── markdown parser (global)
   │   ├── katex.min.js ────────────── math rendering (global)
-  │   ├── beautiful-mermaid.js ────── diagram rendering (global)
+  │   ├── pele.js ────────────────── timeline diagrams, lazy on first use
   │   └── app.bundle.js (~1.24 MB) ── core app (Preact, timeline, compose, panes, workspace UI)
   │
   ├── app.ts init:
@@ -381,10 +376,10 @@ There is no longer a supported path where an empty terminal turn both:
 - **Timeline attachment previews** syntax-highlight common text/code/config formats (for example YAML, JSON, JS/TS, Python, Go, shell, SQL, TOML, Dockerfile, PowerShell, and common dotfiles/config files) while Markdown keeps its rendered preview path.
 - **Message permalinks**: clicking a timeline timestamp inserts a `message:{id}` pill in the compose box; Ctrl+Click copies a shareable URL; clicking a reference scrolls to and highlights the target.
 - **Multi-turn threading**: when the agent produces multiple turns in a single response, subsequent turns are stored with a `thread_id` pointing to the first turn's message. The UI renders threaded replies indented with a left border.
-- **Context usage / compaction affordance**: the compose footer reads `/agent/context` for current context-window usage. The web app refreshes on initial connect, SSE reconnect, focus, `pageshow`, visible-again transitions, and immediately after successful manual `/compact`. Post-compaction usage prefers a rebuilt-session estimate and falls back to the safety-adjusted report estimate; null-token events are not persisted or broadcast. After session eviction or lookup failure, `/agent/context` falls back to validated persisted channel usage, so the indicator does not need a new agent turn to update.
+- **Context usage / compaction affordance**: the web UI uses `/agent/context` snapshot reconciliation. `contextUpdate: "replace"` clears unavailable same-session meters after native reset/compaction and fences late polls; independent cache telemetry survives. Current native estimates remain valid, and unknown counts do not fall back to old estimates. Default polling omits tree projection; `include_tree=1` opts into the exact public summary. See [context restore and API semantics](runtime-flows.md#context-usage--compaction-affordance-restore).
 - **Recovery chip**: when the agent recovers from a transient mid-turn failure, a subtle recovery chip appears in the compose area so the user can see that retries happened without flooding the timeline.
 - **Blank turn detection**: empty or whitespace-only model completions are treated as failures rather than success. If automatic recovery still cannot produce a terminal persisted reply, the cursor is rewound and the failed run is held for explicit retry/skip resolution.
-- **Compaction stall guard**: compaction waits are bounded — `PICLAW_SESSION_IDLE_COMPACTION_MAX_WAIT_MS` (default 5 min) prevents indefinite stalls during heavy summarisation. Progress state is preserved across the wait so the UI stays coherent.
+- **Native compaction lifetime**: admitted SDK maintenance owns model deadlines, cancellation, passive usage reporting and recovery. The legacy session-idle waiter and JSONL rotation owner are retired. See [native runtime flows](runtime-flows.md) and [prompt-owner retirement](development/native-prompt-retirement.md).
 - **Held failed runs**: `processChat()` stops on unresolved failed runs instead of repeatedly re-consuming the same user message. Model-change retries, explicit recovery-card actions, and manual skip/retry flows can resolve that hold.
 - **Model switch retry behavior**: successful model-switch commands retry a held failed run by rewinding to `prevTs` and resuming the chat. Recovery-card actions (`Continue`, `Retry cleanly`) first skip the held failed turn so the follow-up prompt is not blocked behind the unresolved failure marker.
 - **Crash recovery split**: startup/runtime inflight recovery is automatic for interrupted no-output turns, but exhausted no-terminal-output turns use the simpler held-failure path (`failed_*`) until explicitly retried or skipped.

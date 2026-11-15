@@ -1,3 +1,5 @@
+import { admitSqliteWrite } from "../../db/sqlite-async-admission.js";
+import { getDb, captureHostDatabaseBinding } from "../../db/connection.js";
 /**
  * web/ui-state.ts – Server-persisted web UI preferences.
  *
@@ -6,8 +8,8 @@
  * a migration/fallback path for older installs.
  */
 
-import { getUiThemeConfig as getLegacyUiThemeConfig, setUiThemeConfig as setLegacyUiThemeConfig } from "../../core/config.js";
-import { extensionKvGet, extensionKvSet } from "../../db.js";
+import { getUiThemeConfig as getLegacyUiThemeConfig } from "../../core/config.js";
+import { extensionKvGet, extensionKvSet } from "../../db/extension-kv.js";
 
 const UI_EXTENSION_ID = "piclaw-ui";
 const THEME_KEY = "theme";
@@ -23,8 +25,8 @@ export interface ServerUiOutputConfig {
   outputPad: number;
 }
 
+/** Meters are always shown; only their collapsed state is stored. */
 export interface ServerUiMetersConfig {
-  enabled: boolean;
   collapsed: boolean;
 }
 
@@ -50,7 +52,6 @@ function normalizeMetersConfig(value: unknown, fallback: ServerUiMetersConfig): 
   if (!value || typeof value !== "object") return fallback;
   const record = value as Record<string, unknown>;
   return {
-    enabled: typeof record.enabled === "boolean" ? record.enabled : fallback.enabled,
     collapsed: typeof record.collapsed === "boolean" ? record.collapsed : fallback.collapsed,
   };
 }
@@ -70,16 +71,9 @@ function normalizeOutputConfig(value: unknown, fallback: ServerUiOutputConfig): 
 function kvGet<T>(key: string): T | null {
   try {
     return extensionKvGet<T>(UI_EXTENSION_ID, key, "global");
-  } catch {
-    return null;
-  }
-}
-
-function kvSet(key: string, value: unknown): void {
-  try {
-    extensionKvSet(UI_EXTENSION_ID, key, value, "global");
-  } catch {
-    return;
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Database not initialized') return null;
+    throw error;
   }
 }
 
@@ -91,45 +85,15 @@ export function getServerUiThemeConfig(): ServerUiThemeConfig {
   };
   const stored = kvGet<unknown>(THEME_KEY);
   if (stored !== null) return normalizeThemeConfig(stored, fallback);
-  kvSet(THEME_KEY, fallback);
   return fallback;
 }
 
-export function setServerUiThemeConfig(patch: { theme?: string; tint?: string | null }): ServerUiThemeConfig {
-  const current = getServerUiThemeConfig();
-  const next: ServerUiThemeConfig = {
-    theme: patch.theme !== undefined ? normalizeThemeValue(patch.theme, "default") : current.theme,
-    tint: patch.tint !== undefined ? normalizeTintValue(patch.tint) : current.tint,
-  };
-  kvSet(THEME_KEY, next);
-  // Keep the legacy config in sync for older code paths and downgrade safety.
-  setLegacyUiThemeConfig(next);
-  return next;
-}
-
 export function getServerUiMetersConfig(): ServerUiMetersConfig {
-  return normalizeMetersConfig(kvGet<unknown>(METERS_KEY), { enabled: false, collapsed: false });
+  return normalizeMetersConfig(kvGet<unknown>(METERS_KEY), { collapsed: false });
 }
 
 export function getServerUiOutputConfig(): ServerUiOutputConfig {
   return normalizeOutputConfig(kvGet<unknown>(OUTPUT_PAD_KEY), { outputPad: 0 });
-}
-
-export function setServerUiOutputConfig(patch: { outputPad?: number }): ServerUiOutputConfig {
-  const current = getServerUiOutputConfig();
-  const next = { outputPad: patch.outputPad !== undefined ? normalizeOutputPad(patch.outputPad, current.outputPad) : current.outputPad };
-  kvSet(OUTPUT_PAD_KEY, next);
-  return next;
-}
-
-export function setServerUiMetersConfig(patch: Partial<ServerUiMetersConfig>): ServerUiMetersConfig {
-  const current = getServerUiMetersConfig();
-  const next: ServerUiMetersConfig = {
-    enabled: typeof patch.enabled === "boolean" ? patch.enabled : current.enabled,
-    collapsed: typeof patch.collapsed === "boolean" ? patch.collapsed : current.collapsed,
-  };
-  kvSet(METERS_KEY, next);
-  return next;
 }
 
 export function getServerUiState(): { ui_theme: ServerUiThemeConfig; ui_meters: ServerUiMetersConfig; ui_output: ServerUiOutputConfig } {
@@ -138,4 +102,40 @@ export function getServerUiState(): { ui_theme: ServerUiThemeConfig; ui_meters: 
     ui_meters: getServerUiMetersConfig(),
     ui_output: getServerUiOutputConfig(),
   };
+}
+
+/** One admitted preference update/readback; legacy config remains read-only. */
+export type ServerUiStatePatch = {
+  ui_theme?: Partial<ServerUiThemeConfig>;
+  ui_meters?: Partial<ServerUiMetersConfig>;
+  ui_output?: Partial<ServerUiOutputConfig>;
+};
+export async function admitServerUiState(patch: ServerUiStatePatch, authorise: (phase?: 'before' | 'after') => void,
+  signal?: AbortSignal): Promise<ReturnType<typeof getServerUiState>> {
+  const binding = captureHostDatabaseBinding(), captured = structuredClone(patch);
+  if (!captured.ui_theme && !captured.ui_meters && !captured.ui_output) return getServerUiState();
+  const database = getDb();
+  const check = (phase?: 'before' | 'after') => {
+    binding();
+    if (phase === undefined && database.inTransaction) throw Error('UI preference update requires its own transaction.');
+    authorise(phase);
+  };
+  return admitSqliteWrite(database, () => {
+    if (captured.ui_theme) {
+      const current = getServerUiThemeConfig(), value = captured.ui_theme;
+      extensionKvSet(UI_EXTENSION_ID, THEME_KEY, {
+        theme: value.theme !== undefined ? normalizeThemeValue(value.theme, 'default') : current.theme,
+        tint: value.tint !== undefined ? normalizeTintValue(value.tint) : current.tint,
+      }, 'global');
+    }
+    if (captured.ui_meters) {
+      const current = getServerUiMetersConfig();
+      extensionKvSet(UI_EXTENSION_ID, METERS_KEY, normalizeMetersConfig(captured.ui_meters, current), 'global');
+    }
+    if (captured.ui_output) {
+      const current = getServerUiOutputConfig(), value = captured.ui_output;
+      extensionKvSet(UI_EXTENSION_ID, OUTPUT_PAD_KEY, { outputPad: value.outputPad !== undefined ? normalizeOutputPad(value.outputPad, current.outputPad) : current.outputPad }, 'global');
+    }
+    return getServerUiState();
+  }, check, signal, undefined, check);
 }

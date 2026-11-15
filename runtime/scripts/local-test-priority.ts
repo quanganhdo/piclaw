@@ -1,7 +1,8 @@
 #!/usr/bin/env bun
 
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { basename, join } from "node:path";
 import { assertTestWorkspaceArguments, ensureTestFilesystemIsolation } from "./test-filesystem-isolation.js";
 
 export const LOCAL_TEST_NICE_ENV = "PICLAW_LOCAL_TEST_NICE";
@@ -76,17 +77,54 @@ function readCurrentNice(): number {
   }
 }
 
+export function requiresBunTestCompletion(argv: readonly string[]): boolean {
+  return /^bun(?:\.exe)?$/.test(basename(argv[0] ?? "")) && argv[1] === "test"
+    && !argv.some(arg => arg === "--help" || arg === "-h");
+}
+
+export function hasBunTestCompletion(stderr: string): boolean {
+  const clean = stderr.replace(/\x1b\[[0-9;]*m/g, "").trim();
+  const lastLine = clean.split(/\r?\n/).at(-1) ?? "";
+  const total = /^Ran ([1-9][0-9]*) tests? across [1-9][0-9]* files?\. \[[^\]]+\]$/.exec(lastLine);
+  const lastPass = [...clean.matchAll(/^\s*\d+ pass$/gm)].at(-1);
+  const summary = lastPass ? clean.slice(lastPass.index) : "";
+  const count = (name: string) => [...summary.matchAll(new RegExp(`^\\s*(\\d+) ${name}$`, "gm"))].at(-1)?.[1];
+  const pass = count("pass"), fail = count("fail");
+  return !!total && pass !== undefined && Number(pass) > 0 && fail === "0"
+    && Number(total[1]) === Number(pass) + Number(count("skip") ?? 0) + Number(count("todo") ?? 0);
+}
+
+export function hasBunJUnitCompletion(xml: string): boolean {
+  const header = /^<testsuites\b[^>]*>/m.exec(xml)?.[0] ?? "";
+  const attribute = (name: string) => new RegExp(`\\b${name}="([0-9]+)"`).exec(header)?.[1];
+  const tests = Number(attribute("tests") ?? 0), skipped = Number(attribute("skipped") ?? 0);
+  return xml.trimEnd().endsWith("</testsuites>") && tests > skipped && attribute("failures") === "0"
+    && Number(attribute("errors") ?? 0) === 0 && (xml.match(/<testcase\b/g)?.length ?? 0) === tests;
+}
+
 export async function runLocalTestCommand(
   argv: readonly string[],
   options: { readonly cwd?: string; readonly env?: Record<string, string | undefined> } = {},
 ): Promise<never> {
   const env = { ...process.env, ...(options.env ?? {}) };
   const isolation = ensureTestFilesystemIsolation(env);
+  const requireCompletion = requiresBunTestCompletion(argv);
+  let reportDirectory: string | undefined;
+  let reportPath: string | undefined;
   let plan: LocalTestPriorityPlan;
   try {
     assertTestWorkspaceArguments(argv, env);
-    plan = planLocalTestCommand(argv, env);
+    if (requireCompletion && argv.some(arg => /^--reporter(?:-outfile)?(?:=|$)/.test(arg))) {
+      throw new Error("The qualification launcher owns its parent-specific JUnit report; remove custom --reporter/--reporter-outfile flags");
+    }
+    if (requireCompletion) {
+      reportDirectory = mkdtempSync(join(isolation.root, "bun-suite-"));
+      reportPath = join(reportDirectory, "completion.xml");
+    }
+    const command = requireCompletion ? [argv[0], argv[1], "--reporter=junit", `--reporter-outfile=${reportPath}`, ...argv.slice(2)] : argv;
+    plan = planLocalTestCommand(command, env);
   } catch (error) {
+    if (reportDirectory) rmSync(reportDirectory, { recursive: true, force: true });
     if (isolation.createdRoot) isolation.cleanup();
     throw error;
   }
@@ -102,18 +140,52 @@ export async function runLocalTestCommand(
       env,
       stdin: "inherit",
       stdout: "inherit",
-      stderr: "inherit",
+      stderr: requireCompletion ? "pipe" : "inherit",
       detached: false,
     });
   } catch (error) {
+    if (reportDirectory) rmSync(reportDirectory, { recursive: true, force: true });
     if (isolation.createdRoot) isolation.cleanup();
     process.stderr.write(`[local-test-priority] failed to start test command: ${error instanceof Error ? error.message : String(error)}\n`);
     process.exit(127);
   }
 
+  let stderrTail = "";
+  const stderr = requireCompletion ? child.stderr : null;
+  const reader = stderr && typeof stderr !== "number" ? stderr.getReader() : null;
+  let drainError: unknown;
+  const drain = reader ? (async () => {
+    const decoder = new TextDecoder();
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        await Bun.stderr.write(value);
+        stderrTail = (stderrTail + decoder.decode(value, { stream: true })).slice(-8192);
+      }
+    } finally { reader.releaseLock(); }
+  })().catch(error => { drainError = error; }) : Promise.resolve();
+  const drainStopped = Promise.withResolvers<void>();
+  let incompleteDrain = false;
+  const stopDrain = () => {
+    incompleteDrain = true;
+    // Reader cancellation may race normal EOF/release; either way qualification fails.
+    if (reader) void reader.cancel().catch(error => { drainError ??= error; });
+    drainStopped.resolve();
+  };
+
   const signals = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
+  let escalationTimer: ReturnType<typeof setTimeout> | undefined;
   const forward = (signal: typeof signals[number]) => {
-    if (child.exitCode !== null) return;
+    if (child.exitCode !== null) { stopDrain(); return; }
+    if (!escalationTimer) escalationTimer = setTimeout(() => {
+      if (child.exitCode !== null) return;
+      if (plan.applied) {
+        const result = spawnSync("kill", ["-KILL", "--", `-${child.pid}`], { stdio: "ignore" });
+        if (result.status === 0) return;
+      }
+      child.kill("SIGKILL");
+    }, 2000);
     if (plan.applied) {
       const signum = signal === "SIGINT" ? 2 : signal === "SIGHUP" ? 1 : 15;
       const result = spawnSync("kill", [`-${signum}`, "--", `-${child.pid}`], { stdio: "ignore" });
@@ -122,12 +194,34 @@ export async function runLocalTestCommand(
     child.kill(signal);
   };
   for (const signal of signals) process.on(signal, forward);
-  const exitCode = await child.exited;
-  for (const signal of signals) process.off(signal, forward);
-  if (plan.applied) {
-    spawnSync("kill", ["-KILL", "--", `-${child.pid}`], { stdio: "ignore" });
+  let exitCode = 1;
+  let groupCleaned = false;
+  const cleanupGroup = () => {
+    if (plan.applied && !groupCleaned) {
+      spawnSync("kill", ["-KILL", "--", `-${child.pid}`], { stdio: "ignore" });
+      groupCleaned = true;
+    }
+  };
+  try {
+    exitCode = await child.exited;
+    // Close inherited pipes held by owned descendants before waiting for EOF.
+    cleanupGroup();
+    const timer = reader ? setTimeout(stopDrain, 2000) : undefined;
+    try { await Promise.race([drain, drainStopped.promise]); }
+    finally { clearTimeout(timer); }
+    if (drainError) throw drainError;
+    const junit = reportPath && existsSync(reportPath) ? readFileSync(reportPath, "utf8") : "";
+    if (exitCode === 0 && requireCompletion && (incompleteDrain || !hasBunTestCompletion(stderrTail) || !hasBunJUnitCompletion(junit))) {
+      process.stderr.write("[local-test-priority] Bun exited0 without its own complete JUnit artifact and drained, positive-pass test report; refusing incomplete qualification. Check for an escaped process.exit/deadline, leaked stderr descriptor or empty/skipped-only selection.\n");
+      exitCode = 1;
+    }
+  } finally {
+    clearTimeout(escalationTimer);
+    for (const signal of signals) process.off(signal, forward);
+    cleanupGroup();
+    if (reportDirectory) rmSync(reportDirectory, { recursive: true, force: true });
+    if (isolation.createdRoot) isolation.cleanup();
   }
-  if (isolation.createdRoot) isolation.cleanup();
   process.exit(exitCode);
 }
 

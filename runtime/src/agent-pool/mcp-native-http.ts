@@ -1,7 +1,11 @@
 import { StreamableHttpTransport, type McpTransport, type JsonRpcMessage } from '@earendil-works/pi-mcp';
+import { createLogger } from '../utils/logger.js';
+const log = createLogger('native-mcp-http');
 
 /** Experimental HTTP uses bounded JSON responses only; streaming responses require Adapter. */
-export function createNativeHttp(url: string, headers: Record<string, string>): McpTransport {
+export function createNativeHttp(url: string, headers: Record<string, string>, authority?: {
+  assertStart(): void; assertSend(message: JsonRpcMessage): void;
+}): McpTransport {
   const controller = new AbortController();
   const work = new Set<Promise<unknown>>();
   const cleanupFailures: unknown[] = [];
@@ -19,11 +23,14 @@ export function createNativeHttp(url: string, headers: Record<string, string>): 
     let id: string | number | undefined;
     if (typeof init?.body === 'string') {
       const message = JSON.parse(init.body);
+      authority?.assertSend(message);
       if (typeof message.id === 'string' || typeof message.id === 'number') id = message.id;
     }
     const operation = id === undefined ? undefined : requests.get(id);
     const signals = [controller.signal, ...(init?.signal ? [init.signal] : []), ...(operation ? [operation.signal] : [])];
     const response = await fetch(input, { ...init, signal: AbortSignal.any(signals), redirect: 'error' });
+    log.info('Native MCP HTTP response', { operation: 'native_mcp.http_response', status: response.status,
+      contentType: response.headers.get('content-type'), rpc: typeof init?.body === 'string' ? JSON.parse(init.body).method : init?.method });
     if (!response.body) return response;
     const reader = response.body.getReader();
     try {
@@ -45,7 +52,7 @@ export function createNativeHttp(url: string, headers: Record<string, string>): 
   const inner = new StreamableHttpTransport({url,headers,fetch:fetchOwned,openGetStream:false});
   let closed: Promise<void> | undefined;
   return {
-    start: () => inner.start(),
+    start: () => { authority?.assertStart(); return inner.start(); },
     async send(message: JsonRpcMessage) {
       if (closing) throw Error('Native HTTP is closing.');
       if (Buffer.byteLength(JSON.stringify(message)) > 1024 * 1024) throw Error('Native HTTP request exceeds 1 MiB.');

@@ -1,9 +1,10 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import type { AgentPool } from "../../../../src/agent-pool.js";
-import {
-  WebChannelEndpointFacadeService,
-  type WebChannelEndpointFacadeOptions,
-} from "../../../../src/channels/web/endpoints/channel-endpoint-facade-service.js";
+import { WebChannel } from "../../../../src/channels/web.js";
+import * as avatar from "../../../../src/channels/web/media/avatar-service.js";
+import * as posts from "../../../../src/channels/web/handlers/posts.js";
+const restores: (() => void)[] = [];
+afterEach(() => { for (const restore of restores.splice(0)) restore(); });
 import type { WebChannelEndpointContexts, WebChannelIdentitySnapshot } from "../../../../src/channels/web/endpoints/channel-endpoint-context-factory.js";
 import { createJsonResponder } from "../helpers/http.ts";
 
@@ -27,12 +28,15 @@ function createIdentitySnapshot(overrides: Partial<WebChannelIdentitySnapshot> =
 function createFacade(getIdentitySnapshot: () => WebChannelIdentitySnapshot) {
   const json = createJsonResponder();
   const contexts: WebChannelEndpointContexts = {
+    identity: getIdentitySnapshot,
     postMutations: () => {
       throw new Error("postMutations context not used in this test");
     },
-    agentStatus: () => {
-      throw new Error("agentStatus context not used in this test");
-    },
+    agentStatus: () => ({
+      defaultChatJid: "web:default", json, getAgentStatus: () => null, getExtensionWorkingState: () => null,
+      getBuffer: () => undefined, getContextUsageForChat: async () => null, getTokenUsageForChat: () => null,
+      getAvailableModels: async () => ({ models: [] }), getProviderReadyCompletedForInstance: () => false,
+    }),
     content: () => {
       throw new Error("content context not used in this test");
     },
@@ -77,7 +81,7 @@ function createFacade(getIdentitySnapshot: () => WebChannelIdentitySnapshot) {
   const scheduledPriorityWarmups: string[] = [];
   const activeChats = [{ chat_jid: "web:default", agent_name: "Pi" }];
   const knownChats = [{ chat_jid: "web:branch", agent_name: "Branch" }];
-  const options: WebChannelEndpointFacadeOptions = {
+  const options = {
     endpointContexts: contexts,
     defaultChatJid: "web:default",
     agentPool: {
@@ -101,12 +105,18 @@ function createFacade(getIdentitySnapshot: () => WebChannelIdentitySnapshot) {
       postCalls.push({ isReply, chatJid });
       return new Response(JSON.stringify({ ok: true, chat_jid: chatJid, is_reply: isReply }), { status: 201 });
     },
-    listActiveChats: () => activeChats,
     listKnownChats: () => knownChats,
   };
 
+  const facade = Object.assign(Object.create(WebChannel.prototype), { endpointContexts: contexts,
+    agentPool: { ...options.agentPool, listKnownChats: options.listKnownChats }, json, broadcastEvent: options.broadcastEvent });
+  const realEnsure = avatar.ensureAvatarCache;
+  const cache = spyOn(avatar, "ensureAvatarCache").mockImplementation(realEnsure).mockImplementationOnce(options.ensureAvatarCache);
+  const post = spyOn(posts, "handlePost").mockImplementation((_channel, req, isReply, chatJid) => options.handlePostRequest(req, isReply, chatJid));
+  restores.push(() => cache.mockRestore(), () => post.mockRestore());
   return {
-    facade: new WebChannelEndpointFacadeService(options),
+    facade,
+    options,
     ensureCalls,
     postCalls,
     scheduledWarmups,
@@ -184,39 +194,103 @@ describe("web channel endpoint facade service", () => {
   });
 
   test("serves active chats and known branches through facade helpers", async () => {
-    const { facade, activeChats, knownChats } = createFacade(() => createIdentitySnapshot());
+    const { facade, knownChats } = createFacade(() => createIdentitySnapshot());
 
-    const activeResponse = facade.handleAgentActiveChats();
+    const activeResponse = await facade.handleAgentActiveChats();
     expect(activeResponse.status).toBe(200);
-    expect(await activeResponse.json()).toEqual({ chats: activeChats });
+    expect((await activeResponse.json()).chats).toEqual(knownChats.map(chat => ({ ...chat, session_id: null,
+      is_active: false, is_streaming: false, is_compacting: false, is_retrying: false, is_bash_running: false,
+      activity_status: "idle", activity_label: "Idle", last_activity_at: null, last_reply: null })));
 
-    const branchesResponse = facade.handleAgentBranches(
+    const branchesResponse = await facade.handleAgentBranches(
       new Request("https://example.com/agent/branches?root_chat_jid=web%3Aroot&include_archived=1")
     );
     expect(branchesResponse.status).toBe(200);
     expect(await branchesResponse.json()).toEqual({ chats: knownChats });
   });
 
-  test("can schedule recent-chat warmup from the branches endpoint without changing payload shape", async () => {
+  test("stale recent warmup query cannot hydrate a session or change payload shape", async () => {
     const { facade, knownChats, scheduledWarmups } = createFacade(() => createIdentitySnapshot());
 
-    const branchesResponse = facade.handleAgentBranches(
+    const branchesResponse = await facade.handleAgentBranches(
       new Request("https://example.com/agent/branches?include_archived=1&prewarm_recent=1&prewarm_limit=4&exclude_chat_jid=web%3Adefault")
     );
     expect(branchesResponse.status).toBe(200);
     expect(await branchesResponse.json()).toEqual({ chats: knownChats });
-    expect(scheduledWarmups).toEqual([{ limit: 4, excludeChatJids: ["web:default"] }]);
+    expect(scheduledWarmups).toEqual([]);
   });
 
-  test("can schedule a validated priority warmup for the currently opened chat", async () => {
+  test("stale priority warmup query cannot hydrate the currently opened chat", async () => {
     const { facade, scheduledPriorityWarmups } = createFacade(() => createIdentitySnapshot());
 
-    const response = facade.handleAgentBranches(
+    const response = await facade.handleAgentBranches(
       new Request("https://example.com/agent/branches?prewarm_chat_jid=web%3Abranch")
     );
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ chats: [{ chat_jid: "web:branch", agent_name: "Branch" }] });
-    expect(scheduledPriorityWarmups).toEqual(["web:branch"]);
+    expect(scheduledPriorityWarmups).toEqual([]);
   });
+});
+
+
+function nativeActiveFixture() {
+  const base = createFacade(() => createIdentitySnapshot());
+  const statuses = new Map<string, Record<string, unknown> | null>();
+  const known = ["web:idle", "web:provider", "web:tool", "web:queued", "web:terminal", "web:maintenance"].map(chat_jid => ({ chat_jid, agent_name: chat_jid,
+    is_active: true, is_streaming: true, is_compacting: true, activity_status: "streaming" }));
+  let recoveries = 0, reads = 0, stale = false;
+  const context: any = { getAgentStatus(jid: string) { reads++; if(stale) throw Error("Stale native owner"); return statuses.get(jid) ?? null; },
+    recoverStaleInflightRun() { recoveries++; throw Error("read must not recover"); },
+    getExtensionWorkingState() { throw Error("unrelated extension worker is not native activity"); },
+    getBuffer() { return undefined; } };
+  const facade = Object.assign(Object.create(WebChannel.prototype), { json: base.options.json,
+    agentPool: { listKnownChats: () => known, isDurableRuntime: () => true, listActiveChats() { throw Error("legacy pool must not be read"); }, getSessionGenerationForChat: (jid: string) => "native:" + jid },
+    endpointContexts: { ...base.options.endpointContexts, agentStatus: () => context } });
+  return { facade, statuses, known, stats: () => ({ recoveries, reads }), revoke() { stale = true; } };
+}
+
+test("native active-chats projects provider, tool, queued and maintenance work without legacy sessions", async () => {
+  const f = nativeActiveFixture();
+  f.statuses.set("web:provider", { type: "thinking", title: "Working" });
+  f.statuses.set("web:tool", { type: "tool", title: "Running tool" });
+  f.statuses.set("web:queued", { type: "thinking", title: "Queued", queued_count: 1 });
+  f.statuses.set("web:maintenance", { type: "intent", title: "Compacting", intent_key: "native_task" });
+  f.statuses.set("web:terminal", { type: "done", title: "Idle" });
+  const body = await (await f.facade.handleAgentActiveChats()).json();
+  expect(body.chats).toHaveLength(6);
+  const byJid = new Map(body.chats.map((row: any) => [row.chat_jid, row])) as Map<string, any>;
+  for (const jid of ["web:provider", "web:tool", "web:queued", "web:maintenance"]) expect(byJid.get(jid).is_active).toBe(true);
+  expect(byJid.get("web:provider").activity_status).toBe("streaming");
+  expect(byJid.get("web:tool").activity_status).toBe("working");
+  expect(byJid.get("web:tool").session_id).toBe("native:web:tool");
+  for (const jid of ["web:idle", "web:terminal"]) expect(byJid.get(jid)).toMatchObject({ is_active: false, is_streaming: false, is_compacting: false, activity_status: "idle", activity_label: "Idle" });
+  expect(body.chats.slice(0, 4).every((row: any) => row.is_active)).toBe(true);
+  expect(f.stats()).toEqual({ recoveries: 0, reads: 6 });
+});
+
+test("native active-chats reads fresh terminal state and does not revive retained errors or cleanup", async () => {
+  const f = nativeActiveFixture();
+  f.statuses.set("web:tool", { type: "tool", title: "Tool" });
+  expect((await (await f.facade.handleAgentActiveChats()).json()).chats.find((row: any) => row.chat_jid === "web:tool").is_active).toBe(true);
+  for (const type of ["done", "error"]) {
+    f.statuses.set("web:tool", { type, title: "Terminal", classifier: "provider_auth" });
+    const row = (await (await f.facade.handleAgentActiveChats()).json()).chats.find((row: any) => row.chat_jid === "web:tool");
+    expect(row).toMatchObject({ is_active: false, activity_status: "idle" });
+  }
+  expect(f.stats().recoveries).toBe(0);
+});
+
+test("active-chats has one native authority without consulting the retired engine-mode switch", async () => {
+  const f = nativeActiveFixture();
+  f.facade.agentPool.isDurableRuntime = () => false;
+  f.statuses.set("web:tool", { type: "tool", title: "Actual native task" });
+  const body = await (await f.facade.handleAgentActiveChats()).json();
+  expect(body.chats.find((row: any) => row.chat_jid === "web:tool")).toMatchObject({ is_active: true, activity_status: "working" });
+  expect(f.stats()).toEqual({ recoveries: 0, reads: 6 });
+});
+
+test("native active-chats rejects owner loss rather than returning all-idle or stale activity", async () => {
+  const f = nativeActiveFixture(); f.revoke();
+  await expect(f.facade.handleAgentActiveChats()).rejects.toThrow("Stale native owner");
 });

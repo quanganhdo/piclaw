@@ -9,9 +9,7 @@ import { WebNotificationPresenceService } from "../../src/channels/web/push/web-
 import { sendStoredWebPushNotification, type WebPushNotificationPayload } from "../../src/channels/web/push/web-push-service.js";
 import { upsertStoredWebPushSubscription } from "../../src/channels/web/push/web-push-store.js";
 import { broadcastEvent, type SseClientContainer } from "../../src/channels/web/sse/sse.js";
-import type { ProjectionAuthority, ProjectionOwner, PublicAgentProjection } from "../../src/service-effects/contracts/agent-projection-sink.js";
 import type { DeliveryBoundary, DeliveryBoundaryAttempt, DeliveryDriverError, DeliveryKind } from "../../src/service-effects/contracts/delivery-driver.js";
-import { CurrentPiclawAgentProjectionSink } from "../../src/service-effects/current-piclaw/agent-projection-sink.js";
 import { createChannelDeliveryBoundary, createPushoverBoundary, createTimelineBroadcastBoundary, createWakeBoundary, createWebPushBoundary, type ChannelSendCallback, type WakeCallback } from "../../src/service-effects/current-piclaw/delivery-boundaries.js";
 import { CurrentPiclawDeliveryDriver } from "../../src/service-effects/current-piclaw/delivery-driver.js";
 import { TestingCurrentPiclawAdapterRuntime } from "../../src/service-effects/testing/current-piclaw-adapter-runtime.js";
@@ -101,14 +99,6 @@ describe("current Piclaw delivery boundary factories", () => {
       expect(push.classifyError?.(await captureError(() => push.attempt(input())))?._tag).toBe("invalid_payload");
     }
     expect(calls).toBe(0);
-  });
-
-  test("projection adapter accepts current synchronous broadcastEvent shape and sends a frozen DTO", async () => {
-    const owner: ProjectionOwner = { chatJid: "web:chat", operationId: "operation-1", harnessOperationId: "harness-1" }; const calls: unknown[] = [];
-    const authority: ProjectionAuthority = { isCurrentOwner: () => true, isCommittedTerminalRef: () => false }; const runtime = new TestingCurrentPiclawAdapterRuntime({ clock, ids: new SequenceEffectIdSource("boundary"), faults: new DeterministicFaultPlan() });
-    const sink = new CurrentPiclawAgentProjectionSink(authority, { publish(value) { const callback: (eventType: string, data: unknown) => void = (eventType, data) => { calls.push([eventType, data, Object.isFrozen(data), Object.isFrozen((data as { activeToolNames: unknown }).activeToolNames)]); }; return callback(value.type, value); } }, runtime);
-    const dto: PublicAgentProjection = { ...owner, watchGeneration: 1, receiptSeq: 1, type: "agent_snapshot", phase: "running", modelLabel: "model", activeToolNames: [], cancellationRequested: false };
-    expect((await sink.publishSnapshot(dto)).ok).toBe(true); expect(calls).toEqual([["agent_snapshot", expect.any(Object), true, true]]);
   });
 
   test("all current provider factories compose through the current driver with derived certainty", async () => {

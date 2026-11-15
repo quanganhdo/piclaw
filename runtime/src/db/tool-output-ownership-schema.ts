@@ -1,6 +1,6 @@
 import type Database from 'bun:sqlite';
 
-/** Add nullable legacy-compatible scope columns and enforce complete immutable family ownership. */
+/** Add nullable legacy-compatible scope columns and enforce complete immutable execution ownership. */
 export function initializeToolOutputOwnership(database:Database):void {
   const columns=new Set((database.query('PRAGMA table_info(tool_outputs)').all() as {name:string}[]).map(row=>row.name));
   for(const [name,type] of [['owner_user_id','TEXT'],['root_branch_id','TEXT'],['source_branch_id','TEXT'],['chat_jid','TEXT'],['execution_kind','TEXT']] as const)if(!columns.has(name))database.exec(`ALTER TABLE tool_outputs ADD COLUMN ${name} ${type}`);

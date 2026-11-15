@@ -1,3 +1,4 @@
+import { admitSqliteWrite } from '../../db/sqlite-async-admission.js';
 import { Result, type Result as ResultValue } from "../contracts/result.js";
 import type Database from "bun:sqlite";
 
@@ -55,7 +56,7 @@ export class CurrentPiclawTimelineDraftStore implements TimelineDraftStore {
       const resolved = await this.resolveTimelinePayloads(request.contentRef, request.contentBlocksRef);
       if (!resolved.ok) return this.failure("commitDraft", request, resolved.error);
 
-      const outcome = this.database.transaction((): TimelineMutationOutcome => {
+      const outcome = await admitSqliteWrite(this.database, (): TimelineMutationOutcome => {
         const byKey = this.findByKey(request.effect.idempotencyKey);
         if (byKey) return replayOutcome(request.effect.requestHash, byKey);
         const knownRevision = this.database.prepare(`
@@ -131,7 +132,7 @@ export class CurrentPiclawTimelineDraftStore implements TimelineDraftStore {
           request.writtenAt,
         );
         return { ok: true, write: timelineWrite(rowId, request.chatJid, request.effect.operationId, request.revision, request.writtenAt), duplicate: false };
-      }).immediate();
+      });
 
       if (!outcome.ok) return this.failure("commitDraft", request, outcome.tag);
       if (outcome.duplicate) return this.success("commitDraft", request, outcome.write, "duplicate");
@@ -158,7 +159,7 @@ export class CurrentPiclawTimelineDraftStore implements TimelineDraftStore {
       const resolved = await this.resolveTimelinePayloads(request.contentRef, request.contentBlocksRef);
       if (!resolved.ok) return this.failure("commitServiceNotice", request, resolved.error);
 
-      const outcome = this.database.transaction((): TimelineMutationOutcome => {
+      const outcome = await admitSqliteWrite(this.database, (): TimelineMutationOutcome => {
         const byKey = this.findByKey(request.effect.idempotencyKey);
         if (byKey) return replayOutcome(request.effect.requestHash, byKey);
         const existing = this.findNotice(request);
@@ -176,7 +177,7 @@ export class CurrentPiclawTimelineDraftStore implements TimelineDraftStore {
           request.sourceId, rowId, request.chatJid, request.writtenAt,
         );
         return { ok: true, write: timelineWrite(rowId, request.chatJid, null, null, request.writtenAt), duplicate: false };
-      }).immediate();
+      });
 
       if (!outcome.ok) return this.failure("commitServiceNotice", request, outcome.tag);
       if (outcome.duplicate) return this.success("commitServiceNotice", request, outcome.write, "duplicate");

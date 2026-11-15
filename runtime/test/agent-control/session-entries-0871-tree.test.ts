@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { buildSessionTreeSnapshot } from '../../src/agent-control/session-tree-snapshot.js';
-import { handleTree } from '../../src/agent-control/handlers/tree.js';
+import { AgentRuntimeFacade } from '../../src/agent-pool/runtime-facade.js';
 
 const stamp = '2026-09-06T00:00:00.000Z';
 const entries = [
@@ -19,7 +19,10 @@ test('snapshot describes 0.87.1 usage, replacement and omission records', () => 
 
 test('text tree describes the same entries', async () => {
   const session = { sessionManager: { getLeafId: () => 'omit', getTree: () => roots } };
-  const result = await handleTree(session as any, { type: 'tree', mode: 'head', limit: 10 } as any);
+  const snapshot=buildSessionTreeSnapshot(session.sessionManager as any);
+  const facade=new AgentRuntimeFacade({pool:new Map(),authPath:'unused',modelRegistry:{} as any,modelRuntime:{} as any,
+    getDurableSession:()=>({sessionId:'imported',branchId:'main',readPosition:async()=>'omit',readTree:async()=>snapshot})});
+  const result=await facade.applyControlCommand('web:imported',{type:'tree',raw:'/tree',mode:'head',limit:10});
   expect(result.message).toContain('[usage cache_warm: test/fixture]');
   expect(result.message).toContain('[context replace message]');
   expect(result.message).toContain('[context omit message]');

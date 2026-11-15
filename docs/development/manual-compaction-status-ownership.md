@@ -1,5 +1,7 @@
 # Manual compaction status ownership
 
+Historical #1522 implementation receipt. The legacy compaction/rotation handlers described below are retired under #1673. Current execution uses captured native controls and SDK maintenance; see [prompt-owner retirement](native-prompt-retirement.md). This receipt does not certify the current native lifecycle.
+
 Issue #1522: the compaction indicator and Stop control could disappear while compaction was still running.
 
 ## Reproduction and fix

@@ -11,7 +11,9 @@
 #   portable-mac/windows – Build platform-native portable artifacts on matching runners.
 #   local-install  – Pack and install globally (no restart).
 #   lint/test      – Run Oxlint and bun test suite.
-#   ci-fast        – Run the canonical fast CI guardrails + web build.
+#   ci-fast        – Run host-only fast CI guardrails + web build.
+#   ci-native      – Run required offline native qualification.
+#   ci-full        – Run host + native CI gates.
 #   install-git-hooks – Install local Git hooks that run fast CI before main pushes.
 #   publish-smoke  – Smoke-test a published piclaw image via env-provided args.
 #   up/down/enter  – Docker Compose lifecycle helpers.
@@ -26,6 +28,39 @@
 #   Vendor libs remain separate pre-built assets where useful (e.g. codemirror,
 #   marked, katex, mermaid) under web/static/common/. request-router-service.ts
 #   auth-gates app.bundle.js and only allows login.bundle.js pre-auth.
+
+.DEFAULT_GOAL := help
+
+# Reproducible caches and scratch only; service state and credentials stay put.
+# Preserve the caller's original TMPDIR and selected base in recursive Make.
+ifeq ($(origin PICLAW_INHERITED_TMPDIR),undefined)
+PICLAW_INHERITED_TMPDIR := $(TMPDIR)
+endif
+export PICLAW_INHERITED_TMPDIR
+ifeq ($(strip $(CACHE_TMP_BASE)),)
+ifneq ($(strip $(CI)),)
+CACHE_TMP_BASE := $(or $(RUNNER_TEMP),$(PICLAW_INHERITED_TMPDIR),/tmp)
+else
+CACHE_TMP_BASE := $(shell if test -d /workspace/tmp && test -w /workspace/tmp && test -x /workspace/tmp; then printf /workspace/tmp; else printf /tmp; fi)
+endif
+endif
+export CACHE_TMP_BASE
+PROJECT_TMP_ROOT := $(patsubst %/,%,$(CACHE_TMP_BASE))/piclaw
+export TMPDIR := $(PROJECT_TMP_ROOT)/tests
+export BUN_INSTALL_CACHE_DIR := $(PROJECT_TMP_ROOT)/cache/bun
+export npm_config_cache := $(PROJECT_TMP_ROOT)/cache/npm
+export XDG_CACHE_HOME := $(PROJECT_TMP_ROOT)/cache
+# Honour an explicit browser install; never migrate or reinstall shared browsers.
+export PLAYWRIGHT_BROWSERS_PATH ?= $(if $(strip $(CI)),$(PROJECT_TMP_ROOT)/cache/ms-playwright,$(if $(wildcard /workspace/bin/pw-browsers),/workspace/bin/pw-browsers,$(PROJECT_TMP_ROOT)/cache/ms-playwright))
+
+.PHONY: policy-config policy-dirs
+policy-config: ## Print portable project cache/temp paths without creating them
+	@printf '%s\n' 'CACHE_TMP_BASE=$(CACHE_TMP_BASE)' 'PROJECT_TMP_ROOT=$(PROJECT_TMP_ROOT)' 'PICLAW_INHERITED_TMPDIR=$(PICLAW_INHERITED_TMPDIR)' 'TMPDIR=$(TMPDIR)' 'BUN_INSTALL_CACHE_DIR=$(BUN_INSTALL_CACHE_DIR)' 'npm_config_cache=$(npm_config_cache)' 'XDG_CACHE_HOME=$(XDG_CACHE_HOME)' 'PLAYWRIGHT_BROWSERS_PATH=$(PLAYWRIGHT_BROWSERS_PATH)'
+
+policy-dirs:
+	@mkdir -p "$(PROJECT_TMP_ROOT)/cache" "$(PROJECT_TMP_ROOT)/build" "$(PROJECT_TMP_ROOT)/tests" "$(PROJECT_TMP_ROOT)/logs" "$(PROJECT_TMP_ROOT)/runs" "$(BUN_INSTALL_CACHE_DIR)" "$(npm_config_cache)"
+
+vendor build-web build-ts build-piclaw pack portable portable-linux portable-linux-baseline portable-mac portable-windows local-install lint test test-coverage ci-fast ci-native ci-full ci-integration pre-push-ci: | policy-dirs
 
 IMAGE ?= pibox
 TAG ?= latest
@@ -48,7 +83,7 @@ PI_AGENT_VERSION ?= $(shell jq -r '.dependencies["@earendil-works/pi-coding-agen
 WEB_BUILD_TEST_TIMEOUT_MS ?= 20000
 
 .PHONY: help up down enter build build-piclaw build-web build-ts vendor update-mermaid-vendor pack portable portable-linux portable-linux-baseline portable-mac portable-windows \
-        local-install restart lint test test-coverage ci-fast ci-integration install-git-hooks pre-push-ci publish-smoke \
+        local-install restart lint test test-coverage ci-fast ci-native ci-full ci-integration install-git-hooks pre-push-ci publish-smoke \
         dual-tag tag-ghcr sync-version bump-minor bump-patch push
 
 help: ## Show this help
@@ -104,9 +139,8 @@ update-mermaid-vendor: ## Rebuild or upgrade vendored mermaid (use MERMAID_VERSI
 	cd runtime && bun run update:vendor:mermaid $(if $(MERMAID_VERSION),--version $(MERMAID_VERSION),)
 	@ls -lh runtime/web/static/common/js/vendor/beautiful-mermaid.js runtime/web/static/common/js/vendor/beautiful-mermaid.meta.json
 
-build-web: ## Build web JS/CSS bundles (+ sourcemaps) into static/classic/dist, static/common/dist, and static/visual/dist
+build-web: ## Build web JS/CSS bundles (+ sourcemaps) into static/classic/dist, static/common/dist
 	cd runtime && bun run build:web
-	bun run build:web:visual
 	@bun run test:local --cwd runtime --env PICLAW_DB_IN_MEMORY=1 -- bun test --timeout $(WEB_BUILD_TEST_TIMEOUT_MS) test/channels/web/web-build.test.ts test/channels/web/post-link-preview-content.test.ts
 	@# Pre-compress static assets for faster first-request serving
 	@find runtime/web/static -type f \( -name '*.js' -o -name '*.css' -o -name '*.json' -o -name '*.svg' \) \
@@ -203,6 +237,12 @@ local-install: pack ## Pack and install piclaw globally (no restart)
 		TMPDIR=$(PICLAW_TMPDIR) TMP=$(PICLAW_TMPDIR) TEMP=$(PICLAW_TMPDIR) \
 		$(BUN_ROOT)/bin/bun install -g "$$INSTALL_TGZ" \
 		--registry https://registry.npmjs.org; \
+	DEST_REAL=$(BUN_ROOT)/install/global/node_modules/piclaw; \
+	printf '%s\n' "[local-install] Running packaged postinstall..."; \
+	sudo BUN_INSTALL=$(BUN_ROOT) \
+		BUN_TMPDIR=$(PICLAW_TMPDIR) BUN_INSTALL_CACHE_DIR=$(BUN_CACHE_DIR) \
+		TMPDIR=$(PICLAW_TMPDIR) TMP=$(PICLAW_TMPDIR) TEMP=$(PICLAW_TMPDIR) \
+		$(BUN_ROOT)/bin/bun "$$DEST_REAL/scripts/postinstall.ts"; \
 	sudo chmod -R a+rX $(BUN_ROOT); \
 	PICLAW_CLI=$$(readlink -f $(BUN_ROOT)/bin/piclaw || true); \
 	if [ -z "$$PICLAW_CLI" ] || [ ! -f "$$PICLAW_CLI" ]; then \
@@ -211,7 +251,6 @@ local-install: pack ## Pack and install piclaw globally (no restart)
 	fi; \
 	sudo chmod 755 "$$PICLAW_CLI"; \
 	rm -rf "$$TGZ" "$$INSTALL_TGZ" "$$INSTALL_STAGE" "$$PATCH_STAGE" "$$GLOBAL_PACKAGE"; \
-	DEST_REAL=$(BUN_ROOT)/install/global/node_modules/piclaw; \
 	if [ -d "$$DEST_REAL/extensions" ] && [ -d "$$DEST_REAL/node_modules" ]; then \
 		sudo ln -sfn "$$DEST_REAL/node_modules" "$$DEST_REAL/extensions/node_modules" 2>/dev/null || true; \
 	fi; \
@@ -229,8 +268,14 @@ test: ## Run piclaw tests
 test-coverage: ## Run piclaw tests with coverage
 	cd runtime && bun run test:coverage
 
-ci-fast: ## Run the canonical fast CI contract used by GitHub Actions
+ci-fast: ## Run host-only fast checks and web build (does not qualify native runtime)
 	bun run ci:fast
+
+ci-native: ## Run required offline native qualification (requires five prepared fixture paths)
+	bun run ci:native
+
+ci-full: ## Run host-only fast checks followed by required native qualification
+	bun run ci:full
 
 pre-push-ci: ## Run the pre-push CI guard against the current HEAD in a clean worktree
 	./scripts/git-pre-push-ci-fast.sh --current
@@ -243,7 +288,7 @@ install-git-hooks: ## Install local Git hooks that run fast CI before main pushe
 	chmod +x .git/hooks/pre-push; \
 	echo "Installed .git/hooks/pre-push"
 
-ci-integration: ## Run the full integration gate (lint + all tests + static analysis + build + Playwright)
+ci-integration: ## Run the full integration gate (required native + lint + all host tests + static analysis + build + Playwright)
 	bun run ci:integration
 
 publish-smoke: ## Smoke-test a published piclaw image (requires IMAGE_REF, PLATFORM, EXPECTED_BUN_VERSION, EXPECTED_RESTIC_VERSION)

@@ -1,4 +1,4 @@
-/** Only public instance branding may be delivered globally to family clients. */
+/** Project public instance branding without private fields. */
 export function projectPublicBranding(data: unknown): Record<string, unknown> | null {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
   const p = data as Record<string, unknown>;

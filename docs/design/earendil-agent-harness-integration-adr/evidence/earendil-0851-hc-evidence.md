@@ -1,5 +1,7 @@
 # Earendil 0.85.1 inactive Harness evidence
 
+Historical as-of assessment: version/installed labels, commands and results below describe the original environment. The full frozen object now lives in an [inert schema-6 receipt](receipts/earendil-harness-compatibility-schema6.json) with [source/conversion provenance](receipts/earendil-harness-compatibility-schema6.provenance.json), outside executable Core. Current SDK1.4.0 selection and native qualification are separate; no old installation or activation permission is extended.
+
 Evidence date: 18 September 2026. Selected release: `0.85.1`, release commit `d981de1229ef899957bbe968bc8dcda02a21f477`.
 
 ## Result

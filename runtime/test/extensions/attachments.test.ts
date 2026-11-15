@@ -145,7 +145,7 @@ test("attach_file reports missing file", async () => {
   expect(result.content[0].text).toContain("File not found");
 });
 
-test("web processChat stores attachment content blocks", async () => {
+test("accepted web publisher stores attachment content blocks through the current message store", async () => {
   const ws = getTestWorkspace();
   restoreEnv = setEnv({ PICLAW_WORKSPACE: ws.workspace, PICLAW_STORE: ws.store, PICLAW_DATA: ws.data });
 
@@ -161,7 +161,7 @@ test("web processChat stores attachment content blocks", async () => {
     { size: 6 }
   );
 
-  db.storeMessage({
+  const sourceRow = db.storeMessage({
     id: `msg-${Math.random()}`,
     chat_jid: "web:default",
     sender: "user",
@@ -174,27 +174,23 @@ test("web processChat stores attachment content blocks", async () => {
 
   const webMod = await import("../../src/channels/web.js");
   const web = new (webMod.WebChannel as any)({
+    // Publisher double only; native source identity/settlement is separately qualified.
+    dispatchAcceptedInput: async(chatJid:string,messageId:string,rowId:number)=>{
+      expect(db.getMessageRowIdById(chatJid,messageId)).toBe(rowId);
+      const stored = await web.admitMessage(chatJid, "Here is the report.", true, [mediaId], {
+        threadId: rowId, isTerminalAgentReply: true,
+        contentBlocks: [{ type: "file", name: "report.txt", filename: "report.txt", mime_type: "text/plain", size: 6 }],
+      });
+      expect(stored?.id).toBeGreaterThan(0); return {submission_id:17,queued:false};
+    },
     queue: { enqueue: () => {} },
     agentPool: {
-      runAgent: async () => ({
-        status: "success",
-        result: "Here is the report.",
-        attachments: [
-          {
-            id: mediaId,
-            name: "report.txt",
-            contentType: "text/plain",
-            size: 6,
-            kind: "file",
-            sourcePath: "/tmp/report.txt",
-          },
-        ],
-      }),
       getContextUsageForChat: async () => null,
     },
   });
 
-  await (web as any).processChat("web:default", "default");
+  const source = db.getDb().query('SELECT id FROM messages WHERE rowid=?').get(sourceRow) as {id:string};
+  await web.dispatchAcceptedInput('web:default', source.id, sourceRow);
 
   const timeline = db.getTimeline("web:default", 10);
   const last = timeline[timeline.length - 1];

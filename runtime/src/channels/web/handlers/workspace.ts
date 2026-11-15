@@ -126,7 +126,7 @@ export async function handleWorkspaceUpdate(req: Request): Promise<Response> {
     return errorJson("Missing path", 400);
   }
 
-  const result = workspaceService.updateFile(data.path, data.content ?? "");
+  const result = await workspaceService.updateFile(data.path, data.content ?? "");
   return jsonResponse(result.body, result.status);
 }
 
@@ -135,9 +135,9 @@ export async function handleWorkspaceUpdate(req: Request): Promise<Response> {
  * @param req Incoming HTTP request with `path` query parameter.
  * @returns JSON response describing delete success or failure.
  */
-export function handleWorkspaceDelete(req: Request): Response {
+export async function handleWorkspaceDelete(req: Request): Promise<Response> {
   const url = new URL(req.url);
-  const result = workspaceService.deleteFile(url.searchParams.get("path"));
+  const result = await workspaceService.deleteFile(url.searchParams.get("path"));
   return jsonResponse(result.body, result.status);
 }
 
@@ -264,7 +264,7 @@ export async function handleWorkspaceAttach(req: Request): Promise<Response> {
     return errorJson("Invalid JSON", 400);
   }
 
-  const result = workspaceService.attachFile(data.path || null);
+  const result = await workspaceService.attachFile(data.path || null, req.signal);
   return jsonResponse(result.body, result.status);
 }
 
@@ -357,7 +357,7 @@ export async function handleWorkspaceCreate(req: Request): Promise<Response> {
     return errorJson("Missing filename", 400);
   }
 
-  const result = workspaceService.createFile(data.path ?? null, data.name ?? null, data.content ?? "");
+  const result = await workspaceService.createFile(data.path ?? null, data.name ?? null, data.content ?? "");
   return jsonResponse(result.body, result.status);
 }
 
@@ -382,7 +382,7 @@ export async function handleWorkspaceRename(req: Request): Promise<Response> {
     return errorJson("Missing filename", 400);
   }
 
-  const result = workspaceService.renameFile(data.path ?? null, data.name ?? null);
+  const result = await workspaceService.renameFile(data.path ?? null, data.name ?? null);
   return jsonResponse(result.body, result.status);
 }
 
@@ -407,7 +407,7 @@ export async function handleWorkspaceMove(req: Request): Promise<Response> {
     return errorJson("Missing target", 400);
   }
 
-  const result = workspaceService.moveEntry(data.path ?? null, data.target ?? null);
+  const result = await workspaceService.moveEntry(data.path ?? null, data.target ?? null);
   return jsonResponse(result.body, result.status);
 }
 

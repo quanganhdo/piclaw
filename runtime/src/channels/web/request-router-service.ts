@@ -26,7 +26,6 @@
 
 import { extname, resolve } from "path";
 import { readAccessConfig, type AccessMode } from "../../core/config-access.js";
-import { handleFamilyRequest } from "./http/family-authorisation.js";
 import { createUuid } from "../../utils/ids.js";
 import type { WebChannelLike } from "./core/web-channel-contracts.js";
 import { isSecureWebRequest } from '../../utils/request-client.js';
@@ -131,15 +130,13 @@ export class RequestRouterService {
     if (pathname === "/auth/options") return loginOptionsResponse(req, this.accessMode, this.channel.authGateway);
 
     // Instance-wide indexing policy is available only to the single-user owner.
-    // Deny before family or isolated dispatch can reinterpret caller identity.
+    // Deny unsupported access modes before dispatch.
     if (pathname.startsWith("/agent/settings/workspace/indexing") && this.accessMode !== "single-user") {
       return this.channel.json({ error: "Workspace indexing settings are owner-only." }, 403);
     }
 
     // Terminal gate precedes every legacy/add-on dispatcher, including early routes.
-    if (this.accessMode === "family-shared") {
-      return handleFamilyRequest(this.channel, req, this.serveStaticAsset.bind(this));
-    }
+
     if (this.accessMode !== "single-user") {
       return this.channel.json({ error: "Isolated routing is unavailable." }, 503);
     }

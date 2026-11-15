@@ -1,5 +1,11 @@
 # MCP instance settings
 
+## Current native host boundary
+
+The shipping native application exposes owner-only read/preview. Its startup-owned MCP transport/context has no live reconfiguration port: `applyAvailable` is false, `runtime.observedPolicy` is null, and policy/server Apply returns409 before persistence. A legacy empty-session snapshot cannot certify native shutdown/reload. See [native host composition](native-host-composition.md). No restart or new hot-replacement feature is implied.
+
+The controller/qualification details below describe the explicit historical session-owner boundary and its earlier releases. They remain evidence for that boundary, not native live Apply authority.
+
 `GET /agent/settings/mcp` and `POST /agent/settings/mcp/preview` expose owner-only policy inspection without changing MCP connections. `POST /agent/settings/mcp/apply` applies adapter codemode settings through public Pi 1.0.1 session APIs. Engine replacement remains blocked; a codemode update does not reload or replace the adapter.
 
 All three routes require a freshly resolved single-user administrator principal. Identity is checked after body I/O, before mutation, after participant abort and before publishing. Family and isolated-container modes deny access. Responses are private/no-store; unauthorised requests are rejected before body parsing or configuration reads. Normal HTTP authentication and POST CSRF checks remain in the request guard. The routes share an enforced rate-limit bucket.

@@ -2,62 +2,13 @@
  * channels/web/agent-status.ts – Agent status/context/models endpoint helpers.
  */
 
-import type { WebAgentBufferEntry } from "./agent-buffers.js";
+import type { WebChannelLike, AgentStatusContext, TokenUsageCounterSummary, LatestTokenUsageCounterSummary, AgentTokenUsageContext } from "../core/web-channel-contracts.js";
+export type { AgentStatusContext, TokenUsageCounterSummary, LatestTokenUsageCounterSummary, AgentTokenUsageContext } from "../core/web-channel-contracts.js";
 import { getAddonApiHealthSnapshot } from "../../../addons/addon-api-health.js";
 import { getMcpStartupDiagnostics } from "../../../secure/mcp-keychain.js";
 import { appendServerTiming, measureAsync, measureSync } from "../http/server-timing.js";
+import { publicContextUsage } from "../context-usage.js";
 
-export interface TokenUsageCounterSummary {
-  input_tokens: number;
-  output_tokens: number;
-  reasoning_tokens?: number;
-  cache_read_tokens: number;
-  cache_write_tokens: number;
-  total_tokens: number;
-  cost_total: number;
-  runs: number;
-  provider_reported_cost_runs?: number;
-  catalogue_estimate_cost_runs?: number;
-  unavailable_cost_runs?: number;
-  legacy_cost_runs?: number;
-}
-
-export interface LatestTokenUsageCounterSummary extends TokenUsageCounterSummary {
-  cache_read_reported?: number | null;
-  cache_write_reported?: number | null;
-  provider_cost_total?: number | null;
-  catalogue_cost_total?: number | null;
-  cost_provenance?: string | null;
-  model?: string | null;
-  response_model?: string | null;
-  provider?: string | null;
-  api?: string | null;
-  turns?: number | null;
-  run_at?: string | null;
-}
-
-export interface AgentTokenUsageContext {
-  latest: LatestTokenUsageCounterSummary | null;
-  totals: TokenUsageCounterSummary | null;
-}
-
-/** Context contract used by web agent status/context/model endpoint handlers. */
-export interface AgentStatusContext {
-  defaultChatJid: string;
-  json(payload: unknown, status?: number): Response;
-  getAgentStatus(chatJid: string): Record<string, unknown> | null;
-  getExtensionWorkingState(chatJid: string): Record<string, unknown> | null;
-  recoverStaleInflightRun(chatJid: string, options?: { hasActiveStatus?: boolean; minAgeMs?: number }): boolean;
-  getBuffer(turnId: string, panel: "thought" | "draft"): WebAgentBufferEntry | undefined;
-  getContextUsageForChat(
-    chatJid: string
-  ): Promise<{ tokens: number | null; contextWindow: number | null; percent: number | null; sessionGeneration?: string } | null>;
-  getTokenUsageForChat(chatJid: string): AgentTokenUsageContext | null;
-  getAvailableModels(chatJid: string, options?: { includeProviderDiagnostics?: boolean; includeCatalogue?: boolean }): Promise<unknown>;
-  getProviderReadyCompletedForInstance(): boolean;
-  getAddonApiHealthSnapshot?: typeof getAddonApiHealthSnapshot;
-  getMcpStartupDiagnostics?: typeof getMcpStartupDiagnostics;
-}
 
 function resolveChatJid(req: Request, defaultChatJid: string): string {
   const url = new URL(req.url);
@@ -94,6 +45,8 @@ function formatTokenUsageRecord(record: LatestTokenUsageCounterSummary | null | 
     cacheWriteReported: record.cache_write_reported == null ? null : Boolean(record.cache_write_reported),
     totalTokens: record.total_tokens,
     costTotal: record.cost_total,
+    costCurrency: record.cost_currency ?? null,
+    providerCostCurrency: record.provider_cost_currency ?? null,
     providerCostTotal: record.provider_cost_total ?? null,
     catalogueCostTotal: record.catalogue_cost_total ?? null,
     costProvenance: record.cost_provenance ?? null,
@@ -118,8 +71,12 @@ function formatTokenUsageTotals(record: TokenUsageCounterSummary | null | undefi
     cacheWriteTokens: record.cache_write_tokens,
     totalTokens: record.total_tokens,
     costTotal: record.cost_total,
+    costCurrency: record.cost_currency ?? null,
+    providerCostCurrency: record.provider_cost_currency ?? null,
     runs: record.runs,
     cacheHitRate: computeCacheHitRate(record),
+    providerCostTotal: record.provider_cost_total ?? null,
+    catalogueCostTotal: record.catalogue_cost_total ?? null,
     costCoverage: {
       providerReportedRuns: record.provider_reported_cost_runs ?? 0,
       catalogueEstimateRuns: record.catalogue_estimate_cost_runs ?? 0,
@@ -173,7 +130,6 @@ function deriveAgentState(status: Record<string, unknown>): string {
 export interface AgentStatusSnapshotOptions {
   includeDiagnostics?: boolean;
   includeExtensionWorking?: boolean;
-  recoverStaleInflight?: boolean;
 }
 
 /** Build the shared status payload independently of HTTP routing authority. */
@@ -193,9 +149,6 @@ export function buildAgentStatusSnapshot(
   const extensionWorking = includeExtensionWorking ? ctx.getExtensionWorkingState(chatJid) : null;
   const status = ctx.getAgentStatus(chatJid);
   if (!status) {
-    if (options.recoverStaleInflight !== false) {
-      ctx.recoverStaleInflightRun(chatJid, { hasActiveStatus: false });
-    }
     return {
       status: "idle",
       state: "idle",
@@ -263,7 +216,8 @@ export function buildAgentStatusSnapshot(
     provider: readTrimmedString(status.provider) || null,
     model: readTrimmedString(status.model) || null,
     classifier,
-    last_error: readTrimmedString(status.detail) || readTrimmedString(status.title) || null,
+    last_error: status.type === "error" || ["blocked_auth", "failed"].includes(deriveAgentState(status))
+      ? readTrimmedString(status.detail) || readTrimmedString(status.title) || null : null,
     recovery_strategy: readTrimmedString(status.recovery_strategy ?? status.recoveryStrategy ?? status.strategy) || null,
     recovery_suppressed_reason: readTrimmedString(status.recovery_suppressed_reason ?? status.recoverySuppressedReason) || null,
     data: status,
@@ -287,18 +241,23 @@ export function handleAgentStatusRequest(req: Request, ctx: AgentStatusContext):
 }
 
 /** Build shared context and latest-run usage metadata for an authorised chat. */
-export async function buildAgentContextSnapshot(chatJid: string, ctx: AgentStatusContext): Promise<Record<string, unknown>> {
+export async function buildAgentContextSnapshot(chatJid: string, ctx: AgentStatusContext,
+  options: { includeTree?: boolean } = {}): Promise<Record<string, unknown>> {
   const cacheUsage = formatTokenUsageContext(ctx.getTokenUsageForChat(chatJid));
+  // Read-only endpoint: never claims or clears the active turn/status surface.
+  const sessionTree = options.includeTree && ctx.getSessionTreeSummaryForChat
+    ? { sessionTree: await ctx.getSessionTreeSummaryForChat(chatJid) }
+    : {};
   const usage = await ctx.getContextUsageForChat(chatJid);
   if (!usage) {
-    return { tokens: null, contextWindow: null, percent: null, sessionGeneration: null, cacheUsage };
+    return { tokens: null, contextWindow: null, percent: null, sessionGeneration: null, contextUpdate: "replace", cacheUsage, ...sessionTree };
   }
   return {
-    tokens: usage.tokens,
-    contextWindow: usage.contextWindow,
-    percent: usage.percent,
+    ...publicContextUsage(usage),
     sessionGeneration: usage.sessionGeneration ?? null,
+    contextUpdate: "replace",
     cacheUsage,
+    ...sessionTree,
   };
 }
 
@@ -306,7 +265,9 @@ export async function buildAgentContextSnapshot(chatJid: string, ctx: AgentStatu
 export async function handleAgentContextRequest(req: Request, ctx: AgentStatusContext): Promise<Response> {
   const { result, durationMs } = await measureAsync(async () => {
     const chatJid = resolveChatJid(req, ctx.defaultChatJid);
-    return ctx.json(await buildAgentContextSnapshot(chatJid, ctx));
+    return ctx.json(await buildAgentContextSnapshot(chatJid, ctx, {
+      includeTree: new URL(req.url).searchParams.get("include_tree") === "1",
+    }));
   });
   return appendServerTiming(result, {
     name: "agent_context",
@@ -318,13 +279,14 @@ export async function handleAgentContextRequest(req: Request, ctx: AgentStatusCo
 export async function handleAgentModelsRequest(req: Request, ctx: AgentStatusContext): Promise<Response> {
   const { result, durationMs } = await measureAsync(async () => {
     const chatJid = resolveChatJid(req, ctx.defaultChatJid);
+    const completed = await ctx.getProviderReadyCompletedForInstance(req);
     const payload = await ctx.getAvailableModels(chatJid);
     if (payload && typeof payload === "object") {
       return ctx.json({
         ...payload as Record<string, unknown>,
         oobe: {
           ...((payload as { oobe?: Record<string, unknown> }).oobe ?? {}),
-          provider_ready_completed_instance: ctx.getProviderReadyCompletedForInstance(),
+          provider_ready_completed_instance: completed,
         },
       }, 200);
     }
@@ -337,7 +299,7 @@ export async function handleAgentModelsRequest(req: Request, ctx: AgentStatusCon
 }
 
 /** Opt-in UI status envelope. Existing status clients keep their response shape.
- * Family routes validate query allowlists before this operator-only handler. */
+ * The operator-only handler validates its query allowlist. */
 export async function handleAgentUiSnapshotRequest(req: Request, ctx: AgentStatusContext, extra: {
   getSystemMetrics(): Promise<unknown>;
   getAgentName(): string;
@@ -345,6 +307,7 @@ export async function handleAgentUiSnapshotRequest(req: Request, ctx: AgentStatu
 }): Promise<Response> {
   const chatJid = resolveChatJid(req, ctx.defaultChatJid);
   const { result, durationMs } = await measureAsync(async () => {
+    const completed = await ctx.getProviderReadyCompletedForInstance(req);
     const status = buildAgentStatusSnapshot(chatJid, ctx);
     const sections = await Promise.allSettled([
       ctx.getAvailableModels(chatJid, { includeCatalogue: false, includeProviderDiagnostics: false }),
@@ -356,7 +319,7 @@ export async function handleAgentUiSnapshotRequest(req: Request, ctx: AgentStatu
       status,
       model: model.status === 'fulfilled' ? {
         ...(model.value as Record<string, unknown>),
-        oobe: { provider_ready_completed_instance: ctx.getProviderReadyCompletedForInstance() },
+        oobe: { provider_ready_completed_instance: completed },
       } : null,
       context: context.status === 'fulfilled' ? context.value : null,
       metrics: metrics.status === 'fulfilled' ? metrics.value : null,
@@ -366,4 +329,63 @@ export async function handleAgentUiSnapshotRequest(req: Request, ctx: AgentStatu
     });
   });
   return appendServerTiming(result, { name: 'agent_ui_snapshot', durationMs });
+}
+
+export function handleAgentActiveChatsRequest(channel: Pick<WebChannelLike, "agentPool" | "endpointContexts" | "json">): Response {
+  const { result, durationMs } = measureSync(() => {
+    // Native sessions do not populate the legacy AgentSession pool. Use known
+    // chat identities and the same authoritative lifecycle as /agent/status;
+    // never construct SDK sessions or claim/recover work for this read.
+    const rows: unknown[] = channel.agentPool.listKnownChats();
+    const context = channel.endpointContexts.agentStatus();
+    const chats = rows.flatMap((row): Record<string, unknown>[] => {
+      if (!row || typeof row !== "object") return [];
+      const chat = row as Record<string, unknown>;
+      const chatJid = typeof chat.chat_jid === "string" ? chat.chat_jid.trim() : "";
+      if (!chatJid || chat.archived_at) return [];
+      const snapshot = buildAgentStatusSnapshot(chatJid, context,
+        { includeDiagnostics: false, includeExtensionWorking: false, });
+      const data = snapshot.data as Record<string, unknown> | null;
+      const active = snapshot.status === "active";
+      const compacting = active && data?.type === "compaction";
+      const retrying = active && data?.type === "retry";
+      const shell = active && data?.type === "bash";
+      const streaming = active && (data?.type === "thinking" || data?.type === "draft");
+      return [{ ...chat,
+        session_id: channel.agentPool.getSessionGenerationForChat?.(chatJid) ?? chat.session_id ?? null,
+        is_active: active, is_streaming: streaming, is_compacting: compacting, is_retrying: retrying, is_bash_running: shell,
+        activity_status: !active ? "idle" : compacting ? "compacting" : retrying ? "retrying" : shell ? "bash_running" : streaming ? "streaming" : "working",
+        activity_label: active ? (typeof data?.title === "string" && data.title ? data.title : "Active") : "Idle" }];
+    }).sort((a, b) => Number(b.is_active) - Number(a.is_active) || String(a.chat_jid).localeCompare(String(b.chat_jid)));
+    // Session lists show when each chat last changed and its latest reply.
+    const activity = context.getChatActivitySummaries?.(chats.map((chat) => String(chat.chat_jid))) ?? new Map();
+    for (const chat of chats) {
+      const summary = activity.get(String(chat.chat_jid));
+      chat.last_activity_at = summary?.last_activity_at ?? null;
+      chat.last_reply = summary?.last_reply ?? null;
+    }
+    return channel.json({ chats }, 200);
+  });
+  return appendServerTiming(result, {
+    name: "agent_active_chats",
+    durationMs,
+  });
+}
+
+export function handleAgentBranchesRequest(req: Request, channel: Pick<WebChannelLike, "agentPool" | "json">): Response {
+  const { result, durationMs } = measureSync(() => {
+    const url = new URL(req.url);
+    const rootChatJid = typeof url.searchParams.get("root_chat_jid") === "string"
+      ? url.searchParams.get("root_chat_jid")!.trim()
+      : "";
+    const includeArchived = ["1", "true", "yes", "on"].includes(
+      String(url.searchParams.get("include_archived") || "").trim().toLowerCase(),
+    );
+    const chats = channel.agentPool.listKnownChats(rootChatJid || null, { includeArchived });
+    return channel.json({ chats }, 200);
+  });
+  return appendServerTiming(result, {
+    name: "agent_branches",
+    durationMs,
+  });
 }
