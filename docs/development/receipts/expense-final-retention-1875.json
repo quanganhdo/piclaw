@@ -215,7 +215,7 @@
       "deliveryOwner": "#1877",
       "originalSha256": "a64d2881c5a7e657f71e965f4beb5a581dc07e9797edd1123af3739af3f0ca63",
       "state": "retained-decoupled",
-      "currentSha256": "693dceb90c04107464deecdde6876f3f5049f2eb295a466ce49834f44652d70d",
+      "currentSha256": "8f6c8191f7e00dc679400c4f0623d2acfed06f3207045a3987d5ea0f4ac40233",
       "currentPurpose": "application route/source/auth/resource composition and SDK lifecycle/result publication; no financial owner or native host execution slot",
       "directImportCallers": []
     },
@@ -379,7 +379,7 @@
       "deliveryOwner": "#1877",
       "originalSha256": "2f6a632f863196fccd48a3f3912c8bef407fb2ca5d07c13d32400dcef84c87cc",
       "state": "retained-decoupled",
-      "currentSha256": "f2510fc86aa4fcd5e33ffc4b27507e6f0ccc055f07f4bda65023dd629a7d5345",
+      "currentSha256": "21352fb0ccbbcfe75e9c5700881853571f766fb4aef233197f238f52a31400f6",
       "currentPurpose": "application route/source/auth/resource composition and SDK lifecycle/result publication; no financial owner or native host execution slot",
       "directImportCallers": [
         {
@@ -638,7 +638,7 @@
       "deliveryOwner": "#1881",
       "originalSha256": "e506827fe77e26e48c722ff15a957a5d37acfe9c66c32e4511a67f627c2cf94f",
       "state": "retained-decoupled",
-      "currentSha256": "b2a6fe534df5e203595224d9f0c4caba95c3648de3097ade09db1a80d5484d6d",
+      "currentSha256": "d327934470b80f8bbdb947233571f83763e58d9ed4225385342674c2e3f27467",
       "currentPurpose": "existing native domain/control/message transport boundary with no expense port",
       "directImportCallers": [
         {
@@ -1028,7 +1028,7 @@
       "deliveryOwner": "#1881",
       "originalSha256": "cdddbc02e1f46e6767bfd9f5602c55ef007d6083aff7af016550f74d1f73aa6f",
       "state": "retained-decoupled",
-      "currentSha256": "701e4b9febe7af2e68656fd3291c91b126e0baf8b2a327a7b36f47609b83b55f",
+      "currentSha256": "32575efe68b89b5276f60307ea3ec7f65fc4fa75e8860065e03b7e71015b771d",
       "currentPurpose": "existing nonfinancial tool/UI/route/schedule definition/occurrence control; monetary option/registration removed",
       "directImportCallers": [
         {
@@ -2039,7 +2039,7 @@
       "deliveryOwner": "#1881",
       "originalSha256": "b1967a9bc02e27e622fe853ae10880bb571128abdcfafd83726c5986fabe5a77",
       "state": "retained-decoupled",
-      "currentSha256": "bb2e3b8eba00d58b67bff4f685a8f47154d6d25dc765ae702ff63324c877880c",
+      "currentSha256": "f98b23c705c98a2cd83c223e884e2157d1b676d3ea7ba52022ab4e5cf3758f08",
       "currentPurpose": "existing nonfinancial tool/UI/route/schedule definition/occurrence control; monetary option/registration removed",
       "directImportCallers": [
         {
@@ -2097,7 +2097,7 @@
       "deliveryOwner": "#1881",
       "originalSha256": "8151cb79e9ccec97c0eeb6c217dd6d7cfb0f441d81c2fd611ae85dce8554e849",
       "state": "retained-decoupled",
-      "currentSha256": "21aea1b86de3181d854efe79430f9955f084ec1f4fa8a4276a6518885335c834",
+      "currentSha256": "c67a2cfdc89501c3e1e0e5308450b3d258dc3acd8e1ff79f9afc559178aa547a",
       "currentPurpose": "existing nonfinancial tool/UI/route/schedule definition/occurrence control; monetary option/registration removed",
       "directImportCallers": []
     },
@@ -2108,7 +2108,7 @@
       "deliveryOwner": "#1881",
       "originalSha256": "98c45f2eb8820c69855c66df641e2a6714e3d5c2b452d82cb4dd47fc17a864a8",
       "state": "retained-decoupled",
-      "currentSha256": "fa8f9ec403ca73f6de729857cb2e915001d0957a913e3e2f7046092bad6d7800",
+      "currentSha256": "5fc0aefc27b1b3cffbe92b621203a77a9f1d496f82fcc98e839f6bdbdc9cc210",
       "currentPurpose": "existing nonfinancial tool/UI/route/schedule definition/occurrence control; monetary option/registration removed",
       "directImportCallers": []
     },
@@ -2141,7 +2141,7 @@
       "deliveryOwner": "#1878",
       "originalSha256": "c7e461e26639a5d99f9ca8f9c3de6d013963f51978794b4c96e52581de243d8a",
       "state": "retained-decoupled",
-      "currentSha256": "14189fd920d885418cc84782be7c673a3c7af116069018ce3a723efa2ffb8933",
+      "currentSha256": "d48231b1d08c9b38f064d863caa75927c8732e8ab0d452100ae078f1b644bbb0",
       "currentPurpose": "generic exact schema/backup/recovery/reference inspection including inert old objects; no financial initializer or repair",
       "directImportCallers": []
     },
@@ -2249,7 +2249,7 @@
       "deliveryOwner": "#1880",
       "originalSha256": "7e548623dd8753d549b783ac2245ea0252c72109194f48655b1dcbfac6c42c7d",
       "state": "retained-decoupled",
-      "currentSha256": "f4ee0aed7c83c222dea858c60b2788f86069e53f91fbc17e0442b8b0746af151",
+      "currentSha256": "db2829813651f6da208cd84c89ad2b99f79e19b3e7a3d5c9734484c202da021d",
       "currentPurpose": "documentation: current observational/source contract or explicitly archived earlier design; no runtime registration",
       "directImportCallers": []
     },
@@ -2889,5 +2889,23 @@
       "runtime/durable-engine/src/host-extension-catalog.ts"
     ],
     "scope": "Reliability/maintenance/legacy SQL retirement and approved published add-on source pins; original classifications/deleted paths/financial accounting unchanged. No1875deletioncredit."
-  }
+  },
+  "laterSourceRefreshes": [
+    {
+      "issue": 1650,
+      "base": "d75ec20fb1f2c67a2ac88ecb576e43e308418163",
+      "paths": [
+        "runtime/src/agent-pool.ts"
+      ],
+      "scope": "Remove the uncalled legacy session binder API and factory stage. Original 105 classifications, 37 deleted paths and financial reduction accounting remain unchanged; this slice receives no additional #1875 credit."
+    },
+    {
+      "issue": 1650,
+      "base": "b55ab07685fe8430e8f5c7dca37d1b55c5d356f2",
+      "paths": [
+        "runtime/src/channels/web/http/dispatch-agent.ts"
+      ],
+      "scope": "Settings now uses the existing provider-owned auth definitions for built-in and extension providers alike. Original classifications, deleted paths and financial accounting remain unchanged; no additional #1875 deletion credit."
+    }
+  ]
 }
