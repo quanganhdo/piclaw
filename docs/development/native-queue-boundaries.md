@@ -1,6 +1,6 @@
 # Native queue ownership
 
-Native web input goes directly to pi-durable 1.4 public submission APIs. The SDK owns busy handling, inbox placement, model/tool execution and terminal results. Root stores the accepted message and source correlation. AgentPool activity flags, host lanes, legacy queue JSON and host operation settlement do not choose native placement.
+Native web input goes directly to pi-durable 1.5.2 public submission APIs. The SDK owns busy handling, inbox placement, model/tool execution and terminal results. Root stores the accepted message and source correlation. AgentPool activity flags, host lanes, legacy queue JSON and host operation settlement do not choose native placement.
 
 ## Admission and receipts
 
@@ -27,10 +27,18 @@ An ID shared with a preserved legacy row is ambiguous and returns409 unchanged. 
 
 Write authority is captured before request-body awaits and rechecked at the guarded mutation. Native watches publish queue changes, placement, status and retained replies. The compatibility worker performs only a direct admission handoff: it does not advance native cursors, materialise old queue rows, publish synthetic run status, wait for a host terminal or schedule another host wake.
 
+## Stop response
+
+`/abort` and Stop response capture the active SDK run or manual/blocking compaction. Pending inbox submissions are excluded. Cancellation follows the captured run through its task handoffs with public `abortTask`/`waitForTask`; a stale scope cannot cancel a later run. The SDK settles the active input and joins its owned work. Its task-abort path leaves the inbox intact independently of `afterFailedRun` policy.
+
+An idle conversation with pending inputs has no active abort scope. Repeating Stop preserves those inputs. They retain their submission IDs, accepted message/source bytes, order and modes across native close/reopen, without automatic execution replay. A later explicit input can resume SDK processing. Removing a queued input remains a separate per-submission action. Unscoped whole-conversation cleanup keeps the SDK's broader cancellation contract and is not used by Stop response.
+
+A failed queue-state refresh keeps the UI's last known pending rows. Only an authoritative empty response clears them. Native generation/tool cancellation and bootstrap-control regressions cover retained inputs and reopen; Classic Chromium/WebKit keyboard/touch checks cover Stop, failed refresh and reload using the production Compose and queued stack.
+
 ## Producer paths and verification
 
 Peer HTTP relay, direct chat-tool relay and `enqueueAgentMessage` use the same source/message/SDK path. They retain source/target and reply descriptors, media links, structured blocks and explicit thread lineage. Runtime-message adapters preserve `created`, source-row and SDK IDs without manufacturing a timeline message.
 
-Actual SDK qualification is in `native-peer-input.test.ts`, `native-web-queue-contract.test.ts`, `native-http-input.test.ts` and `native-source-cursor-ack.test.ts` under `qualification/pi-durable-130`. It covers stale host activity, before/after-source starting races, stream ending before submission, metadata, branch controls, ambiguous IDs, optional ACK faults and reopen without replay. Host import/transaction tests separately check required ports, caller revocation, cancellation and absence of legacy lifecycle dependencies.
+Actual SDK qualification is in `native-peer-input.test.ts`, `native-web-queue-contract.test.ts`, `native-http-input.test.ts` and `native-source-cursor-ack.test.ts` under `qualification/native`. It covers stale host activity, before/after-source starting races, stream ending before submission, metadata, branch controls, ambiguous IDs, optional ACK faults and reopen without replay. Host import/transaction tests separately check required ports, caller revocation, cancellation and absence of legacy lifecycle dependencies.
 
 These checks do not certify every model-side multimodal payload, reconnect scenario or latency claim. Native admission does not consult financial expense limits. Passive token/context/provider-cost observation and explicit Goal token limits remain separate contracts. Historical replay reports remain in the non-executable [queue audit archive](../archive/legacy-queue-audit/README.md).

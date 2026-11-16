@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { EventEmitter } from "node:events";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -33,6 +33,15 @@ function makeRoot(): string {
 }
 
 describe("ManagedCdpBrowserDesktop", () => {
+  let restoreSignals = () => {};
+  beforeEach(() => {
+    const signal = spyOn(process, "kill").mockImplementation(() => {
+      throw Object.assign(new Error("Synthetic process group"), { code: "ESRCH" });
+    });
+    restoreSignals = () => signal.mockRestore();
+  });
+  afterEach(() => restoreSignals());
+
   test("resolves Docker, Podman, Kubernetes, and LXC container markers", () => {
     expect(resolveContainerRuntime({ dockerMarker: true })).toBe("docker");
     expect(resolveContainerRuntime({ podmanMarker: true })).toBe("podman");
@@ -137,7 +146,9 @@ describe("ManagedCdpBrowserDesktop", () => {
       expect(calls.every((call) => call.env.XAUTHORITY?.includes(".piclaw/browser/Xauthority-90"))).toBe(true);
       expect(authority).toEqual([{ path: join(root, ".piclaw", "browser", "Xauthority-90"), display: 90 }]);
 
+      expect(process.kill).toHaveBeenCalledTimes(0);
       service.shutdown();
+      expect(process.kill).toHaveBeenCalledWith(-100, "SIGKILL");
       expect(children.every((child) => child.killed)).toBe(true);
     } finally {
       rmSync(root, { recursive: true, force: true });
