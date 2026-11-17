@@ -70,6 +70,15 @@ export function createRepoDevCommandPlan(commandName: string, projectDir = proce
         args: ["--noEmit", "-p", "tsconfig.scripts.json"],
         requiredBinaries: ["tsc"],
       };
+    case "typecheck:web-login":
+      return {
+        packageDir,
+        runtimeDir,
+        cwd: runtimeDir,
+        binaryPath: resolveRepoBinary(packageDir, "tsc"),
+        args: ["--noEmit", "-p", "tsconfig.web-login.json"],
+        requiredBinaries: ["tsc"],
+      };
     case "typecheck:web-settings":
       return {
         packageDir,
